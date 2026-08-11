@@ -90,14 +90,14 @@
 // RUN-level balance is measured against the natural ground, where both signs are
 // reachable, so it must answer to both.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U   = 0.25;
 const G   = 400;                 // a datum high enough that a deep cut cannot reach ρ
 const EPS = 10;                  // the editor's own ε
 const N   = 26;                  // cells walked, matching `span.loft`
 
 // The fall line the road is walked down: `n` cells falling `k` a hex along `q`.
-fn ramp_q(k: integer) -> World {
+fn ramp_q(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 40)..41 {
     for r in (0 - 8)..9 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
@@ -106,7 +106,7 @@ fn ramp_q(k: integer) -> World {
 }
 
 // The ground along the walked line, sampled before anything is written to it.
-fn natural(w: World) -> vector<integer> {
+fn natural(w: VoxelWorld) -> vector<integer> {
   out: vector<integer> = [];
   for s in 0..N { out += [ground_h(w, s, 0)]; }
   out
@@ -115,7 +115,7 @@ fn natural(w: World) -> vector<integer> {
 // ⚠ MEASURED DOWN THE CENTRE LINE, and that is fair here for one stated reason: the
 // ground falls along `q` only, so every cell of the strip at a given `q` starts at the
 // same height and the cross-section carries no information the centre line does not.
-fn report(name: text, nat: vector<integer>, w: World) {
+fn report(name: text, nat: vector<integer>, w: VoxelWorld) {
   cut = 0;
   fill = 0;
   worst_cut = 0;
@@ -183,7 +183,7 @@ fn report(name: text, nat: vector<integer>, w: World) {
 // (natural − final) exactly, with no registry of original heights anywhere.
 // `main` checks that sum against the profile the world actually ends up holding, so
 // the claim is measured before anything is built on it.
-fn stamp(w: World, took: &integer) {
+fn stamp(w: VoxelWorld, took: &integer) {
   for i in 0..N {
     ahead = ground_h(w, i + hex_editor::ROAD_HALF + 1, 0);
     for aq in (0 - hex_editor::ROAD_HALF)..(hex_editor::ROAD_HALF + 1) {

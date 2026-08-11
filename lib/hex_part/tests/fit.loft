@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A4.2` — does this leaf go in that frame, and what does fit.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn no_palette() -> vector<integer> { [] }
 

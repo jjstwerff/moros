@@ -275,7 +275,7 @@ pub fn footprint_seat(cells: HexSet, terr: Heights, policy: integer) -> float {
 // The walls are laid as four RUNS whose ends are the mitred corners, so S3's band
 // draws them and two consecutive sides share an endpoint exactly — the strips meet
 // on the centreline instead of overshooting each other by half a wall.
-pub fn place_house(w: World, a: Author, wid: integer, dep: integer,
+pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
                    grade: integer, runs: WallRuns) -> Ack {
   f = pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
   if !f.fp_ok {
@@ -387,7 +387,7 @@ pub fn place_house(w: World, a: Author, wid: integer, dep: integer,
 // it at the wall makes the distance go radial past the tip, so the gable end rolls
 // over like a cone quadrant — 0.43 units, 0.37 m of bulge. A hip is the same call
 // with the ridge shortened, and then the conical ends are the FEATURE.
-pub fn roof_over(w: World, f: Footprint, cells: HexSet, floor_h: integer,
+pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
                  eave_up: integer, pitch: float, hip_steps: integer) -> Ack {
   if !f.fp_ok { return ack_no("no plan at this facing, so no ridge to run"); }
   pad = f.fp_wid + f.fp_dep + 4;
@@ -400,7 +400,7 @@ pub fn roof_over(w: World, f: Footprint, cells: HexSet, floor_h: integer,
   // touches; letting each allocate its own label is the violation this repairs.
   // Measured before it: a cone centred on a seam came back labelled 5 on one side
   // and 4 on the other.
-  roof_id = hex_world::world_fresh_label(w);
+  roof_id = hex_voxel::world_fresh_label(w);
   n = 0;
   ridge = 0;
   for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
@@ -408,10 +408,10 @@ pub fn roof_over(w: World, f: Footprint, cells: HexSet, floor_h: integer,
       if hexset_get(cells, q, r) {
         hu = (height_get(hz, q, r) / w.w_unit ?? 0.0) as integer;
         if hu > ridge { ridge = hu; }
-        band: vector<hex_world::Hex> = [
-          hex_world::Hex { h_height: (floor_h as u16? ?? 0),
+        band: vector<hex_voxel::Hex> = [
+          hex_voxel::Hex { h_height: (floor_h as u16? ?? 0),
                            h_material: (FLOOR_MAT as u8? ?? 0) },
-          hex_world::Hex { h_height: (hu as u16? ?? 0),
+          hex_voxel::Hex { h_height: (hu as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
         wr = world_merge_band_as(w, q, r, floor_h, hu, band, roof_id);
@@ -792,7 +792,7 @@ pub struct Shelter {
   sh_back:   float,       // clear distance directly behind the subject; -1 unmeasured
 }
 
-pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
+pub fn shelter_at(w: VoxelWorld, roofs: RoofPlans, x: float, z: float,
                   eye_units: integer, unit: float) -> Shelter {
   best = 0 - 1;
   for rp in roofs.items {
@@ -808,7 +808,7 @@ pub fn shelter_at(w: World, roofs: RoofPlans, x: float, z: float,
   (q, r) = px_to_hex(x, z);
   col = world_column(w, q, r);
   for c in col.co_cells {
-    if hex_world::hex_occupied(c) {
+    if hex_voxel::hex_occupied(c) {
       ch = c.h_height as integer ?? 0;
       if ch > eye_units {
         if best < 0 || ch - eye_units < best { best = ch - eye_units; }

@@ -18,9 +18,9 @@
 // world this editor has built, needing no reserved constant and no migration, and
 // forbidden outright by the model: nothing here reads label ORDER, because "below"
 // is a per-column relation the geometry does not honour globally.
-use hex_world;
+use hex_voxel;
 
-fn mk_world() -> World { world_new(0.25, 100, 8, 3).wn_world }
+fn mk_world() -> VoxelWorld { world_new(0.25, 100, 8, 3).wn_world }
 fn cell_at(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
 
 fn test_the_first_terrain_layer_of_a_chunk_is_the_ground() {

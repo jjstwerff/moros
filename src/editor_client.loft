@@ -40,13 +40,13 @@
 use web;
 use graphics;
 // ⚠ THE CLIENT USES THE SERVER'S OWN STORE, which is the whole reason plan 16 is
-// tractable: `hex_world` is a library and the client is loft, so the cache is not a
+// tractable: `hex_voxel` is a library and the client is loft, so the cache is not a
 // second implementation of the model that has to be kept in step. Sharing the code is
 // not sharing the AUTHORITY — the server still owns every write.
-use hex_world;
-// ⚠ QUALIFIER ONLY, as in `editor_server`. `gridmesh` and `hex_world` both declare
+use hex_voxel;
+// ⚠ QUALIFIER ONLY, as in `editor_server`. `gridmesh` and `hex_voxel` both declare
 // `world_chunk_of`, with different arities and different meanings; plainly imported, whichever
-// `use` came first decided what a bare call meant — here it was `hex_world`, in the server
+// `use` came first decided what a bare call meant — here it was `hex_voxel`, in the server
 // it was `gridmesh`, from the same two packages. A qualifier adds no bare name at all.
 use gridmesh as gm;   // enc_coord — the SAME chunk key the server packs mesh ids with
 // ⚠ S3: the SERVER'S OWN mesher, not a second implementation. The whole claim is
@@ -335,7 +335,7 @@ struct Client {
   // It draws NOTHING yet — the server's meshes are still what is on screen. This is
   // the measurement step, and having the cache beside a picture it does not affect
   // is what lets a disagreement be a number rather than a rendering fault.
-  cache: World,
+  cache: VoxelWorld,
   c_layers: integer,
   c_agree: integer,
   c_bad: integer,
@@ -899,7 +899,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         if lh > 0 {
           lhdr = parse_ints(body[0..lh]);
           if len(lhdr) >= 7 {
-            hex_world::world_put_layer(st.cache, lhdr[0] ?? 0, lhdr[1] ?? 0,
+            hex_voxel::world_put_layer(st.cache, lhdr[0] ?? 0, lhdr[1] ?? 0,
               lhdr[6] ?? 0, lhdr[3] ?? 0, lhdr[4] ?? 0, lhdr[5] ?? 0,
               parse_ints(body[lh + 1..body.size()]));
             st.c_layers = st.c_layers + 1;
@@ -912,7 +912,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // oracle holds such a tile for ever waiting on voxels that do not exist.
         kf = parse_ints(body);
         if len(kf) >= 2 {
-          hex_world::world_touch_chunk(st.cache, kf[0] ?? 0, kf[1] ?? 0, 0);
+          hex_voxel::world_touch_chunk(st.cache, kf[0] ?? 0, kf[1] ?? 0, 0);
         }
       }
       else if tag == "D" {
@@ -926,9 +926,9 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
           if len(df) >= 4 {
             // A chunk coordinate times the chunk width is a hex inside it, which is
             // what the crc accessor takes. `CHUNK_W` is the store's own constant.
-            dq = (df[0] ?? 0) * hex_world::CHUNK_W;
-            dr = (df[1] ?? 0) * hex_world::CHUNK_W;
-            mine = hex_world::world_layer_crc(st.cache, dq, dr, df[2] ?? 0);
+            dq = (df[0] ?? 0) * hex_voxel::CHUNK_W;
+            dr = (df[1] ?? 0) * hex_voxel::CHUNK_W;
+            mine = hex_voxel::world_layer_crc(st.cache, dq, dr, df[2] ?? 0);
             if mine == (df[3] ?? 0) { agree = agree + 1; } else { bad = bad + 1; }
           }
         }

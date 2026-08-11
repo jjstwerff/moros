@@ -1,4 +1,4 @@
-// ⚠ CHECKED AND LEFT WHOLE. `hex_world` tests that a world round-trips; this tests
+// ⚠ CHECKED AND LEFT WHOLE. `hex_voxel` tests that a world round-trips; this tests
 // that the EDITOR's save and load do, through `8:`/`9:`, including that loading a
 // genuinely flat world really flattens first. The claim is about the editor's I/O
 // path, not the format.

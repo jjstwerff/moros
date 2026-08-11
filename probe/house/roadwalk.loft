@@ -5,7 +5,7 @@
 // what a WALKED road does: a series of flat discs at the grades the walker froze,
 // and whether the steps between them can exceed the road's own limit.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 

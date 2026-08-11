@@ -97,7 +97,7 @@ const sendUntil = (msg, prefixes, maxMs = 15000) => send(g, msg, prefixes, maxMs
 // A chunk's window base leaked through every unwritten cell of the chunk, so one
 // brush of radius 7 moved the apparent ground of all 4096 cells of the four chunks
 // it opened — a plateau `mark_dirty` had no reason to mark and no gesture had asked
-// for. `lib/hex_world/tests/ground.loft` holds the rule now. The save/load below
+// for. `lib/hex_voxel/tests/ground.loft` holds the rule now. The save/load below
 // stays: settling the picture before photographing it is right whatever the reason.
 // ⚠ (7,5) IS WHERE THE RAISE LANDS, AND (0,0) IS NOT. `raise_ahead` brushes
 // `PEAK_AHEAD` = 10 hexes along the author's facing, so from the pose below —

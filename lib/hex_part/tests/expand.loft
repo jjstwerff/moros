@@ -6,7 +6,7 @@
 // part by handle, so expanding one has to OPEN the parts it names. A world in
 // memory cannot pose the question.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 // ⚠ NAMED AND TYPED, not an inline `[]` — `world_save(w, p, [])` compiles on the
 // interpreter and fails `--native`. `roundtrip.loft` carries the same note.
@@ -25,7 +25,7 @@ fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
 // a child stamped at the parent's position would land on top of a cell that
 // looks just like it and every count would still agree. A distinct material per
 // level is what makes a misplacement visible rather than plausible.
-fn one_cell(mat: integer) -> World {
+fn one_cell(mat: integer) -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
     co_cells: [Hex { h_height: 40 as u16? ?? 0,
@@ -57,7 +57,7 @@ fn wipe() {
 // can re-derive it. That is a real placement rule — a house is put ON a
 // landscape — and `test_..._no_terrain_...` below pins the refusal, so this
 // seeding is not hiding the case, it is separating it.
-fn target() -> World {
+fn target() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in (0 - 2)..14 {
     for r in (0 - 2)..14 {
@@ -75,7 +75,7 @@ fn target() -> World {
 // How many layers the whole store carries. ⚠ READ FROM THE STORE,
 // never from what `part_expand` returned: a writer's own tally only ever agrees
 // with the writer, which is `part_stamp`'s rule one arc over.
-fn store_layers(w: World) -> integer {
+fn store_layers(w: VoxelWorld) -> integer {
   n = 0;
   for ch in w.w_chunks {
     for ly in ch.ck_layers { n = n + 1; }
@@ -83,7 +83,7 @@ fn store_layers(w: World) -> integer {
   n
 }
 
-fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+fn material_at(w: VoxelWorld, q: integer, r: integer, h: integer) -> integer {
   for c in world_column(w, q, r).co_cells {
     if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
   }

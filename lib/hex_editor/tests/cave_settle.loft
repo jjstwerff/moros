@@ -21,14 +21,14 @@
 // where a road rises into its roof the rock comes off, so a refused lift takes the lid
 // off and asks again.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U   = 0.25;
 const G   = 400;
 const EPS = 10;
 const N   = 26;
 
 // `n` cells of ground rising `k` a hex along +q — the walk goes UP it.
-fn rise(k: integer) -> World {
+fn rise(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 8)..40 {
     for r in (0 - 8)..9 { ground_set(w, q, r, G + k * q, SURFACE_MAT); }
@@ -38,7 +38,7 @@ fn rise(k: integer) -> World {
 
 // The road walked up it, as the gesture lays one: two reads beyond the strip for the
 // gradient, and the author's own grade extrapolated back along it.
-fn walk_up(w: World, k: integer) {
+fn walk_up(w: VoxelWorld, k: integer) {
   rl_grades = Grades { gr_by: [] };
   cl = 0;
   rs = 0;
@@ -53,7 +53,7 @@ fn walk_up(w: World, k: integer) {
 }
 
 // How many cells of the run carry rock over the road.
-fn caved_cells(w: World) -> integer {
+fn caved_cells(w: VoxelWorld) -> integer {
   n = 0;
   for q in (0 - 3)..(N + 4) {
     for r in (0 - 4)..5 {
@@ -67,7 +67,7 @@ fn caved_cells(w: World) -> integer {
 
 // The worst step between two road cells of the run — ⚠ asked of the COLUMN, because a
 // caved cell's GROUND is the rock over it and a ground reader answers about the hill.
-fn worst_step(w: World) -> integer {
+fn worst_step(w: VoxelWorld) -> integer {
   worst = 0;
   for q in (0 - 3)..(N + 4) {
     for r in (0 - 4)..5 {

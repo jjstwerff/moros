@@ -12,7 +12,7 @@
 // browser — and can be mutation-checked, which a gate driving a socket never
 // could.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
 // ⚠ SEEDED, AND THAT IS A FINDING RATHER THAN SETUP. A world made by `world_new`
@@ -24,7 +24,7 @@ use hex_grid;
 // The running editor never sees this because it writes its ground at startup. A
 // test that skips that step is not testing the editor's world; it is testing an
 // empty store, which answers differently.
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   // Only what the strokes can reach: the target is PEAK_AHEAD east and the brush
   // is PEAK_R around it, so nothing beyond that window is ever read or written.

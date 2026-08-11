@@ -5,7 +5,7 @@
 // wall running across country is a different animal: *it can slope too, like a road
 // (see the great wall of china)*. This asks what the shipped rule does to one.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 

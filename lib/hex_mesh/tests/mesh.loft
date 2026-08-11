@@ -8,10 +8,10 @@
 // unmodified*, which is only checkable while there is one function. These are the
 // claims that hold whoever calls it.
 use hex_mesh;
-use hex_world;
+use hex_voxel;
 use hex_editor;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 10, 4).wn_world;
   for q in 0 - 4..13 {
     for r in 0 - 4..13 { hex_editor::ground_set(w, q, r, 40 + q, hex_editor::SURFACE_MAT); }
@@ -24,9 +24,9 @@ fn test_the_mesh_tile_is_not_the_store_tile() {
   // windowing and elision; the renderer tiles at `MESH_CHUNK` because that is what a
   // rebuild costs. A reader who assumed they were the same would ask for chunk (2,3)
   // and be handed the cells of another — with no error anywhere.
-  assert(hex_mesh::MESH_CHUNK != hex_world::CHUNK_W,
-         "the two tiles are different questions: {hex_mesh::MESH_CHUNK} vs {hex_world::CHUNK_W}");
-  assert(hex_world::CHUNK_W % hex_mesh::MESH_CHUNK == 0,
+  assert(hex_mesh::MESH_CHUNK != hex_voxel::CHUNK_W,
+         "the two tiles are different questions: {hex_mesh::MESH_CHUNK} vs {hex_voxel::CHUNK_W}");
+  assert(hex_voxel::CHUNK_W % hex_mesh::MESH_CHUNK == 0,
          "and the store's tile is a whole number of the renderer's");
 }
 
@@ -76,8 +76,8 @@ fn test_the_oracle_says_no_before_the_neighbourhood_arrives() {
   // A world holding ONE chunk cannot answer for a tile on that chunk's edge, because
   // the mesher reads two cells past it.
   one = world_new(0.25, 0, 10, 4).wn_world;
-  for q in 0..hex_world::CHUNK_W {
-    for r in 0..hex_world::CHUNK_W {
+  for q in 0..hex_voxel::CHUNK_W {
+    for r in 0..hex_voxel::CHUNK_W {
       hex_editor::ground_set(one, q, r, 40, hex_editor::SURFACE_MAT);
     }
   }
@@ -85,7 +85,7 @@ fn test_the_oracle_says_no_before_the_neighbourhood_arrives() {
          "a tile well inside the one chunk it holds is answerable");
   assert(!hex_mesh::tile_ready(one, 0, 0),
          "but the tile at its corner is not — the margin reaches the chunk before it");
-  edge = hex_world::CHUNK_W / hex_mesh::MESH_CHUNK - 1 ?? 0;
+  edge = hex_voxel::CHUNK_W / hex_mesh::MESH_CHUNK - 1 ?? 0;
   assert(!hex_mesh::tile_ready(one, edge, edge),
          "nor the tile at the far corner, for the same reason one axis over");
 }
@@ -96,7 +96,7 @@ fn test_the_margin_is_the_grid_the_mesher_actually_builds() {
   assert(hex_mesh::MESH_MARGIN == 2,
          "the height grid is MESH_CHUNK + 4, offset -2");
   assert(hex_mesh::MESH_CHUNK + 2 * hex_mesh::MESH_MARGIN
-         <= hex_world::CHUNK_W,
+         <= hex_voxel::CHUNK_W,
          "and a tile's footprint spans at most two store chunks per axis, "
        + "which is what makes the four-corner test complete");
 }
@@ -108,7 +108,7 @@ fn test_the_margin_is_the_grid_the_mesher_actually_builds() {
 // is not one to the mesher: it is bounded, so its unwritten cells are outside it.
 
 // A part-shaped world: one small clump of written cells, and nothing else.
-fn clump() -> World {
+fn clump() -> VoxelWorld {
   w = world_new(0.25, 0, 10, 4).wn_world;
   for q in 3..6 {
     for r in 3..6 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
@@ -116,7 +116,7 @@ fn clump() -> World {
   w
 }
 
-fn ground_verts(w: World, bounded: boolean) -> integer {
+fn ground_verts(w: VoxelWorld, bounded: boolean) -> integer {
   m = if bounded {
         hex_mesh::chunk_mesh_mat_bounded(0, 0, w, hex_editor::SURFACE_MAT)
       } else {

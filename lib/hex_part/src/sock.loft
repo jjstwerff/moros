@@ -13,7 +13,7 @@
 // opening in the wall; a socket is the *contract at* that opening. Conflating them
 // is how `F-HOLE` went wrong in FITTINGS — an opening became an edge material and
 // then nothing could be hung in it.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 
@@ -185,7 +185,7 @@ fn sock_line(s: Socket) -> text {
 // ⚠ EVERY SOCKET IS CHECKED BEFORE ANY IS WRITTEN, so a list with one bad record
 // leaves the section as it was rather than half replaced — `part_set_instances`
 // and `part_place` follow the same pre-flight rule.
-pub fn part_set_sockets(w: World, v: vector<Socket>) -> SockWrite {
+pub fn part_set_sockets(w: VoxelWorld, v: vector<Socket>) -> SockWrite {
   for i in 0..len(v) {
     got = check_socket(v[i] ?? Socket {}, i);
     if got.sw_code != SK_OK { return got; }
@@ -224,7 +224,7 @@ pub fn part_set_sockets(w: World, v: vector<Socket>) -> SockWrite {
 // `SOCK` refuses one. Accepting it here would mint a class that can be CLAIMED and
 // never OFFERED: the leaf saves, the frame will not, and nothing connects the two
 // refusals. The check is shared rather than restated so the pair cannot drift.
-pub fn part_set_fits(w: World, f: PartFits) -> SockWrite {
+pub fn part_set_fits(w: VoxelWorld, f: PartFits) -> SockWrite {
   k = check_token("kind", f.pf_kind, "the fit");
   if k.sw_code != SK_OK { return k; }
   z = check_token("size class", f.pf_size, "the fit");
@@ -284,7 +284,7 @@ fn parse_sock(line: text) -> SockRead {
   SockRead { sr_code: MR_OK, sr_items: [got], sr_why: "" }
 }
 
-pub fn part_sockets(w: World) -> SockRead {
+pub fn part_sockets(w: VoxelWorld) -> SockRead {
   none: vector<Socket> = [];
   if world_section_at(w, TAG_SOCK) < 0 {
     return SockRead { sr_code: MR_ABSENT, sr_items: none, sr_why: "no SOCK section" };
@@ -344,7 +344,7 @@ pub fn socket_index(v: vector<Socket>, name: text) -> integer {
   0 - 1
 }
 
-pub fn part_fits(w: World) -> FitsRead {
+pub fn part_fits(w: VoxelWorld) -> FitsRead {
   if world_section_at(w, TAG_FITS) < 0 {
     return FitsRead { fr_code: MR_ABSENT, fr_fits: PartFits {}, fr_why: "no FITS section" };
   }

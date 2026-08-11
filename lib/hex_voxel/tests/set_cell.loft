@@ -13,15 +13,15 @@
 // everything the column path refuses, with the same code, and does the world come
 // out identical. A faster write that is subtly more permissive is not an
 // optimisation, it is a corruption with a shorter runtime.
-use hex_world;
+use hex_voxel;
 
-fn w0() -> World { world_new(0.25, 100, 8, 3).wn_world }
+fn w0() -> VoxelWorld { world_new(0.25, 100, 8, 3).wn_world }
 
 fn cell(h: integer, m: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
 }
 
-fn set_via_column(w: World, q: integer, r: integer, li: integer, c: Hex) -> integer {
+fn set_via_column(w: VoxelWorld, q: integer, r: integer, li: integer, c: Hex) -> integer {
   col = world_column(w, q, r);
   cells: vector<Hex> = [];
   n = len(col.co_cells);

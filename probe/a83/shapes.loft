@@ -20,7 +20,7 @@
 // a hole in it (§P9.2's first row).
 //
 //   PROBE_PARTS=<parts-root> loft --interpret --lib lib/ probe/a83/shapes.loft
-use hex_world;
+use hex_voxel;
 use hex_part;
 use hex_editor;
 
@@ -28,14 +28,14 @@ const W_EPS   = 8;
 const W_THETA = 3;
 const W_UNIT  = 0.25;
 
-fn cell(w: World, q: integer, r: integer, i: integer, h: integer, mat: integer) {
+fn cell(w: VoxelWorld, q: integer, r: integer, i: integer, h: integer, mat: integer) {
   assert(world_set_cell(w, q, r, i,
     Hex { h_height: h as u16? ?? 0,
           h_material: mat as u8? ?? 0 }).cw_code == CW_OK,
     "cell ({q},{r}) layer {i} at {h} refused");
 }
 
-fn save(root: text, name: text, w: World) {
+fn save(root: text, name: text, w: VoxelWorld) {
   assert(mkdir_all("{root}/{name.dir()}").ok(), "mkdir for {name}");
   assert(world_save(w, "{root}/{name}.hxw", []) == WS_OK, "save {name}");
   println("  wrote {root}/{name}.hxw");
@@ -66,7 +66,7 @@ fn main() {
 
   // ── edge: a cell carrying a WALL byte, and its neighbour carrying none ────
   //
-  // ⚠ SLOT NAMES, NOT FIELD NAMES. `hex_world`'s three wall fields are misnamed
+  // ⚠ SLOT NAMES, NOT FIELD NAMES. `hex_voxel`'s three wall fields are misnamed
   // (`doc/Todo.txt`) — read from the renderer's corners they are NW, NE and E —
   // and `hex_editor` reads them only through `SLOT_*`, which is what this does.
   assert(world_set_cell(w, 9, 1, 0,

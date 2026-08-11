@@ -6,7 +6,7 @@
 // the design — see the note on `GroundKind.tr_face` for the two readings and why
 // only one of them survives contact with a twenty-press hill.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
@@ -17,7 +17,7 @@ fn steps_deg(steps: integer) -> float {
   atan(((steps as float) * 0.25 / 1.7320508075688772) ?? 0.0) * 180.0 / 3.14159265358979
 }
 
-fn plain() -> World {
+fn plain() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 24)..25 {
     for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -27,7 +27,7 @@ fn plain() -> World {
 
 // A single cell raised by `up` out of a flat plain of `mat`, which puts the same
 // step on all six of its sides at once.
-fn pillar(mat: integer, up: integer) -> World {
+fn pillar(mat: integer, up: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 24)..25 {
     for r in (0 - 24)..25 { ground_set(w, q, r, G, mat); }
@@ -36,9 +36,9 @@ fn pillar(mat: integer, up: integer) -> World {
   w
 }
 
-fn plant(w: World, q: integer, r: integer, sp: integer) {
+fn plant(w: VoxelWorld, q: integer, r: integer, sp: integer) {
   c = world_ground_cell(w, q, r);
-  ground_write(w, q, r, hex_world::Hex {
+  ground_write(w, q, r, hex_voxel::Hex {
     h_height: c.h_height, h_material: c.h_material,
     h_item: sp as u8? ?? 0, h_item_rotation: c.h_item_rotation,
     h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne, h_wall_se: c.h_wall_se });

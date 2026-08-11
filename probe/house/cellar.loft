@@ -5,19 +5,19 @@
 // asks what it does TODAY, in the two places it can be: under open ground, and
 // under a building's own footprint.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 
-fn flat(w: World, rad: integer) {
+fn flat(w: VoxelWorld, rad: integer) {
   for q in (0 - rad)..(rad + 1) {
     for r in (0 - rad)..(rad + 1) { ground_set(w, q, r, G, SURFACE_MAT); }
   }
 }
 
 // the lowest cell of a column — the cellar floor once one has been dug
-fn deepest(w: World, q: integer, r: integer) -> integer {
+fn deepest(w: VoxelWorld, q: integer, r: integer) -> integer {
   lo = 99999;
   for c in world_column(w, q, r).co_cells {
     h = c.h_height as integer ?? 0;
@@ -26,7 +26,7 @@ fn deepest(w: World, q: integer, r: integer) -> integer {
   lo
 }
 
-fn layers(w: World, q: integer, r: integer) -> integer {
+fn layers(w: VoxelWorld, q: integer, r: integer) -> integer {
   len(world_column(w, q, r).co_cells)
 }
 

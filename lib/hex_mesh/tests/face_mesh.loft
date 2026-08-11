@@ -11,12 +11,12 @@
 // ground, every world in the tree quietly re-meshes.
 use hex_mesh;
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 
-fn flat(h: integer) -> World {
+fn flat(h: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 { hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT); }
@@ -26,7 +26,7 @@ fn flat(h: integer) -> World {
 
 // One cell standing `up` proud of a flat plain, which puts the same step on all
 // six of its sides at once.
-fn pillar(up: integer) -> World {
+fn pillar(up: integer) -> VoxelWorld {
   w = flat(G);
   hex_editor::ground_set(w, 4, 4, G + up, hex_editor::SURFACE_MAT);
   w
@@ -177,7 +177,7 @@ fn test_the_drawn_surface_parts_only_at_a_face() {
 }
 
 // The distance between the two sides' copies of one shared corner.
-fn seam(w: World, aq: integer, ar: integer, d: integer) -> float {
+fn seam(w: VoxelWorld, aq: integer, ar: integer, d: integer) -> float {
   (bq, br) = hex_grid::hex_neighbor(aq, ar, d);
   (ka, kb) = hex_grid::hex_edge_corners(d);
   (kc, kd) = hex_grid::hex_edge_corners((d + 3) % 6 ?? 0);
@@ -194,7 +194,7 @@ fn seam(w: World, aq: integer, ar: integer, d: integer) -> float {
 // A straight cliff: everything west of q=5 stands `up` above everything east of it.
 // Unlike a pillar this has an ALONG direction, which is what makes an asymmetry
 // visible at all.
-fn terrace(up: integer, ramp: boolean) -> World {
+fn terrace(up: integer, ramp: boolean) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 {

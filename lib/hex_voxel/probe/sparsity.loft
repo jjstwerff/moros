@@ -8,7 +8,7 @@
 //
 // Sizes are checked EXACTLY against the format's constants. A tolerance would let
 // a padding regression become the new baseline; an exact figure makes it a failure.
-use hex_world;
+use hex_voxel;
 
 fn want(chunks: integer, layers: integer) -> integer {
   // A layer costs its DIRECTORY entry plus its DATA. The two live in separate
@@ -20,11 +20,11 @@ fn cell(h: integer, m: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
 }
 
-fn put(w: World, q: integer, r: integer, hs: vector<Hex>) -> integer {
+fn put(w: VoxelWorld, q: integer, r: integer, hs: vector<Hex>) -> integer {
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: hs }).cw_code
 }
 
-fn measure(w: World, path: text) -> integer {
+fn measure(w: VoxelWorld, path: text) -> integer {
   if world_save(w, path, []) != WS_OK { return 0 - 1; }
   n = len(read_bytes(path) ?? []);
   delete(path);

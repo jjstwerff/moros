@@ -35,7 +35,7 @@
 // a single comparison is asserted. `data/parts/` is committed and this tree is
 // worked by more than one agent, so an assertion that fires must not leave the
 // shrine holding the variant.
-use hex_world;
+use hex_voxel;
 use hex_part;
 use hex_editor;   // the MATERIAL names — see below, a literal 3 is a GREEN plinth
 use glb;
@@ -837,7 +837,7 @@ fn write_gated(root: text, open: float) {
          "the gated wall was not saved");
 }
 
-fn ground() -> World {
+fn ground() -> VoxelWorld {
   w = world_new(W_UNIT, 0, W_EPS, W_THETA).wn_world;
   for q in (0 - 2)..12 {
     for r in (0 - 2)..12 {

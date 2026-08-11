@@ -1,22 +1,22 @@
 // Reproduce the client's path with no wire and no browser: copy every layer into a
 // second world exactly as `world_put_layer` does, then mesh the same tiles from both.
-use hex_world;
+use hex_voxel;
 use hex_editor;
 use hex_mesh;
 
-// ⚠ THE COPY GOES THROUGH A `&World` PARAMETER. Done inline on a local in `main`,
+// ⚠ THE COPY GOES THROUGH A `&VoxelWorld` PARAMETER. Done inline on a local in `main`,
 // `world_put_layer(b, …)` left `b` EMPTY — and an empty world meshes happily at
 // `base + 0`, so every vertex came back with the right x and z and the wrong y. That
 // is what "the base does not survive the copy" looked like, and it was the probe.
-fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn copy_chunk(a: VoxelWorld, b: &VoxelWorld, scx: integer, scz: integer) {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   for li in 0..len(world_column(a, q0, r0).co_ids) {
-    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
-        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-        hex_world::world_layer_version(a, q0, r0, li),
-        hex_world::world_layer_bytes(a, q0, r0, li));
+    if hex_voxel::world_layer_kind(a, q0, r0, li) == hex_voxel::KIND_TERRAIN {
+      hex_voxel::world_put_layer(b, scx, scz, hex_voxel::world_chunk_base(a, scx, scz),
+        hex_voxel::world_layer_id(a, q0, r0, li), hex_voxel::KIND_TERRAIN,
+        hex_voxel::world_layer_version(a, q0, r0, li),
+        hex_voxel::world_layer_bytes(a, q0, r0, li));
     }
   }
 }
@@ -61,7 +61,7 @@ fn main() {
   println("copy-then-mesh: agree {agree} bad {bad}, first bad tile {first}");
   // ⚠ THE VERDICT IS THE PROBE'S TO STATE, not its reader's. This one read
   // `agree 3 bad 78` for a whole session while the mesher was correct — the probe
-  // copied into a LOCAL instead of through a `&World` (loft-lang/loft#735) — so a
+  // copied into a LOCAL instead of through a `&VoxelWorld` (loft-lang/loft#735) — so a
   // reader deciding by eye what "good" looks like is exactly the failure mode.
   if bad == 0 && agree > 0 {
     println("PROBE PASS s3_copy_mesh — a copied world meshes identically, {agree} tiles");

@@ -3,7 +3,7 @@
 // `world_new` exists only in `moros/lib/hex_world`. With `--lib lib/` this compiles;
 // without it the name resolves to the REGISTRY's `hex_world` (a different lineage)
 // and the call is simply unknown. Nothing in either outcome names a collision.
-use hex_world;
+use hex_voxel;
 
 fn main() {
   w = world_new(0.25, 100, 8, 3);

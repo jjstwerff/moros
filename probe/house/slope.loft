@@ -1,6 +1,6 @@
 // WHAT DOES A LIMIT ACTUALLY DO TO A ROAD? — the profile, printed.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 
@@ -14,7 +14,7 @@ fn lay(mat: integer, amp: integer, rad: integer, item: integer) {
     ground_set(w, q, 0, G, mat);
     if item != 0 {
       c = world_ground_cell(w, q, 0);
-      ground_write(w, q, 0, hex_world::Hex { h_height: c.h_height, h_material: c.h_material,
+      ground_write(w, q, 0, hex_voxel::Hex { h_height: c.h_height, h_material: c.h_material,
         h_item: item as u8? ?? 0, h_item_rotation: c.h_item_rotation,
         h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne, h_wall_se: c.h_wall_se });
     }

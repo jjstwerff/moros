@@ -13,7 +13,7 @@
 // exists for standing below a RIDGE, where climbing is the answer; a room is a
 // sustained obstruction that climbing cannot solve.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
 const U = 0.25;
@@ -21,7 +21,7 @@ const FLOOR = 40;
 const W = 5;
 const D = 4;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 20..21 {
     for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, FLOOR, hex_editor::SURFACE_MAT); }

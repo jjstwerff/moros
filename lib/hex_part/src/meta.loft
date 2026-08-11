@@ -1,11 +1,11 @@
 // `PART` and `ANCH` — what a part is called, and where it stands.
 //
 // Plan 17 `A1.4`, over the section mechanism `A1.3` put in the store. ⚠ The split
-// is the point: `hex_world` owns the FRAMING — tag, length, and carrying a tag it
+// is the point: `hex_voxel` owns the FRAMING — tag, length, and carrying a tag it
 // has never heard of — and knows nothing about kinds or anchors. This file owns
 // the CONTENT and knows nothing about where the bytes end up. A store that knew
 // what `PART` meant would be a store with an opinion about its consumers.
-use hex_world;
+use hex_voxel;
 use codec;
 
 // ⚠ LITERALS, held equal to `section_tag(…)` by a test rather than derived from
@@ -110,7 +110,7 @@ pub fn meta_field(t: text, key: text) -> text? {
   null
 }
 
-pub fn part_set_meta(w: World, m: PartMeta) -> integer {
+pub fn part_set_meta(w: VoxelWorld, m: PartMeta) -> integer {
   if m.pm_kind < PK_HOUSE || m.pm_kind > PK_FITTING { return PM_KIND; }
   if has_newline(m.pm_name) || has_newline(m.pm_desc) { return PM_NEWLINE; }
   set_section_text(w, TAG_PART,
@@ -118,7 +118,7 @@ pub fn part_set_meta(w: World, m: PartMeta) -> integer {
   PM_OK
 }
 
-pub fn part_set_anchor(w: World, a: PartAnchor) -> integer {
+pub fn part_set_anchor(w: VoxelWorld, a: PartAnchor) -> integer {
   if a.pa_facing < 0 || a.pa_facing >= FACINGS { return PM_FACING; }
   set_section_text(w, TAG_ANCH,
     "q={a.pa_q}\nr={a.pa_r}\nh={a.pa_h}\nfacing={a.pa_facing}");
@@ -136,7 +136,7 @@ pub const MR_MALFORMED = 2;   // it carries one and it does not parse
 pub struct MetaRead { mr_code: integer, mr_meta: PartMeta, mr_why: text }
 pub struct AnchorRead { ar_code: integer, ar_anchor: PartAnchor, ar_why: text }
 
-pub fn part_meta(w: World) -> MetaRead {
+pub fn part_meta(w: VoxelWorld) -> MetaRead {
   if world_section_at(w, TAG_PART) < 0 {
     return MetaRead { mr_code: MR_ABSENT, mr_meta: PartMeta {}, mr_why: "no PART section" };
   }
@@ -160,7 +160,7 @@ pub fn part_meta(w: World) -> MetaRead {
              mr_why: "" }
 }
 
-pub fn part_anchor(w: World) -> AnchorRead {
+pub fn part_anchor(w: VoxelWorld) -> AnchorRead {
   if world_section_at(w, TAG_ANCH) < 0 {
     return AnchorRead { ar_code: MR_ABSENT, ar_anchor: PartAnchor {},
                         ar_why: "no ANCH section" };

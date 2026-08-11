@@ -20,14 +20,14 @@
 use server;
 use web;          // sleep_ms — the idle tick of the manual connection pool
 // ⚠ QUALIFIER ONLY, for `msim`'s reason below and one of its own. `gridmesh` declares
-// `world_chunk_of` — and so does `hex_world`, with a different arity and a different meaning
+// `world_chunk_of` — and so does `hex_voxel`, with a different arity and a different meaning
 // (`world_chunk_of(v)` is ours, the floor-divide; gridmesh’s `chunk_of(x, y, shift)` is the chunk KEY). Plainly
-// imported, `gridmesh` came first and won, so `hex_world`'s was reachable only when
+// imported, `gridmesh` came first and won, so `hex_voxel`'s was reachable only when
 // spelled out, and an innocent reorder of this block would have silently swapped which
 // one every bare call meant. It also declares `seg_len`, which `hex_way` declares too.
 // A qualifier adds no bare name at all — `tools/names.sh`.
 use gridmesh as gm;
-use hex_world;
+use hex_voxel;
 use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use hex_edge;     // sweep_path / edge_block — collision is the LIBRARY's query
 use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band is derived
@@ -467,7 +467,7 @@ const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so t
 // It used to be `vector<Peak>` with heights summed at query time. That was wrong
 // twice over: `L13` makes the voxel the storage of record, and a derived-on-query
 // height is O(wld) for every sample the mesh, the feet and the camera take.
-// `hex_world` now holds it, and this file no longer has a world format of its own.
+// `hex_voxel` now holds it, and this file no longer has a world format of its own.
 //
 // The editor's own constants, chosen here because they are per-WORLD and this is
 // one world: `u = 0.25` matches HEIGHT_SCALE, `ε = 8` is two metres of layer
@@ -511,7 +511,7 @@ const W_THETA      = 4;
 // It was `0` — "the editor authors one terrain layer" — which stopped being true
 // the day a cellar could be dug, and every one of the twelve sites that named it
 // was reading or writing the cellar afterwards. The ground is a LABEL now
-// (`hex_world::LABEL_GROUND`), reached through `world_ground_cell` for a read and
+// (`hex_voxel::LABEL_GROUND`), reached through `world_ground_cell` for a read and
 // `ground_write` for a write. Re-introducing an index here would silently undo it.
 
 // A DECK IS DRAWN, and until 2026-07-31 no floor was. `chunk_mesh_mat` builds each
@@ -546,7 +546,7 @@ const SPECIES_BUSH = 2;
 const SCATTER_R    = 6;           // hexes, the reach of one scatter stroke
 const WINDOW_MAX_ROOF = 400;      // a roof taller than this cannot fit the window
 
-fn new_world() -> World {
+fn new_world() -> VoxelWorld {
   // ⚠ SAID OUT LOUD AT STARTUP, not left to a comment. `constants_fit` is the one
   // check that the world's θ is the walker's stride — a disagreement makes stairs
   // lose their risers or a walker lose its ability to climb, and neither fails
@@ -584,7 +584,7 @@ fn parts_root() -> text {
 }
 fn part_path(name: text) -> text { "{parts_root()}/{name}.hxw" }
 
-fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
+fn place_part(srv: Server, cid: integer, wld: &VoxelWorld, dirty: DirtySet,
               name: text, q: integer, r: integer, anchor: integer) {
   // ⚠ ONE RULE, IN THE PACKAGE THAT OWNS WHAT A PART NAME IS. This site, `44:`
   // and `8:` each spelled out their own `..` check; `A7.3e` needed a second
@@ -638,7 +638,7 @@ fn place_part(srv: Server, cid: integer, wld: &World, dirty: DirtySet,
 // ⚠ THE LOCAL FORMAT IS GONE. This file used to carry its own `world_save` /
 // `world_load` writing a list of peaks — recorded as `LIBRARY-CANDIDATES` #11 and
 // WITHDRAWN there, because the premise was wrong rather than the placement: peaks
-// were never the world. `hex_world` holds it now, and what is saved is voxel
+// were never the world. `hex_voxel` holds it now, and what is saved is voxel
 // chunks, so this file has no world format of its own to converge later.
 
 // Mesh indices — the figure is PARTS, not one mesh, because a walk moves limbs
@@ -754,7 +754,7 @@ fn cart_hide(srv: Server) {
 // ⚠ THE EDITOR DISCARDED `ex_meshes` ENTIRELY UNTIL NOW, which `A7.3f3` measured
 // rather than assumed: every part in the library that fits a socket is mesh-only,
 // so a bound leaf was invisible however it was bound or swung. The display world
-// is a `World` and a mesh cannot go in one, so it goes on the wire beside it.
+// is a `VoxelWorld` and a mesh cannot go in one, so it goes on the wire beside it.
 //
 // ⚠ THE IDS COME OUT OF THE RESERVED LOW BLOCK, which is what it was reserved
 // for: 0-4 are the figure, and a chunk's ids start above `MESH_FIGURE_MAX`. A cap
@@ -987,7 +987,7 @@ fn rec_flush(path: text, buf: text) {
 //
 // ✅ **AND THE SHADOW ITSELF IS GONE NOW — plan 19 `L6`.** `use moros_map;` was at the
 // top of this file and **nothing in these 8,283 lines used a single one of its 81
-// names.** Its only remaining effect was to put `hex_distance`, `Hex` and `Chunk` in
+// names.** Its only remaining effect was to put `hex_distance`, `Hex` and `VoxelChunk` in
 // scope ahead of the ones this program means, so every call had to spell out which it
 // wanted. `tools/names.sh` found it. ⚠ **The qualifiers stay** — they say which lattice
 // is meant, which is worth reading — but the hazard is now removed where it arrived
@@ -1209,8 +1209,8 @@ fn constants_fit(why: &text) -> boolean {
 //
 // So the caller resolves its own cell once (`py` is a fine reference *there*, by
 // the first bullet) and passes that integer in for every other cell in the window.
-fn walk_h(q: integer, r: integer, wld: World, ref_units: float) -> integer {
-  u = hex_world::world_surface(wld, q, r, ref_units).sf_units;
+fn walk_h(q: integer, r: integer, wld: VoxelWorld, ref_units: float) -> integer {
+  u = hex_voxel::world_surface(wld, q, r, ref_units).sf_units;
   if u < 0 { return terrain_h(q, r, wld); }
   u
 }
@@ -1227,7 +1227,7 @@ fn walk_h(q: integer, r: integer, wld: World, ref_units: float) -> integer {
 // Whatever caches it has to say so: see the proxy's key, which gained the surface
 // height for this reason and would otherwise hand a walker who just fell off a deck
 // the edges of the deck it fell from.
-fn edges_walk(wld: World, cq: integer, cr: integer, reach: integer,
+fn edges_walk(wld: VoxelWorld, cq: integer, cr: integer, reach: integer,
               runs: WallRuns, sf: Surfaces, ref_units: float) -> EdgeSet {
   e = edges_around(wld, cq, cr, reach, false, runs, sf, ref_units);
   n = 2 * reach + 1;
@@ -1243,7 +1243,7 @@ fn edges_walk(wld: World, cq: integer, cr: integer, reach: integer,
 // `Hex`, and a `Hex` is per-layer, so a fence rung on a deck is the DECK's fence —
 // it must stop a walker up there and must not stop one crossing the yard below.
 // This read `world_ground_cell`, so it did the opposite of both.
-fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
+fn edges_around(wld: VoxelWorld, cq: integer, cr: integer, reach: integer,
                 view: boolean, runs: WallRuns, sf: Surfaces,
                 ref_units: float) -> EdgeSet {
   n = 2 * reach + 1;
@@ -1262,7 +1262,7 @@ fn edges_around(wld: World, cq: integer, cr: integer, reach: integer,
   if len(runs.items) > 0 { first = hex_way::way_surfaces(rt, sf); }
   for r in (cr - reach - 1)..(cr + reach + 2) {
     for q in (cq - reach - 1)..(cq + reach + 2) {
-      c = hex_world::world_cell(wld, q, r,
+      c = hex_voxel::world_cell(wld, q, r,
             edge_layer(wld, q, r, ref_units * HEIGHT_SCALE));
       mats: vector<integer> = [c.h_wall_n as integer ?? 0,
                                c.h_wall_ne as integer ?? 0,
@@ -1353,7 +1353,7 @@ fn stand_clear(rt: Track, x0: float, z0: float, fx: float, fz: float) -> (float,
   (fx + nx2 * push, fz + nz2 * push)
 }
 
-fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
+fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: VoxelWorld,
            x0: float, z0: float, x1: float, z1: float,
            ref_units: float) -> (float, float) {
   (t, hq, hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
@@ -1512,7 +1512,7 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: World,
 // SERVER owes: parsing the payload, telling the author, and marking the chunks the
 // ring touched. The Ack carries the cell so this does not re-derive it.
 fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
-            py: float, wld: &World, dirty: DirtySet) {
+            py: float, wld: &VoxelWorld, dirty: DirtySet) {
   fci = payload.find(",");
   fmat = FENCE_MAT;
   frad = hex_editor::FENCE_R;
@@ -1539,7 +1539,7 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // One edge — `hex_editor::edge_set`. The same division: the library decides and
 // writes, the server parses and reports.
 fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
-           py: float, wld: &World, dirty: DirtySet) {
+           py: float, wld: &VoxelWorld, dirty: DirtySet) {
   eci = payload.find(",");
   edir = 0;
   emat = WALL_MAT;
@@ -1567,7 +1567,7 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // steady hand. The snap is an approximation and says so: `K-FIT`'s third state is
 // "applied, with its residual on the wire", and the residual here is an angle.
 fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
-           wld: &World, dirty: DirtySet, runs: WallRuns, draft: WallDraft) {
+           wld: &VoxelWorld, dirty: DirtySet, runs: WallRuns, draft: WallDraft) {
   wmat = payload as integer ?? FENCE_MAT;
   wfit = fit_nominal(wmat, FENCE_MAT, "wall material");
   if !wfit.ft_ok {
@@ -1629,7 +1629,7 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
 
 // The ground height at a world point, as an integer grade — a road is GRADED, so it
 // takes one height for its whole run rather than following every bump.
-fn py_of(wld: World, x: float, z: float) -> integer {
+fn py_of(wld: VoxelWorld, x: float, z: float) -> integer {
   a = world_to_hex(x, z);
   terrain_h(a.ha_q, a.ha_r, wld)
 }
@@ -1639,11 +1639,11 @@ fn py_of(wld: World, x: float, z: float) -> integer {
 // PRESENT, not occupied (`E1e`): a cell holding the boundary of the region beside
 // it has no ground of its own, and reporting only occupied cells hid exactly the
 // edges this read-back exists to show — the read side of the 17-stamped-as-8 loss.
-fn walls_text(wld: World, q: integer, r: integer) -> text {
+fn walls_text(wld: VoxelWorld, q: integer, r: integer) -> text {
   wcol = world_column(wld, q, r);
   wtxt = "";
   for we in wcol.co_cells {
-    if hex_world::hex_present(we) {
+    if hex_voxel::hex_present(we) {
       if wtxt != "" { wtxt += ";"; }
       wtxt += "{we.h_wall_n},{we.h_wall_ne},{we.h_wall_se}";
     }
@@ -1707,7 +1707,7 @@ fn walls_text(wld: World, q: integer, r: integer) -> text {
 // both sides, and the client draws with no face culling, so a single-sided panel
 // is simply unlit when you walk round it.
 fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
-                   up: integer, wld: World) {
+                   up: integer, wld: VoxelWorld) {
   (nq, nr) = hex_grid::hex_neighbor(cq, cr, dir);
   hs = terrain_h(cq, cr, wld);
   hn = terrain_h(nq, nr, wld);
@@ -1756,7 +1756,7 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
 // fills a step in the terrain — retaining, not wall. Bands are measured from that
 // datum, so a sill of 0 sits on the wall's foot and not in the middle of a slope.
 fn emit_wall_panel_cut(m: Mesh, cq: integer, cr: integer, dir: integer,
-                       up: integer, o: hex_editor::Opening, wld: World) {
+                       up: integer, o: hex_editor::Opening, wld: VoxelWorld) {
   (nq, nr) = hex_grid::hex_neighbor(cq, cr, dir);
   hs = terrain_h(cq, cr, wld);
   hn = terrain_h(nq, nr, wld);
@@ -1836,7 +1836,7 @@ fn emit_slice(m: Mesh, ax: float, az: float, bx: float, bz: float,
 // difference between a curve and a staircase.
 const OPEN_SUB = 8;
 
-fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: World, q0: integer, r0: integer,
+fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, r0: integer,
                  openings: hex_editor::Openings) {
   // ⚠ A RUN CAN START OFF THE GROUND. `wr_base`/`wr_up` are 0 for every wall ever
   // laid, which is "from the terrain, by the material" — but a balcony's rail begins
@@ -2276,7 +2276,7 @@ const FLOOR_THICK = hex_editor::SLAB_THICK;
 // effect. A tread is one stride above the cell beside it and shares its layer, so
 // the label version saw "the floor continues" and left the step as an open slot
 // between the tread's underside and the fan below.
-fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer) {
+fn emit_floor_slab(fm: Mesh, wld: VoxelWorld, cq: integer, cr: integer, h: integer) {
   ytop = (h as float) * HEIGHT_SCALE;
   ybot = ytop - (FLOOR_THICK as float) * HEIGHT_SCALE;
   cs = hex_to_world(cq, cr, 0);
@@ -2316,7 +2316,7 @@ fn emit_floor_slab(fm: Mesh, wld: World, cq: integer, cr: integer, h: integer) {
 // carried by eleven files, and what this face IS — a vertical plane you cannot pass —
 // is what that surface already means. A cellar in a built world is masonry anyway.
 // If the colour ever reads wrong that is one constant, not a protocol change.
-fn emit_room_wall(m: Mesh, wld: World, cq: integer, cr: integer, floor_h: integer,
+fn emit_room_wall(m: Mesh, wld: VoxelWorld, cq: integer, cr: integer, floor_h: integer,
                   ceil_h: integer) {
   if ceil_h <= floor_h { return; }
   ybot = (floor_h as float) * HEIGHT_SCALE;
@@ -2429,7 +2429,7 @@ fn emit_hex_under_flat(m: Mesh, cq: integer, cr: integer, h: integer) {
 // That is affordable for exactly the reason the emission is conditional at all —
 // this runs on cells with something dug beneath them, not on every cell of every
 // chunk. `chunk_mesh_mat`'s halo exists because ITS loop is the whole world.
-fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: World) {
+fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: VoxelWorld) {
   ghs = hex_mesh::corner_heights(cq, cr, wld);
   drop = FLOOR_THICK as float;
   uy: vector<float> = [];
@@ -2464,7 +2464,7 @@ fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: World) {
 // `make parts`.
 fn emit_panel_into(pwi: integer, vm: Mesh, km: Mesh, wm: Mesh, fm: Mesh, am: Mesh,
                    sm: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
-                   ocut: boolean, o: hex_editor::Opening, wld: World) {
+                   ocut: boolean, o: hex_editor::Opening, wld: VoxelWorld) {
   if pwi == 3 { panel_one(vm, cq, cr, dir, up, ocut, o, wld); return; }   // tree
   if pwi == 4 { panel_one(km, cq, cr, dir, up, ocut, o, wld); return; }   // roof
   if pwi == 6 { panel_one(fm, cq, cr, dir, up, ocut, o, wld); return; }   // floor
@@ -2480,7 +2480,7 @@ fn emit_panel_into(pwi: integer, vm: Mesh, km: Mesh, wm: Mesh, fm: Mesh, am: Mes
 // for no reason. One `if`, and a wall with no opening over it is byte for byte what
 // it was.
 fn panel_one(m: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
-             ocut: boolean, o: hex_editor::Opening, wld: World) {
+             ocut: boolean, o: hex_editor::Opening, wld: VoxelWorld) {
   if ocut { emit_wall_panel_cut(m, cq, cr, dir, up, o, wld); return; }
   emit_wall_panel(m, cq, cr, dir, up, wld);
 }
@@ -2499,7 +2499,7 @@ fn opening_kind_index(name: text) -> integer {
   0 - 1
 }
 
-fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm: Mesh,
+fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mesh, wm: Mesh,
                     fm: Mesh, am: Mesh, sm: Mesh, pwi: integer, pwup: integer,
                     pohead: integer, posill: integer, pokind: integer,
                     pospring: integer, poradius: float, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
@@ -2597,7 +2597,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
       // other view, and this is the loop that already visits every column.
       dcol = world_dressing(wld, cq, cr);
       for de in dcol.co_cells {
-        if hex_world::hex_occupied(de) {
+        if hex_voxel::hex_occupied(de) {
           dwp = hex_to_world(cq, cr, 0);
           dy = (de.h_height as float ?? 0.0) * HEIGHT_SCALE;
           emit_item_placeholder(vm, "PROP", vec3(dwp.x, dy, dwp.z), 0.35);
@@ -2682,7 +2682,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             }
           }
         }
-        if hex_world::hex_occupied(e) {
+        if hex_voxel::hex_occupied(e) {
           if e.h_item != 0 {
             wp = hex_to_world(cq, cr, 0);
             ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
@@ -2731,7 +2731,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
             // nothing.
             emit_roof_sloped(km, cq, cr, hex_editor::roof_corners(wld, cq, cr));
             }
-          } else if (c.co_ids[e#index] ?? 0) != hex_world::LABEL_GROUND {
+          } else if (c.co_ids[e#index] ?? 0) != hex_voxel::LABEL_GROUND {
             // ⚠ THE GROUND IS TOLD BY ITS LABEL, WHICH THE COLUMN ALREADY CARRIES.
             // Not by index — a cellar inserts beneath and renumbers — and not by
             // material, because a road or a stair cut into a deck keeps its own.
@@ -2796,7 +2796,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
               ra = hex_editor::col_next_above(c, e#index);
               if ra >= 0 {
                 emit_room_wall(wm, wld, cq, cr, fh,
-                  ((c.co_cells[ra] ?? hex_world::Hex {}).h_height as integer ?? 0)
+                  ((c.co_cells[ra] ?? hex_voxel::Hex {}).h_height as integer ?? 0)
                     - FLOOR_THICK);
               }
             }
@@ -2849,7 +2849,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: World, vm: Mesh, km: Mesh, wm
 // ⚠ IT IS DRAWN AJAR, and that is the point of `S8` rather than a default. A leaf
 // flush in its opening is a panel over a hole — a person reads it as a patch. At 35
 // degrees it casts a line, and a line is what says "door" before anything else does.
-fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: World) {
+fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: VoxelWorld) {
   hx = hex_editor::leaf_x(l, 0);
   hz = hex_editor::leaf_z(l, 0);
   fx = hex_editor::leaf_x(l, 1);
@@ -3029,7 +3029,7 @@ fn frame_wire(f: msim::Frame) -> text {
 // `cval` is in TURNS — `hex_body`'s unit and the library's, so `wheel_value`'s
 // output drops straight in with no conversion to get wrong.
 fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
-             cyaw: float, cval: float, wld: World) {
+             cyaw: float, cval: float, wld: VoxelWorld) {
   // The axle runs ACROSS the travel direction: yaw, turned a quarter.
   // the axle runs ACROSS the travel direction. ⚠ `+sin`, matching `ground_axle`'s
   // own convention — the old `−sin` matched mesh3d's transposed `rotate_y`, and the
@@ -3040,7 +3040,7 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   // ── `A10`, FINISHED: the SOLVE is the library's too ────────────────────────
   //
   // The terrain goes in as a function. That is the whole of what was blocked: a
-  // lambda capturing a `World` panicked the interpreter (loft#682, fixed
+  // lambda capturing a `VoxelWorld` panicked the interpreter (loft#682, fixed
   // 2026-07-30 by `d26c3bef` — "a closure record was freeing captures it never
   // owned"), so until today the fixed point below had to be inlined here beside
   // the library's identical copy.
@@ -3163,7 +3163,7 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
 // Least squares over the six neighbours: find (gx, gz) minimising the error in
 // `dy ≈ gx·dx + gz·dz`. The hex ring is symmetric, so the cross term Σ dx·dz
 // vanishes and the fit separates into two independent one-dimensional ones.
-fn cell_normal(cq: integer, cr: integer, wld: World) -> Vec3 {
+fn cell_normal(cq: integer, cr: integer, wld: VoxelWorld) -> Vec3 {
   c0 = hex_to_world(cq, cr, 0);
   h0 = (terrain_h(cq, cr, wld) as float) * HEIGHT_SCALE;
   sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
@@ -3326,7 +3326,7 @@ fn emit_slab_reveal(m: Mesh, sl: Slab, holes: hex_editor::Holes,
 // goes, how tall a plinth is, whether a bed lies along the wall — all of that is
 // `hex_editor`'s and tested there. What crosses the seam is six faces at a time,
 // which is the only reason a bed and a statue share one emitter.
-fn emit_prop(m: Mesh, p: Prop, wld: World) {
+fn emit_prop(m: Mesh, p: Prop, wld: VoxelWorld) {
   gy = terrain_y(p.pr_x, p.pr_z, wld);
   tx = 0.0 - p.pr_nz;
   tz = p.pr_nx;
@@ -3365,7 +3365,7 @@ fn emit_prop(m: Mesh, p: Prop, wld: World) {
 // are three ordinary runs, so faces, openings, reveals and mouldings all arrive for
 // free; what a run has never had is a horizontal slab between its ends. A balcony
 // without one is a rail around nothing, and a bedstee without a lid is a stall.
-fn emit_annex_deck(m: Mesh, a: Annex, wld: World) {
+fn emit_annex_deck(m: Mesh, a: Annex, wld: VoxelWorld) {
   upn = vec3(0.0, 1.0, 0.0);
   dwn = vec3(0.0, 0.0 - 1.0, 0.0);
   gy = terrain_y(a.an_x, a.an_z, wld);
@@ -3490,7 +3490,7 @@ fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
 // terrain is not flat — the same defect the cellar's ceiling had before it was drawn
 // from this function.
 
-fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
+fn chunk_mesh(cx: integer, cz: integer, wld: VoxelWorld) -> Mesh {
   hex_mesh::chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
 }
 
@@ -3523,7 +3523,7 @@ fn chunk_mesh(cx: integer, cz: integer, wld: World) -> Mesh {
 // **28.6 x 24.5 world units**, four chunks of grass with a house in the middle,
 // with every count agreeing with itself the whole way. See
 // `hex_mesh::chunk_mesh_mat_bounded`.
-fn chunk_meshes_all(cx: integer, cz: integer, wld: World, bounded: boolean,
+fn chunk_meshes_all(cx: integer, cz: integer, wld: VoxelWorld, bounded: boolean,
                     runs: WallRuns, roofs: hex_editor::RoofPlans,
                     leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings,
                     annexes: hex_editor::Annexes, awalls: WallRuns,
@@ -3620,8 +3620,8 @@ fn chunk_mesh_slot(ms: vector<Mesh>, i: integer) -> Mesh {
 // is the model's own `ε`: layers are at least that far apart, so half of it cannot
 // select the wrong one, and it absorbs the difference between a terrain layer's
 // smoothed surface and its cell's stored integer height.
-fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integer {
-  hex_world::world_surface(wld, q, r, feet_units).sf_units
+fn surface_units(wld: VoxelWorld, q: integer, r: integer, feet_units: float) -> integer {
+  hex_voxel::world_surface(wld, q, r, feet_units).sf_units
 }
 
 // The ground under the feet.
@@ -3665,20 +3665,20 @@ fn surface_units(wld: World, q: integer, r: integer, feet_units: float) -> integ
 // for terrain, flat for what is built on it* — so ask it directly: is the layer the
 // surface came from the ground layer? Same answer as before wherever the old test
 // was right, and right in the case that exposed it.
-fn on_the_ground(wld: World, q: integer, r: integer, sf: hex_world::SurfaceAt) -> boolean {
-  sf.sf_layer >= 0 && sf.sf_layer == hex_world::world_ground_layer(wld, q, r)
+fn on_the_ground(wld: VoxelWorld, q: integer, r: integer, sf: hex_voxel::SurfaceAt) -> boolean {
+  sf.sf_layer >= 0 && sf.sf_layer == hex_voxel::world_ground_layer(wld, q, r)
 }
 
-fn ground_under(wld: World, wx: float, wz: float, ref: float) -> float {
+fn ground_under(wld: VoxelWorld, wx: float, wz: float, ref: float) -> float {
   addr = world_to_hex(wx, wz);
-  sf = hex_world::world_surface(wld, addr.ha_q, addr.ha_r, ref / HEIGHT_SCALE ?? 0.0);
+  sf = hex_voxel::world_surface(wld, addr.ha_q, addr.ha_r, ref / HEIGHT_SCALE ?? 0.0);
   if sf.sf_units < 0 || on_the_ground(wld, addr.ha_q, addr.ha_r, sf) {
     return terrain_y(wx, wz, wld);
   }
   (sf.sf_units as float) * HEIGHT_SCALE
 }
 
-fn terrain_y(wx: float, wz: float, wld: World) -> float {
+fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
   addr = world_to_hex(wx, wz);
   ch3 = terrain_h(addr.ha_q, addr.ha_r, wld);
   cw3 = hex_to_world(addr.ha_q, addr.ha_r, ch3);
@@ -3843,16 +3843,16 @@ fn send_ground(srv: server::Server, clients: vector<Client>, frame: text) -> int
 // cache landed four times too far out. It agreed anyway wherever the two mappings
 // collide, which for small NON-NEGATIVE coordinates they do — so the failures came
 // back clustered on negatives and read as a parity bug.
-fn layer_wire(wld: World, scx: integer, scz: integer, li: integer) -> text {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn layer_wire(wld: VoxelWorld, scx: integer, scz: integer, li: integer) -> text {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   cx = scx;
   cz = scz;
-  flat = hex_world::world_layer_bytes(wld, q0, r0, li);
-  out = "L:{cx},{cz},{li},{hex_world::world_layer_id(wld, q0, r0, li)},"
-      + "{hex_world::world_layer_kind(wld, q0, r0, li)},"
-      + "{hex_world::world_layer_version(wld, q0, r0, li)},"
-      + "{hex_world::world_chunk_base(wld, cx, cz)};";
+  flat = hex_voxel::world_layer_bytes(wld, q0, r0, li);
+  out = "L:{cx},{cz},{li},{hex_voxel::world_layer_id(wld, q0, r0, li)},"
+      + "{hex_voxel::world_layer_kind(wld, q0, r0, li)},"
+      + "{hex_voxel::world_layer_version(wld, q0, r0, li)},"
+      + "{hex_voxel::world_chunk_base(wld, cx, cz)};";
   for fv in flat {
     if fv#first { out += "{fv}"; } else { out += ",{fv}"; }
   }
@@ -3868,20 +3868,20 @@ fn layer_wire(wld: World, scx: integer, scz: integer, li: integer) -> text {
 // order those matter in: the client writes the same bytes to the same place and its
 // checksum is unmoved. Deduping needs per-batch state and can come after the claim is
 // green.
-fn send_one_chunk(srv: server::Server, wld: World, scx: integer, scz: integer) {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn send_one_chunk(srv: server::Server, wld: VoxelWorld, scx: integer, scz: integer) {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   // ⚠ AN EMPTY CHUNK IS STILL AN ANSWER, and saying nothing is not the same answer.
   // A client cannot tell "there is no ground there" from "it has not arrived", so it
   // holds — measured, 36 of 48 ground verdicts held forever on chunks the server did
   // not have either. `K:` is the authority saying so, and it is why the margin ring
   // this function sends can be mostly empty without costing anything.
-  if hex_world::world_chunk_layers(wld, scx, scz) == 0 {
+  if hex_voxel::world_chunk_layers(wld, scx, scz) == 0 {
     srv.broadcast("K:{scx},{scz}");
     return;
   }
   for li in 0..len(world_column(wld, q0, r0).co_ids) {
-    if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
+    if hex_voxel::world_layer_kind(wld, q0, r0, li) == hex_voxel::KIND_TERRAIN {
       srv.broadcast(layer_wire(wld, scx, scz, li));
     }
   }
@@ -3898,15 +3898,15 @@ fn send_one_chunk(srv: server::Server, wld: World, scx: integer, scz: integer) {
 //
 // The sender honours the receiver's precondition; `hex_mesh::tile_ready` is the
 // statement of it, and its four corners are exactly the chunks named here.
-fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
+fn send_layers(srv: server::Server, wld: VoxelWorld, cx: integer, cz: integer) {
   q0 = cx * CHUNK - hex_mesh::MESH_MARGIN;
   r0 = cz * CHUNK - hex_mesh::MESH_MARGIN;
   q1 = cx * CHUNK + CHUNK - 1 + hex_mesh::MESH_MARGIN;
   r1 = cz * CHUNK + CHUNK - 1 + hex_mesh::MESH_MARGIN;
   // At most 2x2 store chunks: the footprint is CHUNK + 2*MARGIN wide and a store chunk
   // is CHUNK_W, which `hex_mesh/tests/mesh.loft` pins apart so this stays true.
-  for sz in hex_world::world_chunk_of(r0)..hex_world::world_chunk_of(r1) + 1 {
-    for sx in hex_world::world_chunk_of(q0)..hex_world::world_chunk_of(q1) + 1 {
+  for sz in hex_voxel::world_chunk_of(r0)..hex_voxel::world_chunk_of(r1) + 1 {
+    for sx in hex_voxel::world_chunk_of(q0)..hex_voxel::world_chunk_of(q1) + 1 {
       send_one_chunk(srv, wld, sx, sz);
     }
   }
@@ -3918,21 +3918,21 @@ fn send_layers(srv: server::Server, wld: World, cx: integer, cz: integer) {
 // it can go every tick where a resend cannot — which is the whole design: divergence
 // is caught in the tick it happens rather than at the next save. It carries NEVER the
 // cells; the client answers only about what it disagrees on.
-fn digest_wire(wld: World, chunks: vector<DirtyChunk>) -> text {
+fn digest_wire(wld: VoxelWorld, chunks: vector<DirtyChunk>) -> text {
   out = "D:";
   n = 0;
   for dch in chunks {
     // ⚠ STORE CHUNKS, for the same reason `layer_wire` sends them: the digest is over
     // LAYERS, and a layer belongs to a store chunk. The client multiplies by
     // `CHUNK_W`, so anything else here is off by the ratio of the two tiles.
-    q0 = hex_world::world_chunk_of(dch.cx * CHUNK) * hex_world::CHUNK_W;
-    r0 = hex_world::world_chunk_of(dch.cz * CHUNK) * hex_world::CHUNK_W;
+    q0 = hex_voxel::world_chunk_of(dch.cx * CHUNK) * hex_voxel::CHUNK_W;
+    r0 = hex_voxel::world_chunk_of(dch.cz * CHUNK) * hex_voxel::CHUNK_W;
     for li in 0..len(world_column(wld, q0, r0).co_ids) {
-      if hex_world::world_layer_kind(wld, q0, r0, li) == hex_world::KIND_TERRAIN {
+      if hex_voxel::world_layer_kind(wld, q0, r0, li) == hex_voxel::KIND_TERRAIN {
         if n > 0 { out += ";"; }
-        out += "{hex_world::world_chunk_of(dch.cx * CHUNK)},"
-             + "{hex_world::world_chunk_of(dch.cz * CHUNK)},{li},"
-             + "{hex_world::world_layer_crc(wld, q0, r0, li)}";
+        out += "{hex_voxel::world_chunk_of(dch.cx * CHUNK)},"
+             + "{hex_voxel::world_chunk_of(dch.cz * CHUNK)},{li},"
+             + "{hex_voxel::world_layer_crc(wld, q0, r0, li)}";
         n = n + 1;
       }
     }
@@ -4285,13 +4285,13 @@ fn thumb_axes() -> ThumbAxes {
 //
 // ⚠ IT HANDS BACK AN INDEX RATHER THAN A `Surface`, AND THE REASON HAS CHANGED —
 // plan 19 `L1`. `Surface` used to be declared TWICE in this program's graph, by
-// `hex_world` and by `hex_mesh`, and a loft struct name is global to a
-// consumer, so the two had merged and `hex_world`'s won: writing the literal gave
+// `hex_voxel` and by `hex_mesh`, and a loft struct name is global to a
+// consumer, so the two had merged and `hex_voxel`'s won: writing the literal gave
 // five *"Unknown field `Surface.sf_r`"* errors with no mention of a collision, and
 // ⚠ **qualifying it as `hex_mesh::Surface` did not help** — the return TYPE
 // was accepted and the constructor still resolved to the other struct.
 //
-// ✅ **FIXED 2026-08-06: `hex_world`'s is `SurfaceAt` now**, which follows this
+// ✅ **FIXED 2026-08-06: `hex_voxel`'s is `SurfaceAt` now**, which follows this
 // tree's own convention for a derived positional record (`MeshAt`, `SocketAt`) and
 // reads as what it is — *the surface at this hex, under these feet*. `Surface` is
 // left to the palette entry, whose own header already says *"the surfaces the
@@ -4466,7 +4466,7 @@ fn part_thumb_view(vr: vector<float>, vu: vector<float>, vf: vector<float>) -> T
 // a cottage fills six; carrying the empties would make every caller test for them.
 struct PartSurf { ps_surface: integer, ps_mesh: Mesh }
 
-fn part_body_meshes(pbm_w: World) -> vector<PartSurf> {
+fn part_body_meshes(pbm_w: VoxelWorld) -> vector<PartSurf> {
   pbm_out: vector<PartSurf> = [];
   // A part has no wall runs, no roof plans, no leaves and no dressing of its own —
   // those are the server's registries for the world being edited. Empty is the
@@ -4506,7 +4506,7 @@ fn part_body_meshes(pbm_w: World) -> vector<PartSurf> {
 // against a drawing. `part_box` takes the hex width and the height step from here,
 // because a lattice constant in `hex_part` would be the second copy `hex_proj`
 // exists to prevent.
-fn skin_check(sc_w: World) -> hex_part::SkinCheck {
+fn skin_check(sc_w: VoxelWorld) -> hex_part::SkinCheck {
   sc_ref = hex_part::part_mesh(sc_w);
   if sc_ref.pr_code != hex_part::MR_OK {
     return hex_part::SkinCheck { kc_code: hex_part::KC_EMPTY,
@@ -4904,7 +4904,7 @@ fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
 // before. ⚠ It must stay layer-aware: `cell_normal` itself reads `terrain_h`, the
 // OUTDOORS, and on a deck that is a different surface three storeys down with a
 // completely different slope.
-fn cam_clear_at(x: float, z: float, eye: float, wld: World) -> float {
+fn cam_clear_at(x: float, z: float, eye: float, wld: VoxelWorld) -> float {
   a = world_to_hex(x, z);
   c0 = hex_to_world(a.ha_q, a.ha_r, 0);
   h0 = surface_h_at(a.ha_q, a.ha_r, eye, wld);
@@ -4928,8 +4928,8 @@ fn cam_clear_at(x: float, z: float, eye: float, wld: World) -> float {
 // The surface height at a CELL for an eye at `ref` — `ground_under`'s rule without
 // its smooth interpolation, because a gradient over the cell ring does not want a
 // within-cell interpolation at each sample.
-fn surface_h_at(q: integer, r: integer, ref: float, wld: World) -> float {
-  sf = hex_world::world_surface(wld, q, r, ref / HEIGHT_SCALE ?? 0.0);
+fn surface_h_at(q: integer, r: integer, ref: float, wld: VoxelWorld) -> float {
+  sf = hex_voxel::world_surface(wld, q, r, ref / HEIGHT_SCALE ?? 0.0);
   // The same correction as `ground_under`'s, and it must be the same one: the camera
   // sampling a different surface from the feet is the disagreement this file's
   // ground sampler exists to avoid.
@@ -4954,7 +4954,7 @@ fn surface_h_at(q: integer, r: integer, ref: float, wld: World) -> float {
 // Height is honoured — the boom is only shortened while the eye is BELOW the
 // wall's top, so a camera looking over a low wall keeps its full length.
 fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
-                 want: float, wld: World, coll: EdgeSet) -> float {
+                 want: float, wld: VoxelWorld, coll: EdgeSet) -> float {
   ky = cos(cyaw); sy = sin(cyaw);
   kp = cos(cpitch); sp = sin(cpitch);
   free = want;
@@ -5017,7 +5017,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
 // shoulder creep would otherwise make the boom's own mistake one axis over: an
 // offset that ignored the room puts the eye through a wall exactly as the floor did.
 fn cam_free_side(ox: float, oy: float, oz: float, cyaw: float,
-                 want: float, wld: World, coll: EdgeSet, sign: float) -> float {
+                 want: float, wld: VoxelWorld, coll: EdgeSet, sign: float) -> float {
   cam_free_dist(ox, oy, oz, cyaw + sign * PI * 0.5, 0.0, want, wld, coll)
 }
 
@@ -5033,7 +5033,7 @@ fn cam_free_side(ox: float, oy: float, oz: float, cyaw: float,
 // beside a wall still carries margin rather than sitting exactly on the edge of
 // being wrong.
 fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
-                cpitch: float, want: float, wld: World, coll: EdgeSet) -> float {
+                cpitch: float, want: float, wld: VoxelWorld, coll: EdgeSet) -> float {
   ahead = rate * CAM_LOOK_S;
   lo = 0.0 - CAM_ARC;
   hi = CAM_ARC;
@@ -5054,7 +5054,7 @@ fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
 // The SMALLEST lift that clears the whole boom, or the full give if none does.
 // Smallest, so the assist takes only what the obstruction actually costs.
 fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
-                    want: float, wld: World, coll: EdgeSet) -> float {
+                    want: float, wld: VoxelWorld, coll: EdgeSet) -> float {
   best = cpitch + CAM_PITCH_GIVE;
   found = false;
   for i in 0..(CAM_TRIES + 1) {
@@ -5081,7 +5081,7 @@ fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() *
 fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
 
 fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float,
-            dist: float, slide: float, mode: integer, wld: World) -> text {
+            dist: float, slide: float, mode: integer, wld: VoxelWorld) -> text {
   // ── EYES: THE EYE *IS* THE HEAD, AND THE TARGET SWINGS WITH THE PITCH ──────
   //
   // ⚠ SETTING `dist` TO ZERO IS NOT ENOUGH, and that is worth stating because it
@@ -6191,7 +6191,7 @@ fn main() {
               // to stderr as `file open error … (os error 2)`, and `world_save`
               // returned `WS_OK` — so `8:newfam/thing` answered *"saved — 1
               // chunks, 2 sections"*, renamed the subject line and re-anchored the
-              // edit clock over a file that was never created. `hex_world` now
+              // edit clock over a file that was never created. `hex_voxel` now
               // answers `WS_IO` (it compares the file's length against the
               // format's own `SZ_*`), and the directory is made here, because
               // *which directories exist* is the consumer's business and *did the
@@ -6265,7 +6265,7 @@ fn main() {
                 // disk.
                 part_name = sv_name;
                 part_tau0 = wld.w_tau;
-                part_sig0 = hex_world::world_sections_key(wld);
+                part_sig0 = hex_voxel::world_sections_key(wld);
                 srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
                                        levelling, roading, tracing));
                 srv.send_to(ev.cid, "S:part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
@@ -6553,7 +6553,7 @@ fn main() {
               // refused save; it became reachable the moment a gesture could write
               // a section, which is this step.
               pt_secs = "";
-              if hex_world::world_sections_key(wld) != part_sig0 {
+              if hex_voxel::world_sections_key(wld) != part_sig0 {
                 pt_secs = " plus its sections";
               }
               pt_shown = part_name;
@@ -6643,7 +6643,7 @@ fn main() {
               in_part = true;
               part_name = ev.payload;
               disp_tau = -1;              // the same reason, the other way round
-              part_sig0 = hex_world::world_sections_key(wld);
+              part_sig0 = hex_voxel::world_sections_key(wld);
               part_tau0 = wld.w_tau;
               // A part is authored around its own origin, so that is where the feet
               // go. Staying put would open a cottage from across the valley and show
@@ -6948,7 +6948,7 @@ fn main() {
           sn_n = sn_n + 1;
           sn_hx = world_to_hex(px, pz);
           sn_ref = walk_h(sn_hx.ha_q, sn_hx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
-          sn_sf = hex_world::world_surface(wld, sn_hx.ha_q, sn_hx.ha_r,
+          sn_sf = hex_voxel::world_surface(wld, sn_hx.ha_q, sn_hx.ha_r,
                                            py / HEIGHT_SCALE ?? 0.0);
           sn_txt = "snapshot {sn_n}\n"
             + "character  x {px}  z {pz}  y {py}  yaw {yaw}\n"
@@ -6977,7 +6977,7 @@ fn main() {
                 sn_col = world_column(wld, sn_q, sn_r);
                 sn_hs = "";
                 for sn_e in sn_col.co_cells {
-                  if hex_world::hex_occupied(sn_e) {
+                  if hex_voxel::hex_occupied(sn_e) {
                     if sn_hs != "" { sn_hs += ","; }
                     sn_hs += "{sn_e.h_height}:{sn_e.h_material}";
                   }
@@ -7080,7 +7080,7 @@ fn main() {
           // *"if it is not the first, put a comma"* instead of four.
           phv: vector<integer> = [];
           for pe in pcol.co_cells {
-            if hex_world::hex_occupied(pe) { phv += [pe.h_height as integer ?? 0]; }
+            if hex_voxel::hex_occupied(pe) { phv += [pe.h_height as integer ?? 0]; }
           }
           srv.send_to(ev.cid, "S:{say_column(pq, pr, phv)}");
         } else if ev.msg_id == MSG_EXPORT {
@@ -7199,19 +7199,19 @@ fn main() {
               icol = world_column(wld, ihx.ha_q, ihx.ha_r);
               itop = 0;
               for ie in icol.co_cells {
-                if hex_world::hex_occupied(ie) { itop = ie.h_height as integer ?? 0; }
+                if hex_voxel::hex_occupied(ie) { itop = ie.h_height as integer ?? 0; }
               }
               // It is DRESSING, like any other prop — imported geometry is set
               // dressing, not landscape, so it goes where `D1` puts it.
               icur = world_dressing(wld, ihx.ha_q, ihx.ha_r);
-              icells: vector<hex_world::Hex> = [];
+              icells: vector<hex_voxel::Hex> = [];
               for ik in icur.co_cells {
-                if hex_world::hex_occupied(ik) { icells += [ik]; }
+                if hex_voxel::hex_occupied(ik) { icells += [ik]; }
               }
-              icells += [hex_world::Hex { h_height: (itop as u16? ?? 0),
+              icells += [hex_voxel::Hex { h_height: (itop as u16? ?? 0),
                                           h_material: (hex_editor::PROP_MAT as u8? ?? 0),
                                           h_item: (hex_editor::PROP_ITEM_MAX as u8? ?? 0) }];
-              world_set_dressing(wld, hex_world::Column { co_q: ihx.ha_q,
+              world_set_dressing(wld, hex_voxel::Column { co_q: ihx.ha_q,
                                                           co_r: ihx.ha_r,
                                                           co_cells: icells });
               imid = IMPORT_BASE + n_imported;
@@ -7261,7 +7261,7 @@ fn main() {
           dcol2 = world_dressing(wld, dq2, dr2);
           dtxt = "";
           for dd in dcol2.co_cells {
-            if hex_world::hex_occupied(dd) {
+            if hex_voxel::hex_occupied(dd) {
               if dtxt != "" { dtxt += ","; }
               dtxt += "{dd.h_height}/{dd.h_item}";
             }
@@ -7290,7 +7290,7 @@ fn main() {
           tcol = world_column(wld, thx.ha_q, thx.ha_r);
           ttop = 0;
           for te in tcol.co_cells {
-            if hex_world::hex_occupied(te) { ttop = te.h_height as integer ?? 0; }
+            if hex_voxel::hex_occupied(te) { ttop = te.h_height as integer ?? 0; }
           }
           tforeign = name_is_foreign(tname);
           trigs += [Trigger { tg_id: next_trig, tg_q: thx.ha_q, tg_r: thx.ha_r,
@@ -8600,7 +8600,7 @@ fn main() {
     // trace line is what found it**, and only because it prints a count that could
     // be zero; the picture alone said *nothing changed* and would have been read
     // as the expansion having no effect.
-    if in_part && (wld.w_tau != disp_tau || hex_world::world_sections_key(wld) != disp_key) {
+    if in_part && (wld.w_tau != disp_tau || hex_voxel::world_sections_key(wld) != disp_key) {
       disp_t0 = ticks();
       // ⚠ THE OPEN PART IS EXPANDED AS A PART, NOT AS A LIST OF INSTANCES. The
       // first version walked `part_instances(wld)` and expanded each one — which
@@ -8622,7 +8622,7 @@ fn main() {
                     + "({disp_ex.ex_code}) {disp_ex.ex_why}");
       }
       disp_tau = wld.w_tau;
-      disp_key = hex_world::world_sections_key(wld);
+      disp_key = hex_voxel::world_sections_key(wld);
       // ── AND THE OTHER BODY GOES OUT — plan 17 `A5.2` ────────────────────
       //
       // ⚠ THE DISPLAY WORLD CANNOT HOLD A MESH, so the meshes ride beside it.

@@ -34,7 +34,7 @@
 // Cells go into `w`; a `.glb` cannot, so a prop's derivation is a `MeshAt` handed
 // back in `ex_meshes`. The composition is the same walk — same frame, same heights,
 // same sockets — and only what the body produces differs.
-use hex_world;
+use hex_voxel;
 use inst;
 use cycle;
 use bind;
@@ -122,7 +122,7 @@ struct Lattice { lf_code: integer, lf_why: text }
 // an EMPTY list on `MR_MALFORMED`, so reading `ir_items` without checking the code
 // would report *nothing is off the origin* about a part nobody can read — the
 // `MR_ABSENT`/`MR_MALFORMED` collapse, here in the shape of a silent yes.
-fn part_lattice_free(p: World) -> Lattice {
+fn part_lattice_free(p: VoxelWorld) -> Lattice {
   n = len(part_columns(p));
   if n > 0 {
     return Lattice { lf_code: LF_CELLS,
@@ -310,7 +310,7 @@ fn bind_fault(sa: SocketAt) -> Expand {
 // a door-frame reusable — so the child's world centre is the parent's centre
 // composed with the child's offset, which is exactly `un_origin`. Heights add
 // for the same reason: a part's heights are its own until something lifts them.
-fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
+fn expand_at(w: VoxelWorld, root: text, name: text, cq: integer, cr: integer,
              anchor: integer, lo: integer, aim: integer, depth: integer) -> Expand {
   if depth > EX_MAX_DEPTH {
     return Expand { ex_code: EX_DEPTH, ex_depth: depth,
@@ -339,7 +339,7 @@ fn expand_at(w: World, root: text, name: text, cq: integer, cr: integer,
 // belongs to the frame and not to the instance it hangs on. Measured in the
 // editor: a doorway opened, its threshold derived, and its leaf drawn nowhere,
 // with no refusal anywhere to say why.
-fn expand_loaded(w: World, root: text, p: World, name: text, cq: integer, cr: integer,
+fn expand_loaded(w: VoxelWorld, root: text, p: VoxelWorld, name: text, cq: integer, cr: integer,
                  anchor: integer, lo: integer, aim: integer, depth: integer) -> Expand {
 
   // ── A CELL MAY NOT CROSS A UNIT BOUNDARY — plan 17 `A8.2b`, §P9.1 ──────────
@@ -567,11 +567,11 @@ fn expand_loaded(w: World, root: text, p: World, name: text, cq: integer, cr: in
 //
 // ⚠ DEPTH STARTS AT 1, matching `part_expand`: the open part is level one, so a
 // nest eight deep inside it is refused at the same place it would be on disk.
-pub fn part_expand_of(w: World, root: text, p: World, lo: integer) -> Expand {
+pub fn part_expand_of(w: VoxelWorld, root: text, p: VoxelWorld, lo: integer) -> Expand {
   expand_loaded(w, root, p, "<open>", 0, 0, 0, lo, 0, 1)
 }
 
-pub fn part_expand(w: World, root: text, i: PartInst, lo: integer) -> Expand {
+pub fn part_expand(w: VoxelWorld, root: text, i: PartInst, lo: integer) -> Expand {
   got = expand_at(w, root, i.pi_part, i.pi_q, i.pi_r, i.pi_h, lo, i.pi_facing, 1);
   if got.ex_code == EX_DEPTH {
     cy = part_cycle(root, i.pi_part);

@@ -17,11 +17,11 @@
 //   cellar     a room dug under it — two layers, and the road must not fall in
 //   high       ground at 60, well ABOVE an author standing at 40
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 
-fn plain_world() -> World {
+fn plain_world() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 12)..13 {
     for r in (0 - 12)..13 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -31,18 +31,18 @@ fn plain_world() -> World {
 
 // What every layer of a column holds, as text — the instrument, and it shows the
 // WHOLE column so a write that landed one layer down cannot hide.
-fn column_of(w: World, q: integer, r: integer) -> text {
+fn column_of(w: VoxelWorld, q: integer, r: integer) -> text {
   col = world_column(w, q, r);
   out = "";
   for i in 0..len(col.co_cells) {
-    c = col.co_cells[i] ?? hex_world::Hex {};
+    c = col.co_cells[i] ?? hex_voxel::Hex {};
     out += "[{i}] mat {c.h_material as integer ?? 0} h {c.h_height as integer ?? 0}  ";
   }
   if out == "" { return "(no column)"; }
   out
 }
 
-fn report(name: text, w: World, q: integer, r: integer, feet: float, h: integer) {
+fn report(name: text, w: VoxelWorld, q: integer, r: integer, feet: float, h: integer) {
   before = column_of(w, q, r);
   // ⚠ THE RETURN CODE, WHICH `road_lay` THROWS AWAY. `surface_set` hands back
   // `world_set_column`'s verdict, and a refusal there is a write that did not

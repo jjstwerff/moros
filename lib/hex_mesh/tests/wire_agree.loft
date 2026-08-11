@@ -27,13 +27,13 @@
 //     in `editor_server`; this feeds the client every layer by construction, so a
 //     server that sent nothing would still pass here. See `stream.mjs`.
 use hex_mesh;
-use hex_world;
+use hex_voxel;
 use hex_editor;
 
 // A world with relief, because a flat one meshes to one height and a copy that lost
 // the heights would agree with it. ⚠ The east-west ramp is `40 + q`: it varies along
 // the axis the mesher walks, so a transposed or truncated payload shows up.
-fn server_world() -> World {
+fn server_world() -> VoxelWorld {
   w = world_new(0.25, 0, 10, 4).wn_world;
   for q in 0 - 4..13 {
     for r in 0 - 4..13 { hex_editor::ground_set(w, q, r, 40 + q, hex_editor::SURFACE_MAT); }
@@ -45,14 +45,14 @@ fn server_world() -> World {
 // of every chunk the server has, take the bytes the wire would carry and put them into
 // a fresh store. This is `editor_client.loft`'s own `world_put_layer` call, with the
 // socket taken out from between.
-fn client_of(srv: World) -> World {
+fn client_of(srv: VoxelWorld) -> VoxelWorld {
   cl = world_new(0.25, 0, 10, 4).wn_world;
   for ch in srv.w_chunks {
     li = 0 - 1;
     for ly in ch.ck_layers {
       li = li + 1;
-      q = ch.ck_cx * hex_world::CHUNK_W;
-      r = ch.ck_cz * hex_world::CHUNK_W;
+      q = ch.ck_cx * hex_voxel::CHUNK_W;
+      r = ch.ck_cz * hex_voxel::CHUNK_W;
       flat = world_layer_bytes(srv, q, r, li);
       world_put_layer(cl, ch.ck_cx, ch.ck_cz, ch.ck_base,
                       ly.ly_id, ly.ly_kind, ly.ly_ver, flat);
@@ -117,8 +117,8 @@ fn test_every_layer_checksum_survives_the_wire() {
     li = 0 - 1;
     for ly in ch.ck_layers {
       li = li + 1;
-      q = ch.ck_cx * hex_world::CHUNK_W;
-      r = ch.ck_cz * hex_world::CHUNK_W;
+      q = ch.ck_cx * hex_voxel::CHUNK_W;
+      r = ch.ck_cz * hex_voxel::CHUNK_W;
       assert(world_layer_crc(srv, q, r, li) == world_layer_crc(cl, q, r, li),
              "layer {li} of chunk ({ch.ck_cx},{ch.ck_cz}) differs: "
            + "{world_layer_crc(srv, q, r, li)} vs {world_layer_crc(cl, q, r, li)}");

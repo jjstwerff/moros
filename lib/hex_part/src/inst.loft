@@ -11,7 +11,7 @@
 // several door-frames; a porch contains four pillars. That is the whole reason the
 // payload needs a record separator where the other two did not, and it is what
 // decided the encoding below.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 use catalogue;
@@ -77,7 +77,7 @@ fn inst_line(i: PartInst) -> text {
 // Write the list. ⚠ EVERY INSTANCE IS CHECKED BEFORE ANY IS WRITTEN, so a list
 // with one bad record leaves the section as it was rather than half replaced —
 // the pre-flight rule `part_place` follows for the same reason.
-pub fn part_set_instances(w: World, v: vector<PartInst>) -> integer {
+pub fn part_set_instances(w: VoxelWorld, v: vector<PartInst>) -> integer {
   for c in v {
     if c.pi_part == "" { return PI_NONAME; }
     if c.pi_part.find("\n") != null { return PI_NEWLINE; }
@@ -147,7 +147,7 @@ fn parse_inst(line: text) -> InstRead {
                                    pi_h: nums[2] ?? 0, pi_facing: fc, pi_part: rest }] }
 }
 
-pub fn part_instances(w: World) -> InstRead {
+pub fn part_instances(w: VoxelWorld) -> InstRead {
   none: vector<PartInst> = [];
   if world_section_at(w, TAG_INST) < 0 {
     return InstRead { ir_code: MR_ABSENT, ir_items: none, ir_why: "no INST section" };

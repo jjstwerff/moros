@@ -16,14 +16,14 @@
 // first fixture measured that case and reported `worst step 1` at 40 cells — a
 // green answer to a question never asked.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 
 // A road of `n` cells falling away from the seed at `fall` per hex — the slow
 // direction, and the only one that can reach the cap.
-fn falling_road(n: integer, fall: integer, cl: &integer, rs: &integer) -> World {
+fn falling_road(n: integer, fall: integer, cl: &integer, rs: &integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 4)..(n + 8) {
     for r in (0 - 6)..7 { ground_set(w, q, r, G + 400 - q * fall, SURFACE_MAT); }
@@ -37,7 +37,7 @@ fn falling_road(n: integer, fall: integer, cl: &integer, rs: &integer) -> World 
 
 // The largest step between adjacent road cells along the run — the ground truth
 // `slope_owed` has to agree with.
-fn worst_step(w: World, n: integer) -> integer {
+fn worst_step(w: VoxelWorld, n: integer) -> integer {
   worst = 0;
   for q in 0..(n - 1) {
     st = ground_h(w, q + 1, 0) - ground_h(w, q, 0);

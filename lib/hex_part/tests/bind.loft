@@ -6,7 +6,7 @@
 // a binding has to OPEN the framing part to find the socket AND the bound part to
 // read what it fits. Three files minimum, and a world in memory can pose none of it.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn no_palette() -> vector<integer> { [] }
 fn no_kids() -> vector<PartInst> { [] }
@@ -26,7 +26,7 @@ fn leaf_socket(q: integer, r: integer, h: integer) -> Socket {
            sk_kind: "door", sk_size: "2x3", sk_name: "leaf" }
 }
 
-fn one_cell(mat: integer) -> World {
+fn one_cell(mat: integer) -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
     co_cells: [Hex { h_height: 40 as u16? ?? 0,
@@ -34,7 +34,7 @@ fn one_cell(mat: integer) -> World {
   w
 }
 
-fn save(name: text, w: World) {
+fn save(name: text, w: VoxelWorld) {
   assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
   assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
 }
@@ -74,7 +74,7 @@ fn wipe() {
   delete(root());
 }
 
-fn target() -> World {
+fn target() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in (0 - 6)..16 {
     for r in (0 - 6)..16 {
@@ -88,7 +88,7 @@ fn target() -> World {
   w
 }
 
-fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+fn material_at(w: VoxelWorld, q: integer, r: integer, h: integer) -> integer {
   for c in world_column(w, q, r).co_cells {
     if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
   }
@@ -177,7 +177,7 @@ fn test_a_bound_leaf_lands_at_its_sockets_composed_position() {
 // and **the binding is not touched**: the leaf follows because it never had a
 // coordinate to leave behind. A design that stored the leaf's position would pass
 // every other test in this file and fail exactly here.
-fn leaf_placement(w: World) -> MeshAt {
+fn leaf_placement(w: VoxelWorld) -> MeshAt {
   ex = part_expand(w, root(), at("h/house", 0, 0, 0), 10);
   assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
   assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");
@@ -357,7 +357,7 @@ fn test_a_binding_onto_a_part_that_offers_nothing_is_refused() {
 
 // ── The record itself ────────────────────────────────────────────────────────
 
-fn house_with(binds: vector<Binding>) -> World {
+fn house_with(binds: vector<Binding>) -> VoxelWorld {
   w = one_cell(3);
   assert(part_set_instances(w, [at("d/frame", 3, 0, 0), at("d/frame", 5, 0, 0)]) == PI_OK,
          "instances");

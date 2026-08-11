@@ -15,25 +15,25 @@
 // a HOLE, a diagonal, one straddling the origin so every coordinate goes negative —
 // because the failure mode a rectangle cannot show is a footprint that spans chunks
 // the four-corner test does not name.
-use hex_world;
+use hex_voxel;
 use hex_editor;
 use hex_mesh;
 
-fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn copy_chunk(a: VoxelWorld, b: &VoxelWorld, scx: integer, scz: integer) {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   for li in 0..len(world_column(a, q0, r0).co_ids) {
-    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
-        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-        hex_world::world_layer_version(a, q0, r0, li),
-        hex_world::world_layer_bytes(a, q0, r0, li));
+    if hex_voxel::world_layer_kind(a, q0, r0, li) == hex_voxel::KIND_TERRAIN {
+      hex_voxel::world_put_layer(b, scx, scz, hex_voxel::world_chunk_base(a, scx, scz),
+        hex_voxel::world_layer_id(a, q0, r0, li), hex_voxel::KIND_TERRAIN,
+        hex_voxel::world_layer_version(a, q0, r0, li),
+        hex_voxel::world_layer_bytes(a, q0, r0, li));
     }
   }
 }
 
 // `want` is a bitmask over a 5x5 grid of chunks centred on (0,0): bit (dz+2)*5+(dx+2).
-fn build(a: World, want: vector<integer>) -> World {
+fn build(a: VoxelWorld, want: vector<integer>) -> VoxelWorld {
   b = world_new(0.25, 0, 10, 4).wn_world;
   for i in 0..len(want) {
     if (want[i] ?? 0) != 0 {
@@ -51,7 +51,7 @@ fn build(a: World, want: vector<integer>) -> World {
 // same finding stated positively: it is exactly two cells wide, everywhere, which is
 // the margin — a guard that had the wrong idea of its own reach would draw a ring of
 // the wrong thickness and the picture would say so.
-fn sweep(a: World, name: text, want: vector<integer>, fp: &integer, fn_: &integer,
+fn sweep(a: VoxelWorld, name: text, want: vector<integer>, fp: &integer, fn_: &integer,
          okr: &integer, vac: &integer) {
   b = build(a, want);
   ready_ok = 0; ready_bad = 0; hold_ok = 0; hold_bad = 0; empty_both = 0;

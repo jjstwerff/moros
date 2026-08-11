@@ -9,10 +9,10 @@
 // `vegetation.mjs` counts trees over a socket. All three claims are properties of
 // the store, and this is them.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 16..17 {
     for r in 0 - 16..17 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
@@ -21,7 +21,7 @@ fn world() -> World {
 }
 
 // A closed ring of fence edges at radius `rad` — the boundary a fill must respect.
-fn ringed(rad: integer) -> World {
+fn ringed(rad: integer) -> VoxelWorld {
   w = world();
   hex_editor::fence_ring(w, hex_editor::author_at(0.0, 0.0, 0.0),
                          hex_editor::FENCE_MAT, rad, 10.0);

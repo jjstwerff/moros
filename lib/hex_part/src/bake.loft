@@ -21,7 +21,7 @@
 // the records and afterwards there is no authority left to re-derive from. That
 // asymmetry is the point of §P4 and not an inconsistency: `expand` keeps the
 // record, which outranks the cells, so its cells need no name.
-use hex_world;
+use hex_voxel;
 use inst;
 use cycle;
 use bind;
@@ -76,7 +76,7 @@ struct BakeCol {
 
 pub struct Bake {
   bk_code:  integer,
-  bk_world: World,
+  bk_world: VoxelWorld,
   bk_parts: integer = 0,   // parts flattened, the root and everything under it
   bk_cols:  integer = 0,   // columns in the result
   bk_depth: integer = 0,

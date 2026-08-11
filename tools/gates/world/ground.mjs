@@ -1,6 +1,6 @@
 // ⚠ CHECKED AGAINST THE RULE AND LEFT WHOLE. Every number here comes from what
 // was DRAWN or read back through the wire — the ground's height before and after a
-// cellar, the cell the label points at. `hex_world` owns the rule (the ground is a
+// cellar, the cell the label points at. `hex_voxel` owns the rule (the ground is a
 // reserved LABEL, not index 0) and tests it; this is the editor honouring it end to
 // end, which is the half a store test cannot see.
 // THE DRAWN GROUND IS THE GROUND, not whatever layer happens to be at index 0.
@@ -9,7 +9,7 @@
 // in twelve places. That is correct until something is dug beneath it, and then
 // layer 0 IS the cellar — so digging three cellars under a hill sank the drawn
 // ground from 10.917 to 5.583 wu and `cell 0,10` went from `1,49` to `4,13`.
-// The ground is now a reserved LABEL (`hex_world::LABEL_GROUND`), carried through
+// The ground is now a reserved LABEL (`hex_voxel::LABEL_GROUND`), carried through
 // every insert by the column write; see `doc/claude/WORLD_MODEL.md`.
 //
 // ⚠ THIS GATE ASSERTS BOTH HALVES, and the second is the one a screenshot misses.

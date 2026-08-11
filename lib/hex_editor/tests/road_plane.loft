@@ -17,7 +17,7 @@
 // any fixture whose ground happens not to move, and this whole file would be measuring
 // a flat world.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U   = 0.25;
 const G   = 400;
 const EPS = 10;
@@ -25,7 +25,7 @@ const EPS = 10;
 // `n` cells of ground falling `k` a hex along +q. ⚠ `k` of 1 is exactly a road's own
 // limit and `stroke_over_limit` asks `> lim`, so nothing settles on these fixtures and
 // what they measure is the STAMP alone.
-fn ramp(k: integer) -> World {
+fn ramp(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 6)..20 {
     for r in (0 - 6)..7 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }

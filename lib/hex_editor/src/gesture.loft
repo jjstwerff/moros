@@ -26,7 +26,7 @@
 // The server keeps the socket, the tick and the streaming. It calls these.
 use hex_field;
 use hex_grid;
-use hex_world;
+use hex_voxel;
 use hex_part;
 // The wall run's centreline and its offsets, and the edges a line crosses — both
 // the family's, and both already depended on by the package's other half.
@@ -160,7 +160,7 @@ pub const H_CEILING   = 65535; // and the ceiling, which is the u16 the voxel ho
 // the outdoors right up until a cellar is dug beneath it and then it silently
 // becomes the cellar floor; three cellars under a hill once sank the drawn ground
 // from 10.917 to 5.583 wu.
-pub fn ground_h(w: World, q: integer, r: integer) -> integer {
+pub fn ground_h(w: VoxelWorld, q: integer, r: integer) -> integer {
   c = world_ground_cell(w, q, r);
   c.h_height
 }
@@ -179,23 +179,23 @@ pub fn ground_h(w: World, q: integer, r: integer) -> integer {
 // of store work and a 10,000-cell fill took 16 seconds, which is the editor
 // getting slower exactly as a map fills up.
 //
-// `hex_world::world_set_cell` writes in place — `HEX_STACK.md`'s own invariant —
+// `hex_voxel::world_set_cell` writes in place — `HEX_STACK.md`'s own invariant —
 // checking the three rules that are local and handing the window case back to the
 // column path. A layer index of -1 still means "there is no such layer", and it
 // still goes the slow way, because creating one is what the slow way is for.
-pub fn layer_write(w: World, q: integer, r: integer, li: integer,
-                   nc: hex_world::Hex) -> integer {
+pub fn layer_write(w: VoxelWorld, q: integer, r: integer, li: integer,
+                   nc: hex_voxel::Hex) -> integer {
   world_set_cell(w, q, r, li, nc).cw_code
 }
 
-pub fn ground_write(w: World, q: integer, r: integer, nc: hex_world::Hex) -> integer {
+pub fn ground_write(w: VoxelWorld, q: integer, r: integer, nc: hex_voxel::Hex) -> integer {
   layer_write(w, q, r, world_ground_layer(w, q, r), nc)
 }
 
 // Write a height and material at a cell, keeping everything else the cell holds.
-pub fn ground_set(w: World, q: integer, r: integer, h: integer, mat: integer) -> integer {
+pub fn ground_set(w: VoxelWorld, q: integer, r: integer, h: integer, mat: integer) -> integer {
   c = world_ground_cell(w, q, r);
-  nc = hex_world::Hex { h_height: h as u16? ?? 0,
+  nc = hex_voxel::Hex { h_height: h as u16? ?? 0,
                         h_material: mat as u8? ?? 0,
                         h_item: c.h_item,
                         h_item_rotation: c.h_item_rotation,
@@ -229,16 +229,16 @@ pub fn ground_set(w: World, q: integer, r: integer, h: integer, mat: integer) ->
 // keeps its rock and lives BELOW the ground; a road carried over a gap keeps the
 // ground and lives ABOVE it. They are one axis twice, so every reader that asks
 // *where is this surface* has to ask the whole column and not one half of it.
-pub fn off_layer(w: World, q: integer, r: integer, mat: integer) -> integer {
-  gl = hex_world::world_ground_layer(w, q, r);
+pub fn off_layer(w: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
+  gl = hex_voxel::world_ground_layer(w, q, r);
   if gl < 0 { return 0 - 1; }
-  n = hex_world::world_chunk_layers(w, hex_world::world_chunk_of(q),
-                                       hex_world::world_chunk_of(r));
+  n = hex_voxel::world_chunk_layers(w, hex_voxel::world_chunk_of(q),
+                                       hex_voxel::world_chunk_of(r));
   if n <= 1 { return 0 - 1; }
   for i in 0..n {
     if i == gl { continue; }
-    c = hex_world::world_cell(w, q, r, i);
-    if hex_world::hex_occupied(c) && (c.h_material as integer ?? 0) == mat { return i; }
+    c = hex_voxel::world_cell(w, q, r, i);
+    if hex_voxel::hex_occupied(c) && (c.h_material as integer ?? 0) == mat { return i; }
   }
   0 - 1
 }
@@ -246,23 +246,23 @@ pub fn off_layer(w: World, q: integer, r: integer, mat: integer) -> integer {
 // The height of this material's surface at a cell, wherever the column keeps it —
 // −1 where the column carries none. The ground first, because that is where all but
 // a caved road lives.
-pub fn run_h(w: World, q: integer, r: integer, mat: integer) -> integer {
+pub fn run_h(w: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
   c = world_ground_cell(w, q, r);
   if (c.h_material as integer ?? 0) == mat { return c.h_height as integer ?? 0; }
   li = off_layer(w, q, r, mat);
   if li < 0 { return 0 - 1; }
-  hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
+  hex_voxel::world_cell(w, q, r, li).h_height as integer ?? 0
 }
 
 // Move it, wherever it is. ⚠ THE VERDICT IS RETURNED AND MUST NOT BE THROWN AWAY:
 // under a shelf the rock above is `F1`'s upper neighbour, so a raise that would come
 // within `ε` of it is `CW_FOLD` — a refused write, which is the failure `road_lay`
 // already carries a scar for.
-pub fn run_set(w: World, q: integer, r: integer, mat: integer, h: integer) -> integer {
+pub fn run_set(w: VoxelWorld, q: integer, r: integer, mat: integer, h: integer) -> integer {
   c = world_ground_cell(w, q, r);
   if (c.h_material as integer ?? 0) == mat { return ground_set(w, q, r, h, mat); }
   li = off_layer(w, q, r, mat);
-  if li < 0 { return hex_world::CW_FOLD; }
+  if li < 0 { return hex_voxel::CW_FOLD; }
   // ⚠ A DECK DOES NOT COME DOWN TO WHAT IT CROSSES — plan 20, the mirror, and this is
   // the same lesson `CAVE_HEAD` taught one axis over: `F1`'s `ε` is what a LAYER needs
   // and `BRIDGE_CLEAR` is what the crossing is built to. Measured without it, a settle
@@ -270,14 +270,14 @@ pub fn run_set(w: World, q: integer, r: integer, mat: integer, h: integer) -> in
   // under the clearance, and silent. ⚠ And the answer here is a REFUSAL rather than
   // the shelf's *take the lid off*: a lid may come off, a bridge may not, because what
   // is under it is water and a road can never be laid there.
-  gl = hex_world::world_ground_layer(w, q, r);
+  gl = hex_voxel::world_ground_layer(w, q, r);
   if gl >= 0 && li > gl {
-    under = (hex_world::world_cell(w, q, r, gl).h_height as integer ?? 0);
-    if h < under + BRIDGE_CLEAR { return hex_world::CW_FOLD; }
+    under = (hex_voxel::world_cell(w, q, r, gl).h_height as integer ?? 0);
+    if h < under + BRIDGE_CLEAR { return hex_voxel::CW_FOLD; }
   }
-  lc = hex_world::world_cell(w, q, r, li);
+  lc = hex_voxel::world_cell(w, q, r, li);
   layer_write(w, q, r, li,
-    hex_world::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0,
+    hex_voxel::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0,
                      h_item: lc.h_item, h_item_rotation: lc.h_item_rotation,
                      h_wall_n: lc.h_wall_n, h_wall_ne: lc.h_wall_ne,
                      h_wall_se: lc.h_wall_se })
@@ -304,7 +304,7 @@ pub const SLOT_E  = 2;                // h_wall_se
 // The surface height at a hex — ONE voxel read, not a sum over authored peaks.
 // An unwritten cell reads as absent, which is height 0: the flat plane, and the
 // same answer the peak version gave for ground nobody had touched.
-pub fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
+pub fn terrain_h(hq: integer, hr: integer, wld: VoxelWorld) -> integer {
   // ⚠ THE GROUND IS A LABEL, NOT AN INDEX. This read `world_cell(…, SURFACE)` —
   // layer 0 — which is the outdoors right up until a cellar is dug beneath it, and
   // then silently becomes the cellar floor. Measured: three cellars under a hill
@@ -342,14 +342,14 @@ pub fn terrain_h(hq: integer, hr: integer, wld: World) -> integer {
 // raise, the field, the vegetation, the walls — genuinely means the outdoors, and
 // giving all of them a height they would have to invent would be rewriting every
 // producer to serve one consumer. The road is the consumer that knows its feet.
-pub fn surface_set(wld: World, q: integer, r: integer, feet: float,
+pub fn surface_set(wld: VoxelWorld, q: integer, r: integer, feet: float,
                h: integer, mat: integer) -> integer {
   // ⚠ THE UNIT IS THE WORLD'S, not a constant this package keeps. `w_unit` is
   // what `world_new` was given, so a world built at a different scale measures
   // its own heights — and there is no second copy to drift.
-  sf = hex_world::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
-  c = hex_world::world_cell(wld, q, r, sf.sf_layer);
-  nc = hex_world::Hex { h_height: h as u16? ?? 0,
+  sf = hex_voxel::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
+  c = hex_voxel::world_cell(wld, q, r, sf.sf_layer);
+  nc = hex_voxel::Hex { h_height: h as u16? ?? 0,
                         h_material: mat as u8? ?? 0,
                         h_item: c.h_item,
                         h_item_rotation: c.h_item_rotation,
@@ -357,12 +357,12 @@ pub fn surface_set(wld: World, q: integer, r: integer, feet: float,
                         h_wall_ne: c.h_wall_ne,
                         h_wall_se: c.h_wall_se };
   if sf.sf_layer < 0 { return ground_write(wld, q, r, nc); }
-  col = hex_world::world_column(wld, q, r);
-  cells: vector<hex_world::Hex> = [];
+  col = hex_voxel::world_column(wld, q, r);
+  cells: vector<hex_voxel::Hex> = [];
   for i in 0..len(col.co_cells) {
     if i == sf.sf_layer { cells += [nc]; } else { cells += [col.co_cells[i]]; }
   }
-  world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+  world_set_column(wld, hex_voxel::Column { co_q: q, co_r: r, co_cells: cells,
                                             co_ids: col.co_ids }).cw_code
 }
 
@@ -393,10 +393,10 @@ pub fn edge_owner(q: integer, r: integer, dir: integer) -> (integer, integer, in
 // So the fallback is the GROUND LAYER, which exists chunk-wide whether or not this
 // particular cell is occupied. `world_ground_layer` answers from the layer list and
 // not from the cell, which is exactly the difference that matters here.
-pub fn edge_layer(wld: World, q: integer, r: integer, ref: float) -> integer {
-  li = hex_world::world_surface(wld, q, r, ref / wld.w_unit ?? 0.0).sf_layer;
+pub fn edge_layer(wld: VoxelWorld, q: integer, r: integer, ref: float) -> integer {
+  li = hex_voxel::world_surface(wld, q, r, ref / wld.w_unit ?? 0.0).sf_layer;
   if li >= 0 { return li; }
-  hex_world::world_ground_layer(wld, q, r)
+  hex_voxel::world_ground_layer(wld, q, r)
 }
 
 // Put a material on that edge. `h` is the height the edge should take if the cell
@@ -422,20 +422,20 @@ pub fn edge_layer(wld: World, q: integer, r: integer, ref: float) -> integer {
 // `E1e`, half of any boundary is stored outside the thing it bounds — and it may
 // have nothing at your level. Then there is no layer to address and the store
 // names the one it creates, at height `h`, exactly as for an unwritten hex.
-pub fn wall_set(wld: World, q: integer, r: integer, dir: integer,
+pub fn wall_set(wld: VoxelWorld, q: integer, r: integer, dir: integer,
             mat: integer, h: integer, ref: float) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
   eli = edge_layer(wld, oq, orr, ref);
-  c = hex_world::world_cell(wld, oq, orr, eli);
+  c = hex_voxel::world_cell(wld, oq, orr, eli);
   hh = c.h_height as integer ?? 0;
-  if !hex_world::hex_present(c) { hh = h; }
+  if !hex_voxel::hex_present(c) { hh = h; }
   wn = c.h_wall_n as integer ?? 0;
   we = c.h_wall_ne as integer ?? 0;
   ws2 = c.h_wall_se as integer ?? 0;
   if slot == SLOT_NW { wn = mat; }
   else if slot == SLOT_NE { we = mat; }
   else { ws2 = mat; }
-  nc = hex_world::Hex { h_height: hh as u16? ?? 0,
+  nc = hex_voxel::Hex { h_height: hh as u16? ?? 0,
                         h_material: c.h_material,
                         h_item: c.h_item,
                         h_item_rotation: c.h_item_rotation,
@@ -458,9 +458,9 @@ pub const FENCE_R   = 3;    // hexes — the paddock one press rings
 // layer from the write reports a number about somewhere else — `23:` FENCE would
 // have answered "fenced 0 edges" for a fence it had just laid correctly on a deck,
 // which reads as the feature being broken.
-pub fn wall_of(wld: World, q: integer, r: integer, dir: integer, ref: float) -> integer {
+pub fn wall_of(wld: VoxelWorld, q: integer, r: integer, dir: integer, ref: float) -> integer {
   (oq, orr, slot) = edge_owner(q, r, dir);
-  c = hex_world::world_cell(wld, oq, orr, edge_layer(wld, oq, orr, ref));
+  c = hex_voxel::world_cell(wld, oq, orr, edge_layer(wld, oq, orr, ref));
   if slot == SLOT_NW { return c.h_wall_n as integer ?? 0; }
   if slot == SLOT_NE { return c.h_wall_ne as integer ?? 0; }
   c.h_wall_se as integer ?? 0
@@ -491,7 +491,7 @@ pub fn wall_of(wld: World, q: integer, r: integer, dir: integer, ref: float) -> 
 // be: "ring the disc you stand in" is a claim about where you are standing. The
 // fallback height `h` stays the OUTDOORS, because it is only consulted for a cell
 // that holds nothing at all — there is no surface there to take a height from.
-pub fn fence_disc(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
+pub fn fence_disc(wld: VoxelWorld, cq: integer, cr: integer, rad: integer, mat: integer,
               ref: float) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
@@ -514,7 +514,7 @@ pub fn fence_disc(wld: World, cq: integer, cr: integer, rad: integer, mat: integ
 // how many of those are stored OUTSIDE the disc. The second number is the halo,
 // counted rather than asserted — a version that wrote only the region's own three
 // edges reports zero.
-pub fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: integer,
+pub fn fence_count(wld: VoxelWorld, cq: integer, cr: integer, rad: integer, mat: integer,
                ref: float, outside: &integer) -> integer {
   n = 0;
   outside = 0;
@@ -546,7 +546,7 @@ pub fn fence_count(wld: World, cq: integer, cr: integer, rad: integer, mat: inte
 // cell. The material is NOMINAL: 9 is not "nearly" a fence, it is not a wall
 // material at all, so it is refused without an offer. The radius is ordinal and
 // gets one.
-pub fn fence_ring(w: World, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
+pub fn fence_ring(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
   mfit = fit_nominal(mat, FENCE_MAT, "wall material");
   if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
   rfit = fit_ordinal(rad, 1, 12, "radius");
@@ -561,7 +561,7 @@ pub fn fence_ring(w: World, a: Author, mat: integer, rad: integer, ref: float) -
 // How many of a ring's edges were stored outside the disc — the other half of what
 // `fence_ring` did, kept separate because a caller that wants to report it should
 // not have to re-walk the ring to find out.
-pub fn fence_outside(w: World, a: Author, mat: integer, rad: integer, ref: float) -> integer {
+pub fn fence_outside(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: float) -> integer {
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   outside = 0;
   fence_count(w, cq, cr, rad, mat, ref, outside);
@@ -572,7 +572,7 @@ pub fn fence_outside(w: World, a: Author, mat: integer, rad: integer, ref: float
 //
 // Both parameters are nominal: a direction is one of six and a material is one of
 // three, and neither has a "nearest" worth offering.
-pub fn edge_set(w: World, a: Author, dir: integer, mat: integer, ref: float,
+pub fn edge_set(w: VoxelWorld, a: Author, dir: integer, mat: integer, ref: float,
                 h: integer) -> Ack {
   dfit = fit_nominal(dir, 5, "direction");
   if !dfit.ft_ok { return ack_no(fit_why(dfit)); }
@@ -595,14 +595,14 @@ pub const FLOOR_MAT    = 4;           // a built floor, above or below ground
 // A column's highest and lowest OCCUPIED cell, or -1 when it holds nothing. The
 // cells are height-ascending — `F1` compares consecutive occupied ones in vector
 // order — so the last occupied is the top and the first is the floor.
-pub fn col_top(c: hex_world::Column) -> integer {
+pub fn col_top(c: hex_voxel::Column) -> integer {
   h = 0 - 1;
-  for e in c.co_cells { if hex_world::hex_occupied(e) { h = e.h_height as integer ?? 0; } }
+  for e in c.co_cells { if hex_voxel::hex_occupied(e) { h = e.h_height as integer ?? 0; } }
   h
 }
 
-pub fn col_low(c: hex_world::Column) -> integer {
-  for e in c.co_cells { if hex_world::hex_occupied(e) { return e.h_height as integer ?? 0; } }
+pub fn col_low(c: hex_voxel::Column) -> integer {
+  for e in c.co_cells { if hex_voxel::hex_occupied(e) { return e.h_height as integer ?? 0; } }
   0 - 1
 }
 
@@ -620,10 +620,10 @@ pub fn col_low(c: hex_world::Column) -> integer {
 // the vector is height-ascending with absent cells sitting in the gaps — the same
 // property `col_top` and `col_low` lean on. Comparing heights instead would be a
 // second derivation of a fact the ordering already carries.
-pub fn col_has_below(c: hex_world::Column, idx: integer) -> boolean {
+pub fn col_has_below(c: hex_voxel::Column, idx: integer) -> boolean {
   for e in c.co_cells {
     if e#index >= idx { return false; }
-    if hex_world::hex_occupied(e) { return true; }
+    if hex_voxel::hex_occupied(e) { return true; }
   }
   false
 }
@@ -634,9 +634,9 @@ pub fn col_has_below(c: hex_world::Column, idx: integer) -> boolean {
 // `col_has_below` is deliberate: between them they say what a void is bounded by.
 // A floor with nothing above it is a deck under the sky and its edge is a rim; a
 // floor with something above it is a ROOM, and a room ends in a wall.
-pub fn col_next_above(c: hex_world::Column, idx: integer) -> integer {
+pub fn col_next_above(c: hex_voxel::Column, idx: integer) -> integer {
   for e in c.co_cells {
-    if e#index > idx && hex_world::hex_occupied(e) { return e#index; }
+    if e#index > idx && hex_voxel::hex_occupied(e) { return e#index; }
   }
   0 - 1
 }
@@ -650,9 +650,9 @@ pub fn col_next_above(c: hex_world::Column, idx: integer) -> integer {
 // surrounding volume is EARTH — so its perimeter is a cut face and there has to be
 // something there. The two are identical to every count and every edge test; what
 // separates them is which side of the ground they are on.
-pub fn col_underground(c: hex_world::Column, idx: integer) -> boolean {
+pub fn col_underground(c: hex_voxel::Column, idx: integer) -> boolean {
   for i in 0..len(c.co_ids) {
-    if (c.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { return idx < i; }
+    if (c.co_ids[i] ?? 0) == hex_voxel::LABEL_GROUND { return idx < i; }
   }
   false
 }
@@ -691,11 +691,11 @@ pub fn col_underground(c: hex_world::Column, idx: integer) -> boolean {
 // the tolerance — is wrong for exactly one case that matters: a deck at 12 beside a
 // column holding ground at 0 and another deck at 40 is standing in AIR, and that
 // version called it buried.
-pub fn solid_at(w: World, q: integer, r: integer, h: integer) -> boolean {
+pub fn solid_at(w: VoxelWorld, q: integer, r: integer, h: integer) -> boolean {
   col = world_column(w, q, r);
   first = true;
   for e in col.co_cells {
-    if hex_world::hex_occupied(e) {
+    if hex_voxel::hex_occupied(e) {
       eh = e.h_height as integer ?? 0;
       // Everything under the lowest floor is ground that was never dug.
       if first { if h <= eh { return true; } first = false; }
@@ -733,18 +733,18 @@ pub fn solid_at(w: World, q: integer, r: integer, h: integer) -> boolean {
 // under an opened ground has nothing above it and is emphatically part of the room.
 // What it does have is the same thing every other part of the room has — it lies
 // BELOW the ground layer. That is the line, and `col_underground` already draws it.
-pub fn room_continues(w: World, q: integer, r: integer, floor_h: integer,
+pub fn room_continues(w: VoxelWorld, q: integer, r: integer, floor_h: integer,
                       ceil_h: integer) -> boolean {
   col = world_column(w, q, r);
   for e in col.co_cells {
-    if hex_world::hex_occupied(e) && col_underground(col, e#index) {
+    if hex_voxel::hex_occupied(e) && col_underground(col, e#index) {
       nf = e.h_height as integer ?? 0;
       if nf < ceil_h {
         na = col_next_above(col, e#index);
         // Nothing over it — the ground above was opened for a stairwell, so the void
         // runs up to daylight and overlaps mine whatever my ceiling is.
         if na < 0 { return true; }
-        nc = ((col.co_cells[na] ?? hex_world::Hex {}).h_height as integer ?? 0)
+        nc = ((col.co_cells[na] ?? hex_voxel::Hex {}).h_height as integer ?? 0)
            - SLAB_THICK;
         if nc > floor_h { return true; }
       }
@@ -781,16 +781,16 @@ pub fn room_continues(w: World, q: integer, r: integer, floor_h: integer,
 // neighbour comes back whole. It survives because the LAYER survives; elision drops
 // records, not layers, and the layer is kept alive by every cell that still holds
 // ground.
-pub fn ground_open(w: World, q: integer, r: integer) -> boolean {
-  gl = hex_world::world_ground_layer(w, q, r);
+pub fn ground_open(w: VoxelWorld, q: integer, r: integer) -> boolean {
+  gl = hex_voxel::world_ground_layer(w, q, r);
   if gl <= 0 { return false; }
-  if hex_world::hex_occupied(hex_world::world_cell(w, q, r, gl)) { return false; }
+  if hex_voxel::hex_occupied(hex_voxel::world_cell(w, q, r, gl)) { return false; }
   for i in 0..gl {
     // ⚠ TERRAIN ONLY. A dressing layer is excluded from `F1`, from `col_K` and from
     // every rule about columns — so a shrub filed below the ground must not make
     // the ground read as opened.
-    if hex_world::world_layer_kind(w, q, r, i) == hex_world::KIND_TERRAIN
-       && hex_world::hex_occupied(hex_world::world_cell(w, q, r, i)) { return true; }
+    if hex_voxel::world_layer_kind(w, q, r, i) == hex_voxel::KIND_TERRAIN
+       && hex_voxel::hex_occupied(hex_voxel::world_cell(w, q, r, i)) { return true; }
   }
   false
 }
@@ -825,7 +825,7 @@ pub fn ground_open(w: World, q: integer, r: integer) -> boolean {
 // `E1` makes material 0 mean ABSENT, so a stair with a material of its own would
 // erase the road it cut through, and one that wrote a 0 back would leave a hole to
 // fall through. An unwritten cell takes the ground's own material.
-pub fn stair_cut(wld: World, q: integer, r: integer, feet: float, here: integer,
+pub fn stair_cut(wld: VoxelWorld, q: integer, r: integer, feet: float, here: integer,
                  dir: integer, step: integer, why: &text) -> integer {
   // ⚠ THE STEP HEIGHT IS THE CALLER'S, and that is a layering fact rather than a
   // preference. It came from `moros_sim::stair_height` — a MOROS package — and this
@@ -842,10 +842,10 @@ pub fn stair_cut(wld: World, q: integer, r: integer, feet: float, here: integer,
         + "residual {W_RESERVE - h})";
     return 0 - 1;
   }
-  sf = hex_world::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
+  sf = hex_voxel::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
   m = SURFACE_MAT;
   if sf.sf_layer >= 0 {
-    mm = hex_world::world_cell(wld, q, r, sf.sf_layer).h_material as integer ?? 0;
+    mm = hex_voxel::world_cell(wld, q, r, sf.sf_layer).h_material as integer ?? 0;
     if mm != 0 { m = mm; }
   }
   code = surface_set(wld, q, r, feet, h, m);
@@ -884,7 +884,7 @@ pub fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integ
   (false, chq, chr0)
 }
 
-pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integer,
+pub fn storey_add(wld: VoxelWorld, cq: integer, cr: integer, dir: integer, rad: integer,
               why: &text) -> integer {
   // TWO PASSES, and the order is the point. Pass 1 asks whether EVERY cell in the
   // disc can take the storey; pass 2 writes. A single pass that refused halfway
@@ -932,7 +932,7 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
   // The gesture is the only thing that knows the extent, so the gesture names it.
   // `world_set_column_as` spends the name on creation and ignores it thereafter, so
   // handing the same one to all nineteen columns is exactly right.
-  layer_id = hex_world::world_fresh_label(wld);
+  layer_id = hex_voxel::world_fresh_label(wld);
 
   built = 0;
   for dq2 in (0 - rad)..(rad + 1) {
@@ -942,7 +942,7 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
       if hex_grid::hex_distance(q2, r2, cq, cr) <= rad {
         c2 = world_column(wld, q2, r2);
         if col_top(c2) >= 0 {
-          cells: vector<hex_world::Hex> = [];
+          cells: vector<hex_voxel::Hex> = [];
           // ⚠ THE LABELS TRAVEL BESIDE THE CELLS, in the same order. `F1″` makes
           // layer order height order, so inserting below renumbers every layer —
           // and a marker left on an index would land on the wrong one. Passing the
@@ -962,7 +962,7 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
           // the store knows this is not new.
           lo_i = 0;
           for ci2 in 0..len(c2.co_cells) {
-            if hex_world::hex_occupied(c2.co_cells[ci2] ?? hex_world::Hex {}) { break; }
+            if hex_voxel::hex_occupied(c2.co_cells[ci2] ?? hex_voxel::Hex {}) { break; }
             lo_i = ci2 + 1;
           }
           if dir > 0 {
@@ -977,15 +977,15 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
             // correct either way.
             top_i = 0 - 1;
             for ci3 in 0..len(c2.co_cells) {
-              if hex_world::hex_occupied(c2.co_cells[ci3] ?? hex_world::Hex {}) { top_i = ci3; }
+              if hex_voxel::hex_occupied(c2.co_cells[ci3] ?? hex_voxel::Hex {}) { top_i = ci3; }
             }
             // the first TERRAIN slot above the top occupied one is that neighbour's
             // layer — a dressing slot also reads absent and must never be written
             fill_i = 0 - 1;
             for cj3 in (top_i + 1)..len(c2.co_cells) {
               if fill_i < 0
-                 && !hex_world::hex_occupied(c2.co_cells[cj3] ?? hex_world::Hex {})
-                 && hex_world::world_layer_kind(wld, q2, r2, cj3) == hex_world::KIND_TERRAIN {
+                 && !hex_voxel::hex_occupied(c2.co_cells[cj3] ?? hex_voxel::Hex {})
+                 && hex_voxel::world_layer_kind(wld, q2, r2, cj3) == hex_voxel::KIND_TERRAIN {
                 fill_i = cj3;
               }
             }
@@ -999,7 +999,7 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
             st_ceil = 0;
             st_next = 0;
             storey_split(col_top(c2), STOREY_H, SLAB_THICK, st_ceil, st_next);
-            floor_u = hex_world::Hex { h_height: st_next as u16? ?? 0,
+            floor_u = hex_voxel::Hex { h_height: st_next as u16? ?? 0,
                                        h_material: FLOOR_MAT };
             if fill_i >= 0 {
               for cj4 in 0..len(c2.co_cells) {
@@ -1013,7 +1013,7 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
               ids += [0];
             }
           } else {
-            floor_c = hex_world::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
+            floor_c = hex_voxel::Hex { h_height: (col_low(c2) - STOREY_H) as u16? ?? 0,
                                        h_material: FLOOR_MAT };
             if lo_i > 0 {
               // a layer is already there, empty at this cell: fill it in place
@@ -1029,7 +1029,7 @@ pub fn storey_add(wld: World, cq: integer, cr: integer, dir: integer, rad: integ
               ids += c2.co_ids;
             }
           }
-          w = world_set_column_as(wld, hex_world::Column { co_q: q2, co_r: r2,
+          w = world_set_column_as(wld, hex_voxel::Column { co_q: q2, co_r: r2,
                                                           co_cells: cells, co_ids: ids },
                                   layer_id);
           if w.cw_code != CW_OK {
@@ -1091,7 +1091,7 @@ pub fn ray_cell_at(a: Author, d: integer) -> (integer, integer) {
 // `step` is what a WALKER can climb, supplied by the caller for the same reason
 // `stair_cut` takes it: the rule belongs to whoever owns the walker, the write
 // belongs here.
-pub fn cellar_stair(wld: World, a: Author, step: integer, why: &text) -> integer {
+pub fn cellar_stair(wld: VoxelWorld, a: Author, step: integer, why: &text) -> integer {
   if step <= 0 { why = "a stride of {step} climbs nothing"; return 0 - 1; }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   col0 = world_column(wld, cq, cr);
@@ -1107,14 +1107,14 @@ pub fn cellar_stair(wld: World, a: Author, step: integer, why: &text) -> integer
   lo_i = 0 - 1;
   up_i = 0 - 1;
   for i in 0..len(col0.co_cells) {
-    if hex_world::hex_occupied(col0.co_cells[i] ?? hex_world::Hex {}) {
+    if hex_voxel::hex_occupied(col0.co_cells[i] ?? hex_voxel::Hex {}) {
       if lo_i < 0 { lo_i = i; } else { if up_i < 0 { up_i = i; } }
     }
   }
   if lo_i < 0 || up_i < 0 { why = "nothing here to climb out of"; return 0 - 2; }
   label = col0.co_ids[lo_i] ?? 0;
   up_label = col0.co_ids[up_i] ?? 0;
-  floor_h = (col0.co_cells[lo_i] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  floor_h = (col0.co_cells[lo_i] ?? hex_voxel::Hex {}).h_height as integer ?? 0;
 
   treads = 0;
   for kk in 1..64 {
@@ -1155,12 +1155,12 @@ pub fn cellar_stair(wld: World, a: Author, step: integer, why: &text) -> integer
 }
 
 // The stored height of the layer carrying this label, or -1 where it holds nothing.
-fn layer_height(wld: World, q: integer, r: integer, label: integer) -> integer {
+fn layer_height(wld: VoxelWorld, q: integer, r: integer, label: integer) -> integer {
   col = world_column(wld, q, r);
   for i in 0..len(col.co_ids) {
     if (col.co_ids[i] ?? 0) == label {
-      c = col.co_cells[i] ?? hex_world::Hex {};
-      if !hex_world::hex_occupied(c) { return 0 - 1; }
+      c = col.co_cells[i] ?? hex_voxel::Hex {};
+      if !hex_voxel::hex_occupied(c) { return 0 - 1; }
       return c.h_height as integer ?? 0;
     }
   }
@@ -1169,23 +1169,23 @@ fn layer_height(wld: World, q: integer, r: integer, label: integer) -> integer {
 
 // Write one cell into the layer carrying this LABEL, leaving every other layer of
 // the column exactly as it was.
-fn set_in_layer(wld: World, q: integer, r: integer, label: integer, h: integer,
+fn set_in_layer(wld: VoxelWorld, q: integer, r: integer, label: integer, h: integer,
                 mat: integer, why: &text) -> boolean {
   col = world_column(wld, q, r);
-  cells: vector<hex_world::Hex> = [];
+  cells: vector<hex_voxel::Hex> = [];
   ids: vector<integer> = [];
   found = false;
   for i in 0..len(col.co_cells) {
     if (col.co_ids[i] ?? 0) == label {
       found = true;
-      cells += [hex_world::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }];
+      cells += [hex_voxel::Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }];
     } else {
-      cells += [col.co_cells[i] ?? hex_world::Hex {}];
+      cells += [col.co_cells[i] ?? hex_voxel::Hex {}];
     }
     ids += [col.co_ids[i] ?? 0];
   }
   if !found { why = "({q},{r}) has no layer {label}"; return false; }
-  w = world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+  w = world_set_column(wld, hex_voxel::Column { co_q: q, co_r: r, co_cells: cells,
                                                 co_ids: ids });
   if w.cw_code != CW_OK { why = "({q},{r}) layer {w.cw_layer}: {w.cw_detail}"; return false; }
   true
@@ -1198,30 +1198,30 @@ fn set_in_layer(wld: World, q: integer, r: integer, label: integer, h: integer,
 // height dropped to zero would pull its neighbours' corners down into a funnel
 // around the opening. The cell stops being ground; it does not stop being *where*
 // the ground was.
-fn clear_in_layer(wld: World, q: integer, r: integer, label: integer,
+fn clear_in_layer(wld: VoxelWorld, q: integer, r: integer, label: integer,
                   why: &text) -> boolean {
   col = world_column(wld, q, r);
   gl = 0 - 1;
   for i in 0..len(col.co_ids) { if (col.co_ids[i] ?? 0) == label { gl = i; } }
   if gl < 0 { return true; }
-  gcell = col.co_cells[gl] ?? hex_world::Hex {};
-  if !hex_world::hex_occupied(gcell) { return true; }
-  cells: vector<hex_world::Hex> = [];
+  gcell = col.co_cells[gl] ?? hex_voxel::Hex {};
+  if !hex_voxel::hex_occupied(gcell) { return true; }
+  cells: vector<hex_voxel::Hex> = [];
   ids: vector<integer> = [];
   for i in 0..len(col.co_cells) {
     if i == gl {
       // ⚠ THE EDGES STAY TOO. A cell holding a wall is PRESENT whatever its
       // material — `E1e` — and a stairwell cut beside a wall must not take the wall
       // with it.
-      cells += [hex_world::Hex { h_height: gcell.h_height, h_material: 0,
+      cells += [hex_voxel::Hex { h_height: gcell.h_height, h_material: 0,
                                  h_wall_n: gcell.h_wall_n, h_wall_ne: gcell.h_wall_ne,
                                  h_wall_se: gcell.h_wall_se }];
     } else {
-      cells += [col.co_cells[i] ?? hex_world::Hex {}];
+      cells += [col.co_cells[i] ?? hex_voxel::Hex {}];
     }
     ids += [col.co_ids[i] ?? 0];
   }
-  w = world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells,
+  w = world_set_column(wld, hex_voxel::Column { co_q: q, co_r: r, co_cells: cells,
                                                 co_ids: ids });
   if w.cw_code != CW_OK { why = "({q},{r}) layer {w.cw_layer}: {w.cw_detail}"; return false; }
   true
@@ -1254,9 +1254,9 @@ pub fn cell_hash(q: integer, r: integer) -> integer {
 
 // The index of the topmost occupied cell, or -1. Vegetation grows on whatever
 // surface is uppermost — see `E1r`: position is not occupancy.
-pub fn col_top_index(c: hex_world::Column) -> integer {
+pub fn col_top_index(c: hex_voxel::Column) -> integer {
   i = 0 - 1;
-  for k in 0..len(c.co_cells) { if hex_world::hex_occupied(c.co_cells[k]) { i = k; } }
+  for k in 0..len(c.co_cells) { if hex_voxel::hex_occupied(c.co_cells[k]) { i = k; } }
   i
 }
 
@@ -1366,7 +1366,7 @@ pub fn age_like_key(q: integer, r: integer) -> integer {
 // allowed to spend.
 //
 // Returns the number of cells filled, or 0 if it refused.
-pub fn field_fill(wld: World, sq: integer, sr: integer) -> integer {
+pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
   if world_ground_cell(wld, sq, sr).h_material != SURFACE_MAT
      && world_ground_cell(wld, sq, sr).h_material != 0 {
     return 0;                       // standing on something that is not open ground
@@ -1471,7 +1471,7 @@ pub fn stencil_floor(anchor: integer) -> integer {
   lo
 }
 
-pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
+pub fn stencil_place(wld: VoxelWorld, cq: integer, cr: integer, rad: integer,
                  anchor: integer, roof_up: integer,
                  kept_below: &integer, kept_above: &integer, why: &text) -> integer {
   lo = stencil_floor(anchor);
@@ -1483,10 +1483,10 @@ pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
       r = cr + dr;
       if hex_grid::hex_distance(q, r, cq, cr) <= rad {
         hi = roof_height(anchor, roof_up, rad, hex_grid::hex_distance(q, r, cq, cr));
-        band: vector<hex_world::Hex> = [
-          hex_world::Hex { h_height: (anchor as u16? ?? 0),
+        band: vector<hex_voxel::Hex> = [
+          hex_voxel::Hex { h_height: (anchor as u16? ?? 0),
                            h_material: (FLOOR_MAT as u8? ?? 0) },
-          hex_world::Hex { h_height: (hi as u16? ?? 0),
+          hex_voxel::Hex { h_height: (hi as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
         c = world_band_check(wld, q, r, lo, hi, band);
@@ -1504,7 +1504,7 @@ pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
   // disc can straddle a chunk boundary and the roof layer is then made twice, once
   // per chunk; naming it here is what stops the two halves being different layers to
   // every by-label reader.
-  roof_id = hex_world::world_fresh_label(wld);
+  roof_id = hex_voxel::world_fresh_label(wld);
   placed = 0;
   kept_below = 0;
   kept_above = 0;
@@ -1528,13 +1528,13 @@ pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
           wn2 = WALL_MAT; wne2 = WALL_MAT; wse2 = WALL_MAT;
           if q2 == cq + rad && r2 == cr { wn2 = DOOR_MAT; }
         }
-        band2: vector<hex_world::Hex> = [
-          hex_world::Hex { h_height: (anchor as u16? ?? 0),
+        band2: vector<hex_voxel::Hex> = [
+          hex_voxel::Hex { h_height: (anchor as u16? ?? 0),
                            h_material: (FLOOR_MAT as u8? ?? 0),
                            h_wall_n: (wn2 as u8? ?? 0),
                            h_wall_ne: (wne2 as u8? ?? 0),
                            h_wall_se: (wse2 as u8? ?? 0) },
-          hex_world::Hex { h_height: (hi2 as u16? ?? 0),
+          hex_voxel::Hex { h_height: (hi2 as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
         w = world_merge_band_as(wld, q2, r2, lo, hi2, band2, roof_id);
@@ -1545,7 +1545,7 @@ pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
         placed = placed + 1;
         col = world_column(wld, q2, r2);
         for e in col.co_cells {
-          if hex_world::hex_occupied(e) {
+          if hex_voxel::hex_occupied(e) {
             eh = e.h_height as integer ?? 0;
             if eh < lo { kept_below = kept_below + 1; }
             if eh > hi2 { kept_above = kept_above + 1; }
@@ -1573,7 +1573,7 @@ pub fn stencil_place(wld: World, cq: integer, cr: integer, rad: integer,
 // ⚠ IT IS A THIN WRAPPER, DELIBERATELY. The mechanics are `hex_part::part_stamp`
 // and the only thing added here is `stencil_floor` — the placement policy, which
 // is a choice about buildings and belongs with the other one that makes it.
-pub fn part_place(wld: World, part: hex_world::World, cq: integer, cr: integer,
+pub fn part_place(wld: VoxelWorld, part: hex_voxel::VoxelWorld, cq: integer, cr: integer,
                   anchor: integer) -> hex_part::PartStamp {
   return hex_part::part_stamp(wld, part, cq, cr, anchor, stencil_floor(anchor));
 }
@@ -1604,10 +1604,10 @@ pub fn part_place(wld: World, part: hex_world::World, cq: integer, cr: integer,
 // let a world with a wider ε accept a house that could not have been built in it —
 // `F1` would pass in the scratch and refuse at the stamp, which reads as the
 // placement being broken rather than as the house being wrong for this world.
-pub fn stencil_part(target: hex_world::World, rad: integer, roof_up: integer,
-                    why: &text) -> hex_world::World {
-  nw = hex_world::world_new(target.w_unit, target.w_reserve, target.w_eps, target.w_theta);
-  if nw.wn_code != hex_world::WC_OK {
+pub fn stencil_part(target: hex_voxel::VoxelWorld, rad: integer, roof_up: integer,
+                    why: &text) -> hex_voxel::VoxelWorld {
+  nw = hex_voxel::world_new(target.w_unit, target.w_reserve, target.w_eps, target.w_theta);
+  if nw.wn_code != hex_voxel::WC_OK {
     why = "the world's own constants were refused (code {nw.wn_code})";
     return nw.wn_world;
   }
@@ -1615,17 +1615,17 @@ pub fn stencil_part(target: hex_world::World, rad: integer, roof_up: integer,
   kb = 0;
   ka = 0;
   n = stencil_place(scratch, 0, 0, rad, 0, roof_up, kb, ka, why);
-  if n < 0 { return hex_world::world_new(1.0, 0, 8, 3).wn_world; }
+  if n < 0 { return hex_voxel::world_new(1.0, 0, 8, 3).wn_world; }
   cut = hex_part::part_from_region(scratch, 0, 0, rad);
   if cut.pc_code != hex_part::PR_OK {
     why = cut.pc_why;
-    return hex_world::world_new(1.0, 0, 8, 3).wn_world;
+    return hex_voxel::world_new(1.0, 0, 8, 3).wn_world;
   }
   return cut.pc_world;
 }
 
 // `species` 0 CLEARS. Returns the number of cells now carrying the species.
-pub fn scatter(wld: World, cq: integer, cr: integer, rad: integer,
+pub fn scatter(wld: VoxelWorld, cq: integer, cr: integer, rad: integer,
            species: integer, density: integer) -> integer {
   n = 0;
   for dq in (0 - rad)..(rad + 1) {
@@ -1640,12 +1640,12 @@ pub fn scatter(wld: World, cq: integer, cr: integer, rad: integer,
           if (cell_hash(q, r) % 100 ?? 0) < density { want = species; }
         }
         rot = cell_hash(q + 7717, r + 31) % 256 ?? 0;
-        cells: vector<hex_world::Hex> = [];
+        cells: vector<hex_voxel::Hex> = [];
         if ti < 0 {
           // Absence is the floor, so a tree on unauthored ground authors the
           // ground under it — one cell, at height 0, carrying the species.
           if want != 0 {
-            cells += [hex_world::Hex { h_height: 0, h_material: (SURFACE_MAT as u8? ?? 0),
+            cells += [hex_voxel::Hex { h_height: 0, h_material: (SURFACE_MAT as u8? ?? 0),
                                        h_item: (want as u8? ?? 0),
                                        h_item_rotation: (rot as u8? ?? 0) }];
           }
@@ -1653,7 +1653,7 @@ pub fn scatter(wld: World, cq: integer, cr: integer, rad: integer,
           for k in 0..len(c.co_cells) {
             e = c.co_cells[k];
             if k == ti {
-              cells += [hex_world::Hex { h_height: e.h_height, h_material: e.h_material,
+              cells += [hex_voxel::Hex { h_height: e.h_height, h_material: e.h_material,
                                          h_item: (want as u8? ?? 0),
                                          h_item_rotation: (rot as u8? ?? 0),
                                          h_wall_n: e.h_wall_n, h_wall_ne: e.h_wall_ne,
@@ -1664,7 +1664,7 @@ pub fn scatter(wld: World, cq: integer, cr: integer, rad: integer,
           }
         }
         if len(cells) > 0 {
-          w = world_set_column(wld, hex_world::Column { co_q: q, co_r: r, co_cells: cells });
+          w = world_set_column(wld, hex_voxel::Column { co_q: q, co_r: r, co_cells: cells });
           if w.cw_code == CW_OK && want != 0 { n = n + 1; }
         }
       }
@@ -1817,7 +1817,7 @@ pub fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> f
 // surface, the same segment-versus-line interior test — because a wall's edges are
 // its fence's edges with the offset taken out, and deriving that twice is how the
 // two drifted apart in the first place.
-pub fn wall_stamp(wld: World, run: WallRun, mat: integer, grade: integer,
+pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
               runs: WallRuns, marked: &integer) {
   t = hex_way::track_new();
   hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
@@ -1886,7 +1886,7 @@ pub fn wall_stamp(wld: World, run: WallRun, mat: integer, grade: integer,
 // ⚠ MARK, THEN CUT — the library's own `P3` lesson, and the reason `way_stamp` is
 // one call rather than two: a part that cuts its boundary as it lands leaves stale
 // edges where a later part covers them, and the result depends on the order.
-pub fn road_stamp(wld: World, run: WallRun, half: float, fence_mat: integer,
+pub fn road_stamp(wld: VoxelWorld, run: WallRun, half: float, fence_mat: integer,
               grade: integer, runs: WallRuns, fenced: &integer,
               cut_total: &integer) -> integer {
   t = hex_way::track_new();
@@ -2014,10 +2014,10 @@ pub fn runs_track(runs: WallRuns) -> Track {
 // daylight between them — measured in the first S6 picture, which showed two thin
 // floating slabs where a roof belonged. The fix is the ground's: a corner is the
 // MEAN of the cells touching it, so both sides of every edge agree by construction.
-pub fn roof_h(w: World, q: integer, r: integer) -> integer {
+pub fn roof_h(w: VoxelWorld, q: integer, r: integer) -> integer {
   h = 0 - 1;
   for c in world_column(w, q, r).co_cells {
-    if hex_world::hex_occupied(c) && (c.h_material as integer ?? 0) == ROOF_MAT {
+    if hex_voxel::hex_occupied(c) && (c.h_material as integer ?? 0) == ROOF_MAT {
       h = c.h_height as integer ?? 0;
     }
   }
@@ -2027,7 +2027,7 @@ pub fn roof_h(w: World, q: integer, r: integer) -> integer {
 // The six corner heights of a roof cell, each the mean of the roof cells touching
 // it. A corner with no roof beyond it takes this cell's own height, which is what
 // gives the eave a clean edge instead of a slope into nothing.
-pub fn roof_corners(w: World, q: integer, r: integer) -> vector<float> {
+pub fn roof_corners(w: VoxelWorld, q: integer, r: integer) -> vector<float> {
   own = roof_h(w, q, r);
   sums: vector<float> = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
   cnts: vector<float> = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
@@ -2075,7 +2075,7 @@ pub fn is_opening(mat: integer) -> boolean { mat == DOOR_MAT || mat == WINDOW_MA
 // ⚠ IT ASKS THE OWNER. An edge is one stored byte and both cells resolve to it, so
 // a reader that checks "this cell's three" misses every edge its neighbour owns —
 // which is half of them.
-pub fn edge_mat_at(w: World, x: float, z: float, ref: float) -> integer {
+pub fn edge_mat_at(w: VoxelWorld, x: float, z: float, ref: float) -> integer {
   (cq, cr) = px_to_hex(x, z);
   best = 0 - 1;
   bestd = 0.0;
@@ -2138,18 +2138,18 @@ pub struct Dressed {
   dr_why:    text = "",
 }
 
-pub fn prop_at(w: World, q: integer, r: integer, item: integer) -> Dressed {
+pub fn prop_at(w: VoxelWorld, q: integer, r: integer, item: integer) -> Dressed {
   pa_fit = fit_nominal(item, PROP_ITEM_MAX, "prop");
   if !pa_fit.ft_ok {
     return Dressed { dr_code: DR_ITEM, dr_q: q, dr_r: r, dr_fit: pa_fit };
   }
   pa_top = 0;
   for pa_e in column_cells(world_column(w, q, r)) {
-    if hex_world::hex_occupied(pa_e) { pa_top = pa_e.h_height as integer ?? 0; }
+    if hex_voxel::hex_occupied(pa_e) { pa_top = pa_e.h_height as integer ?? 0; }
   }
   pa_cells: vector<Hex> = [];
   for pa_k in world_dressing(w, q, r).co_cells {
-    if hex_world::hex_occupied(pa_k) { pa_cells += [pa_k]; }
+    if hex_voxel::hex_occupied(pa_k) { pa_cells += [pa_k]; }
   }
   pa_cells += [Hex { h_height: (pa_top as u16? ?? 0),
                      h_material: (PROP_MAT as u8? ?? 0),
@@ -2162,7 +2162,7 @@ pub fn prop_at(w: World, q: integer, r: integer, item: integer) -> Dressed {
                    dr_count: len(pa_cells), dr_fit: pa_fit };
 }
 
-pub fn open_ahead(w: World, a: Author, kind: integer, nedges: integer) -> Ack {
+pub fn open_ahead(w: VoxelWorld, a: Author, kind: integer, nedges: integer) -> Ack {
   if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   nfit = fit_ordinal(nedges, 1, 6, "opening width");
   if !nfit.ft_ok { return ack_no(fit_why(nfit)); }
@@ -2721,7 +2721,7 @@ pub fn freeze_grade(feet_units: float, residual: &float) -> integer {
 // offsets derived from it, which is how it escapes the half-hex quantisation floor
 // a rasterised band bottoms out at. This lays a band along the walked path, so it
 // IS on that floor. The seam to take when it matters is already clear —
-// `hex_way` owns the curve, `hex_world` owns the cells — and nothing here
+// `hex_way` owns the curve, `hex_voxel` owns the cells — and nothing here
 // contradicts it: the authoring gesture changes, the stamp does not.
 // ⚠ A ROAD GRADES THE SURFACE THE AUTHOR IS WALKING ON, which is not the same
 // thing as the outdoors. `road_h` is already frozen from the FEET — that is what
@@ -2766,7 +2766,7 @@ pub fn freeze_grade(feet_units: float, residual: &float) -> integer {
 // ⚠ ASKED OF THE COLUMN, NOT OF THE GROUND — plan 20 `A9`. A shelf's ground is the rock
 // over it, so a ground-material test walks off the road at the first caved cell and
 // settles an island.
-fn run_walk(w: World, cq: integer, cr: integer, mat: integer,
+fn run_walk(w: VoxelWorld, cq: integer, cr: integer, mat: integer,
             mq: &vector<integer>, mr: &vector<integer>) -> Seen {
   seen = Seen { s_by: [] };
   mq += [cq];
@@ -2790,7 +2790,7 @@ fn run_walk(w: World, cq: integer, cr: integer, mat: integer,
   seen
 }
 
-pub fn slope_settle(w: World, cq: integer, cr: integer,
+pub fn slope_settle(w: VoxelWorld, cq: integer, cr: integer,
                     clamped: &integer, residual: &integer) {
   lim0 = slope_limit(w, cq, cr);
   if lim0 == SLOPE_FREE { return; }
@@ -2828,7 +2828,7 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
         // ⚠ AND THE VERDICT IS READ. A deck over water refuses to come down inside
         // its own clearance, so this is a write that can legitimately not happen —
         // and a refusal thrown away here is the defect `road_clearance` exists for.
-        if run_set(w, q, r, mat, want) != hex_world::CW_OK {
+        if run_set(w, q, r, mat, want) != hex_voxel::CW_OK {
           clamped = clamped + 1;
           if give > residual { residual = give; }
           continue;
@@ -2860,7 +2860,7 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
 // same kind of uniform shift and owes the same promise. ⚠ A LIFT THAT LEAVES A SHELF
 // UNDER ITS OWN HEADROOM IS THE DEFECT WHETHER THE BALANCE OR THE SETTLE MADE IT, and a
 // second copy of this loop would have been the one nobody updated.
-fn run_unsqueeze(w: World, mq: vector<integer>, mr: vector<integer>, mat: integer,
+fn run_unsqueeze(w: VoxelWorld, mq: vector<integer>, mr: vector<integer>, mat: integer,
                  clamped: &integer, residual: &integer) {
   for si in 0..len(mq) {
     sqq = mq[si] ?? 0;
@@ -2886,7 +2886,7 @@ fn run_unsqueeze(w: World, mq: vector<integer>, mr: vector<integer>, mat: intege
 // ⚠ AND IT IS LOCAL BY CONSTRUCTION. The disc is a handful of cells whatever the
 // run behind it has grown to, so this is the constant-cost question that decides
 // whether the linear-cost one gets asked at all.
-pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> boolean {
+pub fn stroke_over_limit(w: VoxelWorld, cq: integer, cr: integer, rad: integer) -> boolean {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
@@ -2939,20 +2939,20 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
 // the lowest height this column can take is the layer below plus one of them. A
 // road that cannot be cut as deep as its grade asked still gets laid, one `ε` clear
 // of the room, and the author is told by how much it came up.
-pub fn road_clearance(wld: World, q: integer, r: integer, feet: float,
+pub fn road_clearance(wld: VoxelWorld, q: integer, r: integer, feet: float,
                       h: integer) -> integer {
-  sf = hex_world::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
+  sf = hex_voxel::world_surface(wld, q, r, feet / wld.w_unit ?? 0.0);
   if sf.sf_layer <= 0 { return 0; }
-  col = hex_world::world_column(wld, q, r);
+  col = hex_voxel::world_column(wld, q, r);
   // The nearest OCCUPIED layer below the one this write lands on. Absent layers are
   // gaps rather than constraints — `check_column`'s own rule, and asking the same
   // question the refusal asked is the whole point of this function.
   below = 0 - 1;
   for i in 0..sf.sf_layer {
-    if hex_world::hex_occupied(col.co_cells[i] ?? hex_world::Hex {}) { below = i; }
+    if hex_voxel::hex_occupied(col.co_cells[i] ?? hex_voxel::Hex {}) { below = i; }
   }
   if below < 0 { return 0; }
-  floor = (col.co_cells[below] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  floor = (col.co_cells[below] ?? hex_voxel::Hex {}).h_height as integer ?? 0;
   need = floor + wld.w_eps;
   if h >= need { return 0; }
   need - h
@@ -3013,14 +3013,14 @@ pub fn cave_stands(k: GroundKind, over: integer) -> boolean {
 // absent; this asks only *is the space below already spoken for*. A world with no
 // cellars pays one chunk lookup and a label scan, which is what a per-cell question
 // on a stroke path has to cost.
-pub fn col_dug(w: World, q: integer, r: integer) -> boolean {
-  gl = hex_world::world_ground_layer(w, q, r);
+pub fn col_dug(w: VoxelWorld, q: integer, r: integer) -> boolean {
+  gl = hex_voxel::world_ground_layer(w, q, r);
   if gl <= 0 { return false; }
   for i in 0..gl {
     // ⚠ TERRAIN ONLY — a shrub filed below the ground is not a room, and `F1` does
     // not constrain a dressing layer at all.
-    if hex_world::world_layer_kind(w, q, r, i) == hex_world::KIND_TERRAIN
-       && hex_world::hex_occupied(hex_world::world_cell(w, q, r, i)) { return true; }
+    if hex_voxel::world_layer_kind(w, q, r, i) == hex_voxel::KIND_TERRAIN
+       && hex_voxel::hex_occupied(hex_voxel::world_cell(w, q, r, i)) { return true; }
   }
   false
 }
@@ -3040,7 +3040,7 @@ pub fn col_dug(w: World, q: integer, r: integer) -> boolean {
 // of the disc is about to be paved to one grade, so asked afterwards no cell has a
 // neighbour above it and the answer is always no — and asked half-way through, the
 // answer would depend on which cell the loop reached first.
-pub fn cave_backed(w: World, q: integer, r: integer, nat: integer) -> boolean {
+pub fn cave_backed(w: VoxelWorld, q: integer, r: integer, nat: integer) -> boolean {
   for d in 0..6 {
     (nq, nr) = hex_grid::hex_neighbor(q, r, d);
     if ground_h(w, nq, nr) > nat { return true; }
@@ -3060,7 +3060,7 @@ pub fn cave_backed(w: World, q: integer, r: integer, nat: integer) -> boolean {
 // open cut: `road_clearance` lifts it clear of the room, and inserting a shelf
 // BETWEEN two occupied layers is a different write with a different failure. Named
 // rather than attempted.
-pub fn cave_at(w: World, q: integer, r: integer, nat: integer, nmat: integer,
+pub fn cave_at(w: VoxelWorld, q: integer, r: integer, nat: integer, nmat: integer,
                h: integer) -> boolean {
   // ⚠ A SHELF IS CUT INTO THE HILLSIDE, NEVER INTO A ROAD ALREADY LAID. Discs
   // overlap, so on the second stroke of a descending run the *natural* ground at a
@@ -3070,7 +3070,7 @@ pub fn cave_at(w: World, q: integer, r: integer, nat: integer, nmat: integer,
   // nothing about paving as a roof.
   if nmat == ROAD_MAT { return false; }
   if col_dug(w, q, r) { return false; }
-  if hex_world::world_ground_layer(w, q, r) < 0 { return false; }
+  if hex_voxel::world_ground_layer(w, q, r) < 0 { return false; }
   cave_stands(ground_kind_at(w, q, r, nmat), nat - h)
 }
 
@@ -3094,70 +3094,70 @@ pub fn cave_at(w: World, q: integer, r: integer, nat: integer, nmat: integer,
 // asks `col_underground`, `room_continues` asks by height (`I1` is a claim about the
 // match, not the match itself) — so there is no cross-chunk identity to keep and no
 // reason for the gesture to name one.
-pub fn road_cave(wld: World, q: integer, r: integer, h: integer,
+pub fn road_cave(wld: VoxelWorld, q: integer, r: integer, h: integer,
                  nat: integer, nmat: integer) -> integer {
-  col = hex_world::world_column(wld, q, r);
+  col = hex_voxel::world_column(wld, q, r);
   gi = 0 - 1;
   for i in 0..len(col.co_ids) {
-    if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; }
+    if (col.co_ids[i] ?? 0) == hex_voxel::LABEL_GROUND { gi = i; }
   }
-  if gi < 0 { return hex_world::CW_FOLD; }
-  gc = col.co_cells[gi] ?? hex_world::Hex {};
+  if gi < 0 { return hex_voxel::CW_FOLD; }
+  gc = col.co_cells[gi] ?? hex_voxel::Hex {};
   // The ground stands where it stood, keeping everything else the cell holds — a
   // shelf must not take a fence or a tree off the clifftop with it.
-  up = hex_world::Hex { h_height: nat as u16? ?? 0,
+  up = hex_voxel::Hex { h_height: nat as u16? ?? 0,
                         h_material: nmat as u8? ?? 0,
                         h_item: gc.h_item,
                         h_item_rotation: gc.h_item_rotation,
                         h_wall_n: gc.h_wall_n,
                         h_wall_ne: gc.h_wall_ne,
                         h_wall_se: gc.h_wall_se };
-  down = hex_world::Hex { h_height: h as u16? ?? 0,
+  down = hex_voxel::Hex { h_height: h as u16? ?? 0,
                           h_material: ROAD_MAT as u8? ?? 0 };
   fill = 0 - 1;
   for j in 0..gi {
     k = gi - 1 - j;
-    if hex_world::world_layer_kind(wld, q, r, k) == hex_world::KIND_TERRAIN
-       && !hex_world::hex_occupied(col.co_cells[k] ?? hex_world::Hex {}) {
+    if hex_voxel::world_layer_kind(wld, q, r, k) == hex_voxel::KIND_TERRAIN
+       && !hex_voxel::hex_occupied(col.co_cells[k] ?? hex_voxel::Hex {}) {
       fill = k;
       break;
     }
   }
-  cells: vector<hex_world::Hex> = [];
+  cells: vector<hex_voxel::Hex> = [];
   ids: vector<integer> = [];
   for i2 in 0..len(col.co_cells) {
     if i2 == gi { cells += [up]; }
     else if i2 == fill { cells += [down]; }
-    else { cells += [col.co_cells[i2] ?? hex_world::Hex {}]; }
+    else { cells += [col.co_cells[i2] ?? hex_voxel::Hex {}]; }
     ids += [col.co_ids[i2] ?? 0];
   }
   if fill < 0 {
     // the first column of this chunk to be caved: a genuinely new layer, labelled 0
-    ncells: vector<hex_world::Hex> = [];
+    ncells: vector<hex_voxel::Hex> = [];
     nids: vector<integer> = [];
     for i3 in 0..len(cells) {
       if i3 == gi { ncells += [down]; nids += [0]; }
-      ncells += [cells[i3] ?? hex_world::Hex {}];
+      ncells += [cells[i3] ?? hex_voxel::Hex {}];
       nids += [ids[i3] ?? 0];
     }
-    return hex_world::world_set_column(wld,
-             hex_world::Column { co_q: q, co_r: r, co_cells: ncells, co_ids: nids }).cw_code;
+    return hex_voxel::world_set_column(wld,
+             hex_voxel::Column { co_q: q, co_r: r, co_cells: ncells, co_ids: nids }).cw_code;
   }
-  hex_world::world_set_column(wld,
-    hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+  hex_voxel::world_set_column(wld,
+    hex_voxel::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
 }
 
 // How much air stands between this surface and whatever is over it, or −1 where it
 // is not under anything at all. The measure of a shelf, and what says when one has
 // stopped being one.
-pub fn shelf_head(w: World, q: integer, r: integer, mat: integer) -> integer {
+pub fn shelf_head(w: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
   li = off_layer(w, q, r, mat);
   if li < 0 { return 0 - 1; }
-  col = hex_world::world_column(w, q, r);
+  col = hex_voxel::world_column(w, q, r);
   above = col_next_above(col, li);
   if above < 0 { return 0 - 1; }
-  ((col.co_cells[above] ?? hex_world::Hex {}).h_height as integer ?? 0)
-    - ((col.co_cells[li] ?? hex_world::Hex {}).h_height as integer ?? 0)
+  ((col.co_cells[above] ?? hex_voxel::Hex {}).h_height as integer ?? 0)
+    - ((col.co_cells[li] ?? hex_voxel::Hex {}).h_height as integer ?? 0)
 }
 
 // Take the rock back off — the surface returns to the ground layer, where an open
@@ -3173,16 +3173,16 @@ pub fn shelf_head(w: World, q: integer, r: integer, mat: integer) -> integer {
 // for its reason: a cleared record is absence, `F1` skips it and elision drops it on
 // save, while a wall stored in that cell is content in its own right (`E1e`) and is
 // nobody's to delete.
-pub fn run_unshelf(wld: World, q: integer, r: integer, mat: integer) -> integer {
+pub fn run_unshelf(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
   li = off_layer(wld, q, r, mat);
-  if li < 0 { return hex_world::CW_OK; }
-  c = hex_world::world_cell(wld, q, r, li);
+  if li < 0 { return hex_voxel::CW_OK; }
+  c = hex_voxel::world_cell(wld, q, r, li);
   h = c.h_height as integer ?? 0;
   code = layer_write(wld, q, r, li,
-           hex_world::Hex { h_height: c.h_height, h_material: 0,
+           hex_voxel::Hex { h_height: c.h_height, h_material: 0,
                             h_wall_n: c.h_wall_n, h_wall_ne: c.h_wall_ne,
                             h_wall_se: c.h_wall_se });
-  if code != hex_world::CW_OK { return code; }
+  if code != hex_voxel::CW_OK { return code; }
   ground_set(wld, q, r, h, mat)
 }
 
@@ -3272,7 +3272,7 @@ pub fn grade_note(g: Grades, q: integer, r: integer, h: integer) {
 // uniform shift, and a caved cell refuses a raise that would eat the headroom a walker
 // needs. `CAVE_HEAD`, never `ε`: a cell squeezed between the two loses its lid to
 // `run_unsqueeze`, and measured, capping at `ε` cost `gates/world/cave` half its shelves.
-pub fn road_balance(w: World, cq: integer, cr: integer, mat: integer,
+pub fn road_balance(w: VoxelWorld, cq: integer, cr: integer, mat: integer,
                     grades: Grades, clamped: &integer, residual: &integer) -> integer {
   if run_h(w, cq, cr, mat) < 0 { return 0; }
   mq: vector<integer> = [];
@@ -3359,7 +3359,7 @@ pub fn road_balance(w: World, cq: integer, cr: integer, mat: integer,
     // ⚠ THE VERDICT IS READ. A refusal breaks the uniformity this rests on, so it is
     // counted — and because the total is re-derived next stroke rather than carried,
     // a cell left behind is simply still owing rather than lost.
-    if run_set(w, q, r, mat, hh) != hex_world::CW_OK {
+    if run_set(w, q, r, mat, hh) != hex_voxel::CW_OK {
       clamped = clamped + 1;
       d = shift;
       if d < 0 { d = 0 - d; }
@@ -3395,15 +3395,15 @@ pub const BRIDGE_CLEAR = STOREY_H;
 // Carry the road over this cell at `h`, keeping whatever is under it. Returns the
 // store's verdict; the LIFT is reported through the same two counters a refused height
 // uses, because a bridge that had to come up is an offer and not a silent change.
-pub fn road_span(wld: World, q: integer, r: integer, h: integer,
+pub fn road_span(wld: VoxelWorld, q: integer, r: integer, h: integer,
                  clamped: &integer, residual: &integer) -> integer {
-  col = hex_world::world_column(wld, q, r);
+  col = hex_voxel::world_column(wld, q, r);
   gi = 0 - 1;
   for i in 0..len(col.co_ids) {
-    if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; }
+    if (col.co_ids[i] ?? 0) == hex_voxel::LABEL_GROUND { gi = i; }
   }
-  if gi < 0 { return hex_world::CW_FOLD; }
-  under = (col.co_cells[gi] ?? hex_world::Hex {}).h_height as integer ?? 0;
+  if gi < 0 { return hex_voxel::CW_FOLD; }
+  under = (col.co_cells[gi] ?? hex_voxel::Hex {}).h_height as integer ?? 0;
   hh = h;
   need = under + BRIDGE_CLEAR;
   if hh < need {
@@ -3411,28 +3411,28 @@ pub fn road_span(wld: World, q: integer, r: integer, h: integer,
     if need - hh > residual { residual = need - hh; }
     hh = need;
   }
-  deck = hex_world::Hex { h_height: hh as u16? ?? 0, h_material: ROAD_MAT as u8? ?? 0 };
+  deck = hex_voxel::Hex { h_height: hh as u16? ?? 0, h_material: ROAD_MAT as u8? ?? 0 };
   // ⚠ THE FIRST TERRAIN SLOT ABOVE THE TOP OCCUPIED ONE IS A NEIGHBOUR'S LAYER, and
   // filling it is what keeps a bridge one layer per chunk instead of one per pier.
   // `storey_add` measured the other way round: a single disc took a chunk from 1 layer
   // to 34, and upward it was worse — nineteen columns, nineteen layers.
   top_i = 0 - 1;
   for ci in 0..len(col.co_cells) {
-    if hex_world::hex_occupied(col.co_cells[ci] ?? hex_world::Hex {}) { top_i = ci; }
+    if hex_voxel::hex_occupied(col.co_cells[ci] ?? hex_voxel::Hex {}) { top_i = ci; }
   }
   fill = 0 - 1;
   for cj in (top_i + 1)..len(col.co_cells) {
     if fill < 0
-       && !hex_world::hex_occupied(col.co_cells[cj] ?? hex_world::Hex {})
-       && hex_world::world_layer_kind(wld, q, r, cj) == hex_world::KIND_TERRAIN {
+       && !hex_voxel::hex_occupied(col.co_cells[cj] ?? hex_voxel::Hex {})
+       && hex_voxel::world_layer_kind(wld, q, r, cj) == hex_voxel::KIND_TERRAIN {
       fill = cj;
     }
   }
-  cells: vector<hex_world::Hex> = [];
+  cells: vector<hex_voxel::Hex> = [];
   ids: vector<integer> = [];
   if fill >= 0 {
     for k in 0..len(col.co_cells) {
-      if k == fill { cells += [deck]; } else { cells += [col.co_cells[k] ?? hex_world::Hex {}]; }
+      if k == fill { cells += [deck]; } else { cells += [col.co_cells[k] ?? hex_voxel::Hex {}]; }
       ids += [col.co_ids[k] ?? 0];
     }
   } else {
@@ -3441,8 +3441,8 @@ pub fn road_span(wld: World, q: integer, r: integer, h: integer,
     cells += [deck];
     ids += [0];
   }
-  hex_world::world_set_column(wld,
-    hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+  hex_voxel::world_set_column(wld,
+    hex_voxel::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
 }
 
 // The height of a road stored UNDER the ground here, or −1 where there is none.
@@ -3450,18 +3450,18 @@ pub fn road_span(wld: World, q: integer, r: integer, h: integer,
 // ⚠ IT IS THE QUESTION `ground_h` CANNOT ANSWER, and that asymmetry is the point: at
 // a caved cell the ground IS the rock overhead, so every reader that wants the
 // surface a cart rolls on has to ask for it by name.
-pub fn caved_h(w: World, q: integer, r: integer) -> integer {
+pub fn caved_h(w: VoxelWorld, q: integer, r: integer) -> integer {
   li = off_layer(w, q, r, ROAD_MAT);
-  if li < 0 || li > hex_world::world_ground_layer(w, q, r) { return 0 - 1; }
-  hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
+  if li < 0 || li > hex_voxel::world_ground_layer(w, q, r) { return 0 - 1; }
+  hex_voxel::world_cell(w, q, r, li).h_height as integer ?? 0
 }
 
 // And the mirror: the height of a road stored ABOVE the ground here — a deck carried
 // over the gap it crosses — or −1 where there is none.
-pub fn spanned_h(w: World, q: integer, r: integer) -> integer {
+pub fn spanned_h(w: VoxelWorld, q: integer, r: integer) -> integer {
   li = off_layer(w, q, r, ROAD_MAT);
-  if li < 0 || li < hex_world::world_ground_layer(w, q, r) { return 0 - 1; }
-  hex_world::world_cell(w, q, r, li).h_height as integer ?? 0
+  if li < 0 || li < hex_voxel::world_ground_layer(w, q, r) { return 0 - 1; }
+  hex_voxel::world_cell(w, q, r, li).h_height as integer ?? 0
 }
 
 // ── A STROKE LAYS A PLANE, NOT A PLATE — plan 20, open question 5 ───────────
@@ -3497,7 +3497,7 @@ pub fn spanned_h(w: World, q: integer, r: integer) -> integer {
 // four now write the same height, so there is nothing left for a later one to
 // displace. ⚠ It also gives `A2c`'s across half for free: a cell offset PERPENDICULAR
 // to the run has zero component along `g`, so the strip comes out level across.
-pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
+pub fn road_lay(wld: VoxelWorld, cq: integer, cr: integer, h: integer, rad: integer,
             feet: float, gx: float, gz: float,
             clamped: &integer, residual: &integer, grades: Grades) -> integer {
   (rl_px, rl_pz) = hex_grid::hex_to_px(cq, cr);
@@ -3641,7 +3641,7 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
     if is_water(smat[ci] ?? 0) {
       // ⚠ THE STROKE'S OWN GRADE, NOT THE GROUND — the ground here is the river.
       // `road_span` lifts it clear of the water and says by how much.
-      if road_span(wld, q2, r2, h, clamped, residual) == hex_world::CW_OK {
+      if road_span(wld, q2, r2, h, clamped, residual) == hex_voxel::CW_OK {
         spanned = spanned + 1;
       }
       continue;
@@ -3652,7 +3652,7 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
     mat2 = smat[ci] ?? 0;
     grade = ground_h(wld, q2, r2);
     if !cave_at(wld, q2, r2, nat2, mat2, grade) { continue; }
-    if road_cave(wld, q2, r2, grade, nat2, mat2) == hex_world::CW_OK { caved = caved + 1; }
+    if road_cave(wld, q2, r2, grade, nat2, mat2) == hex_voxel::CW_OK { caved = caved + 1; }
   }
   // ⚠ ONE NUMBER FOR BOTH HALVES OF ONE AXIS. A stroke either cuts into what it
   // cannot climb or is carried over what it cannot be laid on, and a caller that
@@ -3713,7 +3713,7 @@ pub struct TriggerNews {
   tn_mat:  integer,   // the material that broke it
 }
 
-pub fn triggers_resolve(trigs: vector<Trigger>, wld: World) -> vector<TriggerNews> {
+pub fn triggers_resolve(trigs: vector<Trigger>, wld: VoxelWorld) -> vector<TriggerNews> {
   news: vector<TriggerNews> = [];
   for tg in trigs {
     if tg.tg_broken || tg.tg_foreign { continue; }
@@ -3721,7 +3721,7 @@ pub fn triggers_resolve(trigs: vector<Trigger>, wld: World) -> vector<TriggerNew
     top = 0 - 1;
     mat = 0;
     for e in col.co_cells {
-      if hex_world::hex_occupied(e) {
+      if hex_voxel::hex_occupied(e) {
         top = e.h_height as integer ?? 0;
         mat = e.h_material as integer ?? 0;
       }
@@ -3787,7 +3787,7 @@ pub const LIFT_CAP = 4096;
 // ⚠ THE EDGE BYTES COUNT, AND THAT IS WHAT MAKES A FENCE PART OF THE HOUSE. A wall
 // or a fence is stored as an edge on a cell, so a cell carrying one is fabric even
 // where its ground is ordinary. A cell with a road on it and no edges is not.
-pub fn is_fabric(w: World, q: integer, r: integer) -> boolean {
+pub fn is_fabric(w: VoxelWorld, q: integer, r: integer) -> boolean {
   // ⚠ THE TABLE SAYS WHICH MATERIALS ARE FABRIC — see `ground_kinds()`. This was a
   // literal `== FLOOR_MAT`, which is the same hard-coded terrain one predicate over.
   if ground_kind_at(w, q, r, world_ground_cell(w, q, r).h_material as integer ?? 0).tr_fabric { return true; }
@@ -3811,15 +3811,15 @@ pub fn is_fabric(w: World, q: integer, r: integer) -> boolean {
 // column rather than a mesh — so shifting the column is what carries a house whole.
 // Moving only the ground cell is what left 27 roof cells hanging at their old
 // height with the floor risen through them.
-pub fn lift_column(w: World, q: integer, r: integer, delta: integer) -> integer {
+pub fn lift_column(w: VoxelWorld, q: integer, r: integer, delta: integer) -> integer {
   if delta == 0 { return 0; }
   col = world_column(w, q, r);
-  out: vector<hex_world::Hex> = [];
+  out: vector<hex_voxel::Hex> = [];
   for c in col.co_cells {
     nh = (c.h_height as integer ?? 0) + delta;
     if nh < W_RESERVE { nh = W_RESERVE; }
     if nh > H_CEILING { nh = H_CEILING; }
-    out += [hex_world::Hex { h_height: nh as u16? ?? 0,
+    out += [hex_voxel::Hex { h_height: nh as u16? ?? 0,
                              h_material: c.h_material,
                              h_item: c.h_item,
                              h_item_rotation: c.h_item_rotation,
@@ -3864,7 +3864,7 @@ pub fn lift_column(w: World, q: integer, r: integer, delta: integer) -> integer 
 // is the bug that would make a yard tear again at random.
 struct FabMemo { fm_yes: Seen, fm_no: Seen }
 
-fn fabric_memo(w: World, q: integer, r: integer, memo: &FabMemo) -> boolean {
+fn fabric_memo(w: VoxelWorld, q: integer, r: integer, memo: &FabMemo) -> boolean {
   k = age_like_key(q, r);
   if memo.fm_yes.s_by[k] != null { return true; }
   if memo.fm_no.s_by[k] != null { return false; }
@@ -3874,7 +3874,7 @@ fn fabric_memo(w: World, q: integer, r: integer, memo: &FabMemo) -> boolean {
   ans
 }
 
-fn absorb_enclosed(w: World, mq: &vector<integer>, mr: &vector<integer>,
+fn absorb_enclosed(w: VoxelWorld, mq: &vector<integer>, mr: &vector<integer>,
                    taken: &Seen, tq: integer, tr: integer, reach: integer,
                    memo: &FabMemo) {
   tested = Seen { s_by: [] };
@@ -4087,7 +4087,7 @@ pub fn ground_kinds() -> vector<GroundKind> {
 // follows.
 pub const WATER_STILL = 0 - 1000000;
 
-pub fn water_falls(w: World, q: integer, r: integer) -> integer {
+pub fn water_falls(w: VoxelWorld, q: integer, r: integer) -> integer {
   d = water_dir(world_ground_cell(w, q, r).h_material as integer ?? 0);
   if d < 0 { return WATER_STILL; }
   (nq, nr) = hex_grid::hex_neighbor(q, r, d);
@@ -4100,14 +4100,14 @@ pub fn water_falls(w: World, q: integer, r: integer) -> integer {
 
 // The bed under the water at this cell, or −1 where there is none — the mirror of
 // `caved_h`, one terrain over.
-pub fn water_bed(w: World, q: integer, r: integer) -> integer {
-  gl = hex_world::world_ground_layer(w, q, r);
+pub fn water_bed(w: VoxelWorld, q: integer, r: integer) -> integer {
+  gl = hex_voxel::world_ground_layer(w, q, r);
   if gl <= 0 { return 0 - 1; }
   if !is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { return 0 - 1; }
   for j in 0..gl {
     i = gl - 1 - j;
-    c = hex_world::world_cell(w, q, r, i);
-    if hex_world::hex_occupied(c) { return c.h_height as integer ?? 0; }
+    c = hex_voxel::world_cell(w, q, r, i);
+    if hex_voxel::hex_occupied(c) { return c.h_height as integer ?? 0; }
   }
   0 - 1
 }
@@ -4122,7 +4122,7 @@ pub fn water_bed(w: World, q: integer, r: integer) -> integer {
 // ⚠ ONE LAYER PER CHUNK, NOT ONE PER CELL — `storey_add`'s scar, and `road_cave` pays
 // the same debt: an empty terrain slot below the ground IS the layer a neighbour
 // already made, so it is filled rather than doubled.
-pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
+pub fn water_set(wld: VoxelWorld, q: integer, r: integer, h: integer, dir: integer,
                  why: &text) -> integer {
   water_set_deep(wld, q, r, h, dir, WATER_DEPTH, why)
 }
@@ -4135,7 +4135,7 @@ pub fn water_set(wld: World, q: integer, r: integer, h: integer, dir: integer,
 // cut to the minimum has the same depth and the same shade, and *lighter at the shallow
 // edges* has nothing to say. A channel that deepens with its width gives the banks the
 // minimum and the middle the rest.
-pub fn water_set_deep(wld: World, q: integer, r: integer, h: integer, dir: integer,
+pub fn water_set_deep(wld: VoxelWorld, q: integer, r: integer, h: integer, dir: integer,
                       depth: integer, why: &text) -> integer {
   gc = world_ground_cell(wld, q, r);
   bm = gc.h_material as integer ?? 0;
@@ -4155,22 +4155,22 @@ pub fn water_set_deep(wld: World, q: integer, r: integer, h: integer, dir: integ
   bed = h - depth;
   if bed < W_RESERVE {
     why = "water at {h} leaves no room for a bed {depth} deep above the reserve";
-    return hex_world::CW_RESERVE;
+    return hex_voxel::CW_RESERVE;
   }
-  col = hex_world::world_column(wld, q, r);
+  col = hex_voxel::world_column(wld, q, r);
   gi = 0 - 1;
   for i in 0..len(col.co_ids) {
-    if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; }
+    if (col.co_ids[i] ?? 0) == hex_voxel::LABEL_GROUND { gi = i; }
   }
-  top = hex_world::Hex { h_height: h as u16? ?? 0,
+  top = hex_voxel::Hex { h_height: h as u16? ?? 0,
                          h_material: water_of(dir) as u8? ?? 0,
                          h_wall_n: gc.h_wall_n, h_wall_ne: gc.h_wall_ne,
                          h_wall_se: gc.h_wall_se };
-  low = hex_world::Hex { h_height: bed as u16? ?? 0, h_material: bm as u8? ?? 0 };
+  low = hex_voxel::Hex { h_height: bed as u16? ?? 0, h_material: bm as u8? ?? 0 };
   if gi < 0 {
     // nothing here at all: the store names both layers it creates
-    return hex_world::world_set_column(wld,
-             hex_world::Column { co_q: q, co_r: r, co_cells: [low, top],
+    return hex_voxel::world_set_column(wld,
+             hex_voxel::Column { co_q: q, co_r: r, co_cells: [low, top],
                                  co_ids: [0, 0] }).cw_code;
   }
   // ⚠ AN OCCUPIED BED IS MOVED, NOT DOUBLED, and the first version only looked for an
@@ -4182,39 +4182,39 @@ pub fn water_set_deep(wld: World, q: integer, r: integer, h: integer, dir: integ
   fill = 0 - 1;
   for j in 0..gi {
     k = gi - 1 - j;
-    if hex_world::world_layer_kind(wld, q, r, k) == hex_world::KIND_TERRAIN {
+    if hex_voxel::world_layer_kind(wld, q, r, k) == hex_voxel::KIND_TERRAIN {
       fill = k;
       break;
     }
   }
-  cells: vector<hex_world::Hex> = [];
+  cells: vector<hex_voxel::Hex> = [];
   ids: vector<integer> = [];
   for i2 in 0..len(col.co_cells) {
     if i2 == gi { cells += [top]; }
     else if i2 == fill { cells += [low]; }
-    else { cells += [col.co_cells[i2] ?? hex_world::Hex {}]; }
+    else { cells += [col.co_cells[i2] ?? hex_voxel::Hex {}]; }
     ids += [col.co_ids[i2] ?? 0];
   }
   if fill < 0 {
-    ncells: vector<hex_world::Hex> = [];
+    ncells: vector<hex_voxel::Hex> = [];
     nids: vector<integer> = [];
     for i3 in 0..len(cells) {
       if i3 == gi { ncells += [low]; nids += [0]; }
-      ncells += [cells[i3] ?? hex_world::Hex {}];
+      ncells += [cells[i3] ?? hex_voxel::Hex {}];
       nids += [ids[i3] ?? 0];
     }
-    return hex_world::world_set_column(wld,
-             hex_world::Column { co_q: q, co_r: r, co_cells: ncells, co_ids: nids }).cw_code;
+    return hex_voxel::world_set_column(wld,
+             hex_voxel::Column { co_q: q, co_r: r, co_cells: ncells, co_ids: nids }).cw_code;
   }
-  hex_world::world_set_column(wld,
-    hex_world::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
+  hex_voxel::world_set_column(wld,
+    hex_voxel::Column { co_q: q, co_r: r, co_cells: cells, co_ids: ids }).cw_code
 }
 
 // How deep the water is here — surface to bed — or −1 where this is not water.
 //
 // ⚠ IT IS DERIVED, like every other water fact: the two heights already say it, so a
 // stored depth would be a second answer that can disagree with the first.
-pub fn water_depth_at(w: World, q: integer, r: integer) -> integer {
+pub fn water_depth_at(w: VoxelWorld, q: integer, r: integer) -> integer {
   b = water_bed(w, q, r);
   if b < 0 { return 0 - 1; }
   ground_h(w, q, r) - b
@@ -4317,7 +4317,7 @@ pub fn snap_dir(dx: float, dz: float) -> integer {
   best
 }
 
-pub fn water_next(w: World, q: integer, r: integer, hint: integer,
+pub fn water_next(w: VoxelWorld, q: integer, r: integer, hint: integer,
                   back: integer) -> integer {
   here = ground_h(w, q, r);
   best = 0 - 1;
@@ -4349,7 +4349,7 @@ pub fn water_next(w: World, q: integer, r: integer, hint: integer,
 // thing around and the walk turns straight back into it.
 // ⚠ `done` IS HOW FAR THE RIVER HAS ALREADY RUN, and it is what makes the widening
 // survive a stroke boundary. Pass 0 for a fresh river.
-pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: integer,
+pub fn water_lay(wld: VoxelWorld, cq: integer, cr: integer, hint: integer, steps: integer,
                  done: integer,
                  clamped: &integer, residual: &integer, why: &text) -> integer {
   q = cq;
@@ -4393,7 +4393,7 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
     dw = d;
     if ended { dw = 0 - 1; }
     code = water_set_deep(wld, q, r, surf, dw, water_deep_at(done + n), why);
-    if code != hex_world::CW_OK {
+    if code != hex_voxel::CW_OK {
       clamped = clamped + 1;
       if WATER_DEPTH > residual { residual = WATER_DEPTH; }
       break;
@@ -4445,7 +4445,7 @@ pub fn water_lay(wld: World, cq: integer, cr: integer, hint: integer, steps: int
 }
 
 // Does the water here run UPHILL — the one state a waterway may never be left in?
-pub fn water_uphill(w: World, q: integer, r: integer) -> boolean {
+pub fn water_uphill(w: VoxelWorld, q: integer, r: integer) -> boolean {
   f = water_falls(w, q, r);
   f != WATER_STILL && f < 0
 }
@@ -4482,7 +4482,7 @@ pub fn ground_kind_of(mat: integer) -> GroundKind {
 // The kind a byte means IN THIS WORLD — plan 21 `R1`.
 //
 // ⚠ THE IDENTITY COMES FROM THE WORLD, THE POLICY FROM HERE, and that split is what
-// lets both plans be right at once. `hex_world`'s palette says byte 2 is called
+// lets both plans be right at once. `hex_voxel`'s palette says byte 2 is called
 // *road*; this file says what a road may do. So two worlds may number their ground
 // differently and still agree about slopes, which is the whole of
 // [plan 21](../../../plans/21-region-mappings/README.md).
@@ -4492,14 +4492,14 @@ pub fn ground_kind_of(mat: integer) -> GroundKind {
 // one, and the fallback is what makes the change arrive without a migration. When a
 // world DOES carry a palette, the byte constants in this file stop meaning anything
 // — which is the point.
-pub fn ground_kind_at(w: World, q: integer, r: integer, mat: integer) -> GroundKind {
+pub fn ground_kind_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> GroundKind {
   // ⚠ THE CELL'S OWN REGION — plan 21 `R2`. Byte 3 is one thing in the desert and
   // another in the mountains, so the question is never *what is byte 3* but *what
   // is byte 3 HERE*. The region is the chunk's, which is why this is one lookup and
   // not a search.
-  nm = hex_world::world_palette_name(w, hex_world::PAL_MATERIAL,
-                                     hex_world::world_region_at(w, q, r), mat);
-  if nm == "" || nm == hex_world::PAL_ABSENT { return ground_kind_of(mat); }
+  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL,
+                                     hex_voxel::world_region_at(w, q, r), mat);
+  if nm == "" || nm == hex_voxel::PAL_ABSENT { return ground_kind_of(mat); }
   for t in ground_kinds() {
     if t.tr_name == nm { return t; }
   }
@@ -4544,7 +4544,7 @@ pub fn edge_kind_of(mat: integer) -> EdgeKind {
 // The steepest step the run through this cell may take — the STRICTEST of the edges
 // it carries, because a wall and a fence meeting at a post are one run and the
 // masonry is what cannot bend.
-pub fn run_slope(w: World, q: integer, r: integer) -> integer {
+pub fn run_slope(w: VoxelWorld, q: integer, r: integer) -> integer {
   ref = (terrain_h(q, r, w) as float) * w.w_unit;
   lim = SLOPE_FREE;
   for d in 0..6 {
@@ -4569,7 +4569,7 @@ pub fn run_slope(w: World, q: integer, r: integer) -> integer {
 // that no cell's `h_material` can ever hold. ⚠ And the species palette stays in the
 // server: `SPECIES_TREE`/`SPECIES_BUSH` are `editor_server`'s, so this asks only
 // *is anything planted here*, which is the question a slope limit actually has.
-pub fn slope_limit(w: World, q: integer, r: integer) -> integer {
+pub fn slope_limit(w: VoxelWorld, q: integer, r: integer) -> integer {
   c = world_ground_cell(w, q, r);
   if (c.h_item as integer ?? 0) != 0 { return SLOPE_FREE; }
   ground_kind_at(w, q, r, c.h_material as integer ?? 0).tr_slope
@@ -4599,7 +4599,7 @@ pub fn slope_limit(w: World, q: integer, r: integer) -> integer {
 // planted cell off entirely, because a forest may genuinely sit on any gradeable
 // slope; a face is where there is no soil left to root in, so planting adds
 // `FACE_ROOTED` and never removes the threshold. Two rules, deliberately unlike.
-pub fn face_limit(w: World, q: integer, r: integer) -> integer {
+pub fn face_limit(w: VoxelWorld, q: integer, r: integer) -> integer {
   c = world_ground_cell(w, q, r);
   lim = ground_kind_at(w, q, r, c.h_material as integer ?? 0).tr_face;
   if lim == FACE_NONE { return FACE_NONE; }
@@ -4620,7 +4620,7 @@ pub fn face_limit(w: World, q: integer, r: integer) -> integer {
 // is the only authority; the heights already say where a face is, so storing one
 // would be a second answer that can disagree with the first. It also means a face
 // appears and disappears as the ground moves, with no gesture having to remember.
-pub fn face_at(w: World, q: integer, r: integer, d: integer) -> integer {
+pub fn face_at(w: VoxelWorld, q: integer, r: integer, d: integer) -> integer {
   (nq, nr) = hex_grid::hex_neighbor(q, r, d);
   drop = ground_h(w, q, r) - ground_h(w, nq, nr);
   if drop <= 0 { return 0; }
@@ -4632,7 +4632,7 @@ pub fn face_at(w: World, q: integer, r: integer, d: integer) -> integer {
 
 // Does this cell stand above a face on ANY of its six sides? The question the
 // mesher asks per cell before it asks per edge, and the one a gate can count.
-pub fn faces_here(w: World, q: integer, r: integer) -> integer {
+pub fn faces_here(w: VoxelWorld, q: integer, r: integer) -> integer {
   n = 0;
   for fd in 0..6 {
     if face_at(w, q, r, fd) > 0 { n = n + 1; }
@@ -4681,7 +4681,7 @@ struct Origs  { o_by: hash<OrigAt[oa_key]> }
 // relaxation asks it up to `SLOPE_PASSES` times a cell, and the stall sweep asks it
 // once more; both must get the same answer or the sweep reports a violation the
 // relaxation was never trying to fix.
-fn lim_at(w: World, q: integer, r: integer, runs: Seen, lims: Lims) -> integer {
+fn lim_at(w: VoxelWorld, q: integer, r: integer, runs: Seen, lims: Lims) -> integer {
   lk = age_like_key(q, r);
   lrec = lims.l_by[lk];
   if lrec != null { return lrec.la_lim; }
@@ -4714,7 +4714,7 @@ fn lim_at(w: World, q: integer, r: integer, runs: Seen, lims: Lims) -> integer {
 //
 // Returns the largest amount by which any edge of the run through `(cq, cr)`
 // exceeds that run's own limit — 0 when the settle finished.
-pub fn slope_owed(w: World, cq: integer, cr: integer) -> integer {
+pub fn slope_owed(w: VoxelWorld, cq: integer, cr: integer) -> integer {
   lim0 = slope_limit(w, cq, cr);
   if lim0 == SLOPE_FREE { return 0; }
   mat = world_ground_cell(w, cq, cr).h_material as integer ?? 0;
@@ -4764,7 +4764,7 @@ pub fn slope_owed(w: World, cq: integer, cr: integer) -> integer {
 // wider than a line, where *across* has no single meaning. Returning −1 there is the
 // plan's own negative control — **a road cell with no axis falls back to the scalar
 // limit, not to flat** — and it is what keeps this from touching a yard or a plaza.
-fn run_axis(w: World, q: integer, r: integer, mat: integer) -> integer {
+fn run_axis(w: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
   found = 0 - 1;
   seen = 0;
   for d in 0..3 {
@@ -4792,13 +4792,13 @@ fn run_axis(w: World, q: integer, r: integer, mat: integer) -> integer {
 // says what *zero cross-fall* can mean at all — the midpoint of two integers is a
 // half-integer, so **one half is the floor** and the row's literal "zero" is not
 // reachable on this lattice.
-fn cross_fall(w: World, q: integer, r: integer, h: integer, d: integer) -> integer {
+fn cross_fall(w: VoxelWorld, q: integer, r: integer, h: integer, d: integer) -> integer {
   (aq, ar) = hex_grid::hex_neighbor(q, r, d);
   (bq, br) = hex_grid::hex_neighbor(q, r, (d + 1) % 6);
   2 * h - ground_h(w, aq, ar) - ground_h(w, bq, br)
 }
 
-fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
+fn slope_relax(w: VoxelWorld, tq: integer, tr: integer, rad: integer,
                taken: Seen, runs: Seen, origs: Origs, lims: Lims,
                clamped: &integer, residual: &integer) {
   // ⚠ THE DISC IS WALKED ONCE, NOT ONCE A PASS. It was `hex_distance` and a `taken`
@@ -4961,7 +4961,7 @@ fn bigger(a: integer, b: integer) -> boolean {
 // the fabric flood, the rigid bodies, the runs, the slope relaxation — because
 // none of that is about the falloff. What differs is one question: how far does
 // THIS cell move? A hill asks the falloff; a level asks the target.
-pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
+pub fn brush(w: VoxelWorld, tq: integer, tr: integer, amp: integer, rad: integer,
              clamped: &integer, residual: &integer) {
   brush_in(w, tq, tr, amp, rad, false, clamped, residual);
 }
@@ -4971,7 +4971,7 @@ pub fn brush(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
 // ⚠ THE TARGET IS ABSOLUTE, WHERE `brush` TAKES A DELTA, and that is the whole
 // difference between the two faces. A delta cannot express *make all of this one
 // height*: each cell needs its own, and only the target knows them.
-pub fn brush_level(w: World, tq: integer, tr: integer, target: integer, rad: integer,
+pub fn brush_level(w: VoxelWorld, tq: integer, tr: integer, target: integer, rad: integer,
                    clamped: &integer, residual: &integer) {
   brush_in(w, tq, tr, target, rad, true, clamped, residual);
 }
@@ -4980,7 +4980,7 @@ pub fn brush_level(w: World, tq: integer, tr: integer, target: integer, rad: int
 // which is why this is not the public name. The two faces above say which they
 // mean; a caller that had to pass the flag would be choosing between two meanings
 // of one argument, and that is how a raise comes to level something.
-fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
+fn brush_in(w: VoxelWorld, tq: integer, tr: integer, amp: integer, rad: integer,
             flat: boolean, clamped: &integer, residual: &integer) {
   // ── the fabric first, so the ground can be told what not to touch ─────────
   //
@@ -5171,7 +5171,7 @@ fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
           // meaning rather than a visual one: a corridor open to the sky is a way in.
           // The answer is that the cover holds, and the author is told by how much.
           asked = h - ground_h(w, q, r);
-          if ground_set(w, q, r, h, bm) != hex_world::CW_OK {
+          if ground_set(w, q, r, h, bm) != hex_voxel::CW_OK {
             if asked < 0 { asked = 0 - asked; }
             clamped = clamped + 1;
             if asked > residual { residual = asked; }
@@ -5194,12 +5194,12 @@ fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
             // negative control — *it is that house's cellar, not a run.* It needs no
             // test here: a house's floor is fabric, fabric is `taken`, and this loop
             // has already skipped every taken cell. The rigid path owns them.
-            gl = hex_world::world_ground_layer(w, q, r);
+            gl = hex_voxel::world_ground_layer(w, q, r);
             if gl > 0 {
-              below = hex_world::world_cell(w, q, r, gl - 1);
-              if hex_world::hex_occupied(below) {
+              below = hex_voxel::world_cell(w, q, r, gl - 1);
+              if hex_voxel::hex_occupied(below) {
                 layer_write(w, q, r, gl - 1,
-                  hex_world::Hex { h_height: ((below.h_height as integer ?? 0) + asked)
+                  hex_voxel::Hex { h_height: ((below.h_height as integer ?? 0) + asked)
                                               as u16? ?? 0,
                                    h_material: below.h_material,
                                    h_item: below.h_item,
@@ -5255,7 +5255,7 @@ pub fn peak_cell(a: Author, tq: &integer, tr: &integer) -> boolean {
 //
 // A refusal when no cell lies `PEAK_AHEAD` hexes away — never a silent fallback to
 // the author's own cell, which is how the hill ended up underfoot.
-pub fn raise_ahead(w: World, a: Author, dir: integer) -> Ack {
+pub fn raise_ahead(w: VoxelWorld, a: Author, dir: integer) -> Ack {
   if dir == 0 { return ack_no("a stroke of nothing"); }
   tq = 0;
   tr = 0;

@@ -11,13 +11,13 @@
 // finding — a rule built, green, and reaching nobody.
 use hex_mesh;
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use graphics;
 
 const U = 0.25;
 const G = 200;
 
-fn pond(deeper: integer) -> World {
+fn pond(deeper: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }

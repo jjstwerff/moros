@@ -10,11 +10,18 @@
 #
 # ⚠ IT IS NOT HYPOTHETICAL, AND EVERY CASE BELOW WAS FOUND BY RUNNING THIS.
 #
-#   · `Surface` was declared by `hex_world` and `moros_terrain`, and in
-#     `editor_server.loft` the two had merged. It went unnoticed for MONTHS because
-#     every caller reads `surface_at(i).sf_r` and never names the type. Plan 19 `L1`.
+# ⚠ The bullets below name the packages as they were CALLED at the time; two have
+# been renamed since, by the very findings they record.
+#
+#   · `Surface` was declared by `hex_world` (now `hex_voxel`) and `moros_terrain`
+#     (now `hex_mesh`), and in `editor_server.loft` the two had merged. It went
+#     unnoticed for MONTHS because every caller reads `surface_at(i).sf_r` and never
+#     names the type. Plan 19 `L1`.
 #   · `Fit` sat in `hex_editor` while `hex_part` was re-deriving the same question.
-#   · `hex_world` itself names two unrelated published packages — plan 19 `L4`.
+#   · `hex_world` itself named two unrelated published packages — plan 19 `L4`.
+#     ✅ CLOSED by `L6.2`: ours is `hex_voxel`, and its `World` and `Chunk` went with
+#     it. `probe/l4/run.sh` is the eight-control measurement, and control `D` is the
+#     one that changed — `--lib lib/` used to mean OURS and now means theirs.
 #
 # ⚠ AND A PACKAGE SUITE CANNOT SEE ANY OF IT. `hex_part` was 131 green while
 # `hex_editor` would not build at all. The collision lives in the CONSUMER's graph, so
@@ -36,7 +43,7 @@ set -u
 # The packages that travel to lavition and will be published under their own names.
 # ⚠ Named, not matched — the pattern skip is what let `moros_ui` and `moros_terrain`
 # out from under `tools/layering.sh` for months.
-LAVITION="hex_world hex_editor hex_part hex_mesh hex_proj lavition_ui glb_read"
+LAVITION="hex_voxel hex_editor hex_part hex_mesh hex_proj lavition_ui glb_read"
 
 # The programs whose import lists are checked for LIVE shadowing.
 PROGRAMS="src/editor_server.loft src/editor_client.loft src/editor_run.loft src/part_build.loft src/prop_build.loft"
@@ -47,7 +54,8 @@ PROGRAMS="src/editor_server.loft src/editor_client.loft src/editor_run.loft src/
 #
 # ✅ EMPTY. Everything this found on 2026-08-06 was fixed rather than tracked:
 # two dead imports in `editor_server.loft` (`moros_map`, `hex_shape`), one re-derived
-# `hex_dist` in `hex_part`, and the `hex_world` rename of plan 19 `L4`/`L6`.
+# `hex_dist` in `hex_part`, and the `hex_world` → `hex_voxel` rename, which `L6.2`
+# then carried out along with the `World` and `Chunk` that travelled under it.
 KNOWN=""
 
 fail=0
@@ -78,7 +86,7 @@ tracked() { case " $KNOWN " in *" $1 "*) return 0 ;; esac; return 1; }
 # ── LIVE: one program, two packages, one name ─────────────────────────────────
 #
 # ⚠ ONLY THE PLAIN `use X;` FORM COUNTS. `use moros_sim as msim;` does **not** put its
-# names in scope bare — measured: a file with `use hex_world as hw;` calling
+# names in scope bare — measured: a file with `use hex_voxel as hw;` calling
 # `world_new(…)` fails with `Unknown function world_new`, and `hw::world_new(…)` works.
 # The first version of this script counted aliased imports and reported `seg_len` as a
 # live collision between `gridmesh`, `hex_way` and `moros_sim`. It is not one: `msim` is

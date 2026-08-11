@@ -21,7 +21,7 @@
 // ⚠ AND `hex_part` STILL DEPENDS ONLY ON THE STORE. Matching a vocabulary is not
 // importing it: nothing here calls `moros_sim`, and the eight numbers are just
 // numbers until something assembles them.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 
@@ -131,7 +131,7 @@ fn hinge_body(h: Hinge) -> text {
     + "lo={h.hg_lo}\nhi={h.hg_hi}"
 }
 
-pub fn part_set_hinge(w: World, h: Hinge) -> HingeWrite {
+pub fn part_set_hinge(w: VoxelWorld, h: Hinge) -> HingeWrite {
   got = check_hinge(h);
   if got.hw_code != HG_OK { return got; }
   set_section_text(w, TAG_HING, hinge_body(h));
@@ -155,7 +155,7 @@ fn hinge_field(t: text, key: text) -> float? {
   (v ?? "") as float?
 }
 
-pub fn part_hinge(w: World) -> HingeRead {
+pub fn part_hinge(w: VoxelWorld) -> HingeRead {
   if world_section_at(w, TAG_HING) < 0 {
     return HingeRead { hr_code: MR_ABSENT, hr_hinge: Hinge {},
                        hr_why: "no HING section" };

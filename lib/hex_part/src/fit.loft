@@ -24,7 +24,7 @@
 // `parts_for_socket` names **every part in the library that fits it**. Exact and
 // complete beats near and ranked, and an edit distance over `2x3` and `3x3` would
 // be a guess wearing a number's clothes.
-use hex_world;
+use hex_voxel;
 use meta;
 use sock;
 use catalogue;

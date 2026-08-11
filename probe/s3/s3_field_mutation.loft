@@ -1,47 +1,47 @@
-// Does `world_put_layer` reach a World held in a STRUCT FIELD?
+// Does `world_put_layer` reach a VoxelWorld held in a STRUCT FIELD?
 //
 // The client keeps its voxel cache as `st.cache` and writes to it with
 // `world_put_layer(st.cache, …)`. The wide copy probe showed that the same call on a
 // LOCAL, inline in `main`, silently left the world empty — while the identical call
-// through a `&World` parameter filled it. The client's shape is a third one, and this
+// through a `&VoxelWorld` parameter filled it. The client's shape is a third one, and this
 // asks all three against the same source world.
-use hex_world;
+use hex_voxel;
 use hex_editor;
 
-struct Holder { cache: World, n: integer }
+struct Holder { cache: VoxelWorld, n: integer }
 
-fn via_param(a: World, b: &World, scx: integer, scz: integer) {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn via_param(a: VoxelWorld, b: &VoxelWorld, scx: integer, scz: integer) {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   for li in 0..len(world_column(a, q0, r0).co_ids) {
-    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
-        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-        hex_world::world_layer_version(a, q0, r0, li),
-        hex_world::world_layer_bytes(a, q0, r0, li));
+    if hex_voxel::world_layer_kind(a, q0, r0, li) == hex_voxel::KIND_TERRAIN {
+      hex_voxel::world_put_layer(b, scx, scz, hex_voxel::world_chunk_base(a, scx, scz),
+        hex_voxel::world_layer_id(a, q0, r0, li), hex_voxel::KIND_TERRAIN,
+        hex_voxel::world_layer_version(a, q0, r0, li),
+        hex_voxel::world_layer_bytes(a, q0, r0, li));
     }
   }
 }
 
-// The client's own shape: the World lives in a struct field, and the struct is what
+// The client's own shape: the VoxelWorld lives in a struct field, and the struct is what
 // travels.
-fn via_field(a: World, h: Holder, scx: integer, scz: integer) {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn via_field(a: VoxelWorld, h: Holder, scx: integer, scz: integer) {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   for li in 0..len(world_column(a, q0, r0).co_ids) {
-    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-      hex_world::world_put_layer(h.cache, scx, scz, hex_world::world_chunk_base(a, scx, scz),
-        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-        hex_world::world_layer_version(a, q0, r0, li),
-        hex_world::world_layer_bytes(a, q0, r0, li));
+    if hex_voxel::world_layer_kind(a, q0, r0, li) == hex_voxel::KIND_TERRAIN {
+      hex_voxel::world_put_layer(h.cache, scx, scz, hex_voxel::world_chunk_base(a, scx, scz),
+        hex_voxel::world_layer_id(a, q0, r0, li), hex_voxel::KIND_TERRAIN,
+        hex_voxel::world_layer_version(a, q0, r0, li),
+        hex_voxel::world_layer_bytes(a, q0, r0, li));
       h.n = h.n + 1;
     }
   }
 }
 
-fn probe_cell(w: World, tag: text) {
-  println("{tag}: base(0,0)={hex_world::world_chunk_base(w, 0, 0)} "
-        + "cell(3,5).h={hex_world::world_cell(w, 3, 5, 0).h_height} "
+fn probe_cell(w: VoxelWorld, tag: text) {
+  println("{tag}: base(0,0)={hex_voxel::world_chunk_base(w, 0, 0)} "
+        + "cell(3,5).h={hex_voxel::world_cell(w, 3, 5, 0).h_height} "
         + "chunks={len(w.w_chunks)}");
 }
 
@@ -52,39 +52,39 @@ fn main() {
   }
   probe_cell(a, "source          ");
 
-  // 1 — through a `&World` parameter (the green path)
+  // 1 — through a `&VoxelWorld` parameter (the green path)
   b1 = world_new(0.25, 0, 10, 4).wn_world;
   for x1 in 0 - 1..2 { for z1 in 0 - 1..2 { via_param(a, b1, x1, z1); } }
-  probe_cell(b1, "via &World param");
+  probe_cell(b1, "via &VoxelWorld param");
 
   // 2 — inline on a local (the path that silently did nothing)
   b2 = world_new(0.25, 0, 10, 4).wn_world;
   for x2 in 0 - 1..2 {
     for z2 in 0 - 1..2 {
-      q0 = x2 * hex_world::CHUNK_W;
-      r0 = z2 * hex_world::CHUNK_W;
+      q0 = x2 * hex_voxel::CHUNK_W;
+      r0 = z2 * hex_voxel::CHUNK_W;
       for li in 0..len(world_column(a, q0, r0).co_ids) {
-        if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-          hex_world::world_put_layer(b2, x2, z2, hex_world::world_chunk_base(a, x2, z2),
-            hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-            hex_world::world_layer_version(a, q0, r0, li),
-            hex_world::world_layer_bytes(a, q0, r0, li));
+        if hex_voxel::world_layer_kind(a, q0, r0, li) == hex_voxel::KIND_TERRAIN {
+          hex_voxel::world_put_layer(b2, x2, z2, hex_voxel::world_chunk_base(a, x2, z2),
+            hex_voxel::world_layer_id(a, q0, r0, li), hex_voxel::KIND_TERRAIN,
+            hex_voxel::world_layer_version(a, q0, r0, li),
+            hex_voxel::world_layer_bytes(a, q0, r0, li));
         }
       }
     }
   }
   probe_cell(b2, "inline on local ");
 
-  // 3 — THE CLIENT'S SHAPE: a World in a struct field
+  // 3 — THE CLIENT'S SHAPE: a VoxelWorld in a struct field
   h = Holder { cache: world_new(0.25, 0, 10, 4).wn_world, n: 0 };
   for x3 in 0 - 1..2 { for z3 in 0 - 1..2 { via_field(a, h, x3, z3); } }
   probe_cell(h.cache, "struct field    ");
   println("struct field: layers written = {h.n}");
-  // ⚠ THE ONE THING THIS PROBE EXISTS TO SAY: a World reached through a struct field —
+  // ⚠ THE ONE THING THIS PROBE EXISTS TO SAY: a VoxelWorld reached through a struct field —
   // the CLIENT's shape — takes the writes. When it did not, S3 looked like bad
   // arithmetic for a session.
   if h.n > 0 {
-    println("PROBE PASS s3_field_mutation — a World in a struct field takes writes ({h.n})");
+    println("PROBE PASS s3_field_mutation — a VoxelWorld in a struct field takes writes ({h.n})");
   } else {
     println("PROBE FAIL s3_field_mutation — writes through a struct field vanished");
   }

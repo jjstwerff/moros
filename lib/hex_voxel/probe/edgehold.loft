@@ -11,7 +11,7 @@
 //   A — a wall cell beside occupied ones, in memory
 //   B — the same, through save and load
 //   C — a layer whose ONLY content is walls
-use hex_world;
+use hex_voxel;
 
 fn cell(h: integer, m: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
@@ -21,7 +21,7 @@ fn wallcell(h: integer, m: integer, w: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0, h_wall_se: w as u8? ?? 0 }
 }
 
-fn put(w: World, q: integer, r: integer, hs: vector<Hex>) -> integer {
+fn put(w: VoxelWorld, q: integer, r: integer, hs: vector<Hex>) -> integer {
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: hs }).cw_code
 }
 
@@ -31,7 +31,7 @@ fn check(label: text, got: integer, exp: integer) -> integer {
   1
 }
 
-fn wall_of(w: World, q: integer, r: integer) -> integer {
+fn wall_of(w: VoxelWorld, q: integer, r: integer) -> integer {
   c = world_cell(w, q, r, 0);
   v = c.h_wall_se as integer ?? 0;
   v

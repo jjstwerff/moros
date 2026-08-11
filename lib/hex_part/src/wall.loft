@@ -18,7 +18,7 @@
 // the grain argument: the leaf and the wall it hangs in are two documents, so one
 // profile each already separates them. Per-cell would be a WORLD-format change,
 // and per-edge is what an `Opening` is for — which this deliberately is not.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 
@@ -58,7 +58,7 @@ fn has_newline(t: text) -> boolean {
 // `make parts`. That is `part_mesh_loads`' bargain for a dangling `.glb` arrived at
 // from a different direction: caught at the two moments an author is authoring,
 // and not on every load.
-pub fn part_set_wall(w: World, p: PartWall) -> integer {
+pub fn part_set_wall(w: VoxelWorld, p: PartWall) -> integer {
   if p.wa_up < 0 { return WA_UP; }
   if has_newline(p.wa_surface) { return WA_NEWLINE; }
   set_section_text(w, TAG_WALL, "up={p.wa_up}\nsurface={p.wa_surface}");
@@ -72,7 +72,7 @@ pub fn part_set_wall(w: World, p: PartWall) -> integer {
 // one code for both makes the damaged one look ordinary.
 pub struct WallRead { wr_code: integer, wr_wall: PartWall, wr_why: text }
 
-pub fn part_wall(w: World) -> WallRead {
+pub fn part_wall(w: VoxelWorld) -> WallRead {
   if world_section_at(w, TAG_WALL) < 0 {
     return WallRead { wr_code: MR_ABSENT, wr_wall: PartWall {},
                       wr_why: "no WALL section" };

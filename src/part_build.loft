@@ -20,7 +20,7 @@
 // and exits 0 is a tool `make` cannot gate on; `assert` is what makes a broken
 // part stop the build.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_part;
 
 // The editor's own world constants. ⚠ A part cut from a world built at a
@@ -166,7 +166,7 @@ fn main() {
   // it was not shaped for, the fix is a design change (a chunk-aligned storage
   // bias, or sparse layers), and `A7.4` owns it — with this number in hand.
   slots = 0;
-  for ch in part.w_chunks { slots = slots + len(ch.ck_layers) * hex_world::CHUNK_CELLS; }
+  for ch in part.w_chunks { slots = slots + len(ch.ck_layers) * hex_voxel::CHUNK_CELLS; }
   used = 0;
   for q in (0 - radius())..(radius() + 1) {
     for r in (0 - radius())..(radius() + 1) {

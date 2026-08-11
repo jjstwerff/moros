@@ -7,16 +7,17 @@ loft    = ">=0.8"
 entry = "src/hex_part.loft"
 
 # ⚠ ONE DEPENDENCY, AND IT IS THE STORE. A part IS a world (PARTS.md §P1) — a
-# small `hex_world` you edit with the gestures that already exist — so this
+# small `hex_voxel` you edit with the gestures that already exist — so this
 # package needs the store and nothing else. No renderer, no lattice math, no
 # editor: those belong to whoever places the part, not to the thing being placed.
 #
-# ⚠ `lib/hex_world` BY PATH, not the registry. Ours is 0.1.0 with the surface-rule
-# work; the registry carries a 0.2.0 on a DIFFERENT lineage, and a version range
-# would let the resolver pick it out from under us. `hex_editor` says the same in
-# more words. Which tree owns the store is moros#8.
+# ⚠ `lib/hex_voxel` BY PATH because it is UNPUBLISHED and lives in this tree. It used
+# to be by path to dodge a name as well — ours was `hex_world`, and so is a different
+# published lineage in the registry — and plan 19 `L6.2` removed that half of the
+# reason by renaming the store. `hex_editor` says the same in more words. Which tree
+# owns the store is moros#8.
 [dependencies]
-hex_world = { path = "../hex_world" }
+hex_voxel = { path = "../hex_voxel" }
 
 # ⚠ FOR ONE FUNCTION, AND THAT IS THE POINT — plan 19 `L6`. `hex_dist` was written
 # out here a second time, identically, while `hex_field`'s sat in every consumer's
@@ -27,7 +28,7 @@ hex_field = ">=0.1"
 # ⚠ THE PREMISE ABOVE MOVED AT `A6.1`, AND THAT IS WORTH SAYING RATHER THAN
 # QUIETLY EDITING. *"A part IS a world … so this package needs the store and
 # nothing else"* is true of a CELL part and is only half of §P5, which gives a
-# part two possible bodies: cells in a `hex_world`, or a `.glb`. A package that
+# part two possible bodies: cells in a `hex_voxel`, or a `.glb`. A package that
 # owns the part document and can say a nested PART is missing-or-broken
 # (`part_cycle`), but can only ever say a MESH is missing, would be collapsing
 # `MR_ABSENT` into `MR_MALFORMED` for the one reference type it declined to open.

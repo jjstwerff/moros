@@ -4,7 +4,7 @@
 // then raising a hill under ANYTHING turns it to grass, and a house floor is only
 // the case somebody noticed.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 

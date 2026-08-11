@@ -28,11 +28,11 @@
 // pair of zeroes summed over ZERO cells. A third world that no road is ever laid in is
 // what a datum has to be.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 400;
 
-fn strip_world() -> World {
+fn strip_world() -> VoxelWorld {
   w = world_new(U, 0, 10, 4).wn_world;
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -40,7 +40,7 @@ fn strip_world() -> World {
   w
 }
 
-fn hill() -> World {
+fn hill() -> VoxelWorld {
   w = strip_world();
   cl = 0;
   rs = 0;

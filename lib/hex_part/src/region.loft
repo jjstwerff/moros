@@ -5,7 +5,7 @@
 // the obvious first move is a `world_copy_region` in the store — and a store
 // that grows an operation for every consumer's idea of a selection stops being a
 // store.
-use hex_world;
+use hex_voxel;
 use hex_field;   // hex_dist — the family owns the parity rule; see `in_disc` below
 
 pub const PR_OK      = 0;
@@ -14,7 +14,7 @@ pub const PR_WRITE   = 2;        // a column would not go in
 
 pub struct PartCopy {
   pc_code:  integer,
-  pc_world: World,
+  pc_world: VoxelWorld,
   pc_cells: integer,             // columns actually written
   pc_why:   text,
 }
@@ -52,7 +52,7 @@ pub fn re_origin(cq: integer, cr: integer, q: integer, r: integer) -> (integer, 
 // cells were authored under; a part built with different ones is a different
 // shape wearing the same numbers. `C1` (ε > 2θ) is re-checked by `world_new`, so
 // a source world that somehow violated it cannot produce a part that does.
-pub fn part_from_region(w: World, cq: integer, cr: integer, rad: integer) -> PartCopy {
+pub fn part_from_region(w: VoxelWorld, cq: integer, cr: integer, rad: integer) -> PartCopy {
   nw = world_new(w.w_unit, w.w_reserve, w.w_eps, w.w_theta);
   if nw.wn_code != WC_OK {
     return PartCopy { pc_code: PR_WORLD, pc_world: nw.wn_world, pc_cells: 0,
@@ -151,7 +151,7 @@ fn differ(why: text) -> PartDiff { PartDiff { pd_same: false, pd_why: why } }
 // ⚠ AND IT WALKS A MARGIN BEYOND THE RADIUS. A copy that gained a cell just
 // outside the disc is exactly as wrong as one that lost a cell inside it, and a
 // sweep bounded at `rad` cannot see the first kind at all.
-pub fn part_diff(a: World, b: World, rad: integer) -> PartDiff {
+pub fn part_diff(a: VoxelWorld, b: VoxelWorld, rad: integer) -> PartDiff {
   if a.w_unit != b.w_unit    { return differ("unit {a.w_unit} vs {b.w_unit}"); }
   if a.w_reserve != b.w_reserve { return differ("reserve {a.w_reserve} vs {b.w_reserve}"); }
   if a.w_eps != b.w_eps      { return differ("eps {a.w_eps} vs {b.w_eps}"); }

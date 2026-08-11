@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 — text into a section's bytes and back, now that the store does not.
 //
-// ⚠ THESE CLAIMS MOVED HERE, they were not invented here. `hex_world::Section`
+// ⚠ THESE CLAIMS MOVED HERE, they were not invented here. `hex_voxel::Section`
 // carried a text view for a day and four tests with it; the view is gone —
 // `text_from_bytes` always existed (loft#748) — and the two claims that were
 // really about ENCODING rather than about framing belong where the encoding is:

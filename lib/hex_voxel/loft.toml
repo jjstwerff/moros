@@ -1,10 +1,10 @@
 [package]
-name    = "hex_world"
+name    = "hex_voxel"
 version = "0.1.0"
 loft    = ">=0.8"
 
 [library]
-entry = "src/hex_world.loft"
+entry = "src/hex_voxel.loft"
 
 [dependencies]
 

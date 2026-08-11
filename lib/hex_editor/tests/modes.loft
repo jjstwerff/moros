@@ -8,10 +8,10 @@
 // on. What is testable — and what moved — is the per-step work and the rule the
 // two share, not the switch.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 12..13 {
     for r in 0 - 12..13 { hex_editor::ground_set(w, q, r, 20, hex_editor::SURFACE_MAT); }
@@ -77,7 +77,7 @@ fn test_a_road_step_cannot_cut_below_the_world_floor() {
 
 // ── anchors ─────────────────────────────────────────────────────────────────
 
-fn anchored(w: World, q: integer, r: integer) -> vector<Trigger> {
+fn anchored(w: VoxelWorld, q: integer, r: integer) -> vector<Trigger> {
   [hex_editor::Trigger { tg_id: 0, tg_q: q, tg_r: r,
                          tg_h: hex_editor::ground_h(w, q, r),
                          tg_name: "door_opens", tg_broken: false, tg_foreign: false }]

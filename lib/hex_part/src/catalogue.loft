@@ -14,7 +14,7 @@
 // here and its own name in the acknowledgement when it is placed. That is
 // information rather than a bug — and it is the first thing `A7.4` will change
 // once a keyed read makes the name cheap.
-use hex_world;
+use hex_voxel;
 
 const PART_EXT = ".hxw";
 

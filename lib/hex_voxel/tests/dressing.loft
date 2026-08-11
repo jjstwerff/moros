@@ -7,9 +7,9 @@
 // Until `world_set_dressing` existed nothing could create a dressing layer, so
 // `P2` was a rule guarding a case that could not arise — enforced, never
 // exercised. These gates are what make it reachable.
-use hex_world;
+use hex_voxel;
 
-fn world_ok() -> World {
+fn world_ok() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);
   assert(n.wn_code == WC_OK, "test world refused: {n.wn_code}");
   n.wn_world

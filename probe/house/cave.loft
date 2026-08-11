@@ -22,7 +22,7 @@
 // If (1) or (2) fails the cover is decorative: there would be nothing to put rock
 // over, exactly as `road_h`'s frozen grade left `A7` and `A8` unreachable.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U   = 0.25;
 const G   = 200;                 // a datum high enough that a deep cut cannot hit ρ
 const EPS = 10;                  // the editor's own ε — `editor_server`'s W_EPS
@@ -31,7 +31,7 @@ const HEAD = hex_editor::STOREY_H;   // headroom a walker wants under the rock
 // A LINEAR RAMP: height falls by `k` per hex of `r`, so the fall line runs along
 // `r` and every contour is a line of constant `r`. That is the cliff-road case —
 // a dome would mix the two questions in one strip.
-fn ramp(k: integer) -> World {
+fn ramp(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 30)..31 {
     for r in (0 - 30)..31 {
@@ -43,7 +43,7 @@ fn ramp(k: integer) -> World {
 
 // The strip's transverse profile at `q`: natural ground before, road after, and
 // the cut (positive) or fill (negative) at each `r`.
-fn across(w: World, nat: vector<integer>, q: integer) -> text {
+fn across(w: VoxelWorld, nat: vector<integer>, q: integer) -> text {
   out = "";
   for i in 0..len(nat) {
     r = i - hex_editor::ROAD_HALF;
@@ -53,7 +53,7 @@ fn across(w: World, nat: vector<integer>, q: integer) -> text {
   out
 }
 
-fn deepest(w: World, nat: vector<integer>, q: integer) -> integer {
+fn deepest(w: VoxelWorld, nat: vector<integer>, q: integer) -> integer {
   d = 0;
   for i in 0..len(nat) {
     r = i - hex_editor::ROAD_HALF;

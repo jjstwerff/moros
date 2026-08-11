@@ -1,6 +1,6 @@
 // WHERE DOES `wall_set` PUT A FENCE, AND CAN `is_fabric` SEE IT?
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 fn main() {

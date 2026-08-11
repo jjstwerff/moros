@@ -3,7 +3,7 @@
 // `MESH` — the other thing a part can be made of.
 //
 // Plan 17 `A6.1`, §P5: **two kinds of part, one mechanism**. A cell part is
-// stored as cells in its own `hex_world`; a prop part is stored as a `.glb`. The
+// stored as cells in its own `hex_voxel`; a prop part is stored as a `.glb`. The
 // mechanism that makes them one is that **sockets do not care which it is**,
 // which is the argument for putting the socket on the part rather than on the
 // cells — a statue goes in a niche by exactly the machinery a door goes in a
@@ -20,7 +20,7 @@
 // > for another statue that fits the same plinth*, or *carry a name an author
 // > chose*. Those are all `PART` and `SOCK` — §P5's own words, and the reason
 // > this record holds a reference rather than the geometry.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 use catalogue;
@@ -74,7 +74,7 @@ fn check_mesh(name: text) -> PropWrite {
   PropWrite { pw_code: PR_OK, pw_why: "" }
 }
 
-pub fn part_set_mesh(w: World, name: text) -> PropWrite {
+pub fn part_set_mesh(w: VoxelWorld, name: text) -> PropWrite {
   got = check_mesh(name);
   if got.pw_code != PR_OK { return got; }
   set_section_text(w, TAG_MESH, "mesh={name}");
@@ -85,7 +85,7 @@ pub struct MeshRead { pr_code: integer, pr_name: text, pr_why: text }
 
 // ⚠ ONE VALIDATOR, BOTH DIRECTIONS — `sock.loft`'s rule, and here it is what
 // stops a hand-edited `mesh=../../secrets` being opened by the loader below.
-pub fn part_mesh(w: World) -> MeshRead {
+pub fn part_mesh(w: VoxelWorld) -> MeshRead {
   if world_section_at(w, TAG_MESH) < 0 {
     return MeshRead { pr_code: MR_ABSENT, pr_name: "", pr_why: "no MESH section" };
   }
@@ -231,7 +231,7 @@ pub struct MeshCheck {
 // mesh it can read, but a well-formed glb holding zero vertices is a legal file
 // and a prop that draws nothing — so the count is carried out to where a caller
 // can judge it, rather than being folded into a boolean here.
-pub fn part_mesh_loads(root: text, w: World) -> MeshCheck {
+pub fn part_mesh_loads(root: text, w: VoxelWorld) -> MeshCheck {
   got = part_mesh(w);
   if got.pr_code == MR_ABSENT {
     return MeshCheck { mc_code: MC_NONE, mc_why: "the part names no mesh" };

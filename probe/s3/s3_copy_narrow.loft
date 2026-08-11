@@ -1,27 +1,27 @@
-use hex_world;
+use hex_voxel;
 use hex_editor;
 use hex_mesh;
 
-fn copy_chunk(a: World, b: &World, scx: integer, scz: integer) {
-  q0 = scx * hex_world::CHUNK_W;
-  r0 = scz * hex_world::CHUNK_W;
+fn copy_chunk(a: VoxelWorld, b: &VoxelWorld, scx: integer, scz: integer) {
+  q0 = scx * hex_voxel::CHUNK_W;
+  r0 = scz * hex_voxel::CHUNK_W;
   for li in 0..len(world_column(a, q0, r0).co_ids) {
-    if hex_world::world_layer_kind(a, q0, r0, li) == hex_world::KIND_TERRAIN {
-      hex_world::world_put_layer(b, scx, scz, hex_world::world_chunk_base(a, scx, scz),
-        hex_world::world_layer_id(a, q0, r0, li), hex_world::KIND_TERRAIN,
-        hex_world::world_layer_version(a, q0, r0, li),
-        hex_world::world_layer_bytes(a, q0, r0, li));
+    if hex_voxel::world_layer_kind(a, q0, r0, li) == hex_voxel::KIND_TERRAIN {
+      hex_voxel::world_put_layer(b, scx, scz, hex_voxel::world_chunk_base(a, scx, scz),
+        hex_voxel::world_layer_id(a, q0, r0, li), hex_voxel::KIND_TERRAIN,
+        hex_voxel::world_layer_version(a, q0, r0, li),
+        hex_voxel::world_layer_bytes(a, q0, r0, li));
     }
   }
 }
 
-fn report(a: World, b: World, scx: integer, scz: integer) {
-  q = scx * hex_world::CHUNK_W + 3;
-  r = scz * hex_world::CHUNK_W + 5;
-  println("chunk ({scx},{scz}): base a={hex_world::world_chunk_base(a, scx, scz)} "
-        + "b={hex_world::world_chunk_base(b, scx, scz)}  "
-        + "cell({q},{r}) h a={hex_world::world_cell(a, q, r, 0).h_height} "
-        + "b={hex_world::world_cell(b, q, r, 0).h_height}");
+fn report(a: VoxelWorld, b: VoxelWorld, scx: integer, scz: integer) {
+  q = scx * hex_voxel::CHUNK_W + 3;
+  r = scz * hex_voxel::CHUNK_W + 5;
+  println("chunk ({scx},{scz}): base a={hex_voxel::world_chunk_base(a, scx, scz)} "
+        + "b={hex_voxel::world_chunk_base(b, scx, scz)}  "
+        + "cell({q},{r}) h a={hex_voxel::world_cell(a, q, r, 0).h_height} "
+        + "b={hex_voxel::world_cell(b, q, r, 0).h_height}");
 }
 
 fn main() {

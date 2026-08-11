@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A4.1` — `SOCK` and `FITS`, and the round trip that would notice.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 // ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on the
 // interpreter and fails `--native`; `roundtrip.loft` and `inst.loft` carry the note.
 fn no_palette() -> vector<integer> { [] }
 
-fn part() -> World {
+fn part() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);
   w = n.wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,

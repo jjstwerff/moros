@@ -39,7 +39,7 @@
 // `test_the_placement_is_derived_without_ever_opening_the_glb` pins the seam by
 // expanding a statue whose mesh is not in the library at all.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 // ⚠ NAMED AND TYPED, not an inline `[]` — `world_save(w, p, [])` compiles on the
 // interpreter and fails `--native`. `expand.loft` and `roundtrip.loft` say the same.
@@ -55,7 +55,7 @@ fn aimed(part: text, facing: integer) -> PartInst {
   PartInst { pi_q: 0, pi_r: 0, pi_h: 0, pi_facing: facing, pi_part: part }
 }
 
-fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
+fn blank() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
 
 // ⚠ `world_set_cell`, NOT a one-cell `world_set_column` — measured, 415 us a cell
 // against 25, and `target()` below pays it 256 times per test. A column write
@@ -64,14 +64,14 @@ fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
 // inside the window cannot move the window. `probe/perf/place_phases.loft` `G1`
 // has the numbers and the controls that say the two build the same world — same
 // cells, same layer CRCs, same `w_tau`.
-fn with_cell(w: World, q: integer, r: integer, h: integer, mat: integer) {
+fn with_cell(w: VoxelWorld, q: integer, r: integer, h: integer, mat: integer) {
   assert(world_set_cell(w, q, r, 0,
     Hex { h_height: h as u16? ?? 0,
           h_material: mat as u8? ?? 0 }).cw_code == CW_OK,
     "the fixture cell at ({q},{r}) was refused");
 }
 
-fn save_part(name: text, w: World) {
+fn save_part(name: text, w: VoxelWorld) {
   assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
   assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
 }
@@ -128,7 +128,7 @@ fn wipe(r: text) {
 // ⚠ THE TARGET HAS TERRAIN, for `A3.2`'s reason: a part stamped into a chunk with
 // no terrain becomes that chunk's GROUND layer and takes `LABEL_GROUND` instead of
 // the label it minted.
-fn target() -> World {
+fn target() -> VoxelWorld {
   w = blank();
   for q in (0 - 2)..14 {
     for r in (0 - 2)..14 {
@@ -138,7 +138,7 @@ fn target() -> World {
   w
 }
 
-fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+fn material_at(w: VoxelWorld, q: integer, r: integer, h: integer) -> integer {
   for c in world_column(w, q, r).co_cells {
     if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
   }
@@ -760,7 +760,7 @@ fn rebind(name: text, holds: text) {
   assert(world_save(rw, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
 }
 
-fn placed(w: World) -> MeshAt {
+fn placed(w: VoxelWorld) -> MeshAt {
   ex = part_expand(w, root(), at("p/yard", 5, 5, 0), 0);
   assert(ex.ex_code == EX_OK, "the expansion was refused: {ex.ex_why}");
   assert(len(ex.ex_meshes) == 1, "{len(ex.ex_meshes)} placements, not 1");

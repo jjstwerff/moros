@@ -25,14 +25,14 @@
 // allocated `fresh_label` per chunk, so the second chunk could not be told it was
 // continuing the first one's layer. A gesture knows it is making one layer; it can
 // now name it once and hand the same name to every column.
-use hex_world;
+use hex_voxel;
 
-fn mk() -> World { world_new(0.25, 0, 8, 3).wn_world }
+fn mk() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
 fn cell(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
 
 // Ground everywhere over a patch that spans the r = 0 seam: r = -1 is the last row
 // of one chunk and r = 0 the first of the next.
-fn seeded() -> World {
+fn seeded() -> VoxelWorld {
   w = mk();
   for q in 0 - 2..3 {
     for r in 0 - 2..3 {

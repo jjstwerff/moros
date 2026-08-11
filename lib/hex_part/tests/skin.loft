@@ -10,7 +10,7 @@
 // test this file is an equality check that happens to be spelled as containment,
 // and the next reader would "tighten" it.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn box_of(x0: float, y0: float, z0: float,
           x1: float, y1: float, z1: float) -> PartBox {
@@ -84,7 +84,7 @@ fn test_a_part_with_no_blockout_says_so() {
 
 // ── the box a part's own cells make ─────────────────────────────────────────
 
-fn one_cell_part(unit: float, q: integer, r: integer, h: integer) -> World {
+fn one_cell_part(unit: float, q: integer, r: integer, h: integer) -> VoxelWorld {
   w = world_new(unit, 0, 8, 3).wn_world;
   assert(world_set_column(w, Column { co_q: q, co_r: r,
     co_cells: [Hex { h_height: h as u16? ?? 0,

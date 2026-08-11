@@ -11,12 +11,12 @@
 // leaves a 27-cell floor 3 units out of level), and the roof does not follow at
 // all. Keeping the material is a prerequisite for moving a house, not the move.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 
-fn flat(m: integer) -> World {
+fn flat(m: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 12)..13 {
     for r in (0 - 12)..13 { ground_set(w, q, r, G, m); }
@@ -24,13 +24,13 @@ fn flat(m: integer) -> World {
   w
 }
 
-fn raised(w: World, amp: integer) {
+fn raised(w: VoxelWorld, amp: integer) {
   clamped = 0;
   residual = 0;
   brush(w, 0, 0, amp, 7, clamped, residual);
 }
 
-fn mat_at(w: World, q: integer, r: integer) -> integer {
+fn mat_at(w: VoxelWorld, q: integer, r: integer) -> integer {
   world_ground_cell(w, q, r).h_material as integer ?? 0
 }
 

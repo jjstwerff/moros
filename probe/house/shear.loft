@@ -5,7 +5,7 @@
 // torn rather than lifted, and "elevate the whole house like a hill" cannot mean
 // the same arithmetic a hill gets.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;

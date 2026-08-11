@@ -17,12 +17,12 @@ TEST_JOBS ?= 16
 # The loft packages under lib/, in dependency order.
 #
 # ⚠ THIS LIST IS THE TEST TARGET, so a package missing from it is a package whose
-# tests never run. `hex_world` and `glb_read` sat outside it for months — 66 tests
+# tests never run. `hex_voxel` and `glb_read` sat outside it for months — 66 tests
 # that only ever passed because someone ran them by hand. They are lavition
 # packages and take no brand prefix (see CLAUDE.md), which is exactly why a
 # `moros_*`-shaped list skipped them.
 LIB_PACKAGES = moros_map moros_editor moros_render moros_sim lavition_ui \
-               hex_world hex_editor hex_part hex_proj hex_mesh glb_read
+               hex_voxel hex_editor hex_part hex_proj hex_mesh glb_read
 
 serve:
 	$(PY) -m http.server $(PORT) --directory html &
@@ -328,15 +328,15 @@ GATE_RESTART = $(MAKE) -s port-free >/dev/null 2>&1; sleep 1; \
     grep -vE '^warning|^ *\||^ *-->|^ *=' .editor.log | tail -20; exit 1; \
   fi
 
-# hex_world's exact-size proofs run as a PROGRAM, not under `loft test`: several
+# hex_voxel's exact-size proofs run as a PROGRAM, not under `loft test`: several
 # save-and-measure tests in one test file hang the harness (see
-# lib/hex_world/probe/sparsity.loft). Same assertions, same exactness, a runner
+# lib/hex_voxel/probe/sparsity.loft). Same assertions, same exactness, a runner
 # that works.
 gate-hexworld:
-	@printf '%-34s ' "hex_world/probe/sparsity"; \
-	  $(LOFT) --lib lib/ lib/hex_world/probe/sparsity.loft | tail -1
-	@printf '%-34s ' "hex_world/probe/edgehold"; \
-	  $(LOFT) --lib lib/ lib/hex_world/probe/edgehold.loft | tail -1
+	@printf '%-34s ' "hex_voxel/probe/sparsity"; \
+	  $(LOFT) --lib lib/ lib/hex_voxel/probe/sparsity.loft | tail -1
+	@printf '%-34s ' "hex_voxel/probe/edgehold"; \
+	  $(LOFT) --lib lib/ lib/hex_voxel/probe/edgehold.loft | tail -1
 	@printf '%-34s ' "moros_map/probe/slopeline"; \
 	  $(LOFT) --lib lib/ lib/moros_map/probe/slopeline.loft | tail -1
 
@@ -404,7 +404,7 @@ gate-rep:
 #
 # ⚠ AND NOT `--native`, ALSO DELIBERATELY. `make lib-test` is what runs both backends
 # and it stays the pre-commit proof: the two are two implementations of one language,
-# and loft#760 took `hex_world` from 114 green to 96 failed while `--native` passed all
+# and loft#760 took `hex_voxel` from 114 green to 96 failed while `--native` passed all
 # 114 on the same source. This is the fast loop, not the proof.
 #
 #   make fast                     the whole tree

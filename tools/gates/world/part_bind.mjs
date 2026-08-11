@@ -33,7 +33,7 @@
 // ⚠ WHAT THIS GATE DOES NOT CLAIM: that a bound leaf is DRAWN. Both parts in this
 // library that fit the plinth's socket are mesh-only bodies — `prop/statue` and
 // `prop/seated` have **0 columns** — so an expansion delivers them as `ex_meshes`,
-// and the display world is a `World`, which has nowhere to put a mesh. That gap
+// and the display world is a `VoxelWorld`, which has nowhere to put a mesh. That gap
 // predates this step (it is `A5.2`'s renderer half and `A6.2`'s *a mesh is not on
 // the lattice*), and no gesture can author a `FITS`, so a cell-bodied leaf that
 // fits cannot be made from the editor either. Said here rather than papered over

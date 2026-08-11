@@ -1,4 +1,4 @@
-// ⚠ THE SEPARATION IS `hex_world`'s AND IT IS TESTED THERE. `tests/dressing.loft`
+// ⚠ THE SEPARATION IS `hex_voxel`'s AND IT IS TESTED THERE. `tests/dressing.loft`
 // holds all three of the claims below against the store: dressing is written and
 // read, it is INVISIBLE to a terrain read, and a terrain write leaves it alone
 // ("not even to blank it"). This gate is the EDITOR's half — that `19:` puts a

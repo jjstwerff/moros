@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // hex_part — a house drawn away from the world.
 //
-// Plan 17. A PART is a small `hex_world` store: door-frames, doors, windows,
+// Plan 17. A PART is a small `hex_voxel` store: door-frames, doors, windows,
 // pillars, statues, and the houses made of them. §P1's whole point is that it is
 // not a new document type — opening a part IS loading a world, so it renders in
 // the same shader, saves in the same format and is verified by the same gates.
-use hex_world;
+use hex_voxel;
 use catalogue;
 use codec;
 use region;

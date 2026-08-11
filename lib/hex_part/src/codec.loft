@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Text into a section's bytes, and back out.
 //
-// Plan 17. ⚠ THIS FILE IS WHY `hex_world` HAS NO TEXT VIEW. The store carries a
+// Plan 17. ⚠ THIS FILE IS WHY `hex_voxel` HAS NO TEXT VIEW. The store carries a
 // section as opaque bytes and interprets nothing — that is the whole of its half
 // of the deal — so a consumer that wants a name out of one decodes it. For a day
 // the store did the decoding, reading every section's span a second time off the
@@ -12,7 +12,7 @@
 //
 // Both directions are two lines. That is the measure of how much the store was
 // carrying for its consumers.
-use hex_world;
+use hex_voxel;
 
 // ⚠ `size()` AND `byte_at()`, NEVER `len()` AND `for ch in t`. `len()` counts
 // CHARACTERS and `byte_at` indexes BYTES, and `"Café中!"` is 6 and 9 — so a loop
@@ -34,10 +34,10 @@ pub fn bytes_text(b: vector<u8>) -> text {
 }
 
 // The two together, over a world's section — the only two calls `meta.loft` makes.
-pub fn section_text(w: World, tag: integer) -> text {
+pub fn section_text(w: VoxelWorld, tag: integer) -> text {
   return bytes_text(world_section_bytes(w, tag));
 }
 
-pub fn set_section_text(w: World, tag: integer, t: text) {
+pub fn set_section_text(w: VoxelWorld, tag: integer, t: text) {
   world_set_section(w, tag, text_bytes(t));
 }

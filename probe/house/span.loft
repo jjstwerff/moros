@@ -22,13 +22,13 @@
 // the mirror is decorative — which is exactly what `road_h`'s frozen grade did to `A7`
 // and `A8`, and what a trench in flat ground nearly did to `A9`.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U    = 0.25;
 const G    = 400;                // a datum high enough that a deep cut cannot reach ρ
 const EPS  = 10;                 // the editor's own ε
 const HEAD = hex_editor::STOREY_H;
 
-fn ramp(k: integer) -> World {
+fn ramp(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 34)..35 {
     for r in (0 - 34)..35 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
@@ -37,7 +37,7 @@ fn ramp(k: integer) -> World {
 }
 
 // A ramp that falls along `q` instead — the fall line the road is WALKED down.
-fn ramp_q(k: integer) -> World {
+fn ramp_q(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 34)..35 {
     for r in (0 - 34)..35 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }

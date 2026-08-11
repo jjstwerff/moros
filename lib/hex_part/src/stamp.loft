@@ -9,7 +9,7 @@
 // policy belongs at the call site where a reader can see which rule is in force
 // (`STATE.md` decision 6). `hex_part` knows what a part is and nothing about
 // what a house should do.
-use hex_world;
+use hex_voxel;
 use region;
 
 // The inverse of `re_origin`: a part cell back to the world cell it lands on
@@ -40,7 +40,7 @@ pub struct PartCell { pk_q: integer, pk_r: integer }
 // that can be wrong, and wrong quietly: too small stamps half a house and every
 // count still agrees with itself. A part is whatever it is, so this walks the
 // chunks it has and asks each cell. `E1` — a zero material is an absent cell.
-pub fn part_columns(p: World) -> vector<PartCell> {
+pub fn part_columns(p: VoxelWorld) -> vector<PartCell> {
   out: vector<PartCell> = [];
   for ch in p.w_chunks {
     for i in 0..CHUNK_CELLS {
@@ -100,7 +100,7 @@ pub struct PartStamp {
 // footprint can straddle a chunk boundary and the layer it creates is then made
 // twice, once per chunk; naming it here is what stops the two halves being
 // different layers to every by-label reader.
-pub fn part_stamp(w: World, p: World, cq: integer, cr: integer,
+pub fn part_stamp(w: VoxelWorld, p: VoxelWorld, cq: integer, cr: integer,
                   anchor: integer, lo: integer) -> PartStamp {
   // ⚠ THE UNIT IS CHECKED HERE AS WELL AS IN `expand`, AND THE PAIR IS NOT
   // BELT-AND-BRACES — plan 17 `A8.2b`, §P9.1. The editor's own gesture does not go
@@ -208,7 +208,7 @@ pub fn part_stamp(w: World, p: World, cq: integer, cr: integer,
 // makes the same part placeable on a hill and in a cellar. The lift is where they
 // become the world's — and it is the ONLY place, so a part that came back wrong
 // is wrong here or in the file, never in two places at once.
-fn lifted(p: World, q: integer, r: integer, anchor: integer) -> vector<Hex> {
+fn lifted(p: VoxelWorld, q: integer, r: integer, anchor: integer) -> vector<Hex> {
   out: vector<Hex> = [];
   for c in column_cells(world_column(p, q, r)) {
     out += [Hex { h_height: ((c.h_height as integer ?? 0) + anchor) as u16? ?? 0,

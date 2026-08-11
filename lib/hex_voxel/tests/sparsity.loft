@@ -17,13 +17,13 @@
 // HANG rather than fail: no parameterised helper anywhere in this tree does file
 // I/O, and the harness appears to invoke top-level functions itself, so one taking
 // `p: text` is called without a path and blocks. Repetition is the cheaper bug.
-use hex_world;
+use hex_voxel;
 
 // This helper is where loft H9 bit: an implicit tail returning a projected field of
 // an inline call handed back a reference into a store the call had already freed,
-// and a World returned that way took the whole test runner down with a SIGSEGV.
+// and a VoxelWorld returned that way took the whole test runner down with a SIGSEGV.
 // Fixed upstream (loft a1a07dcf) and verified here, so the plain form is back.
-fn sp_world() -> World { world_new(0.25, 100, 8, 3).wn_world }
+fn sp_world() -> VoxelWorld { world_new(0.25, 100, 8, 3).wn_world }
 
 fn sp_cell(h: integer, m: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }

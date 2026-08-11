@@ -10,10 +10,10 @@
 // each offset. Until S3 both laid a road whatever they were told, and the ack said
 // so on every press.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 20..21 {
     for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
@@ -28,7 +28,7 @@ fn east_run(mat: integer) -> WallRun {
 
 fn no_runs() -> WallRuns { hex_editor::WallRuns { items: [] } }
 
-fn paved(w: World) -> integer {
+fn paved(w: VoxelWorld) -> integer {
   n = 0;
   for q in 0 - 20..21 {
     for r in 0 - 20..21 {

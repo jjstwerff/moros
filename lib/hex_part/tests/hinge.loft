@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A5.1` — the hinge, and the first float this format has had to carry.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn no_palette() -> vector<integer> { [] }
 
-fn part() -> World {
+fn part() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);
   w = n.wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,

@@ -2,7 +2,7 @@
 # WHICH WAY THE ARROW POINTS — lavition may not depend on Moros.
 #
 # Two projects share this tree. **lavition** is the universal hex-world editor —
-# `hex_editor`, `hex_world` and the `hex_*` family — and **Moros** is one consumer
+# `hex_editor`, `hex_voxel` and the `hex_*` family — and **Moros** is one consumer
 # of it. So a Moros package may name a lavition one, and a lavition package may
 # never name a Moros one. Reversed, the editor stops being a product and becomes a
 # part of this game.

@@ -12,10 +12,10 @@
 // The consequence a renderer must honour, and the reason this is S5 rather than a
 // store detail: an opening is a SUB-INTERVAL of the wall, not a shorter wall.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 12..13 {
     for r in 0 - 12..13 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
@@ -24,13 +24,13 @@ fn world() -> World {
 }
 
 // A ring of wall around the origin, and an author standing on it.
-fn walled() -> World {
+fn walled() -> VoxelWorld {
   w = world();
   hex_editor::fence_disc(w, 0, 0, 2, hex_editor::WALL_MAT, 2.0);
   w
 }
 
-fn owned_of(w: World, mat: integer) -> integer {
+fn owned_of(w: VoxelWorld, mat: integer) -> integer {
   n = 0;
   for q in 0 - 6..7 {
     for r in 0 - 6..7 {

@@ -12,13 +12,13 @@
 # the slowest single file.
 #
 #   tools/run-tests.sh                  every package
-#   tools/run-tests.sh hex_part hex_world     only these
+#   tools/run-tests.sh hex_part hex_voxel     only these
 #   TEST_JOBS=8 tools/run-tests.sh      fewer jobs, for a loaded box
 #   TEST_VERBOSE=1 tools/run-tests.sh   per-file seconds, for profiling
 #
 # ⚠ THE INTERPRETER ONLY, DELIBERATELY. `make lib-test` is what runs both backends,
 # and it stays the pre-commit gate — the two are two implementations of one language
-# and a per-backend green says nothing about the other (loft#760 took `hex_world` from
+# and a per-backend green says nothing about the other (loft#760 took `hex_voxel` from
 # 114 green to 96 failed while `--native` passed all 114 on the same source). This is
 # the fast loop, not the proof.
 #

@@ -7,7 +7,7 @@ use hex_part;
 // the interpreter and fails `--native`; `roundtrip.loft` carries the same note.
 fn no_palette() -> vector<integer> { [] }
 
-fn part() -> World {
+fn part() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);
   w = n.wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,

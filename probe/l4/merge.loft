@@ -1,13 +1,28 @@
-// L4 `F` — do the two `World` structs MERGE into one type, as `Surface` did at `L1`?
+// L4 `F` — are the two world types still TELLABLE APART, and does the compiler say so
+// in words a reader can act on?
 //
-// If they merged, handing OUR world to THEIR function would typecheck. It does not:
-// the two are distinct types, and the compiler says so — in the least useful words
-// available, `expected World, got World`.
+// ⚠ THE DIRECTION IS DELIBERATE: THEIR value into OUR function, not the reverse.
+// Until `L6.2` this file went the other way — our world into their `cell_count` — and
+// that reading is no longer available: `cell_count` is a METHOD on their `World`, and
+// ours is `VoxelWorld` now, so it is not a candidate at all and the compiler answers
+// `Unknown function cell_count`. True, and it says nothing about whether the two types
+// merged. Handing THEIR world to OUR free function keeps both types in one diagnostic.
+//
+// Before `L6.2` the answer was the least useful sentence available:
+//
+//     error: expected World, got World
+//
+// — the `Surface` diagnostic of `L1`, verbatim, one rename later. Now it reads
+//
+//     error: expected VoxelWorld, got World
+//
+// which is the whole of what renaming the struct bought. The types never merged; what
+// changed is that a reader can now see they did not.
 use hex_voxel;
 use hex_world;
 
 fn main() {
-  mine = world_new(0.25, 100, 8, 3).wn_world;   // hex_voxel::World
-  n = cell_count(mine);                          // hex_world's fn, hex_voxel's value
-  println("PROBE their cell_count accepted our World: {n}");
+  yours = world_empty();                                  // hex_world::World
+  b = hex_voxel::world_has_chunk(yours, 0, 0);            // wants a hex_voxel::VoxelWorld
+  println("PROBE our world_has_chunk accepted THEIR World: {b}");
 }

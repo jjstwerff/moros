@@ -12,14 +12,14 @@
 // Two sides that agree on a checksum they made up agree about the wrong thing; this
 // way "the client matches the server" and "the client would survive a round trip"
 // are one claim rather than two that can drift apart.
-use hex_world;
+use hex_voxel;
 
-fn mk() -> World { world_new(0.25, 0, 10, 4).wn_world }
+fn mk() -> VoxelWorld { world_new(0.25, 0, 10, 4).wn_world }
 fn cell(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
 
 // A world with something worth checksumming: varied heights, a material, an item and
 // a wall, so a copy that drops any FIELD shows up rather than one that drops a cell.
-fn seeded() -> World {
+fn seeded() -> VoxelWorld {
   w = mk();
   for q in 0..6 {
     for r in 0..6 {

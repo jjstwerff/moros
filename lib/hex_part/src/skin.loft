@@ -28,7 +28,7 @@
 // REFUSED with the shortfall named per axis; quietly scaling it to fit would move
 // the one thing §P9.11 says may never move — and it would do it silently, which is
 // this tree's most expensive failure shape.
-use hex_world;
+use hex_voxel;
 use stamp;   // part_columns — the cells that are the hitbox
 
 // A box in FINAL world units — the units the export writes and the artist models
@@ -114,7 +114,7 @@ pub fn skin_covers(blockout: PartBox, skin: PartBox, tol: float) -> SkinCheck {
 // size in world units is `hex_proj`'s, and this package does not depend on it —
 // `A8.6`'s export passes what it drew with. Re-deriving it here would be the second
 // copy of a lattice constant `hex_proj` exists to prevent.
-pub fn part_box(p: World, hex_w: float, step_h: float, unit: float) -> PartBox {
+pub fn part_box(p: VoxelWorld, hex_w: float, step_h: float, unit: float) -> PartBox {
   cols = part_columns(p);
   if len(cols) == 0 { return PartBox {}; }
   scale = 1.0;

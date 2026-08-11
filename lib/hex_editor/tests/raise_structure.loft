@@ -11,14 +11,14 @@
 // the ground around it keeps the falloff — a flat pad with slopes falling away,
 // which is what a terrace is.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 const LIFT = 6;
 const RAD = 7;
 
-fn world_at(h: integer) -> World {
+fn world_at(h: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 24)..25 {
     for r in (0 - 24)..25 { ground_set(w, q, r, h, SURFACE_MAT); }
@@ -26,14 +26,14 @@ fn world_at(h: integer) -> World {
   w
 }
 
-fn raise(w: World, q: integer, r: integer, amp: integer) {
+fn raise(w: VoxelWorld, q: integer, r: integer, amp: integer) {
   clamped = 0;
   residual = 0;
   brush(w, q, r, amp, RAD, clamped, residual);
 }
 
 // Every cell of a given material, as two parallel vectors.
-fn cells_of(w: World, mat: integer, q: &vector<integer>, r: &vector<integer>) {
+fn cells_of(w: VoxelWorld, mat: integer, q: &vector<integer>, r: &vector<integer>) {
   for cq in (0 - 24)..25 {
     for cr in (0 - 24)..25 {
       if (world_ground_cell(w, cq, cr).h_material as integer ?? 0) == mat {
@@ -44,7 +44,7 @@ fn cells_of(w: World, mat: integer, q: &vector<integer>, r: &vector<integer>) {
   }
 }
 
-fn house(w: World, runs: WallRuns) -> Ack {
+fn house(w: VoxelWorld, runs: WallRuns) -> Ack {
   place_house(w, author_at(0.0, 0.0, 0.5235987755982988), 5, 4, G, runs)
 }
 
@@ -113,7 +113,7 @@ fn test_a_road_takes_the_incline_instead() {
   assert(mat_of(w, 0, 0) == ROAD_MAT, "and it is no longer a road: {mat_of(w, 0, 0)}");
 }
 
-fn mat_of(w: World, q: integer, r: integer) -> integer {
+fn mat_of(w: VoxelWorld, q: integer, r: integer) -> integer {
   world_ground_cell(w, q, r).h_material as integer ?? 0
 }
 
@@ -218,7 +218,7 @@ fn test_a_second_building_down_the_slope_gets_its_own_level_pad() {
          "the far building is at {lo} — it should be lifted, and by less than the crest");
 }
 
-fn yard_fence(w: World, rad: integer) {
+fn yard_fence(w: VoxelWorld, rad: integer) {
   for q in (0 - rad)..(rad + 1) {
     for r in (0 - rad)..(rad + 1) {
       if hex_distance(q, r, 0, 0) == rad {

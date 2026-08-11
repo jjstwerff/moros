@@ -14,9 +14,9 @@
 // stayed put, so a cellar inherited the ground's label. Nothing downstream could
 // then tell which layer was the ground, and the drawn ground sank into the cellar
 // it had just been given (10.917 → 5.583 wu, measured in moros).
-use hex_world;
+use hex_voxel;
 
-fn mk_world() -> World { world_new(0.25, 100, 8, 3).wn_world }
+fn mk_world() -> VoxelWorld { world_new(0.25, 100, 8, 3).wn_world }
 fn cell_at(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }
 
 fn test_a_new_layer_gets_a_label_and_labels_are_distinct() {

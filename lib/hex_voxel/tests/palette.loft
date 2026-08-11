@@ -7,15 +7,15 @@
 // everything would round-trip perfectly and would let a world load against the
 // WRONG mapping looking entirely correct — which is the failure the check exists
 // for and the reason it is a refusal rather than a default.
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 
-fn fresh() -> World { world_new(U, 0, 8, 3).wn_world }
+fn fresh() -> VoxelWorld { world_new(U, 0, 8, 3).wn_world }
 
 fn pal(slot: integer, name: text) -> PalEntry { PalEntry { pl_slot: slot, pl_name: name } }
 
-fn ground(w: World, q: integer, r: integer, h: integer, mat: integer) {
+fn ground(w: VoxelWorld, q: integer, r: integer, h: integer, mat: integer) {
   assert(world_set_cell(w, q, r, 0,
     Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }).cw_code == CW_OK,
     "the fixture cell was refused");
@@ -189,7 +189,7 @@ fn test_a_chunk_carries_the_region_and_a_hex_inherits_it() {
   assert(world_region_at(w, 0, 0) == 1, "hex (0,0) is in chunk (0,0)");
   assert(world_region_at(w, 31, 0) == 1, "hex (31,0) is still chunk (0,0)");
   assert(world_region_at(w, 32, 0) == 2, "hex (32,0) is chunk (1,0)");
-  // ⚠ NEGATIVE COORDINATES ARE THE PARITY TRAP THIS TREE HAS FIVE OF. Chunk −1 is
+  // ⚠ NEGATIVE COORDINATES ARE THE PARITY TRAP THIS TREE HAS FIVE OF. VoxelChunk −1 is
   // not `-32/32`, and a region that stopped at the origin would be invisible in
   // every test written on the positive side.
   assert(world_region_at(w, 0 - 1, 0) == 0, "hex (−1,0) is chunk (−1,0), unassigned");

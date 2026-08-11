@@ -1,6 +1,6 @@
 // A ROAD TWO CELLS WIDE — flat across, bending along.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 fn main() {

@@ -1,9 +1,14 @@
 // L4 `H` — `G` with the two `use` lines swapped, and nothing else changed.
 //
-// The same literal now compiles and runs. So a bare type name shared by two packages
-// is resolved by IMPORT ORDER — first `use` wins — with no ambiguity error at either
-// order. One source line, two meanings, and the file that chose is not the file that
-// breaks.
+// ⚠ THE PAIR IS THE INSTRUMENT, NOT EITHER FILE. What is being asked is whether the
+// IMPORT ORDER can change what a bare name means, and only two files that differ in
+// nothing else can answer it. `G` carries the full three-step history; the short version
+// is that these two once compiled DIFFERENT programs (loft#788), then both stopped
+// compiling when loft learnt to refuse the ambiguity, and since `L6.2` renamed ours to
+// `VoxelChunk` they compile the SAME program — because only one package declares `Chunk`
+// now, so there is nothing left for the order to decide.
+//
+// If these two ever disagree again, the order decides again, and #788 is back.
 use hex_world;
 use hex_voxel;
 

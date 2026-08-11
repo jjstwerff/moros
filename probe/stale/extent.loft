@@ -12,7 +12,7 @@
 // ⚠ THE CONTROL COMES FIRST. Reading a world materialises columns, so a second
 // read can differ from the first with no edit at all. Any nonzero control voids
 // every number under it — probe_fit learned this the hard way and says so.
-use hex_world;
+use hex_voxel;
 use hex_editor;
 
 const SPAN = 40;                 // cells each way — well past the brush and its chunk
@@ -20,13 +20,13 @@ const SPAN = 40;                 // cells each way — well past the brush and i
 // The material of the ground cell — 0 means nothing was ever written there.
 // ⚠ Bound to a local rather than projected off the call, which is loft H9's shape
 // and aborts the interpreter (`terrain_h` carries the same note).
-fn gmat(w: World, q: integer, r: integer) -> integer {
-  c = hex_world::world_ground_cell(w, q, r);
+fn gmat(w: VoxelWorld, q: integer, r: integer) -> integer {
+  c = hex_voxel::world_ground_cell(w, q, r);
   m = c.h_material;
   m
 }
 
-fn read_field(w: World, out: &vector<integer>) {
+fn read_field(w: VoxelWorld, out: &vector<integer>) {
   out = [];
   for r in (0 - SPAN)..(SPAN + 1) {
     for q in (0 - SPAN)..(SPAN + 1) { out += [hex_editor::terrain_h(q, r, w)]; }
@@ -34,7 +34,7 @@ fn read_field(w: World, out: &vector<integer>) {
 }
 
 fn main() {
-  wld = hex_world::world_new(0.25, 0, 10, 4).wn_world;
+  wld = hex_voxel::world_new(0.25, 0, 10, 4).wn_world;
 
   before: vector<integer> = [];
   read_field(wld, before);

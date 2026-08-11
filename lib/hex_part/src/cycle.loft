@@ -13,7 +13,7 @@
 // a package's files in declaration order. So the check moved to where the whole
 // graph is visible, which is after both — and that is the honest place for it
 // anyway. Nothing about its surface changed; a package's files are one namespace.
-use hex_world;
+use hex_voxel;
 use catalogue;
 use meta;
 use inst;

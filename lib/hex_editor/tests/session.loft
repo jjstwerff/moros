@@ -16,7 +16,7 @@
 //   · anything that ticks — the walk, the fall, the camera's ease.
 //   · anything a viewer decides — which chunks were streamed.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const UNIT = 0.25;
 const EPS = 8;
@@ -27,7 +27,7 @@ const THETA = 3;
 // ⚠ THE WORLD AND THE SESSION ARE TWO THINGS, and loft#796 is only half the reason —
 // the store is the only authority (`HEX_STACK.md`), so a session that owned a world
 // would be a second place one can live.
-fn a_world() -> World {
+fn a_world() -> VoxelWorld {
   w = world_new(UNIT, 0, EPS, THETA).wn_world;
   session_ground(w, 12, 1, SURFACE_MAT);
   w
@@ -182,7 +182,7 @@ fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
   // `groundLabelled` — the reserved label is LAST: at the top, with its own height.
   lbl = session_labels(w, 0, 10);
   assert(len(lbl) == 4, "{len(lbl)} layer labels, not 4: {lbl}");
-  assert((lbl[3] ?? 0) == hex_world::LABEL_GROUND,
+  assert((lbl[3] ?? 0) == hex_voxel::LABEL_GROUND,
          "the ground's reserved label is not on top: {lbl}");
 
   // ── `writeReaches` — THE WRITE SIDE, and it is the half a picture misses ───
@@ -209,7 +209,7 @@ fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
 // This is that move: `prop_at` is the gesture, and what stays on the wire is
 // `say_prop` and the two views of one cell.
 //
-// ⚠ AND THE SEPARATION ITSELF IS `hex_world`'s (`tests/dressing.loft`), not restated
+// ⚠ AND THE SEPARATION ITSELF IS `hex_voxel`'s (`tests/dressing.loft`), not restated
 // here. What this holds is the EDITOR's half — that the gesture appends rather than
 // replaces, and that a terrain write leaves what it appended alone.
 fn test_two_props_in_one_cell_accumulate_rather_than_replacing() {

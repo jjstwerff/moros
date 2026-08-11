@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A3.3` — `expand == bake`, and the two paths that share only the part.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn no_palette() -> vector<integer> { [] }
 fn no_kids() -> vector<PartInst> { [] }
@@ -12,7 +12,7 @@ fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
   PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
 }
 
-fn one_cell(mat: integer) -> World {
+fn one_cell(mat: integer) -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
     co_cells: [Hex { h_height: 40 as u16? ?? 0,
@@ -37,7 +37,7 @@ fn wipe() {
   delete(root());
 }
 
-fn target() -> World {
+fn target() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in (0 - 4)..14 {
     for r in (0 - 4)..14 {
@@ -75,14 +75,14 @@ fn nest() {
   put("h/nest", 3, [at("h/mid",  2, 1, 6)]);
 }
 
-fn expanded() -> World {
+fn expanded() -> VoxelWorld {
   w = target();
   ex = part_expand(w, root(), at("h/nest", 0, 0, 0), 10);
   assert(ex.ex_code == EX_OK, "expand refused: {ex.ex_why}");
   w
 }
 
-fn baked() -> World {
+fn baked() -> VoxelWorld {
   bk = part_bake(root(), "h/nest");
   assert(bk.bk_code == BK_OK, "bake refused: {bk.bk_why}");
   w = target();

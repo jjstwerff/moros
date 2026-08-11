@@ -16,14 +16,14 @@
 // `roundtrip.loft` set for `A1.2`: a comparison that always says "same" passes a
 // preservation test perfectly.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const RESERVE = 8;
 const EPS = 5;
 const THETA = 2;
 
-fn fresh() -> World { world_new(U, RESERVE, EPS, THETA).wn_world }
+fn fresh() -> VoxelWorld { world_new(U, RESERVE, EPS, THETA).wn_world }
 
 fn no_palette() -> vector<integer> {
   p: vector<integer> = [];
@@ -52,7 +52,7 @@ fn file_digest(p: text) -> text {
 
 // A part with every section this format has an author for, so the claim is about
 // the whole record rather than about whichever one was convenient.
-fn dressed_part() -> World {
+fn dressed_part() -> VoxelWorld {
   w = fresh();
   for dq in 0..4 {
     for dr in 0..4 {
@@ -75,7 +75,7 @@ fn dressed_part() -> World {
 
 // The sections as one comparable text — tag and bytes, in order. A count would
 // pass a writer that kept five sections and emptied them.
-fn sections_of(w: World) -> text {
+fn sections_of(w: VoxelWorld) -> text {
   out = "";
   for s in w.w_sections {
     out = out + "{s.sc_tag}:{bytes_text(s.sc_bytes)}\n";
@@ -83,10 +83,10 @@ fn sections_of(w: World) -> text {
   out
 }
 
-fn top_at(w: World, q: integer, r: integer) -> integer {
+fn top_at(w: VoxelWorld, q: integer, r: integer) -> integer {
   c = world_column(w, q, r);
   h = 0;
-  for x in c.co_cells { if hex_world::hex_occupied(x) { h = x.h_height as integer ?? 0; } }
+  for x in c.co_cells { if hex_voxel::hex_occupied(x) { h = x.h_height as integer ?? 0; } }
   h
 }
 

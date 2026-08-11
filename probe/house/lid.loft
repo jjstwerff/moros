@@ -24,7 +24,7 @@
 // the spoil off* (what ships) and *return the spoil and lose the gallery*, and spoil from
 // a mountain cutting is carted off in the world as well as in this one.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 400;
 fn main() {
@@ -41,12 +41,12 @@ fn main() {
   println("  the hillside beside it, (1,0): {ground_h(w, 1, 0)}");
   println("");
   // now raise the lid by 12, as "the lid rises with the road" would have to
-  col = hex_world::world_column(w, 0, 0);
+  col = hex_voxel::world_column(w, 0, 0);
   gi = 0 - 1;
-  for i in 0..len(col.co_ids) { if (col.co_ids[i] ?? 0) == hex_world::LABEL_GROUND { gi = i; } }
-  gc = col.co_cells[gi] ?? hex_world::Hex {};
+  for i in 0..len(col.co_ids) { if (col.co_ids[i] ?? 0) == hex_voxel::LABEL_GROUND { gi = i; } }
+  gc = col.co_cells[gi] ?? hex_voxel::Hex {};
   layer_write(w, 0, 0, gi,
-    hex_world::Hex { h_height: ((gc.h_height as integer ?? 0) + 12) as u16? ?? 0,
+    hex_voxel::Hex { h_height: ((gc.h_height as integer ?? 0) + 12) as u16? ?? 0,
                      h_material: gc.h_material });
   println("after raising the lid by 12:");
   println("  ground  (ground_h) {ground_h(w, 0, 0)}");

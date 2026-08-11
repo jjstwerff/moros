@@ -5,7 +5,7 @@
 //
 // ⚠ WHY THIS EXISTS. Every gesture is already a function in this package, so the
 // server does not own the editing — but it does own the STATE the gestures are
-// applied to, and that is what forced a gate to start one. Beside the `World` the
+// applied to, and that is what forced a gate to start one. Beside the `VoxelWorld` the
 // server carries eight registries: the wall runs, the roof plans, the door leaves,
 // the openings, the annexes, the props, the slabs and the holes. `part_mode.mjs` says
 // it plainly — *"those are the SERVER's records for the world being edited, not the
@@ -34,7 +34,7 @@
 // worth nothing — which is the trap `editor_run.loft` was written to avoid and this
 // inherits. `make headless-same` is the check that they still agree.
 use gesture;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
 // ⚠ `EditSession`, NOT `Session`. `ssh` publishes `pub struct Session` and a struct
@@ -49,7 +49,7 @@ use hex_grid;
 // a program are fine at every size — memory corruption rather than a limit, filed as
 // loft#796 and related in shape to #775 and #774.
 //
-// And the honest design is the same: the `World` is already the argument every gesture
+// And the honest design is the same: the `VoxelWorld` is already the argument every gesture
 // takes, and the server's own registries are what nothing else could hold. A session
 // that owned the world too would be a second place a world can live, which is the thing
 // `HEX_STACK.md`'s first invariant forbids — the store is the only authority.
@@ -107,7 +107,7 @@ pub fn session_new() -> EditSession {
 
 // Ground under the scene. Every gate that builds anything starts by making somewhere
 // to build it, and a gesture on unauthored ground is a different test.
-pub fn session_ground(w: World, half: integer, h: integer, mat: integer) {
+pub fn session_ground(w: VoxelWorld, half: integer, h: integer, mat: integer) {
   for q in 0 - half..half + 1 {
     for r in 0 - half..half + 1 { ground_set(w, q, r, h, mat); }
   }
@@ -129,7 +129,7 @@ pub fn session_at(s: EditSession, x: float, z: float, yaw: float) {
 // nine registries a given gesture happens to touch — which is knowledge the server's
 // message loop encodes and nothing else did.
 
-pub fn session_raise(s: EditSession, w: World, dir: integer) -> Ack {
+pub fn session_raise(s: EditSession, w: VoxelWorld, dir: integer) -> Ack {
   raise_ahead(w, s.es_author, dir)
 }
 
@@ -142,11 +142,11 @@ pub fn session_raise(s: EditSession, w: World, dir: integer) -> Ack {
 // in `gesture`, and only because they thread a registry a caller would otherwise have
 // to know about.
 
-pub fn session_fence(s: EditSession, w: World, mat: integer, rad: integer, ref: float) -> Ack {
+pub fn session_fence(s: EditSession, w: VoxelWorld, mat: integer, rad: integer, ref: float) -> Ack {
   fence_ring(w, s.es_author, mat, rad, ref)
 }
 
-pub fn session_open(s: EditSession, w: World, kind: integer, nedges: integer) -> Ack {
+pub fn session_open(s: EditSession, w: VoxelWorld, kind: integer, nedges: integer) -> Ack {
   open_ahead(w, s.es_author, kind, nedges)
 }
 
@@ -168,7 +168,7 @@ pub fn session_open(s: EditSession, w: World, kind: integer, nedges: integer) ->
 // grep is the only instrument there is.
 //
 // Returns `storey_add`'s count: negative is a refusal, and `why` says which.
-pub fn session_storey(s: EditSession, w: World, dir: integer, why: &text) -> integer {
+pub fn session_storey(s: EditSession, w: VoxelWorld, dir: integer, why: &text) -> integer {
   (sq, sr) = hex_grid::px_to_hex(s.es_author.au_x, s.es_author.au_z);
   storey_add(w, sq, sr, dir, STENCIL_R, why)
 }
@@ -185,7 +185,7 @@ pub fn session_wall(s: EditSession, mat: integer) -> DraftStep {
 // delegation to `hex_grid::px_to_hex`, checked rather than assumed. A wrapper that
 // took a cell would let a test agree with itself about a mapping the wire does
 // differently.
-pub fn session_prop(s: EditSession, w: World, item: integer) -> Dressed {
+pub fn session_prop(s: EditSession, w: VoxelWorld, item: integer) -> Dressed {
   (pq, pr) = hex_grid::px_to_hex(s.es_author.au_x, s.es_author.au_z);
   prop_at(w, pq, pr, item)
 }
@@ -194,10 +194,10 @@ pub fn session_prop(s: EditSession, w: World, item: integer) -> Dressed {
 // NOT THE TERRAIN ONE: two answers about one cell is the whole of `D1`, and a test
 // that read the column would be asking the question the separation exists to keep
 // apart.
-pub fn session_dressing(w: World, q: integer, r: integer) -> vector<integer> {
+pub fn session_dressing(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   sd_out: vector<integer> = [];
   for sd_e in world_dressing(w, q, r).co_cells {
-    if hex_world::hex_occupied(sd_e) { sd_out += [sd_e.h_item as integer ?? 0]; }
+    if hex_voxel::hex_occupied(sd_e) { sd_out += [sd_e.h_item as integer ?? 0]; }
   }
   sd_out
 }
@@ -207,11 +207,11 @@ pub fn session_dressing(w: World, q: integer, r: integer) -> vector<integer> {
 // `15:` `16:` `26:` `29:` — the four queries every socket gate uses to see what a
 // gesture did. ⚠ They take the WORLD and not the session, because a read is a question
 // about the store and nothing else — a reader that needed the registries would be asking
-// something the wire cannot ask either. They are `hex_world`'s already; naming them here is so that a headless
+// something the wire cannot ask either. They are `hex_voxel`'s already; naming them here is so that a headless
 // test and a wire gate ask the same question in the same words.
 
 // `15:` — the column's occupied heights, low to high.
-pub fn session_column(w: World, q: integer, r: integer) -> vector<integer> {
+pub fn session_column(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   out: vector<integer> = [];
   for c in world_column(w, q, r).co_cells {
     if hex_present(c) { out += [c.h_height as integer ?? 0]; }
@@ -220,22 +220,22 @@ pub fn session_column(w: World, q: integer, r: integer) -> vector<integer> {
 }
 
 // `16:` — the three edge materials this hex OWNS, in slot order.
-pub fn session_walls(w: World, q: integer, r: integer) -> vector<integer> {
+pub fn session_walls(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   c = world_ground_cell(w, q, r);
   [c.h_wall_n as integer ?? 0, c.h_wall_ne as integer ?? 0, c.h_wall_se as integer ?? 0]
 }
 
 // `29:` — the layer labels of the chunk this hex is in, in layer order. The ground's
 // reserved label is what makes *which layer is the ground* answerable at all.
-pub fn session_labels(w: World, q: integer, r: integer) -> vector<integer> {
+pub fn session_labels(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   out: vector<integer> = [];
-  n = world_chunk_layers(w, hex_world::world_chunk_of(q), hex_world::world_chunk_of(r));
+  n = world_chunk_layers(w, hex_voxel::world_chunk_of(q), hex_voxel::world_chunk_of(r));
   for l in 0..n { out += [world_layer_id(w, q, r, l)]; }
   out
 }
 
 // `26:` — the material and height of the cell the ground layer holds here.
-pub fn session_cell(w: World, q: integer, r: integer) -> vector<integer> {
+pub fn session_cell(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   c = world_ground_cell(w, q, r);
   [c.h_material as integer ?? 0, c.h_height as integer ?? 0]
 }

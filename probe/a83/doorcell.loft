@@ -20,7 +20,7 @@
 // that same edge, so shut it completes the wall and ajar it swings out of it.
 //
 //   PROBE_PARTS=<parts-root> loft --interpret --lib lib/ probe/a83/doorcell.loft
-use hex_world;
+use hex_voxel;
 use hex_part;
 use hex_editor;
 
@@ -33,7 +33,7 @@ const W_UNIT  = 0.25;
 const DIR_NE  = 5;
 const HEAD_NE = 20;
 
-fn walled(w: World, q: integer, r: integer, nw: integer, ne: integer, e: integer) {
+fn walled(w: VoxelWorld, q: integer, r: integer, nw: integer, ne: integer, e: integer) {
   assert(world_set_cell(w, q, r, 0,
     Hex { h_height: 1 as u16? ?? 0,
           h_material: hex_editor::FLOOR_MAT as u8? ?? 0,
@@ -43,7 +43,7 @@ fn walled(w: World, q: integer, r: integer, nw: integer, ne: integer, e: integer
     "wall cell ({q},{r}) refused");
 }
 
-fn save(root: text, name: text, w: World) {
+fn save(root: text, name: text, w: VoxelWorld) {
   assert(mkdir_all("{root}/{name.dir()}").ok(), "mkdir for {name}");
   assert(world_save(w, "{root}/{name}.hxw", []) == WS_OK, "save {name}");
   println("  wrote {root}/{name}.hxw");

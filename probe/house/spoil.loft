@@ -21,13 +21,13 @@
 // If the estimate is bad in either, the design is wrong and `A8` needs something
 // else — which is cheaper to find out here than after it is built.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 400;
 
 // The ground a road cell was cut into, estimated from the cells beside it: the mean
 // of every neighbour that is NOT part of the run.
-fn ground_beside(w: World, q: integer, r: integer) -> integer {
+fn ground_beside(w: VoxelWorld, q: integer, r: integer) -> integer {
   sum = 0;
   n = 0;
   for d in 0..6 {
@@ -42,7 +42,7 @@ fn ground_beside(w: World, q: integer, r: integer) -> integer {
 
 // Lay a road along +q on a ramp that falls `dq` per hex along the run and `dr` per
 // hex across it. `dr = 0` is the fall line; `dq = 0` is a contour.
-fn spoil_scene(n: integer, dq: integer, dr: integer, truth: &vector<integer>) -> World {
+fn spoil_scene(n: integer, dq: integer, dr: integer, truth: &vector<integer>) -> VoxelWorld {
   rl_grades = Grades { gr_by: [] };
   rl_c = 0;
   rl_r = 0;

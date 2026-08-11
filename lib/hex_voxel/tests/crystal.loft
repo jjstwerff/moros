@@ -11,11 +11,11 @@
 // (`L14`), decay reading the table and writing the world.
 //
 // ⚠ SCOPE, stated so this is not mistaken for more than it is: the sibling package
-// `../loft-libs-world/hex_world` is NOT modified. It is a shared tree with another
+// `../loft-libs-world/hex_voxel` is NOT modified. It is a shared tree with another
 // agent in it, and replacing a shipped library's model there is a change to
 // announce rather than land from here. This proves the model CAN carry the
 // consumer; migrating the consumer is that tree's move to make.
-use hex_world;
+use hex_voxel;
 
 // The side table `L14` calls for: area- and time-limited state, keyed by cell,
 // living beside the world rather than inside it.
@@ -36,11 +36,11 @@ fn age_set(ages: Ages, q: integer, r: integer, v: integer) {
   else { e.ag_age = v; }
 }
 
-fn cry_world() -> World { world_new(1.0, 0, 4, 1).wn_world }
+fn cry_world() -> VoxelWorld { world_new(1.0, 0, 4, 1).wn_world }
 
 // A crystal cell: colour is a material index, height is the height. Both fit the
 // voxel as it stands — no field is added, which is the whole point.
-fn cry_place(w: World, q: integer, r: integer, colour: integer, h: integer) -> integer {
+fn cry_place(w: VoxelWorld, q: integer, r: integer, colour: integer, h: integer) -> integer {
   world_set_column(w, Column { co_q: q, co_r: r,
     co_cells: [Hex { h_height: h as u16? ?? 0,
                      h_material: colour as u8? ?? 0 }] }).cw_code

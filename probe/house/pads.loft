@@ -19,7 +19,7 @@
 // at the grade the ground held BEFORE any of them was placed; reading the ground
 // as each goes in would seat the second house on the first one's pad.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_mesh;
 const U = 0.25;
 const G = 40;
@@ -30,7 +30,7 @@ const HALF = 26;
 // would already be steeper than a field may take, so this is deliberately gentle —
 // a slope nothing refuses, so anything that breaks is `A4`'s doing and not the
 // fixture's.
-fn ramp(step: integer) -> World {
+fn ramp(step: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - HALF)..(HALF + 1) {
     for r in (0 - HALF)..(HALF + 1) {
@@ -42,7 +42,7 @@ fn ramp(step: integer) -> World {
 
 // Every floor cell of the world, and the spread of heights within each connected
 // pad — a pad is level exactly when its spread is 0.
-fn pad_spread(w: World, lo: integer, hi: integer) -> integer {
+fn pad_spread(w: VoxelWorld, lo: integer, hi: integer) -> integer {
   best = 0 - 1;
   worst = 0;
   for q in lo..(hi + 1) {
@@ -58,7 +58,7 @@ fn pad_spread(w: World, lo: integer, hi: integer) -> integer {
   worst - best
 }
 
-fn pad_height(w: World, lo: integer, hi: integer) -> integer {
+fn pad_height(w: VoxelWorld, lo: integer, hi: integer) -> integer {
   for q in lo..(hi + 1) {
     for r in (0 - 6)..7 {
       if (world_ground_cell(w, q, r).h_material as integer ?? 0) == FLOOR_MAT {
@@ -71,7 +71,7 @@ fn pad_height(w: World, lo: integer, hi: integer) -> integer {
 
 // Is the ground along `r = 0` monotonic between two q's? Reports the number of
 // REVERSALS — a run that goes up, down and up again has one.
-fn reversals(w: World, lo: integer, hi: integer) -> integer {
+fn reversals(w: VoxelWorld, lo: integer, hi: integer) -> integer {
   dir = 0;
   n = 0;
   prev = ground_h(w, lo, 0);
@@ -89,7 +89,7 @@ fn reversals(w: World, lo: integer, hi: integer) -> integer {
 
 // Every edge in the window that still breaks the limit of a cell that HAS one,
 // after the gesture has returned. A relaxation that converged leaves none.
-fn unsettled(w: World) -> integer {
+fn unsettled(w: VoxelWorld) -> integer {
   n = 0;
   for q in (0 - HALF + 1)..HALF {
     for r in (0 - 8)..9 {
@@ -115,7 +115,7 @@ fn unsettled(w: World) -> integer {
 //
 // `up` is the most the ground stands OVER a floor cell at the wall — the burial.
 // `down` is the most a floor stands PROUD of the ground beside it.
-fn pad_edge_step(w: World, up: &integer, down: &integer) {
+fn pad_edge_step(w: VoxelWorld, up: &integer, down: &integer) {
   for q in (0 - HALF + 1)..HALF {
     for r in (0 - 8)..9 {
       if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
@@ -130,7 +130,7 @@ fn pad_edge_step(w: World, up: &integer, down: &integer) {
   }
 }
 
-fn faces(w: World) -> integer {
+fn faces(w: VoxelWorld) -> integer {
   n = 0;
   for q in (0 - HALF + 1)..HALF {
     for r in (0 - 8)..9 { n = n + faces_here(w, q, r); }
@@ -138,7 +138,7 @@ fn faces(w: World) -> integer {
   n
 }
 
-fn profile(w: World, lo: integer, hi: integer) -> text {
+fn profile(w: VoxelWorld, lo: integer, hi: integer) -> text {
   out = "";
   for q in lo..(hi + 1) { out += "{ground_h(w, q, 0) - G} "; }
   out

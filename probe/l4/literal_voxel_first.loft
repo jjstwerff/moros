@@ -1,13 +1,21 @@
-// L4 `G` — the `L1` shape, with the package rename ALREADY in place.
+// L4 `G` — a bare `Chunk { … }`, with `hex_voxel` imported FIRST.
 //
-// `Chunk` is declared by both. This literal's fields are unambiguously THEIRS
-// (`ck_cells` exists on no other `Chunk` in the graph) — and it binds to `hex_voxel`'s
-// anyway, because that is the first `use`. The error names a field, never a collision:
+// ⚠ THIS FILE HAS MEANT THREE DIFFERENT THINGS, and it is the same six lines each time.
+// Read the three together, because the sequence is the finding:
 //
-//     error: Unknown field Chunk.ck_cells
+//   1. 2026-08-06 — both packages declared `Chunk`, and the bare name bound to whichever
+//      was `use`d FIRST. So this file took `hex_voxel`'s and failed on a field that only
+//      THEIRS has: `error: Unknown field Chunk.ck_cells` — the `Surface` diagnostic of
+//      `L1`, verbatim, naming a field and never a collision. `H`, the same file with the
+//      imports swapped, COMPILED. One source line, two meanings. loft#788.
+//   2. 2026-08-07 — loft 2026.8.0 refused the bare name at BOTH orders and named the two
+//      packages. The import order stopped deciding, which was the fix.
+//   3. `L6.2` — ours is `VoxelChunk`, so `Chunk` is declared by exactly ONE package again.
+//      The literal simply compiles and takes theirs, at either order, meaning the same
+//      thing both times.
 //
-// ⚠ That is the `Surface` diagnostic verbatim, one rename later. Compare `H`, which is
-// this file with the two imports swapped and nothing else.
+// The fields below are THEIRS (`ck_cells` exists on no other `Chunk` in the graph), so if
+// this ever prints something other than theirs, a second `Chunk` is back in the graph.
 use hex_voxel;
 use hex_world;
 

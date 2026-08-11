@@ -25,7 +25,7 @@ entry = "src/hex_mesh.loft"
 # depends on `hex_grid` and `graphics` and nothing else, which both sides can take.
 [dependencies]
 hex_proj     = { path = "../hex_proj" }
-hex_world    = { path = "../hex_world" }
+hex_voxel    = { path = "../hex_voxel" }
 hex_editor   = { path = "../hex_editor" }
 hex_grid     = ">=0.1"
 graphics     = ">=0.1"

@@ -9,10 +9,10 @@
 // below is refused for the right reason. The gate builds a tower through a socket
 // to say this; these run against the store.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
-fn world() -> World {
+fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 10..11 {
     for r in 0 - 10..11 { hex_editor::ground_set(w, q, r, 40, hex_editor::SURFACE_MAT); }
@@ -20,9 +20,9 @@ fn world() -> World {
   w
 }
 
-fn layers(w: World, q: integer, r: integer) -> integer {
+fn layers(w: VoxelWorld, q: integer, r: integer) -> integer {
   n = 0;
-  for c in world_column(w, q, r).co_cells { if hex_world::hex_occupied(c) { n = n + 1; } }
+  for c in world_column(w, q, r).co_cells { if hex_voxel::hex_occupied(c) { n = n + 1; } }
   n
 }
 
@@ -62,7 +62,7 @@ fn test_a_cellar_inserts_at_the_bottom_and_the_order_still_holds() {
   ascending = true;
   prev = 0 - 1;
   for c in col.co_cells {
-    if hex_world::hex_occupied(c) {
+    if hex_voxel::hex_occupied(c) {
       h = c.h_height as integer ?? 0;
       if prev >= 0 && h <= prev { ascending = false; }
       prev = h;
@@ -72,7 +72,7 @@ fn test_a_cellar_inserts_at_the_bottom_and_the_order_still_holds() {
 }
 
 // The index of the layer carrying this label, or -1.
-fn layer_of(w: World, q: integer, r: integer, label: integer) -> integer {
+fn layer_of(w: VoxelWorld, q: integer, r: integer, label: integer) -> integer {
   col = world_column(w, q, r);
   for i in 0..len(col.co_ids) { if (col.co_ids[i] ?? 0) == label { return i; } }
   0 - 1
@@ -90,14 +90,14 @@ fn test_the_ground_becomes_a_ceiling_the_moment_a_cellar_is_dug_under_it() {
   // 342 vertices into the `soffit` surface and every one of them was 3.0 wu BELOW
   // the ground, which is the cellar floor's own underside. Nothing was overhead.
   w = world();
-  gi = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  gi = layer_of(w, 0, 0, hex_voxel::LABEL_GROUND);
   assert(gi >= 0, "the ground has a label to be found by");
   assert(!hex_editor::col_has_below(world_column(w, 0, 0), gi),
          "open ground owes no underside — nothing is dug under it");
   why = "";
   n = hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
   assert(n > 0, "the cellar went in on {n} cells: {why}");
-  gi2 = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  gi2 = layer_of(w, 0, 0, hex_voxel::LABEL_GROUND);
   assert(hex_editor::col_has_below(world_column(w, 0, 0), gi2),
          "and now it is a ceiling: something occupied lies below it");
   // ⚠ AND THE CELLAR FLOOR IS NOT. It is the bottom of the stack, so the predicate
@@ -105,7 +105,7 @@ fn test_the_ground_becomes_a_ceiling_the_moment_a_cellar_is_dug_under_it() {
   // every layer in it and put a second fan under the floor you stand on.
   ci = 0;
   for i in 0..len(world_column(w, 0, 0).co_cells) {
-    if hex_world::hex_occupied(world_column(w, 0, 0).co_cells[i] ?? hex_world::Hex {})
+    if hex_voxel::hex_occupied(world_column(w, 0, 0).co_cells[i] ?? hex_voxel::Hex {})
        && i < gi2 { ci = i; }
   }
   assert(!hex_editor::col_has_below(world_column(w, 0, 0), ci),
@@ -119,7 +119,7 @@ fn test_a_deck_and_the_ground_under_it_are_both_ceilings() {
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 1, 2, why);
-  gi = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  gi = layer_of(w, 0, 0, hex_voxel::LABEL_GROUND);
   assert(!hex_editor::col_has_below(world_column(w, 0, 0), gi),
          "a deck overhead does not put anything UNDER the ground");
 }
@@ -187,14 +187,14 @@ fn test_a_cellar_stair_is_walkable_end_to_end() {
   feet = 40.0;
   for d in 0..3 {
     (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 3 - d);
-    sf = hex_world::world_surface(w, tq, tr, feet);
+    sf = hex_voxel::world_surface(w, tq, tr, feet);
     drop = (feet as integer ?? 0) - sf.sf_units;
     assert(drop > 0 && drop <= 3,
            "tread {3 - d} is {drop} down from {feet}, which is not one stride");
     feet = sf.sf_units as float;
   }
   // …and off the bottom tread onto the cellar floor itself.
-  last = hex_world::world_surface(w, 0, 0, feet);
+  last = hex_voxel::world_surface(w, 0, 0, feet);
   assert((feet as integer ?? 0) - last.sf_units <= 3,
          "the last step onto the cellar floor is "
        + "{(feet as integer ?? 0) - last.sf_units}");
@@ -214,10 +214,10 @@ fn test_a_room_is_a_floor_with_something_over_it_and_a_deck_is_not() {
   hex_editor::storey_add(w, 0, 0, 1, 2, why);          // a deck ABOVE
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);      // and a cellar BELOW
   col = world_column(w, 0, 0);
-  gi = layer_of(w, 0, 0, hex_world::LABEL_GROUND);
+  gi = layer_of(w, 0, 0, hex_voxel::LABEL_GROUND);
   ci = 0;
   for i in 0..gi {
-    if hex_world::hex_occupied(col.co_cells[i] ?? hex_world::Hex {}) { ci = i; }
+    if hex_voxel::hex_occupied(col.co_cells[i] ?? hex_voxel::Hex {}) { ci = i; }
   }
   assert(hex_editor::col_underground(col, ci), "the cellar is under the ground");
   assert(!hex_editor::col_underground(col, gi), "the ground itself is not");
@@ -236,7 +236,7 @@ fn test_a_room_does_not_end_at_a_chunk_seam() {
   // ⚠ THIS TEST ONCE ASSERTED THE BUG. A cellar dug across a chunk boundary came
   // back carrying a DIFFERENT LABEL in each chunk, so this said *"the seam really
   // does split the label"* and went on to prove the drawing survived it. The writer
-  // is fixed now (`hex_world/tests/seam_labels.loft`) and the same line asserts the
+  // is fixed now (`hex_voxel/tests/seam_labels.loft`) and the same line asserts the
   // opposite — which is the point of having written it as a fact about the store
   // rather than folding it into the drawing claim.
   //
@@ -258,7 +258,7 @@ fn test_a_room_does_not_end_at_a_chunk_seam() {
   hi = 40 - hex_editor::SLAB_THICK;
   a = world_column(w, 0, 0);
   b = world_column(w, 0, 0 - 1);
-  assert(hex_world::world_chunk_of(0) != hex_world::world_chunk_of(0 - 1),
+  assert(hex_voxel::world_chunk_of(0) != hex_voxel::world_chunk_of(0 - 1),
          "the disc really does straddle a seam, or this proves nothing");
   assert((a.co_ids[0] ?? 0) == (b.co_ids[0] ?? 0),
          "ONE cellar, ONE label across the seam: "
@@ -433,7 +433,7 @@ fn test_a_second_cellar_climbs_to_the_room_above_and_not_to_the_ground() {
   mid = 40 - hex_editor::STOREY_H;
   for d in 1..4 {
     (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
-    sf = hex_world::world_surface(w, tq, tr, (mid - 1) as float);
+    sf = hex_voxel::world_surface(w, tq, tr, (mid - 1) as float);
     assert(sf.sf_units > deep && sf.sf_units < mid,
            "tread {d} at {sf.sf_units} is between {deep} and {mid}");
   }
@@ -489,7 +489,7 @@ fn test_a_stair_stops_when_it_reaches_the_surface_rather_than_leaving_it() {
     col = world_column(w, tq, tr);
     top = 0 - 1;
     for c in col.co_cells {
-      if hex_world::hex_occupied(c) { top = c.h_height as integer ?? 0; }
+      if hex_voxel::hex_occupied(c) { top = c.h_height as integer ?? 0; }
     }
     assert(top >= 0, "tread {d} at ({tq},{tr}) put something in its column");
     assert(top < gnd,
@@ -507,23 +507,23 @@ fn test_the_stair_leaves_a_wall_standing_where_it_cuts() {
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
   (wq, wr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 3);
-  gl = hex_world::world_ground_layer(w, wq, wr);
+  gl = hex_voxel::world_ground_layer(w, wq, wr);
   col = world_column(w, wq, wr);
-  cells: vector<hex_world::Hex> = [];
+  cells: vector<hex_voxel::Hex> = [];
   ids: vector<integer> = [];
   for i in 0..len(col.co_cells) {
-    c = col.co_cells[i] ?? hex_world::Hex {};
+    c = col.co_cells[i] ?? hex_voxel::Hex {};
     if i == gl {
-      cells += [hex_world::Hex { h_height: c.h_height, h_material: c.h_material,
+      cells += [hex_voxel::Hex { h_height: c.h_height, h_material: c.h_material,
                                  h_wall_n: 7 as u8? ?? 0 }];
     } else { cells += [c]; }
     ids += [col.co_ids[i] ?? 0];
   }
-  world_set_column(w, hex_world::Column { co_q: wq, co_r: wr, co_cells: cells,
+  world_set_column(w, hex_voxel::Column { co_q: wq, co_r: wr, co_cells: cells,
                                           co_ids: ids });
   hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
   assert(hex_editor::ground_open(w, wq, wr), "the stairwell did open that cell");
-  after = hex_world::world_cell(w, wq, wr, hex_world::world_ground_layer(w, wq, wr));
+  after = hex_voxel::world_cell(w, wq, wr, hex_voxel::world_ground_layer(w, wq, wr));
   assert((after.h_wall_n as integer ?? 0) == 7,
          "and the wall on it is untouched, got {after.h_wall_n}");
 }

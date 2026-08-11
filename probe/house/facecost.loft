@@ -9,7 +9,7 @@
 // ⚠ `now()` IS MILLISECONDS. Every number below is a total over `REPS`, printed
 // per rebuild, so a sub-millisecond cost is still visible.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_mesh;
 const U = 0.25;
 const G = 40;

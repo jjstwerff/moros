@@ -13,18 +13,18 @@
 // what `A2` is about. So the part goes to disk and comes back before it is
 // stamped, every time.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_part;
 
 const EPS   = 8;
 const THETA = 3;
 
-fn fresh() -> World {
+fn fresh() -> VoxelWorld {
   world_new(0.25, hex_editor::W_RESERVE, EPS, THETA).wn_world
 }
 
 // The procedural house at `(cq, cr)`, floor at `anchor`.
-fn procedural(cq: integer, cr: integer, anchor: integer) -> World {
+fn procedural(cq: integer, cr: integer, anchor: integer) -> VoxelWorld {
   w = fresh();
   kb = 0; ka = 0; why = "";
   n = hex_editor::stencil_place(w, cq, cr, hex_editor::STENCIL_R, anchor,
@@ -39,7 +39,7 @@ fn procedural(cq: integer, cr: integer, anchor: integer) -> World {
 // rather than cancelled. A part cut at `(cq, cr)` and stamped back at `(cq, cr)`
 // agrees with a broken `un_origin` whenever the source centre happens to be the
 // one it was cut from.
-fn authored(cq: integer, cr: integer, anchor: integer, path: text) -> World {
+fn authored(cq: integer, cr: integer, anchor: integer, path: text) -> VoxelWorld {
   src = procedural(0, 0, 0);
   cut = part_from_region(src, 0, 0, hex_editor::STENCIL_R);
   assert(cut.pc_code == PR_OK, "the cut was refused: {cut.pc_why}");
@@ -62,7 +62,7 @@ fn no_palette() -> vector<integer> { [] }
 // ⚠ IT WALKS A MARGIN BEYOND THE FOOTPRINT, because a stamp that wrote a cell
 // OUTSIDE the house is exactly as wrong as one that lost a cell inside it, and a
 // sweep bounded at the radius cannot see the first kind at all.
-fn same_world(a: World, b: World, cq: integer, cr: integer) -> text {
+fn same_world(a: VoxelWorld, b: VoxelWorld, cq: integer, cr: integer) -> text {
   m = hex_editor::STENCIL_R + 3;
   for q in (cq - m)..(cq + m + 1) {
     for r in (cr - m)..(cr + m + 1) {

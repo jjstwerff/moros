@@ -2,9 +2,9 @@
 //
 // One gate per rule, each with a CONTROL — the same assertion against a case that
 // must FAIL. A gate nobody has seen red is a claim with a test next to it.
-use hex_world;
+use hex_voxel;
 
-fn world_ok() -> World {
+fn world_ok() -> VoxelWorld {
   // ε = 8, θ = 3 → 8 > 6, so `C1` holds with margin. ρ = 100 leaves room to dig.
   n = world_new(0.25, 100, 8, 3);
   assert(n.wn_code == WC_OK, "test world refused: {n.wn_code}");
@@ -42,7 +42,7 @@ fn test_chunk_of_floors_rather_than_truncating() {
 
 // ── F1 — fold-freedom ───────────────────────────────────────────────────────
 
-fn col_of(w: World, hs: vector<integer>) -> Column {
+fn col_of(w: VoxelWorld, hs: vector<integer>) -> Column {
   cells: vector<Hex> = [];
   for h in hs {
     if h < 0 { cells += [Hex {}]; }                                  // absent

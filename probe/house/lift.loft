@@ -5,13 +5,13 @@
 // cells, and the roof PLAN's world-Y. This prints each of them before and after a
 // `brush`, so the report is a table rather than a reading of the code.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;          // the grade the house is placed at
 const LIFT = 6;        // one press of the raise
 
-fn flat(w: World, rad: integer, h: integer) {
+fn flat(w: VoxelWorld, rad: integer, h: integer) {
   for q in (0 - rad)..(rad + 1) {
     for r in (0 - rad)..(rad + 1) {
       ground_set(w, q, r, h, SURFACE_MAT);
@@ -19,7 +19,7 @@ fn flat(w: World, rad: integer, h: integer) {
   }
 }
 
-fn floor_cells(w: World, rad: integer) -> integer {
+fn floor_cells(w: VoxelWorld, rad: integer) -> integer {
   n = 0;
   for q in (0 - rad)..(rad + 1) {
     for r in (0 - rad)..(rad + 1) {
@@ -29,7 +29,7 @@ fn floor_cells(w: World, rad: integer) -> integer {
   n
 }
 
-fn roof_cells(w: World, rad: integer) -> integer {
+fn roof_cells(w: VoxelWorld, rad: integer) -> integer {
   n = 0;
   for q in (0 - rad)..(rad + 1) {
     for r in (0 - rad)..(rad + 1) {

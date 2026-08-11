@@ -9,7 +9,7 @@
 // "same" passes a round-trip test perfectly. Every claim below is paired with a
 // one-cell change that must break it.
 use hex_part;
-use hex_world;
+use hex_voxel;
 use hex_field;   // hex_dist — the family owns it, not this package
 
 const U = 0.25;
@@ -17,7 +17,7 @@ const RESERVE = 8;
 const EPS = 5;
 const THETA = 2;
 
-fn fresh() -> World { world_new(U, RESERVE, EPS, THETA).wn_world }
+fn fresh() -> VoxelWorld { world_new(U, RESERVE, EPS, THETA).wn_world }
 
 // ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on
 // the interpreter and fails the NATIVE backend with a bare `mismatched types` —
@@ -29,7 +29,7 @@ fn no_palette() -> vector<integer> {
   p
 }
 
-fn landscape(cq: integer, cr: integer, rad: integer) -> World {
+fn landscape(cq: integer, cr: integer, rad: integer) -> VoxelWorld {
   w = fresh();
   for dq in (0 - rad - 1)..(rad + 2) {
     for dr in (0 - rad - 1)..(rad + 2) {
@@ -45,7 +45,7 @@ fn landscape(cq: integer, cr: integer, rad: integer) -> World {
   w
 }
 
-fn a_part() -> World {
+fn a_part() -> VoxelWorld {
   p = part_from_region(landscape(5, 3, 2), 5, 3, 2);
   assert(p.pc_code == PR_OK, "the copy was refused: {p.pc_why}");
   p.pc_world

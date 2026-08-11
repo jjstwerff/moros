@@ -11,11 +11,11 @@
 // 1,000,000 as though it were nanoseconds, printed `0 ms` for every phase, and was
 // believed long enough to be said out loud.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn root() -> text { "{temp_dir()}/perf_place_lib" }
 fn no_palette() -> vector<integer> { [] }
-fn blank() -> World { world_new(0.25, 0, 8, 3).wn_world }
+fn blank() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
 
 fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
   PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
@@ -25,11 +25,11 @@ fn probe_hex(h: integer, mat: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: mat as u8? ?? 0 }
 }
 
-fn with_cell(w: World, q: integer, r: integer, h: integer, mat: integer) {
+fn with_cell(w: VoxelWorld, q: integer, r: integer, h: integer, mat: integer) {
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: [probe_hex(h, mat)] });
 }
 
-fn save_part(name: text, w: World) {
+fn save_part(name: text, w: VoxelWorld) {
   mkdir_all("{root()}/{name.dir()}");
   world_save(w, "{root()}/{name}.hxw", no_palette());
 }
@@ -72,7 +72,7 @@ fn wipe(r: text) {
 }
 
 // The fixture's terrain: 16x16 columns, laid fresh for EVERY test.
-fn target() -> World {
+fn target() -> VoxelWorld {
   w = blank();
   for q in (0 - 2)..14 { for r in (0 - 2)..14 { with_cell(w, q, r, 5, 1); } }
   w
@@ -80,7 +80,7 @@ fn target() -> World {
 
 // The SAME 256 cells through the in-place single-cell write. See `G1` below for
 // why this is the instrument and not a rival fixture.
-fn target_cells() -> World {
+fn target_cells() -> VoxelWorld {
   w = blank();
   for q in (0 - 2)..14 { for r in (0 - 2)..14 { world_set_cell(w, q, r, 0, probe_hex(5, 1)); } }
   w
@@ -196,7 +196,7 @@ fn write_probe() {
   // flat. Measured, with a hundred worlds held: **both are unchanged.** So the
   // gap between 105 ms here and 372 ms there belongs to the test harness, not to
   // the store, and this probe is a LOWER BOUND on what a test pays.
-  held: vector<World> = [];
+  held: vector<VoxelWorld> = [];
   for i4 in 0..100 { held += [target_cells()]; }
   p = now();
   for i5 in 0..N { wp = target(); }

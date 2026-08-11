@@ -6,13 +6,13 @@
 //
 // ⚠ EVERY CLAIM IS PAIRED WITH THE THING IT MUST REFUSE, `roundtrip.loft`'s rule.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const EPS = 5;
 const THETA = 2;
 
-fn fresh() -> World { world_new(U, 0, EPS, THETA).wn_world }
+fn fresh() -> VoxelWorld { world_new(U, 0, EPS, THETA).wn_world }
 
 fn no_palette() -> vector<integer> {
   p: vector<integer> = [];

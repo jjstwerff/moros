@@ -1,7 +1,7 @@
 // WHAT DOES THE FABRIC SCAN COST A STROKE? — `LEVEL` calls `brush` every footfall,
 // so a per-cell predicate that asks six edge questions is a real bill, not a rounding.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 fn main() {

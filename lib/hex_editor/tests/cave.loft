@@ -16,7 +16,7 @@
 //   · walked UP the fall line the transverse spread is **1**, so a road over a hill
 //     has no cliff side to roof at all.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 200;                 // high enough that a deep cut cannot reach `ρ`
@@ -24,7 +24,7 @@ const G = 200;                 // high enough that a deep cut cannot reach `ρ`
 // A LINEAR RAMP: the ground falls by `k` per hex of `r`, so the fall line runs along
 // `r` and every contour is a line of constant `r`. That is the cliff-road case, and
 // a dome would mix it with the fall-line one in a single strip.
-fn ramp(k: integer) -> World {
+fn ramp(k: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
@@ -35,7 +35,7 @@ fn ramp(k: integer) -> World {
 // Walk a road ALONG the contour at r = 0, reading the grade one cell PAST the strip
 // — which is what `editor_server`'s `rd_look` does, and the only place the natural
 // ground still survives after the stroke before it.
-fn walk_contour(w: World, from: integer, to: integer) -> integer {
+fn walk_contour(w: VoxelWorld, from: integer, to: integer) -> integer {
   rl_grades = Grades { gr_by: [] };
   cl = 0;
   rs = 0;
@@ -48,7 +48,7 @@ fn walk_contour(w: World, from: integer, to: integer) -> integer {
 }
 
 // How many cells of the strip at `q` are shelves — the axis, counted.
-fn shelves_across(w: World, q: integer) -> integer {
+fn shelves_across(w: VoxelWorld, q: integer) -> integer {
   n = 0;
   for i in 0..(2 * ROAD_HALF + 1) {
     if caved_h(w, q, i - ROAD_HALF) >= 0 { n = n + 1; }
@@ -56,10 +56,10 @@ fn shelves_across(w: World, q: integer) -> integer {
   n
 }
 
-fn columns(w: World, q: integer, r: integer) -> integer {
+fn columns(w: VoxelWorld, q: integer, r: integer) -> integer {
   n = 0;
   for e in world_column(w, q, r).co_cells {
-    if hex_world::hex_occupied(e) { n = n + 1; }
+    if hex_voxel::hex_occupied(e) { n = n + 1; }
   }
   n
 }
@@ -197,7 +197,7 @@ fn test_feet_on_a_shelf_find_the_road_and_not_the_rock() {
       rh = caved_h(w, q, r);
       if rh < 0 { continue; }
       seen = seen + 1;
-      sf = hex_world::world_surface(w, q, r, rh as float);
+      sf = hex_voxel::world_surface(w, q, r, rh as float);
       assert(sf.sf_units == rh,
              "standing on the shelf at ({q},{r}) the surface answered {sf.sf_units}, "
              + "not the road at {rh} — the walker is inside the rock");
@@ -316,8 +316,8 @@ fn test_a_gentle_flank_caves_nothing_at_all() {
     // column of one occupied cell does not say that: a layer created and then left
     // empty is 8196 bytes on disk and reads as nothing at every cell. This is the
     // claim `storey_add`'s scar is about, asked of the gesture that could repeat it.
-    assert(hex_world::world_chunk_layers(w, 0, 0) == 1,
-           "a {k}-per-hex flank left {hex_world::world_chunk_layers(w, 0, 0)} layers in "
+    assert(hex_voxel::world_chunk_layers(w, 0, 0) == 1,
+           "a {k}-per-hex flank left {hex_voxel::world_chunk_layers(w, 0, 0)} layers in "
            + "the chunk where an open cut needs one");
   }
 }

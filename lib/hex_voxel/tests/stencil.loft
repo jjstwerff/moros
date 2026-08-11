@@ -5,9 +5,9 @@
 // house under a bridge, and a house meeting the surface. One rule serves all
 // three, so each gate here is the same rule seen from a different side, and each
 // carries a CONTROL that must fail.
-use hex_world;
+use hex_voxel;
 
-fn world_ok() -> World {
+fn world_ok() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);
   assert(n.wn_code == WC_OK, "test world refused: {n.wn_code}");
   n.wn_world
@@ -17,14 +17,14 @@ fn ground(h: integer) -> Hex { Hex { h_height: (h as u16? ?? 0), h_material: 1 }
 fn floor_at(h: integer) -> Hex { Hex { h_height: (h as u16? ?? 0), h_material: 4 } }
 
 // Heights of the occupied cells of a column, low to high.
-fn heights(w: World, q: integer, r: integer) -> vector<integer> {
+fn heights(w: VoxelWorld, q: integer, r: integer) -> vector<integer> {
   out: vector<integer> = [];
   c = world_column(w, q, r);
   for e in c.co_cells { if hex_occupied(e) { out += [e.h_height as integer ?? 0]; } }
   out
 }
 
-fn has_height(w: World, q: integer, r: integer, h: integer) -> boolean {
+fn has_height(w: VoxelWorld, q: integer, r: integer, h: integer) -> boolean {
   for x in heights(w, q, r) { if x == h { return true; } }
   false
 }

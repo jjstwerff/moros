@@ -26,7 +26,7 @@
 // `fn main(argv)` today and `arguments` parses a vector somebody has to supply, so
 // an env var is the honest way in rather than a wrapper pretending to be a CLI.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
 const HOUSE_W = 5;
@@ -39,7 +39,7 @@ const HOUSE_D = 4;
 const W_EPS   = 8;
 const W_THETA = 3;
 
-fn seed_ground(w: World, half: integer) {
+fn seed_ground(w: VoxelWorld, half: integer) {
   for q in 0 - half..half + 1 {
     for r in 0 - half..half + 1 {
       hex_editor::ground_set(w, q, r, 0, hex_editor::SURFACE_MAT);
@@ -49,7 +49,7 @@ fn seed_ground(w: World, half: integer) {
 
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
-fn run_line(w: World, a: &Author, runs: WallRuns, line: text, said: &text) -> boolean {
+fn run_line(w: VoxelWorld, a: &Author, runs: WallRuns, line: text, said: &text) -> boolean {
   t = line.trim();
   if t == "" || t[..1] == "#" { return true; }
   sp = t.find(" ");

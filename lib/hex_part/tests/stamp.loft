@@ -52,7 +52,7 @@ fn test_the_naive_inverse_disagrees_with_re_origin() {
 
 // ── The extent ──────────────────────────────────────────────────────────────
 
-fn built_part() -> World {
+fn built_part() -> VoxelWorld {
   n = world_new(0.25, 0, 8, 3);
   w = n.wn_world;
   // an ASYMMETRIC subject: a symmetric one cannot detect a symmetric bug, which

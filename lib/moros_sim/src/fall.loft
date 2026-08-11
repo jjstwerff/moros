@@ -28,7 +28,7 @@
 // `player.loft` already falls: `player_step` applies `GRAVITY`, clamps to
 // `TERMINAL_VELOCITY`, and lands through `collide::resolve_move`. It cannot simply
 // be called here, because it moves a body against a **`Map`** — `moros_map`'s world
-// model — while the editor holds a **`World`**, `hex_world`'s column store. That is
+// model — while the editor holds a **`VoxelWorld`**, `hex_voxel`'s column store. That is
 // the representation split `doc/claude/HEX_STACK.md` §4 exists to close, and until
 // it closes the two colliders are genuinely different.
 //

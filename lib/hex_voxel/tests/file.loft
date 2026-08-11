@@ -1,8 +1,8 @@
 // Row 1 gates — the world file. P1 (round-trip), P7 (a torn chunk is named),
 // P8 (the palette travels), and `C1` re-checked on open.
-use hex_world;
+use hex_voxel;
 
-fn built() -> World {
+fn built() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);
   w = n.wn_world;
   // two columns in one chunk, and one far away so a second chunk exists

@@ -17,7 +17,7 @@
 // heights am I cut*. `emit_run_wall` has consulted it since `A8`. What was missing
 // is that a part has no wall RUNS, so it takes the per-edge fallback, and that path
 // never asked. This section is what lets it.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 
@@ -57,7 +57,7 @@ fn has_newline(t: text) -> boolean {
   t.find("\n") != null
 }
 
-pub fn part_set_open(w: World, p: PartOpen) -> integer {
+pub fn part_set_open(w: VoxelWorld, p: PartOpen) -> integer {
   if p.po_head < 0 || p.po_sill < 0 || p.po_spring < 0 || p.po_radius < 0.0 {
     return PO_NEG;
   }
@@ -99,7 +99,7 @@ fn open_int(t: text, key: text, out: &integer, why: &text) -> boolean {
   true
 }
 
-pub fn part_open(w: World) -> OpenRead {
+pub fn part_open(w: VoxelWorld) -> OpenRead {
   if world_section_at(w, TAG_OPEN) < 0 {
     return OpenRead { or_code: MR_ABSENT, or_open: PartOpen {},
                       or_why: "no OPEN section" };

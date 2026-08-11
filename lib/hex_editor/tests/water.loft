@@ -12,7 +12,7 @@
 // it. ⚠ The last one is what makes the mirror reachable at all — plan 20 recorded that
 // *span* could not be designed because nothing could detect a waterway.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 200;                 // the bank
@@ -20,7 +20,7 @@ const BED = 8;                 // how far the water's surface sits below its ban
 
 // Flat ground with a river running EAST along `r = 0` — `hex_grid` direction 0, so
 // each cell's downstream neighbour is `(q + 1, r)`.
-fn river(fall: integer) -> World {
+fn river(fall: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 14)..15 {
     for r in (0 - 14)..15 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -38,10 +38,10 @@ fn river(fall: integer) -> World {
   w
 }
 
-fn columns(w: World, q: integer, r: integer) -> integer {
+fn columns(w: VoxelWorld, q: integer, r: integer) -> integer {
   n = 0;
   for e in world_column(w, q, r).co_cells {
-    if hex_world::hex_occupied(e) { n = n + 1; }
+    if hex_voxel::hex_occupied(e) { n = n + 1; }
   }
   n
 }
@@ -194,7 +194,7 @@ fn test_a_raise_leaves_the_river_and_lifts_its_banks() {
 // ⚠ IT COUNTS THROUGH AN OUT-PARAMETER AND NOT A RETURN, and that is loft#772 rather
 // than a style: a `&` parameter reassigned from a CALL is a hard error, and a helper
 // that both takes the two counters and returns a total would have to do exactly that.
-fn cross_river(w: World, clamped: &integer, residual: &integer, off: &integer) {
+fn cross_river(w: VoxelWorld, clamped: &integer, residual: &integer, off: &integer) {
   rl_grades = Grades { gr_by: [] };
   for r in (0 - 5)..6 {
     k = road_lay(w, 0, r, G, ROAD_HALF, (G as float) * U, 0.0, 0.0, clamped, residual, rl_grades);
@@ -297,7 +297,7 @@ fn test_a_road_on_dry_ground_spans_nothing() {
 
 // A ramp falling along `r`, so the fall line runs south and every contour is a line of
 // constant `r`. Nothing is authored on it, so a river laid here has only the ground.
-fn slope(k: integer) -> World {
+fn slope(k: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
@@ -306,7 +306,7 @@ fn slope(k: integer) -> World {
 }
 
 // Where the water actually went — the cells it wrote, in order, as a text.
-fn route(w: World, q0: integer, r0: integer, hint: integer, steps: integer) -> text {
+fn route(w: VoxelWorld, q0: integer, r0: integer, hint: integer, steps: integer) -> text {
   cl = 0;
   rs = 0;
   why = "";
@@ -456,7 +456,7 @@ fn test_a_river_does_not_cross_itself() {
 
 // How many cells across the river is at this point along a flat easterly canal — the
 // column of cells at `q`, counted across `r`.
-fn across(w: World, q: integer) -> integer {
+fn across(w: VoxelWorld, q: integer) -> integer {
   n = 0;
   for r in (0 - 6)..7 {
     if is_water(world_ground_cell(w, q, r).h_material as integer ?? 0) { n = n + 1; }

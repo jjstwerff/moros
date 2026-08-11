@@ -28,7 +28,7 @@
 //               chunks, 2 sections"*, renamed the subject line and re-anchored the
 //               edit clock over a file that was never created: `file()` on a path
 //               whose directory is missing hands back a usable handle and every
-//               write goes to stderr. `hex_world` answers `WS_IO` now and the
+//               write goes to stderr. `hex_voxel` answers `WS_IO` now and the
 //               editor makes the directory
 //   A7.3e-v     ⚠ and a name the CATALOGUE could never show is refused before the
 //               bytes go anywhere. `8:a/b/c` landed on disk and `part_list` walks

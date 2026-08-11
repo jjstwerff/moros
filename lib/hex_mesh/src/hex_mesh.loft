@@ -19,14 +19,14 @@
 // function, unmodified"* is only checkable if there is ONE function; two copies that
 // agree today are two copies, and not drifting is the whole of that gate.
 //
-// ⚠ `MESH_CHUNK` IS 8 AND `hex_world::CHUNK_W` IS 32 — different questions. The store
+// ⚠ `MESH_CHUNK` IS 8 AND `hex_voxel::CHUNK_W` IS 32 — different questions. The store
 // tiles at 32 for windowing and elision; the renderer tiles at 8 because that is what
 // a rebuild costs. The mesh tile lives with the mesher so a client cannot tile
 // differently by accident.
 use graphics;
 use hex_proj;
 use hex_grid;
-use hex_world;
+use hex_voxel;
 use hex_editor;
 use surfaces;
 
@@ -42,7 +42,7 @@ pub const MESH_CHUNK = 8;
 // shape: two derivations of one quantity agree the day they are written. A 3x3
 // box holds all six neighbours of a cell in odd-r offset, which is every cell the
 // corner mean can reach, so the delegation is exact rather than approximate.
-pub fn corner_heights(cq: integer, cr: integer, wld: World) -> vector<float> {
+pub fn corner_heights(cq: integer, cr: integer, wld: VoxelWorld) -> vector<float> {
   gh: vector<integer> = [];
   gl: vector<integer> = [];
   face_grid(wld, cq - 1, cr - 1, 3, gh, gl);
@@ -64,7 +64,7 @@ pub fn emit_tri(m: Mesh, a: Vec3, na: Vec3, b: Vec3, nb: Vec3, c: Vec3, nc: Vec3
 }
 
 pub fn grid_h(gh: vector<integer>, gq0: integer, gr0: integer, gw: integer,
-          q: integer, r: integer, wld: World) -> integer {
+          q: integer, r: integer, wld: VoxelWorld) -> integer {
   lq = q - gq0;
   lr = r - gr0;
   if lq < 0 || lr < 0 || lq >= gw || lr >= gw { return terrain_h(q, r, wld); }
@@ -112,7 +112,7 @@ const FACE_ABSENT = 0 - 1;
 // would paint a desert's byte 3 with a mountain's threshold on exactly the cells
 // at a border. Measured, `world_region_at` costs 0.065 ms over the halo — a
 // twentieth of what asking `face_limit` per cell costs.
-fn face_grid_in(wld: World, gq0: integer, gr0: integer, gw: integer,
+fn face_grid_in(wld: VoxelWorld, gq0: integer, gr0: integer, gw: integer,
                 bounded: boolean, gh: &vector<integer>, gl: &vector<integer>) {
   face_grid_for(wld, gq0, gr0, gw, bounded, 0, gh, gl)
 }
@@ -135,7 +135,7 @@ fn face_grid_in(wld: World, gq0: integer, gr0: integer, gw: integer,
 //
 // ⚠ `want` OF 0 MEANS *ASK THE GROUND*, which is every caller but the road's. Material
 // 0 is absence and no cell can carry it, so it cannot collide with a real request.
-fn face_grid_for(wld: World, gq0: integer, gr0: integer, gw: integer,
+fn face_grid_for(wld: VoxelWorld, gq0: integer, gr0: integer, gw: integer,
                  bounded: boolean, want: integer,
                  gh: &vector<integer>, gl: &vector<integer>) {
   ks: vector<integer> = [];
@@ -169,7 +169,7 @@ fn face_grid_for(wld: World, gq0: integer, gr0: integer, gw: integer,
         }
       }
       if sub >= 0 {
-        sc = hex_world::world_cell(wld, hq, hr, sub);
+        sc = hex_voxel::world_cell(wld, hq, hr, sub);
         gh += [sc.h_height as integer ?? 0];
         gl += [hex_editor::ground_kind_at(wld, hq, hr, want).tr_face];
         continue;
@@ -187,7 +187,7 @@ fn face_grid_for(wld: World, gq0: integer, gr0: integer, gw: integer,
         continue;
       }
       m = c.h_material as integer ?? 0;
-      k = hex_world::world_region_at(wld, hq, hr) * 256 + m;
+      k = hex_voxel::world_region_at(wld, hq, hr) * 256 + m;
       hit = 0 - 1;
       for ki in 0..len(ks) {
         if (ks[ki] ?? 0) == k { hit = vs[ki] ?? 0; }
@@ -206,10 +206,10 @@ fn face_grid_for(wld: World, gq0: integer, gr0: integer, gw: integer,
 // ground moves the ground off index 0, so `world_ground_layer > 0` answers it exactly
 // — `chunk_mesh_mat`'s own `can_open` derivation, asked of the halo's four corners
 // rather than of every cell in it.
-fn chunk_dug(wld: World, gq0: integer, gr0: integer, gw: integer) -> boolean {
+fn chunk_dug(wld: VoxelWorld, gq0: integer, gr0: integer, gw: integer) -> boolean {
   for i in 0..2 {
     for j in 0..2 {
-      if hex_world::world_ground_layer(wld, gq0 + i * (gw - 1), gr0 + j * (gw - 1)) > 0 {
+      if hex_voxel::world_ground_layer(wld, gq0 + i * (gw - 1), gr0 + j * (gw - 1)) > 0 {
         return true;
       }
     }
@@ -283,7 +283,7 @@ pub fn water_shade(depth: integer) -> float {
 }
 
 // The unbounded reading — the outdoors is everywhere, so every cell is ground.
-fn face_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
+fn face_grid(wld: VoxelWorld, gq0: integer, gr0: integer, gw: integer,
              gh: &vector<integer>, gl: &vector<integer>) {
   face_grid_in(wld, gq0, gr0, gw, false, gh, gl);
 }
@@ -315,23 +315,23 @@ fn face_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
 // few seconds to seventy-one the last time one was put on a per-cell path.
 const FACE_SOLID = 0 - 1000000;         // solid all the way down: no undercut here
 
-fn under_grid(wld: World, gq0: integer, gr0: integer, gw: integer,
+fn under_grid(wld: VoxelWorld, gq0: integer, gr0: integer, gw: integer,
               gu: &vector<integer>) {
   cks: vector<integer> = [];
   cvs: vector<boolean> = [];
   for hr in gr0..gr0 + gw {
     for hq in gq0..gq0 + gw {
       // ⚠ THE KEY IS BIASED, because a chunk index is signed and `cx * N + cz`
-      // collides across zero — the same packing `hex_world`'s own chunk index makes.
-      k = (hex_world::world_chunk_of(hq) + 32768) * 65536
-        + (hex_world::world_chunk_of(hr) + 32768);
+      // collides across zero — the same packing `hex_voxel`'s own chunk index makes.
+      k = (hex_voxel::world_chunk_of(hq) + 32768) * 65536
+        + (hex_voxel::world_chunk_of(hr) + 32768);
       dug = false;
       hit = false;
       for ki in 0..len(cks) {
         if (cks[ki] ?? 0) == k { dug = cvs[ki] ?? false; hit = true; }
       }
       if !hit {
-        dug = hex_world::world_ground_layer(wld, hq, hr) > 0;
+        dug = hex_voxel::world_ground_layer(wld, hq, hr) > 0;
         cks += [k];
         cvs += [dug];
       }
@@ -445,7 +445,7 @@ pub fn corner_heights_from(gh: vector<integer>, gl: vector<integer>,
 // reader who finds a normal of length 1.4 deserves to know why — and because
 // `soffit.loft` asserts every face normal IS a unit vector, which is a different
 // surface and must stay that way.
-pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: World,
+pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: VoxelWorld,
                    nx: vector<float>, ny: vector<float>, nz: vector<float>,
                    q0: integer, r0: integer,
                    gh: vector<integer>, gl: vector<integer>,
@@ -585,7 +585,7 @@ fn emit_hex_bank(m: Mesh, cq: integer, cr: integer, floor_y: float, bank_y: floa
 // ⚠ AN UNWRITTEN CELL COUNTS AS GROUND HERE, which is what makes an unauthored
 // world a flat plane rather than a hole to fall through. See `bounded` below for
 // the one caller that must not get that, and why.
-pub fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -> Mesh {
+pub fn chunk_mesh_mat(cx: integer, cz: integer, wld: VoxelWorld, want_mat: integer) -> Mesh {
   chunk_mesh_mat_in(cx, cz, wld, want_mat, false)
 }
 
@@ -608,7 +608,7 @@ pub fn chunk_mesh_mat(cx: integer, cz: integer, wld: World, want_mat: integer) -
 // here: the substitution below turns an unwritten cell into `SURFACE_MAT`, so it
 // can only ever join the surface pass. Asking for road, field or floor gives the
 // same triangles either way — which is what the equality test asserts.
-pub fn chunk_mesh_mat_bounded(cx: integer, cz: integer, wld: World, want_mat: integer) -> Mesh {
+pub fn chunk_mesh_mat_bounded(cx: integer, cz: integer, wld: VoxelWorld, want_mat: integer) -> Mesh {
   chunk_mesh_mat_in(cx, cz, wld, want_mat, true)
 }
 
@@ -616,7 +616,7 @@ pub fn chunk_mesh_mat_bounded(cx: integer, cz: integer, wld: World, want_mat: in
 // to disagree with the ground under the world it is stamped into — and the point
 // of a rendered thumbnail (CATALOGUE §C4) is that it IS the thing rather than a
 // second drawing of it.
-fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
+fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: VoxelWorld, want_mat: integer,
                      bounded: boolean) -> Mesh {
   cm = mesh("chunk");
   q0 = cx * MESH_CHUNK;
@@ -671,7 +671,7 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
   // That mattered enough to derive rather than measure afterwards: a per-cell scan
   // added to the stream path once took first-client service from a few seconds to
   // seventy-one, and this loop runs four times per chunk, once per material.
-  gl0 = hex_world::world_ground_layer(wld, q0, r0);
+  gl0 = hex_voxel::world_ground_layer(wld, q0, r0);
   can_open = gl0 > 0;
 
   for cr in r0..r0 + MESH_CHUNK {
@@ -773,7 +773,7 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: World, want_mat: integer,
 // carrying one material; a face belongs to an EDGE and to the column that stands
 // above it, so it has no material to be selected by. Running it once per chunk
 // also keeps the limit grid read once rather than once per surface.
-pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: World,
+pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: VoxelWorld,
                         bounded: boolean = false) -> Mesh {
   fm = mesh("faces");
   q0 = cx * MESH_CHUNK;
@@ -865,7 +865,7 @@ fn emit_face_wall(m: Mesh, gh: vector<integer>, gl: vector<integer>,
   emit_tri(m, pa, nm, pc, nm, pd, nm);
 }
 
-pub fn emit_ground_reveal(m: Mesh, wld: World, cq: integer, cr: integer) {
+pub fn emit_ground_reveal(m: Mesh, wld: VoxelWorld, cq: integer, cr: integer) {
   rhs = corner_heights(cq, cr, wld);
   drop = hex_editor::SLAB_THICK as float;
   rcs = hex_to_world(cq, cr, 0);
@@ -977,8 +977,8 @@ pub const MESH_MARGIN = 2;
 // that did not exist on the server either, so nothing was ever going to arrive. A
 // chunk known to be empty is an ANSWER — the mesher reads absent cells there and so
 // does the server, and the two agree.
-pub fn chunk_present(w: World, q: integer, r: integer) -> boolean {
-  hex_world::world_chunk_known(w, hex_world::world_chunk_of(q), hex_world::world_chunk_of(r))
+pub fn chunk_present(w: VoxelWorld, q: integer, r: integer) -> boolean {
+  hex_voxel::world_chunk_known(w, hex_voxel::world_chunk_of(q), hex_voxel::world_chunk_of(r))
 }
 
 // Every store chunk the mesher will read for this tile is present.
@@ -993,28 +993,28 @@ pub fn chunk_present(w: World, q: integer, r: integer) -> boolean {
 // ⚠ AN ORACLE THAT ONLY SAYS NO IS HALF AN INSTRUMENT. "36 held" cannot tell a rim the
 // server never sent from a chunk that should have arrived and did not, and those want
 // opposite fixes; the corner it names is the difference.
-pub fn tile_why(w: World, cx: integer, cz: integer) -> text {
+pub fn tile_why(w: VoxelWorld, cx: integer, cz: integer) -> text {
   q0 = cx * MESH_CHUNK - MESH_MARGIN;
   r0 = cz * MESH_CHUNK - MESH_MARGIN;
   q1 = cx * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
   r1 = cz * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;
   out = "";
   if !chunk_present(w, q0, r0) {
-    out = out + " -{hex_world::world_chunk_of(q0)},{hex_world::world_chunk_of(r0)}";
+    out = out + " -{hex_voxel::world_chunk_of(q0)},{hex_voxel::world_chunk_of(r0)}";
   }
   if !chunk_present(w, q1, r0) {
-    out = out + " -{hex_world::world_chunk_of(q1)},{hex_world::world_chunk_of(r0)}";
+    out = out + " -{hex_voxel::world_chunk_of(q1)},{hex_voxel::world_chunk_of(r0)}";
   }
   if !chunk_present(w, q0, r1) {
-    out = out + " -{hex_world::world_chunk_of(q0)},{hex_world::world_chunk_of(r1)}";
+    out = out + " -{hex_voxel::world_chunk_of(q0)},{hex_voxel::world_chunk_of(r1)}";
   }
   if !chunk_present(w, q1, r1) {
-    out = out + " -{hex_world::world_chunk_of(q1)},{hex_world::world_chunk_of(r1)}";
+    out = out + " -{hex_voxel::world_chunk_of(q1)},{hex_voxel::world_chunk_of(r1)}";
   }
   out
 }
 
-pub fn tile_ready(w: World, cx: integer, cz: integer) -> boolean {
+pub fn tile_ready(w: VoxelWorld, cx: integer, cz: integer) -> boolean {
   q0 = cx * MESH_CHUNK - MESH_MARGIN;
   r0 = cz * MESH_CHUNK - MESH_MARGIN;
   q1 = cx * MESH_CHUNK + MESH_CHUNK - 1 + MESH_MARGIN;

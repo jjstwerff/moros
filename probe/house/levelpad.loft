@@ -21,7 +21,7 @@
 // Making the level path SET its disc rather than add a falloff is one rule — and it
 // is a change to what levelling is, with `cellar.keys`'s numbers downstream of it.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 fn main() {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in (0 - 20)..21 { for r in (0 - 20)..21 { ground_set(w, q, r, 0, SURFACE_MAT); } }

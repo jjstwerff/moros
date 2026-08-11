@@ -9,14 +9,14 @@
 // over the whole affected area: heights AND materials, because a divergence that
 // only moves a material is still a different map.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 const AMP = 12;
 const RAD = 7;
 
-fn plain() -> World {
+fn plain() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 30)..31 {
     for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -24,13 +24,13 @@ fn plain() -> World {
   w
 }
 
-fn hill(w: World) {
+fn hill(w: VoxelWorld) {
   cl = 0;
   rs = 0;
   brush(w, 0, 0, AMP, RAD, cl, rs);
 }
 
-fn diff(a: World, b: World, what: text) {
+fn diff(a: VoxelWorld, b: VoxelWorld, what: text) {
   worst = 0;
   cells = 0;
   mats = 0;

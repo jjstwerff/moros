@@ -10,10 +10,12 @@ entry = "src/hex_editor.loft"
 # byte-identical to ../../../loft-libs-world (diffed, not assumed), so there is
 # nothing to copy and no path into a tree another agent is editing.
 #
-# ⚠ `hex_world` is deliberately NOT here. Ours is `lib/hex_world` and the registry
-# carries a 0.2.0 on a different lineage; declaring it would let the resolver pick
-# the wrong one out from under the editor. Nothing in this package needs it — a
-# Plan draws into a HexSet, which is `hex_field`'s, not the store's.
+# ⚠ A NOTE HERE SAID `hex_world` WAS "deliberately NOT here" WHILE IT WAS DECLARED
+# TWENTY-FIVE LINES BELOW. It was true when this package was world-free and outlived
+# that by every release since; plan 19 `L6.2` found it while renaming the store. The
+# store IS a dependency — see the block above `hex_voxel` — and what the note was
+# really guarding, a name shared with a different published lineage, is what the
+# rename removed.
 [dependencies]
 hex_draw  = ">=0.1"
 hex_form  = ">=0.1"
@@ -33,17 +35,19 @@ hex_edge  = ">=0.1"
 hex_shape = ">=0.1"
 hex_place = ">=0.1"
 hex_grid  = ">=0.1"
-# ⚠ OURS, BY PATH, AND THAT IS THE POINT. A gesture edits a world, so this package
-# cannot stay world-free once it holds gestures. `lib/hex_world` is 0.1.0 with the
-# surface-rule work; the registry carries a 0.2.0 on a DIFFERENT lineage, and a
-# version range would let the resolver pick it. A path names exactly one, and it is
-# inside this tree — unlike the paths into ../../../loft-libs-world that moros_map
-# and moros_sim used to carry, which made a sibling checkout part of our build.
-hex_world = { path = "../hex_world" }
+# ⚠ OURS, BY PATH. A gesture edits a world, so this package cannot stay world-free
+# once it holds gestures. The path is because `hex_voxel` is UNPUBLISHED and lives in
+# this tree — not, any longer, to dodge a name: plan 19 `L6.2` renamed the store from
+# `hex_world`, so the registry's `hex_world` and ours no longer answer to one name and
+# no resolver can pick the wrong one. `probe/l4/run.sh` control `D` is where that is
+# measured. ⚠ It is still a path INSIDE this tree, unlike the paths into
+# ../../../loft-libs-world that moros_map and moros_sim used to carry, which made a
+# sibling checkout part of our build.
+hex_voxel = { path = "../hex_voxel" }
 # ⚠ OURS TOO, AND FOR THE SAME REASON THE STORE IS. A gesture that places a house
 # from a FILE needs to know what a part is — plan 17 `A2.2`, where the procedural
 # stencil gains an authored twin. The arrow is `hex_editor` → `hex_part` →
-# `hex_world` and there is no cycle: `hex_part` knows what a part is and nothing
+# `hex_voxel` and there is no cycle: `hex_part` knows what a part is and nothing
 # about gestures, which is why the band FLOOR is passed in rather than derived
 # there.
 hex_part = { path = "../hex_part" }

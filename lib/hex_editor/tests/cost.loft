@@ -11,7 +11,7 @@
 // does it cost", which is the question that decides whether this editor still
 // works on a large, filled world.
 //
-// `w_tau` is the world's own edit clock: hex_world bumps it once per column write
+// `w_tau` is the world's own edit clock: hex_voxel bumps it once per column write
 // that actually CHANGED something, and stamps the layer with it. So the cost of a
 // gesture is exactly `τ` after minus `τ` before — deterministic, the same on any
 // machine, and a number a test can pin rather than a duration it has to tolerate.
@@ -21,12 +21,12 @@
 // world of thousands of written cells must cost the same, or the editor gets
 // slower as the map fills — which is exactly when it must not.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 use hex_grid;
 
 // A filled world: every cell in a `rad`-hex square written, so the strokes below
 // land on ground that already exists rather than creating it.
-fn filled(rad: integer) -> World {
+fn filled(rad: integer) -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - rad..rad + 1 {
     for r in 0 - rad..rad + 1 { hex_editor::ground_set(w, q, r, 4, hex_editor::SURFACE_MAT); }
@@ -95,7 +95,7 @@ fn test_a_refused_gesture_costs_nothing() {
 }
 
 fn test_writing_the_same_height_twice_is_free() {
-  // hex_world bumps `τ` only when a write CHANGES something, so this measures the
+  // hex_voxel bumps `τ` only when a write CHANGES something, so this measures the
   // model's own promise. It matters for the editor because a gesture that re-writes
   // unchanged cells looks identical from outside and costs the renderer a rebuild
   // it did not need.

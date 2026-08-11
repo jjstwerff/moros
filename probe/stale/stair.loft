@@ -4,17 +4,17 @@
 // and reads that ground with `terrain_h` AFTER the stair has cut its well. If the
 // cut clears the ground cell, that read is of a hole — and before the window-base
 // fix a hole answered `ck_base`, a height nobody wrote.
-use hex_world;
+use hex_voxel;
 use hex_editor;
 
-fn gmat(w: World, q: integer, r: integer) -> integer {
-  c = hex_world::world_ground_cell(w, q, r);
+fn gmat(w: VoxelWorld, q: integer, r: integer) -> integer {
+  c = hex_voxel::world_ground_cell(w, q, r);
   m = c.h_material;
   m
 }
 
 fn main() {
-  w = hex_world::world_new(0.25, 0, 8, 3).wn_world;
+  w = hex_voxel::world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 10..11 {
     for r in 0 - 10..11 {
       h = 40 - 3 * q;
@@ -39,10 +39,10 @@ fn main() {
   for d in 1..(n + 1) {
     (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
     gnd = hex_editor::terrain_h(tq, tr, w);
-    sf = hex_world::world_surface(w, tq, tr, (gnd - 1) as float);
-    col = hex_world::world_column(w, tq, tr);
+    sf = hex_voxel::world_surface(w, tq, tr, (gnd - 1) as float);
+    col = hex_voxel::world_column(w, tq, tr);
     top = 0 - 1;
-    for c in col.co_cells { if hex_world::hex_occupied(c) { top = c.h_height as integer ?? 0; } }
+    for c in col.co_cells { if hex_voxel::hex_occupied(c) { top = c.h_height as integer ?? 0; } }
     println("  tread {d} cell ({tq},{tr})  ground BEFORE {pre[d] ?? 0}  ground NOW {gnd}"
             + "  present now {gmat(w, tq, tr) != 0}  sf_units {sf.sf_units} layer {sf.sf_layer}"
             + "  TOP occupied {top}  layers {len(col.co_cells)}");

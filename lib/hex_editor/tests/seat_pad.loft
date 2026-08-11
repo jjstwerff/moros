@@ -17,7 +17,7 @@
 // not a bug, and the whole of `A4`'s remaining content is that the number is now
 // REPORTED instead of silently absorbed.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
@@ -25,7 +25,7 @@ const W = 5;
 const D = 4;
 const YAW = 0.5235987755982988;      // 30°, an even orbit — the lattice's own rule
 
-fn flat() -> World {
+fn flat() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 24)..25 {
     for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -33,7 +33,7 @@ fn flat() -> World {
   w
 }
 
-fn ramp(step: integer) -> World {
+fn ramp(step: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 24)..25 {
     for r in (0 - 24)..25 { ground_set(w, q, r, G + q * step, SURFACE_MAT); }
@@ -45,7 +45,7 @@ fn ramp(step: integer) -> World {
 // stands PROUD of the ground beside it. ⚠ SIGNED AND SEPARATE: earth above a floor
 // is a house in a trench and a floor above the ground is a house on a plinth, and
 // an absolute value cannot tell the two apart.
-fn pad_wall_step(w: World, up: &integer, down: &integer) {
+fn pad_wall_step(w: VoxelWorld, up: &integer, down: &integer) {
   for q in (0 - 20)..21 {
     for r in (0 - 20)..21 {
       if (world_ground_cell(w, q, r).h_material as integer ?? 0) != FLOOR_MAT { continue; }
@@ -60,7 +60,7 @@ fn pad_wall_step(w: World, up: &integer, down: &integer) {
   }
 }
 
-fn floor_spread(w: World) -> integer {
+fn floor_spread(w: VoxelWorld) -> integer {
   lo = 0 - 1;
   hi = 0;
   for q in (0 - 20)..21 {
@@ -75,7 +75,7 @@ fn floor_spread(w: World) -> integer {
   hi - lo
 }
 
-fn house(w: World, x: float, grade: integer) -> Ack {
+fn house(w: VoxelWorld, x: float, grade: integer) -> Ack {
   runs = WallRuns { items: [] };
   place_house(w, author_at(x, 0.0, YAW), W, D, grade, runs)
 }

@@ -150,7 +150,7 @@ fn test_seating_reports_what_it_cost() {
 
 // ── the gesture the footprint was built for ─────────────────────────────────
 
-fn housed_world() -> World {
+fn housed_world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   for q in 0 - 24..25 {
     for r in 0 - 24..25 { hex_editor::ground_set(w, q, r, 12, hex_editor::SURFACE_MAT); }

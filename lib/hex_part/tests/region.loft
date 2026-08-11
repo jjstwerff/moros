@@ -5,7 +5,7 @@
 // the right materials, one storey missing. So the tests compare COLUMNS, cell
 // for cell, rather than counting them.
 use hex_part;
-use hex_world;
+use hex_voxel;
 use hex_field;   // hex_dist — the family owns it, not this package
 
 const U = 0.25;
@@ -13,14 +13,14 @@ const RESERVE = 8;
 const EPS = 5;
 const THETA = 2;
 
-fn fresh() -> World {
+fn fresh() -> VoxelWorld {
   n = world_new(U, RESERVE, EPS, THETA);
   n.wn_world
 }
 
 // A small landscape with a distinguishable column at every cell, so a copy that
 // shifted by one lands somewhere provably wrong.
-fn landscape(cq: integer, cr: integer, rad: integer) -> World {
+fn landscape(cq: integer, cr: integer, rad: integer) -> VoxelWorld {
   w = fresh();
   for dq in (0 - rad - 1)..(rad + 2) {
     for dr in (0 - rad - 1)..(rad + 2) {

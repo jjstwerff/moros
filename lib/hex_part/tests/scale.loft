@@ -15,7 +15,7 @@
 // socket, same binding, same cells — which is what makes the scale evidence
 // about DERIVATION rather than about the fixture.
 use hex_part;
-use hex_world;
+use hex_voxel;
 
 fn no_palette() -> vector<integer> { [] }
 fn root() -> text { "{temp_dir()}/hexpart_scale_lib" }
@@ -30,7 +30,7 @@ fn at(part: text, q: integer, r: integer, h: integer) -> PartInst {
   PartInst { pi_q: q, pi_r: r, pi_h: h, pi_facing: 0, pi_part: part }
 }
 
-fn one_cell(unit: float, mat: integer) -> World {
+fn one_cell(unit: float, mat: integer) -> VoxelWorld {
   w = world_new(unit, 0, 8, 3).wn_world;
   assert(world_set_column(w, Column { co_q: 0, co_r: 0,
     co_cells: [Hex { h_height: 40 as u16? ?? 0,
@@ -38,7 +38,7 @@ fn one_cell(unit: float, mat: integer) -> World {
   w
 }
 
-fn save(name: text, w: World) {
+fn save(name: text, w: VoxelWorld) {
   assert(mkdir_all("{root()}/{name.dir()}").ok(), "mkdir for {name}");
   assert(world_save(w, "{root()}/{name}.hxw", no_palette()) == WS_OK, "save {name}");
 }
@@ -97,7 +97,7 @@ fn library_at(frame_unit: float, leaf_unit: float) {
 
 fn library(leaf_unit: float) { library_at(COARSE, leaf_unit); }
 
-fn target(unit: float) -> World {
+fn target(unit: float) -> VoxelWorld {
   w = world_new(unit, 0, 8, 3).wn_world;
   for q in (0 - 6)..16 {
     for r in (0 - 6)..16 {
@@ -109,7 +109,7 @@ fn target(unit: float) -> World {
   w
 }
 
-fn material_at(w: World, q: integer, r: integer, h: integer) -> integer {
+fn material_at(w: VoxelWorld, q: integer, r: integer, h: integer) -> integer {
   for c in world_column(w, q, r).co_cells {
     if (c.h_height as integer ?? 0) == h { return c.h_material as integer ?? 0; }
   }

@@ -12,7 +12,7 @@
 // that is right, a long enough road comes back still breaking its own limit, and
 // nothing anywhere says so.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 const U = 0.25;
 const G = 40;
 
@@ -28,7 +28,7 @@ const G = 40;
 // A road FALLING away from the seed is the slow case: each cell is pulled against
 // its neighbour's OLD height, so one pass buys one unit and the run needs about
 // `(fall - limit) x length` of them.
-fn road_run(n: integer, fall: integer, cl: &integer, rs: &integer) -> World {
+fn road_run(n: integer, fall: integer, cl: &integer, rs: &integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 4)..(n + 8) {
     for r in (0 - 6)..7 { ground_set(w, q, r, G + 400 - q * fall, SURFACE_MAT); }
@@ -44,7 +44,7 @@ fn road_run(n: integer, fall: integer, cl: &integer, rs: &integer) -> World {
 
 // The steepest step between two ROAD cells along the run — a road's limit is 1, so
 // anything above 1 is an edge the settle was supposed to remove and did not.
-fn worst_road_step(w: World, n: integer) -> integer {
+fn worst_road_step(w: VoxelWorld, n: integer) -> integer {
   worst = 0;
   for q in 0..(n - 1) {
     st = ground_h(w, q + 1, 0) - ground_h(w, q, 0);
@@ -54,7 +54,7 @@ fn worst_road_step(w: World, n: integer) -> integer {
   worst
 }
 
-fn profile(w: World, lo: integer, hi: integer) -> text {
+fn profile(w: VoxelWorld, lo: integer, hi: integer) -> text {
   out = "";
   for q in lo..(hi + 1) { out += "{ground_h(w, q, 0) - G} "; }
   out

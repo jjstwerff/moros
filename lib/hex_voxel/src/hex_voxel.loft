@@ -8,7 +8,7 @@
 //
 // The name is not a claim on Moros: `LAVITION.md`'s naming principle puts the
 // brand in org and repo names and keeps `use X;` descriptive, and its
-// `loft-libs-world` inventory already names this axis `hex_world`. Moros is one
+// `loft-libs-world` inventory already names this axis `hex_voxel`. Moros is one
 // consumer — the tabletop RPG — and lavition is the editor product this serves.
 //
 // ⚠ THIS IS NOT A REFACTOR OF `moros_map`. It is written fresh beside it, per
@@ -20,12 +20,12 @@
 // Scope of V1: the model, the routine, and the guards. The file is V2, the edit
 // clock V4. Nothing here reads or writes bytes.
 // ⚠ No `use hex_grid` yet, and the reason is a finding rather than an oversight.
-// `chunk_idx_32` / `hex_idx_32` live in **`hex_world`** (the audience-crystal
+// `chunk_idx_32` / `hex_idx_32` live in **`hex_voxel`** (the audience-crystal
 // package) and in `moros_map` privately — two copies, one of them made public
 // with a comment explaining it is public so nobody re-implements it, and the
 // other re-implementing it anyway. `hex_grid`, where they belong, has neither.
 //
-// Depending on `hex_world` here would mean importing a crystal-decay world model
+// Depending on `hex_voxel` here would mean importing a crystal-decay world model
 // in order to divide a coordinate by 32. So V1 carries them locally, deliberately
 // as a THIRD copy that is written down rather than hidden, and V9 moves the one
 // true version down into `hex_grid` and deletes all three.
@@ -135,7 +135,7 @@ pub struct Layer {
 // A chunk is a (cx, cz) tile: a base height and its OWN ORDERED list of layers.
 // The index of a layer is a position in THIS chunk and means nothing outside it —
 // there is no world-wide layer list and no global budget.
-pub struct Chunk {
+pub struct VoxelChunk {
   ck_cx:     integer,
   ck_cz:     integer,
   ck_base:   integer,               // absolute floor of the window
@@ -153,7 +153,7 @@ pub struct ChunkAt { ca_key: integer, ca_at: integer }
 //
 // The store is the landscape and nothing else, and everything a consumer wants to
 // keep BESIDE the landscape — what a part is called, where it anchors, what is
-// placed in it (plan 17 `PART`, `ANCH`, `INST`) — travels here. `hex_world` owns
+// placed in it (plan 17 `PART`, `ANCH`, `INST`) — travels here. `hex_voxel` owns
 // the framing and never the content, exactly as it owns the palette's length and
 // position without knowing what a material means.
 //
@@ -186,8 +186,8 @@ pub struct Section {
   sc_bytes: vector<u8>,             // the consumer's bytes — opaque, and a BYTE type
 }
 
-pub struct World {
-  w_chunks: vector<Chunk>,
+pub struct VoxelWorld {
+  w_chunks: vector<VoxelChunk>,
   w_index:  hash<ChunkAt[ca_key]>,
   w_unit:   float,                  // `u` — what one height step is worth
   w_reserve: integer,               // `ρ` — authoring floor
@@ -195,7 +195,7 @@ pub struct World {
   w_theta:   integer,               // `θ` — match tolerance
   w_next_id: integer,               // `ν` — next free label
   w_tau:     integer,               // `τ` — the edit clock, monotonic
-  // Defaulted, so every existing `World { … }` literal in this tree and in its
+  // Defaulted, so every existing `VoxelWorld { … }` literal in this tree and in its
   // consumers keeps compiling and a world simply has no sections until something
   // puts one there.
   w_sections: vector<Section> = [],
@@ -220,23 +220,23 @@ pub struct Column {
   co_ids:   vector<integer> = [],
 }
 
-// ── World creation ───────────────────────────────────────────────────────────
+// ── VoxelWorld creation ───────────────────────────────────────────────────────────
 
 pub const WC_OK        = 0;
 pub const WC_CONSTANTS = 1;         // `C1`: ε > 2θ does not hold
 
-pub struct WorldNew { wn_code: integer, wn_world: World }
+pub struct WorldNew { wn_code: integer, wn_world: VoxelWorld }
 
 // ⚠ `C1` is checked HERE and never assumed. A world with ε ≤ 2θ fails `B1`
 // SILENTLY — two layers can both fall within θ of one height — and the symptom is
 // intermittently wrong geometry at chunk borders, which reads as a renderer bug.
 pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) -> WorldNew {
   if eps <= 2 * theta {
-    return WorldNew { wn_code: WC_CONSTANTS, wn_world: World { w_unit: 1.0 } };
+    return WorldNew { wn_code: WC_CONSTANTS, wn_world: VoxelWorld { w_unit: 1.0 } };
   }
   WorldNew {
     wn_code: WC_OK,
-    wn_world: World { w_chunks: [], w_unit: unit, w_reserve: reserve,
+    wn_world: VoxelWorld { w_chunks: [], w_unit: unit, w_reserve: reserve,
                       w_eps: eps, w_theta: theta, w_next_id: LABEL_FIRST, w_tau: 1 },
   }
 }
@@ -246,7 +246,7 @@ pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) ->
 // floor(v / 32), which is NOT `v / 32`: C-style division rounds toward zero, so
 // cell −1 would land in chunk 0 instead of chunk −1, and every negative
 // coordinate would fold onto its positive neighbour's tile. The same trap is
-// documented on `hex_world`'s public copy; see the note at the top of this file.
+// documented on `hex_voxel`'s public copy; see the note at the top of this file.
 // ⚠ `world_chunk_of`, NOT `chunk_of` — plan 19 `L6`. `gridmesh` publishes a
 // `chunk_of` too, and it is a different function: `chunk_of(x, y, shift) -> ChunkKey`
 // packs a chunk KEY, where this one floor-divides ONE axis. Both programs import both
@@ -268,7 +268,7 @@ fn chunk_key(cx: integer, cz: integer) -> integer {
   ((cx & 4294967295) << 32) | (cz & 4294967295)
 }
 
-fn find_chunk(w: World, cx: integer, cz: integer) -> integer {
+fn find_chunk(w: VoxelWorld, cx: integer, cz: integer) -> integer {
   e = w.w_index[chunk_key(cx, cz)];
   if e == null { return 0 - 1; }
   e.ca_at
@@ -277,7 +277,7 @@ fn find_chunk(w: World, cx: integer, cz: integer) -> integer {
 // Rebuilt whenever the chunk vector is reordered — which only happens when an
 // emptied chunk is dropped. Every other path appends, and an append keeps every
 // existing index valid.
-fn reindex(w: World) {
+fn reindex(w: VoxelWorld) {
   w.w_index = [];
   for i in 0..len(w.w_chunks) {
     w.w_index += ChunkAt { ca_key: chunk_key(w.w_chunks[i].ck_cx, w.w_chunks[i].ck_cz),
@@ -285,7 +285,7 @@ fn reindex(w: World) {
   }
 }
 
-pub fn world_has_chunk(w: World, q: integer, r: integer) -> boolean {
+pub fn world_has_chunk(w: VoxelWorld, q: integer, r: integer) -> boolean {
   find_chunk(w, world_chunk_of(q), world_chunk_of(r)) >= 0
 }
 
@@ -334,7 +334,7 @@ fn hex_of(base: integer, e: StoredHex) -> Hex {
 // incremented: every layer's label was 0, so nothing could be identified across a
 // shift. Labels are equality-only (`I1`), so a monotonic counter is the whole of
 // the identity this model asks for.
-fn fresh_label(w: World) -> integer {
+fn fresh_label(w: VoxelWorld) -> integer {
   id = w.w_next_id;
   w.w_next_id = w.w_next_id + 1;
   id
@@ -353,7 +353,7 @@ fn fresh_label(w: World) -> integer {
 // The identity belongs to whoever knows the extent, and that is never this function:
 // a column write sees one column. So the caller names the layer and `world_set_column_as`
 // spends the name on whatever it creates.
-pub fn world_fresh_label(w: World) -> integer { fresh_label(w) }
+pub fn world_fresh_label(w: VoxelWorld) -> integer { fresh_label(w) }
 
 // The label to stamp on a layer being created in chunk `ci`: the caller's name if it
 // supplied one, otherwise a fresh one.
@@ -364,7 +364,7 @@ pub fn world_fresh_label(w: World) -> integer { fresh_label(w) }
 // gesture, because after the first column creates the layer the rest find it and
 // create nothing; this is the guard that says so rather than assuming it, and it
 // degrades to a fresh label instead of corrupting the chunk.
-fn named_label(w: World, ci: integer, new_id: integer) -> integer {
+fn named_label(w: VoxelWorld, ci: integer, new_id: integer) -> integer {
   if new_id == 0 { return fresh_label(w); }
   for ly in w.w_chunks[ci].ck_layers {
     if ly.ly_id == new_id { return fresh_label(w); }
@@ -374,7 +374,7 @@ fn named_label(w: World, ci: integer, new_id: integer) -> integer {
 
 // The label of the layer at index `l`, so a caller can tell one layer from another
 // across an insert that renumbers them.
-pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
+pub fn world_layer_id(w: VoxelWorld, q: integer, r: integer, l: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
@@ -387,7 +387,7 @@ pub fn world_layer_id(w: World, q: integer, r: integer, l: integer) -> integer {
 // ⚠ −1 IS A USABLE ANSWER, not an error to branch on: `world_cell` guards `l < 0`
 // and hands back an absent cell, which is height 0 — the flat plane, and exactly
 // what unauthored ground has always read as. Callers pass it straight through.
-pub fn world_ground_layer(w: World, q: integer, r: integer) -> integer {
+pub fn world_ground_layer(w: VoxelWorld, q: integer, r: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0 - 1; }
   for i in 0..len(w.w_chunks[ci].ck_layers) {
@@ -404,7 +404,7 @@ pub fn world_ground_layer(w: World, q: integer, r: integer) -> integer {
 // sampling-path call — a mesh rebuild makes thousands — so it deliberately does
 // NOT build a `Column`: doing that per sample once slowed chunk rebuilds enough to
 // reorder the editor's own gates.
-pub fn world_ground_cell(w: World, q: integer, r: integer) -> Hex {
+pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Hex {}; }
   gl = 0 - 1;
@@ -453,7 +453,7 @@ pub struct SurfaceAt {
 // half of it cannot select the wrong one, and it absorbs the difference between a
 // terrain layer's smoothed surface and its cell's stored integer height — on any
 // slope the interpolated surface sits BELOW the cell's own value.
-pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> SurfaceAt {
+pub fn world_surface(w: VoxelWorld, q: integer, r: integer, feet: float) -> SurfaceAt {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return SurfaceAt { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
   ix = cell_index(q, r);
@@ -494,7 +494,7 @@ pub fn world_surface(w: World, q: integer, r: integer, feet: float) -> SurfaceAt
   SurfaceAt { sf_units: h, sf_layer: hl, sf_occ: occ, sf_smooth: occ <= 1 }
 }
 
-pub fn world_column(w: World, q: integer, r: integer) -> Column {
+pub fn world_column(w: VoxelWorld, q: integer, r: integer) -> Column {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   // A missing chunk is an empty column, never a refusal: unauthored ground is a
   // legal answer, and `E1` makes absent and all-zero indistinguishable.
@@ -525,7 +525,7 @@ pub fn world_column(w: World, q: integer, r: integer) -> Column {
 // thousands of cells, so the editor's chunk rebuilds slowed enough to reorder its
 // own gates. The column is the unit the WRITE path needs, because every invariant
 // is a column property; the read path needs one cell and should pay for one.
-pub fn world_cell(w: World, q: integer, r: integer, l: integer) -> Hex {
+pub fn world_cell(w: VoxelWorld, q: integer, r: integer, l: integer) -> Hex {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Hex {}; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return Hex {}; }
@@ -553,7 +553,7 @@ fn ok_write() -> ColumnWrite { ColumnWrite { cw_code: CW_OK, cw_layer: 0 - 1, cw
 
 // Steps 1 and 2 of the routine: the checks that run BEFORE anything is written,
 // so a refusal leaves the world untouched rather than half-applied.
-fn check_column(w: World, col: Column) -> ColumnWrite {
+fn check_column(w: VoxelWorld, col: Column) -> ColumnWrite {
   // `P2` — TERRAIN AND DRESSING DO NOT MIX. A column write addresses layers BY
   // INDEX, so a caller that miscounts does not get a shifted picture — it gets
   // terrain written into a dressing layer, which is the one thing the two-kind
@@ -638,7 +638,7 @@ fn check_column(w: World, col: Column) -> ColumnWrite {
 // a whole, and the only honest way to know is to compose and check each one
 // first. This is not a second validator — `world_band_check` runs the same
 // `check_column` the write runs.
-fn band_column(w: World, cq: integer, cr: integer,
+fn band_column(w: VoxelWorld, cq: integer, cr: integer,
                lo: integer, hi: integer, band: vector<Hex>) -> Column {
   cur = world_column(w, cq, cr);
 
@@ -681,7 +681,7 @@ fn band_column(w: World, cq: integer, cr: integer,
 }
 
 // Would this placement be accepted? Read-only, and the SAME check the write runs.
-pub fn world_band_check(w: World, cq: integer, cr: integer,
+pub fn world_band_check(w: VoxelWorld, cq: integer, cr: integer,
                         lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
   if hi < lo {
     return ColumnWrite { cw_code: CW_BAND, cw_layer: 0 - 1,
@@ -700,7 +700,7 @@ pub fn world_band_check(w: World, cq: integer, cr: integer,
   check_column(w, band_column(w, cq, cr, lo, hi, band))
 }
 
-pub fn world_merge_band(w: World, cq: integer, cr: integer,
+pub fn world_merge_band(w: VoxelWorld, cq: integer, cr: integer,
                         lo: integer, hi: integer, band: vector<Hex>) -> ColumnWrite {
   world_merge_band_as(w, cq, cr, lo, hi, band, 0)
 }
@@ -720,7 +720,7 @@ pub fn world_merge_band(w: World, cq: integer, cr: integer,
 // is a real limit and it is stated rather than assumed: every gesture here merges a
 // band onto ground that already exists, so the floor lands in the ground layer and
 // the roof is the only thing made. `test_a_band_onto_authored_ground_makes_exactly_one_layer` is the test that says so.
-pub fn world_merge_band_as(w: World, cq: integer, cr: integer,
+pub fn world_merge_band_as(w: VoxelWorld, cq: integer, cr: integer,
                            lo: integer, hi: integer, band: vector<Hex>,
                            new_id: integer) -> ColumnWrite {
   pre = world_band_check(w, cq, cr, lo, hi, band);
@@ -742,7 +742,7 @@ pub fn world_merge_band_as(w: World, cq: integer, cr: integer,
 // layers because `F1` reads consecutive occupied cells in order; dressing has no
 // `F1`, so its view is simply "the dressing layers, in order" — and that
 // independence is the point. A prop moving must not renumber a terrain slot.
-pub fn world_set_dressing(w: World, col: Column) -> ColumnWrite {
+pub fn world_set_dressing(w: VoxelWorld, col: Column) -> ColumnWrite {
   // `R1` still applies — dressing shares the window, so it cannot sit below the
   // floor any more than terrain can. `F1` does NOT: two props may overlap, and a
   // lantern may hang inside the arch it lights.
@@ -761,7 +761,7 @@ pub fn world_set_dressing(w: World, col: Column) -> ColumnWrite {
   if ci < 0 {
     nb = 0;
     for c2 in col.co_cells { if hex_occupied(c2) { nb = c2.h_height; } }
-    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
+    w.w_chunks += [VoxelChunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
     ci = len(w.w_chunks) - 1;
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: ci };
   }
@@ -802,7 +802,7 @@ pub fn world_set_dressing(w: World, col: Column) -> ColumnWrite {
 }
 
 // The dressing at a cell — its own index space, over dressing layers only.
-pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
+pub fn world_dressing(w: VoxelWorld, q: integer, r: integer) -> Column {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Column { co_q: q, co_r: r, co_cells: [] }; }
   ch = w.w_chunks[ci];
@@ -844,7 +844,7 @@ pub fn world_dressing(w: World, q: integer, r: integer) -> Column {
 //
 // The invariant that makes this safe is `HEX_STACK.md`'s own: **writes go in
 // place**. Rebuilding a column to change one cell was the departure.
-pub fn world_set_cell(w: World, q: integer, r: integer, li: integer,
+pub fn world_set_cell(w: VoxelWorld, q: integer, r: integer, li: integer,
                       c: Hex) -> ColumnWrite {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   // No chunk, or no such layer yet — the slow path materialises both.
@@ -919,7 +919,7 @@ pub fn world_set_cell(w: World, q: integer, r: integer, li: integer,
 // The whole-column write, for the cases the fast path hands over: a chunk or layer
 // that does not exist yet, and a height that needs the window moved. One
 // implementation of rebasing, and it is the one that already had tests.
-fn set_cell_slow(w: World, q: integer, r: integer, li: integer, c: Hex) -> ColumnWrite {
+fn set_cell_slow(w: VoxelWorld, q: integer, r: integer, li: integer, c: Hex) -> ColumnWrite {
   // ⚠ -1 MEANS "THERE IS NO SUCH LAYER", and it is a WRITE, not a no-op. Losing
   // this branch made every first write to a fresh column compose a column of no
   // cells: accepted, silent, and nothing stored. The store names the layer it
@@ -939,7 +939,7 @@ fn set_cell_slow(w: World, q: integer, r: integer, li: integer, c: Hex) -> Colum
   world_set_column(w, Column { co_q: q, co_r: r, co_cells: cells, co_ids: col.co_ids })
 }
 
-pub fn world_set_column(w: World, col: Column) -> ColumnWrite {
+pub fn world_set_column(w: VoxelWorld, col: Column) -> ColumnWrite {
   world_set_column_as(w, col, 0)
 }
 
@@ -954,7 +954,7 @@ pub fn world_set_column(w: World, col: Column) -> ColumnWrite {
 //
 // `new_id = 0` means "allocate one for me" and is what `world_set_column` passes, so
 // every caller that does not care about identity is unchanged.
-pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrite {
+pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> ColumnWrite {
   n = len(col.co_cells);
   if n > LAYER_CAP {
     return ColumnWrite { cw_code: CW_LAYER_CAP, cw_layer: LAYER_CAP,
@@ -990,7 +990,7 @@ pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrit
     // subtraction left every gate green.
     nb = 0;
     if cseen { nb = clo; }
-    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
+    w.w_chunks += [VoxelChunk { ck_cx: cx, ck_cz: cz, ck_base: nb, ck_layers: [] }];
     ci = len(w.w_chunks) - 1;
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: ci };
   }
@@ -1154,7 +1154,7 @@ pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrit
   // entirely. Elision is maintained ON WRITE, so the file never carries an empty
   // chunk waiting for a sweep that does not exist.
   if len(live) == 0 {
-    keep: vector<Chunk> = [];
+    keep: vector<VoxelChunk> = [];
     for k in w.w_chunks { if len(k.ck_layers) > 0 { keep += [k]; } }
     w.w_chunks = keep;
     reindex(w);
@@ -1171,7 +1171,7 @@ pub fn world_set_column_as(w: World, col: Column, new_id: integer) -> ColumnWrit
 
 // The newest write anywhere in the tile holding (q, r). 0 when the tile does not
 // exist, which is the right answer — nothing has happened there.
-pub fn world_chunk_version(w: World, q: integer, r: integer) -> integer {
+pub fn world_chunk_version(w: VoxelWorld, q: integer, r: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   hi = 0;
@@ -1185,14 +1185,14 @@ pub fn world_chunk_version(w: World, q: integer, r: integer) -> integer {
 // yet is KIND_TERRAIN: `world_set_column` materialises new layers as terrain, so
 // that is what the slot WILL be, and a caller reasoning about a future slot must
 // get the same answer as one reasoning about a present one.
-pub fn world_layer_kind(w: World, q: integer, r: integer, l: integer) -> integer {
+pub fn world_layer_kind(w: VoxelWorld, q: integer, r: integer, l: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return KIND_TERRAIN; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return KIND_TERRAIN; }
   w.w_chunks[ci].ck_layers[l].ly_kind
 }
 
-pub fn world_layer_version(w: World, q: integer, r: integer, l: integer) -> integer {
+pub fn world_layer_version(w: VoxelWorld, q: integer, r: integer, l: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
@@ -1218,7 +1218,7 @@ pub fn world_layer_version(w: World, q: integer, r: integer, l: integer) -> inte
 // every height is wrong by the base and whose CRC is nonetheless right — the cells
 // are what is checksummed, not their absolute heights. That is the failure this
 // accessor exists to make impossible rather than to detect.
-pub fn world_chunk_base(w: World, cx: integer, cz: integer) -> integer {
+pub fn world_chunk_base(w: VoxelWorld, cx: integer, cz: integer) -> integer {
   ci = find_chunk(w, cx, cz);
   if ci < 0 { return 0; }
   w.w_chunks[ci].ck_base
@@ -1232,13 +1232,13 @@ pub fn world_chunk_base(w: World, cx: integer, cz: integer) -> integer {
 // get **0 for a chunk that does not exist**: the caller distinguishing "empty" from
 // "absent" is the whole of `E1`, and building a column just to count is a wasteful way
 // to reach it.
-pub fn world_chunk_layers(w: World, cx: integer, cz: integer) -> integer {
+pub fn world_chunk_layers(w: VoxelWorld, cx: integer, cz: integer) -> integer {
   ci = find_chunk(w, cx, cz);
   if ci < 0 { return 0; }
   len(w.w_chunks[ci].ck_layers)
 }
 
-pub fn world_layer_crc(w: World, q: integer, r: integer, l: integer) -> integer {
+pub fn world_layer_crc(w: VoxelWorld, q: integer, r: integer, l: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return 0; }
@@ -1254,7 +1254,7 @@ pub fn world_layer_crc(w: World, q: integer, r: integer, l: integer) -> integer 
 // already agreed on. The base travels with the layer instead.
 pub const LAYER_FIELDS = 7;
 
-pub fn world_layer_bytes(w: World, q: integer, r: integer, l: integer) -> vector<integer> {
+pub fn world_layer_bytes(w: VoxelWorld, q: integer, r: integer, l: integer) -> vector<integer> {
   out: vector<integer> = [];
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return out; }
@@ -1291,10 +1291,10 @@ pub fn world_layer_bytes(w: World, q: integer, r: integer, l: integer) -> vector
 //
 // Idempotent, and it never removes layers — a touch that arrives after the real thing
 // is a no-op rather than a deletion, because the wire does not promise an order.
-pub fn world_touch_chunk(w: World, cx: integer, cz: integer, base: integer) {
+pub fn world_touch_chunk(w: VoxelWorld, cx: integer, cz: integer, base: integer) {
   ci = find_chunk(w, cx, cz);
   if ci < 0 {
-    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
+    w.w_chunks += [VoxelChunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };
   }
 }
@@ -1303,17 +1303,17 @@ pub fn world_touch_chunk(w: World, cx: integer, cz: integer, base: integer) {
 //
 // ⚠ NOT "does it hold ground". The difference is the whole point: a chunk known to be
 // empty is an ANSWER, and a consumer that treats it as a gap waits forever.
-pub fn world_chunk_known(w: World, cx: integer, cz: integer) -> boolean {
+pub fn world_chunk_known(w: VoxelWorld, cx: integer, cz: integer) -> boolean {
   find_chunk(w, cx, cz) >= 0
 }
 
-pub fn world_put_layer(w: World, cx: integer, cz: integer, base: integer,
+pub fn world_put_layer(w: VoxelWorld, cx: integer, cz: integer, base: integer,
                        id: integer, kind: integer, ver: integer,
                        flat: vector<integer>) -> integer {
   if len(flat) != CHUNK_CELLS * LAYER_FIELDS { return 0; }
   ci = find_chunk(w, cx, cz);
   if ci < 0 {
-    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
+    w.w_chunks += [VoxelChunk { ck_cx: cx, ck_cz: cz, ck_base: base, ck_layers: [] }];
     ci = len(w.w_chunks) - 1;
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: ci };
   }
@@ -1344,7 +1344,7 @@ pub fn world_put_layer(w: World, cx: integer, cz: integer, base: integer,
   layer_crc(w.w_chunks[ci].ck_layers[li])
 }
 
-pub fn world_is_stale(w: World, q: integer, r: integer, built_at: integer) -> boolean {
+pub fn world_is_stale(w: VoxelWorld, q: integer, r: integer, built_at: integer) -> boolean {
   world_chunk_version(w, q, r) > built_at
 }
 
@@ -1369,16 +1369,16 @@ pub fn world_is_stale(w: World, q: integer, r: integer, built_at: integer) -> bo
 //
 // The copy is therefore written as the assignment it already is, rather than as a
 // hand-rolled loop that duplicates what the language does.
-pub struct Snapshot { sn_tau: integer, sn_chunks: vector<Chunk> }
+pub struct Snapshot { sn_tau: integer, sn_chunks: vector<VoxelChunk> }
 
-pub fn world_snapshot(w: World) -> Snapshot {
+pub fn world_snapshot(w: VoxelWorld) -> Snapshot {
   return Snapshot { sn_tau: w.w_tau, sn_chunks: w.w_chunks };
 }
 
-// Reading a snapshot is reading a World whose chunks are the frozen ones — the
+// Reading a snapshot is reading a VoxelWorld whose chunks are the frozen ones — the
 // same routine, so a snapshot cannot drift from a live read by having its own.
-pub fn snap_world(s: Snapshot) -> World {
-  w = World { w_chunks: s.sn_chunks, w_unit: 1.0, w_reserve: 0,
+pub fn snap_world(s: Snapshot) -> VoxelWorld {
+  w = VoxelWorld { w_chunks: s.sn_chunks, w_unit: 1.0, w_reserve: 0,
               w_eps: 1, w_theta: 0, w_next_id: 1, w_tau: s.sn_tau };
   reindex(w);
   return w;
@@ -1455,7 +1455,7 @@ pub fn section_tag(name: text) -> integer {
 // The index of the first section with this tag, or −1. An index rather than the
 // bytes, because a section that is PRESENT AND EMPTY is a real thing — a flag —
 // and returning `[]` for both would make it indistinguishable from absence.
-pub fn world_section_at(w: World, tag: integer) -> integer {
+pub fn world_section_at(w: VoxelWorld, tag: integer) -> integer {
   for i in 0..len(w.w_sections) {
     if w.w_sections[i].sc_tag == tag { return i; }
   }
@@ -1465,7 +1465,7 @@ pub fn world_section_at(w: World, tag: integer) -> integer {
 // Replaces the FIRST section with this tag, or appends. Duplicates of a tag are
 // not refused — the format carries whatever it was handed, and refusing here
 // would mean this library had an opinion about content it cannot read.
-pub fn world_set_section(w: World, tag: integer, bytes: vector<u8>) {
+pub fn world_set_section(w: VoxelWorld, tag: integer, bytes: vector<u8>) {
   at = world_section_at(w, tag);
   if at < 0 {
     w.w_sections += [Section { sc_tag: tag, sc_bytes: bytes }];
@@ -1477,7 +1477,7 @@ pub fn world_set_section(w: World, tag: integer, bytes: vector<u8>) {
 // The bytes of a section, or an empty vector when there is none. ⚠ Empty is also
 // what a PRESENT AND EMPTY section reads as — a flag is a real payload — which is
 // why presence is asked with `world_section_at` and never with this.
-pub fn world_section_bytes(w: World, tag: integer) -> vector<u8> {
+pub fn world_section_bytes(w: VoxelWorld, tag: integer) -> vector<u8> {
   at = world_section_at(w, tag);
   if at < 0 { return []; }
   // ⚠ AN EXPLICIT `return`, AND IT IS NOT A STYLE CHOICE. Written as an implicit
@@ -1488,7 +1488,7 @@ pub fn world_section_bytes(w: World, tag: integer) -> vector<u8> {
   return w.w_sections[at].sc_bytes;
 }
 
-pub fn world_drop_section(w: World, tag: integer) -> boolean {
+pub fn world_drop_section(w: VoxelWorld, tag: integer) -> boolean {
   at = world_section_at(w, tag);
   if at < 0 { return false; }
   keep: vector<Section> = [];
@@ -1508,7 +1508,7 @@ pub const WL_SECTION   = 5;   // the trailing block is not a run of whole sectio
 
 pub struct WorldLoad {
   wl_code:    integer,
-  wl_world:   World,
+  wl_world:   VoxelWorld,
   wl_palette: vector<integer>,
   wl_detail:  text,
 }
@@ -1568,7 +1568,7 @@ pub const WS_IO         = 3;   // the bytes did not reach the disk — see below
 // The format's length is a closed form — `SZ_*` are already public *"so gates
 // assert against these rather than against whatever the writer happens to
 // produce"* — so the writer can be held to the same numbers a reader is.
-pub fn world_file_size(w: World, palette: vector<integer>) -> integer {
+pub fn world_file_size(w: VoxelWorld, palette: vector<integer>) -> integer {
   n = SZ_HEADER + len(palette);
   for ch in w.w_chunks {
     n = n + SZ_CHUNK + len(ch.ck_layers) * (SZ_LAYER_DIR + SZ_LAYER);
@@ -1604,7 +1604,7 @@ fn file_owner(path: text) -> integer {
 // but it does have to fit them in a byte, and silently masking a 300 would hand
 // back a different palette than the one given, which is the `ML_LABEL_TOO_WIDE`
 // lesson at a different seam.
-pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
+pub fn world_save(w: VoxelWorld, path: text, palette: vector<integer>) -> integer {
   return world_save_as(w, path, palette, OWNER_ANY);
 }
 
@@ -1628,7 +1628,7 @@ pub fn world_save(w: World, path: text, palette: vector<integer>) -> integer {
 // two different blocks could collide. That is the right trade for *did this
 // change*, and the wrong one for *are these the same document*; use the bytes for
 // the second question.
-pub fn world_sections_key(w: World) -> text {
+pub fn world_sections_key(w: VoxelWorld) -> text {
   key = "";
   for s in w.w_sections {
     sum = 0;
@@ -1660,7 +1660,7 @@ fn write_sections(f: File, secs: vector<Section>) {
   }
 }
 
-pub fn world_save_as(w: World, path: text, palette: vector<integer>,
+pub fn world_save_as(w: VoxelWorld, path: text, palette: vector<integer>,
                      owner: integer) -> integer {
   for b in palette {
     if b < 0 || b > 255 { return WS_PALETTE; }
@@ -1809,7 +1809,7 @@ pub fn world_scan_versions(path: text) -> VersionScan {
 // "rewrite the file" rather than as a relocation pass is why `X4` never arises
 // here: nothing is ever moved while keeping its identity, so there is no
 // opportunity to stamp the clock for a move that changed nothing.
-fn same_shape(w: World, path: text) -> boolean {
+fn same_shape(w: VoxelWorld, path: text) -> boolean {
   sc = world_scan_versions(path);
   if sc.vs_code != WL_OK { return false; }
   n = 0;
@@ -1823,7 +1823,7 @@ fn same_shape(w: World, path: text) -> boolean {
 // is what makes the saving observable rather than merely plausible.
 pub struct SaveStat { ss_code: integer, ss_layers: integer }
 
-pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
+pub fn world_save_incremental(w: VoxelWorld, path: text, palette: vector<integer>,
                               owner: integer) -> SaveStat {
   if !same_shape(w, path) {
     n = 0;
@@ -1905,7 +1905,7 @@ pub fn world_save_incremental(w: World, path: text, palette: vector<integer>,
 }
 
 pub fn world_load(path: text) -> WorldLoad {
-  empty = World { w_unit: 1.0 };
+  empty = VoxelWorld { w_unit: 1.0 };
   f = file(path);
   if f.format == Format.NotExists {
     return WorldLoad { wl_code: WL_MISSING, wl_world: empty, wl_palette: [], wl_detail: path };
@@ -1945,7 +1945,7 @@ pub fn world_load(path: text) -> WorldLoad {
   // pointing at it is out of range whatever wrote the file.
   nid2 = nid;
   if nid2 < LABEL_FIRST { nid2 = LABEL_FIRST; }
-  w = World { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
+  w = VoxelWorld { w_chunks: [], w_unit: unit, w_reserve: res, w_eps: eps,
               w_theta: th, w_next_id: nid2, w_tau: tau };
   nc = f#read as i32;
   // ── the directory, read whole before any payload
@@ -2026,7 +2026,7 @@ pub fn world_load(path: text) -> WorldLoad {
         }
       }
     }
-    w.w_chunks += [Chunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
+    w.w_chunks += [VoxelChunk { ck_cx: cx, ck_cz: cz, ck_base: cb, ck_layers: lays }];
     w.w_index += ChunkAt { ca_key: chunk_key(cx, cz), ca_at: len(w.w_chunks) - 1 };
   }
   // ── the sections, read to END OF FILE ────────────────────────────────────────
@@ -2079,7 +2079,7 @@ pub fn world_load(path: text) -> WorldLoad {
 // same byte for different things and neither is wrong.
 //
 // ⚠ THE STORE OWNS IDENTITY AND NOT POLICY, which is this package's own rule
-// arriving intact. `hex_world` says a byte is called `road`; whether a road may
+// arriving intact. `hex_voxel` says a byte is called `road`; whether a road may
 // slope, and how steeply, is `hex_editor`'s business and stays there. A palette
 // carrying gameplay attributes would be a store with an opinion about its
 // consumers — the thing the section mechanism exists to avoid.
@@ -2128,13 +2128,13 @@ fn pal_tag(kind: integer) -> integer {
 // `byte_at` have shipped since before this file (loft#748 reported them missing and
 // was wrong); the store carries the section as opaque bytes and this is the only
 // place that decides they are text.
-fn pal_write(w: World, tag: integer, t: text) {
+fn pal_write(w: VoxelWorld, tag: integer, t: text) {
   b: vector<u8> = [];
   for i in 0..t.size() { b += [t.byte_at(i) as u8? ?? 0]; }
   world_set_section(w, tag, b);
 }
 
-fn pal_read(w: World, tag: integer) -> text {
+fn pal_read(w: VoxelWorld, tag: integer) -> text {
   text_from_bytes(world_section_bytes(w, tag))
 }
 
@@ -2155,7 +2155,7 @@ fn pal_read(w: World, tag: integer) -> text {
 // the dirty set already iterate chunk by chunk, so a chunk label is resolved ONCE
 // where they already stand. The cost is 32-hex granularity at a seam, which is what
 // `R3`'s blend band is for.
-pub fn world_set_palette(w: World, kind: integer, region: integer,
+pub fn world_set_palette(w: VoxelWorld, kind: integer, region: integer,
                          items: vector<PalEntry>) -> integer {
   if region < 0 { return PAL_SLOT; }
   keep = "";
@@ -2190,7 +2190,7 @@ pub fn world_set_palette(w: World, kind: integer, region: integer,
 // A sparse list, `cx,cz=region`; a chunk nobody has assigned is region **0**. That
 // default is what makes `R1`'s worlds keep working untouched and is the negative
 // control of this phase stated as a mechanism rather than as care.
-pub fn world_set_region(w: World, cx: integer, cz: integer, region: integer) -> integer {
+pub fn world_set_region(w: VoxelWorld, cx: integer, cz: integer, region: integer) -> integer {
   if region < 0 { return PAL_SLOT; }
   keep = "";
   if world_section_at(w, TAG_RGNS) >= 0 {
@@ -2205,7 +2205,7 @@ pub fn world_set_region(w: World, cx: integer, cz: integer, region: integer) -> 
 }
 
 // The region a hex falls in — its CHUNK's, because that is where the label lives.
-pub fn world_region_at(w: World, q: integer, r: integer) -> integer {
+pub fn world_region_at(w: VoxelWorld, q: integer, r: integer) -> integer {
   if world_section_at(w, TAG_RGNS) < 0 { return 0; }
   cx = world_chunk_of(q);
   cz = world_chunk_of(r);
@@ -2223,7 +2223,7 @@ pub struct PalRead { pr_code: integer, pr_items: vector<PalEntry>, pr_why: text 
 // `PAL_ABSENT_C`-free readings: a world written before palettes exist names nothing
 // and is fine; one whose section says `x=road` is damaged. Collapsing them makes the
 // damaged one look ordinary.
-pub fn world_palette(w: World, kind: integer, region: integer) -> PalRead {
+pub fn world_palette(w: VoxelWorld, kind: integer, region: integer) -> PalRead {
   none: vector<PalEntry> = [];
   tag = pal_tag(kind);
   if world_section_at(w, tag) < 0 {
@@ -2260,7 +2260,7 @@ pub fn world_palette(w: World, kind: integer, region: integer) -> PalRead {
 // What this world calls `slot` on this axis. `PAL_ABSENT` for 0; **empty for a byte
 // the palette does not name**, which a caller must treat as a fault rather than as
 // a default.
-pub fn world_palette_name(w: World, kind: integer, region: integer,
+pub fn world_palette_name(w: VoxelWorld, kind: integer, region: integer,
                           slot: integer) -> text {
   if slot == 0 { return PAL_ABSENT; }
   tag = pal_tag(kind);
@@ -2293,7 +2293,7 @@ pub fn world_palette_name(w: World, kind: integer, region: integer,
 // Returns "" when every used byte is named, or a sentence naming the first that is
 // not — the axis, the byte, and where it was found, because "a byte is unmapped" is
 // not actionable and "material 7 at (12,-3)" is.
-pub fn world_palette_check(w: World) -> text {
+pub fn world_palette_check(w: VoxelWorld) -> text {
   for ch in w.w_chunks {
     q0 = ch.ck_cx * CHUNK_W;
     r0 = ch.ck_cz * CHUNK_W;

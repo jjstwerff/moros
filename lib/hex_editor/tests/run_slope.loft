@@ -7,12 +7,12 @@
 //
 // What separates them is not length — it is whether the thing has an INSIDE.
 use hex_editor;
-use hex_world;
+use hex_voxel;
 
 const U = 0.25;
 const G = 40;
 
-fn plain() -> World {
+fn plain() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 30)..31 {
     for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
@@ -20,18 +20,18 @@ fn plain() -> World {
   w
 }
 
-fn line(w: World, mat: integer, from: integer, to: integer) {
+fn line(w: VoxelWorld, mat: integer, from: integer, to: integer) {
   for q in from..to { wall_set(w, q, 0, SLOT_NE, mat, G, (G as float) * U); }
 }
 
-fn raise(w: World, q: integer, r: integer, amp: integer, rad: integer) -> integer {
+fn raise(w: VoxelWorld, q: integer, r: integer, amp: integer, rad: integer) -> integer {
   cl = 0;
   rs = 0;
   brush(w, q, r, amp, rad, cl, rs);
   cl
 }
 
-fn steepest_along(w: World, n: integer) -> integer {
+fn steepest_along(w: VoxelWorld, n: integer) -> integer {
   worst = 0;
   prev = ground_h(w, 0, 0);
   for q in 1..n {
@@ -124,7 +124,7 @@ fn test_a_fenced_yard_still_moves_rigidly() {
 // MIDPOINT of two neighbours, so this doubles to stay exact — and one half is therefore
 // the floor: a midpoint of two integers cannot be matched more closely than that, which
 // is why the phase row's literal "zero cross-fall" is not reachable on this lattice.
-fn cross_halves(w: World, q: integer) -> integer {
+fn cross_halves(w: VoxelWorld, q: integer) -> integer {
   a = ground_h(w, q, 0);
   b = ground_h(w, q, 1);
   c = ground_h(w, q - 1, 1);
@@ -133,7 +133,7 @@ fn cross_halves(w: World, q: integer) -> integer {
   f
 }
 
-fn worst_cross(w: World) -> integer {
+fn worst_cross(w: VoxelWorld) -> integer {
   worst = 0;
   for q in (0 - 13)..14 {
     f = cross_halves(w, q);
@@ -142,7 +142,7 @@ fn worst_cross(w: World) -> integer {
   worst
 }
 
-fn two_lane(w: World) {
+fn two_lane(w: VoxelWorld) {
   for q in (0 - 25)..26 {
     ground_set(w, q, 0, G, ROAD_MAT);
     ground_set(w, q, 1, G, ROAD_MAT);

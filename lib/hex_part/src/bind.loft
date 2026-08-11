@@ -17,7 +17,7 @@
 // binds `0,leaf,door/oak` and `1,leaf,door/ash` — the same socket name on two
 // instances of one part. Binding *by part* would make the two frames
 // indistinguishable, which is the coordinate problem wearing a different hat.
-use hex_world;
+use hex_voxel;
 use codec;
 use meta;
 use sock;
@@ -84,7 +84,7 @@ fn bind_line(b: Binding) -> text {
 // library refuses to READ that rather than dropping it. Loud beats tidy: a door
 // that vanished because its frame's index moved is not obviously a load failure,
 // and an editor that maintains the two together (`A7.3`) never poses the question.
-pub fn part_set_bindings(w: World, v: vector<Binding>) -> BindWrite {
+pub fn part_set_bindings(w: VoxelWorld, v: vector<Binding>) -> BindWrite {
   held = part_instances(w);
   if held.ir_code == MR_MALFORMED {
     return BindWrite { bw_code: BD_INDEX,
@@ -197,7 +197,7 @@ fn parse_bind(line: text) -> BindRead {
   BindRead { br_code: MR_OK, br_items: [got], br_why: "" }
 }
 
-pub fn part_bindings(w: World) -> BindRead {
+pub fn part_bindings(w: VoxelWorld) -> BindRead {
   none: vector<Binding> = [];
   if world_section_at(w, TAG_BIND) < 0 {
     return BindRead { br_code: MR_ABSENT, br_items: none, br_why: "no BIND section" };

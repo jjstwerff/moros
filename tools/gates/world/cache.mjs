@@ -2,7 +2,7 @@
 //
 // ⚠ CHECKED AND LEFT WHOLE, and the reason is sharper than usual: the CLIENT is the
 // only thing that can compare its cache against the digest, and it is a wasm page.
-// `hex_world/tests/layer_wire.loft` proves the encoding round-trips and that one
+// `hex_voxel/tests/layer_wire.loft` proves the encoding round-trips and that one
 // changed cell moves the checksum — everything that can be settled against the store
 // is settled there. What is left needs a running server, a browser, and the wire
 // between them, which is exactly what this drives.
