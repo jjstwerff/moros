@@ -14,7 +14,7 @@ sections that were durable in form and stale in fact (§ *What exists*, § *What
 
 ---
 
-## Session 17 — 2026-08-10/11: the canyon had three causes, and two of them were mine
+## Session 18 — 2026-08-10/11: the canyon had three causes, and two of them were mine
 
 **The session was asked to continue plan 20, and every remaining row closed.** What it is
 actually about is that **four separate answers to one defect were built, measured and
@@ -245,6 +245,122 @@ fill 0` over zero cells. A one-sided arm returning `shift 0` on the mirror. A ru
 integer division truncated its own commonest case to no change at all. A `quiet` that settles
 on nothing and reports success. **None of them failed loudly; all four looked like the
 absence of a problem.**
+
+---
+
+## Session 17 — 2026-08-10: it spans or it caves, and the author settles what the plan could not
+
+**`A9` and its mirror `A10`, in one day** — 10:24 to 21:17, sixteen commits. *It spans or it
+caves* is one axis twice and both halves are built: a road cut into a cliff keeps the rock
+above it, and a road that meets a waterway is carried over it. The rules are
+[TERRAIN_EDITS §T9 and §T10](TERRAIN_EDITS.md); the per-step record is
+[plan 20](../../plans/20-verticality-last/README.md).
+
+⚠ **THE AUTHOR SETTLED THE THING THE PLAN SAID WAS BLOCKED.** *"There is no water yet… so the
+bridge's trigger does not exist to be detected."* It does now, and the trigger is **a refusal
+rather than a height**: a road cannot be placed on water, so the crossing is not a threshold
+anybody has to choose. Water carries its flow DIRECTION as its material (seven rows), has a
+DEPTH so it defines a layer under it, and is the most resistant thing there is to hill
+creation — a raise lifts the banks and leaves the river, which is what a chasm is.
+
+### `A10` is complete, picture and all
+
+| | |
+|---|---|
+| the terrain | seven rows — still water and one per flow direction — with a DEPTH, so it defines a layer under it: a river is bed · water, and bed · water · deck where a road crosses |
+| it resists hill creation | `tr_fixed`, a third behaviour beside fabric: fabric MOVES rigidly, this does not move at all, so a raise lifts the banks and leaves the river — a chasm |
+| it never flows upwards | derived from the heights and the material, and the GESTURE cannot produce one: the walk only steps to a cell no higher than the one it stands on |
+| the gesture | `47:` — *when there are hills already it takes the lowest path, but without them we still have to draw them like a road.* One rule: **the hint breaks a tie and never beats a drop** |
+| it widens and deepens as it runs | the count outlives the stroke, so a river laid over many placements keeps growing; the bed steps up toward the banks, so the edges are shallow and the middle deep |
+| a road cannot be laid on it | so it is carried over — `A9` upside down, the same column and the same `F1` |
+| and it is DRAWN | an eleventh surface, a depth ramp, a trickle at the spring and banks framing it. `shots/a10-*.png` |
+
+### ⚠⚠ `.gatebin/server` IS BUILT BY THE GATE RUNNER, NOT BY AN EDIT
+
+**This cost three changes reverted on false evidence in one session.** Editing a
+library and then running `./.gatebin/server` measures **yesterday's binary** — and it
+reads as a working instrument reporting a null result, which is the worst possible
+shape. Measured: the same annulus code emitted `mesh ground 48384` stale and **48600**
+after a rebuild, +216 vertices, six cells of six quads.
+
+⚠ **`make gate-one G=<any>` is what rebuilds it**, and `md5sum .gatebin/server` is how
+you check. A vertex count settles in seconds what a photograph cannot — *but only if
+the thing under it is the thing that was edited.*
+
+⚠ **AND REACHING FOR THE PHOTOGRAPH FIRST IS WHAT COST THE DETOUR.** Two changes were
+judged by eye ("the picture is unchanged") when the cheap question was *did it emit
+anything at all*.
+
+### ⚠ WHAT ADDING A TERRAIN ACTUALLY COSTS, MEASURED
+
+Water is the first new terrain since the tree was written, and two guards caught things
+no reading would have:
+
+- **`hex_mesh/tests/terrain_link.loft`** — *every terrain is drawn by exactly one
+  surface* — went red the moment the seven water rows landed. That forced the join to
+  be **stated as many-to-one** rather than quietly loosened: a flow direction is not a
+  colour, so seven terrains share one picture, and `tr_drawn` says so on the row.
+- **`hex_mesh/tests/surfaces.loft`** pins the stride with *if a surface is added this
+  fails, and it SHOULD*. It is the only thing that would have said the id space had
+  moved: **thirteen** files carry `SURFACES` and every one reads the id space by
+  modulo. Water is APPENDED so nothing already numbered moved.
+
+⚠ **AND THE WALK MAKES *NEVER UPWARDS* TRUE BY CONSTRUCTION.** The run only steps to
+a cell no higher than the one it stands on, so a river the gesture lays cannot climb.
+⚠ **`back` — the direction it came from — is what made a river longer than two cells**:
+the channel is cut a freeboard below its banks, so the cell just written is by
+construction the lowest thing around and the walk turned straight back into it.
+
+⚠ **AND *SHOULD WATER BE SEMI-TRANSPARENT* IS ANSWERED *NOT YET*, WITH A REASON.** Every
+picture claim in this tree is a chromaticity histogram; a translucent surface blends
+with whatever is behind it, so each pixel over water becomes a mixture the classifier
+cannot attribute — and alpha needs a back-to-front sort the renderer does not do. The
+depth ramp gets the reading of depth at neither cost, **because a scalar darkening
+leaves chromaticity untouched** and the gates read the same bucket they always read.
+Transparency stays available: nothing about the store changes.
+
+⚠ **AND `cross` IS ALREADY A PUBLIC NAME IN THE GRAPH.** Defining one in a test file
+reports as `Syntax error: unexpected '->'` at the return arrow — not as a collision.
+Grep before naming reaches test helpers too.
+
+⚠ **AND A TEST CALIBRATED TO A CONSTANT IS A SNAPSHOT OF ONE SETTING.** The water's
+across-flow bound was `< 4.0`, measured at `WATER_TRICKLE` 0.34; turning the dial to
+0.6 took the span to 4.2 and the row went red reporting *every cell drawn full width*
+about a river that was perfectly correct. It predicts the span from the constant now —
+`3.0 + 2 × WATER_TRICKLE` — so the dial moves either way and a build that stopped
+insetting at all still fails it.
+
+⚠ **AND THE TOOLCHAIN MOVED TWICE IN ONE DAY**, `e467be19cd4409f4` →
+`0965d6a07ea72c69` (12:33) → `3b12d2298232c4f1` (14:39), with `--version` saying
+`2026.8.0` for all three. Stamp at both ends of every suite.
+
+### ⚠ FOUR THINGS `A9` TURNED UP, AND EACH LOOKED LIKE WORKING CODE
+
+| | |
+|---|---|
+| **a trench in flat ground roofed itself** | deep enough, grass, nothing dug below — every condition but *is there a hillside to hold the lid up* |
+| **a shelf blinded every rule that walks a run** | four shelves cut one run into islands and left a **27-unit step** in a road whose limit is 1 — ⚠ while every road-to-road count read **0**, because a count over ground materials cannot see a cell whose ground is rock |
+| **`A8`'s fill squeezed a shelf below its headroom** | 9 → 8, which is `ε` exactly: legal to the store and under what a walker needs. `F1` is what a LAYER needs; `CAVE_HEAD` is what a WALKER needs |
+| **the store was right and the gallery was invisible** | for **three** separate reasons at once — drawn as a timber deck, sealed from outside by `A5`'s own face, sealed from inside by the room wall |
+
+⚠ **AND THE INSTRUMENT HAD TO BE BUILT TWICE, WHICH IS THE DURABLE HALF.** Counting rock
+vertices *inside* the mouth cannot see a sealed one: a face is one quad and its six
+vertices sit at its CORNERS — at the road and at the rock, with nothing in between. It
+reported `+3` either way, which reads as a clean result. **A count inside a band cannot
+see a quad that spans the band.** What separates them is where the face BEGINS, so
+`gates/world/cave.mjs` counts rock at the FOOT of a cell that has a road under it: 3,
+against the 78 a sealed set of thirteen would cost.
+
+⚠ **AND FOUR CAMERA ANGLES WERE READ BY EYE FIRST AND EVERY ONE WAS AMBIGUOUS.** A
+mountain shot far enough away to see all of it is a silhouette; from inside the gallery
+it is a wall of rock either way; from the road at eye level the ceiling is out of frame,
+because a low wide mouth seen from just inside shows nothing but daylight.
+`shots/a9-*.png` are the ones that read, and `tools/scripts/cave.keys` says why in its
+own comments.
+
+⚠ **A PLACEMENT THAT ARRIVES FROM ABOVE STANDS ON THE ROOF**, and that is not a defect:
+`ground_under` asks `world_surface` with the feet it already has, so a teleport from over
+the summit finds the rock. Approach along the road and the walker lands on the shelf.
 
 ---
 
