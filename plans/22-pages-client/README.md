@@ -12,7 +12,9 @@ can be opened and driven.**
 
 **Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), and `P2` is
 **run and green** — so `W5` is buildable today with no loft change.
-**Next:** `M1` — editing modes — then `W4`'s remaining sites, then `B1`.
+**Next:** `R1` — reconcile the ring verb. The full step decomposition is
+[EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
+where every step names what runs beside it and what would surprise its test.
 
 ⚠ **`W4` STOPPED HALFWAY ON PURPOSE, 2026-08-11.** Wiring `editor_client` and `script.mjs` to
 `press` was attempted and **backed out**: measuring the two sides first showed `press` holds the
@@ -70,15 +72,13 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
-| **`M1a`** — declare the verbs **and** `verb_of(key)`, with the equality test that consumes them | S | ⚠ **the parallel run**: for each key, the old path and *resolve-then-gesture* leave worlds with equal `w_tau`. ⚠ **The declaration is NOT a step of its own** — a table checked against itself cannot be surprised, and splitting it off would manufacture the uncalled-thing state on purpose | ⏭ **Next** |
-| **`M1c`** — one verb at a time: `press` takes a verb, old key branch kept until its equality test is green, then deleted | M | seven small steps, each with its own equality test | Blocked on `M1a` |
-| **`M1d`** — `O P I U N M` collapse to one `opening` verb with the profile as a **selection** | S | the six old keys and the one new verb produce the same six worlds | Blocked on `M1c` |
-| **`M2`** — the mode is DERIVED from where the author stands, over `shelter_at` | S | ⚠ **derived beside, not instead**: log the derived mode for a whole gate run and assert it never contradicts `shelter_at` before any verb consults it | Blocked on `M1c` |
-| **`M3`** — ⚠ **`tools/scripts/*.keys` records the WRONG LAYER** | S | a script names verbs, so it replays the same for two people with different keymaps | ⚠ **Accepts BOTH spellings first**, so no gate changes on the day the format does; the key form is removed only once every script is converted and green |
-| ✅ **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? | XS | **RUN 2026-08-11 — it holds.** `probe/p2/run.sh` · `make probe-p2` · three exchanges, two sabotages seen red | ✅ Done |
-| **`P5`** — is `fetch()` of a sibling file blocked under `file://`? | XS | a two-file page from `file://` in headless Chrome | Open — it decides whether assets are inlined |
-| **`W2`/`W3`** — parts and `.glb` from bytes | S | a part loaded both ways is equal | ⚠ **Skip if [loft#851](https://github.com/loft-lang/loft/issues/851) lands** — then a path just works |
-| **`W5`** — the JS↔loft bridge for storage | S | build a house, reload the page, it is there | ⚠ **Interim only.** Its best outcome is never existing — see `#851` |
+| **`R1`** — reconcile the RING verb with `do_fence` (reference height, yaw, the trunk) | S | two worlds, one ring each, equal `w_tau` **and** equal trunk state | ⏭ **Next** |
+| **`R3`** — `press` answers `PR_NONE` for `O`/`P` until a selection exists | XS | ⚠ **a deliberate regression** — `editor_run` says *"no gesture for key O"* rather than doing the wrong thing silently. The wire path is untouched | Blocked on `R1` |
+| **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds** | Blocked on `R3` |
+| **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
+| **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
+| **`K1`**–**`K3`** — scripts accept both spellings, convert one at a time, then drop keys | S | a converted script and its original build the same world | Blocked on `V1` |
+| **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | **`B1`** — local mode in `editor_client.loft`: hold an `EditSession`, route presses to `press` | M | both modes build the same world from one script | Blocked on `W4` |
 | **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`, `P5` |
 | **`B3`** — the demo gate | S | ⚠ **the first gate here needing NO server** | Blocked on `B2` |

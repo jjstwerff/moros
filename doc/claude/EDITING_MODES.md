@@ -226,3 +226,87 @@ the divergence in one file instead of four.
 set is authored. Those are content and they belong with the catalogue and with plan
 [21](../../plans/21-region-mappings/README.md), whose whole subject is that *a byte's identity
 belongs to a region, not to the code*.
+
+---
+
+# The order of work, in steps that can each go red
+
+Cut against [plans/README § What makes a step SAFE](../../plans/README.md#what-makes-a-step-safe--and-it-is-not-how-few-lines-it-is):
+every step below names **what runs beside it** (the upper bound) and **what would surprise its
+test** (the lower bound). A step with only one of those is not on this list.
+
+⚠ **THE ORDER IS FORCED BY ONE FACT, NOT BY TASTE:** `press` today holds `editor_run`'s meanings
+and the **server is the authority**, so *reconciling* comes before *restructuring*. Building the
+verb layer on top of contents known to be wrong would bake three divergences into a new shape and
+make them much harder to see.
+
+## Phase 1 — reconcile what `press` already claims (before any new structure)
+
+| step | what runs beside it | what would surprise the test |
+|---|---|---|
+| **`R1` ring** — make `press`'s `F`/`G` match `do_fence`: the author's ground height as the ring's reference, yaw forced to 0.0, and the **trunk** the server remembers for annexes | the server's `do_fence` — unchanged, and called in the same test | a ring at a different reference height leaves different cells; a missing trunk means `K` cannot find the cylinder. **Both are silent today** |
+| **`R2` opening** — ⚠ **BLOCKED, and that is the finding**: `O`/`P` cannot be reconciled until a **selection** exists, because the server's axis is a *profile* and `press`'s is a *material*. There is no correct flat answer | — | — |
+| **`R3`** — delete `press`'s `O`/`P` branches and answer `PR_NONE` for them, until `R2` can land | `editor_run`'s scripts, which use `O`/`P` | ⚠ **A DELIBERATE REGRESSION, and the honest one**: a key that does the *wrong* thing silently is worse than a key that says *"not yet"*. `editor_run` will print `no gesture for key O` and a reader will know why |
+
+⚠ **`R1` IS THE TEMPLATE FOR THE REST.** Its test builds one ring through the server's helper and
+one through `press`, in two worlds, and asserts equal `w_tau` **and** equal trunk state. That
+shape — *two worlds, one assertion of equality* — is what every reconciliation step below reuses,
+and it is the only thing that makes "make X match Y" checkable rather than plausible.
+
+## Phase 2 — the selection, because `R2` cannot move without it
+
+| step | what runs beside it | what would surprise the test |
+|---|---|---|
+| **`S1`** — a **selection** in `EditSession`: the current opening profile, door type, window type | nothing changes behaviour yet — but the session is **saved and replayed**, so its round-trip is the test | a selection that does not survive `world_to_bytes`/`world_from_bytes` makes a script unreplayable, and every gate drives a script |
+| **`S2`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by cutting two openings with different selections and diffing the cells, never by reading the line |
+| **`S3` = `R2`** — `opening` becomes ONE verb taking its profile from the selection; `O P I U N M` all resolve to it | the six old keys, kept and still sending `36:<kind>` | the six old keys and the one verb with six selections must produce **six identical worlds**. ⚠ This is the step that proves the collapse is lossless, and it is why the old keys stay until it is green |
+
+## Phase 3 — the verb layer
+
+| step | what runs beside it | what would surprise the test |
+|---|---|---|
+| **`V1`** — the verb vocabulary **and** `verb_of(key)` **and** a `press` that takes a verb, in one step | `press(key)`, unchanged and still called | for every key: `press(key)` and `press(verb_of(key))` leave worlds with equal `w_tau`. ⚠ **The declaration alone is NOT a step** — a table checked against itself cannot be surprised |
+| **`V2`** — one caller at a time moves to verbs: `editor_run`, then the server, then the client | the key form, until each caller's equality test is green | a caller that resolves a key differently from `verb_of` — which is the four-site divergence trying to come back |
+| **`V3`** — delete `press(key)` | — | nothing calls it: a grep, and the suite |
+
+## Phase 4 — the mode, derived
+
+| step | what runs beside it | what would surprise the test |
+|---|---|---|
+| **`D1`** — `mode_at(sess, w, a)` computed and **consulted by nobody**; a gate logs it every frame of an existing run | every current verb, unchanged | ⚠ **the parallel run for a derived VALUE**: assert the derived mode never contradicts `shelter_at` over a whole scripted scene — including the house-in-a-cave case, which is the one the user named and the one a set mode gets wrong |
+| **`D2`** — verbs consult the mode: a verb with no binding here **says why** | `D1`'s log, now an assertion | a verb silently doing nothing. ⚠ *Reason, offer, residual, never a blank no* — the doorstep rule, applied to a keystroke |
+
+⚠ **`D1` IS UNCALLED CODE ON PURPOSE AND STILL PASSES THE LOWER BOUND**, which is worth being
+precise about: it can go red for a real reason (the mode disagreeing with `shelter_at` on a real
+scene), so it is a measurement rather than a declaration. **If its assertion were "the function
+returns one of three values", it would be a self-test and it would have to merge into `D2`.**
+
+## Phase 5 — the scripts, and the types
+
+| step | what runs beside it | what would surprise the test |
+|---|---|---|
+| **`K1`** — `tools/scripts/*.keys` accepts **both** spellings, `key H` and `verb place` | every existing script, unchanged — **no gate moves on the day the format changes** | a verb spelling that drives a different gesture from its key spelling: run one converted script and its original and diff the world |
+| **`K2`** — convert the 23 scripts, one at a time, each green before the next | the key form, still accepted | as `K1`, per script |
+| **`K3`** — drop the key spelling | — | nothing uses it: a grep over `tools/scripts/` |
+| **`T1`** — a **type** declares defaults and, optionally, `(key, verb)` pairs | the built-in set, until a declared type reproduces it exactly | ⚠ **the invariant**: a type added as *data* must reproduce today's cottage byte for byte in `make parts`. If that needs a `.loft` edit, the table is not data yet |
+
+⚠ **`T1` IS WHERE THE SYSTEM STARTS TO GROW, AND IT IS LAST FOR A REASON.** Every step above
+narrows what a type has to be able to say; declaring the format first would be designing a
+container for contents nobody has measured. ⚠ **And it must not invent a fourth declaration
+format** — [PARTS](PARTS.md)' tagged sections and plan
+[21](../../plans/21-region-mappings/README.md)'s region palettes are two ways this tree already
+says *what this thing is called and what it is made of*.
+
+---
+
+## ⚠ What this order costs, said plainly
+
+**`R3` ships a regression on purpose** — `O` and `P` stop working in `editor_run` until `S3`. That
+is the price of not baking a known-wrong meaning into a new structure, and it is small precisely
+because the wire path (`36:<kind>`) is untouched: the server, the gates and the client keep
+cutting openings exactly as they do today. **Only the runner's shortcut goes dark, and it says so
+out loud.**
+
+⚠ **The alternative — reconcile `O`/`P` to *something* now and fix it at `S3`** — is the one to
+refuse. It would make the equality test at `S3` compare against a value invented at `R2`, so the
+step that is supposed to prove the collapse lossless would be proving it against a guess.
