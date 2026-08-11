@@ -43,8 +43,8 @@ shipped as 18 bypasses. So the count is taken **before** any code, below, and it
 
 | | measured | how |
 |---|---|---|
-| the browser page has **no filesystem at all** | `loft_file_read` · `loft_file_write` · `read_file` · `write_file` · `__loftFS` — **0 occurrences each** | grep of the emitted `src/.loft/editor_client.html` (2.5 MB, WASM 1.8 MB) |
-| …so every load/save in the stack is unreachable there | `world_save(w, path, …)` · `world_load(path)` · `load_glb(path)` are **path-only**; there is no bytes variant | `grep '^pub fn' lib/hex_voxel/src lib/glb_read/src` |
+| ⚠ **the `--html` SHELL binds no filesystem** — *and the first draft of this line said "the browser" and was wrong* | 0 of the 20 `fs_*` names, on a program that really calls `world_save` / `world_load` / `file()` and **builds rc=0** | grep of an emitted page — see *The filesystem correction* below |
+| …so every load/save in the stack is unreachable **there** | `world_save(w, path, …)` · `world_load(path)` · `load_glb(path)` are **path-only**; there is no bytes variant | `grep '^pub fn' lib/hex_voxel/src lib/glb_read/src` |
 | …and the gap is in **one package** | `hex_part` makes **zero** filesystem calls — it works on a `VoxelWorld` and `part_file()` only builds a path *string* | grep of `lib/hex_part/src/` |
 | **HTTP works in the page** | full `fetch` bridge with method/url/body/headers and a fetch registry; `entry.body = new Uint8Array(await resp.arrayBuffer())` — **binary is preserved**, not decoded | read out of the emitted page |
 | a **store** can be loaded from a URL synchronously | `@PLN97 store_load_url_trusted: async fetch() bridged to a SYNCHRONOUS loft call via asyncify` | ditto |
@@ -54,6 +54,53 @@ shipped as 18 bypasses. So the count is taken **before** any code, below, and it
 | the client **already meshes its own voxels** | it holds `cache: VoxelWorld` and calls `hex_mesh::chunk_mesh_mat`; plan 16 `S3`/`S4` landed | `src/editor_client.loft` |
 | the client holds **no session and calls no gesture** | one `hex_editor::` reference in 1,823 lines, and it is a material constant | ditto |
 | the part library is **small** | `data/parts/` — 20 `.hxw` + 3 `.glb`, 23 files | `find data/parts -type f` |
+
+---
+
+## ⚠ The filesystem correction — the mechanism EXISTS, and it is better than what this file first designed
+
+**The first draft of this design said *"the browser page has no filesystem"* and built a
+hand-rolled persistence layer on that premise. That was wrong, and the user said so.**
+
+loft ships **`VirtFS`**, and loft's own file paths already honour it under wasm —
+`src/database/io.rs:781`, `src/state/io.rs:223`, `src/parser/mod.rs:9564`,
+`src/parser/control.rs:11753`. On top of it sits **`LayeredFS`**
+([loft `doc/claude/WASM.md` § *Layered Filesystem*](https://github.com/loft-lang/loft)), which is
+**exactly the shape this ask describes**:
+
+| `LayeredFS` | the ask |
+|---|---|
+| an immutable **base tree**, bundled at build time from a directory into `base-fs.json` | *"loads the possible assets from the project like `../routing` does with its data files"* |
+| a **delta** — only what changed — persisted to **localStorage**, IndexedDB named as the fallback | *"store the current build in the web local storage so nothing is lost on closing the page"* |
+
+**`data/parts/` is the base tree and the edited world is the delta.** That is one mechanism for
+both halves of the request, it is loft's own, and it means `world_save(path)` — the call every
+other target already makes — is the whole persistence design.
+
+### But the two browser shells bind opposite halves, and that is the real gap
+
+| shell | binds | missing |
+|---|---|---|
+| **`--html`** | `gl_*` (52 fns), `audio_*`, `host_http_*`, `host_input`/`host_output`, `time` | **`fs_*` — 0 of 20** |
+| **the wasm host** (`tests/wasm/host.mjs`, the Web IDE) | `env`, **`fs_*` (20)**, `log`, `random`, **`storage`**, `time` | **graphics — 0** |
+
+**A rendering editor needs both and today it can have either.** Measured: a program calling
+`world_save`, `world_load` and `file()` compiles to `--html` **rc=0** and the emitted module has
+**no `fs_*` import at all** — so a host cannot even supply one from JS, because there is nothing
+to bind to. Nothing warns; a page silently has no filesystem.
+
+✅ **Raised as [loft#851](https://github.com/loft-lang/loft/issues/851)**
+(`enhancement` · `needs-design` · `wa:partial` · `area:wasm` · `hit-by:moros`): *`--html` binds the
+same `fs_*` contract the wasm host already defines, with `LayeredFS` as the backing.* It asks for
+a **binding, not a feature** — every piece already exists on their side.
+
+⚠ **MY MEASUREMENT WAS RIGHT AND MY SENTENCE WAS WRONG, WHICH IS THE INSTRUCTIVE PART.** The grep
+found nothing because it asked *the `--html` shell*, and I wrote the answer up as a property of
+*the browser*. The tree's own rule is to check an instrument against something it should find
+before trusting it to report an absence — and there **was** something to find, one shell over.
+**An absence is always an absence *in the place you looked*.**
+
+---
 
 ⚠ **THE RENDERING IS NOT WORK, AND THAT IS THE FINDING THAT MAKES THIS CHEAP.** Plan 16's client
 split already put the voxel cache and the mesher in the browser and stopped the server sending
@@ -98,12 +145,17 @@ it untenable.
 lavition/
   src/editor_page.loft      ← NEW. the whole editor in one --html program:
                               EditSession + gestures + mesher + renderer + panel
-  tools/build-pages.mjs     ← NEW. assembles _site/ (routing's build-site.mjs pattern)
+  tools/build-pages.mjs     ← NEW. assembles _site/ — routing's build-site.mjs pattern, and
+                              loft's own ide/scripts/build-base-fs.js for the base tree
   _site/                    ← the deliverable: a directory you can serve statically
-    index.html                the --html page, with the host bridge appended
-    parts/index.json          the asset manifest — what parts exist
-    parts/**/*.hxw|.glb       the assets, fetched on demand
+    index.html                the --html page, with the host shim appended (until #851)
+    base-fs.json              data/parts/ baked into LayeredFS's base tree
 ```
+
+⚠ **`build-pages.mjs` IS A COPY OF A SCRIPT THAT EXISTS, NOT A NEW IDEA.** loft's
+`ide/scripts/build-base-fs.js` already bakes a directory into `base-fs.json`, and routing's
+`browser/build-site.mjs` already inlines a page and stages its data beside it. **Read both before
+writing a line of it** — and if the base tree can be produced by loft's script unchanged, use it.
 
 **Three programs, one editor.** `editor_server` (socket → gesture), `editor_run` (script →
 gesture), `editor_page` (key → gesture). ⚠ **The page is the third consumer, and that is a
@@ -159,6 +211,10 @@ Three `.glb` in `data/parts/`. Same wrapper rule as `W1`: the path form calls th
 ⚠ **Small, and it is the one place a stub is tempting** — a part whose mesh silently fails to load
 draws nothing and reads as a geometry bug, which is a shape this tree has paid for twice.
 
+⚠ **AND IT IS THE ITEM MOST LIKELY TO BE UNNECESSARY.** If [loft#851](https://github.com/loft-lang/loft/issues/851)
+lands, a `.glb` is just a file in the base tree and `load_glb(path)` already works. **Do `W3` only
+when a page actually needs a mesh and the binding has not arrived** — the house shell needs none.
+
 ### `W4` — `hex_editor`: `press` — the chokepoint that collapses N from 4 to 1
 
 ```
@@ -177,23 +233,31 @@ exists; **it is done when the other three call it and their own tables are delet
 tree's commonest defect (*a function written, tested green and never wired*), and it has cost an
 entire phase's deliverable before. **Grep for callers before calling `W4` done.**
 
-### `W5` — `lavition_host` (new, tiny): the JS↔loft request/response bridge
+### `W5` — `lavition_host`: an **interim shim**, and it is scaffolding by construction
+
+⚠ **THIS ITEM CHANGED MEANING AFTER THE FILESYSTEM CORRECTION.** It was designed as *the*
+persistence layer. It is now **a stand-in for [loft#851](https://github.com/loft-lang/loft/issues/851)**
+— the `fs_*` binding `--html` does not have — and its whole job is to be deleted.
 
 ```
 pub fn host_ask(request: text) -> text     // host_output(request) then host_input()
 ```
 
-Depends on **nothing** but the stdlib. It is what gives a page localStorage, the asset manifest,
-and any future browser capability **without a loft change** — because the channel is already
-first-class and documented in the emitted page.
+The channel **is** bound in `--html` (measured), so this works today with no loft change: the page
+asks JS to read or write a localStorage key, and JS answers. It depends on nothing but the stdlib.
 
-⚠ **A NEW PACKAGE IS PROPOSED HERE ONLY BECAUSE THE ALTERNATIVES ARE WORSE, AND `L3′` IS THE
-PRECEDENT.** It cannot go in `hex_editor` (a gesture library must not know what a browser is) or
-in `lavition_ui` (that is the panel). ⚠ **Grep `lib/`, `../loft-libs-*/` and the registry for the
-name before taking it** — `hex_fit` refused a name at `L6.1` and that refusal was a finding.
+⚠ **THE SEAM IS PLACED SO THE SWAP IS ONE FILE.** Everything above it calls `W1`'s bytes API;
+`lavition_host` only decides *where the bytes live*. When `#851` lands, the page calls
+`world_save(path)` against `LayeredFS` and this package is **deleted, not deprecated** — and
+`W1` stays, because a bytes API under the path API is right on every target.
 
-⚠ **AND IT IS DELIBERATELY *NOT* A `localStorage` PACKAGE.** The channel is the general thing;
-storage is one request on it. A package named for one request is `moros_terrain` again.
+⚠ **NAME IT LAST AND GREP FIRST** — `lib/`, `../loft-libs-*/` and the registry. `hex_fit` refused
+a rename at `L6.1` and that refusal was a finding. ⚠ And it is deliberately **not** a
+`localStorage` package: the channel is the general thing, storage is one request on it. A package
+named for one request is `moros_terrain` again.
+
+⚠ **IF `#851` LANDS BEFORE THIS IS BUILT, SKIP `W5` ENTIRELY.** It is the one item here whose best
+outcome is never existing.
 
 ### What is explicitly NOT library work
 
@@ -205,14 +269,22 @@ the invariant has been lost — say so and stop.
 
 ## The persistence format, and the one decision inside it
 
-**localStorage holds a whole world as bytes** — `world_to_bytes` (`W1`), base64'd, under one key.
+**The target state is `LayeredFS`**: `data/parts/` is the immutable base tree, the edited world is
+the delta, localStorage holds the delta, and the page just calls `world_save(path)`. That needs
+[loft#851](https://github.com/loft-lang/loft/issues/851).
+
+**The interim is the same bytes under one localStorage key**, written through `W5`. ⚠ **The two
+agree on the bytes and differ only on the route**, which is the whole reason `W1` is item one:
+`world_to_bytes` is what the shim carries *and* what `world_save` writes, so the switch changes
+no format and no test.
 
 ⚠ **THE SIZE IS THE RISK AND IT IS NOT MEASURED YET** — `P3` below. Browsers cap localStorage at
 about 5 MB per origin, and a `.hxw` grows with what has been built. **The design does not
 pre-emptively shard**, because [GROUND_DEFAULT](GROUND_DEFAULT.md) already establishes that
-storage holds only what *differs* from the ground, and a house is small. If `P3` says otherwise
-the answer is IndexedDB via the same `W5` channel — a bigger request on the same bridge, not a
-different design.
+storage holds only what *differs* from the ground, and a house is small. ⚠ **And loft has already
+priced this**: `WASM.md` puts a delta at *"typically < 50 KB"* against a 5–10 MB limit and names
+IndexedDB as the fallback for binary or large trees — so if `P3` fires, the answer is the fallback
+`LayeredFS` already documents, not a different design.
 
 ⚠ **AUTOSAVE ON THE EDIT CLOCK, NEVER ON A TIMER.** `w_tau` bumps once per write that changed
 something, so *save when tau moved* is exact, costs nothing when idle, and is the same on any box.
@@ -273,11 +345,16 @@ else** at first, and the whole prop/door/vehicle surface can wait.
 | | | why here |
 |---|---|---|
 | ✅ ~~`P4`~~, `P2` | the two probes that could reshape the work — **`P4` is done and it holds**, so `P2` is the only one left that can | before anything is built |
-| `W1` | world ⇄ bytes | everything else needs it, and its control (`make parts` byte-identical) already exists |
+| `W1` | world ⇄ bytes | everything else needs it, its control (`make parts` byte-identical) already exists, and it is **right on every target** — so it survives whichever way `#851` goes |
 | `W4` (house keys only) | `press` for `H`, `O`, `P`, `R`, `B`, `C`, `E`, `Q`, arrows | the smallest set that builds a house with doors, windows, walls and a storey |
-| `W5` + autosave | the bridge, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it |
-| `W2`/`W3` + `build-pages.mjs` | the manifest and the assets | doors and props are parts; the house shell is not |
+| `W5` **or** `#851` + autosave | whichever route is available, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it |
+| `W2`/`W3` + the base tree | the assets | doors and props are parts; the house shell is not |
 | the rest of `W4` | every remaining key, and **delete the other three tables** | ⚠ the step is not done until they are gone |
+
+⚠ **THE ROUTE DECISION IS DEFERRED ON PURPOSE, AND IT IS CHEAP TO DEFER** because `W1` and `W4` —
+the two real pieces of work — are the same either way. **Ask [#851](https://github.com/loft-lang/loft/issues/851)
+before starting `W5`**; the installed loft leads `main` here, so a binding can land inside a
+session, and this tree's rule is to wait for a toolchain rather than build around it.
 
 ⚠ **THE FIRST MILESTONE IS DELIBERATELY *BUILD A HOUSE AND REOPEN THE TAB*, NOT *THE PAGE
 RENDERS*.** A page that draws is not evidence — the renderer already works, so a picture would be

@@ -292,11 +292,12 @@ address (or the hostname `make browser` prints) cannot connect.
   all**: one invariant (*the page is the same editor with different I/O*), the five pieces of
   library work it needs, and the count that justifies them — **what a key means is re-asserted in
   FOUR places today**, two of which say so in their own source and one of which cites a file
-  deleted on 2026-08-02. Measured: the browser page has **no filesystem**, so every `world_save`
-  /`world_load`/`load_glb` in the stack is unreachable there; but HTTP, binary bodies and a
-  bidirectional JS↔loft channel are all first-class, so **no loft change is needed**. `P4` — can
-  one `--html` program hold the renderer *and* the gestures — is **run and it holds**. Designed,
-  not built
+  deleted on 2026-08-02. ⚠ Its **filesystem correction** is the part to read: loft already ships
+  `VirtFS` + `LayeredFS` — an immutable base tree plus a localStorage delta, which is *both*
+  halves of the ask — but **`--html` binds `gl` and no `fs_*`, while the wasm host binds `fs_*`
+  and no graphics**, and a rendering editor needs both
+  ([loft#851](https://github.com/loft-lang/loft/issues/851)). `P4` — can one `--html` program hold
+  the renderer *and* the gestures — is **run and it holds**. Designed, not built
 - [Lavition split](doc/claude/LAVITION_SPLIT.md) — **extracting the editor into its own project, and keeping the Moros name out of it**: the one invariant is *build, test **and gate** with the Moros tree absent*, the four blockers in the order the facts force them (a `Surface` collision that already merges, `moros_terrain` misnamed by the mechanism that hid `moros_ui`, 64 lattice calls, and two `hex_world` lineages), and the probe that could falsify the whole design in an afternoon. Plan 19, **designed not built**
 - [Terrain edits](doc/claude/TERRAIN_EDITS.md) — **how the ground moves, and what moves with it**:
   a building rides rigidly and ends on its own pad, a road or a wall bends along its run within
