@@ -7,7 +7,38 @@
 
 `A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7`, `A8`, **`A9`** and
 **`A10`** are **shipped**, and so is the road gesture that makes them reachable.
-`A2b` is designed and not built; `A3` needed no rule — see its row.
+`A2b` is half built — the cover's floor holds and says so, the ceiling is measured and
+left; `A3` needed no rule. See their rows.
+
+### ◐ `A2b` — THE CORRIDOR DOES NOT MOVE AT ALL, AND ONE HALF OF THAT IS A BUG
+
+Measured before anything was built, and neither half of the row was in play — because
+**a corridor is not touched by a stroke over it**:
+
+| | |
+|---|---|
+| a raise of 12 over it | the floor stays put and the cover grows **12 → 24** |
+| a hollow of 12 over it | **refused outright, and it said nothing** |
+
+✅ **THE SECOND IS OPEN QUESTION 4, AND IT IS ANSWERED: THE COVER HOLDS.** `F1` will not
+bring the ground within `ε` of the corridor's ceiling, so a corridor cannot be opened to
+the sky by hollowing the ground over it — the gameplay case the question flags. ⚠ **What
+was broken is that nobody was told.** `brush` threw `ground_set`'s verdict away — the same
+failure `road_clearance` exists for one gesture over — so measured against a bare control,
+a hollow of 12 delivered **nothing** at the centre and **11, 10, 9, 7, 5** short along the
+corridor, and reported `clamped 0 residual 0`. It now reports **clamped 6, residual 12**,
+and bare ground still reports nothing.
+
+◐ **THE BAND'S CEILING IS NOT BUILT, and the test says so rather than passing over it.**
+`test_a_raise_over_a_corridor_buries_it_rather_than_lifting_it` asserts the cover grows by
+**exactly** what the ground gained — a measurement of the not-built state, so that whoever
+builds the band has the before-number and a change that starts moving corridors is noticed
+rather than absorbed.
+
+⚠ **OPEN QUESTION 3 IS STILL OPEN AND IS NOW BETTER POSED.** *Cover or gradient?* cannot
+be decided while the corridor never moves at all: today its gradient is trivially zero and
+its cover is whatever the hill leaves. The fight the question describes only begins once a
+corridor follows the ground.
 
 ### ✅ `A3` — THE RULE WAS ALREADY THERE; WHAT WAS MISSING WAS THE PROOF
 
@@ -147,7 +178,7 @@ to the built-in numbering.
 | **`A2c`** — a linear run bends ALONG itself and not across | MH | `tests/run_slope.loft` | ✅ along `4f43a79`; **across built** — a projection onto the run's own axis; see below |
 | **`A7`** — the limit is the world's, not one gesture's | MH | `tests/slope_limit.loft`'s four settle claims | ✅ `0743c1a` |
 | **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | ✅ `dda9055` + `314bebe` — the rule, and the gesture that reaches it |
-| **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
+| **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | ◐ **the cover half is built and open question 4 is answered**; the BAND half is measured and left, see below |
 | **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | ✅ **no rule needed** — `A2`/`A7` already deliver it; what was missing was the proof, and `w_tau` is what makes it exact. See below |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
@@ -162,7 +193,7 @@ argued from a picture.
 | Phase | Concrete expected result | Invariant it pins | Negative control |
 |---|---|---|---|
 | `A8` | over one settled road, the volume removed above the grade equals the volume added below it, within a stated tolerance | *spoil is conserved: a cutting makes its own embankment* | a road on **flat** ground must cut nothing and fill nothing — a balance that moves earth where none was needed is not a balance |
-| `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient limited* | a corridor under a BUILDING must still move **rigidly** — it is that house's cellar, not a run |
+| `A2b` | ◐ the **floor** of the band holds and is now reported: a hollow over a corridor is refused by `F1` and the author is told by how much. The **ceiling** is not built — a raise buries the corridor by exactly what the ground gains | *a corridor's cover is bounded and its gradient limited* | ✅ bare ground takes the same hollow in silence — `clamped 0`, the full 12 delivered |
 | ~~`A2c` across~~ | ✅ shipped, and the row is kept because the MEASUREMENT corrected it: **zero is not reachable on this lattice**. The cell across is a MIDPOINT of two integer heights, so one half is the floor, and that is what is asserted | *a run has an AXIS; its limit is not a scalar* | ✅ a road cell with no road neighbour has no axis — `run_axis` returns −1 and it rises exactly as bare ground does |
 | ~~`A3`~~ | ✅ shipped, and *byte-identical* is asked of the **edit clock** rather than of the profile: a grass raise costs **91** writes — its own disc — and not one more | *the grass row IS the current behaviour* | ✅ both halves: a limited row costs strictly more (field 100, road 110), and the extra is **exactly** its clamp count |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop — ✅ it WAS a silent stop; `slope_owed` is the refusal, and the two halves of the row turned out to be already-true and not-built respectively |

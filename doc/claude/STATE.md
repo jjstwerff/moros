@@ -236,6 +236,26 @@ the headroom that resulted, so it sees cells that **did** rise into their roof a
 blind, by construction, to cells that **failed** to — a cell whose raise was refused still
 has all of its headroom and looks perfectly healthy.
 
+## ◐ `A2b` — A CORRIDOR IS NOT TOUCHED AT ALL, AND HALF OF THAT IS A BUG
+
+| measured on a 13-cell corridor | |
+|---|---|
+| a raise of 12 over it | the floor stays put, the cover grows **12 → 24** |
+| a hollow of 12 over it | **refused outright, and it said nothing** |
+
+✅ **OPEN QUESTION 4 IS ANSWERED — THE COVER HOLDS.** `F1` will not bring the ground within
+`ε` of a corridor's ceiling, so it cannot be opened to the sky by hollowing above it. ⚠ The
+bug was that nobody was told: `brush` **threw `ground_set`'s verdict away**, the same
+failure `road_clearance` exists for one gesture over. Against a bare control the hollow
+delivered **nothing** at the centre and 11, 10, 9, 7, 5 short along the corridor, reporting
+`clamped 0 residual 0`. Now **clamped 6, residual 12** — and bare ground still says nothing.
+
+◐ **The band's CEILING is not built**, and `tests/corridor.loft` asserts the not-built state
+exactly (the cover grows by precisely what the ground gained) so a change that starts moving
+corridors is noticed rather than absorbed. ⚠ **Open question 3 — cover or gradient — cannot
+be decided while the corridor never moves**: its gradient is trivially zero today. The fight
+only begins once a corridor follows the ground.
+
 ## ✅ `A3` — THE RULE WAS ALREADY THERE; THE PROOF WAS NOT
 
 **No library change.** `slope_relax` runs from `brush` and takes its limit from

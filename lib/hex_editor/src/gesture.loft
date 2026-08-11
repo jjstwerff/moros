@@ -5156,7 +5156,26 @@ fn brush_in(w: World, tq: integer, tr: integer, amp: integer, rad: integer,
           // already chosen is kept.
           bm = world_ground_cell(w, q, r).h_material as integer ?? 0;
           if bm == 0 { bm = SURFACE_MAT; }
-          ground_set(w, q, r, h, bm);
+          // ── AND THE VERDICT IS READ — plan 20 `A2b`, open question 4 ────────
+          //
+          // ⚠ THIS WAS THROWN AWAY, and it is the same failure `road_clearance`
+          // exists for one gesture over: *a refused write that says nothing.* What
+          // refuses here is a SUB-SURFACE run — dig a corridor and try to hollow the
+          // ground above it and `F1` will not bring the ground within `ε` of its
+          // ceiling. Measured against a bare control, a lowering of 12 over a
+          // corridor delivered **nothing at all** at the centre and 11, 10, 9, 7 and
+          // 5 units short along it, and reported `clamped 0 residual 0`.
+          //
+          // ⚠ THAT IS OPEN QUESTION 4 — *what happens when the cover runs out* — and
+          // it is the one place in this plan where a broken limit has a GAMEPLAY
+          // meaning rather than a visual one: a corridor open to the sky is a way in.
+          // The answer is that the cover holds, and the author is told by how much.
+          asked = h - ground_h(w, q, r);
+          if ground_set(w, q, r, h, bm) != hex_world::CW_OK {
+            if asked < 0 { asked = 0 - asked; }
+            clamped = clamped + 1;
+            if asked > residual { residual = asked; }
+          }
         }
       }
     }

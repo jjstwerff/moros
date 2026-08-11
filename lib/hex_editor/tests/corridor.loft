@@ -1,0 +1,117 @@
+// A CORRIDOR UNDER THE GROUND — plan 20 `A2b`, and what a raise does to one.
+//
+// The row asks that a corridor keep its cover within a band and its gradient within its
+// limit. Measured before anything was built, neither half was in play, because **the
+// corridor does not move at all**:
+//
+//   a raise of 12 over it    the floor stays put and the cover grows 12 -> 24
+//   a LOWERING of 12         refused outright, and it said NOTHING
+//
+// ⚠ THE SECOND IS OPEN QUESTION 4 — *what happens when the cover runs out* — and it is
+// the one place in this plan where a broken limit has a GAMEPLAY meaning rather than a
+// visual one: a corridor open to the sky is a way in. `F1` will not bring the ground
+// within `ε` of the corridor's ceiling, so the cover holds by itself. What was missing is
+// that `brush` threw the write's verdict away — the same failure `road_clearance` exists
+// for one gesture over — so the author asked for a hollow, got none, and was not told.
+use hex_editor;
+use hex_world;
+const U = 0.25;
+const G = 400;
+
+fn flat() -> World {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 24)..25 {
+    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
+  }
+  w
+}
+
+// A corridor: a line of cells each carrying one storey DOWN from the ground.
+fn dig(w: World, n: integer) -> integer {
+  cut = 0;
+  why = "";
+  for q in 0..n { cut = cut + storey_add(w, q, 0, 0 - 1, 0, why); }
+  cut
+}
+
+// The corridor's own floor at a cell — the layer under the ground — or −1.
+fn floor_at(w: World, q: integer) -> integer {
+  gl = hex_world::world_ground_layer(w, q, 0);
+  if gl <= 0 { return 0 - 1; }
+  (hex_world::world_cell(w, q, 0, gl - 1).h_height as integer ?? 0)
+}
+
+fn test_a_corridor_keeps_its_cover_when_the_ground_is_hollowed_over_it() {
+  // ⚠ THE CLAIM IS THE COVER, NOT THE GROUND. `F1` needs `ε` between layers, so the
+  // ground cannot come down onto the corridor's ceiling — that is what makes a corridor
+  // a corridor rather than a trench, and it is why a hollow over one is refused.
+  w = flat();
+  assert(dig(w, 13) > 0, "the fixture dug no corridor at all");
+  before = floor_at(w, 0);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 0 - 12, 9, cl, rs);
+  assert(floor_at(w, 0) == before,
+         "the corridor floor moved from {before - G} to {floor_at(w, 0) - G} — a hollow "
+         + "above it must not drag it down");
+  assert(ground_h(w, 0, 0) - floor_at(w, 0) > 0,
+         "the ground came to or below the corridor floor — the cover is gone and the "
+         + "corridor is open to the sky");
+}
+
+fn test_and_the_author_is_told_by_how_much() {
+  // ⚠ THE HALF THAT WAS MISSING, AND IT IS THE `K-FIT` FAILURE THIS TREE HAS A RULE
+  // FOR. The cover held on its own; what it did not do was say so. `brush` discarded
+  // `ground_set`'s verdict, so a lowering of 12 over a corridor delivered nothing at the
+  // centre and reported `clamped 0 residual 0`.
+  w = flat();
+  dig(w, 13);
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 0 - 12, 9, cl, rs);
+  assert(cl > 0,
+         "a hollow the corridor refused reported clamped={cl} — a limit that silently "
+         + "delivers less than was asked is the failure this rule exists to end");
+  assert(rs >= 12,
+         "it reported a residual of {rs} where 12 units were asked for and none "
+         + "delivered — the number must say how much was lost");
+}
+
+fn test_and_bare_ground_takes_the_same_hollow_in_silence() {
+  // ⚠ THE NEGATIVE CONTROL, and without it the row above passes on a gesture that
+  // reports a clamp for every stroke it ever makes. The same hollow with no corridor
+  // under it must move the ground and say nothing.
+  w = flat();
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 0 - 12, 9, cl, rs);
+  assert(cl == 0 && rs == 0,
+         "bare ground reported clamped={cl} residual={rs} for a hollow nothing refused");
+  assert(ground_h(w, 0, 0) == G - 12,
+         "bare ground reached {ground_h(w, 0, 0) - G}, not the 12 it was asked for");
+}
+
+fn test_a_raise_over_a_corridor_buries_it_rather_than_lifting_it() {
+  // ⚠ STATED RATHER THAN CLAIMED AS CORRECT. `A2b`'s row also wants the cover kept
+  // within a BAND, and this is the half that is not built: a raise leaves the corridor
+  // where it is and the cover simply grows. The row is recorded here as a measurement
+  // so that whoever builds the band has the before-number, and so that a change which
+  // starts moving corridors is noticed rather than absorbed.
+  w = flat();
+  dig(w, 13);
+  before = floor_at(w, 0);
+  cover0 = ground_h(w, 0, 0) - before;
+  cl = 0;
+  rs = 0;
+  brush(w, 0, 0, 12, 9, cl, rs);
+  assert(floor_at(w, 0) == before,
+         "the corridor floor moved to {floor_at(w, 0) - G}; if that is now intended, "
+         + "this row is the one to change on purpose");
+  cover1 = ground_h(w, 0, 0) - floor_at(w, 0);
+  assert(cover1 > cover0,
+         "the cover did not grow under a raise: {cover0} then {cover1}");
+  assert(cover1 == cover0 + 12,
+         "the cover grew by {cover1 - cover0} where the raise was 12 — the corridor is "
+         + "buried by exactly what the ground gained, which is what *not built* means "
+         + "for the band half of this row");
+}
