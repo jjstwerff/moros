@@ -20,21 +20,33 @@ declares `world_save` as a **method**, which shadows our free function of the sa
 receiver struct's *name* — see *What `L6.2` turned up*, and
 [loft#850](https://github.com/loft-lang/loft/issues/850).
 
-⚠ **`L6` SPLIT IN THREE ONCE THE NAMES WERE MEASURED, AND ONLY THE THIRD IS BLOCKED.** `L6.1`
-built the public-name check and fixed what it found — including **a dead import that had been
-shadowing the odd-r lattice**, which is a defect today and had nothing to do with the split.
-`L6.2` did the rename, before anything is published, which is the only time it can be done.
-`L6.3` is the repo itself, and that is the one waiting on #17 `A8`.
+⚠ **`L6` SPLIT IN THREE ONCE THE NAMES WERE MEASURED.** `L6.1` built the public-name check and
+fixed what it found — including **a dead import that had been shadowing the odd-r lattice**, which
+is a defect today and had nothing to do with the split. `L6.2` did the rename, before anything is
+published, which is the only time it can be done. `L6.3` is the repo itself.
 
-**The MOVE is still blocked on plan [#17](https://github.com/jjstwerff/moros/issues/17) `A8`
-landing** — `MeshAt` changed shape on 2026-08-06 (`A8.1`) and `A8.2`–`A8.7` will change it again,
-and this tree's own rule is that *the cost of extracting late is a rename; the cost of extracting
-early is a seam renegotiated while both sides are moving.* The corrections were not blocked,
-because they are right whether or not the split ever happens.
+⚠ **AND `L6.3`'s BLOCKER CHANGED ON 2026-08-11 — IT IS NO LONGER `A8`.** This section read *"the
+MOVE is still blocked on plan #17 `A8` landing"*, on hexbody's reason: `MeshAt` was changing shape.
+**`A8` landed on 2026-08-08**, so that clause has been stale for three days — and running the
+invariant the moment it cleared is what found the real blocker underneath it.
 
-Today: **six** lavition packages (686 tests) with zero `moros_*` dependencies, one 8,283-line
-editor program with **none left either**, 49 gates of which 39 need that program, and
+**The MOVE is blocked because the editor program does not compile without Moros.**
+`src/editor_server.loft` imports `moros_render` (42 call sites) and `moros_sim` (11, behind an
+alias). Measured with `make probe-split`; see *What `L6`'s probe turned up*. `L6.3a` and `L6.3b`
+are what pay it, and **open question 5 is now on the critical path** rather than parked.
+
+⚠ **The corrections were never blocked** — they are right whether or not the split happens, which
+is why six of them landed while the premise underneath them was false.
+
+Today: **seven** lavition packages with zero `moros_*` dependencies, 53 gates that name Moros
+**only in comments**, four of five programs that compile with the Moros tree absent — and
 `data/parts/` behind them.
+
+⚠ **THE FIFTH PROGRAM DOES NOT, AND THIS LINE SAID IT DID.** It read *"one 8,283-line editor
+program with **none left either**"*. Measured 2026-08-11 (`make probe-split`):
+`src/editor_server.loft` imports `moros_render` (6 names, **42** call sites) and `moros_sim`
+(10 names, 11 sites, behind `as msim`) and does not build without them. **The split is one file
+away** — see *What `L6`'s probe turned up* below, and `PROGRAM_DEBT` in `tools/layering.sh`.
 
 ## Goal
 
@@ -67,10 +79,22 @@ with the same counts, before and after.
 | `L1` | `make lib-test` 20 of 20 and `make gate` 44, unchanged, after `Surface` is renamed on one side | **a rename changes no behaviour** | write the `Surface` literal in `editor_server.loft` **before** the rename — it must still fail with *"Unknown field `Surface.sf_r`"*, or the collision was already gone and `L1` is testing nothing |
 | `L2` | same counts after `moros_terrain` → `hex_mesh`, and `make parts` still byte-identical | a package's **name** is not part of its behaviour | run `layering.sh` with the `moros_*` skip removed **before** the rename — it must report `hex_editor`→`moros_terrain`, or the check cannot see the class it exists for |
 | ~~`L3`~~ → `L3′` | same counts after the projection moves to `hex_proj` | `hex_to_world`'s plane **is** `hex_grid::hex_to_px`, on **both parities and both signs** — lesson `E` | ⚠ two: negative odd rows must shift the same way as positive ones, **and the `(6 - i) % 6` corner map must not be the identity** — without the second, a package that merely forwarded the call would pass every corner test |
-| `L5` | the 39 gates green **with `lib/moros_*` deleted from the tree** | clause 1 of the extraction bar, for the *gates* | keep one `moros_*` reference in the server and confirm the build **fails** — a boundary check that cannot fail is not one |
+| ~~`L5`~~ → `L6.2p` | the 39 gates green **with `lib/moros_*` deleted from the tree** | clause 1 of the extraction bar, for the *gates* | keep one `moros_*` reference in the server and confirm the build **fails** — a boundary check that cannot fail is not one |
+| `L6.2p` | `probe/l6/run.sh` exits 0 on 9 — and `C`/`D` are **expected failures**, because the claim they measure is false today | **the program travels**, which is the plan's whole premise | ⚠ two, both run: pay one import and `D` must go red *saying it is progress*; plant a Moros name in a gate's **code** and `E` must go red — a filter that only ever sees comments cannot report their absence |
+| `L6.2g` | `tools/layering.sh` silent bar its debt line | **the coupling cannot grow unseen** | ⚠ four: a new import in a clean program FAILS; a removed import with the budget unchanged FAILS; and both restore to green |
+
+⚠ **`L5`'s ROW WAS THIS PROBE ALL ALONG, ATTACHED TO THE WRONG STEP — and that is the finding
+this table was built to prevent.** The row above specifies the measurement exactly, down to a
+negative control that is *precisely* today's tree (*"keep one `moros_*` reference in the server and
+confirm the build fails"*). But the **phase** called `L5` is *fix the gate flake*, which is other
+work entirely; it was done, ticked, and the invariant row went with the tick. ⚠ **A control that
+passes trivially is the tell**: ours has held from the day it was written, because the reference it
+asks for was never removed. **When a step and its invariant row describe different work, the row is
+the one that is right** — and nobody re-read it for five days.
 
 ⚠ **`L6.3`–`L8` have no exact-invariant surface** — a file move and documentation. Said in a line
-so the silence does not read as *gate done*.
+so the silence does not read as *gate done*. ⚠ **That sentence is now only true of `L6.3c`–`L8`:**
+`L6.3a` and `L6.3b` are code, and their surface is `probe/l6`'s `C` and `D` flipping to *PAID*.
 
 ⚠ **`L4` WAS PUT HERE TOO, AND THAT WAS WRONG.** *"A naming decision with another repo"* is what
 it looks like from outside; what it actually rests on is a claim that **is** exactly checkable —
@@ -96,7 +120,11 @@ now in the table above, with the control that would have caught the answer every
 | ✅ **`L5`** — fix the gate flake: wait for the evidence, never for a duration | M | **DONE.** 4 consecutive clean full suites (44, rc=0, zero failures), plus 3 contended `gate-rep` runs of the three fixed gates | ✅ Done |
 | ✅ **`L6.1`** — `tools/names.sh`, and every collision it found | M | **DONE.** The check is silent; 686 lavition + 625 Moros tests green on both backends, counts unchanged | ✅ Done |
 | ✅ **`L6.2`** — `hex_world` → `hex_voxel`, and its `World` / `Chunk` | M | **DONE 2026-08-11.** `names.sh` and `layering.sh` silent, `probe/l4/run.sh` 8 of 8 with three controls re-measured, every per-package count identical (1600 tests, both backends), `make parts` byte-identical, `make gate` 47 PASS | ✅ Done |
-| **`L6.3`** — the new repo: packages, program, gates, content, `CLAUDE.md` | MH | 678 tests **and 49 gates** green with no Moros tree present | Blocked on #17 `A8` |
+| **`L6.2p`** — ⚠ **the probe: does the program travel?** | XS | ✅ **RUN 2026-08-11, and it fired.** `probe/l6/run.sh` · `make probe-split` · 9 checks, 2 sabotages seen red | ✅ Done |
+| **`L6.2g`** — the guard: `PROGRAM_DEBT` in `tools/layering.sh` | XS | ✅ **DONE.** Exact budget, fails in both directions; 4 controls run | ✅ Done |
+| **`L6.3a`** — wean the program off `moros_render`: 6 names, 42 sites | M | `probe/l6` control `C` flips to *PAID*; `world_to_hex` joins its own inverse in `hex_proj` | ⏭ **Ready** — #17 `A8` has landed |
+| **`L6.3b`** — settle open question 5, then `moros_sim`: 10 names, 11 sites | M | control `D` flips to *PAID* | Blocked on **open question 5**, which can no longer be parked |
+| **`L6.3`** — the new repo: packages, program, gates, content, `CLAUDE.md` | MH | 678 tests **and 49 gates** green with no Moros tree present | Blocked on `L6.3a`+`L6.3b` — ⚠ **not on `A8` any more**, which landed 2026-08-08 |
 | **`L7`** — Moros becomes a consumer: published deps + one configuration file | M | Moros green against published packages, no path dependency into lavition | Blocked on `L6` |
 | **`L8`** — the documentation, and what is deliberately left behind | S | the eight travelling docs present; the four superseded ones **absent** | Blocked on `L6` |
 
@@ -395,6 +423,58 @@ dodge a name.
 non-regular file. A rename over that file list silently skips every file after the first cache
 dir, and reports nothing. `-type f`.
 
+### What `L6`'s probe turned up (2026-08-11) — the invariant is false
+
+**Built:** [`probe/l6/run.sh`](../../probe/l6/run.sh) (`make probe-split`), and `PROGRAM_DEBT` in
+[`tools/layering.sh`](../../tools/layering.sh). **Found: the program does not travel.**
+
+`loft --check` is the instrument — parse-and-compile, no server, no port, no picture, five files in
+about thirty seconds. Against a lavition-only `lib/`:
+
+| | |
+|---|---|
+| `editor_client` · `editor_run` · `part_build` · `prop_build` | ✅ compile clean |
+| the seven lavition packages | ✅ no `use moros` anywhere in `src/` |
+| 53 gate files | ✅ 21 say *moros*, **every one inside a comment** |
+| **`editor_server.loft`** | ❌ `use moros_render;` (6 names, **42** sites) and `use moros_sim as msim;` (10 names, 11 sites) |
+
+⚠ **`world_to_hex` IS 29 OF THE 42, AND IT IS NOT MOROS CODE.** Its body is
+`hex_grid::px_to_hex`; the only Moros thing about it is its **return type**,
+`moros_map::HexAddress`. `L3′` moved `hex_to_world` into `hex_proj` and left **its inverse
+behind** — so `L6.3a` is mostly `L3′` finished, not new design.
+
+#### ⚠ Four instruments were pointed at this and all four missed, each for its own reason
+
+1. **`layering.sh` looped over `lib/*/loft.toml` and never opened `src/`.** The exemption shape
+   again — but by **directory** this time, not by name, which is why the `moros_ui` /
+   `moros_terrain` lesson did not transfer. *A consumer program may call anything* is true right
+   up until the program is the thing being extracted.
+2. **An alias hid a whole package.** `use moros_sim as msim;` exposes no bare name, so the
+   2026-08-06 coupling survey — which counted names — never mentions `moros_sim` **at all**.
+   ⚠ `L6.1` measured that exact property and wrote it down; it was never spent against the
+   measurement that needed it. **A grep's default answer is *absent*.**
+3. **The survey refuted itself in one sentence** — *"`moros_terrain`, and nothing else … **plus** 3
+   unqualified calls from `moros_render`"* — and the *"nothing else"* is what got quoted forward
+   into the design's bold claim.
+4. **`L3′` fixed `world_to_hex` where the check looks and nowhere else.** `layering.sh`'s header
+   names that fix in the packages while the program kept 29 calls to the same function.
+
+#### ⚠ And the two live consequences, neither of which is a tidy-up
+
+- **Open question 5 cannot stay parked.** *Does `moros_sim` split too?* is marked *not this plan* —
+  but the program imports `msim`, so `L6.3` cannot complete while the answer is open. It is
+  promoted to a blocker of `L6.3b`.
+- **This is decision 11's THIRD instance.** Neither package holds a game concept in any public
+  name: `camera_*`, `emit_*`, `aabb_*`, `pick_hex` on one side; `asm_cart`, `body_axle`,
+  `ground_gap`, `fall_step`, `cliff_edges` on the other. `moros_ui`→`lavition_ui`,
+  `moros_terrain`→`hex_mesh`, and now two more. **The pattern is not that names drift; it is that
+  a Moros prefix removes a package from the check that would have said so.**
+
+⚠ **WHAT THE PROBE DELIBERATELY DOES NOT CLAIM.** The invariant's other half — *the 39 gates green
+with `lib/moros_*` deleted* — is **unreachable**, not merely unrun: every one of those gates drives
+the program that does not build. The hardest clause is blocked on the easiest. `E` measures the
+nearest decidable thing instead (no gate names Moros in code) and says so at the site.
+
 ## Cross-repo coordination
 
 | repo | owns | what "done" means |
@@ -428,5 +508,23 @@ dir, and reports nothing. `-type f`.
    `fit_why`, which is honest but is not an answer. *Wants measuring before `L7` publishes
    `hex_editor`*, because after that neither side can move.
 5. **Does `moros_sim` split too?** `assembly`'s `LinkKind` is the joint vocabulary §P9 builds on,
-   and the walker is the only thing that exercises a part-tree pose. *Not this plan* — flagged
-   because §P9's *what `A8` does not cover* will reach it.
+   and the walker is the only thing that exercises a part-tree pose. ~~*Not this plan*~~ —
+   ⚠ **PROMOTED TO A BLOCKER 2026-08-11, and it is `L6.3b`.** It cannot be parked: the probe
+   measured that `src/editor_server.loft` imports `moros_sim as msim` at 11 sites, so **the
+   program cannot travel until this is answered.** The ten names it actually needs are `Frame`,
+   `Assembly`, `asm_frames`, `asm_cart`, `frame_apply`, `body_axle`, `ground_axle`, `ground_gap`,
+   `fall_step` and `cliff_edges` — five of `moros_sim`'s fourteen modules, and not a game concept
+   among them, which is decision 11's shape a third time. ⚠ **The question was filed as design and
+   is really arithmetic**: 11 sites is small enough that *move the five modules*, *rename the
+   package* and *give the editor its own rig vocabulary* are all affordable, and the choice should
+   be made on which one leaves `moros_sim` coherent — not on which is least work.
+6. **Does `moros_render` split, or does the editor stop needing it?** ⚠ **New, from `L6`'s probe.**
+   42 sites over 6 names, and they are two different problems wearing one import: `world_to_hex`
+   (29) is a **projection** whose home already exists (`hex_proj` holds its inverse) and whose only
+   Moros content is the `HexAddress` return type, while `emit_box` / `emit_cylinder_post` /
+   `emit_hex_surface` / `emit_item_placeholder` / `mesh_aabb` (13) are **mesh emission**, which is
+   `hex_mesh`'s subject. *Likely answer: neither package moves whole* — the projection half goes to
+   `hex_proj` and the emission half to `hex_mesh`, leaving `moros_render` as the genuinely
+   Moros-shaped remainder (`avatar_*`, `map_build_scene`, `dev_art_color`). **Wants measuring at
+   `L6.3a`**, and `emit_hex_surface` is the one to look at first: `L3′` already had to make
+   `proj_corner_offset` public *for it*, which is the seam announcing itself.

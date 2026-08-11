@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -527,6 +527,14 @@ guards:
 # ⚠ Spawns headless Chrome and an xvfb display; both are cleaned up by the script.
 probe-text:
 	@sh probe/b1/run.sh
+
+# L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
+# Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers
+# in ~30 s, which is why it is a target of its own and not part of `make fast`:
+# `tools/layering.sh` carries the same claim as a cheap import ratchet on every run,
+# and this is the decisive backstop that proves the ratchet matches what compiles.
+probe-split:
+	@sh probe/l6/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \

@@ -54,9 +54,47 @@ a 12-unit step of mountain that was never there.
 - **`plan/20-run-debt`** — pushed, deliberately unmerged, and now with a *measured* reason:
   merged on top of everything above it **ratchets**, because `spoil_place`'s datum moves when
   the balance moves. Superseded by `Grades`; kept for its measurement.
-- ✅ **plan 19 `L6.2` is DONE (2026-08-11)** — see below. What is left of plan 19 is `L6.3`–`L8`,
-  which wait on #17 `A8`.
+- ⏭ **plan 19 `L6.3a` is the next piece of code, and it is ready** — see the section below.
+  `L6.2` is done; `A8` stopped blocking anything on 2026-08-08.
 - the two ◐ format questions on plan 17, which want a plan rather than a step.
+
+## ⏭ THE SPLIT'S ONE INVARIANT IS FALSE, AND IT IS ONE FILE — measured 2026-08-11
+
+**`make probe-split`.** LAVITION_SPLIT.md says in bold that `src/editor_server.loft` has zero
+Moros dependencies and that the program, its client, its gates and its content can all travel
+together. **Compiled against a lavition-only `lib/`, it does not build.**
+
+| | |
+|---|---|
+| ✅ already travel | the 7 lavition packages · `editor_client` · `editor_run` · `part_build` · `prop_build` · **all 53 gates** (21 name Moros, every one inside a comment) |
+| ❌ **`src/editor_server.loft`** | `use moros_render;` — 6 names, **42** sites · `use moros_sim as msim;` — 10 names, 11 sites |
+
+⚠ **`world_to_hex` IS 29 OF THE 42 AND IS NOT MOROS CODE.** Its body is `hex_grid::px_to_hex`; its
+only Moros content is the **return type**, `moros_map::HexAddress`. `L3′` moved `hex_to_world`
+into `hex_proj` and left its inverse behind, so `L6.3a` is mostly `L3′` finished.
+
+⚠ **FOUR INSTRUMENTS WERE POINTED AT THIS AND ALL FOUR MISSED.** `tools/layering.sh` looped over
+`lib/*/loft.toml` and **never opened `src/`** — the exemption shape by *directory* this time, which
+is why the `moros_ui` / `moros_terrain` lesson did not transfer. An **alias** hid `moros_sim`
+entirely from a survey that counted bare names, which is `L6.1`'s own finding unspent. The survey
+refuted itself in one sentence (*"nothing else … **plus**"*) and the *"nothing else"* is what got
+quoted forward. And `L3′` cured `world_to_hex` in the packages, where the check looks, while the
+program kept 29 calls to it.
+
+✅ **THE GUARD IS AT THE ARRIVAL NOW**: `PROGRAM_DEBT` in `tools/layering.sh` records the imports
+**exactly** and fails in both directions — a new one is a regression, a removed one has to be
+recorded as progress or the number rots. Four controls run. And the import is the right instrument
+rather than the call site: `use moros_render;` is unaliased, so its 42 sites are **bare names** and
+no `moros_render::` grep sees one of them.
+
+⚠ **THE PLAN'S OWN INVARIANT TABLE HELD THIS PROBE ALL ALONG, ON THE WRONG STEP.** `L5`'s row
+specifies it exactly — *"the 39 gates green with `lib/moros_*` deleted"*, negative control *"keep
+one `moros_*` reference in the server and confirm the build fails"* — while the **phase** called
+`L5` was *fix the gate flake*. The phase was done and the row went with the tick. **A control that
+has passed trivially since the day it was written is the tell.**
+
+⚠ **AND THE GATE HALF IS UNREACHABLE, NOT MERELY UNRUN.** Every one of those gates drives the
+program that does not build, so the invariant's hardest clause is blocked on its easiest.
 
 ## ⏭ THE STORE IS `hex_voxel` — plan 19 `L6.2`, landed 2026-08-11
 
@@ -427,12 +465,18 @@ command** — a stamp between `make gate` and `echo "rc=$?"` reports the STAMP's
 than a record, is at the top of this file: `A8.3` needs the user's eyes and `A8.6` needs a gesture
 nobody has written.
 
-### Plan 19 — `L1`–`L5` done or raised, `L6.1` built; only `L6.3` waits for `A8`
+### Plan 19 — `L1`–`L6.2` done or raised; `L6.3` is blocked on the PROGRAM, not on `A8`
 
 [#19](https://github.com/jjstwerff/moros/issues/19) · design
 [LAVITION_SPLIT.md](LAVITION_SPLIT.md) · steps
-[plans/19-lavition-split](../../plans/19-lavition-split/README.md). The MOVE is **blocked on `A8`
-landing**, for hexbody's reason: `MeshAt` is changing shape right now. The corrections are not.
+[plans/19-lavition-split](../../plans/19-lavition-split/README.md).
+
+⚠ **THIS BLOCK SAID *"the MOVE is blocked on `A8` landing, for hexbody's reason: `MeshAt` is
+changing shape right now"* — `A8` landed 2026-08-08 and the clause was three days stale.** Running
+the invariant the moment it cleared is what found the real blocker underneath: **the editor program
+imports two Moros packages and does not compile without them.** See the section at the top of this
+file. The corrections below were never blocked, which is why six of them landed while the premise
+under them was false.
 
 ✅ **`L1` AND `L2` ARE DONE (2026-08-06).** `hex_voxel::Surface` → **`SurfaceAt`** (the tree's own
 `MeshAt`/`SocketAt` convention for a derived positional record), so the silent merge with
@@ -494,9 +538,13 @@ the tool because the registry's `hex_fit` publishes one. ⚠ **That last one is 
 `hex_fit` *is* a doorstep, field for field with `hex_editor::Fit`, and whether they converge is
 now an open question on the plan rather than a spelling.
 
-**What is left**: ✅ `L6.2` is **done** (2026-08-11, top of this file), so what remains is
-`L6.3`–`L8`, which wait for `A8`. ⚠ **The gates have not been run since `L6.1`** — a new dependency edge invalidates the
-build cache exactly as a new package does, so they need a warm-up first.
+**What is left**: ✅ `L6.2` is **done** (2026-08-11, top of this file), and what remains is
+`L6.3a` (wean the program off `moros_render` — 42 sites, mostly `L3′` finished), `L6.3b`
+(`moros_sim`, 11 sites, which needs open question 5 answered first) and then `L6.3c`–`L8`.
+⚠ **The line here that read *"the gates have not been run since `L6.1`"* was already false when
+written** — `L6.2` ran them the same day, **47 PASS / 0 FAIL / 0 never-listened**. The durable
+half of it is still true and is why it was written: **a new dependency edge invalidates the build
+cache exactly as a new package does**, so warm one server up and down before believing a suite.
 
 ✅ **AND `L5` — THE GATE FLAKE — IS FIXED, so a required PR check is now possible.** Three gates,
 two bugs, neither a timeout that wanted raising:

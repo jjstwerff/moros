@@ -1,9 +1,14 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
 # LAVITION_SPLIT — extracting the editor into its own project, and keeping the name out
 
-**Status: designed 2026-08-06. `L1` and `L2` are BUILT; `L3` was refuted by its own probe and
-replaced by `L3′`.** Plan [#19](https://github.com/jjstwerff/moros/issues/19) holds the steps and
-the per-step record.
+**Status: designed 2026-08-06. `L1`, `L2`, `L3′`, `L5`, `L6.1` and `L6.2` are BUILT; `L3` was
+refuted by its own probe and replaced by `L3′`.** Plan
+[#19](https://github.com/jjstwerff/moros/issues/19) holds the steps and the per-step record.
+
+⚠ **AND THE ONE INVARIANT WAS FALSIFIED ON 2026-08-11 — read
+[L5′](#l5-the-program-does-not-travel-measured-2026-08-11) before this file's `L3′` section, which
+still reads as though the program were free.** The packages, the gates and the other four programs
+travel; `src/editor_server.loft` does not.
 
 > **This file is written to be MOVED.** It carries its own definitions and depends on no Moros
 > context, the same way [HEX_STACK.md](HEX_STACK.md) was written to travel. On the day the split
@@ -23,6 +28,17 @@ difference between a real extraction and moving the easy half — see *The trap*
 Four sites have to assert it, and the plan is ordered by them: the **packages** (already clean),
 the **program**, the **gates**, and the **content** they drive.
 
+⚠ **AND IT IS MEASURED NOW RATHER THAN ASSERTED — `probe/l6/run.sh` / `make probe-split`, 2026-08-11.**
+It fails at the **program**: `src/editor_server.loft` imports `moros_render` and `moros_sim` and
+does not compile with `lib/moros_*` absent, while this file said in bold that it does. The other
+three sites hold. [L5′](#l5-the-program-does-not-travel-measured-2026-08-11) is the finding and
+`tools/layering.sh`'s `PROGRAM_DEBT` is the ratchet.
+
+⚠ **THE GATE HALF IS NOT MERELY UNMEASURED, IT IS UNREACHABLE.** *The 39 gates green with
+`lib/moros_*` deleted* cannot be run at all, because every one of them drives the program that
+does not build. **The invariant's hardest clause is blocked on its easiest**, and a probe that
+reported the gates as "not yet checked" would be describing an ordering rather than a gap.
+
 ---
 
 ## What was measured, 2026-08-06
@@ -36,7 +52,7 @@ Every row below was checked against the tree on that date, not recalled.
 | the `moros` name inside them | **41 mentions in 22 files, none of them code.** Prose, plus `boundary.loft`'s own guard text |
 | where the `hex_*` family comes from | the **registry** at 0.1.0, diffed byte-identical to `../loft-libs-world`. The sibling working tree is **not** in the build |
 | the editor program | `src/editor_server.loft` **8,283 lines**, `editor_client.loft` 1,823, `editor_run.loft` 162 |
-| its Moros coupling | **`moros_terrain`, and nothing else** — 10 distinct symbols, 99 call sites — plus 3 unqualified calls from `moros_render`. ✅ `moros_terrain` is **`hex_mesh`** now (`L2`); the other three are the projection, not the lattice (`L3`) |
+| its Moros coupling | ⚠ **THIS ROW WAS WRONG, AND IT IS THE ONE ROW THE PLAN RESTS ON** — see below. It read *"`moros_terrain`, and nothing else — 10 distinct symbols, 99 call sites — plus 3 unqualified calls from `moros_render`"*. `moros_terrain` is **`hex_mesh`** now (`L2`) and the three projection calls moved to `hex_proj` (`L3′`) — but the row **never counted `moros_sim` at all**, and `moros_render` survived `L3′` with 42 sites |
 | the gates | **49 files, 39 of which dial `EDITOR_PORT`** and therefore need that program |
 | the content | `data/parts/` 11 files, `tools/scripts/*.keys` 23 |
 
@@ -124,9 +140,12 @@ whole cone (`Cannot redefine 'fabs'`). The reverse arrow has the same shape.
 
 **`L3′`: a small `hex_proj`** — `HEIGHT_SCALE`, `hex_to_world`, `hex_corner_world` and the corner
 map — depending on `hex_grid` and `graphics` and nothing else, so both `moros_render` and
-`hex_mesh` can take it without inheriting a cone. **With `L2` and `L3′` done,
-`src/editor_server.loft` has zero Moros dependencies** and the program, its client, its gates and
-its content can all travel together.
+`hex_mesh` can take it without inheriting a cone.
+
+⚠ **THIS PARAGRAPH THEN SAID *"With `L2` and `L3′` done, `src/editor_server.loft` has zero Moros
+dependencies and the program, its client, its gates and its content can all travel together"*, IN
+BOLD, AND IT WAS NEVER TRUE.** Measured 2026-08-11 with `probe/l6/run.sh` — the honest instrument
+is a compile, not a reading — see [L5′](#l5-the-program-does-not-travel-measured-2026-08-11) below.
 
 ### L4 — `hex_world` was an ambiguous global name — ✅ RESOLVED by `L6.2`, 2026-08-11
 
@@ -183,6 +202,66 @@ struct-vs-struct and function-vs-function and misses exactly this pair:
 change nothing else, and the right function is chosen*. It never miscompiles — the two types never
 merge — so the cost is diagnosis time rather than correctness. **The struct rename was
 load-bearing, and `F` could not see it because `F` only ever asked about the types.**
+
+### L5′ — the program does not travel (measured 2026-08-11)
+
+> ⚠ **THE ONE INVARIANT AT THE TOP OF THIS FILE HAD NEVER BEEN MEASURED.** Four blockers were
+> written down, three were paid, and the sentence they were supposed to buy — *the program can
+> travel* — was asserted rather than run. It is run now: `probe/l6/run.sh`, and `make probe-split`.
+
+**With `lib/moros_*` absent, `src/editor_server.loft` does not compile.** It imports two Moros
+packages and, through them, all four:
+
+| import | names | call sites | what they are |
+|---|---|---|---|
+| `use moros_render;` | 6 | **42** | `world_to_hex` (29), `emit_box` (6), `emit_hex_surface` (2), `emit_item_placeholder` (2), `mesh_aabb` (2), `emit_cylinder_post` (1) |
+| `use moros_sim as msim;` | 10 | 11 | `Frame` · `Assembly` · `asm_frames` · `asm_cart` · `frame_apply` · `body_axle` · `ground_axle` · `ground_gap` · `fall_step` · `cliff_edges` |
+
+**Everything else already travels**, which is what makes this precise rather than alarming:
+`editor_client`, `editor_run`, `part_build` and `prop_build` all `--check` clean against a
+lavition-only `lib/`, the seven lavition packages declare no Moros dependency, and of the 53 gate
+files the 21 that say *moros* say it **only inside comments**. The split is **one file away**.
+
+⚠ **AND `world_to_hex` IS THE SHARP END: IT IS NOT MOROS CODE.** Its body is
+`hex_grid::px_to_hex`; its only Moros content is its **return type**, `moros_map::HexAddress`
+(`ha_q`, `ha_r`, `ha_cy`). `L3′` moved `hex_to_world` into `hex_proj` and left **its inverse
+behind** — so half a projection lives in a package named for a consumer, and 29 of the program's
+42 leaked call sites are that half.
+
+#### ⚠ Why it survived every check in this tree, which is the part worth carrying
+
+- **`tools/layering.sh` looped over `lib/*/loft.toml` and never opened `src/`.** *A consumer
+  program may call anything* is true while the program is Moros's — and this plan is the claim
+  that it stops being. **The one file whose coupling decides the split was the one file nothing
+  measured.** That is the `moros_ui` / `moros_terrain` exemption shape one layer up: not a name
+  deciding whether the check applies, but a *directory*. ✅ Fixed — the script now carries
+  `PROGRAM_DEBT`, an exact budget that fails in **both** directions, so a new import is a
+  regression and a removed one has to be recorded as progress.
+- **The alias made an entire package invisible to the measurement.** `use moros_sim as msim;`
+  exposes no bare name, so a coupling survey that greps for names finds nothing — and the
+  2026-08-06 row above never mentions `moros_sim`. ⚠ **`L6.1` had already measured exactly this**
+  (*"an aliased import exposes no bare name"*) and the finding was never spent against the
+  measurement that needed it. **A grep's default answer is *absent*.**
+- **The row said so itself and nobody read it that way.** *"`moros_terrain`, and nothing else …
+  **plus** 3 unqualified calls from `moros_render`"* — a sentence whose second half refutes its
+  first. Those three calls became `hex_proj`'s at `L3′`; the other 42 were never in the count.
+- **`L3′` cured `world_to_hex` where the check looks and nowhere else.** `layering.sh`'s own
+  header records the fix — *"the wall run and the road read `moros_render`'s `world_to_hex` …
+  they read `hex_grid::px_to_hex` now"* — while the program kept 29 calls to the same function.
+
+#### What it costs, and what it does not
+
+**It does not re-open the design.** Nothing above is refuted: the packages are clean, the gates
+travel, the documents are sorted. What moves is `L6.3`'s **price**, from *a file move* to *a file
+move plus weaning one program off 53 call sites*.
+
+⚠ **AND IT IS THE THIRD INSTANCE OF DECISION 11, NOT AN ACCIDENT.** Neither package holds a game
+concept in any public name — `camera_*`, `emit_*`, `aabb_*`, `pick_hex` on one side; `asm_cart`,
+`body_axle`, `ground_gap`, `fall_step`, `cliff_edges` on the other. `moros_ui` became
+`lavition_ui`, `moros_terrain` became `hex_mesh`, and these two are the same shape a third time.
+**That makes `L6.3` a rename question and not only a move question**, and it collides head-on with
+this plan's **open question 5** — *does `moros_sim` split too?* — which is currently parked at
+*not this plan*. It cannot stay parked: the program cannot travel while it imports `msim`.
 
 ---
 
@@ -325,3 +404,21 @@ what showed the three functions are the *projection* rather than the lattice —
 
 ⚠ **The design was one afternoon from a change that would have rotated every corner and dropped
 every height with every count agreeing.** That is what the probe cost, and what it was for.
+
+---
+
+## ✅ And a second probe was run on 2026-08-11, and it falsified the INVARIANT
+
+`probe/l6/run.sh` (`make probe-split`) — *does the editor program build with the Moros tree
+absent?* **No**, and [L5′](#l5-the-program-does-not-travel-measured-2026-08-11) is what it found.
+
+⚠ **THE TWO PROBES ARE THE SAME LESSON AT DIFFERENT ALTITUDES, AND THAT IS WHY THIS SECTION IS
+KEPT BESIDE THE FIRST.** `L3`'s probe falsified a *step* — three calls that were not what they
+were called. `L6`'s falsified the *premise the whole plan is for*, and it had been sitting in bold
+type for five days. The first was found by doing the work; the second only by **running the
+sentence** rather than reading it.
+
+⚠ **AND THE CHEAPER INSTRUMENT EXISTED THE WHOLE TIME.** `loft --check` is parse-and-compile, no
+server, no port, no picture — five files in about thirty seconds. The invariant could have been
+measured on the day it was written, for less than the cost of the paragraph asserting it. **When a
+design states a claim about what compiles, compile it.**
