@@ -7,15 +7,50 @@
 
 `A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7`, `A8`, **`A9`** and
 **`A10`** are **shipped**, and so is the road gesture that makes them reachable.
-`A2b`, `A2c`'s **across** half and `A3` are designed and not built.
+`A2b` and `A3` are designed and not built.
+
+### ✅ `A2c` ACROSS — built, and it is a projection rather than a sideways test
+
+> *"Roads do not flow: in the direction of the road they can bend but are flat in the
+> other direction."*
+
+**The across half was built and removed TWICE** — each time a sideways test chained its
+equalities down the run until the whole thing sat back at its original height. The shipped
+comment already named the cure: *a PROJECTION onto the run's own axis, so that "same
+station" is a fact rather than a guess about which of six directions is sideways.*
+
+| | |
+|---|---|
+| the axis | `run_axis` — the one opposite pair of neighbours that both carry the run's material. **Two or more and there is no axis**, so a plaza or a yard is never touched |
+| across | measured on this lattice: the six neighbours sit at 0°, ∓60°, ∓120°, 180°, so **no cell is directly across** — the nearest two, `d+1` and `d+2`, have a MIDPOINT that is |
+| the measure | `2·h(c) − h(n₁) − h(n₂)`, in **halves**, so the midpoint stays exact |
+| the bound | **one half**, which is the floor — a midpoint of two integers cannot be matched closer, and the row's literal "zero" was never reachable |
+
+⚠ **AND THE OLD TEST WAS WRONG TWICE OVER.** It differenced the two lanes — which reads
+the ALONG grade as camber, because lane `r+1` sits half a station along — and it asked at a
+single stroke offset that happened to come out level, with a bound of one whole unit that
+could not have caught a camber anyway. Measured across a sweep, offsets **0, 5 and 7 and
+every steep tight stroke** carried a full unit of real cross-fall. All read one half now.
+
+⚠ **TWO BUGS IN THE NEW RULE, AND THE FIRST READ AS A RULE WITH NOTHING TO FIX.**
+`back = (cf − 1) / 2` truncates the commonest case — one unit of camber, `cf` of 2 — to a
+correction of **zero**: it compiled, ran, and changed not one height. And the outer side of
+a two-wide road is the *hillside*, so without a same-material guard the road is tied level
+with the ground beside it and `T4`'s deliberate seam closes. ⚠ That guard is load-bearing:
+removing it takes `test_a_stroke_that_already_fits_is_left_exactly_alone` red.
+
+✅ **AND THE COLLAPSE CONTROL IS IN THE FILE THIS TIME** —
+`test_and_the_run_still_climbs_along_itself` asserts the road is *not* one height end to
+end under the same stroke, which is exactly what both removed attempts produced.
 
 ✅ **THE ROAD THREAD IS CLOSED.** The fall-line canyon is solved — a stroke lays a PLANE, so
 the falling side moves **845 / 338 / 0** at 6 / 3 / 1 per hex, which is the optimum computed
 before it was built. The run debt has a stable datum (`Grades`, what the author asked for),
 there is **one balance and one datum**, a caved run holds its limit, and the last asymmetry
 — a rising walk not returning its spoil — is **a decision the author took on the picture**
-rather than an open defect. ⚠ `A2c`'s **across** half fell out of the plane for free: a cell
-offset perpendicular to the run has no component along the gradient.
+rather than an open defect. ⚠ `A2c`'s **across** half is built too — the STAMP got it free from the plane (a cell
+offset perpendicular to the run has no component along the gradient), and the SETTLE now
+holds it under a stroke as well.
 
 *It spans or it caves* is now built in both directions. `A9` walked the caving half
 from an open cut to a gallery; `A10` is the mirror, and the author settled what the
@@ -80,7 +115,7 @@ to the built-in numbering.
 | **`A1`** — a building rides the terrain rigidly | M | `tests/raise_structure.loft`, `raise_keeps.loft` | ✅ `cab574d` |
 | **`A1b`** — ground a structure encloses is part of it | S | a fenced yard comes up level with its fence | ✅ `bfc4784` |
 | **`A2`** — a slope limit per surface | M | `tests/slope_limit.loft` + `hex_mesh/tests/terrain_link.loft` | ✅ `db871b6` |
-| **`A2c`** — a linear run bends ALONG itself | MH | `tests/run_slope.loft` | ◐ along shipped `4f43a79`; **across not built** |
+| **`A2c`** — a linear run bends ALONG itself and not across | MH | `tests/run_slope.loft` | ✅ along `4f43a79`; **across built** — a projection onto the run's own axis; see below |
 | **`A7`** — the limit is the world's, not one gesture's | MH | `tests/slope_limit.loft`'s four settle claims | ✅ `0743c1a` |
 | **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | ✅ `dda9055` + `314bebe` — the rule, and the gesture that reaches it |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
@@ -99,7 +134,7 @@ argued from a picture.
 |---|---|---|---|
 | `A8` | over one settled road, the volume removed above the grade equals the volume added below it, within a stated tolerance | *spoil is conserved: a cutting makes its own embankment* | a road on **flat** ground must cut nothing and fill nothing — a balance that moves earth where none was needed is not a balance |
 | `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient limited* | a corridor under a BUILDING must still move **rigidly** — it is that house's cellar, not a run |
-| `A2c` across | a two-cell-wide road crossed by a stroke comes out with **zero** cross-fall | *a run has an AXIS; its limit is not a scalar* | a road cell with no road neighbour has no axis — it falls back to the scalar limit, not to flat |
+| ~~`A2c` across~~ | ✅ shipped, and the row is kept because the MEASUREMENT corrected it: **zero is not reachable on this lattice**. The cell across is a MIDPOINT of two integer heights, so one half is the floor, and that is what is asserted | *a run has an AXIS; its limit is not a scalar* | ✅ a road cell with no road neighbour has no axis — `run_axis` returns −1 and it rises exactly as bare ground does |
 | `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop — ✅ it WAS a silent stop; `slope_owed` is the refusal, and the two halves of the row turned out to be already-true and not-built respectively |
 | ~~`A5`~~ | ✅ shipped, and the row is kept because the MEASUREMENT refuted it: hanging the face off `tr_slope` gives **zero** faces on a 71° grass mountain and a rock face on a 16° verge. It needs `tr_face` beside it, and then the negative control becomes a property of the TABLE — `tr_face >= tr_slope` on every row that has both | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |

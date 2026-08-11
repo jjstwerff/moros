@@ -4754,6 +4754,50 @@ pub fn slope_owed(w: World, cq: integer, cr: integer) -> integer {
   worst
 }
 
+// ── A RUN'S AXIS, AND THE CELL DIRECTLY ACROSS IT — plan 20 `A2c` ──────────
+//
+// The direction this run goes at this cell, as one of the three hex AXES (`d` and
+// `d + 3` are the same axis), or −1 where the cell has none.
+//
+// ⚠ IT IS DETERMINATE OR IT IS NOTHING. Exactly one opposite pair of neighbours may
+// carry the run's material; two or more and the cell is in the middle of something
+// wider than a line, where *across* has no single meaning. Returning −1 there is the
+// plan's own negative control — **a road cell with no axis falls back to the scalar
+// limit, not to flat** — and it is what keeps this from touching a yard or a plaza.
+fn run_axis(w: World, q: integer, r: integer, mat: integer) -> integer {
+  found = 0 - 1;
+  seen = 0;
+  for d in 0..3 {
+    (aq, ar) = hex_grid::hex_neighbor(q, r, d);
+    (bq, br) = hex_grid::hex_neighbor(q, r, d + 3);
+    if run_h(w, aq, ar, mat) < 0 { continue; }
+    if run_h(w, bq, br, mat) < 0 { continue; }
+    found = d;
+    seen = seen + 1;
+  }
+  if seen == 1 { return found; }
+  0 - 1
+}
+
+// ⚠ AND *DIRECTLY ACROSS* IS A MIDPOINT, WHICH IS THE WHOLE REASON THIS WORKS WHERE
+// TWO EARLIER ATTEMPTS COLLAPSED THE RUN. Measured on this lattice, the six
+// neighbours of a cell sit at 0°, ∓60°, ∓120° and 180°, so for an axis `d` there is
+// **no cell directly across** — the nearest are `d+1` and `d+2` on one side, whose
+// MIDPOINT lies exactly across at the same station, and `d+4`/`d+5` on the other.
+// Differencing either neighbour alone reads the ALONG grade as camber and chains the
+// equalities down the run; differencing the midpoint does not.
+//
+// Returned doubled, so the half-station midpoint stays an exact integer: the true
+// cross-fall is `2 * h(c) − h(n1) − h(n2)`, in halves of a height unit. ⚠ Which also
+// says what *zero cross-fall* can mean at all — the midpoint of two integers is a
+// half-integer, so **one half is the floor** and the row's literal "zero" is not
+// reachable on this lattice.
+fn cross_fall(w: World, q: integer, r: integer, h: integer, d: integer) -> integer {
+  (aq, ar) = hex_grid::hex_neighbor(q, r, d);
+  (bq, br) = hex_grid::hex_neighbor(q, r, (d + 1) % 6);
+  2 * h - ground_h(w, aq, ar) - ground_h(w, bq, br)
+}
+
 fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
                taken: Seen, runs: Seen, origs: Origs, lims: Lims,
                clamped: &integer, residual: &integer) {
@@ -4816,6 +4860,53 @@ fn slope_relax(w: World, tq: integer, tr: integer, rad: integer,
           if want > nh + lim { want = nh + lim; }
         } else {
           if want < nh - lim { want = nh - lim; }
+        }
+      }
+      // ── AND ACROSS THE RUN IT DOES NOT BEND AT ALL — plan 20 `A2c` ──────
+      //
+      // *In the direction of the road they can bend but are flat in the other
+      // direction.* The loop above is the ALONG half; this is the other, and it is
+      // asked as a PROJECTION rather than as a guess about which of six directions
+      // is sideways — which is what the two removed attempts got wrong.
+      //
+      // ⚠ THE BOUND IS ONE HALF BECAUSE THE LATTICE MAKES IT ONE HALF. The cell
+      // across is a midpoint of two integer heights, so a run can be level to
+      // within half a unit and no closer; asking for the row's literal zero would
+      // be asking the store for a height it cannot hold.
+      amat = world_ground_cell(w, q, r).h_material as integer ?? 0;
+      ax = run_axis(w, q, r, amat);
+      if ax >= 0 {
+        for side in 0..2 {
+          sd = (ax + 1 + 3 * side) % 6;
+          // ⚠ ONLY AGAINST THE RUN'S OWN CELLS. One side of a two-wide road is the
+          // other lane and the other side is the hillside, and tying the road level
+          // with the GROUND beside it would close `T4`'s deliberate seam — the step
+          // a cutting is supposed to have, and what `A5` draws as rock.
+          (paq, par) = hex_grid::hex_neighbor(q, r, sd);
+          (pbq, pbr) = hex_grid::hex_neighbor(q, r, (sd + 1) % 6);
+          if run_h(w, paq, par, amat) < 0 { continue; }
+          if run_h(w, pbq, pbr, amat) < 0 { continue; }
+
+          cf = cross_fall(w, q, r, want, sd);
+          // ⚠ `cf / 2`, NOT `(cf - 1) / 2` — and the difference is the whole rule.
+          // `cf` is in HALVES, so shifting the cell by one unit moves it by TWO, and
+          // the naive expression truncates the commonest case (`cf` of 2, a single
+          // unit of camber) to a correction of ZERO. Written that way it compiled,
+          // ran, changed not one height, and read exactly like a rule that had
+          // nothing to fix.
+          //
+          // ⚠ REDUCED, NEVER REVERSED — the same rule the along half obeys. A cell
+          // the stroke RAISED may only come back down toward the run, and one it
+          // lowered only back up; without that this would push a road past where it
+          // started in order to flatten it, which is a gesture of its own.
+          if h > h0 && cf > 1 {
+            back = (cf / 2) ?? 0;
+            if back > 0 { want = want - back; }
+          }
+          if h < h0 && cf < 0 - 1 {
+            back = ((0 - cf) / 2) ?? 0;
+            if back > 0 { want = want + back; }
+          }
         }
       }
       // Never pushed past where it started — the edit is reduced, never reversed.

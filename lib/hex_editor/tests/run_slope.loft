@@ -116,25 +116,97 @@ fn test_a_fenced_yard_still_moves_rigidly() {
        + "— an enclosure was read as a run");
 }
 
-fn test_a_two_wide_road_comes_out_level_across() {
-  // ⚠ EMERGENT, NOT ENFORCED, AND THE COMMENT IN `slope_relax` SAYS SO. The lanes
-  // are neighbours, so the along-limit already ties them to within one unit — and
-  // under a stroke offset across the road they come out equal. A rule that FORCED
-  // them equal was built and removed twice: in a hex grid the lanes are offset by
-  // half a station, so every sideways test also couples different points along the
-  // run and the whole road collapses.
-  w = plain();
+// The cross-fall at a cell, in HALVES of a height unit, measured at the SAME STATION.
+//
+// ⚠ THERE IS NO CELL DIRECTLY ACROSS, and that is the whole difficulty. In odd-r offset
+// lane `r+1` sits half a hex ALONG the run from lane `r`, so differencing the two reads
+// the along-grade and calls it camber. The cell across at the same station is the
+// MIDPOINT of two neighbours, so this doubles to stay exact — and one half is therefore
+// the floor: a midpoint of two integers cannot be matched more closely than that, which
+// is why the phase row's literal "zero cross-fall" is not reachable on this lattice.
+fn cross_halves(w: World, q: integer) -> integer {
+  a = ground_h(w, q, 0);
+  b = ground_h(w, q, 1);
+  c = ground_h(w, q - 1, 1);
+  f = 2 * a - b - c;
+  if f < 0 { f = 0 - f; }
+  f
+}
+
+fn worst_cross(w: World) -> integer {
+  worst = 0;
+  for q in (0 - 13)..14 {
+    f = cross_halves(w, q);
+    if f > worst { worst = f; }
+  }
+  worst
+}
+
+fn two_lane(w: World) {
   for q in (0 - 25)..26 {
     ground_set(w, q, 0, G, ROAD_MAT);
     ground_set(w, q, 1, G, ROAD_MAT);
   }
-  raise(w, 0, 4, 12, 9);
-  worst = 0;
-  for q2 in 0..8 {
-    d = ground_h(w, q2, 0) - ground_h(w, q2, 1);
-    if d < 0 { d = 0 - d; }
-    if d > worst { worst = d; }
+}
+
+fn test_a_two_wide_road_comes_out_level_across() {
+  // ⚠ THIS ROW USED TO ASSERT `<= tr_slope` AND SIT AT ONE STROKE OFFSET, and it was
+  // both the wrong quantity and a lucky place to ask it. Differencing the two lanes
+  // reads the along-grade as camber; and offset 4 happens to be one of the offsets that
+  // came out level anyway, so a bound of one whole unit could not have caught the
+  // camber that was there. Measured across the sweep below, offsets 0, 5 and 7 and every
+  // steep tight stroke carried a full unit of real cross-fall.
+  for sr in [0, 1, 2, 3, 4, 5, 7] {
+    w = plain();
+    two_lane(w);
+    raise(w, 0, sr, 12, 9);
+    assert(worst_cross(w) <= 1,
+           "a stroke at r={sr} left {worst_cross(w)} halves of cross-fall on a road "
+           + "whose limit across itself is nothing");
   }
-  assert(worst <= ground_kind_of(ROAD_MAT).tr_slope,
-         "the road tilts {worst} across its width");
+  // steeper and tighter, where a scalar limit has the most room to hide a camber
+  for amp in [24, 48] {
+    w2 = plain();
+    two_lane(w2);
+    raise(w2, 0, 3, amp, 4);
+    assert(worst_cross(w2) <= 1,
+           "an amp-{amp} stroke left {worst_cross(w2)} halves of cross-fall");
+  }
+}
+
+fn test_and_the_run_still_climbs_along_itself() {
+  // ⚠ THE CONTROL THE TWO REMOVED ATTEMPTS NEEDED. An across-rule that flattens the
+  // road satisfies the row above perfectly and destroys the run: both earlier versions
+  // chained their equalities down the line until the whole thing sat back at its
+  // original height, with every count agreeing. So the road must still BEND along
+  // itself under the same stroke.
+  w = plain();
+  two_lane(w);
+  raise(w, 0, 0, 12, 9);
+  lo = G;
+  hi = G;
+  for q in (0 - 12)..13 {
+    h = ground_h(w, q, 0);
+    if h < lo { lo = h; }
+    if h > hi { hi = h; }
+  }
+  assert(hi > lo,
+         "the road came out at one height end to end — an across-rule that flattens the "
+         + "run is worse than none");
+  assert(worst_cross(w) <= 1, "and it is still level across, got {worst_cross(w)}");
+}
+
+fn test_a_road_with_no_run_around_it_has_no_axis() {
+  // ⚠ THE PLAN'S OWN NEGATIVE CONTROL: *a road cell with no road neighbour has no axis
+  // — it falls back to the scalar limit, not to flat.* A single paved cell is not a run
+  // and nothing about it is "across", so the stroke moves it exactly as it moves the
+  // ground, and this rule must not touch it.
+  w = plain();
+  ground_set(w, 0, 0, G, ROAD_MAT);
+  raise(w, 0, 0, 12, 9);
+  bare = plain();
+  raise(bare, 0, 0, 12, 9);
+  assert(ground_h(w, 0, 0) == ground_h(bare, 0, 0),
+         "a lone paved cell rose to {ground_h(w, 0, 0)} where bare ground rose to "
+         + "{ground_h(bare, 0, 0)} — it was given an axis it does not have");
 }

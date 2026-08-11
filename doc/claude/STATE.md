@@ -236,6 +236,44 @@ the headroom that resulted, so it sees cells that **did** rise into their roof a
 blind, by construction, to cells that **failed** to — a cell whose raise was refused still
 has all of its headroom and looks perfectly healthy.
 
+## ✅ `A2c` ACROSS IS BUILT — a projection, not a sideways test
+
+> *"Roads do not flow: in the direction of the road they can bend but are flat in the other
+> direction."*
+
+**The across half had been built and removed TWICE**, each time after a sideways test
+chained its equalities down the run until the whole thing sat back at its original height.
+The shipped comment already named the cure and this is it: a **projection onto the run's own
+axis**, so *same station* is a fact rather than a guess about which of six directions is
+sideways.
+
+| | |
+|---|---|
+| the axis | `run_axis` — the one opposite pair of neighbours both carrying the run's material; **two or more and there is no axis**, so a yard or plaza is never touched |
+| across | measured: the six neighbours sit at 0°, ∓60°, ∓120°, 180°, so **no cell is directly across** — the nearest two have a MIDPOINT that is |
+| the measure | `2·h(c) − h(n₁) − h(n₂)`, in **halves**, so the midpoint stays exact |
+| the bound | **one half — the floor.** A midpoint of two integers cannot be matched closer, so the row's literal "zero cross-fall" was never reachable on this lattice |
+
+⚠ **THE OLD TEST WAS WRONG TWICE OVER, and that is most of what this step found.** It
+differenced the two lanes — which reads the ALONG grade as camber, because lane `r+1` sits
+half a station along the run — and it asked at one stroke offset that happened to come out
+level anyway, under a bound of one whole unit that could not have caught a camber. Swept,
+offsets **0, 5 and 7 and every steep tight stroke** carried a full unit of real cross-fall.
+All read one half now.
+
+⚠ **AND TWO BUGS IN THE NEW RULE, THE FIRST OF WHICH READ AS A RULE WITH NOTHING TO FIX.**
+`back = (cf − 1) / 2` truncates the commonest case — one unit of camber, `cf` of 2 — to a
+correction of **zero**: it compiled, ran, and changed not a single height. `cf` is in halves,
+so a one-unit shift moves it by two. And the outer side of a two-wide road is the *hillside*,
+so without a same-material guard the road gets tied level with the ground beside it and
+`T4`'s deliberate seam closes — ⚠ that guard is load-bearing, and removing it takes
+`test_a_stroke_that_already_fits_is_left_exactly_alone` red.
+
+✅ **AND THE COLLAPSE CONTROL LIVES IN THE FILE THIS TIME.**
+`test_and_the_run_still_climbs_along_itself` asserts the road is **not** one height end to
+end under the same stroke — precisely what both removed attempts produced while every count
+agreed.
+
 ## ⛔ `plan/20-run-debt` WAS MERGED ON TOP AND THE MERGE WAS ABORTED — it RATCHETS
 
 **Attempted 2026-08-11, resolved in full, measured, and backed out.** The hope was
