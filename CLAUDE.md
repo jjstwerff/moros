@@ -98,6 +98,16 @@ wire half, or *checked and left whole* — because without that the next reader 
 honest ones by symmetry. ⚠ **Move before you remove**: three gates held claims no loft test
 made, and dropping one is a coverage cut wearing a tidy-up's clothes.
 
+**A step is as small as possible AND still validated — two bounds, not one.** *Upper:* the old
+path and the new one must both run at once and be compared exactly; if the only way to see whether
+it worked is to swap and look, it is too big and its failure mode is `git revert`. *Lower:* the
+step must be able to go red **on its own, for a real reason**; if the only way to test it is to
+also do the next step, they are one step. ⚠ **The lower bound is the "built and never called"
+defect wearing a planning hat** — splitting *add the function* from *call it* manufactures that
+state on purpose. And a self-test is not validation: a table checked against the table cannot be
+surprised. [plans/README.md](plans/README.md) has both bounds and the two cases that earned them,
+an hour apart and both `M`.
+
 **Check that what you built is called.** A function written, tested green and never wired
 to a consumer — `op_depth` reached the library and the emitter still cut every opening
 through; `boom_take` was tested and the camera still eased straight to the raw sweep. A

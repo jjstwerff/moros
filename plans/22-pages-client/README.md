@@ -57,6 +57,12 @@ key press goes.
 ⚠ **`B2` (`build-pages.mjs`) has no exact-invariant surface** — it assembles files and decides
 nothing. Said in a line so the silence does not read as *gate done*.
 
+⚠ **EVERY PHASE ABOVE IS CUT TO ANSWER ONE QUESTION — [*what am I comparing against while this
+step is half done?*](../README.md#what-makes-a-step-safe--and-it-is-not-how-few-lines-it-is)**
+`W4` was not, and it had to be reverted whole; `W1` was, and it named the failing byte under
+sabotage. **Both were `M`.** So the `M1`/`C2` rows below are split until each has a parallel run
+with an exact comparison — the effort letter did not change, the *recoverability* did.
+
 ## Phases
 
 | Phase | Effort | Verify | Status |
@@ -64,9 +70,11 @@ nothing. Said in a line so the silence does not read as *gate done*.
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
-| **`M1`** — the two levels: a key names a **verb**, and *verb + mode + selection* binds underneath | M | `O P I U N M` become **one** verb; `press` takes a verb; the wire carries a verb | ⏭ **New, and it blocks `W4`** — [EDITING_MODES](../../doc/claude/EDITING_MODES.md) |
-| **`M2`** — the mode is DERIVED from where the author stands, over `shelter_at` | S | a house in a cave reads `inside`; a key with no verb here says *why*, not nothing | Blocked on `M1` |
-| **`M3`** — ⚠ **`tools/scripts/*.keys` records the WRONG LAYER** | S | a script names verbs, so it replays the same for two people with different keymaps | Blocked on `M1` — and it touches every gate's script |
+| **`M1a`** — declare the verbs **and** `verb_of(key)`, with the equality test that consumes them | S | ⚠ **the parallel run**: for each key, the old path and *resolve-then-gesture* leave worlds with equal `w_tau`. ⚠ **The declaration is NOT a step of its own** — a table checked against itself cannot be surprised, and splitting it off would manufacture the uncalled-thing state on purpose | ⏭ **Next** |
+| **`M1c`** — one verb at a time: `press` takes a verb, old key branch kept until its equality test is green, then deleted | M | seven small steps, each with its own equality test | Blocked on `M1a` |
+| **`M1d`** — `O P I U N M` collapse to one `opening` verb with the profile as a **selection** | S | the six old keys and the one new verb produce the same six worlds | Blocked on `M1c` |
+| **`M2`** — the mode is DERIVED from where the author stands, over `shelter_at` | S | ⚠ **derived beside, not instead**: log the derived mode for a whole gate run and assert it never contradicts `shelter_at` before any verb consults it | Blocked on `M1c` |
+| **`M3`** — ⚠ **`tools/scripts/*.keys` records the WRONG LAYER** | S | a script names verbs, so it replays the same for two people with different keymaps | ⚠ **Accepts BOTH spellings first**, so no gate changes on the day the format does; the key form is removed only once every script is converted and green |
 | ✅ **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? | XS | **RUN 2026-08-11 — it holds.** `probe/p2/run.sh` · `make probe-p2` · three exchanges, two sabotages seen red | ✅ Done |
 | **`P5`** — is `fetch()` of a sibling file blocked under `file://`? | XS | a two-file page from `file://` in headless Chrome | Open — it decides whether assets are inlined |
 | **`W2`/`W3`** — parts and `.glb` from bytes | S | a part loaded both ways is equal | ⚠ **Skip if [loft#851](https://github.com/loft-lang/loft/issues/851) lands** — then a path just works |
@@ -76,7 +84,8 @@ nothing. Said in a line so the silence does not read as *gate done*.
 | **`B3`** — the demo gate | S | ⚠ **the first gate here needing NO server** | Blocked on `B2` |
 | — | | ⏭ **THE CLIENT IS TESTABLE HERE. Nothing below starts before this line.** | |
 | **`C1`** — the sampler probe: `surface_h_at` as a `fn(…)` parameter, camera pixel-identical | XS | `camera_indoors` still `subject 0.0188` | Deferred |
-| **`C2`** — `lib/hex_cam/`: the avoidance routines, their constants and their tests | M | server calls it; `camera_indoors` does not move a pixel | Deferred |
+| **`C2a`** — `lib/hex_cam/` holds a COPY of the routines, with its OWN tests | S | ⚠ passes the lower bound because those tests are real geometry that can be surprised — unlike a declaration checked against itself | Deferred |
+| **`C2b`** — the server calls the library copy; the private originals stay until it is green | S | ⚠ `camera_indoors` at `subject 0.0188`, unmoved — then the originals are deleted | Deferred |
 | **`C3`** — the page client takes the camera | S | indoors works in local mode | Deferred |
 | **`C4`** — hand `hex_cam` to crawler | S | ⚠ **needs a word first** — see below | Deferred |
 
