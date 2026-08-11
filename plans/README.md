@@ -135,6 +135,34 @@ half was three lines and changed the grade rule under every house on a slope; it
 because the equality test written beside it could see that. **The comparison is the step; the
 edit is the easy part.**
 
+### The gate — run it when you START a plan
+
+```sh
+make plan-check P=22-pages-client        # or: sh tools/plans.sh 22-pages-client
+```
+
+⚠ **ONE MOMENT, NOT EVERY RUN.** It is deliberately absent from `make fast`. **A design may be
+anything until the moment it becomes work** — a sketch, a paragraph, a table of half-formed rows —
+and demanding cut steps of every idea is how a gate becomes something people route around. What
+this costs is one command when a plan starts; what it buys is that the moment exists at all.
+
+⚠ **AND IT CHECKS ONLY THE MECHANICAL HALF, WHICH IT SAYS AT ITS OWN TOP.** Whether a `Verify`
+cell names a *real* comparison is judgement and no script has it. What a script can see is a phase
+with **no** verification, and a phase whose effort letter says it is a lump — which are the two
+ways the judgement gets skipped in practice. A gate claiming to check the rule itself would be the
+*"gate that restates a connection"* this tree already refuses.
+
+| it fails on | because |
+|---|---|
+| an open phase with an **empty `Verify`** | nothing about that step could go red — the lower bound |
+| an open phase at **`H`/`VH`** | too big to have a half-done state with anything exact to compare against — the upper bound |
+| no `## Phase…` section | a plan being started has steps |
+
+⚠ **Its own false positives were found and fixed before it shipped**, which is the only reason to
+trust a green: it matched a *findings* row in plan 20 (`| **`A8`'s fill squeezed…`) and called a
+finished plan's prose an unverified phase, and it demanded `## Status`/`## Goal` — true of four
+plans and **not what this gate is about**. One gate, one claim.
+
 ## Closing a plan
 
 1. Move any reference content out of the plan into the doc that owns it. A plan must not

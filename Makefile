@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -527,6 +527,14 @@ guards:
 # ⚠ Spawns headless Chrome and an xvfb display; both are cleaned up by the script.
 probe-text:
 	@sh probe/b1/run.sh
+
+# THE PRE-FLIGHT FOR STARTING A PLAN — are its steps small AND validated?
+#   make plan-check P=22-pages-client
+# ⚠ DELIBERATELY NOT IN `make fast`. It is run at ONE moment — when a plan stops
+# being a design and starts being work. A design may be rough until then, and a
+# gate that demanded cut steps of every idea is one people route around.
+plan-check:
+	@sh tools/plans.sh $(P)
 
 # P2 (plan 22) — can OUR javascript talk to loft inside a `--html` page?
 # The interim storage bridge (`W5`) rests entirely on this. Spawns headless Chrome

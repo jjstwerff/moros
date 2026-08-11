@@ -106,7 +106,10 @@ also do the next step, they are one step. ⚠ **The lower bound is the "built an
 defect wearing a planning hat** — splitting *add the function* from *call it* manufactures that
 state on purpose. And a self-test is not validation: a table checked against the table cannot be
 surprised. [plans/README.md](plans/README.md) has both bounds and the two cases that earned them,
-an hour apart and both `M`.
+an hour apart and both `M`. ⚠ **It is a GATE, not a habit — `make plan-check P=<plan>`, run at the
+one moment a plan stops being a design and starts being work.** Deliberately not in `make fast`:
+**a design may be rough until then**, and a check that demanded cut steps of every idea is one
+people route around.
 
 **Check that what you built is called.** A function written, tested green and never wired
 to a consumer — `op_depth` reached the library and the emitter still cut every opening
