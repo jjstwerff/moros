@@ -101,6 +101,68 @@ fn test_grass_is_the_unlimited_row_and_is_untouched() {
   assert(slope_limit(w, 3, 3) == SLOPE_FREE, "open grass carries a limit");
 }
 
+fn test_a_plain_raise_over_grass_costs_exactly_its_own_disc() {
+  // ⚠ `A3`'s ROW ASKS FOR *BYTE-IDENTICAL*, AND THE TEST ABOVE ASSERTS THREE
+  // PROPERTIES. `clamped == 0`, a steepest step of 3 and an unlimited row are all true
+  // of the hill we ship — and they are also true of a great many hills we do not. A
+  // change that reshaped the falloff while keeping its steepest step at 3 would pass
+  // every one of them.
+  //
+  // ⚠ SO IT IS ASKED OF THE EDIT CLOCK, WHICH IS EXACT AND CANNOT BE RESHAPED. `w_tau`
+  // bumps once per write that changed something, so *the relaxation never touched this
+  // hill* is a NUMBER: the raise costs its own disc and not one write more.
+  w = strip(SURFACE_MAT, 0);
+  cl = 0;
+  rs = 0;
+  t0 = w.w_tau;
+  brush(w, 0, 0, 12, 7, cl, rs);
+  disc = w.w_tau - t0;
+  assert(cl == 0 && rs == 0, "grass was clamped: clamped={cl} residual={rs}");
+
+  // ⚠ AND THE SAME DISC ON A LIMITED ROW COSTS MORE BY EXACTLY ITS CLAMPS — which is
+  // what makes the table load-bearing rather than decorative. Every extra write is a
+  // clamp and every clamp is a write; a limit that "applied" without moving a cell, or
+  // a relaxation that moved cells it did not report, breaks this either way.
+  for mat in [FIELD_MAT, ROAD_MAT] {
+    wl = strip(mat, 0);
+    cl2 = 0;
+    rs2 = 0;
+    t1 = wl.w_tau;
+    brush(wl, 0, 0, 12, 7, cl2, rs2);
+    cost = wl.w_tau - t1;
+    assert(cost > disc,
+           "{ground_kind_of(mat).tr_name} cost {cost} writes against grass's {disc} — a "
+           + "limited row that costs no more than the unlimited one never fired");
+    assert(cost - disc == cl2,
+           "{ground_kind_of(mat).tr_name} wrote {cost - disc} more than grass but "
+           + "reported {cl2} clamps — the relaxation moved cells it did not report, or "
+           + "reported clamps it did not write");
+  }
+}
+
+fn test_and_the_limit_actually_holds_the_hill_down() {
+  // ⚠ THE OTHER HALF OF *OR THE TABLE IS DECORATIVE*. Counting writes says the rule
+  // fired; it does not say the rule did anything worth doing. The same stroke must
+  // reach a lower summit on a tighter row — grass to the full amplitude, a field short
+  // of it, a road shorter still.
+  peaks: vector<integer> = [];
+  for mat in [SURFACE_MAT, FIELD_MAT, ROAD_MAT] {
+    w = strip(mat, 0);
+    cl = 0;
+    rs = 0;
+    brush(w, 0, 0, 12, 7, cl, rs);
+    peaks += [ground_h(w, 0, 0) - G];
+  }
+  g = peaks[0] ?? 0;
+  f = peaks[1] ?? 0;
+  r = peaks[2] ?? 0;
+  assert(g == 12, "grass must take the whole stroke, got {g} of 12");
+  assert(g >= f && f >= r,
+         "the same stroke reached grass {g}, field {f}, road {r} — a tighter limit must "
+         + "not get further up the hill");
+  assert(r < g, "a road reached {r} where grass reached {g} — the limit never bit");
+}
+
 fn test_anything_planted_loosens_the_limit() {
   // *forest even more* — and the species palette stays in the server, so the library
   // asks only whether something is planted here.

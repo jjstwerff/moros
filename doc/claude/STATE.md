@@ -236,6 +236,28 @@ the headroom that resulted, so it sees cells that **did** rise into their roof a
 blind, by construction, to cells that **failed** to — a cell whose raise was refused still
 has all of its headroom and looks perfectly healthy.
 
+## ✅ `A3` — THE RULE WAS ALREADY THERE; THE PROOF WAS NOT
+
+**No library change.** `slope_relax` runs from `brush` and takes its limit from
+`ground_kinds()`, so plain hill creation has obeyed the per-surface table since `A2`/`A7`.
+The row stayed open because nothing gated it — and the grass test asserted three
+*properties* (`clamped == 0`, steepest step 3, unlimited row) where the row asks for
+**byte-identical**. A change that reshaped the falloff while keeping its steepest step at 3
+would have passed all three.
+
+⚠ **SO IT IS ASKED OF THE EDIT CLOCK, WHICH CANNOT BE RESHAPED.**
+
+| one raise, amp 12 rad 7 | `w_tau` | clamped | peak |
+|---|---|---|---|
+| grass — unlimited | **91**, its own disc and not one write more | 0 | 12 |
+| field — limit 2 | 100 | 9 | 12 |
+| road — limit 1 | 110 | 19 | **6** |
+
+✅ **The extra is exactly the clamp count** — every extra write is a clamp and every clamp
+is a write. That is the row that catches a relaxation reporting a clamp it never wrote:
+sabotaged so, the profile tests stayed green and this one failed at *"wrote 9 more than
+grass but reported 19 clamps"*.
+
 ## ✅ `A2c` ACROSS IS BUILT — a projection, not a sideways test
 
 > *"Roads do not flow: in the direction of the road they can bend but are flat in the other

@@ -7,7 +7,36 @@
 
 `A1`, `A1b`, `A2`, `A2c`'s **along** half, `A4`, `A5`, `A7`, `A8`, **`A9`** and
 **`A10`** are **shipped**, and so is the road gesture that makes them reachable.
-`A2b` and `A3` are designed and not built.
+`A2b` is designed and not built; `A3` needed no rule — see its row.
+
+### ✅ `A3` — THE RULE WAS ALREADY THERE; WHAT WAS MISSING WAS THE PROOF
+
+**No library change at all.** `slope_relax` runs from `brush` and takes its limit from
+`ground_kinds()`, so plain hill creation has obeyed the per-surface table since `A2`/`A7`.
+The row was open because nothing *gated* it, and the grass test asserted three properties
+— `clamped == 0`, a steepest step of 3, an unlimited row — which are true of the hill we
+ship and of a great many hills we do not. **A change that reshaped the falloff while
+keeping its steepest step at 3 would have passed every one.**
+
+⚠ **SO *BYTE-IDENTICAL* IS ASKED OF THE EDIT CLOCK, WHICH CANNOT BE RESHAPED.** `w_tau`
+bumps once per write that changed something, so *the relaxation never touched this hill* is
+a number:
+
+| one raise, amp 12 rad 7 | `w_tau` | clamped | peak reached |
+|---|---|---|---|
+| grass — unlimited | **91** — its own disc, and not one write more | 0 | 12 |
+| field — limit 2 | 100 | 9 | 12 |
+| road — limit 1 | 110 | 19 | **6** |
+
+✅ **AND THE EXTRA IS EXACTLY THE CLAMP COUNT** — 100 − 91 = 9, 110 − 91 = 19. Every extra
+write is a clamp and every clamp is a write, which is what makes the table load-bearing
+rather than decorative. ⚠ It is also the only row that catches a relaxation which *reports*
+a clamp it did not write: sabotaged that way, the existing tests still passed on the
+profile and this one failed at *"wrote 9 more than grass but reported 19 clamps"*.
+
+⚠ **AND A SECOND ROW FOR *OR THE TABLE IS DECORATIVE*.** Counting writes says the rule
+fired; it does not say it did anything worth doing. The same stroke must reach a lower
+summit on a tighter row — grass 12, field 12, road **6**.
 
 ### ✅ `A2c` ACROSS — built, and it is a projection rather than a sideways test
 
@@ -119,7 +148,7 @@ to the built-in numbering.
 | **`A7`** — the limit is the world's, not one gesture's | MH | `tests/slope_limit.loft`'s four settle claims | ✅ `0743c1a` |
 | **`A8`** — a road balances its cut against a fill, and may carry a wall below | MH | volume: the spoil cut equals the fill placed, within a stated tolerance. ⚠ **Acceptance is a PICTURE** — *does a road read as natural* | ✅ `dda9055` + `314bebe` — the rule, and the gesture that reaches it |
 | **`A2b`** — sub-surface runs take a slope, not a lift | M | a corridor keeps its cover within a band and its gradient within its limit | Open |
-| **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | Open |
+| **`A3`** — the same limits on plain hill creation | S | today's hill gated **byte-identical** on grass; other rows differ | ✅ **no rule needed** — `A2`/`A7` already deliver it; what was missing was the proof, and `w_tau` is what makes it exact. See below |
 | **`A4`** — recursion: a pad constrains the ground below it | MH | two buildings on one slope, monotonic ground between them | ✅ `e0d1881` + `fb76d51` — and both halves turned out to be something other than the row said; see below |
 | **`A5`** — rock faces where the limit breaks | MH | a face appears exactly where the limit cannot be met, and nowhere else | ✅ `12fa9ca` — and it took a SECOND limit; see [TERRAIN_EDITS §T6](../../doc/claude/TERRAIN_EDITS.md) |
 | **`A9`** — a road through rock: open cut → overhang → gallery → tunnel | H | one parameter — how much rock stays above the road — walked from 0 to full, with the walk still passable at every value | ✅ — and the parameter turned out to be the TERRAIN, not a dial; see below and [TERRAIN_EDITS §T9](../../doc/claude/TERRAIN_EDITS.md) |
@@ -135,7 +164,7 @@ argued from a picture.
 | `A8` | over one settled road, the volume removed above the grade equals the volume added below it, within a stated tolerance | *spoil is conserved: a cutting makes its own embankment* | a road on **flat** ground must cut nothing and fill nothing — a balance that moves earth where none was needed is not a balance |
 | `A2b` | a raise of 6 over a corridor leaves its cover between a floor and a ceiling, and no segment steeper than its limit | *a corridor's cover is bounded and its gradient limited* | a corridor under a BUILDING must still move **rigidly** — it is that house's cellar, not a run |
 | ~~`A2c` across~~ | ✅ shipped, and the row is kept because the MEASUREMENT corrected it: **zero is not reachable on this lattice**. The cell across is a MIDPOINT of two integer heights, so one half is the floor, and that is what is asserted | *a run has an AXIS; its limit is not a scalar* | ✅ a road cell with no road neighbour has no axis — `run_axis` returns −1 and it rises exactly as bare ground does |
-| `A3` | the plain raise over open grass is **byte-identical** to today's | *the grass row IS the current behaviour* | any other surface must differ, or the table is decorative |
+| ~~`A3`~~ | ✅ shipped, and *byte-identical* is asked of the **edit clock** rather than of the profile: a grass raise costs **91** writes — its own disc — and not one more | *the grass row IS the current behaviour* | ✅ both halves: a limited row costs strictly more (field 100, road 110), and the extra is **exactly** its clamp count |
 | `A4` | two buildings on one slope each end level, and the ground between them is monotonic | *relaxation terminates and never re-steepens a settled edge* | the iteration cap being hit is a **refusal**, not a silent stop — ✅ it WAS a silent stop; `slope_owed` is the refusal, and the two halves of the row turned out to be already-true and not-built respectively |
 | ~~`A5`~~ | ✅ shipped, and the row is kept because the MEASUREMENT refuted it: hanging the face off `tr_slope` gives **zero** faces on a 71° grass mountain and a rock face on a 16° verge. It needs `tr_face` beside it, and then the negative control becomes a property of the TABLE — `tr_face >= tr_slope` on every row that has both | *a face is a surface, not an absence* | a slope that fits its limit must **never** become a face |
 | ~~`A9`~~ | ✅ shipped. The column holds road-then-rock, `world_surface` puts the feet on the road, and a walk along a contour of a mountain comes out with **13** shelves and a road that is one surface through them. ⚠ The negative control became **two** claims, because one column of one occupied cell does not say *byte-identical*: the chunk must also hold **one layer**, or a layer created and left empty is 8196 bytes that read as nothing at every cell | *cutting a shelf is not lowering the ground* | a gentle flank and flat ground cave nothing, and a trench in level ground never roofs itself |
