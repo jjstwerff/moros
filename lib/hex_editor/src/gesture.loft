@@ -3329,10 +3329,17 @@ pub fn road_balance(w: World, cq: integer, cr: integer, mat: integer,
   // ⚠ WHICH MAKES THIS CAP CORRECT BEHAVIOUR RATHER THAN A LIMITATION. A road inside a
   // gallery is COMMITTED: it cannot rise without re-cutting the roof, and re-cutting
   // means taking rock AWAY — `run_unshelf`, the gallery becoming an open cut — never
-  // adding hill above it. The two answers are *keep the gallery and cart the spoil off*,
-  // which is this, and *return the spoil and lose the gallery*, which costs
-  // `gates/world/cave` half its shelves. Spoil from a mountain cutting is carted off in
-  // the world too.
+  // adding hill above it. So there are two answers and not three.
+  //
+  // ✅ AND THE AUTHOR HAS CHOSEN, ON THE PICTURE: **KEEP THE GALLERY.** Both arms were
+  // rendered from `tools/scripts/cave.keys` on one mountain and the crops put side by
+  // side; with the cap the road runs under a lid of rock with its soffit, and without it
+  // that overhang is simply gone. The other arm is a one-line change here — drop this cap
+  // and `run_unshelf` on a refused raise — and it buys the rising walk **845** moved
+  // against 1259, owing 19 against 363, an exact mirror of the same walk downhill. It
+  // costs `gates/world/cave` half its shelves (13 to 6) and its `lidFaced` row. **Do not
+  // re-open this on the numbers alone**: the numbers favour the other arm and the
+  // decision was taken with both pictures in view.
   if shift > 0 {
     for j1 in 0..n {
       hd = shelf_head(w, mq[j1] ?? 0, mr[j1] ?? 0, mat);

@@ -363,15 +363,35 @@ exists not to do.
 ✅ **WHICH MAKES THE CAP CORRECT BEHAVIOUR RATHER THAN A LIMITATION, and that is the real
 finding.** A road inside a gallery is **committed**: it cannot rise without re-cutting the
 roof, and re-cutting means taking rock **away** — `run_unshelf`, the gallery becoming an
-open cut — never adding hill above it. There are exactly two answers, not three:
+open cut — never adding hill above it. There are exactly two answers, not three.
 
-| | |
-|---|---|
-| keep the gallery and cart the spoil off | **what ships**, and what a road builder does with spoil from a rock cutting |
-| return the spoil and lose the gallery | costs `gates/world/cave` half its shelves and its `lidFaced` row |
+## ✅ AND THE AUTHOR HAS CHOSEN, ON THE PICTURE: **KEEP THE GALLERY**
 
-**Nothing is owed here.** The rising walk's unreturned 363 is a refusal with a reason, not a
-defect — and the earlier framing of it as *a conflict awaiting a design step* was wrong.
+**Decided 2026-08-11, with both renders side by side** — `tools/scripts/cave.keys` on one
+mountain, same ticks, crops zoomed on where the frames differ. With the cap the road runs
+under a lid of rock with its soffit; without it that overhang is simply gone and the cliff is
+a plain buttress.
+
+| | keep the gallery — **chosen, and what ships** | return the spoil |
+|---|---|---|
+| earth moved, 6 per hex rising | 1259 | 845 |
+| spoil still owed, 43-cell run | 363 | 19 |
+| mirrors the same walk downhill | no | exactly |
+| shelves on the gate's mountain | **13** | 6 |
+| `gates/world/cave` | **passes** | fails `lidFaced` |
+
+⚠ **DO NOT RE-OPEN THIS ON THE NUMBERS ALONE — they favour the other arm.** 845 is the
+optimum and an exact mirror of the descent, and it was still not chosen: a road under rock is
+worth more here than balanced earthworks, and spoil from a rock cutting is carted off in the
+world too. The decision was taken with both pictures in view.
+
+⚠ **The other arm is one line** — drop the cap in `road_balance` and `run_unshelf` on a
+refused raise — so it stays cheap to revisit if the picture ever stops being worth it.
+`gates/world/cave`'s `lidFaced` row would need re-deriving with it, since it counts shelves
+indirectly.
+
+**So nothing is owed here.** The rising walk's unreturned 363 is a refusal with a reason, and
+the earlier framing of it as *a conflict awaiting a design step* was wrong.
 
 ⚠ **AND THE TEST SAYS SO RATHER THAN BEING RELAXED UNTIL IT PASSES.**
 `test_a_finished_run_owes_no_more_than_the_integer_remainder` runs the **falling** direction

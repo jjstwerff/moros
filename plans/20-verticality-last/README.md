@@ -9,6 +9,14 @@
 **`A10`** are **shipped**, and so is the road gesture that makes them reachable.
 `A2b`, `A2c`'s **across** half and `A3` are designed and not built.
 
+✅ **THE ROAD THREAD IS CLOSED.** The fall-line canyon is solved — a stroke lays a PLANE, so
+the falling side moves **845 / 338 / 0** at 6 / 3 / 1 per hex, which is the optimum computed
+before it was built. The run debt has a stable datum (`Grades`, what the author asked for),
+there is **one balance and one datum**, a caved run holds its limit, and the last asymmetry
+— a rising walk not returning its spoil — is **a decision the author took on the picture**
+rather than an open defect. ⚠ `A2c`'s **across** half fell out of the plane for free: a cell
+offset perpendicular to the run has no component along the gradient.
+
 *It spans or it caves* is now built in both directions. `A9` walked the caving half
 from an open cut to a gallery; `A10` is the mirror, and the author settled what the
 plan could not: **the trigger is water, and it is a refusal rather than a height.**
@@ -544,9 +552,23 @@ never were.
    ✅ **So the cap is correct behaviour rather than a limitation.** A road inside a gallery
    is **committed**: it cannot rise without re-cutting the roof, and re-cutting takes rock
    **away** (`run_unshelf` — the gallery becomes an open cut), never adds hill. Two answers,
-   not three: keep the gallery and cart the spoil off (**ships**), or return the spoil and
-   lose the gallery (half of `cave`'s shelves). The rising walk's unreturned 363 is a
-   refusal with a reason.
+   not three.
+
+   ✅ **AND THE AUTHOR CHOSE ON THE PICTURE: KEEP THE GALLERY** (2026-08-11). Both arms
+   rendered from `tools/scripts/cave.keys` on one mountain, crops zoomed on where the frames
+   differ — with the cap the road runs under a lid of rock with its soffit, without it the
+   overhang is gone.
+
+   | | **keep the gallery — chosen** | return the spoil |
+   |---|---|---|
+   | earth moved, 6 per hex rising | 1259 | 845 |
+   | spoil still owed, 43 cells | 363 | 19 |
+   | shelves on the gate's mountain | **13** | 6 |
+   | `gates/world/cave` | **passes** | fails `lidFaced` |
+
+   ⚠ **Do not re-open this on the numbers alone — they favour the other arm.** 845 is the
+   optimum and an exact mirror of the descent, and was still not chosen. The other arm is one
+   line (drop the cap, `run_unshelf` on a refused raise), so it stays cheap to revisit.
 
    ⚠ **The test says so rather than being relaxed until it passes** — it runs the falling
    direction only and carries the rising measurement in its comment.
