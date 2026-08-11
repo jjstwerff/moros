@@ -115,7 +115,7 @@ Four representations of the map exist in the tree. Under I1/I2 exactly one is th
 
 | representation | where | shape | verdict |
 |---|---|---|---|
-| `Column` / `Layer` / `StoredHex` — chunked, `u16` heights above a floor, palette, edit clock `w_tau`, chunk versions, dressing, snapshots | moros `lib/hex_world` | sparse, chunked, versioned, streamable | ✅ **THE STORE.** The only shape with the three properties I1 requires: chunk addressing, a version, and sparsity |
+| `Column` / `Layer` / `StoredHex` — chunked, `u16` heights above a floor, palette, edit clock `w_tau`, chunk versions, dressing, snapshots | moros `lib/hex_voxel` | sparse, chunked, versioned, streamable | ✅ **THE STORE.** The only shape with the three properties I1 requires: chunk addressing, a version, and sparsity |
 | `HexSet` + `Heights` + `Labels` + `Layers` + `EdgeSet` | `hex_field` (shipped, tested) | **dense bounded window** | ✅ **DERIVED** (I2). Scratch and stencils only |
 | `Cell { c_color, c_height, c_age }`, single-layer | published `hex_world` 0.1.1 / 0.1.2 / 0.2.0 | dense 32×32 chunks, 4-byte cell | ❌ **dead end.** A deliberately slim grid for TTT v5 and an audience-art demo — its own header says *"no separate Hex struct, no per-cell layer, no editor metadata"*. No material palette, no dressing, no edit clock. Zero dependents |
 | `HexCell { material, height, item, walls, rotation }` + `cy` | plan 73 L2 sketch | multi-layer chunks | ❌ **never built.** Superseded by the store, which has everything it sketched plus versioning |
@@ -126,25 +126,36 @@ Four representations of the map exist in the tree. Under I1/I2 exactly one is th
   The name says chunk; the thing is a dense window. Grepping `hex_field` for
   `stream|version|palette|dirty` returns **3 incidental matches in the whole package**. It has
   no chunk table, no paging, no version clock. It **cannot** be a streamed world.
-- **No sibling package's primitive takes a `World`.** Not `hex_terrain`, `hex_way`,
+- **No sibling package's primitive takes a `VoxelWorld`.** Not `hex_terrain`, `hex_way`,
   `hex_field`, `hex_draw`, `hex_edge`, `hex_form`, `hex_shape`, `hex_place`, `hex_roof`,
-  `hex_fit`, `hex_recover`. A grep for `World` across the whole sibling tree returns only
-  `hex_world`'s own accessors.
+  `hex_fit`, `hex_recover`. A grep for `World` across the whole sibling tree returns only the
+  published `hex_world`'s own accessors — a different type on a different lineage.
 - **The published `hex_world` has no dependents.** No sibling library imports it; no published
   package declares it. Its only importers are its own tests and one loft multilib fixture.
-- **moros `lib/hex_world` matches no published version** of `hex_world` — not 0.1.1, 0.1.2 or
+- **moros `lib/hex_voxel` matches no published version** of `hex_world` — not 0.1.1, 0.1.2 or
   0.2.0. It is not a fork that drifted; it is a different library wearing the same name, and it
   is **not declared as a dependency anywhere** — the editor picks it up through `--lib lib/`
   path shadowing. Its consumers, everywhere: `src/editor_server.loft`.
 
-### ⚠ The name
+### ⚠ The name — ✅ SETTLED 2026-08-11, plan 19 `L6.2`
 
 `hex_world` is defined by `LAVITION.md` as **the addressing primitive** — the grid, chunked
 storage, save/load, iteration. Neither the demo grid nor the column store is *that*; both are
-data models that took the name. The column store is the one that must move
-([§12](#12-the-translation-table)) and it needs a brand-free descriptive name that is not
-`hex_world`. **This is an open decision** (§14) because the name is held by a published package
-in a tree we do not edit.
+data models that took the name.
+
+**The column store is `hex_voxel` now**, and its `World` and `Chunk` are **`VoxelWorld`** and
+**`VoxelChunk`**. Theirs keeps `hex_world`, and the reason is possibility rather than merit:
+they have published three versions and loft's own test suite consumes them, so theirs is the
+rename that cannot be done. `probe/l4/run.sh` is the eight-control measurement; control `D` —
+`use hex_world;` under `--lib lib/` now resolves to **theirs** — is the one line that says the
+rename landed.
+
+⚠ **THE STRUCTS HAD TO GO WITH IT, and the plan had that written down as optional.** Both
+packages declare `world_save`; ours is a free function and **theirs is a method**, which shadows
+ours by the receiver struct's *name* and reports `Too many parameters for t_5World_world_save` —
+or, at the matching arity, `expected World, got World`. That is filed as
+[loft#850](https://github.com/loft-lang/loft/issues/850); renaming the struct is the cure on our
+side.
 
 ---
 
@@ -404,7 +415,7 @@ tests.
 
 | what | why it does not exist | home |
 |---|---|---|
-| **the store, as a general package** | it exists as moros `lib/hex_world`, inside one consumer | the **world** group (#8), built beside |
+| **the store, as a general package** | it exists as moros `lib/hex_voxel`, inside one consumer | the **world** group (#8), built beside |
 | **store⇄window derivation** | nothing owns the seam, because two `hex_world`s diverged and neither claimed it | with the store |
 | **the store as a persisted collection** (§6) | the sequential file facility was used instead of the collection one | with the store |
 | **authored relief brush** (`raise_at`) | `hex_terrain` generates; nothing authors | `hex_terrain` (W.5 remainder) |
@@ -469,7 +480,7 @@ uncommitted work. Those rows are **asks, not tasks.**
 
 | misplaced | proper place | operation | ours or an ask |
 |---|---|---|---|
-| moros `lib/hex_world` — the column store | the **world** group (#8) | **build beside** under a brand-free name that is not `hex_world` | **ours** — one consumer, one `use` line |
+| moros `lib/hex_voxel` — the column store | the **world** group (#8) | ✅ **named** — `hex_voxel`, plan 19 `L6.2`; the *move* is still **build beside** | **ours** — one consumer, one `use` line |
 | the store's `.hxw` sequential writer | a persisted keyed collection (`hash<Chunk[key]>`) with its `.dschema` | rewrite (§6) — the encoding is already loft's; the *facility* is wrong | **ours** |
 | `editor_server.loft` — `stencil_place` | `stencil_stamp_all` | **delete** once reachable; superseded, not moved | ours |
 | — `road_lay`, `road_stamp` | `track_straight` + `track_offset` + `way_stamp` | delete | ours |
@@ -522,10 +533,12 @@ genuinely new prerequisite first.
 
 **Decisions that are not mine to take:**
 
-1. **The store package's name.** Brand-free and descriptive; `hex_world` is held by a published
-   package with a different model and zero dependents. Either the store takes a new name, or it
-   supersedes `hex_world` and the demo grid narrows to what it is. The second is cleaner and
-   costs coordination in another tree.
+1. ~~**The store package's name.**~~ ✅ **TAKEN 2026-08-11, plan 19 `L6.2`** — the store is
+   **`hex_voxel`**. Of the two options here the *first* was chosen, and not on merit: superseding
+   `hex_world` would have been cleaner, but they have published three times and loft's own suite
+   consumes them, so theirs is the rename that cannot be done. Raised with them at
+   [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13) before acting.
+   §4's *"a different library wearing the same name"* is no longer true of the tree.
 2. **Whether `HXF1` remains crawler's authoritative format.** If crawler's bounded 2D level is
    genuinely authoritative as a window, I1/I2 do not generalise there and the interchange
    becomes a conversion. This is the only identified place the invariants may not hold.

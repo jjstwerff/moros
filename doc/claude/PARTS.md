@@ -44,7 +44,7 @@ below these. §P1–§P4, §P7 and §P8 are built and unchanged; §P5 and §P6 a
 ### P1 — A part IS a world
 
 Not a new document type, not a second editor, not a second renderer: a part is a **small
-`hex_world` store** and you edit it with the gestures that already exist. Opening a part
+`hex_voxel` store** and you edit it with the gestures that already exist. Opening a part
 *is* loading a world; the terrain is empty and the camera starts at the anchor.
 
 > **The trade-off, taken deliberately.** A dedicated part editor could offer a cleaner
@@ -91,7 +91,7 @@ editor still load in an older one, and that difference is testable.
 #### The mechanism, as built (`A1.3`, 2026-08-03)
 
 `tag(i32) + length(i32) + bytes`, repeated **to end of file**, after the last layer's CRC.
-`hex_world` owns the framing and never the content — the same deal the palette already has.
+`hex_voxel` owns the framing and never the content — the same deal the palette already has.
 A section rides on the world (`w_sections`), so `world_save`/`world_load` carry it with no
 consumer doing anything, which is what makes an *unknown* section survive at all.
 
@@ -99,7 +99,7 @@ consumer doing anything, which is what makes an *unknown* section survive at all
 A section *count* has to live somewhere, and every place it can live is a byte a pre-section
 file does not have. End-of-file is the one terminator such a file already satisfies — so no
 version bump, and a reader that predates sections stops at the final CRC and never learns the
-trailing bytes are there. `lib/hex_world/tests/sections.loft` pins it with **committed
+trailing bytes are there. `lib/hex_voxel/tests/sections.loft` pins it with **committed
 pre-section bytes** (`presection.hxw`), the one fixture in the suite that cannot be
 regenerated into agreement with the code.
 
@@ -122,7 +122,7 @@ fewer than eight bytes left for a header, or a length running past the end of th
 
 #### `PART` and `ANCH`, as built (`A1.4`, 2026-08-03)
 
-`lib/hex_part/src/meta.loft`. ⚠ **The split is the point**: `hex_world` owns the framing and
+`lib/hex_part/src/meta.loft`. ⚠ **The split is the point**: `hex_voxel` owns the framing and
 knows nothing about kinds or anchors; `hex_part` owns the content and knows nothing about
 where the bytes end up. A store that knew what `PART` meant would be a store with an opinion
 about its consumers.
@@ -138,7 +138,7 @@ shape: *"a section is bytes and loft cannot rebuild a text from bytes"*. Measure
 stdlib reference, which is what was swept. **Grep the source, never the generated reference,
 before calling a capability missing.**
 
-✅ **AND THE MECHANISM IT BOUGHT IS GONE (2026-08-03, evening).** `hex_world::Section` briefly
+✅ **AND THE MECHANISM IT BOUGHT IS GONE (2026-08-03, evening).** `hex_voxel::Section` briefly
 carried a text view read a *second time* off the file, plus an `sc_is_text` write flag and
 `world_set_section_text`. All three are removed: a section is `sc_tag` + `sc_bytes` and nothing
 else, the store decodes nothing, and `lib/hex_part/src/codec.loft` — **two lines each way** —
@@ -286,7 +286,7 @@ cell per column**, so placements at distinct columns share one layer whatever th
 Measured on one chunk of ground: **30 placements → +1 layer, 2 distinct labels, `w_tau` 30**,
 staggering the heights by 10 changed nothing. Twenty-nine of the thirty had no label of their
 own, and a label-per-instance design would have called that a defect and gone hunting for a
-`hex_world` change to force new layers — at 8 KB each, to name something that needs no name.
+`hex_voxel` change to force new layers — at 8 KB each, to name something that needs no name.
 What DOES cost a layer is vertical overlap in one column: **8 stacked placements → +8 layers,
 64 KB.** So storage tracks stacking and `w_tau` tracks placements, and the two are independent.
 
@@ -323,7 +323,7 @@ is the strongest test in this design, because the two paths share nothing but th
 |  | cell part | prop part |
 |---|---|---|
 | examples | house, wall, door-frame, window-frame, stair, arch | statue, pillar, finial, sign, bracket |
-| stored as | cells in the part's `hex_world` | a `.glb` in a DRESSING layer |
+| stored as | cells in the part's `hex_voxel` | a `.glb` in a DRESSING layer |
 | already exists | `stencil_place`, the whole gesture set | `MSG_PROP` (19), `MSG_IMPORT` (21), `MSG_EXPORT` (22) |
 | collides / is walked on | yes — it is terrain | no, unless it carries a cell footprint too |
 

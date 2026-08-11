@@ -14,6 +14,102 @@ sections that were durable in form and stale in fact (§ *What exists*, § *What
 
 ---
 
+## Session 19 — 2026-08-11: the store is `hex_voxel`, and the optional half was the load-bearing one
+
+**Plan 20 was complete, so the session took plan 19 `L6.2`** — the one row on the board marked
+*next, and NOT blocked*: rename our store off a name it shares with a different published package.
+The rename itself is mechanical and went the way a rename should: **every count identical**.
+`make fast` 138 files · `make lib-test` **1600 tests** over 11 packages on both backends, every
+per-package number matching the baseline taken first · `make parts` byte-identical · `make gate`
+**47 PASS / 0 FAIL / 0 never-listened** · `names.sh` and `layering.sh` silent.
+
+What the session is actually about is the half the plan had written down as optional.
+
+### The plan said the structs were a nicety. They were not, and the reason is a method
+
+The design's own sentence was honest about its limits: *"**So the structs are renamed too** — *not
+required* and *safe to leave* are different claims, and only the first was measured."* It rested
+on control `F`, which shows the two `World` structs never merge, so the *package* rename alone is
+enough for correctness.
+
+**Measured the second claim, and it goes the other way.** Of the four names both packages declare,
+`world_save` is a **free function** here and a **method** there — `world_save(self: World, path)`.
+In a graph holding both, a bare call to ours is shadowed by theirs, and the selection is made on
+**the receiver struct's NAME**. The diagnostic is
+
+```
+error: Too many parameters for t_5World_world_save
+```
+
+— an internal mangled symbol — or, at the matching arity, `expected World, got World`: the
+`Surface` sentence of `L1`, for the third time in this plan.
+
+⚠ **AND IT IS A HOLE IN loft#788's FIX, NOT A GENERAL RULE.** loft refuses an ambiguous bare name
+properly for struct-vs-struct **and** function-vs-function — ``error: `same` is declared by more
+than one package here — write pkg_a::same or pkg_b::same to say which``. It is only this one pair
+it misses. Filed as [loft#850](https://github.com/loft-lang/loft/issues/850) with a repro of two
+five-line packages and three controls, the decisive one being **rename one struct, change nothing
+else, and the right function is chosen**. It never miscompiles: the two types never merge even
+when structurally identical (measured), so the class is always a compile error and never a silent
+wrong result. What it costs is diagnosis time — which is what these probes are denominated in.
+
+### A working rule in CLAUDE.md had been false for months
+
+CLAUDE.md said, as a rule to read every session: *"there IS no routing around it — **a qualified
+name does not disambiguate**."* That was true when the `Surface` collision was found, and
+`moros_terrain::Surface` really did resolve to the other struct.
+
+**It is not true now.** `pkg_b::Thing { b_only: 7 }` compiles and takes B's struct with both
+packages in the graph — with distinguishable field names as the control, so the reading cannot be
+a coincidence — and loft's own ambiguity error *advises* the qualified form. The rule is
+corrected rather than deleted, because the reason behind it survives: a rename is still the one
+thing you cannot do once a package is published, and a qualifier only helps at sites written by
+someone who already knew they needed one.
+
+### The probe stopped rehearsing and started measuring, and one control had gone hollow
+
+`probe/l4/run.sh` used to `cp` our package into a `mktemp -d` under the new name, to rehearse the
+rename cheaply. With the rename real, `lib/` carries `hex_voxel` and **no `hex_world` at all** —
+so `--lib lib/` *is* the two-lineage graph the staging was faking, and the staging was measuring
+its own scaffolding. Three of the eight controls moved:
+
+| | before | after | what the move says |
+|---|---|---|---|
+| `D` | `error: Unknown function world_empty` | `PROBE built THEIR world` | **the deliverable in one line.** `--lib lib/` used to mean OURS |
+| `G`/`H` | refused at both import orders | both `ok`, same meaning | only one package declares `Chunk` now, so the order has nothing left to decide |
+| `F` | `expected World, got World` | `expected VoxelWorld, got World` | two names a reader can tell apart |
+
+⚠ **`F` HAD TO CHANGE DIRECTION TO KEEP MEASURING ANYTHING**, and that is the finding worth
+carrying. It handed OUR world to THEIR `cell_count`. After the rename that reading is simply gone:
+`cell_count` is a method on their `World`, ours is `VoxelWorld`, so it is not a candidate and the
+compiler answers `Unknown function cell_count` — perfectly true, and **silent about whether the
+types merged**, which is the only thing `F` existed to ask. Reversed to hand *theirs* to *our*
+free function, it keeps both types in one diagnostic. **A control can keep passing while quietly
+ceasing to test its subject** — the same shape as `G`'s expected-words being blind to the
+compiler change sitting right beside them, which this probe's README already recorded once.
+
+### Two stale things fell out of the rename, both of which had read as correct
+
+⚠ **`hex_editor/loft.toml` said `hex_world` was "deliberately NOT here" while declaring it as a
+path dependency twenty-five lines below.** True when the package was world-free; it outlived that
+by every release since, and nothing about the file looked wrong.
+
+⚠ **`doc/Todo.txt`'s wall-field rename was blocked on a fact that was not one.** It said the three
+misnamed `h_wall_*` identifiers were *"PUBLIC fields of a published library (hex_world 0.2.0)"*,
+and deferred the work until moros#8 settled which tree owned the struct. Checked: `h_wall_*` is
+**ours**, the registry's `hex_world` has **zero** `h_wall` fields, and ours has never been
+published. The entry had conflated the two lineages that `L4` later told apart — so the item was
+never blocked, and it should be done **before** publishing, because after is never.
+
+### And one mechanical trap that reported nothing
+
+`find probe -name '*.loft'` **matches loft's `.loft` cache directory** — the glob's `*` matches
+the empty string — and `sed -i` stops on the first non-regular file. A tree-wide rename over that
+list silently skipped every file after it, and the only sign was one line on stderr among a
+successful-looking run. `-type f`.
+
+---
+
 ## Session 18 — 2026-08-10/11: the canyon had three causes, and two of them were mine
 
 **The session was asked to continue plan 20, and every remaining row closed.** What it is

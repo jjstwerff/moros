@@ -18,7 +18,7 @@ building them measured under §U0.
 |---|---|
 | `moros_ui` | 502 lines of source, 59 tests, **no consumer anywhere in the tree** |
 | its dependencies | `moros_sim` + `moros_editor` + `moros_map` |
-| the program that draws pixels | `editor_client.loft` — `graphics, web, hex_world, gridmesh, hex_mesh, hex_editor`. **None of those three.** |
+| the program that draws pixels | `editor_client.loft` — `graphics, web, hex_voxel, gridmesh, hex_mesh, hex_editor`. **None of those three.** |
 | the program that has those three | `editor_server.loft` — and it is **headless**; it streams the wire |
 | the program it was written for | a desktop walkable editor. **Not in `src/`.** Nor is `WALKABLE_EDITOR_STEPS.md`, which `panel.loft` cites for its own layout diagram |
 
@@ -61,7 +61,7 @@ Not a tidy-up. Renaming out of the `moros_*` namespace **puts the package under
 something a script refuses to let regress.
 
 > **Why `lavition_` and not `hex_`.** `hex_*` in this family means *one data axis of the hex
-> world* — `hex_grid` is the lattice, `hex_world` the store, `hex_way` the centreline. A rect
+> world* — `hex_grid` is the lattice, `hex_voxel` the store, `hex_way` the centreline. A rect
 > is a rect and a text advance is a text advance; there is no hex in this package, and
 > claiming the prefix would make the family's own naming rule mean less.
 >

@@ -72,7 +72,7 @@ behind, and it stopped finding the four this step changed.
   fallback exists for exactly that case.
 
 **Where the suite time is now** (interpreted, this box, per package): `hex_editor` **56 s** ·
-`hex_part` **35 s** · `moros_sim` 24 s · `hex_world` 7.6 s · `moros_render` 7.3 s · the other
+`hex_part` **35 s** · `moros_sim` 24 s · `hex_voxel` 7.6 s · `moros_render` 7.3 s · the other
 six under 3 s each. ⚠ **`hex_editor` is flat** — 23 files between 1.4 s and 5.4 s, no fixture
 dominating, so it is 235 tests of real work and not another `place.loft`. ⚠ **And package mode
 costs nothing extra**: `loft test` over `hex_part` and the sum of its 16 files run separately

@@ -12,7 +12,7 @@
 Five loft packages implement the Moros scene system. **They exist and are tested** — ⚠ **and
 they are IN `lib/` now**; this said *"in loft's git history at `ade530c2^`, awaiting recovery"*,
 and [moros#2](https://github.com/jjstwerff/moros/issues/2) closed. `lib/` holds **ten** packages
-today: these four, plus `hex_world`, `hex_editor`, `hex_part`, `hex_field`'s family in
+today: these four, plus `hex_voxel`, `hex_editor`, `hex_part`, `hex_field`'s family in
 `../loft-libs-world/`, `glb_read` and `lavition_ui`.
 
 ```

@@ -70,9 +70,9 @@ models**, split cleanly by consumer:
 | model | palette? | consumed by |
 |---|---|---|
 | `moros_map`'s `Map` | **yes**, three index tables | `moros_editor`, `moros_render`, `moros_sim` |
-| `hex_world`'s voxel | **no**, compile-time constants | `editor_server`, `hex_editor`, `hex_mesh`, `hex_part` |
+| `hex_voxel`'s voxel | **no**, compile-time constants | `editor_server`, `hex_editor`, `hex_mesh`, `hex_part` |
 
-`hex_world`'s own header says why: *"THIS IS NOT A REFACTOR OF `moros_map` … `moros_map` sits
+`hex_voxel`'s own header says why: *"THIS IS NOT A REFACTOR OF `moros_map` … `moros_map` sits
 at a PREDECESSOR of the contract … Being in one tree buys DESIGN reuse, not code reuse."* The
 successor deliberately did not carry the palette across, and used constants instead.
 
@@ -95,13 +95,13 @@ design work, and is smaller than it looked.
 
 ## What `R1` turned up
 
-**Built:** the palette lives in `hex_world`, beside the voxel whose bytes are its indices —
-the user's call, *"hex_world, keep them together"*. Three axes on three section tags
+**Built:** the palette lives in `hex_voxel`, beside the voxel whose bytes are its indices —
+the user's call, *"hex_voxel, keep them together"*. Three axes on three section tags
 (`PALM`/`PALW`/`PALI`), `PAL_MAX` 256 because that is what a `u8` can name, slot 0 absence on
 all three, and `world_palette_check` refusing a byte no entry names.
 
 ⚠ **THE STORE OWNS IDENTITY AND THE CONSUMER OWNS POLICY**, which is what lets plan 20 and
-plan 21 both be right. `hex_world` says byte 2 is called *road*; `hex_editor` says what a road
+plan 21 both be right. `hex_voxel` says byte 2 is called *road*; `hex_editor` says what a road
 may do. A palette carrying slope limits would be a store with an opinion about its consumers —
 the thing the section mechanism exists to avoid — and the split means two worlds may number
 their ground differently and still agree about slopes.
@@ -114,7 +114,7 @@ its control, which names byte **2** (`ROAD_MAT` in code) `grass` and must get gr
 Sabotaged: ignoring the palette fails both.
 
 ⚠ **A SIBLING FILE COULD NOT CALL THE ENTRY'S FUNCTIONS — and my first reading of that was
-wrong.** The palette started as `src/palette.loft` and was folded into `hex_world.loft`; I
+wrong.** The palette started as `src/palette.loft` and was folded into `hex_voxel.loft`; I
 recorded the reason as *a sibling cannot see its own package's entry*, then built the repro
 and found that is **not** what happens. Measured
 ([loft#826](https://github.com/loft-lang/loft/issues/826)):
@@ -201,8 +201,8 @@ target and a negative control.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **`R1`** — the palette lands in `hex_world`; identity resolved through it | MH | `hex_world/tests/palette.loft` (12) + `hex_editor/tests/slope_limit.loft`'s three palette claims | ✅ shipped |
-| **`R2`** — many regions, and a cell knows which it is in | MH | `hex_world/tests/palette.loft`'s six region claims + a gesture reading its own region | ✅ shipped |
+| **`R1`** — the palette lands in `hex_voxel`; identity resolved through it | MH | `hex_voxel/tests/palette.loft` (12) + `hex_editor/tests/slope_limit.loft`'s three palette claims | ✅ shipped |
+| **`R2`** — many regions, and a cell knows which it is in | MH | `hex_voxel/tests/palette.loft`'s six region claims + a gesture reading its own region | ✅ shipped |
 | **`R3`** — the in-between band: two palettes blending, then switching | H | a structure carrying across a seam; the no-overlap refusal | Blocked on `R2` |
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |
 | **`R5`** — the 22 comparisons move to the mapping, and a check keeps them there | MH | `tools/` check, seeded with a violation | Blocked on `R1` |

@@ -43,8 +43,8 @@ eyes**, not a report: something to open, drive, and judge.
 | ~~2~~ | ~~sparsity~~ — elision on both axes, maintained on write | #8 V3 | S | ✅ 2026-07-26 — P4/P5/P12 proven exactly; gates now in the suite too (24 green) after loft H9 was fixed |
 | ~~3~~ | ~~change and cache~~ — edit clock, per-layer versions, payload-free scan | #8 V4 | M | ✅ 2026-07-27 — `T1`/`T2` gated, four mutations red. Snapshot reads (`M2`) move to row 6 with copy-on-write |
 | — | ✋ **worlds persist** | | | save a world, reload it, confirm it is the world you built |
-|  | *(rows 1–3 are library work with no visible surface. An earlier checkpoint was offered — dual-writing through `hex_world` beside the peaks path — and declined 2026-07-26: their effect is checkable by gates, and the scaffolding would have been a temporary path with a habit of becoming permanent.)* | | | |
-| ~~4~~ | ~~the editor moves onto `hex_world`~~ — `Peak` and the local world format deleted | #8 V5 | L | ✅ 2026-07-27 — all seven gates green, each on a fresh server |
+|  | *(rows 1–3 are library work with no visible surface. An earlier checkpoint was offered — dual-writing through `hex_voxel` beside the peaks path — and declined 2026-07-26: their effect is checkable by gates, and the scaffolding would have been a temporary path with a habit of becoming permanent.)* | | | |
+| ~~4~~ | ~~the editor moves onto `hex_voxel`~~ — `Peak` and the local world format deleted | #8 V5 | L | ✅ 2026-07-27 — all seven gates green, each on a fresh server |
 | — | ✋ **the editor is no worse** | | | build hills, save, reload, walk around. This is the risky one — it replaces what works |
 | ~~5~~ | ~~roads~~ — a graded strip laid while walking | #9 | M | ✅ 2026-07-27 — gate green, control red; all other gates still green |
 | — | ✋ | | | draw one |
@@ -59,7 +59,7 @@ eyes**, not a report: something to open, drive, and judge.
 | — | ✋ | | | |
 | 8 | **houses** — multi-storey, stencils, roofs, openings, cellars | #12 | XL | a building with a cellar and an upper floor; layers under real pressure |
 | 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs` |
-| 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_world/tests/stencil.loft` |
+| 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_voxel/tests/stencil.loft` |
 | 8c | ↳ roofs — derived pitch, own material, own mesh | #12 | ✅ | eave 61 → mid 65 → ridge 69, exact |
 | 8d | ↳ openings — a door is a material, never a cleared edge (`X70`) | #12 | ✅ | `tools/gates/world/opening.mjs` |
 | 8e | ↳ the `K-FIT` doorstep — reason, offer, residual; nominal ≠ ordinal | #12 | ✅ | `tools/gates/world/doorstep.mjs`, both leak-site controls seen red |

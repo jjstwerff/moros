@@ -54,8 +54,46 @@ a 12-unit step of mountain that was never there.
 - **`plan/20-run-debt`** — pushed, deliberately unmerged, and now with a *measured* reason:
   merged on top of everything above it **ratchets**, because `spoil_place`'s datum moves when
   the balance moves. Superseded by `Grades`; kept for its measurement.
-- **plan 19 `L6.2` onward** — the `hex_voxel` rename, not blocked.
+- ✅ **plan 19 `L6.2` is DONE (2026-08-11)** — see below. What is left of plan 19 is `L6.3`–`L8`,
+  which wait on #17 `A8`.
 - the two ◐ format questions on plan 17, which want a plan rather than a step.
+
+## ⏭ THE STORE IS `hex_voxel` — plan 19 `L6.2`, landed 2026-08-11
+
+**`hex_world` named two unrelated packages; ours moved.** Package **`hex_voxel`**, structs
+**`VoxelWorld`** and **`VoxelChunk`**. Theirs keeps the name — not on merit but on possibility:
+they have published three versions and loft's own suite consumes them, so theirs is the rename
+that cannot be done. Every count unchanged: `make fast` 138 files · `make lib-test` **1600 tests**
+over 11 packages on both backends, every per-package number identical to the baseline · `make
+parts` byte-identical · `make gate` **47 PASS / 0 FAIL** · `names.sh` and `layering.sh` silent ·
+`probe/l4/run.sh` **8 of 8**.
+
+⚠ **THE ONE-LINE PROOF IS CONTROL `D`**: `loft --lib lib/ probe/l4/theirs_api.loft` used to fail
+with `Unknown function world_empty`, because `hex_world` resolved to OURS out of `lib/`. It builds
+*their* world now. One name, one package, whatever the flags say.
+
+⚠ **THE PLAN CALLED THE STRUCT HALF OPTIONAL AND IT WAS NOT.** Both packages declare
+`world_save`: ours a free function, **theirs a method** — and the method shadows ours, selected by
+the receiver struct's *name*, reporting `Too many parameters for t_5World_world_save` or, at the
+matching arity, `expected World, got World`. That is `L1`'s sentence a third time.
+[loft#850](https://github.com/loft-lang/loft/issues/850) filed, with a two-package repro whose
+control is *rename one struct and the right function is chosen*. It never miscompiles; it costs
+diagnosis time.
+
+⚠ **AND "a qualified name does not disambiguate" IS NO LONGER TRUE** — that working rule in
+CLAUDE.md was measured false on 2026-08-11 and is corrected there. `pkg_b::Thing { b_only: 7 }`
+resolves correctly with both packages present, and a bare ambiguous name is now refused outright
+naming both candidates.
+
+⚠ **A CONTROL CAN KEEP PASSING WHILE CEASING TO TEST ITS SUBJECT.** `probe/l4`'s `F` handed OUR
+world to THEIR `cell_count`; after the rename that call is not a candidate at all and answers
+`Unknown function cell_count` — true, and silent about whether the types merged. It had to be
+**reversed** (theirs into our free function) to keep both types in one diagnostic. Worth
+remembering the next time a probe goes green through a change it was aimed at.
+
+⚠ **AND ONE MECHANICAL TRAP:** `find … -name '*.loft'` **matches loft's `.loft` cache directory**,
+and `sed -i` stops on the first non-regular file — so a tree-wide rename silently skips every file
+after it, reporting nothing. `-type f`.
 
 ⚠ **`shots/a9-*.png` ARE THE SHIPPING RENDER.** Photographing the alternative overwrote them
 under the same names; the directory is gitignored so nothing wrong was committed, but the
@@ -96,7 +134,7 @@ What is true *now*:
 | **the user's standing redirect** | *"where possible I want tests outside the server"* — still the thread, and its floor is now the picture gates, which need a server by construction |
 
 ⚠ **THE NEXT PIECE OF WORK IS A CHOICE, NOT A QUEUE.** Nothing is blocked on a bug any more.
-The open threads are `A8.3` and `A8.6` (both waiting on the user, below), plan 19's `L6.2`
+The open threads are `A8.3` and `A8.6` (both waiting on the user, below), plan 19's `L6.3`
 onward (**not** blocked), and the two ◐ format questions that want a plan rather than a step.
 
 ⚠ **TWO THINGS ARE WAITING ON THE USER, NOT ON WORK.**
@@ -315,7 +353,7 @@ insert a *named* layer, which is the one thing `world_set_cell` cannot do.
 | where the suite time is now, per package, interpreted | |
 |---|---|
 | **`hex_editor` 56 s** | 235 tests, **flat** — 23 files from 1.4 to 5.4 s, no fixture dominating. It is real work, not another `place.loft` |
-| **`hex_part` 35 s** · `moros_sim` 24 s · `hex_world` 7.6 s · `moros_render` 7.3 s | the other six packages are under 3 s each |
+| **`hex_part` 35 s** · `moros_sim` 24 s · `hex_voxel` 7.6 s · `moros_render` 7.3 s | the other six packages are under 3 s each |
 
 ⚠ **A per-file loop is a fair instrument** — `loft test` over `hex_part` and the sum of its 16
 files run one at a time agree at 35–39 s. A first reading suggested a 5× package-mode penalty;
@@ -324,7 +362,7 @@ it was drift.
 | still true, measured 2026-08-06 | |
 |---|---|
 | nothing about the harness is slow | 2.2 ms marginal per test; `lavition_ui` runs 65 tests in **447 ms** |
-| compile tracks the **dependency cone** | `lavition_ui` 20 ms · `hex_world` 119 ms · `hex_part` 492 ms · `hex_editor` 1.28 s · `hex_mesh` 1.46 s |
+| compile tracks the **dependency cone** | `lavition_ui` 20 ms · `hex_voxel` 119 ms · `hex_part` 492 ms · `hex_editor` 1.28 s · `hex_mesh` 1.46 s |
 | gates — ✅ **taken, see below** | 44 gates were **1838 s** of work and are now **741 s**, 188 s wall at `GATE_JOBS=4`, 44 PASS / 0 FAIL / 0 never-listened |
 
 ⚠ **THREE HYPOTHESES ABOUT THE WRITE PATH WERE EACH REFUTED BY THEIR OWN PROBE**, so do not
@@ -349,7 +387,7 @@ Checked in both directions before being believed (`probe/perf/profile_*.mjs`).
 `make fast` 117 files · `make parts` green, `data/parts/` byte-identical · layering and
 `names.sh` silent.
 
-| `hex_editor` **266** | `hex_world` **120** | `lavition_ui` **65** | `hex_part` **277** |
+| `hex_editor` **266** | `hex_voxel` **120** | `lavition_ui` **65** | `hex_part` **277** |
 |---|---|---|---|
 | `moros_sim` **310** | `moros_render` **167** | `moros_map` **92** | `moros_editor` **56** |
 
@@ -375,7 +413,7 @@ nobody has written.
 [plans/19-lavition-split](../../plans/19-lavition-split/README.md). The MOVE is **blocked on `A8`
 landing**, for hexbody's reason: `MeshAt` is changing shape right now. The corrections are not.
 
-✅ **`L1` AND `L2` ARE DONE (2026-08-06).** `hex_world::Surface` → **`SurfaceAt`** (the tree's own
+✅ **`L1` AND `L2` ARE DONE (2026-08-06).** `hex_voxel::Surface` → **`SurfaceAt`** (the tree's own
 `MeshAt`/`SocketAt` convention for a derived positional record), so the silent merge with
 `moros_terrain::Surface` is gone — the negative control produced its five *"Unknown field
 `Surface.sf_r`"* errors first. And `moros_terrain` → **`hex_mesh`**, with `layering.sh`'s default
@@ -423,8 +461,8 @@ can see. ⚠ **Its first run found a live defect with nothing to do with the spl
 effect being to shadow `hex_distance` with the AXIAL copy whose sheared discs the file's own
 comment already records — 34 boundary edges where a hex disc has 30, wrong for the road, the
 scatter, the storey and the house footprint. It is gone; the qualifiers stay because they say
-which lattice is meant. ⚠ **`gridmesh` and `hex_world` both declare `chunk_of`, and `gridmesh`
-won in the server while `hex_world` won in the client** — same two packages, opposite answers,
+which lattice is meant. ⚠ **`gridmesh` and `hex_voxel` both declare `chunk_of`, and `gridmesh`
+won in the server while `hex_voxel` won in the client** — same two packages, opposite answers,
 decided by the `use` order alone. Both aliased now. Also `hex_part`'s duplicate `hex_dist`
 deleted, and `fit_text`→`fit_why`, `Rect`→`UiRect`, `chunk_of`→`world_chunk_of`.
 
@@ -435,8 +473,8 @@ the tool because the registry's `hex_fit` publishes one. ⚠ **That last one is 
 `hex_fit` *is* a doorstep, field for field with `hex_editor::Fit`, and whether they converge is
 now an open question on the plan rather than a spelling.
 
-**What is left**: `L6.2` (the `hex_voxel` rename — **not blocked**), then `L6.3`–`L8`, which wait
-for `A8`. ⚠ **The gates have not been run since `L6.1`** — a new dependency edge invalidates the
+**What is left**: ✅ `L6.2` is **done** (2026-08-11, top of this file), so what remains is
+`L6.3`–`L8`, which wait for `A8`. ⚠ **The gates have not been run since `L6.1`** — a new dependency edge invalidates the
 build cache exactly as a new package does, so they need a warm-up first.
 
 ✅ **AND `L5` — THE GATE FLAKE — IS FIXED, so a required PR check is now possible.** Three gates,
@@ -610,7 +648,7 @@ setup exists to prevent, and it looks exactly like ordinary work while you are d
 
 ✅ **The instance that earned that note is CLOSED, and it is the reason the note exists.** The
 redundancy lint asked for the `&` off any parameter whose binding is never reassigned; doing that
-at all 50 sites it flags took `hex_world` from **114 green to 96 failed** with `Delete on locked
+at all 50 sites it flags took `hex_voxel` from **114 green to 96 failed** with `Delete on locked
 store`, and `src/editor_run.loft` from exit 0 to SIGABRT — while `--native` passed all 114 on the
 same source, so a per-backend green said nothing. It was *right* at some sites and wrong at others
 **in identical words**. Measured, filed as
@@ -949,7 +987,7 @@ of its sixteen files run one at a time agree at 35–39 s, so there is no per-fi
 ⚠ **IT DELIBERATELY RUNS NO GATES AND ONE BACKEND.** A gate starts a server, waits for a
 port and drives a world; a check you run after each step must not, and a check that takes
 minutes is one you stop running. `make lib-test` stays the pre-commit proof across both
-backends — loft#760 took `hex_world` from 114 green to 96 failed while `--native` passed
+backends — loft#760 took `hex_voxel` from 114 green to 96 failed while `--native` passed
 all 114 on the same source, so a one-backend green is a fast loop and not a proof.
 
 ⚠ **THE RUNNER WAS CHECKED AGAINST TWO THINGS IT MUST FIND**, because its default answer

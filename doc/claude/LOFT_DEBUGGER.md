@@ -123,7 +123,7 @@ re-running.
 
 ## Still worth reaching for instead, sometimes
 
-A **probe program** — `lib/hex_world/probe/sparsity.loft` — runs library assertions as a
+A **probe program** — `lib/hex_voxel/probe/sparsity.loft` — runs library assertions as a
 `main()`. It is how row 2 was proven while `loft test` was crashing, and it stays the
 cheaper tool when the question is about the library rather than about the running editor:
 no client to drive, no timing to arrange.

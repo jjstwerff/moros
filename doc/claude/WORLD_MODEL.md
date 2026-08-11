@@ -1,6 +1,6 @@
 # The world model
 
-How a hex-grid landscape is represented, stored and addressed — the `hex_world` data axis of
+How a hex-grid landscape is represented, stored and addressed — the `hex_voxel` data axis of
 the `hex_*` family, built for **lavition** (the universal editor) with Moros as one consumer
 among several. `loft/doc/claude/LAVITION.md` publishes the family inventory this fills.
 
@@ -9,7 +9,7 @@ Rules are numbered so a gate, a refusal and a bug report can name the same thing
 
 > **Status: the model is specified AND BUILT.** ⚠ This line read *"the code is not written"*
 > until 2026-08-06, which was the first thing a reader met in a 1,300-line normative document
-> and had been false for weeks. `lib/hex_world/src/hex_world.loft` is **2,041 lines** carrying
+> and had been false for weeks. `lib/hex_voxel/src/hex_voxel.loft` is **2,041 lines** carrying
 > `Column`, `Layer`, `StoredHex`, the palette, windowed heights and the `w_tau` edit clock, with
 > **120 tests on both backends**; its suite cites the rule ids below by name — `T1`, `T2`, `L13`,
 > `L14`, `L15`, `W1`, `B1` — which is what makes the numbering load-bearing rather than
@@ -161,7 +161,7 @@ current data is correct*:
 Three mechanisms were considered and all three fail on the same rock:
 
 - **a third `ly_kind`** — `world_cell` returns empty for anything that is not `KIND_TERRAIN`
-  (`hex_world.loft:262`), so a built floor would stop being readable at all;
+  (`hex_voxel.loft:262`), so a built floor would stop being readable at all;
 - **a reserved `ly_id` label** — the model's own idea, and a good fit in principle since *"the
   ground"* is exactly a layer corresponding across every chunk;
 - **a per-chunk ground index** — indices are local and shift.
@@ -195,7 +195,7 @@ a fresh label from `ν`.
 ⚠ **Attempted, and stopped at three obstacles worth knowing before the next try:**
 
 1. **loft [#690](https://github.com/loft-lang/loft/issues/690)** — *a loop variable may not
-   silently change type*. `k` is a `Chunk` elsewhere in the file, so reusing it as an index is
+   silently change type*. `k` is a `VoxelChunk` elsewhere in the file, so reusing it as an index is
    now an error. Small, and the compiler names it.
 2. ⚠ **NOT a store-lifetime issue — that diagnosis was wrong, and bisecting said so.** The
    insert itself is fine: a 20-line standalone rebuild of a nested vector through a `&`
@@ -218,7 +218,7 @@ So the next attempt waits on [loft#697](https://github.com/loft-lang/loft/issues
 builds (3) into the design rather than discovering it from a test. The insert — the part that
 looked hardest — is already proven to work.
 
-That is a change to the store — `lib/hex_world`, its persistence, and the contract this document
+That is a change to the store — `lib/hex_voxel`, its persistence, and the contract this document
 states — and it should be made once, deliberately, with its own baselines. It is **not** a
 side-effect of a fall, and `terrain_h` is left honest-but-wrong until then rather than given a
 rule that trades a tower for a cellar.
@@ -254,7 +254,7 @@ callers:
 | question | *which surface am I standing on* | *which layer is the outdoors* |
 | answer under a tower | the deck you are on — a different one per storey | always the terrain, never a deck |
 | needs | a height to disambiguate | nothing |
-| in code | `hex_world::world_surface(w, q, r, feet)` | `world_ground_cell` / `world_ground_layer` |
+| in code | `hex_voxel::world_surface(w, q, r, feet)` | `world_ground_cell` / `world_ground_layer` |
 
 ⚠ **AND THE WALLS ARE ON THE LEFT NOW TOO — the table was wrong about them, and standing on
 a deck is what showed it.** *"Ring the disc you stand in"* is a claim about where you are
@@ -363,7 +363,7 @@ can put a character on an upper deck (a storey is 3 wu and the cliff rule refuse
 so every call today lands on the ground exactly as before. What *is* gated is a road laid over
 a cellar: `7,19,31` → `7,19,37`, the ground graded and both cellars untouched.
 
-**Where the rule lives.** `world_surface` moved out of the editor and into `hex_world`. It read
+**Where the rule lives.** `world_surface` moved out of the editor and into `hex_voxel`. It read
 a whole `Column` — a `Hex` allocated per layer — and then called a second one; that was fine
 while only the feet asked, once a tick, and not when the camera asks about five times per boom
 sample and fifteen booms a tick. In the store it is one chunk lookup and no allocation, and the
@@ -602,7 +602,7 @@ interchange convention, odd-r is authoring and presentation**, and `hex_grid` ow
 
 | concern | package |
 |---|---|
-| cells, columns, chunks, the window, the routine, the file | `hex_world` |
+| cells, columns, chunks, the window, the routine, the file | `hex_voxel` |
 | lattice geometry, conventions, the odd-r ↔ axial bridge | `hex_grid` |
 | bounded portable documents and stencils | `hex_field` |
 | collision as an edge set | `hex_edge` |
@@ -610,11 +610,11 @@ interchange convention, odd-r is authoring and presentation**, and `hex_grid` ow
 | overland generation | `hex_terrain` |
 | what a material *means* | the consumer — moros |
 
-**`hex_world` owns nothing that draws, collides or generates.** The line that decides every
+**`hex_voxel` owns nothing that draws, collides or generates.** The line that decides every
 case: the library owns *how a thing attaches to geometry*, never the payload. The day it
 knows what a stair is, it has stopped being a substrate.
 
-The pair most easily confused is `hex_world` and `hex_field`. **A field is a document; a
+The pair most easily confused is `hex_voxel` and `hex_field`. **A field is a document; a
 world is a residence** — bounded, portable, one layer, wider types so each consumer keeps its
 own units, versus unbounded, mutable, multi-layer, random access.
 
@@ -885,7 +885,7 @@ layer, because it sees one column. So **the caller names it**: `world_fresh_labe
 gesture, handed to every column through `world_set_column_as` / `world_merge_band_as`, which
 spend the name on *creation* and ignore it thereafter. Allocating per chunk instead is how
 this was violated for as long as it was: measured, one cellar carried label 2 on one side of
-a seam and 3 on the other, and a stencil roof 5 and 4. `hex_world/tests/seam_labels.loft`
+a seam and 3 on the other, and a stencil roof 5 and 4. `hex_voxel/tests/seam_labels.loft`
 holds the claims, with the mutation that reproduces the old behaviour named in it.
 
 ⚠ **A reader may still prefer §5.** `I1` is a claim *about* the geometric match, not a second
@@ -982,7 +982,7 @@ back so the store writes in place instead of splicing again.
 
 The heights are identical in all four rows. That is the whole reason `29:` LABELS exists.
 
-Covered by `lib/hex_world/tests/markers.loft`, whose load-bearing case is
+Covered by `lib/hex_voxel/tests/markers.loft`, whose load-bearing case is
 `test_a_cellar_inserted_below_leaves_the_ground_its_own_label`; the red control reads
 `index 1 is 2, want 1`.
 

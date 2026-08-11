@@ -219,7 +219,7 @@ split (designed against gated code) rather than the earlier guesses.
 | `hex_props` | primitives with axes, part-lists, seats, state | crawler | designed, not started |
 | `hex_scene` | field → triangles → GLB, **and** the realtime view | crawler + us | designed, not started |
 | `hex_editor` | tools, undo, selection, the configuration surface — **the universal editor itself** | **us** | **built here**, `lib/hex_editor`, 217 tests — every gesture: walk, fall, shape, wall, opening, storey, cellar, stair, stencil |
-| `hex_world` (ours) | `lib/hex_world`, 102 tests — the voxel store this editor actually runs on: chunks, layers, windowed heights, the wire encoding, known-absence | **us** | **built here** — see [WORLD_MODEL.md](WORLD_MODEL.md) |
+| `hex_voxel` (ours) | `lib/hex_voxel`, 102 tests — the voxel store this editor actually runs on: chunks, layers, windowed heights, the wire encoding, known-absence | **us** | **built here** — see [WORLD_MODEL.md](WORLD_MODEL.md) |
 | `hex_mesh` | `lib/hex_mesh` — the chunk mesher and its oracle (`tile_ready`), extracted as a LEAF so adding `hex_editor` to `moros_render` could not redden `moros_sim`. ⚠ **Was `moros_terrain` until 2026-08-06** — its whole public surface is universal hex meshing, and `tools/layering.sh` skipped `moros_*` by design, so the prefix exempted it from the one check written to catch exactly that. Plan 19 `L2`; the same mechanism that hid `moros_ui` | **lavition** | **built here** |
 
 Dependencies flow strictly downward: `hex_grid` is leaf; `hex_editor` sits on
@@ -1075,7 +1075,7 @@ document format (`doc_write_all` / `doc_read`, `HXF_MAGIC` / `HXF_SCHEMA`). And 
 primitive in `hex_terrain`, `hex_way`, `hex_field`, `hex_draw`, `hex_edge`, `hex_form`,
 `hex_shape`, `hex_place`, `hex_roof`, `hex_fit` or `hex_recover` takes a store.
 
-The editor is built on `lib/hex_world`'s **column store** — `World / Chunk / Column / Layer /
+The editor is built on `lib/hex_voxel`'s **column store** — `World / Chunk / Column / Layer /
 StoredHex`, reached through `world_column`, `world_set_column`, `world_set_dressing`,
 `world_snapshot`. A different representation of the same subject.
 
@@ -1085,13 +1085,15 @@ So the editor **cannot call the library stack at all.** `stencil_stamp_all`, `wa
 because **choosing a second representation forfeited every primitive written against the
 first.** The duplication is a symptom. The representation split is the defect.
 
-⚠ **`lib/hex_world` is moros-only, and it squats a published name.** Corrected 2026-07-30,
-after checking rather than assuming — an earlier draft of this section called the model choice
-a blocking phase 0, and that was wrong.
+⚠ **`lib/hex_voxel` is moros-only, and it USED TO SQUAT a published name.** Corrected
+2026-07-30, after checking rather than assuming — an earlier draft of this section called the
+model choice a blocking phase 0, and that was wrong. ✅ **The squat itself ended 2026-08-11**,
+plan 19 `L6.2`: ours is `hex_voxel`, with `VoxelWorld` and `VoxelChunk`, so the table below is a
+comparison of two packages rather than of two claimants to one name.
 
 | | types | lines / files | consumers, everywhere |
 |---|---|---|---|
-| `lib/hex_world` v0.1.0 (the editor's) | `Hex StoredHex Layer Chunk ChunkAt World Column ColumnWrite Snapshot …` | 1,199 / 1 | **`src/editor_server.loft`. That is all.** |
+| `lib/hex_voxel` v0.1.0 (the editor's) | `Hex StoredHex Layer VoxelChunk ChunkAt VoxelWorld Column ColumnWrite Snapshot …` | 1,199 / 1 | **`src/editor_server.loft`. That is all.** |
 | published `hex_world` 0.1.1 / 0.1.2 / **0.2.0** | `Cell Chunk World` | 1,161 / 3 | its own tests, plus one loft multilib fixture |
 
 Three facts settle it:
@@ -1126,7 +1128,7 @@ palette, no dressing, no edit clock, no versioning. The column model has all of 
 normative contract in `WORLD_MODEL.md`. **They are two different concerns wearing one name** —
 which is the same failure as the representation split, one level up, at the package.
 
-**So `lib/hex_world` is in the wrong place, and the reason is the principle rather than the
+**So `lib/hex_voxel` is in the wrong place, and the reason is the principle rather than the
 collision: libraries here are general, and a general library does not live inside one
 consumer.** `lib/` should hold only this game's *configuration*; the ownership audit above
 already says the great majority of `lib/moros_*` public names are general too, so
@@ -1136,17 +1138,22 @@ Two facts make it cheap: it has **one consumer** and **one `use` line**, and the
 already exists in this tree — `lib/moros_sim/loft.toml` depends on a sibling by path
 (`hex_body = { path = "../../../loft-libs-world/hex_body" }`).
 
-⚠ **The name is the one open decision, and it is not mine to take.** The column store needs a
-descriptive, brand-free name in `../loft-libs-world/`; `hex_world` is held by the demo grid,
-which is *published* (0.1.1 / 0.1.2 / 0.2.0) and lives in another agent's tree. Options, with
-the trade-off stated rather than resolved:
+✅ **THE NAME WAS THE ONE OPEN DECISION, AND IT IS TAKEN — 2026-08-11, plan 19 `L6.2`.** The
+column store is **`hex_voxel`**, and its `World` and `Chunk` went with it as **`VoxelWorld`** and
+**`VoxelChunk`**. It was raised with the other tree first
+([`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13)) rather than
+settled unilaterally, and the two options this table used to leave open resolved like this:
 
-| option | cost |
+| option | what decided it |
 |---|---|
-| column store takes a new name (`hex_store` matches this document's own vocabulary — "the store" against "the bundle") | two libraries still both sound like "the world" |
-| column store supersedes `hex_world`; the demo grid narrows to what it is | touches a published package in another tree — but it has **zero dependents**, so the cost is coordination, not breakage |
+| ✅ **column store takes a new name** | **chosen.** Not on merit — on *possibility*: they have published three versions and loft's own test suite consumes them, so theirs is the rename that cannot be done |
+| column store supersedes `hex_world`; the demo grid narrows to what it is | cleaner on paper, and it was the one this document leaned toward. Rejected once "zero dependents" was re-checked against loft's suite, which is a dependent |
 
-Whichever is chosen, phase 0 is a **move plus a rename**, still one call site.
+⚠ **AND THE STRUCTS WERE NOT OPTIONAL, though the plan had them written down that way.** Both
+packages declare `world_save` — ours a free function, theirs a **method** — and the method
+shadows ours by the receiver struct's *name*, reporting `Too many parameters for
+t_5World_world_save`. [loft#850](https://github.com/loft-lang/loft/issues/850). Renaming the
+struct is the cure on our side, so phase 0 was a move plus **two** renames, still one call site.
 
 ### What we already have — the primitives, by what they operate on
 
@@ -1169,7 +1176,7 @@ Nothing below needs writing. This is the list any new code must be checked again
 | **validation / recovery** | `hex_field`, `hex_recover` | `trace`, `validate`, `shoelace2`, `wall_count`, `edgeset_digest`, `rebuild*`, `field_digest`, `field_exact`, `field_norm` |
 | **rigs** | `hex_body` | `rig_*`, `joint_*`, `bone_obb`, `pose_of`, `wheel_value/angle/skid` |
 | **the bundle's file format** | `hex_field` | `doc_write`, `doc_write_all`, `doc_read` |
-| **the store** (a separate concern) | `hex_world` | `world_new`, `world_column`, `world_set_column`, `world_set_dressing`, `world_cell`, `world_snapshot`, `world_save/load`, `world_chunk_version`, `world_is_stale` |
+| **the store** (a separate concern) | `hex_voxel` | `world_new`, `world_column`, `world_set_column`, `world_set_dressing`, `world_cell`, `world_snapshot`, `world_save/load`, `world_chunk_version`, `world_is_stale` |
 
 ### What is only in the editor, adjudicated
 
@@ -1190,7 +1197,7 @@ editor's private answer to a question the stack already answers:
 | `fit_ok`, `fit_ordinal`, `fit_nominal`, `fit_text`, `probe_fit` | `hex_fit` — `fit_reason`, `mat_fits`, `level_fits` |
 | `storey_add` | `combine_cut_level` + `seat_write` |
 | `terrain_h`, `terrain_y`, `terrain_set` | `Heights` + `world_column` |
-| `col_top`, `col_low`, `col_top_index` | `hex_world` accessors |
+| `col_top`, `col_low`, `col_top_index` | `hex_voxel` accessors |
 | `cam_free_dist`, `cam_free_arc`, `cam_clear_at` | `sight_clear` (the solve itself is the homeless *camera* group) |
 
 **Genuinely missing — must be ADDED to a library, and validated there.** Four items, and the
@@ -1198,7 +1205,7 @@ first is the whole design:
 
 1. **The `World` ⇄ bundle adapter.** One pair: read a window of the store into
    `(HexSet, Heights, Labels, Layers, EdgeSet)`, and commit a bundle back. Nothing else new
-   is needed to make the entire stack reachable. It is missing because the two `hex_world`s
+   is needed to make the entire stack reachable. It is missing because the two `hex_world` lineages
    diverged, so no one owns the seam.
 2. **`brush`** — an *authored* relief dome. `hex_terrain` has noise, fbm, ridges, hydrology
    and lakes, but no authoring brush. This is the primitive whose absence produced the
@@ -1275,7 +1282,7 @@ steps are **done under other names**, and the roadmaps have not caught up.
 | `Cell {color, height, age}` single-layer | published `hex_world` 0.1–0.2 | demo grid (TTT, art) |
 | `HexCell {material, height, item, walls, rotation}` + `cy` layers | plan 73 L2 sketch | never built |
 | `HexSet + Heights + Labels + Layers + EdgeSet`, windowed | **`hex_field`, shipped, tested** | the stack's actual basis |
-| `Column / Layer / StoredHex`, chunked, absolute heights, palette, edit clock | **moros `lib/hex_world`** | the editor's, with `WORLD_MODEL.md` as its contract |
+| `Column / Layer / StoredHex`, chunked, absolute heights, palette, edit clock | **moros `lib/hex_voxel`** | the editor's, with `WORLD_MODEL.md` as its contract |
 
 **Nothing can be *translated* before its target shape is chosen**, so this is the one decision
 that gates the rest. The two live candidates are `hex_field`'s bundle and the column store;
@@ -1297,7 +1304,7 @@ This document's standing rules bind the migration, and the earlier draft broke b
 
 | what is misplaced | proper place | operation | ours, or an ask? |
 |---|---|---|---|
-| `lib/hex_world` — the column store | the **`world`** group ([#8](https://github.com/jjstwerff/moros/issues/8)), which this document already says *leads* | **build beside**, under a brand-free name that is not `hex_world` (taken, by the demo grid) | **ours** — one consumer, one `use` line |
+| `lib/hex_voxel` — the column store | the **`world`** group ([#8](https://github.com/jjstwerff/moros/issues/8)), which this document already says *leads* | **build beside**, under a brand-free name that is not `hex_world` (taken, by the demo grid) | **ours** — one consumer, one `use` line |
 | the published `hex_world`'s `Cell` | onto the voxel | translate | **ask** of `loft-libs-world` — already recorded, `P14` is the proof |
 | `wall.loft` inside published `hex_world` | `hex_edge` / `hex_shape` (where `W.3` actually landed) | move | **ask** |
 | `editor_server.loft`'s duplicate primitives | the packages named in *"What is only in the editor"* above | **delete** once reachable — they are not moved, they are superseded | ours |
@@ -1314,7 +1321,7 @@ No new phase numbers. The sequence the existing documents already imply:
 2. **`hex_grid` 0.2.0 — the axial↔offset bridge** (CONVERGENCE step 1). Independent, and the
    rule *"lattice math is implemented once"* is what retires our third copy of the chunk
    arithmetic.
-3. **The `world` group, built beside** (#8, which leads). This is where `lib/hex_world` goes,
+3. **The `world` group, built beside** (#8, which leads). This is where `lib/hex_voxel` goes,
    and it is the first thing that is entirely ours.
 4. **The store ⇄ bundle adapter**, in whichever package owns the chosen representation. Until
    it exists the editor cannot call one library primitive, and after it exists a procedural
@@ -1443,7 +1450,7 @@ homes as there are eyes.
 
 **What the client needs is a read-only view, not a second model.** It already receives the
 geometry it draws; the occlusion query runs against that. And because both sides are loft,
-the client can `use hex_world` and read the same structures the server writes — the thing
+the client can `use hex_voxel` and read the same structures the server writes — the thing
 the JavaScript seam made impossible, and the reason the camera ended up server-side to begin
 with. Sharing the CODE is not sharing the AUTHORITY: the client reads a snapshot, the server
 owns the clock.

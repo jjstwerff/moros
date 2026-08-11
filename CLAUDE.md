@@ -48,14 +48,30 @@ suite cannot see this** — `hex_part` was 131 green while `hex_editor` would no
 Grep `lib/`, `src/`, `../loft-libs-world/` and the registry **before** adding a public name, and
 when a name is taken, take the collision seriously rather than routing around it: `hex_editor`'s
 `Fit` had already settled the hard half of the question `hex_part` was re-deriving.
-⚠ **And there IS no routing around it — a qualified name does not disambiguate.** `Surface` was
-declared by both `hex_world` and `moros_terrain`, and in `editor_server.loft` the two had merged:
-writing the literal failed with five *"Unknown field Surface.sf_r"* errors that never mention a
-collision, and spelling it `moros_terrain::Surface` **still** resolved to the other struct — the
-return type accepted, the constructor not. It went unnoticed for months because every caller reads
-`surface_at(i).sf_r` and never names the type. ✅ **Fixed 2026-08-06** (plan 19 `L1`):
-`hex_world`'s is `SurfaceAt`. **Grep first; the only cure afterwards is a rename**, and a rename
-is the one thing you cannot do once a package is published.
+`Surface` was declared by both `hex_world` (now `hex_voxel`) and `moros_terrain` (now `hex_mesh`),
+and in `editor_server.loft` the two had merged: writing the literal failed with five *"Unknown
+field Surface.sf_r"* errors that never mention a collision, and spelling it
+`moros_terrain::Surface` **still** resolved to the other struct — the return type accepted, the
+constructor not. It went unnoticed for months because every caller reads `surface_at(i).sf_r` and
+never names the type. ✅ **Fixed 2026-08-06** (plan 19 `L1`): `hex_voxel`'s is `SurfaceAt`.
+
+⚠ **THE COMPILER HALF OF THAT IS FIXED, AND THIS RULE SAID OTHERWISE FOR MONTHS.** It read *"there
+IS no routing around it — a qualified name does not disambiguate"*. **Measured 2026-08-11 and it
+is no longer true**: `pkg_b::Thing { b_only: 7 }` compiles and takes B's struct with both packages
+in the graph (control: distinguishable field names), and a *bare* ambiguous name is now refused
+outright — ``error: `Chunk` is declared by more than one package here — write hex_voxel::Chunk or
+hex_world::Chunk to say which``. **Grep first anyway**: a rename is still the one thing you cannot
+do once a package is published, and a qualifier only helps the sites that were written knowing
+they needed one.
+
+⚠ **AND ONE PAIR STILL SLIPS THROUGH THE AMBIGUITY CHECK: a METHOD in one package against a
+same-named FREE FUNCTION in another, when the receiver structs share a name.** The method wins,
+selected by the receiver struct's *name*, and the diagnostic is `expected T, got T` — the
+`Surface` sentence again, one layer down. Ours was `world_save`: a free function here, a method in
+the registry's `hex_world`, reported as `Too many parameters for t_5World_world_save`.
+[loft#850](https://github.com/loft-lang/loft/issues/850), with a two-package repro whose control
+is *rename one struct and the right function is chosen*. It never miscompiles — the two types
+never merge — so it costs diagnosis time, not correctness.
 
 ⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS DISABLED BY A NAME.** `tools/layering.sh` skipped
 every `moros_*` package, so a universal package wearing a Moros prefix was exempt from the one
@@ -139,7 +155,7 @@ because a number gets believed. When the picture and the numbers disagree, suspe
 **The compiler's advice is a hypothesis, not an instruction — run the suite against it.** loft's
 lint says to drop the `&` on any parameter whose binding is never reassigned, because *"field
 mutation already propagates to the caller without it"*. For one day that was false for a
-store-backed struct: acting on all 50 sites it flagged took `hex_world` from 114 green to **96
+store-backed struct: acting on all 50 sites it flagged took `hex_voxel` (then `hex_world`) from 114 green to **96
 failed** with `Delete on locked store`, and turned a scripted run that exits 0 into a SIGABRT.
 ⚠ `--native` passed all 114 on the same source, so a per-backend green said nothing. It was
 *right* at some sites and wrong at others **in identical words** — of seven dropped one at a
@@ -157,7 +173,7 @@ the message text collapsed two distinct sites into one, because the text is iden
 site and only the location line differs. Match a line you know is there before believing a
 count of zero.
 
-**Cost is measured in `w_tau`, not seconds.** hex_world's edit clock bumps once per write
+**Cost is measured in `w_tau`, not seconds.** hex_voxel's edit clock bumps once per write
 that changed something, so a gesture's cost is an exact integer that is the same on any box
 and on a world of any size — `lib/hex_editor/tests/cost.loft`. A wall clock measures the
 machine. When something is slow, find the instrument first: the editor's own `27:` tracer

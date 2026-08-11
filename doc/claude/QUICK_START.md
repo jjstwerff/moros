@@ -98,7 +98,7 @@ Design first: [STATE.md](STATE.md), then [HEX_STACK.md](HEX_STACK.md) and
 |---|---|
 | `src/editor_server.loft` | The server: the world, the wire's 30 messages, the tick, meshing. One file, and [WIRE_PROTOCOL.md](WIRE_PROTOCOL.md) is the map of it |
 | `src/editor_client.loft` | The wasm/loft renderer, served at `/client` |
-| `lib/hex_world/` | **lavition** — the voxel landscape: columns, layers, windowed heights, the file format |
+| `lib/hex_voxel/` | **lavition** — the voxel landscape: columns, layers, windowed heights, the file format |
 | `lib/hex_editor/` | **lavition** — the editor library: gestures, stencils, materials, the catalogue |
 | `lib/hex_part/` | **lavition** — parts: sockets, bindings, hinges, expand and bake ([PARTS.md](PARTS.md)) |
 | `lib/lavition_ui/` | **lavition** — the panel, widgets, font, hit-testing. ⚠ This row said `lib/moros_ui/`, which has not existed since the rename that put it back under `tools/layering.sh` ([EDITOR_UI.md](EDITOR_UI.md)) |

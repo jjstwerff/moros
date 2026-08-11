@@ -14,7 +14,7 @@
 >
 > | if you came here for | go to |
 > |---|---|
-> | **the world's data model** | **[WORLD_MODEL.md](WORLD_MODEL.md)** — Part II is normative, and `lib/hex_world` is 2,041 lines implementing it |
+> | **the world's data model** | **[WORLD_MODEL.md](WORLD_MODEL.md)** — Part II is normative, and `lib/hex_voxel` is 2,041 lines implementing it |
 > | how it is stored, transported and derived | [HEX_STACK.md](HEX_STACK.md) — the single authority, and its three invariants |
 > | the hex lattice | ⚠ **this document was the OUTLIER and is reconciled** — pointy-top, odd-r, `L = √3`, owned by `hex_grid` ([moros#3](https://github.com/jjstwerff/moros/issues/3), closed). Four implementations already agreed; this one did not |
 > | walls, roofs, openings from a plan | `hex_draw` — see [FITTINGS.md](FITTINGS.md)'s banner |
@@ -292,12 +292,16 @@ flat-top reading. The remaining three edges are read as:
 
 ⚠ **Trust this table over the identifiers.** The rename was scoped to
 [moros#3](https://github.com/jjstwerff/moros/issues/3) and deliberately left out of it:
-`h_wall_n/ne/se` are **public fields of `hex_world`**, which is published (0.2.0) and is
-itself mid-migration to one durable home ([moros#8](https://github.com/jjstwerff/moros/issues/8)),
-so renaming them is a breaking change to a shared contract across ~80 sites in ten files —
+`h_wall_n/ne/se` are public fields of the store, and renaming them is ~80 sites in ten files —
 not part of reconciling a document with a convention. It is a row in
-[doc/Todo.txt](../Todo.txt), to be done as one mechanical change once #8 settles where the
-struct lives.
+[doc/Todo.txt](../Todo.txt).
+
+⚠ **THE REASON GIVEN HERE FOR DEFERRING IT WAS WRONG, and it is corrected 2026-08-11.** This said
+the fields belonged to a package *"which is published (0.2.0)"*. It does not: that 0.2.0 is the
+registry's `hex_world`, **a different lineage entirely** — plan 19 `L4` — and it has **zero**
+`h_wall` fields. Ours is `hex_voxel` (0.1.0, never published), so there is no shared contract and
+no second copy to disagree. The work is unblocked, and wants doing **before** publishing rather
+than after.
 
 The names are already fenced where it matters: `hex_editor`'s `gesture.loft` reads them
 only through `SLOT_NW` / `SLOT_NE` / `SLOT_E`, so the honest names are what callers see.

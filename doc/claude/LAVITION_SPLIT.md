@@ -31,8 +31,8 @@ Every row below was checked against the tree on that date, not recalled.
 
 | | measured |
 |---|---|
-| lavition packages | `hex_world` 120 · `hex_editor` 235 · `hex_part` 254 · `lavition_ui` 65 · `glb_read` 4 = **678 tests**, green on both backends |
-| their `moros_*` dependencies | **zero.** `hex_world`→nothing · `hex_editor`→registry `hex_*` + path `hex_world`/`hex_part` · `hex_part`→`hex_world`,`glb_read` · `lavition_ui`→nothing · `glb_read`→`mesh` |
+| lavition packages | `hex_voxel` 141 · `hex_editor` 394 · `hex_part` 254 · `lavition_ui` 65 · `glb_read` 4 = **678 tests**, green on both backends |
+| their `moros_*` dependencies | **zero.** `hex_voxel`→nothing · `hex_editor`→registry `hex_*` + path `hex_voxel`/`hex_part` · `hex_part`→`hex_world`,`glb_read` · `lavition_ui`→nothing · `glb_read`→`mesh` |
 | the `moros` name inside them | **41 mentions in 22 files, none of them code.** Prose, plus `boundary.loft`'s own guard text |
 | where the `hex_*` family comes from | the **registry** at 0.1.0, diffed byte-identical to `../loft-libs-world`. The sibling working tree is **not** in the build |
 | the editor program | `src/editor_server.loft` **8,283 lines**, `editor_client.loft` 1,823, `editor_run.loft` 162 |
@@ -61,7 +61,7 @@ So the program travels too, and the four blockers below are what stand in its wa
 
 ### L1 — `Surface` is declared twice and the two have already merged
 
-`hex_world::Surface` (line 400) and `moros_terrain::Surface` (`surfaces.loft` line 16). A loft
+`hex_voxel::Surface` (line 400) and `moros_terrain::Surface` (`surfaces.loft` line 16). A loft
 struct name is **global across a consumer's dependency graph**, so in `editor_server.loft` these
 are already one struct: writing the literal fails with five *"Unknown field `Surface.sf_r`"*
 errors that never mention a collision, and ⚠ **spelling it `moros_terrain::Surface` still resolves
@@ -85,7 +85,7 @@ surface_at · surfaces · surface_count · surface_chroma · chroma_gap · class
 emit_hex_sloped · emit_ground_reveal · struct Surface · struct Chroma
 ```
 
-Not one game concept in any name. It already depends on `hex_world`, `hex_editor` and `hex_grid`
+Not one game concept in any name. It already depends on `hex_voxel`, `hex_editor` and `hex_grid`
 — it is sitting on the lavition stack and wearing a Moros prefix.
 
 ⚠ **And the prefix is why nobody noticed: `tools/layering.sh` skips `moros_*` by design**, because
@@ -128,7 +128,7 @@ map — depending on `hex_grid` and `graphics` and nothing else, so both `moros_
 `src/editor_server.loft` has zero Moros dependencies** and the program, its client, its gates and
 its content can all travel together.
 
-### L4 — `hex_world` is an ambiguous global name today
+### L4 — `hex_world` was an ambiguous global name — ✅ RESOLVED by `L6.2`, 2026-08-11
 
 ✅ **Raised 2026-08-06 at [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13)
 with an 8-control probe, [`probe/l4/run.sh`](../../probe/l4/run.sh).** Recommendation: theirs
@@ -136,10 +136,16 @@ keeps the name, **ours becomes `hex_voxel`**, and its `World` and `Chunk` are re
 
 | | |
 |---|---|
-| `moros/lib/hex_world` | 0.1.0, **unpublished**, path-dependency in one tree — the column store: columns, layers, windowed heights, palette, edit clock. 2,041 lines, 102 public names |
+| `moros/lib/hex_voxel` (was `hex_world`) | 0.1.0, **unpublished**, path-dependency in one tree — the column store: columns, layers, windowed heights, palette, edit clock. 2,041 lines, 102 public names |
 | registry / `loft-libs-world/hex_world` | **0.1.1, 0.1.2 and 0.2.0, all published** since 2026-06-14 — a different lineage entirely: one `Cell` per hex in sparse 32×32 chunks. 400 lines, 17 public names |
 
-`hex_editor/loft.toml` already carries the workaround and says why: *"`hex_world` is deliberately
+⚠ **Everything in this section is written in the present tense of 2026-08-06 and is now
+HISTORY** — `L6.2` did the rename on 2026-08-11: ours is `hex_voxel`, with `VoxelWorld` and
+`VoxelChunk`, and `lib/` holds no `hex_world` at all. Kept because the *measurements* are what
+justified the choice, and because the struct half turned out to be load-bearing rather than
+optional — see the plan's *What `L6.2` turned up*.
+
+`hex_editor/loft.toml` carried the workaround and said why: *"`hex_world` is deliberately
 NOT here. Ours is `lib/hex_world` and the registry carries a 0.2.0 on a different lineage;
 declaring it would let the resolver pick the wrong one out from under the editor."*
 ⚠ **Measured, and it was not folklore** — controls `A`–`D`: the one line `use hex_world;` means
@@ -166,6 +172,18 @@ something different with no ambiguity error — [loft#788](https://github.com/lo
 verbatim, one rename later. **So the structs are renamed too** — *not required* and *safe to
 leave* are different claims, and only the first was measured.
 
+✅ **THE SECOND IS MEASURED NOW (2026-08-11), AND IT REFUTES THE COMFORTABLE READING.** Leaving
+ours called `World` was **not** safe. Of the four shared names, `world_save` is declared as a free
+function by us and as a **method** by them — and in a graph holding both, a bare call to ours is
+shadowed by theirs, selected by *the receiver struct's name*. The diagnostic is `Too many
+parameters for t_5World_world_save`, naming an internal mangled symbol, or at the matching arity
+`expected World, got World` — `L1`'s sentence a third time. loft's ambiguity check covers
+struct-vs-struct and function-vs-function and misses exactly this pair:
+[loft#850](https://github.com/loft-lang/loft/issues/850), whose control is *rename one struct,
+change nothing else, and the right function is chosen*. It never miscompiles — the two types never
+merge — so the cost is diagnosis time rather than correctness. **The struct rename was
+load-bearing, and `F` could not see it because `F` only ever asked about the types.**
+
 ---
 
 ## The target shape
@@ -173,7 +191,7 @@ leave* are different claims, and only the first was measured.
 ```
 lavition/
   lib/          hex_voxel · hex_editor · hex_part · hex_mesh · hex_proj · lavition_ui · glb_read
-                ^^^^^^^^^ today's `hex_world` — see L4; the name belongs to another lineage
+                ^^^^^^^^^ `hex_voxel` since L6.2 — the name `hex_world` belongs to another lineage
   src/          lavition_server.loft · lavition_client.loft · lavition_run.loft
   tools/gates/  the 49, all of them
   tools/scripts/ the 23 .keys scripts
@@ -194,7 +212,7 @@ file (its surface palette, its part-library path). That is
 | document | why it is lavition's |
 |---|---|
 | [HEX_STACK](HEX_STACK.md) | the single authority for the stack's design; already written to be moved |
-| [WORLD_MODEL](WORLD_MODEL.md) | Part II is the normative contract, and `hex_world`'s tests cite its rule ids by name |
+| [WORLD_MODEL](WORLD_MODEL.md) | Part II is the normative contract, and `hex_voxel`'s tests cite its rule ids by name |
 | [PARTS](PARTS.md) | §P9.0 is the part-tree design |
 | [WIRE_PROTOCOL](WIRE_PROTOCOL.md) | the server's socket |
 | [EDITOR_SUBSTRATE](EDITOR_SUBSTRATE.md) | the seam rules, the DoD, the extraction bar itself |
@@ -218,7 +236,7 @@ it.*
 1. **`tools/layering.sh`, inverted.** Here it fails when a `hex_*` package names a `moros_*` one.
    There it fails when **any** package names a consumer's — and with no `moros_*` skip, because
    there is no consumer in the tree to exempt. Silent when it passes.
-2. **A `boundary.loft` per package**, which `hex_world` already has: the package must build with
+2. **A `boundary.loft` per package**, which `hex_voxel` already has: the package must build with
    the consumer absent, and its source must import nothing of one. Clause 1 of the extraction bar,
    checkable on every commit instead of at extraction time.
 3. ✅ **A public-name registry check — [`tools/names.sh`](../../tools/names.sh), built at `L6.1`.**

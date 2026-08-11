@@ -5,24 +5,26 @@
 
 ## Status
 
-✅ **`L1`, `L2`, `L3′`, `L5` and `L6.1` are BUILT and `L4` is RAISED (2026-08-06); `L3` as designed
-was refuted by its own probe.**
+✅ **`L1`, `L2`, `L3′`, `L5`, `L6.1` and `L6.2` are BUILT and `L4` is RAISED; `L3` as designed was
+refuted by its own probe.**
 `layering.sh` is silent with `KNOWN=""`, which means **the lavition stack has no Moros dependency
 at all** — the first time that has been true, and the thing that made the rest of this plan a move
 rather than an argument.
 
-**The last blocker that was not ours to clear is now a ticket with a probe behind it**:
-[`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13) — theirs keeps
-`hex_world`, ours becomes **`hex_voxel`**, and `L6.2` renames its `World` and `Chunk` too. Every
-`L1`–`L5` blocker is either done or answered.
+✅ **AND THE NAME IS SETTLED IN THE TREE, NOT ONLY ON PAPER (2026-08-11).** The store is
+**`hex_voxel`**, its `World` and `Chunk` are **`VoxelWorld`** and **`VoxelChunk`**, and `lib/`
+carries no `hex_world` at all — so `use hex_world;` means the registry's package and nothing else,
+whatever flags are passed. That is control `D` of `probe/l4/run.sh`, and it is the one line of the
+probe that changed. ⚠ **The struct half was written down as optional and it is not**: theirs
+declares `world_save` as a **method**, which shadows our free function of the same name by the
+receiver struct's *name* — see *What `L6.2` turned up*, and
+[loft#850](https://github.com/loft-lang/loft/issues/850).
 
 ⚠ **`L6` SPLIT IN THREE ONCE THE NAMES WERE MEASURED, AND ONLY THE THIRD IS BLOCKED.** `L6.1`
 built the public-name check and fixed what it found — including **a dead import that had been
 shadowing the odd-r lattice**, which is a defect today and had nothing to do with the split.
-`L6.2` is the `hex_voxel` rename, which is mechanical and wants doing *before* anything is
-published. `L6.3` is the repo itself, and that is the one waiting on #17 `A8`. **The gates have
-not been run since `L6.1`** — a new dependency edge invalidates the build cache, so they need a
-warm-up first (`L3′`'s lesson).
+`L6.2` did the rename, before anything is published, which is the only time it can be done.
+`L6.3` is the repo itself, and that is the one waiting on #17 `A8`.
 
 **The MOVE is still blocked on plan [#17](https://github.com/jjstwerff/moros/issues/17) `A8`
 landing** — `MeshAt` changed shape on 2026-08-06 (`A8.1`) and `A8.2`–`A8.7` will change it again,
@@ -50,7 +52,8 @@ an ordinary consumer of the published packages plus a small configuration file.
   clauses, the five target groups, *build beside do not migrate*, the per-package DoD.
 - [`HEX_STACK.md`](../../doc/claude/HEX_STACK.md) — the single authority for the stack's design;
   already written to travel.
-- Touches: `lib/moros_terrain/`, `lib/hex_world/src/hex_world.loft`, `src/editor_server.loft`,
+- Touches: `lib/hex_mesh/` (was `moros_terrain`), `lib/hex_voxel/src/hex_voxel.loft` (was
+  `lib/hex_world/src/hex_world.loft`), `src/editor_server.loft`,
   `src/editor_client.loft`, `tools/layering.sh`, `tools/gates/`, every `loft.toml`.
 
 ## Invariant gate
@@ -92,7 +95,7 @@ now in the table above, with the control that would have caught the answer every
 | ✅ **`L4`** — settle the `hex_world` lineage with `loft-libs-world` | S | **RAISED 2026-08-06** with an 8-control probe: [`loft-libs-world#13`](https://github.com/loft-lang/loft-libs-world/issues/13). Recommendation: **ours renames to `hex_voxel`** | ✅ Raised — awaiting their word |
 | ✅ **`L5`** — fix the gate flake: wait for the evidence, never for a duration | M | **DONE.** 4 consecutive clean full suites (44, rc=0, zero failures), plus 3 contended `gate-rep` runs of the three fixed gates | ✅ Done |
 | ✅ **`L6.1`** — `tools/names.sh`, and every collision it found | M | **DONE.** The check is silent; 686 lavition + 625 Moros tests green on both backends, counts unchanged | ✅ Done |
-| **`L6.2`** — `hex_world` → `hex_voxel`, and its `World` / `Chunk` | M | `names.sh` still silent, the same counts, and `probe/l4/run.sh` still 8 of 8 | **Next, and NOT blocked** |
+| ✅ **`L6.2`** — `hex_world` → `hex_voxel`, and its `World` / `Chunk` | M | **DONE 2026-08-11.** `names.sh` and `layering.sh` silent, `probe/l4/run.sh` 8 of 8 with three controls re-measured, every per-package count identical (1600 tests, both backends), `make parts` byte-identical, `make gate` 47 PASS | ✅ Done |
 | **`L6.3`** — the new repo: packages, program, gates, content, `CLAUDE.md` | MH | 678 tests **and 49 gates** green with no Moros tree present | Blocked on #17 `A8` |
 | **`L7`** — Moros becomes a consumer: published deps + one configuration file | M | Moros green against published packages, no path dependency into lavition | Blocked on `L6` |
 | **`L8`** — the documentation, and what is deliberately left behind | S | the eight travelling docs present; the four superseded ones **absent** | Blocked on `L6` |
@@ -334,6 +337,63 @@ down rather than settled by picking a third spelling. See the open questions.
 inside one compilation unit is an error; the same name across two packages is a silent bind.**
 That asymmetry is the whole reason this check has to exist, and it is why `names.sh` scans `src/`
 rather than `tests/`: the test case reports itself.
+
+### What `L6.2` turned up (2026-08-11)
+
+**The store is `hex_voxel`**, and its `World` and `Chunk` are **`VoxelWorld`** and
+**`VoxelChunk`**. A rename changes no behaviour and this one is measured that way: `make fast`
+138 files, `make lib-test` **1600 tests over 11 packages on both backends with every per-package
+number identical to the baseline**, `make parts` byte-identical, `make gate` **47 PASS / 0 FAIL /
+0 never-listened**, `names.sh` and `layering.sh` silent.
+
+⚠ **THE ROW CALLED THE STRUCT HALF OPTIONAL AND IT IS NOT — that is this step's finding.** The
+design left it at *"`not required` and `safe to leave` are different claims, and only the first
+was measured"*, on the strength of control `F`: the two `World` structs never merge, so the
+package rename alone is enough for correctness. **The second claim is measured now, and it goes
+the other way.** Both packages declare `world_save` — ours a free function
+`world_save(w, path, palette)`, **theirs a METHOD** `world_save(self: World, path)`. In a graph
+holding both, a bare call to ours is shadowed by theirs, *selected by the receiver struct's name*,
+and the diagnostic is `Too many parameters for t_5World_world_save` — an internal mangled symbol —
+or, at the matching arity, `expected World, got World`: the `Surface` sentence of `L1` verbatim.
+Renaming the struct is what stops that.
+
+⚠ **AND IT IS A HOLE IN loft#788's FIX, FILED AS
+[loft#850](https://github.com/loft-lang/loft/issues/850).** loft refuses an ambiguous bare name
+properly for struct-vs-struct *and* function-vs-function — ``error: `same` is declared by more
+than one package here`` — and misses exactly the free-function-vs-method pair. The repro is two
+five-line packages, and its control is decisive: **rename one struct, change nothing else, and
+the right function is chosen.** It never miscompiles — the two types never merge, so the class is
+always a compile error and never a silent wrong result. What it costs is diagnosis time.
+
+⚠ **`probe/l4/run.sh` STOPPED STAGING AND STARTED MEASURING.** It used to `cp` our package into a
+`mktemp -d` under the new name to rehearse the rename; `lib/` now carries `hex_voxel` and **no
+`hex_world` at all**, so `--lib lib/` *is* the two-lineage graph the staging was faking. Three
+controls moved, and each move is the deliverable:
+
+| | before `L6.2` | after | what the move says |
+|---|---|---|---|
+| `D` | `error: Unknown function world_empty` | `PROBE built THEIR world` | **the proof.** `--lib lib/` used to mean OURS; one name means one package now, whatever the flags say |
+| `G`/`H` | refused at both orders (loft#788's fix) | both `ok`, same meaning | only one package declares `Chunk`, so there is nothing left for the import order to decide |
+| `F` | `expected World, got World` | `expected VoxelWorld, got World` | two names a reader can tell apart |
+
+⚠ **`F` HAD TO CHANGE DIRECTION TO KEEP MEASURING ANYTHING, and that is the trap worth carrying
+forward.** It handed OUR world to THEIR `cell_count`. That reading is simply gone: `cell_count` is
+a method on their `World`, ours is `VoxelWorld`, so it is not a candidate at all and the compiler
+answers `Unknown function cell_count` — true, and silent about whether the types merged. Reversed
+to hand **theirs** to **our** free function, it keeps both types in one diagnostic. **A control
+can keep passing while quietly ceasing to test its subject**, which is the same class as `G`'s
+expected-words being blind to the change beside them (`probe/l4/README.md`).
+
+⚠ **A STALE MANIFEST COMMENT FELL OUT OF THE RENAME.** `hex_editor/loft.toml` said `hex_world` was
+*"deliberately NOT here"* while declaring it as a path dependency **twenty-five lines below**. True
+when the package was world-free, and it outlived that by every release since. Both manifests now
+say what is actually true: the path is because `hex_voxel` is unpublished and in this tree, not to
+dodge a name.
+
+⚠ **AND ONE MECHANICAL TRAP, BECAUSE IT WILL RECUR.** `find probe -name '*.loft'` **matches loft's
+`.loft` cache directory** — `*` matches the empty string — and `sed -i` stops on the first
+non-regular file. A rename over that file list silently skips every file after the first cache
+dir, and reports nothing. `-type f`.
 
 ## Cross-repo coordination
 

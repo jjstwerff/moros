@@ -532,7 +532,7 @@ unit high.
 
 **The fix is one decode**, `hex_of`, asking the predicate the write path already asks
 (`stored_present`), with `E1`(3) as its rule — *reading an absent cell yields exactly what
-reading a stored all-zero one would*. Three tests in `lib/hex_world/tests/ground.loft`, all
+reading a stored all-zero one would*. Three tests in `lib/hex_voxel/tests/ground.loft`, all
 seen red against the old reader.
 
 ⚠ **FOUR THINGS WERE RESTING ON IT**, and each is worth more than the fix:
