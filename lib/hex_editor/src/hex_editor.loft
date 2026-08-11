@@ -916,8 +916,21 @@ pub fn press(sess: EditSession, w: VoxelWorld, a: Author, key: text) -> Ack {
   // ⚠ `F` AND `G` LIKEWISE — one ring gesture, two materials. `script.mjs`'s own
   // comment on `G` is *"the same tool with wall material — a hex RING, not a
   // line"*, which is the distinction this shared call makes structural.
-  if key == "F" { return fence_ring(w, a, FENCE_MAT, FENCE_R, 0.0); }
-  if key == "G" { return fence_ring(w, a, WALL_MAT,  FENCE_R, 0.0); }
+  //
+  // ⚠ `a.au_y` WAS `0.0` HERE, AND IT PUT EVERY FENCE ON THE GROUND FLOOR — plan 22
+  // `R1b`. The reference is not decoration: `fence_ring` → `fence_disc` →
+  // `wall_set` → `edge_layer(wld, oq, orr, ref)`, so it picks WHICH LAYER the edge
+  // is stored on. An author standing on a deck at 16 with the ground at 4 rang the
+  // yard below, and the read-back agreed with the write because both named the
+  // ground. That is `R1a`'s field having a consumer.
+  //
+  // ⚠ AND THE SERVER'S `author_at(px, pz, 0.0, py)` FORCES THE YAW TO ZERO, which
+  // this does not — because the ring provably does not read it. `fence_ring` takes
+  // `px_to_hex(au_x, au_z)` and hands a cell to `fence_disc`; `trunk_of` does the
+  // same. Pinned by a test that rings twice at two yaws rather than by copying a
+  // zero whose meaning nobody could check.
+  if key == "F" { return ring_set(sess, w, a, FENCE_MAT, FENCE_R, a.au_y); }
+  if key == "G" { return ring_set(sess, w, a, WALL_MAT,  FENCE_R, a.au_y); }
   Ack { ak_ok: false, ak_why: PR_NONE }
 }
 

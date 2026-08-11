@@ -6,6 +6,7 @@
 // gesture is answered as such rather than as a refusal.
 use hex_editor;
 use hex_voxel;
+use hex_grid;
 
 fn ground(gw: VoxelWorld, half: integer) {
   for gq in 0 - half..half + 1 {
@@ -143,6 +144,177 @@ fn test_the_pose_carries_the_ground_under_it() {
          "the shelf pose says {high.au_y}, the store says "
          + "{(ground_h(w, 11, 11) as float) * w.w_unit}");
   assert(low.au_y == 0.0, "the flat pose says {low.au_y}");
+}
+
+// ── `R1b` — the ring, at the feet, and remembered as a trunk ────────────────
+//
+// A world with somewhere to stand ABOVE the ground: a storey over a disc wide
+// enough to hold a radius-`FENCE_R` ring AND the cells outside it that store half
+// of the ring's edges. Without the second radius the outer owners have nothing at
+// the author's level, `edge_layer` falls back to the ground, and the fixture would
+// answer the same at both references for a reason that has nothing to do with the
+// claim.
+fn upstairs() -> VoxelWorld {
+  uw = flat();
+  uwhy = "";
+  storey_add(uw, 6, 6, 1, FENCE_R + 2, uwhy);
+  uw
+}
+
+// The edges of material `mat` stored on the layer that `ref` names, counted the way
+// `fence.loft` counts them: a cell owns an edge exactly when `edge_owner` names it,
+// so asking all six directions of every cell would count every edge twice.
+fn ring_bytes(w: VoxelWorld, cq: integer, cr: integer, mat: integer, ref: float) -> integer {
+  rb = 0;
+  for rq in cq - FENCE_R - 2..cq + FENCE_R + 3 {
+    for rr in cr - FENCE_R - 2..cr + FENCE_R + 3 {
+      for rd in 0..6 {
+        (roq, ror, _rslot) = edge_owner(rq, rr, rd);
+        if roq == rq && ror == rr && wall_of(w, rq, rr, rd, ref) == mat {
+          rb = rb + 1;
+        }
+      }
+    }
+  }
+  rb
+}
+
+// ⚠ THE DIVERGENCE `R1b` CLOSES: `press` passed `0.0` as the ring's reference where
+// the server passes the author's own ground height. The reference is not decoration
+// — `fence_ring` → `fence_disc` → `wall_set` → `edge_layer(wld, oq, orr, ref)` — so
+// it picks WHICH LAYER the edge is stored on, and an author on a deck at 12 with the
+// ground at 0 fenced the yard below.
+fn test_pressing_the_fence_key_rings_at_the_authors_feet_and_not_on_the_ground() {
+  by_key  = upstairs();
+  by_hand = upstairs();
+  ks = EditSession {};
+  (ax, az) = hex_to_px(6, 6);
+  // ⚠ `author_at`, NOT `author_on`. The pose is a DECK's, and `author_on` reads the
+  // ground cell — which is the yard. This is precisely the case where the driver
+  // knows better than the store, and why the height is the pose's to carry.
+  up = author_at(ax, az, 0.0, (STOREY_H as float) * by_key.w_unit);
+  assert(edge_layer(by_key, 6, 6, up.au_y) != edge_layer(by_key, 6, 6, 0.0),
+         "the fixture puts both references on layer {edge_layer(by_key, 6, 6, 0.0)} "
+         + "— this test cannot see the difference it exists for");
+
+  ka = press(ks, by_key, up, "F");
+  ha = fence_ring(by_hand, up, FENCE_MAT, FENCE_R, up.au_y);
+  assert(ka.ak_ok && ha.ak_ok, "the fixture refused the ring: {ka.ak_why} / {ha.ak_why}");
+  assert(ka.ak_n == ha.ak_n, "{ka.ak_n} edges by key, {ha.ak_n} by hand");
+  assert(by_key.w_tau == by_hand.w_tau,
+         "pressing F did {by_key.w_tau} writes, calling fence_ring did "
+         + "{by_hand.w_tau} — the key means something else now");
+
+  // ⚠ AND NEITHER OF THOSE CAN SEE THE DEFECT, which is why the layer is asked
+  // directly. `ak_n` comes from `fence_count`, which reads back at the SAME
+  // reference it wrote at — so a ring laid entirely on the wrong layer counts 42
+  // and agrees with itself. The edit clock is blind for the same reason: the same
+  // number of writes each changed something, whichever layer they landed on.
+  want = 6 * (2 * FENCE_R + 1);
+  assert(ring_bytes(by_key, 6, 6, FENCE_MAT, up.au_y) == want,
+         "the ring is not on the author's own layer: {ring_bytes(by_key, 6, 6, FENCE_MAT, up.au_y)} "
+         + "of {want} edges there");
+  assert(ring_bytes(by_key, 6, 6, FENCE_MAT, 0.0) == 0,
+         "{ring_bytes(by_key, 6, 6, FENCE_MAT, 0.0)} fence edges are in the yard "
+         + "below — this is the `0.0` reference `press` used to pass");
+}
+
+// ⚠ THE SERVER FORCES THE YAW TO ZERO (`author_at(px, pz, 0.0, py)`) AND `press`
+// DOES NOT — so the two agree only if a ring cannot read a yaw. Measured rather
+// than assumed, because the alternative is copying a zero whose meaning nobody can
+// check: `fence_ring` takes `px_to_hex(au_x, au_z)` and hands a CELL to
+// `fence_disc`, and `trunk_of` does the same.
+fn test_the_ring_does_not_read_the_authors_yaw() {
+  facing = upstairs();
+  turned = upstairs();
+  fs = EditSession {};
+  ts = EditSession {};
+  (ax, az) = hex_to_px(6, 6);
+  up = (STOREY_H as float) * facing.w_unit;
+  fa = press(fs, facing, author_at(ax, az, 0.0, up), "G");
+  ta = press(ts, turned, author_at(ax, az, 2.1, up), "G");
+  assert(fa.ak_ok && ta.ak_ok, "the fixture refused a ring");
+  assert(facing.w_tau == turned.w_tau,
+         "the same ring at two yaws did {facing.w_tau} and {turned.w_tau} writes");
+  // ⚠ AND THE COUNT IS PINNED TO THE GEOMETRY, not just to the other world. Two
+  // rings that both landed nowhere would agree at zero, which is a settle on an
+  // empty block wearing an equality's clothes.
+  assert(ring_bytes(facing, 6, 6, WALL_MAT, up) == 6 * (2 * FENCE_R + 1),
+         "the facing ring left {ring_bytes(facing, 6, 6, WALL_MAT, up)} of "
+         + "{6 * (2 * FENCE_R + 1)} edges — there is nothing here to compare");
+  assert(ring_bytes(facing, 6, 6, WALL_MAT, up) == ring_bytes(turned, 6, 6, WALL_MAT, up),
+         "and left different edges: {ring_bytes(facing, 6, 6, WALL_MAT, up)} against "
+         + "{ring_bytes(turned, 6, 6, WALL_MAT, up)}");
+  assert(fs.es_trunk.tk_x == ts.es_trunk.tk_x && fs.es_trunk.tk_z == ts.es_trunk.tk_z
+         && fs.es_trunk.tk_r == ts.es_trunk.tk_r,
+         "the trunk moved with the yaw: ({fs.es_trunk.tk_x},{fs.es_trunk.tk_z}) r "
+         + "{fs.es_trunk.tk_r} against ({ts.es_trunk.tk_x},{ts.es_trunk.tk_z}) r "
+         + "{ts.es_trunk.tk_r}");
+}
+
+// ⚠ A RING OF WALL IS A CYLINDER AND A CYLINDER IS A HOST, but it is stored as
+// EDGES — it has no ends, so nothing `annex_host` looks for would find it. The
+// server remembered the ring beside its socket; `press` remembered nothing at all,
+// so a page that rang a tree could never hang a balcony on it and there was no
+// symptom short of a screenshot.
+fn test_a_ring_records_the_trunk_a_balcony_hangs_on() {
+  w = upstairs();
+  sess = EditSession {};
+  (cx, cz) = hex_to_px(6, 6);
+  // ⚠ OFF THE CELL'S CENTRE ON PURPOSE. `fence_ring` rings the DISC the author
+  // stands in, so the cylinder is the cell's, not the author's — and standing
+  // exactly on the centre is the fixture that cannot tell those two apart. Half a
+  // hex is 0.87 world units, so (0.4, 0.3) is inside it and the precondition below
+  // says so rather than trusting the arithmetic.
+  ax = cx + 0.4;
+  az = cz + 0.3;
+  (pq, pr) = px_to_hex(ax, az);
+  assert(pq == 6 && pr == 6,
+         "the offset pose left the cell — it stands in ({pq},{pr}), not (6,6)");
+  up = author_at(ax, az, 0.0, (STOREY_H as float) * w.w_unit);
+  assert(!sess.es_trunk.tk_live, "the fixture starts with a trunk already standing");
+
+  ack = press(sess, w, up, "G");
+  assert(ack.ak_ok, "the fixture refused the ring: {ack.ak_why}");
+  assert(sess.es_trunk.tk_live,
+         "pressing G left no trunk — `K` has nothing to attach to, silently");
+
+  // The server's own arithmetic, spelled out: the ring is centred on the CELL the
+  // author stands in, and its radius is in world units.
+  (wx, wz) = hex_to_px(pq, pr);
+  assert(wx != ax,
+         "the cell's centre and the author's own x are the same number ({wx}) — a "
+         + "trunk taken from the pose would pass this test");
+  assert(sess.es_trunk.tk_x == wx && sess.es_trunk.tk_z == wz,
+         "the trunk is at ({sess.es_trunk.tk_x},{sess.es_trunk.tk_z}) and the cell "
+         + "the author rang is at ({wx},{wz})");
+  assert(sess.es_trunk.tk_r == (FENCE_R as float) * hex_grid::HEX_LEN,
+         "the trunk's radius is {sess.es_trunk.tk_r} and {FENCE_R} hexes is "
+         + "{(FENCE_R as float) * hex_grid::HEX_LEN} world units");
+
+  // ⚠ AND THE CONSUMER, because a recorded field nobody reads is this tree's
+  // commonest defect. Standing just outside the ring with no wall anywhere, `K`
+  // must find a ROUND host — which is the whole of "a balcony on a tree".
+  host = annex_host(sess.es_runs, ax + sess.es_trunk.tk_r + 1.0, az, 0.0, sess.es_trunk);
+  assert(host.ah_ok && host.ah_round,
+         "annex_host did not read the ring as a host (ok {host.ah_ok}, round "
+         + "{host.ah_round}) — this is the balcony refused for being wider than a "
+         + "cottage across the field");
+}
+
+// ⚠ A REFUSED RING LEAVES NO CYLINDER, and this is a decision rather than a
+// transcription of what the server did. `editor_server` recorded the trunk from the
+// PAYLOAD in its message loop, after `do_fence` had already returned early on the
+// refusal — so `23:9,2` left a phantom trunk of radius 2 where no edge was written.
+fn test_a_refused_ring_records_no_trunk() {
+  w = upstairs();
+  sess = EditSession {};
+  session_at(sess, w, 0.0, 0.0, 0.0);
+  ack = session_fence(sess, w, 9, 2, 0.0);          // 9 is not a wall material
+  assert(!ack.ak_ok, "material 9 was accepted");
+  assert(!sess.es_trunk.tk_live,
+         "a refused ring left a trunk of radius {sess.es_trunk.tk_r} standing at "
+         + "({sess.es_trunk.tk_x},{sess.es_trunk.tk_z})");
 }
 
 // ⚠ THE WORLD'S OWN UNIT, NOT A GLOBAL 0.25. A part world may be authored at

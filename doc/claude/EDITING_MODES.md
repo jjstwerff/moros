@@ -245,7 +245,7 @@ make them much harder to see.
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
 | **`R1a` the pose carries the feet** — `Author` gains the ground height under it, supplied by the driver; `author_at` grows a parameter at **51 sites** | the current 3-field `Author`, until every site is moved | ⚠ a driver that forgets it passes 0.0 and every ring lands on the wrong layer — so the default must be **refused, not defaulted** |
-| **`R1b` ring** — `press`'s `F`/`G` use the pose's height as the reference, yaw forced to 0.0, and record the **trunk** the server remembers for annexes | the explicit server-equivalent call, in the same test | a ring at a different reference height leaves different cells; a missing trunk means `K` cannot find the cylinder. **Both are silent today** |
+| ✅ **`R1b` ring** — `press`'s `F`/`G` use the pose's height as the reference and record the **trunk** the server remembers for annexes | the explicit server-equivalent call, in the same test | a ring at a different reference height leaves different cells; a missing trunk means `K` cannot find the cylinder. **Both were silent** — see below |
 | **`R2` opening** — ⚠ **BLOCKED, and that is the finding**: `O`/`P` cannot be reconciled until a **selection** exists, because the server's axis is a *profile* and `press`'s is a *material*. There is no correct flat answer | — | — |
 | **`R3`** — delete `press`'s `O`/`P` branches and answer `PR_NONE` for them, until `R2` can land | `editor_run`'s scripts, which use `O`/`P` | ⚠ **A DELIBERATE REGRESSION, and the honest one**: a key that does the *wrong* thing silently is worse than a key that says *"not yet"*. `editor_run` will print `no gesture for key O` and a reader will know why |
 
@@ -280,6 +280,40 @@ constant on a part world is already wrong.
 one through `press`, in two worlds, and asserts equal `w_tau` **and** equal trunk state. That
 shape — *two worlds, one assertion of equality* — is what every reconciliation step below reuses,
 and it is the only thing that makes "make X match Y" checkable rather than plausible.
+
+### ⚠ And `R1b` ran it — the template's own instrument was BLIND, both halves of it
+
+**Built 2026-08-11.** The row said *equal `w_tau` and equal trunk state*, and **`w_tau` cannot
+see the defect it was chosen for.** Two rings of the same radius write the same number of edges
+whichever LAYER they land on, and each write changes something, so the edit clock is identical
+for a fence on the deck and a fence in the yard below it. Neither can `ak_n`: it comes from
+`fence_count`, which reads the world back **at the same reference it wrote at** — so a ring laid
+entirely on the wrong layer counts a perfect 42 and agrees with itself. That is `wall_of`'s own
+recorded warning arriving one caller up.
+
+> **The instrument that can see it is `edge_layer` asked at the OTHER reference** — count the
+> fence bytes on the ground while the author stands upstairs. 42 there is the bug; 0 is correct.
+
+⚠ **AND THE FIXTURE HAS TO BE ABLE TO TELL THE TWO APART**, which a flat world cannot: with one
+layer, `0.0` and the author's height name the same one and the test passes with the defect intact.
+It asserts `edge_layer(w, 6, 6, au_y) != edge_layer(w, 6, 6, 0.0)` **before** it presses anything.
+The same trap one scale down: the author stands **off the cell's centre** in the trunk test,
+because a pose sitting exactly on `hex_to_px(6,6)` cannot distinguish *the cell's centre* from
+*the author's own position*, and the sabotage that takes the pose's coordinates passes.
+
+⚠ **"YAW FORCED TO 0.0" WAS A DIFFERENCE THAT IS NOT ONE.** The server builds
+`author_at(px, pz, 0.0, py)` and `press` passes the real pose through — and a ring provably reads
+no yaw (`fence_ring` takes `px_to_hex(au_x, au_z)` and hands a **cell** to `fence_disc`;
+`trunk_of` does the same). So it is pinned by a test that rings twice at two yaws rather than by
+copying a zero whose meaning nobody could check.
+
+⚠ **AND THE TRUNK WAS TWO BUGS, NOT ONE MISSING FIELD.** `editor_server` rang the disc in
+`do_fence` and remembered the cylinder **eleven hundred lines away** in its message loop, from the
+PAYLOAD rather than from what was written, and **after `do_fence` had already returned on a
+refusal** — so `23:9,2` (not a wall material) left a phantom trunk of radius 2 standing where no
+edge had been laid, and a payload carrying no radius at all recorded nothing for a ring it did
+lay. One call rings and records now (`ring_set`), and the four locals are the session's ninth
+registry — which is also what puts it under part mode's *a part has no ring of its own*.
 
 ## Phase 2 — the selection, because `R2` cannot move without it
 

@@ -82,6 +82,13 @@ pub struct EditSession {
   // machine moved. A run is two presses; what sits between them belongs with the
   // rest of the scene rather than beside the socket that delivered the keys.
   es_draft:   WallDraft = WallDraft {},
+  // ⚠ THE LAST RING, AND IT IS SCENE STATE FOR THE SAME REASON THE RUNS ARE —
+  // plan 22 `R1b`. A ring of wall is a cylinder and a cylinder is a host, but it is
+  // stored as EDGES rather than as a run (correctly: it has no ends), so nothing
+  // `annex_host` looks for would find it. This is the ninth registry, and it was
+  // four locals beside the socket until `R1b` — which meant `K` could only mean
+  // "on that trunk" for the one driver that happened to keep them.
+  es_trunk:   Trunk = Trunk {},
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -149,8 +156,33 @@ pub fn session_raise(s: EditSession, w: VoxelWorld, dir: integer) -> Ack {
 // in `gesture`, and only because they thread a registry a caller would otherwise have
 // to know about.
 
+// A ring, and the trunk it leaves behind — plan 22 `R1b`, and the one place both.
+//
+// ⚠ THE TWO WERE SEPARATE AND THAT IS THE DEFECT THIS CLOSES. `editor_server` rang
+// the disc in `do_fence` and remembered the cylinder eleven hundred lines away in
+// its message loop, so a second driver could ring perfectly and leave `K` nothing to
+// attach to — which is exactly what `press` did. One call does both, and a driver
+// that only wanted the ring cannot get half of it.
+//
+// ⚠ A REFUSED RING RECORDS NOTHING, and that is a decision rather than a
+// transcription. The server's loop recorded the cylinder from the PAYLOAD, after
+// `do_fence` had already returned early on a refusal — so `23:9,2` (not a wall
+// material) left a phantom trunk of radius 2 standing where no edge had been
+// written, and the next `K` would have hung a balcony on it.
+//
+// ⚠ THE AUTHOR IS EXPLICIT, NOT `s.es_author`. The pose is the DRIVER's — a server
+// writes it from its walker and knows the interpolated height under the feet, a test
+// teleports — so the ring takes the pose it is given, exactly as `press` does.
+// `session_fence` below is the same call for a driver whose pose IS the session's.
+pub fn ring_set(s: EditSession, w: VoxelWorld, a: Author, mat: integer, rad: integer,
+                ref: float) -> Ack {
+  rs_ack = fence_ring(w, a, mat, rad, ref);
+  if rs_ack.ak_ok { s.es_trunk = trunk_of(a, rad); }
+  rs_ack
+}
+
 pub fn session_fence(s: EditSession, w: VoxelWorld, mat: integer, rad: integer, ref: float) -> Ack {
-  fence_ring(w, s.es_author, mat, rad, ref)
+  ring_set(s, w, s.es_author, mat, rad, ref)
 }
 
 pub fn session_open(s: EditSession, w: VoxelWorld, kind: integer, nedges: integer) -> Ack {

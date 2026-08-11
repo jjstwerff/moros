@@ -33,8 +33,27 @@ serves**, differing only in where a key press goes.
 |---|---|
 | the invariant | **the page is the editor with the AUTHORITY LOCAL instead of REMOTE** — not the editor minus a server. A server is coming back for scripts, multi-player and debugging, so this is a MODE, never a second renderer |
 | ✅ `W1` | a world is BYTES — `world_to_bytes`/`world_from_bytes`, save and load are wrappers. `make parts` byte-identical, and `world_load` is **1.6× faster** |
+| ✅ `P2` | `host_output` → our JS → `loftPush` round-trips inside a `--html` page. `W5` needs no loft change |
 | ◐ `W4` | `hex_editor::press` — what a key means, in one place instead of **four**. `editor_run` and the server's `MSG_HOUSE` wired; `editor_client` and `script.mjs` still carry theirs |
-| ⏭ next | **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? The last probe that can reshape the work |
+| ✅ `R1a`/`R1b` | **the ring is reconciled.** The pose carries the ground under the feet (`au_y`), `press` rings at it instead of at `0.0`, and the ring's TRUNK is `sess.es_trunk` — the ninth registry — instead of four locals beside the socket |
+| ⏭ next | **`R3`** — `press` answers `PR_NONE` for `O`/`P`, a deliberate regression, because `R2` cannot be reconciled without a selection |
+
+⚠ **`R1b` FOUND ITS OWN ROW'S INSTRUMENT BLIND, TWICE.** The plan said *equal `w_tau` and equal
+trunk state*, and **`w_tau` cannot see a fence on the wrong layer**: the same edges, the same
+number of writes, each changing something. Nor can the gesture's own `ak_n` — `fence_count` reads
+the world back **at the reference it wrote at**, so a ring laid entirely in the yard below counts
+a perfect 42 and agrees with itself. The instrument is `edge_layer` asked at the *other*
+reference. ⚠ **And a flat fixture passes with the defect intact**, so the test asserts the two
+references name different layers before it presses anything.
+
+⚠ **THE SERVER'S TRUNK WAS TWO BUGS AND THEY BOTH CAME FROM THE DISTANCE.** The ring was laid in
+`do_fence` and remembered **eleven hundred lines away** in the message loop, from the PAYLOAD and
+*after* the refusal path had returned — so `23:9,2` left a phantom cylinder where no edge was
+written, and `23:3` with no radius recorded nothing for a ring it did lay. One call does both now.
+⚠ **NO GATE DRIVES `K`**, so the old branch was put back beside the new one and one script driven
+through both: the working path (`G` then `K`) is **identical**, and each bug shows on its own row.
+That control is also the only thing that proves `sess` survives **two** parameter hops — a struct
+that copied anywhere along there is loft#774's shape, and the library tests cross only one.
 
 ⚠ **THE CAMERA LIBRARY IS DESIGNED AND DELIBERATELY WAITING.** `hex_cam` has three consumers
 (this client, the server, and **crawler**) and a finished design in

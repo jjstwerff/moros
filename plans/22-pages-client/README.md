@@ -10,9 +10,10 @@
 consumers and a finished design and it still waits — **phases `C1`–`C4` do not start until `B3`
 can be opened and driven.**
 
-**Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), and `P2` is
+**Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), `R1a`/`R1b`
+(the ring reconciled — the pose carries the feet, and the trunk is the session's), and `P2` is
 **run and green** — so `W5` is buildable today with no loft change.
-**Next:** `R1b` — reconcile the ring verb. The full step decomposition is
+**Next:** `R3` — `press` answers `PR_NONE` for `O`/`P`. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -73,8 +74,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
 | ✅ **`R1a`** — the pose carries the ground under the feet | S | **DONE.** `make lib-test` rc=0 both backends (hex_editor 398→400) · `make parts` byte-identical · the house script still `τ 3909` · two sabotages seen red | ✅ Done |
-| **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | two worlds, one ring each, equal `w_tau` **and** equal trunk state | ⏭ **Next** |
-| **`R3`** — `press` answers `PR_NONE` for `O`/`P` until a selection exists | XS | ⚠ **a deliberate regression** — `editor_run` says *"no gesture for key O"* rather than doing the wrong thing silently. The wire path is untouched | Blocked on `R1` |
+| ✅ **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | **DONE.** 5 sabotages seen red · `make lib-test` rc=0 both backends (hex_editor 400→404) · `make parts` byte-identical · `make gate` 47 PASS / 0 FAIL | ✅ Done |
+| **`R3`** — `press` answers `PR_NONE` for `O`/`P` until a selection exists | XS | ⚠ **a deliberate regression** — `editor_run` says *"no gesture for key O"* rather than doing the wrong thing silently. The wire path is untouched | ⏭ **Next** |
 | **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds** | Blocked on `R3` |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
@@ -150,6 +151,59 @@ sabotaging the push alone left it reporting **2 answers where none were delivere
 instrument agreeing with a broken first. It records the pushed *values* now, which is why the two
 failure modes are distinguishable: no-push reports `pushed: []` (our JS ran, delivered nothing),
 no-injection reports `null` (our JS never ran).
+
+## What `R1b` turned up (2026-08-11)
+
+**The row's own instrument was blind, and so was the gesture's.** It specified *equal `w_tau`
+and equal trunk state*; `w_tau` **cannot see this defect at all** — two rings of the same radius
+write the same number of edges whichever layer they land on, and each write changes something.
+Nor can `ak_n`: it comes from `fence_count`, which reads the world back **at the same reference
+it wrote at**, so a ring laid entirely in the yard below counts a perfect 42 and agrees with
+itself. `wall_of`'s own comment records that trap; it arrived one caller up.
+
+> The instrument is `edge_layer` asked at the **other** reference: the fence bytes on the ground
+> while the author stands upstairs. 42 there is the bug, 0 is correct.
+
+⚠ **AND A FLAT FIXTURE PASSES WITH THE DEFECT INTACT** — one layer, and `0.0` and the author's
+height name the same one. The test asserts the two references land on **different layers** before
+it presses anything. Same trap one scale down: the pose stands **off the cell's centre**, because
+an author sitting exactly on `hex_to_px(6,6)` cannot tell *the cell's centre* from *the author's
+own position*, and the sabotage that takes the pose's coordinates passes.
+
+⚠ **"YAW FORCED TO 0.0" IS A DIFFERENCE THAT IS NOT ONE.** The server builds
+`author_at(px, pz, 0.0, py)`; `press` passes the real pose. A ring provably reads no yaw —
+`fence_ring` takes `px_to_hex(au_x, au_z)` and hands a **cell** to `fence_disc`, and `trunk_of`
+does the same — so it is pinned by a test that rings twice at two yaws, rather than by copying a
+zero whose meaning nobody could check.
+
+⚠ **THE TRUNK WAS TWO SERVER BUGS, NOT ONE MISSING FIELD.** `editor_server` rang the disc in
+`do_fence` and remembered the cylinder **eleven hundred lines away** in its message loop — from
+the PAYLOAD rather than from what was written, and **after `do_fence` had already returned on a
+refusal**. So `23:9,2` left a phantom trunk of radius 2 where no edge was laid, and `23:3` with
+no radius recorded nothing for a ring it did lay. One call rings and records now, and the four
+locals became the session's **ninth registry** — which also puts the ring under part mode's *a
+part has no ring of its own*, where it never was.
+
+⚠ **AND BOTH WERE MEASURED AGAINST THE OLD SERVER RATHER THAN REASONED.** No gate drives `K`
+at all — the trunk's only consumer is `MSG_ANNEX` and its only script is `annex.keys`, which
+takes photographs — so the old branch was put back verbatim beside the new one and the same
+three-case script driven through both:
+
+| the script does | the OLD server | the NEW one |
+|---|---|---|
+| `G`, then `K` beside it | `annex kind 1 at (6,4)` | **identical** — the working path did not move |
+| `23:1` (a ring, no radius), then `K` | *"nothing to attach to"* — for a ring it had just laid | `annex kind 1 at (-4,-8)` |
+| `23:9,2` (refused), then `K` | **`annex kind 1 at (13,13)`** — a balcony hung on a phantom | refused, correctly |
+
+⚠ **THE FIRST ROW IS THE ONE THAT MATTERED MOST**, and not for the reason the table suggests: it
+is the only check that `sess` is genuinely written through **two** parameter hops (loop →
+`do_fence` → `ring_set`). A struct that copied instead of aliasing anywhere along there would
+have left the trunk in a dead session — loft#774's exact shape — and every test above would
+still pass, because the library tests only cross one hop.
+
+⚠ **AND IT PAYS ONE `world_to_hex` SITE.** `editor_server.loft` is 29 → **28**, because the
+deleted branch re-derived the ring's centre through `moros_render` that `fence_ring` already had.
+Plan 19 `L6.3a`'s bill, one line smaller for free.
 
 ## What `W4` turned up so far
 

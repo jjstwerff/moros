@@ -1521,11 +1521,17 @@ fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: VoxelWorld,
   stand_clear(rt, x0, z0, sx + tx * b2, sz + tz * b2)
 }
 
-// The fence ring is `hex_editor::fence_ring` now — what stays here is what a
-// SERVER owes: parsing the payload, telling the author, and marking the chunks the
-// ring touched. The Ack carries the cell so this does not re-derive it.
+// The fence ring is `hex_editor::ring_set` now — what stays here is what a SERVER
+// owes: parsing the payload, telling the author, and marking the chunks the ring
+// touched. The Ack carries the cell so this does not re-derive it.
+//
+// ⚠ AND THE TRUNK COMES WITH IT — plan 22 `R1b`. Remembering the cylinder used to
+// happen eleven hundred lines away in the `MSG_FENCE` branch, from the PAYLOAD
+// rather than from what was written, and after this function had already returned
+// on a refusal — so `23:9,2` left a phantom trunk standing where no edge was. One
+// call rings and records, and `press` reaches the same one.
 fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
-            py: float, wld: &VoxelWorld, dirty: DirtySet) {
+            py: float, wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
   fci = payload.find(",");
   fmat = FENCE_MAT;
   frad = hex_editor::FENCE_R;
@@ -1536,7 +1542,7 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
     fmat = payload as integer ?? FENCE_MAT;
   }
   fa = hex_editor::author_at(px, pz, 0.0, py);
-  fack = hex_editor::fence_ring(wld, fa, fmat, frad, py);
+  fack = hex_editor::ring_set(sess, wld, fa, fmat, frad, py);
   if !fack.ak_ok {
     srv.send_to(cid, "S:{say_refused(\"fence\", fack.ak_why)}");
     println("editor: fence refused — {fack.ak_why}");
@@ -5567,11 +5573,11 @@ fn main() {
   // the same rule the store keeps: one authority, everything else derived.
   // The storeys' own floors and the holes through them — a slab is the wall band
   // rotated, so these are `sess.es_runs` and `sess.es_open` one axis over.
-  // The last ring the author made — a trunk, a tower, a well. See `MSG_ANNEX`.
-  ring_live = false;
-  ring_x = 0.0;
-  ring_z = 0.0;
-  ring_r = 0.0;
+  // ⚠ THE LAST RING — a trunk, a tower, a well — IS `sess.es_trunk` NOW, plan 22
+  // `R1b`. It was four locals here, which meant a driver that was not this file
+  // could ring a tree perfectly and leave `K` nothing to attach to. It is the ninth
+  // registry and it travels with the other eight, so part mode holds it aside with
+  // them: a part has no ring of its own, exactly as it has no runs or roofs.
 
   // ── PART MODE — plan 17 `A7.3a` ────────────────────────────────────────────
   //
@@ -6653,6 +6659,13 @@ fn main() {
               sess.es_props = hex_editor::Props { items: [] };
               sess.es_slabs = hex_editor::Slabs { items: [] };
               sess.es_holes = hex_editor::Holes { items: [] };
+              // ⚠ AND THE RING — plan 22 `R1b`, and the same argument a third time.
+              // It was four locals beside the socket, so part mode did not touch it
+              // and the world's tree stayed standing inside every part: `K` would
+              // have hung a balcony on a cylinder in another world. Held aside with
+              // the rest now (`held_sess = sess` copies the whole struct) and
+              // emptied here, exactly as the eight above and the cart below are.
+              sess.es_trunk = hex_editor::Trunk {};
               in_part = true;
               part_name = ev.payload;
               disp_tau = -1;              // the same reason, the other way round
@@ -7348,20 +7361,21 @@ fn main() {
           }
           srv.send_to(ev.cid, "S:{say_walls(wq, wr, walls_text(wld, wq, wr))}");
         } else if ev.msg_id == MSG_FENCE {
-          do_fence(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
           // ⚠ A RING OF WALL IS A CYLINDER, AND A CYLINDER IS A HOST. The ring is
           // stored as EDGES, not as a run — correctly, it has no ends — so nothing
           // an annex looks for would find it. Remembering where the author just made
           // one is what lets `K` mean "on that trunk"; the alternative is a `Trunk`
           // primitive, which would be a fourth thing that a tree, a tower and a well
           // all have to be separately.
-          rfi = ev.payload.find(",");
-          if rfi != null {
-            ring_r = (ev.payload[rfi + 1..] as integer ?? 0) as float * hex_grid::HEX_LEN;
-            rhx = world_to_hex(px, pz);
-            (ring_x, ring_z) = hex_to_px(rhx.ha_q, rhx.ha_r);
-            ring_live = true;
-          }
+          //
+          // ⚠ AND THE REMEMBERING IS INSIDE THE GESTURE NOW — plan 22 `R1b`. It was
+          // eight lines here, re-deriving the radius from the payload and the centre
+          // from `world_to_hex`, which is one more copy of a fact the ring already
+          // had. Two things came out of moving it: a REFUSED ring no longer leaves a
+          // phantom trunk (this ran after `do_fence` had returned on the refusal),
+          // and a payload with no radius records the ring it actually laid rather
+          // than none at all.
+          do_fence(srv, ev.cid, ev.payload, px, pz, py, wld, dirty, sess);
         } else if ev.msg_id == MSG_EDGE {
           do_edge(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
         } else if ev.msg_id == MSG_TRACE {
@@ -7662,8 +7676,7 @@ fn main() {
                    } else {
                      hex_editor::annex_build(
                        hex_editor::annex_host(sess.es_runs, px, pz, yaw,
-                         hex_editor::Trunk { tk_live: ring_live, tk_x: ring_x,
-                                             tk_z: ring_z, tk_r: ring_r }),
+                                              sess.es_trunk),
                        akind, hex_draw::BAND_SIDES, HEIGHT_SCALE)
                    };
           if !abuilt.ab_ok {

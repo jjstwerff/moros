@@ -5390,6 +5390,25 @@ pub struct Trunk {
   tk_r:    float = 0.0,
 }
 
+// The ring the author has just made, read back as the host an annex hangs on —
+// plan 22 `R1b`.
+//
+// ⚠ THE CENTRE IS THE HEX'S, NOT THE AUTHOR'S. `fence_ring` rings *the disc the
+// author stands in*, so the cylinder is centred on that cell however far across it
+// the author happens to be standing. Taking the author's own `(x, z)` would put the
+// axis off-centre by up to half a hex and lean every balcony hung on it.
+//
+// ⚠ AND THE RADIUS IS IN WORLD UNITS. `rad` is hexes — the count `23:` carries and
+// `fence_ring` takes — while `annex_host` measures distances against `hex_way`
+// tracks, so the conversion belongs here rather than at each of two call sites that
+// could pick different constants.
+pub fn trunk_of(a: Author, rad: integer) -> Trunk {
+  (tkq, tkr) = px_to_hex(a.au_x, a.au_z);
+  (tkx, tkz) = hex_to_px(tkq, tkr);
+  Trunk { tk_live: true, tk_x: tkx, tk_z: tkz,
+          tk_r: (rad as float) * hex_grid::HEX_LEN }
+}
+
 pub struct AnnexHost {
   ah_ok:    boolean,
   ah_round: boolean = false,   // a trunk rather than a straight run
