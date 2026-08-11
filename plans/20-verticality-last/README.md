@@ -502,14 +502,27 @@ never were.
    make it do. `tests/road_debt.loft` pins the rest, and sabotaging the datum back to the
    natural ground takes it red at *258 halfway, 344 at the end*.
 
-   ⚠ **Two things left open, both measured**: there are still **two balances with two
-   datums** (`spoil_place` per settle, `road_balance` per run) and the first can lift a run
-   5 units above its asked grade for the stroke it takes the second to correct — removing
-   `spoil_place` leaves 383 tests passing, so nothing depends on it and one balance is the
-   right shape; and **a rising walk cannot return its spoil**, because the `CAVE_HEAD` cap
-   refuses to bury the road under its own roof (6 per hex rising: cut 1221, fill 38). The
-   profile is the physically right one — the plate floated 117 units *above* the hill — but
-   `A8`'s balance does not hold there.
+   ✅ **AND IT IS ONE BALANCE AND ONE DATUM NOW.** `spoil_place` is deleted — 117 lines —
+   and `slope_settle` only settles. It used to put the spoil back against the profile it
+   found on entry, which is right for one settle and wrong for a gesture that makes one per
+   stroke. `A8`'s own argument moved onto `road_balance` rather than going with it.
+
+   | | two balances | **one** |
+   |---|---|---|
+   | net first goes negative at | stroke **2** | stroke **5** |
+   | the part above its asked grade plateaus at | 117 | **93** |
+   | falling 6 / 3 / 1 per hex | 845 / 338 / 0 | **unchanged** |
+
+   ⚠ **The transient did not go away, only later and smaller, so it is not claimed.** A
+   uniform shift lifts cells already at their grade along with the cut ones. The tests
+   assert what is true — a *finished* run never stands above the grade it was asked for —
+   and say so in their own comment; writing the stronger row and watching it fail is what
+   established that.
+
+   ⚠ **One thing still open**: **a rising walk cannot return its spoil**, because the
+   `CAVE_HEAD` cap refuses to bury the road under its own roof (6 per hex rising: cut 1221,
+   fill 38). The profile is the physically right one — the plate floated 117 units *above*
+   the hill — but `A8`'s balance does not hold there.
 
    ⚠ **What is still open is the STORED half**: deriving an axis from cells alone, for a
    rule that runs when nobody is walking. Nothing above touches it.

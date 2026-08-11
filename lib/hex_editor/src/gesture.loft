@@ -2798,22 +2798,12 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
   mq: vector<integer> = [];
   mr: vector<integer> = [];
   seen = run_walk(w, cq, cr, mat, mq, mr);
-  // ⚠ THE PROFILE THIS STARTS FROM IS THE DATUM — plan 20 `A8`. Spoil is conserved
-  // against the ground the road REPLACED, and `road_lay` overwrote exactly that one
-  // stroke at a time, so the natural profile is gone by the time this runs.
-  //
-  // ⚠ READING IT BACK FROM BESIDE THE ROAD WAS TRIED, MEASURED AND DOES NOT WORK
-  // (`probe/house/spoil.loft`). A road is `2 * ROAD_HALF + 1` cells wide, so a cell
-  // in the middle of the strip has NO neighbour that is not also road — the estimate
-  // falls back to the road's own height and scores worst error **36** on a 3-per-hex
-  // fall line, which is exactly what the control (the road's own height) scores. It
-  // is exact on the flat and along a contour, and useless where it is needed.
-  //
-  // So the datum is what this function already has in hand. Cut is what it lowers,
-  // fill is what it puts back, and both are measured against one profile that cannot
-  // disagree with the store because it IS the store, a moment earlier.
-  was: vector<integer> = [];
-  for wi in 0..len(mq) { was += [run_h(w, mq[wi] ?? 0, mr[wi] ?? 0, mat)]; }
+  // ⚠ THIS SETTLES AND DOES NOT BALANCE — plan 20, open question 9. It used to end by
+  // calling `spoil_place`, which put the spoil back against the profile it found on
+  // entry. That datum is right for ONE settle and wrong for a gesture that makes one
+  // per stroke: it already contains whatever the balance raised last time, so earth
+  // returned once is counted and returned again. `road_balance` owns the fill now, and
+  // owns the only datum — the grade the author asked for.
   moved = false;
   for _ in 0..SLOPE_PASSES {
     moved = false;
@@ -2848,7 +2838,6 @@ pub fn slope_settle(w: World, cq: integer, cr: integer,
     }
     if !moved { break; }
   }
-  spoil_place(w, mq, mr, was, mat, clamped, residual);
   // ── A SHELF THAT HAS BEEN SQUEEZED IS NO LONGER ONE — plan 20 `A9` ────────
   //
   // ⚠ `CAVE_HEAD` IS A PROMISE ABOUT THE FUTURE, NOT ONLY ABOUT THE MOMENT OF
@@ -2928,123 +2917,6 @@ pub fn stroke_over_limit(w: World, cq: integer, cr: integer, rad: integer) -> bo
     }
   }
   false
-}
-
-// ── THE SPOIL GOES BACK — plan 20 `A8` ──────────────────────────────────────
-//
-// > *"The builders had a lot of materials over after cutting into the hill, using it
-// > to heighten the lower side a bit, and often using stones to create a wall below
-// > the road too."* … *"So most of it will still be cutting into the hill."*
-//
-// The pass above only ever LOWERS, which is what a cutting is and is half the
-// answer. Measured (`probe/house/roadcost.loft`), the other half: a road walked DOWN
-// a 3-per-hex ramp satisfies its limit by cutting its top end **80 units — 20
-// metres — below the natural ground.** You cannot cut your way downhill.
-//
-// ⚠ THE WHOLE RUN SHIFTS BY THE MEAN, AND THAT IS WHY THE LIMIT SURVIVES. Every
-// height moves by the same amount, so every DIFFERENCE is unchanged — the profile
-// the relaxation just made legal is still legal, by construction rather than by a
-// second relaxation that could fight the first. There is no iteration here and
-// nothing to converge.
-//
-// ⚠ AND CUT EQUALS FILL EXACTLY, ALSO BY CONSTRUCTION. After a shift of `V / n` the
-// displacement of cell `i` is `(was_i - h_i) - V/n`, and those sum to `V - n(V/n)`,
-// which is zero up to the integer division. That remainder is the *stated tolerance*
-// the plan asks for — at most one unit a cell — and it is reported rather than
-// absorbed.
-//
-// ⚠ ON FLAT GROUND IT MOVES NOTHING, which is the negative control the plan names:
-// the pass above cuts nothing, so `V` is 0, so the shift is 0. A balance that moved
-// earth where none was needed would not be a balance.
-fn spoil_place(w: World, mq: vector<integer>, mr: vector<integer>,
-               was: vector<integer>, mat: integer,
-               clamped: &integer, residual: &integer) {
-  n = len(mq);
-  if n == 0 { return; }
-  cut = 0;
-  for i in 0..n {
-    cut = cut + ((was[i] ?? 0) - run_h(w, mq[i] ?? 0, mr[i] ?? 0, mat));
-  }
-  // ⚠ ONLY EVER PUTS BACK WHAT WAS TAKEN. A negative total would mean the pass above
-  // raised something, which it cannot; guarding it anyway keeps this from inventing
-  // earth if that ever changes.
-  if cut <= 0 { return; }
-  shift = (cut / n) ?? 0;
-  // ── AND THE SHIFT IS ONLY EVER WHAT *EVERY* CELL CAN TAKE — plan 20 ────────
-  //
-  // ⚠ A SHIFT THAT LANDS ON SOME CELLS AND NOT OTHERS IS NOT A UNIFORM SHIFT, and
-  // uniformity is the ONLY reason the profile the relaxation just made legal survives
-  // this: *every height moves by the same amount, so every DIFFERENCE is unchanged*.
-  // A caved cell has rock over it and `F1` needs `ε` under that rock, so a raise at
-  // exactly the cells with the least room is refused — and this used to COUNT the
-  // refusal and carry on, which quietly destroyed the limit it had just established.
-  //
-  // ⚠ MEASURED, on a road walked up a 6-per-hex rise: a lift of 4 refused by 4 cells,
-  // a lift of 40 by all 41 caved ones, and the finished run left with a **26-unit step
-  // where its limit is 1** — every further settle recovering one single unit.
-  //
-  // ⚠ AND `run_unsqueeze` BELOW COULD NEVER HAVE CAUGHT IT. It runs after the lift and
-  // reads the headroom that RESULTED, so it sees cells that did rise and is blind, by
-  // construction, to cells that failed to: a cell whose raise was refused still has
-  // all of its headroom and looks perfectly healthy.
-  //
-  // ⚠ AND THE CURE IS TO SHIFT LESS, NOT TO TAKE THE LID OFF. Both keep uniformity and
-  // `A9`'s own continuum argues for the lid — but that was written about a road that
-  // HAS risen into its roof, and this is one that has not yet. Taking lids off here
-  // was tried and measured: `gates/world/cave` went from **13 shelves to 6** and the
-  // rock above the mouth LOST faces (618 against 630), so the gallery `A9` exists to
-  // build was being dismantled to return spoil a stroke later. Shifting less costs
-  // only time — the settle runs again on every stroke.
-  // ⚠ A SHIFT OF ZERO IS STILL SPOIL, AND RETURNING HERE SILENTLY LOSES IT. When a
-  // run is long and one stroke's cut is small, `cut / n` truncates to 0 and every
-  // unit taken out is discarded — measured on a road walked DOWN a 40-cell ramp,
-  // where the settle fires per stroke: **cut 1260, fill 23.** The balance is exact
-  // for ONE settle and does not accumulate across many, because a uniform shift is
-  // the only kind that keeps the limit and a uniform shift of less than one unit
-  // does not exist. That is the honest boundary of this rule, and it is said rather
-  // than hidden behind an early return.
-  for j0 in 0..n {
-    q0 = mq[j0] ?? 0;
-    r0 = mr[j0] ?? 0;
-    // ⚠ −1 IS *NO LID*, NOT *NO ROOM*. A road on the open ground has nothing above it
-    // and bounds this not at all; only a cell with a layer over it does.
-    hd0 = shelf_head(w, q0, r0, mat);
-    if hd0 < 0 { continue; }
-    // ⚠ `CAVE_HEAD`, NOT `ε`, AND THAT IS THE WHOLE DIFFERENCE BETWEEN KEEPING A
-    // GALLERY AND DISMANTLING ONE. `ε` is what the STORE needs — a lift that leaves
-    // more than that is accepted, so capping there is enough to stop the refusals and
-    // keep this shift uniform. But a cell squeezed between `ε` and `CAVE_HEAD` is then
-    // taken by `run_unsqueeze` below, which is right on its own terms and means the
-    // balance would be paying for its spoil in ROOFS. Measured: capping at `ε` left
-    // `gates/world/cave` with **7** shelves where it cuts 13, and the rock above the
-    // mouth lost faces. `CAVE_HEAD` is what a WALKER needs, and a balance has no
-    // business eating it.
-    room = hd0 - CAVE_HEAD;
-    if room < 0 { room = 0; }
-    if room < shift { shift = room; }
-  }
-  if shift <= 0 {
-    clamped = clamped + 1;
-    if cut > residual { residual = cut; }
-    return;
-  }
-  for j in 0..n {
-    q = mq[j] ?? 0;
-    r = mr[j] ?? 0;
-    hh = run_h(w, q, r, mat) + shift;
-    if hh > H_CEILING { hh = H_CEILING; }
-    if run_set(w, q, r, mat, hh) != hex_world::CW_OK {
-      clamped = clamped + 1;
-      if shift > residual { residual = shift; }
-    }
-  }
-  // What the balance could not place, because a height is an integer and a mean is
-  // not. ⚠ Reported through the same two counters a refused height uses.
-  over = cut - shift * n;
-  if over > 0 {
-    clamped = clamped + 1;
-    if over > residual { residual = over; }
-  }
 }
 
 // How far a road at `h` must RISE at this cell to clear whatever is under it — 0
@@ -3179,7 +3051,7 @@ pub fn cave_backed(w: World, q: integer, r: integer, nat: integer) -> boolean {
 // May the road at grade `h` be cut as a SHELF here — the rock above left standing —
 // given the ground that was here before the stroke wrote over it?
 //
-// ⚠ IT TAKES THE NATURAL GROUND RATHER THAN READING IT, and that is `spoil_place`'s
+// ⚠ IT TAKES THE NATURAL GROUND RATHER THAN READING IT, and that is `road_balance`'s
 // rule in a second place: `road_lay` has already overwritten this cell by the time
 // the shelf is decided, so the only honest datum is the one sampled before the write.
 // Reading it back here would measure the road's own height and answer *never*.
@@ -3351,12 +3223,42 @@ pub fn grade_note(g: Grades, q: integer, r: integer, h: integer) {
   g.gr_by += GradeAt { ga_key: k, ga_h: h };
 }
 
-// ── AND THE RUN IS HANDED BACK THE EARTH IT OWES — plan 20, open question 9 ─
+// ── THE SPOIL GOES BACK — plan 20 `A8`, and this is the ONE rule that does it ─
+//
+// > *"The builders had a lot of materials over after cutting into the hill, using it
+// > to heighten the lower side a bit, and often using stones to create a wall below
+// > the road too."* … *"So most of it will still be cutting into the hill."*
+//
+// The relaxation only ever LOWERS, which is what a cutting is and is half the answer.
+// The other half, measured (`probe/house/roadcost.loft`): a road walked DOWN a
+// 3-per-hex ramp satisfies its limit by cutting its top end **80 units — 20 metres —
+// below the natural ground.** You cannot cut your way downhill.
+//
+// ⚠ THE WHOLE RUN SHIFTS BY ONE AMOUNT, AND THAT IS WHY THE LIMIT SURVIVES. Every
+// height moves the same, so every DIFFERENCE is unchanged — the profile the relaxation
+// just made legal is still legal, by construction rather than by a second relaxation
+// that could fight the first. There is no iteration here and nothing to converge.
+//
+// ⚠ AND ON FLAT GROUND IT MOVES NOTHING, which is the negative control the plan names:
+// nothing was cut, so nothing is owed, so the shift is zero. A balance that moved earth
+// where none was needed would not be a balance.
+//
+// ⚠ THERE WAS A SECOND BALANCE UNTIL THIS ONE EXISTED, AND TWO WERE ONE TOO MANY.
+// `spoil_place` put the spoil back after every settle, measured against the profile
+// that settle found on entry — exact for ONE settle, and wrong for a gesture that makes
+// one per stroke, because that profile already contains what the balance raised last
+// time. Running both let the per-settle one lift a run **5 units above its own asked
+// grade** while this one could only bring it back a stroke later. One balance, one
+// datum: `spoil_place` is gone and `slope_settle` now only settles.
 //
 // `A8`'s balance is exact for ONE settle and the gesture makes one per stroke, so what
-// it could not place — `cut / n` truncated to nothing on a long run — was discarded as
+// it could not place — a shift of under one unit across a long run — was discarded as
 // often as the author took steps, and that is what dug the fall-line canyon. This asks
 // the whole run what it is short of the grade it was laid at, and moves it that far.
+//
+// ⚠ CUT EQUALS FILL UP TO THE INTEGER DIVISION, which is the *stated tolerance* the
+// plan asks for: at most one unit a cell, and it is still OWING rather than lost —
+// the next stroke asks again.
 //
 // ⚠ IT IS TWO-SIDED, AND NOT FOR SYMMETRY'S SAKE. A road walked UP a hill stood **117
 // units proud** at its head before the plane landed — the exact mirror of the canyon —
@@ -3563,9 +3465,10 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
   // ── THE DATUM, SAMPLED BEFORE THE FIRST WRITE — plan 20 `A9` ──────────────
   //
   // The shelf is decided from the ground that was here, and the stroke below is
-  // about to overwrite exactly that. `spoil_place` learned the same thing one rule
-  // up: the only datum that cannot disagree with the store is the one taken a
-  // moment earlier.
+  // about to overwrite exactly that. `grade_note` below learned the same thing one
+  // rule up: the only datum that cannot disagree with the store is the one taken a
+  // moment earlier — and it is why what the author ASKED for is recorded as it is
+  // stamped rather than reconstructed afterwards.
   sq: vector<integer> = [];
   sr: vector<integer> = [];
   snat: vector<integer> = [];
@@ -3607,7 +3510,7 @@ pub fn road_lay(wld: World, cq: integer, cr: integer, h: integer, rad: integer,
     // **27-unit step across its own width** where its limit is 1. A caved cell's
     // ground IS its original hillside, so taking the shelf off recovers exactly the
     // datum the re-cut needs — and everything is back on one layer for
-    // `slope_settle` and `spoil_place`, which is where they have always worked.
+    // `slope_settle` and `road_balance`, which is where they have always worked.
     run_unshelf(wld, q, r, ROAD_MAT);
     // ⚠ THE CELL'S OWN GRADE, not the author's. `round` rather than a truncation
     // because a height is an integer and a plane is not: truncating toward zero puts

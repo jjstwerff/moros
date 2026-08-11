@@ -131,6 +131,36 @@ fn above_asked(w: World, g: Grades, n: integer) -> integer {
   t
 }
 
+fn test_a_finished_run_never_stands_above_what_was_asked() {
+  // ⚠ THE END STATE, AND THE TRANSIENT IS *NOT* CLAIMED — which is the honest shape of
+  // what consolidating to one balance bought and what it did not. A uniform shift lifts
+  // cells already at their grade along with the cut ones, so mid-walk the total dips
+  // below zero and comes back: measured on an uphill 3-per-hex walk it reached **−5 at
+  // stroke 2** while two balances ran against two datums, and **−15 at stroke 5** with
+  // one. Later and self-correcting, not gone. What IS true at every gradient and in both
+  // directions is that the finished run does not stand above the grade it was asked for.
+  n = 13;
+  for k in [1, 3] {
+    for up in [0, 1] {
+      w = ramp(k);
+      cl = 0;
+      rs = 0;
+      g = Grades { gr_by: [] };
+      gx = 0.0 - ((k as float) / hex_grid::HEX_LEN);
+      for i in 0..n {
+        x = i;
+        if up == 1 { x = n - 1 - i; }
+        h = ground_h(w, x, 0);
+        road_lay(w, x, 0, h, 1, (h as float) * U, gx, 0.0, cl, rs, g);
+      }
+      assert(owed(w, g, n) >= 0,
+             "a finished {k}-per-hex walk (up {up}) stands {0 - owed(w, g, n)} ABOVE the "
+             + "grade it was asked for — a balance that ends high has returned earth it "
+             + "never took");
+    }
+  }
+}
+
 fn test_and_the_ramp_really_does_make_the_settle_fire() {
   // Without this the row above could pass on a walk that never settled anything, where
   // no debt could arise however wrong the datum was.

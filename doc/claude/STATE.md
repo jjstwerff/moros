@@ -312,16 +312,32 @@ ground takes it red at *258 halfway, 344 at the end* — the ratchet, caught.
 already at their grade along with the cut ones, so some overshoot is inherent to any
 balance that keeps a run legal. What a ratchet does and this must not is keep going.
 
-### ⚠ TWO THINGS THIS LEFT OPEN, AND BOTH ARE MEASURED RATHER THAN SUSPECTED
+### ✅ AND IT IS ONE BALANCE AND ONE DATUM NOW — `spoil_place` is gone
 
-1. **There are still TWO balances with two datums.** `spoil_place` runs per settle against
-   the old datum and `road_balance` per run against the new one, and the first can lift a
-   run *above* its asked grade for the stroke it takes the second to correct — measured, 5
-   units by the third stroke of an uphill walk. ⚠ **Removing `spoil_place` was tried and
-   383 tests still passed**, so nothing depends on it any more; the overshoot got *later
-   and larger* rather than going away, so it is not the only source. One balance and one
-   datum is the right shape and it wants its own step.
-2. **A rising walk cannot return its spoil.** The `CAVE_HEAD` cap refuses to bury the road
+**`slope_settle` only settles.** It used to end by calling `spoil_place`, which put the
+spoil back against the profile it found *on entry* — right for one settle, wrong for a
+gesture that makes one per stroke, because that profile already holds whatever the balance
+raised last time. `road_balance` owns the fill and owns the only datum. **117 lines
+deleted**, and `A8`'s own argument moved onto the rule that now does the work rather than
+going with it.
+
+| | two balances | **one** |
+|---|---|---|
+| net first goes negative at | stroke **2** | stroke **5** |
+| the part standing above its asked grade plateaus at | 117 | **93** |
+| falling 6 / 3 / 1 per hex | 845 / 338 / 0 | **845 / 338 / 0** — unchanged |
+
+⚠ **AND THE TRANSIENT DID NOT GO AWAY, ONLY LATER AND SMALLER — SO IT IS NOT CLAIMED.** A
+uniform shift lifts cells already at their grade along with the cut ones, so mid-walk the
+total dips below zero and comes back: **−5 at stroke 2** with two balances, **−15 at
+stroke 5** with one. `tests/road_debt.loft` asserts what *is* true at every gradient and
+in both directions — a **finished** run never stands above the grade it was asked for —
+and says in its own comment that the transient is not claimed. **Writing the stronger row
+and watching it fail is what established that**, twice.
+
+### ⚠ AND ONE THING THIS STILL LEAVES OPEN, MEASURED RATHER THAN SUSPECTED
+
+1. **A rising walk cannot return its spoil.** The `CAVE_HEAD` cap refuses to bury the road
    under its own roof, and a road cut deep into a rising hillside has no headroom to give —
    so at 6 per hex rising the run comes out cut 1221 / filled 38. **The profile is the
    physically right one** (a road climbing at 1 per hex on a 6 per hex hill *must* end far
