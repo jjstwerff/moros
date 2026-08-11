@@ -17,8 +17,11 @@ use hex_field;
 use hex_grid;
 use hex_place;
 
-const HOUSE_W = 5;
-const HOUSE_D = 4;
+// ⚠ THIS WAS A THIRD COPY OF 5×4 AND IS NOW THE LIBRARY'S — plan 22 `W4`.
+// `src/editor_run.loft`, `src/editor_server.loft` and this file each carried one;
+// all three agreed and nothing made them. The constants moved beside `press`, and
+// the collision that surfaced this file is the mechanism working: a public name is
+// global, so a fourth copy cannot now be added silently.
 
 fn window() -> HexSet { hexset_chunk(0 - 30, 0 - 30, 61, 61) }
 

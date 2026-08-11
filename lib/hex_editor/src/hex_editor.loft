@@ -825,3 +825,105 @@ pub fn shelter_at(w: VoxelWorld, roofs: RoofPlans, x: float, z: float,
 pub fn shelter_room(s: Shelter, room: float, back: float) -> Shelter {
   Shelter { sh_inside: s.sh_inside, sh_head: s.sh_head, sh_room: room, sh_back: back }
 }
+
+//
+// WHAT A KEY MEANS — one place, plan 22 `W4`.
+//
+// ⚠ **IT MEANT FOUR THINGS IN FOUR PLACES, AND OMITTING ONE WAS SILENT.** Measured
+// 2026-08-11, before this file existed:
+//
+//   1. `src/editor_client.loft`  ASCII constants  → a wire message
+//   2. `src/editor_server.loft`  a wire message   → a gesture
+//   3. `tools/script.mjs`        `KEYMAP`, **23 entries** → a wire message
+//   4. `src/editor_run.loft`     a key → a gesture **directly**, 6 of them
+//
+// A key that builds a house in the browser and does nothing headless produces a
+// DIFFERENT SCENE with every count agreeing — and that is not hypothetical:
+//
+// ⚠ **`H` ALREADY BUILT THE HOUSE AT TWO DIFFERENT HEIGHTS.** The server takes the
+// grade under the author's feet (`py_of` → `terrain_h`); `editor_run` took
+// `ground_h(w, 0, 0)` — the grade at the **origin**. On flat ground at the origin
+// the two agree, which is every fixture anyone had looked at. Step off it and the
+// same script builds a house at a different height depending on which program ran
+// it — while `SCRIPTED_EDITOR.md`'s whole claim is *"build a scene both ways and
+// the worlds must match"*.
+//
+// ⚠ **AND BOTH PROGRAMS CARRIED THEIR OWN `HOUSE_W` / `HOUSE_D`.** They happened to
+// agree at 5×4. Nothing made them.
+//
+// ⚠ **TWO OF THE FOUR SITES SAY SO IN THEIR OWN SOURCE.** `editor_run`'s fallback
+// reads *"no gesture for key {k} — add it here **and to the page**"*, and
+// `script.mjs` says *"that is the one duplication here"* under a comment ordering
+// the reader to **"KEEP IN STEP WITH `html/editor.html`'s keydown handler"** — a
+// file **deleted on 2026-08-02**. The instruction naming where the truth lives has
+// pointed at nothing since.
+//
+// ── WHAT THIS FILE OWNS, AND WHAT IT DELIBERATELY DOES NOT ───────────────────
+//
+// **Owns:** which gesture a key runs, with which parameters, and the session
+// registries that gesture updates. That is *the meaning of the key*.
+//
+// **Does not own:** the sentence, the dirty set, the broadcast, the tick. Those
+// are TRANSPORT and they belong to whichever program is driving — a server sends
+// on a socket, a page repaints, a script prints. This is the same split that let
+// `prop`, `annex`, `slab`, `seat` and the wall run move into this package with
+// their wire behaviour byte-identical: **move the choosing, keep the sentence.**
+//
+// ⚠ **A `KEYMAP` OF KEY → WIRE-ID IS STILL FINE AND IS NOT A DUPLICATE.** What
+// `script.mjs` may keep deciding is which *message* carries a key over a socket;
+// that is genuinely the socket's business. What it must stop deciding is what the
+// key MEANS.
+
+// One shape for now — the gesture is the question here, not the parameters. ⚠ It
+// is here rather than in each program because it was in each program: two copies
+// that agreed by luck (`src/editor_run.loft` and `src/editor_server.loft`).
+pub const HOUSE_W = 5;
+pub const HOUSE_D = 4;
+
+// The ground under the AUTHOR, which is what every gesture that seats something
+// means by "the grade".
+//
+// ⚠ THIS IS THE FUNCTION `editor_run` DID NOT HAVE, and its absence is why it
+// asked the origin instead. A helper that is missing gets substituted for, and the
+// substitute is never announced.
+pub fn grade_under(w: VoxelWorld, a: Author) -> integer {
+  (gu_q, gu_r) = px_to_hex(a.au_x, a.au_z);
+  ground_h(w, gu_q, gu_r)
+}
+
+// What one key press does. `PR_NONE` in `ak_why` means *this key is not a gesture*
+// — a walk key, a camera key, or nothing at all — and is NOT a refusal: the caller
+// decides whether that is worth saying.
+//
+// ⚠ THE UNKNOWN CASE IS A NAMED ANSWER RATHER THAN A FALSE. `ak_ok == false` is
+// how a gesture REFUSES ("too steep", "no wall there"), and a caller that cannot
+// tell *refused* from *not a gesture* will report one as the other — which is
+// exactly how `editor_run` came to print "no gesture for key W" for every step of
+// a walk.
+pub const PR_NONE = "not a gesture";
+
+pub fn press(sess: EditSession, w: VoxelWorld, a: Author, key: text) -> Ack {
+  if key == "ArrowUp"   { return raise_ahead(w, a, 1); }
+  if key == "ArrowDown" { return raise_ahead(w, a, 0 - 1); }
+  if key == "H" {
+    return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
+  }
+  // ⚠ `O` AND `P` ARE THE SAME GESTURE WITH DIFFERENT MATERIAL, and the pair is
+  // why `open_ahead` takes a kind rather than there being two functions. The wire
+  // spells them `36:1` and `36:2`.
+  if key == "O" { return open_ahead(w, a, DOOR_MAT, 1); }
+  if key == "P" { return open_ahead(w, a, WINDOW_MAT, 1); }
+  // ⚠ `F` AND `G` LIKEWISE — one ring gesture, two materials. `script.mjs`'s own
+  // comment on `G` is *"the same tool with wall material — a hex RING, not a
+  // line"*, which is the distinction this shared call makes structural.
+  if key == "F" { return fence_ring(w, a, FENCE_MAT, FENCE_R, 0.0); }
+  if key == "G" { return fence_ring(w, a, WALL_MAT,  FENCE_R, 0.0); }
+  Ack { ak_ok: false, ak_why: PR_NONE }
+}
+
+// ⚠ THERE IS DELIBERATELY NO `is_gesture(key)` COMPANION. The first draft had one,
+// deriving its answer by running `press` against a scratch world so the key list
+// could not be stated twice — which meant *asking whether a key is a gesture built
+// a house*. A predicate with a side effect and a cost is worse than the duplication
+// it avoids. **Ask `press`, then read `ak_why == PR_NONE`**: one call, one answer,
+// no second list.

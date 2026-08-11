@@ -29,8 +29,9 @@ use hex_editor;
 use hex_voxel;
 use hex_grid;
 
-const HOUSE_W = 5;
-const HOUSE_D = 4;
+// ⚠ `HOUSE_W` / `HOUSE_D` WERE HERE AND ARE NOW `hex_editor`'s — plan 22 `W4`.
+// This file and `src/editor_server.loft` each carried a copy; they agreed at 5×4
+// and nothing made them. A parameter of what a key MEANS belongs beside the key.
 
 // The same world the server makes — a scene built at a different epsilon is a
 // different world however identical the script. `W_RESERVE` is `hex_editor`'s
@@ -49,7 +50,7 @@ fn seed_ground(w: VoxelWorld, half: integer) {
 
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
-fn run_line(w: VoxelWorld, a: &Author, runs: WallRuns, line: text, said: &text) -> boolean {
+fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &text) -> boolean {
   t = line.trim();
   if t == "" || t[..1] == "#" { return true; }
   sp = t.find(" ");
@@ -78,38 +79,28 @@ fn run_line(w: VoxelWorld, a: &Author, runs: WallRuns, line: text, said: &text) 
   }
 
   if cmd == "key" {
-    k = rest;
-    if k == "ArrowUp" {
-      ack = hex_editor::raise_ahead(w, a, 1);
-      said = "raise {ack.ak_ok}";
-      return true;
+    // ⚠ THIS WAS A SIX-KEY TABLE AND IT IS GONE — plan 22 `W4`. It was one of FOUR
+    // places that decided what a key means, and it disagreed with the server about
+    // `H`: it took the grade from `ground_h(w, 0, 0)` — the **origin** — where the
+    // server takes it under the author's feet. Every fixture stood at the origin,
+    // so the two agreed everywhere anyone looked, and `SCRIPTED_EDITOR.md`'s claim
+    // that *"one script serves both"* was false the moment a script walked.
+    //
+    // What is left here is a driver's business: saying what happened.
+    ack = hex_editor::press(sess, w, a, rest);
+    if ack.ak_why == hex_editor::PR_NONE {
+      said = "no gesture for key {rest}";
+      return false;
     }
-    if k == "ArrowDown" {
-      ack = hex_editor::raise_ahead(w, a, 0 - 1);
-      said = "lower {ack.ak_ok}";
-      return true;
-    }
-    if k == "H" {
-      grade = hex_editor::ground_h(w, 0, 0);
-      ack = hex_editor::place_house(w, a, HOUSE_W, HOUSE_D, grade, runs);
-      said = ack.ak_why;
-      return true;
-    }
-    if k == "O" || k == "P" {
-      kind = hex_editor::DOOR_MAT;
-      if k == "P" { kind = hex_editor::WINDOW_MAT; }
-      ack = hex_editor::open_ahead(w, a, kind, 1);
-      said = ack.ak_why;
-      if !ack.ak_ok { said = "refused: {ack.ak_why}"; }
-      return true;
-    }
-    if k == "F" {
-      ack = hex_editor::fence_ring(w, a, hex_editor::FENCE_MAT, hex_editor::FENCE_R, 0.0);
-      said = "fenced {ack.ak_n} edges";
-      return true;
-    }
-    said = "no gesture for key {k} — add it here and to the page";
-    return false;
+    if !ack.ak_ok { said = "refused: {ack.ak_why}"; return true; }
+    // ⚠ NOT EVERY GESTURE HAS A SENTENCE. `raise_ahead` succeeds with an empty
+    // `ak_why`, and printing that verbatim made the press SILENT — which in a
+    // script's transcript reads as "the key did nothing", the one thing a driver
+    // must never say when something happened. The old table said "raise true"
+    // here; a gesture without words gets its key and its count instead.
+    said = ack.ak_why;
+    if said == "" { said = "{rest}: {ack.ak_n}"; }
+    return true;
   }
 
   // `wait`, `snap`, `hold`, `rate`, `step` are the SERVER's vocabulary: they wait
@@ -145,12 +136,16 @@ fn main() {
   w = world_new(0.25, hex_editor::W_RESERVE, W_EPS, W_THETA).wn_world;
   seed_ground(w, 30);
   a = hex_editor::author_at(0.0, 0.0, 0.0);
-  runs = hex_editor::WallRuns { items: [] };
+  // ⚠ AN `EditSession`, NOT A BARE `WallRuns` — plan 22 `W4`. A key press is a
+  // gesture applied to a SESSION, and the server has held one since the headless
+  // thread landed. A runner holding only the wall runs could never call `press`
+  // for any gesture that touches another registry.
+  sess = hex_editor::EditSession {};
 
   n = 0;
   for line in text.split('\n') {
     said = "";
-    ok = run_line(w, a, runs, line, said);
+    ok = run_line(w, a, sess, line, said);
     if said != "" { println("  {said}"); }
     if !ok { println("editor_run: {line}"); }
     n = n + 1;

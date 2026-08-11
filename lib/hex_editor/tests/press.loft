@@ -1,0 +1,115 @@
+// W4 — WHAT A KEY MEANS, IN ONE PLACE.
+//
+// plan 22 `W4`. Before this, four sites decided what a key does and omitting one
+// was silent. These tests pin the two claims that make `press` worth having: the
+// same key does the same thing wherever it is pressed, and a key that is NOT a
+// gesture is answered as such rather than as a refusal.
+use hex_editor;
+use hex_voxel;
+
+fn ground(gw: VoxelWorld, half: integer) {
+  for gq in 0 - half..half + 1 {
+    for gr in 0 - half..half + 1 {
+      ground_set(gw, gq, gr, 0, SURFACE_MAT);
+    }
+  }
+}
+
+fn flat() -> VoxelWorld {
+  fw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  ground(fw, 20);
+  fw
+}
+
+// ⚠ THE DIVERGENCE THIS STEP EXISTS TO CLOSE, AS A TEST.
+//
+// `src/editor_run.loft` took the house's grade from `ground_h(w, 0, 0)` — the
+// ORIGIN — while `src/editor_server.loft` took it from under the author's feet.
+// On flat ground at the origin the two agree, which is every fixture anybody had
+// looked at; the moment the author stands on a slope away from the origin they do
+// not, and the same script builds a house at a different height depending on which
+// program ran it.
+//
+// So the claim is about `grade_under`, and it is asserted where it can FAIL: on a
+// raised patch, away from the origin.
+fn test_the_grade_is_taken_under_the_author_not_at_the_origin() {
+  w = flat();
+  // A shelf, well away from (0,0).
+  for sq in 8..14 {
+    for sr in 8..14 {
+      ground_set(w, sq, sr, 9, SURFACE_MAT);
+    }
+  }
+  origin_h = ground_h(w, 0, 0);
+  shelf_h  = ground_h(w, 11, 11);
+  assert(origin_h != shelf_h,
+         "the fixture is flat under both — this test cannot see the difference "
+         + "it exists for (origin {origin_h}, shelf {shelf_h})");
+
+  (ax, az) = hex_to_px(11, 11);
+  a = author_at(ax, az, 0.0);
+  assert(grade_under(w, a) == shelf_h,
+         "grade_under answered {grade_under(w, a)} for an author standing on a "
+         + "shelf at {shelf_h} — it is not reading the ground under the author");
+  assert(grade_under(w, a) != origin_h,
+         "grade_under answered the ORIGIN's height — this is editor_run's bug, "
+         + "moved into the library rather than fixed");
+}
+
+// A key nobody mapped is not a refusal. `ak_ok == false` is how a gesture says
+// "too steep" or "no wall there"; a caller that cannot tell that from "this is a
+// walk key" reports one as the other, which is how a runner came to print
+// "no gesture for key W" for every step of a walk.
+fn test_an_unmapped_key_is_named_rather_than_refused() {
+  w = flat();
+  sess = EditSession {};
+  a = author_at(0.0, 0.0, 0.0);
+  for k in ["W", "A", "S", "D", "", "ArrowLeft", "zzz"] {
+    ack = press(sess, w, a, k);
+    assert(ack.ak_why == PR_NONE,
+           "key '{k}' is not a gesture but press answered '{ack.ak_why}'");
+  }
+}
+
+// …and a real gesture must NOT answer PR_NONE, or the discriminator above passes
+// by refusing everything.
+fn test_every_mapped_key_is_reachable() {
+  w = flat();
+  sess = EditSession {};
+  a = author_at(0.0, 0.0, 0.0);
+  for k in ["ArrowUp", "ArrowDown", "H", "O", "P", "F", "G"] {
+    ack = press(sess, w, a, k);
+    assert(ack.ak_why != PR_NONE,
+           "key '{k}' is meant to be a gesture and press did not recognise it");
+  }
+}
+
+// ⚠ THE POINT OF THE WHOLE STEP, STATED AS AN EQUALITY: pressing the key and
+// calling the gesture by hand must produce the same world. If they ever diverge,
+// `press` has become a fifth site rather than the only one.
+fn test_pressing_the_house_key_is_calling_place_house() {
+  by_key = flat();
+  by_hand = flat();
+  ks = EditSession {};
+  hs = EditSession {};
+  // ⚠ 30° IS NOT DECORATION — only 6 of the lattice's 12 facings have mitred
+  // corners, and yaw 0 here lands on an odd one: the gesture refuses with
+  // "rot 9 of 12, offer 8". `tools/scripts/house.keys` stands at 30° for exactly
+  // this reason, and a test that did not would be measuring the doorstep.
+  (ax, az) = hex_to_px(6, 6);
+  a = author_at(ax, az, 30.0 * PI / 180.0 ?? 0.0);
+
+  ka = press(ks, by_key, a, "H");
+  ha = place_house(by_hand, a, HOUSE_W, HOUSE_D, grade_under(by_hand, a), hs.es_runs);
+
+  assert(ka.ak_ok == ha.ak_ok, "one placed a house and the other did not");
+  assert(ka.ak_ok, "the fixture refused the house: {ka.ak_why}");
+  // ⚠ THE EDIT CLOCK IS THE INSTRUMENT, not a cell count. It is exact, it is the
+  // same on any box, and it counts writes that CHANGED something — so two worlds
+  // agreeing on tau agree about how much work was done, which a cell total does
+  // not (a house rewritten in place has the same cells and a different tau).
+  assert(by_key.w_tau == by_hand.w_tau,
+         "pressing H did {by_key.w_tau} writes, calling place_house did "
+         + "{by_hand.w_tau} — the key means something else now");
+  assert(ka.ak_n == ha.ak_n, "the two disagree on how many cells were placed");
+}
