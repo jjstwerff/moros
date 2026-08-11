@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -527,6 +527,13 @@ guards:
 # ⚠ Spawns headless Chrome and an xvfb display; both are cleaned up by the script.
 probe-text:
 	@sh probe/b1/run.sh
+
+# P2 (plan 22) — can OUR javascript talk to loft inside a `--html` page?
+# The interim storage bridge (`W5`) rests entirely on this. Spawns headless Chrome
+# and cleans it up; reads the verdict out of the PAGE's own `<pre>`, not out of a
+# value this side computed.
+probe-p2:
+	@sh probe/p2/run.sh
 
 # L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
 # Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers

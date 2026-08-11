@@ -1,0 +1,45 @@
+// P2 (plan 22) — DOES A REQUEST/RESPONSE ROUND-TRIP TO JS WORK IN A `--html` PAGE?
+//
+// The page's own comment describes the pattern as first-class:
+//
+//   "loft -> JS structured messages (host_output()): the page handles them in
+//    globalThis.loftOutput(msg) — the request/response pattern is host_output a
+//    request, act on it in JS, loftPush the completion."
+//
+// Everything plan 22's `W5` rests on is that paragraph being true in a page we
+// can actually build, with JS WE appended. If it is false, localStorage needs
+// loft#851 and the interim shim is impossible.
+//
+// ⚠ THE CONTROL IS IN THE SAME RUN. `B` asks for a key JS does not answer, so a
+// harness that echoed everything — or one where `host_input` simply returned the
+// last thing written — would pass `A` and fail `B`. One exchange proves a wire;
+// two prove it carries what was asked for.
+fn ask(req: text) -> text {
+  host_output(req);
+  host_input()
+}
+
+fn main() {
+  // A — the round trip. JS answers "ANS:" + the tail.
+  a = ask("REQ:hello");
+  println("P2 A got [{a}]");
+
+  // B — the control: a request JS is written to IGNORE. The answer must be
+  // EMPTY, not the previous answer and not an echo.
+  b = ask("SKIP:hello");
+  println("P2 B got [{b}]");
+
+  // C — a second real exchange, to show the channel is not single-shot and that
+  // `B` did not wedge it.
+  c = ask("REQ:world");
+  println("P2 C got [{c}]");
+
+  ok_a = a == "ANS:hello";
+  ok_b = b == "";
+  ok_c = c == "ANS:world";
+  if ok_a && ok_b && ok_c {
+    println("P2 RESULT ok");
+  } else {
+    println("P2 RESULT bad a={ok_a} b={ok_b} c={ok_c}");
+  }
+}

@@ -10,8 +10,9 @@
 consumers and a finished design and it still waits — **phases `C1`–`C4` do not start until `B3`
 can be opened and driven.**
 
-**Built:** `W1` (a world is bytes) and half of `W4` (`press`, with two of four sites wired).
-**Next:** `P2`, then `W4`'s remaining sites, then the page itself.
+**Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), and `P2` is
+**run and green** — so `W5` is buildable today with no loft change.
+**Next:** `W4`'s remaining sites, then `B1` — local mode in the client.
 
 Today: `world_to_bytes`/`world_from_bytes` ship and `world_load` is 1.6× faster than the
 field-by-field reader it replaced; `hex_editor::press` answers what a key means for
@@ -57,7 +58,7 @@ nothing. Said in a line so the silence does not read as *gate done*.
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ · **`editor_client` and `script.mjs` open** | ◐ Two of four |
-| **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? | XS | a ten-line page: `host_ask("PING")` → JS replies → assert | ⏭ **Next** — the last probe that can reshape the work |
+| ✅ **`P2`** — does `host_output` → JS → `loftPush` round-trip in a `--html` page? | XS | **RUN 2026-08-11 — it holds.** `probe/p2/run.sh` · `make probe-p2` · three exchanges, two sabotages seen red | ✅ Done |
 | **`P5`** — is `fetch()` of a sibling file blocked under `file://`? | XS | a two-file page from `file://` in headless Chrome | Open — it decides whether assets are inlined |
 | **`W2`/`W3`** — parts and `.glb` from bytes | S | a part loaded both ways is equal | ⚠ **Skip if [loft#851](https://github.com/loft-lang/loft/issues/851) lands** — then a path just works |
 | **`W5`** — the JS↔loft bridge for storage | S | build a house, reload the page, it is there | ⚠ **Interim only.** Its best outcome is never existing — see `#851` |
@@ -106,6 +107,30 @@ negative chunk coordinate *through* `world_cell`, and deleting the sign extensio
 left all four tests green: an unsigned `-1` becomes 4294967295, lands in `ck_cx`, and nothing
 downstream looks at it again. **A claim tested only through a consumer is a claim about the
 consumer.**
+
+## What `P2` turned up (2026-08-11)
+
+**It holds: `host_output` → our JS → `loftPush` round-trips inside a `--html` page**, with a
+script *we* appended. So `W5` needs no loft change and
+[#851](https://github.com/loft-lang/loft/issues/851) is an improvement rather than a blocker.
+
+⚠ **THE TWO SHELLS ARE NOT THE SAME, AND THE DIFFERENCE IS EXACTLY WHERE A CONSUMER TRIPS.**
+`editor_client.loft` emits the **full engine shell**, where `loftPush` is created **lazily** inside
+`loft_host_input_len` on the first `host_input()` — so JS cannot push before loft has asked, unless
+it pre-creates `globalThis.__loftInQ`. A plain program emits the **minimal shell**, where
+`loftPush` is defined **eagerly** over a module-local `inQ` and `__loftInQ` does not exist at all.
+**The probe's shim works on both**, and the page the client actually ships is the *lazy* one — so a
+`W5` written against the minimal shell alone would have failed on the only page that matters.
+
+⚠ **THE CONTROL IS A REQUEST JS REFUSES TO ANSWER.** `SKIP:` comes back **empty**, so the channel
+carries what was asked rather than echoing — and `REQ:world` after it proves `SKIP:` did not wedge
+the queue. One exchange proves a wire; three prove it carries what was asked for.
+
+⚠ **AND THE SECOND INSTRUMENT WAS WRONG FIRST.** It counted `answered += 1` beside the push;
+sabotaging the push alone left it reporting **2 answers where none were delivered** — a second
+instrument agreeing with a broken first. It records the pushed *values* now, which is why the two
+failure modes are distinguishable: no-push reports `pushed: []` (our JS ran, delivered nothing),
+no-injection reports `null` (our JS never ran).
 
 ## What `W4` turned up so far
 

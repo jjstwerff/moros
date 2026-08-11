@@ -427,7 +427,7 @@ can each kill an item outright.
 |---|---|---|---|
 | **`P5`** | **`fetch()` of a sibling file is blocked under `file://`** — the claim that forces the assets to be INLINED rather than staged beside the page | open a two-file page from `file://` in headless Chrome and read the error | if it is NOT blocked, the assets may be staged beside `index.html` and the page gets smaller. ⚠ **Asserted from general browser behaviour and NOT yet measured here** — it is a design constraint resting on an unmeasured mechanism, which is what this table exists to stop |
 | **`P1`** | a **binary** `.hxw` survives `web::http_get` intact | fetch one part in a `--html` page and compare its bytes to the file | ⚠ **Only affects the ATTACHED mode now.** Local mode inlines its assets (`P5`), so a fetch failure no longer touches the quick start |
-| **`P2`** | `host_output`/`loftPush` round-trips a string from a `--html` page, and our JS can be appended to the emitted page at all | a ten-line page: `host_ask("PING")` → JS replies → assert | **`W5` is impossible and localStorage needs a loft ticket.** This is the one that decides whether the ask is buildable today |
+| ✅ **`P2`** | `host_output`/`loftPush` round-trips a string from a `--html` page, and our JS can be appended to the emitted page at all | ✅ **RUN 2026-08-11 — it holds**, `make probe-p2`. Three exchanges incl. a request JS refuses; two sabotages seen red | — |
 | **`P3`** | a built world fits in localStorage | `world_to_bytes` on the house scene from `tools/scripts/house.keys`, print the length | shard, or IndexedDB over the same bridge |
 | ✅ **`P4`** | one `--html` program can hold **both** the renderer and the gestures | ✅ **RUN 2026-08-11 — it holds.** See below | — |
 
@@ -471,7 +471,7 @@ else** at first, and the whole prop/door/vehicle surface can wait.
 
 | | | why here |
 |---|---|---|
-| ✅ ~~`P4`~~, `P2` | the two probes that could reshape the work — **`P4` is done and it holds**, so `P2` is the only one left that can | before anything is built |
+| ✅ ~~`P4`~~, ✅ ~~`P2`~~ | **both run, both hold.** Nothing left that can reshape the work; `P5` only decides where the assets sit | done |
 | ✅ `W1` | world ⇄ bytes | **BUILT** — and 1.6× faster, not slower |
 | ◐ `W4` (house keys) | `press` for the arrows, `H`, `O`, `P`, `F`, `G` | **BUILT, and `editor_run` wired.** ⏭ **Next: the server, `editor_client`, `script.mjs` — and delete their tables.** `R`/`B`/`C`/`E` (wall run, storey, cellar, step) need adapting: they do not return an `Ack` |
 | `W5` **or** `#851` + autosave | whichever route is available, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it |
