@@ -831,3 +831,82 @@ drawn by `chunk_mesh_mat` on a different path entirely.
    frame entirely and `masonry` is 0.43 — walls read as plan, not as occluders. The
    case for stage 2 is a shallower CUTAWAY than this one, and nothing asks for that
    until an author does.
+
+---
+
+# ⏭ THE CAMERA BECOMES A LIBRARY — `hex_cam`, designed 2026-08-11, not built
+
+**Asked for by the user, and by three consumers at once:**
+
+> *"can you put your camera routines that prevent inside hills and inside wall situations in a
+> library"* · *"crawler needs a camera setup and I want the same one you build"* · *"we also want
+> that in our new client anyway"*
+
+## Why it cannot stay where it is
+
+The avoidance routines are **private functions in `src/editor_server.loft`** — `cam_clear_at`,
+`surface_h_at`, `cam_free_dist`, `cam_free_side`, `cam_free_arc`, `cam_pitch_target`,
+`pitch_fenced`, `cam_approach`, and the `CAM_*` constants. ⚠ **So the standalone page client
+cannot reach them at all**: `editor_client.loft` would have to re-implement the camera, which is
+the second-renderer fork [PAGES_EDITOR](PAGES_EDITOR.md) exists to refuse. One private block, three
+consumers, none of whom can share it.
+
+## ⚠ The measurement that decides the API: crawler has no `hex_voxel`
+
+Read from `../crawler/loft.toml` (read-only), 2026-08-11. Their world is `hex_field` +
+`hex_terrain`; **`hex_voxel` is not among their dependencies and never has been.**
+
+**Every routine above takes `wld: VoxelWorld` and calls `hex_voxel::world_surface`.** So a package
+extracted as it stands — the obvious extraction, the one that looks like a pure move — **would be
+unusable by the consumer who asked for it**, and that would only be discovered when they tried it.
+
+> **`hex_cam` must not take a world at all. It takes a HEIGHT SAMPLER.**
+
+The consumer answers *what is the surface height at this hex, for an eye at this height*; the
+library owns the geometry that keeps the eye out of it. ⚠ **The code already reaches for this
+shape once and says why** — `cam_free_dist`'s own comment: *"The discriminator is
+`wall_stops_view`, which the CONSUMER supplies… a fence stops a character and is visually almost
+nothing, while a castle wall is not terrain and obstructs totally."* **The sampler is that
+argument applied to the ground instead of the walls.**
+
+| | |
+|---|---|
+| **`hex_cam` owns** | the geometry of avoidance: clearance off a sloped surface, how far a boom may run before the eye is inside something, the lateral and arc freedom, the pitch assist and its fence, and the easing |
+| **the consumer owns** | *where the ground is* (the sampler), *what a wall is* (`wall_stops_view`, already a parameter), *how big a person is* (`figure_wu` — a scale, not a constant; crawler's figure is not ours), and **the mode policy** |
+
+⚠ **THE MODE POLICY DELIBERATELY DOES NOT TRAVEL.** AUTO / FOLLOW / SNUG / CUTAWAY / EYES and
+`shelter_at` are the *editor's* answer to *what should the camera want here* — and this document's
+own finding is that **the mode decides and `shelter_at` only observes**. A roguelike's policy is
+not an editor's, and `shelter_at` takes `RoofPlans`, which is an editing concept. **The library
+answers *can the eye be here*; the consumer answers *where should it want to be*.**
+
+## The dependency cone, and why it is small
+
+`hex_grid` (neighbours) · `hex_edge` (`EdgeSet`, `sweep_path` — **crawler already declares it**) ·
+`hex_proj` (`HEIGHT_SCALE`, `hex_to_world`) · `graphics` (vectors). **Not `hex_voxel`, not
+`hex_editor`.** ⚠ That is the `L3′` shape and the reason to check it *before* building: both
+obvious homes for the projection were already-failed experiments, and the cone is what decided it.
+
+✅ **The name is free** — nothing in `lib/`, `../loft-libs-*/` or the registry (checked, not
+assumed).
+
+## What it buys beside the three consumers
+
+⚠ **IT PAYS DOWN PLAN 19.** `cam_clear_at` opens with `world_to_hex(x, z)` — `moros_render`'s, one
+of the **42 call sites** `probe/l6` measures as the editor program's remaining Moros coupling. The
+camera block holds several; moving it to `hex_grid::px_to_hex` retires them as a side effect of
+answering a different question entirely.
+
+## Order of work, and the one thing that needs a word first
+
+1. **The sampler probe.** Re-express `surface_h_at` as a `fn(integer, integer, float) -> float`
+   parameter and check the editor's camera is **pixel-identical** — `camera_indoors` already
+   measures `subject 0.0188`, so the control exists and costs one gate run.
+2. Move the routines, with their comments, and the `CAM_*` constants. Tests travel with the code —
+   `L3′`'s rule: *a function that moves house without its tests arrives unverified.*
+3. The server calls the library; `camera_indoors` must not move a pixel.
+4. The page client gets its camera **for free**, which is the whole point.
+5. ⚠ **Crawler consumes it, and that needs a word.** `../crawler` is read-only from here, and a
+   shared package means either `loft-libs-*` or the registry — **a published package is one of the
+   three things this tree does not do without asking.** Build and verify it in `lib/hex_cam/`
+   first; hand it over as a finding, and let them take it.
