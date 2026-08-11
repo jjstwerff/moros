@@ -83,7 +83,31 @@ const openPart = async (name, want = true) => {
   // ⚠ SETTLE ONLY WHERE GEOMETRY IS EXPECTED, and count ARRIVALS rather than judging
   // them: a close settles at zero, which is the right answer, and a settle that
   // cannot accept it is a sleep with a reason attached.
-  if (want) await quiet(() => g.meshes.length, 400, 15000, 'the limb block');
+  //
+  // ⚠ AND WAIT FOR THE EVIDENCE *BEFORE* SETTLING, WHICH IS WHY THIS GATE WAS FLAKY
+  // THREE TIMES. `quiet` returns as soon as the count stops changing for 400 ms — and
+  // under four contended servers the display rebuild that meshes a limb has often not
+  // started by then, so it settles at ZERO and returns **true**. No `!!` warning, no
+  // timeout: a clean settle on an empty block. Reproduced by loading the box and
+  // running this gate six times: run 2 came back `fineFloats 0, slatH 0, ratio 0`,
+  // four rows red, on a `door/slatted` that was drawn perfectly in the other five.
+  //
+  // ⚠ THE SAME LESSON IS ALREADY WRITTEN FURTHER DOWN for the gateway — *wait for the
+  // evidence, not for the stream to go quiet* — and applying it there and not here is
+  // what left the other four opens exposed. It belongs in `openPart`, where every one
+  // of them passes through.
+  //
+  // ⚠ AND THE EVIDENCE IS `g.picture`, NOT `g.meshes`, WHICH IS THE TRAP INSIDE THE
+  // FIX. `meshes` is every `M:` id in arrival order for the whole session and is never
+  // reset, so `meshes.length > 0` is true forever after the first open and would wait
+  // for nothing on every one after it — a guard that reads like a guard. `picture` is
+  // cleared at the top of this function, so floats in a limb slot are evidence that
+  // THIS open drew something.
+  if (want) {
+    await until(() => drawnFloats() > 0,
+                `no limb geometry ever arrived for '${name}'`, 20000);
+    await quiet(() => g.meshes.length, 400, 15000, 'the limb block');
+  }
   return lines;
 };
 const drawnFloats = () => [...slotFloats().values()]

@@ -18,7 +18,7 @@ found — an unrevised design reads like a finding.
 
 ---
 
-## ⚠ `gates/world/part_limb` is FLAKY under contention — three times, never alone
+## ✅ `gates/world/part_limb` was FLAKY under contention — FIXED, and the cause was a settle at zero
 
 **Seen 2026-08-10/11, three times in `make gate` at `GATE_JOBS=4`, and never once when run
 by itself.** It passes alone at HEAD, alone on the branch, and under contention on every
@@ -35,10 +35,35 @@ something else in the row is timing-dependent. `run-gates.sh` truncates the prin
 to 100 characters, so the failing field is not visible from the suite output — it has to be
 re-run by hand against a server to see which of the `ok` conjuncts is false.
 
-**This is a flaky GATE, not a defect in what it gates** — but a required PR check cannot
-carry it, and `L5` fixed exactly this class once already (a verdict read before its evidence
-existed, and two gates sleeping on the wall clock). The fix is the same shape: wait for the
-evidence rather than for a duration.
+**It was a flaky GATE, not a defect in what it gates** — and `L5` fixed exactly this class
+once already (a verdict read before its evidence existed, and two gates sleeping on the wall
+clock).
+
+✅ **REPRODUCED, THEN FIXED (2026-08-11).** Loading the box with three spare interpreted
+servers and running the gate six times reproduced it on run 2: **`fineFloats 0, slatH 0,
+ratio 0`, four rows red** on a `door/slatted` that drew perfectly in the other five. The
+truncated verdict had never shown which conjunct — the failing rows go to stdout and
+`run-gates.sh` keeps only the last line, cut to 100 characters.
+
+⚠ **THE CAUSE IS `quiet` RETURNING TRUE ON AN EMPTY BLOCK.** `openPart` settled with
+`quiet(() => g.meshes.length, 400, …)`, which returns as soon as the count stops changing
+for 400 ms — and under contention the display rebuild that meshes a limb has often not
+started by then. **It settles at zero and returns `true`**: no `!!`, no timeout, a clean
+settle on nothing. Both earlier signatures are that same settle at different points.
+
+⚠ **AND THE GATE ALREADY KNEW.** *"Wait for the evidence, not for the stream to go quiet"*
+is written thirty lines further down, for the gateway — applied there and nowhere else,
+which left the other four opens exposed. It belongs in `openPart`, where all of them pass.
+
+⚠ **THE TRAP INSIDE THE FIX: `g.meshes` IS CUMULATIVE.** It is every `M:` id in arrival
+order for the whole session and is never reset, so `meshes.length > 0` is true forever after
+the first open and would have waited for nothing on every one after it — a guard that reads
+exactly like a guard. The evidence is `g.picture`, which `openPart` clears at its top.
+
+**After: 8 of 8 under the same load, and three clean full suites.** ⚠ And it is airtight by
+construction rather than statistically: `fineFloats` is `drawnFloats()` read immediately
+after `openPart` returns, and `openPart` can no longer return until that is non-zero — so a
+zero is now reachable only through a timeout, which prints.
 
 ## Contents
 
