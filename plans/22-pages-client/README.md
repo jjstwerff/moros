@@ -12,7 +12,7 @@ can be opened and driven.**
 
 **Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), and `P2` is
 **run and green** — so `W5` is buildable today with no loft change.
-**Next:** `R1` — reconcile the ring verb. The full step decomposition is
+**Next:** `R1b` — reconcile the ring verb. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -72,8 +72,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
 | ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
-| **`R1a`** — the pose carries the ground under the feet (`Author` + `author_at`, **51 sites**) | S | every existing gesture test unchanged; a driver that omits it is **refused, not defaulted** | ⏭ **Next** |
-| **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | two worlds, one ring each, equal `w_tau` **and** equal trunk state | Blocked on `R1a` |
+| ✅ **`R1a`** — the pose carries the ground under the feet | S | **DONE.** `make lib-test` rc=0 both backends (hex_editor 398→400) · `make parts` byte-identical · the house script still `τ 3909` · two sabotages seen red | ✅ Done |
+| **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | two worlds, one ring each, equal `w_tau` **and** equal trunk state | ⏭ **Next** |
 | **`R3`** — `press` answers `PR_NONE` for `O`/`P` until a selection exists | XS | ⚠ **a deliberate regression** — `editor_run` says *"no gesture for key O"* rather than doing the wrong thing silently. The wire path is untouched | Blocked on `R1` |
 | **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds** | Blocked on `R3` |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |

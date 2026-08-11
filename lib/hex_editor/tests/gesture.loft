@@ -38,10 +38,13 @@ fn world() -> VoxelWorld {
 // step is sqrt(3) wu across and 1.5 wu up the other axis, so a search that walks
 // out in world units reaches ten hexes northward and only nine eastward — the bug
 // `peak_cell`'s bound comment names.
-fn at_origin() -> Author { hex_editor::author_at(0.0, 0.0, 0.0) }
+fn at_origin(w: VoxelWorld) -> Author { hex_editor::author_on(w, 0.0, 0.0, 0.0) }
 
 fn test_the_stroke_lands_ten_hexes_ahead() {
-  a = at_origin();
+  // ⚠ THE ONE PLACE A LITERAL HEIGHT IS HONEST: this test has no world. It measures
+  // `peak_cell`'s pure geometry — where a stroke lands, in hexes — and that reads
+  // `au_x`/`au_z`/`au_yaw` and never the ground. Everywhere else derives it.
+  a = hex_editor::author_at(0.0, 0.0, 0.0, 0.0);
   tq = 0;
   tr = 0;
   assert(hex_editor::peak_cell(a, tq, tr), "a cell ten hexes east exists");
@@ -56,9 +59,9 @@ fn test_raising_raises_the_ground_ahead() {
   w = world();
   tq = 0;
   tr = 0;
-  hex_editor::peak_cell(at_origin(), tq, tr);
+  hex_editor::peak_cell(at_origin(w), tq, tr);
   before = hex_editor::ground_h(w, tq, tr);
-  ack = hex_editor::raise_ahead(w, at_origin(), 1);
+  ack = hex_editor::raise_ahead(w, at_origin(w), 1);
   assert(ack.ak_ok, "the stroke applied: {ack.ak_why}");
   after = hex_editor::ground_h(w, tq, tr);
   assert(after == before + hex_editor::PEAK_STEP,
@@ -73,7 +76,7 @@ fn test_the_hill_never_lifts_the_author() {
   w = world();
   (sq, sr) = px_to_hex(0.0, 0.0);
   before = hex_editor::ground_h(w, sq, sr);
-  hex_editor::raise_ahead(w, at_origin(), 1);
+  hex_editor::raise_ahead(w, at_origin(w), 1);
   after = hex_editor::ground_h(w, sq, sr);
   assert(after == before, "the ground under the author is untouched: {before} -> {after}");
   assert(hex_editor::PEAK_R < hex_editor::PEAK_AHEAD,
@@ -87,16 +90,16 @@ fn test_two_strokes_sum_where_they_overlap() {
   w = world();
   tq = 0;
   tr = 0;
-  hex_editor::peak_cell(at_origin(), tq, tr);
-  hex_editor::raise_ahead(w, at_origin(), 1);
+  hex_editor::peak_cell(at_origin(w), tq, tr);
+  hex_editor::raise_ahead(w, at_origin(w), 1);
   one = hex_editor::ground_h(w, tq, tr);
-  hex_editor::raise_ahead(w, at_origin(), 1);
+  hex_editor::raise_ahead(w, at_origin(w), 1);
   two = hex_editor::ground_h(w, tq, tr);
   assert(two == one * 2, "the same stroke twice is twice the height: {one} -> {two}");
 
   // And an overlapping stroke from a neighbouring stance adds where the two meet
   // rather than overwriting it.
-  side = hex_editor::author_at(0.0, 3.0, 0.0);
+  side = hex_editor::author_on(w, 0.0, 3.0, 0.0);
   hex_editor::raise_ahead(w, side, 1);
   three = hex_editor::ground_h(w, tq, tr);
   assert(three > two, "an overlapping stroke adds: {two} -> {three}");
@@ -106,11 +109,11 @@ fn test_lowering_is_the_same_stroke_the_other_way() {
   w = world();
   tq = 0;
   tr = 0;
-  hex_editor::peak_cell(at_origin(), tq, tr);
-  hex_editor::raise_ahead(w, at_origin(), 1);
-  hex_editor::raise_ahead(w, at_origin(), 1);
+  hex_editor::peak_cell(at_origin(w), tq, tr);
+  hex_editor::raise_ahead(w, at_origin(w), 1);
+  hex_editor::raise_ahead(w, at_origin(w), 1);
   up = hex_editor::ground_h(w, tq, tr);
-  hex_editor::raise_ahead(w, at_origin(), 0 - 1);
+  hex_editor::raise_ahead(w, at_origin(w), 0 - 1);
   down = hex_editor::ground_h(w, tq, tr);
   assert(down == up - hex_editor::PEAK_STEP, "one step back down: {up} -> {down}");
 }
@@ -119,7 +122,7 @@ fn test_a_stroke_of_nothing_is_refused_with_a_reason() {
   // Invariant I: refused, and refused with something an author can read. A bare
   // false here would be the blank no this editor refuses everywhere else.
   w = world();
-  ack = hex_editor::raise_ahead(w, at_origin(), 0);
+  ack = hex_editor::raise_ahead(w, at_origin(w), 0);
   assert(!ack.ak_ok, "a direction of zero is refused");
   assert(ack.ak_why != "", "with a named reason, got {ack.ak_why}");
   assert(ack.ak_n == 0, "and it did nothing");
@@ -129,7 +132,7 @@ fn test_lowering_past_the_floor_reports_what_it_lost() {
   // The third state: applied, but not as asked, WITH the residual. Ground at zero
   // cannot go lower, so a downward stroke clamps — and says how much it clamped.
   w = world();
-  ack = hex_editor::raise_ahead(w, at_origin(), 0 - 1);
+  ack = hex_editor::raise_ahead(w, at_origin(w), 0 - 1);
   assert(ack.ak_ok, "the stroke applied");
   assert(ack.ak_n > 0, "and it clamped cells, got {ack.ak_n}");
   assert(ack.ak_residual > 0, "reporting what it could not do: {ack.ak_residual}");

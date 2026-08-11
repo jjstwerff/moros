@@ -23,7 +23,7 @@ fn world() -> VoxelWorld {
 // A closed ring of fence edges at radius `rad` — the boundary a fill must respect.
 fn ringed(rad: integer) -> VoxelWorld {
   w = world();
-  hex_editor::fence_ring(w, hex_editor::author_at(0.0, 0.0, 0.0),
+  hex_editor::fence_ring(w, hex_editor::author_on(w, 0.0, 0.0, 0.0),
                          hex_editor::FENCE_MAT, rad, 10.0);
   w
 }

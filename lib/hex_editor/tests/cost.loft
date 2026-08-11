@@ -34,7 +34,7 @@ fn filled(rad: integer) -> VoxelWorld {
   w
 }
 
-fn east() -> Author { hex_editor::author_at(0.0, 0.0, 0.0) }
+fn east(w: VoxelWorld) -> Author { hex_editor::author_on(w, 0.0, 0.0, 0.0) }
 
 fn test_a_stroke_costs_a_fixed_number_of_writes() {
   // The number itself, pinned. The brush is a disc of PEAK_R with a `(1-t²)²`
@@ -43,7 +43,7 @@ fn test_a_stroke_costs_a_fixed_number_of_writes() {
   // If this number moves, the brush changed; that is the point of writing it down.
   w = filled(20);
   before = w.w_tau;
-  hex_editor::raise_ahead(w, east(), 1);
+  hex_editor::raise_ahead(w, east(w), 1);
   cost = w.w_tau - before;
   assert(cost > 0, "a stroke writes something");
   assert(cost == 91, "a stroke costs 91 column writes, got {cost}");
@@ -57,10 +57,10 @@ fn test_the_cost_does_not_grow_with_the_world() {
   small = filled(20);
   big = filled(60);
   s0 = small.w_tau;
-  hex_editor::raise_ahead(small, east(), 1);
+  hex_editor::raise_ahead(small, east(small), 1);
   cs = small.w_tau - s0;
   b0 = big.w_tau;
-  hex_editor::raise_ahead(big, east(), 1);
+  hex_editor::raise_ahead(big, east(big), 1);
   cb = big.w_tau - b0;
   assert(cs == cb, "the same stroke costs the same: {cs} on the small world, {cb} on the big");
 }
@@ -71,13 +71,13 @@ fn test_a_second_stroke_costs_the_same_as_the_first() {
   // press, say — would show here as a rising cost.
   w = filled(20);
   t0 = w.w_tau;
-  hex_editor::raise_ahead(w, east(), 1);
+  hex_editor::raise_ahead(w, east(w), 1);
   first = w.w_tau - t0;
   t1 = w.w_tau;
-  hex_editor::raise_ahead(w, east(), 1);
+  hex_editor::raise_ahead(w, east(w), 1);
   second = w.w_tau - t1;
   t2 = w.w_tau;
-  hex_editor::raise_ahead(w, east(), 1);
+  hex_editor::raise_ahead(w, east(w), 1);
   third = w.w_tau - t2;
   assert(first == second && second == third,
          "each stroke costs the same: {first}, {second}, {third}");
@@ -89,7 +89,7 @@ fn test_a_refused_gesture_costs_nothing() {
   // tell them apart from outside.
   w = filled(20);
   before = w.w_tau;
-  ack = hex_editor::raise_ahead(w, east(), 0);
+  ack = hex_editor::raise_ahead(w, east(w), 0);
   assert(!ack.ak_ok, "the stroke was refused");
   assert(w.w_tau == before, "and wrote nothing: τ {before} -> {w.w_tau}");
 }

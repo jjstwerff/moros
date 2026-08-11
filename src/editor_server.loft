@@ -1535,7 +1535,7 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
   } else {
     fmat = payload as integer ?? FENCE_MAT;
   }
-  fa = hex_editor::author_at(px, pz, 0.0);
+  fa = hex_editor::author_at(px, pz, 0.0, py);
   fack = hex_editor::fence_ring(wld, fa, fmat, frad, py);
   if !fack.ak_ok {
     srv.send_to(cid, "S:{say_refused(\"fence\", fack.ak_why)}");
@@ -1561,7 +1561,7 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
     emat = payload[eci + 1..] as integer ?? WALL_MAT;
   }
   ehx = world_to_hex(px, pz);
-  eack = hex_editor::edge_set(wld, hex_editor::author_at(px, pz, 0.0), edir, emat, py,
+  eack = hex_editor::edge_set(wld, hex_editor::author_at(px, pz, 0.0, py), edir, emat, py,
                               terrain_h(ehx.ha_q, ehx.ha_r, wld));
   if !eack.ak_ok {
     srv.send_to(cid, "S:{say_refused(\"edge\", eack.ak_why)}");
@@ -5256,7 +5256,7 @@ fn probe_view() {
   az = 0.0 - 4.0;
   ayaw = PI * 0.5;
   runs = WallRuns { items: [] };
-  hack = hex_editor::place_house(wld, hex_editor::author_at(ax, az, ayaw),
+  hack = hex_editor::place_house(wld, hex_editor::author_at(ax, az, ayaw, py_of(wld, ax, az) as float * W_UNIT),
                                  HOUSE_W, HOUSE_D, 4, runs);
   println("house: {hack.ak_why}  anchor ({hack.ak_q},{hack.ak_r})  runs {len(runs.items)}");
 
@@ -6906,7 +6906,7 @@ fn main() {
             if sdir < 0 {
               st_why2 = "";
               ns = hex_editor::cellar_stair(wld,
-                     hex_editor::author_at(px, pz, yaw), cliff_step(), st_why2);
+                     hex_editor::author_at(px, pz, yaw, py), cliff_step(), st_why2);
               if ns < 0 {
                 srv.send_to(ev.cid, "S:{say_cellar_no_stair(nb, ns, st_why2)}");
                 println("editor: cellar dug on {nb} cells, stair refused ({ns}) — {st_why2}");
@@ -7489,7 +7489,7 @@ fn main() {
           // an opening that can name the surface it is cut from.
           if okind >= 20 { oinback = true; okind = okind - 20; }
           else if okind >= 10 { odepth = 0.55; okind = okind - 10; }
-          oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw),
+          oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw, py),
                                         hex_editor::DOOR_MAT, 1);
           if !oack.ak_ok {
             srv.send_to(ev.cid, "S:opening refused — {oack.ak_why}");
@@ -7708,7 +7708,7 @@ fn main() {
           // saying what happened. A refusal carries the rotation that would have
           // worked — the lattice has six placeable facings of twelve, and the author
           // is owed the one to turn to rather than a silent 30° swing.
-          hack = hex_editor::press(sess, wld, hex_editor::author_at(px, pz, yaw), "H");
+          hack = hex_editor::press(sess, wld, hex_editor::author_at(px, pz, yaw, py), "H");
           if !hack.ak_ok {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");
@@ -8027,7 +8027,7 @@ fn main() {
           // knowing which chunks to rebuild. The Ack carries the cell precisely so
           // this does not re-derive it — the stale-hex bug was exactly that.
           rack = hex_editor::raise_ahead(wld,
-                   hex_editor::author_at(px, pz, yaw), ev.payload as integer ?? 0);
+                   hex_editor::author_at(px, pz, yaw, py), ev.payload as integer ?? 0);
           if !rack.ak_ok {
             println("editor: raise refused — {rack.ak_why}");
           } else {

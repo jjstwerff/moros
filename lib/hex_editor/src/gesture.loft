@@ -34,14 +34,51 @@ use hex_way;
 use hex_edge;
 
 // Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
+//
+// ⚠ `au_y` IS THE GROUND UNDER THE FEET, IN WORLD UNITS, AND IT IS THE DRIVER'S TO
+// SUPPLY — plan 22 `R1a`. A gesture that seats something needs it, and a gesture
+// **cannot work it out**: the precise answer is the server's `ground_under`, which
+// interpolates within a cell through `hex_mesh::corner_heights` — and **`hex_mesh`
+// depends on this package**, so reaching for it here is a dependency CYCLE, not a
+// cone question. The pose is where that fact belongs anyway: this tree's own rule
+// is that the author's position is *a driver's pose, never the editor's*.
+//
+// ⚠ AND IT IS NOT DECORATION. `fence_ring` → `fence_disc` → `wall_set` →
+// `edge_layer(wld, oq, orr, ref)`: the height picks **which layer an edge is stored
+// on**. A silent `0.0` puts every fence on the ground floor of a building whose
+// author is standing upstairs, and nothing says so.
 pub struct Author {
   au_x:   float,
   au_z:   float,
   au_yaw: float,
+  au_y:   float,
 }
 
-pub fn author_at(x: float, z: float, yaw: float) -> Author {
-  Author { au_x: x, au_z: z, au_yaw: yaw }
+// ⚠ THE HEIGHT IS A REQUIRED ARGUMENT, NOT A DEFAULTED ONE, and that is the whole
+// point of the signature: a driver that forgets it gets a **compile error** rather
+// than a fence on the wrong storey. Use this when the caller genuinely knows better
+// than the store — the server does, from its walker and its mesher.
+pub fn author_at(x: float, z: float, yaw: float, y: float) -> Author {
+  Author { au_x: x, au_z: z, au_yaw: yaw, au_y: y }
+}
+
+// …and this when it does not. The ground under `(x, z)` as the STORE answers it:
+// the cell's terrain height in this world's own units.
+//
+// ⚠ `w.w_unit` IS THE HEIGHT SCALE AND IT IS THE RIGHT ONE. `hex_proj::HEIGHT_SCALE`
+// is the same number (0.25) kept as a global, and reaching for that would be both a
+// new dependency and **wrong on a part world** — `door/slat` is authored at `0.125`,
+// so a world's own unit is the only answer that survives leaving the landscape.
+//
+// ⚠ IT IS COARSER THAN THE SERVER'S, ON PURPOSE AND NOT BY ACCIDENT. This is the
+// cell's height; `ground_under` interpolates across the cell. They agree except
+// within one cell of a slope, and a driver with no mesher cannot do better —
+// **which is a real difference in what a driver can KNOW, not a disagreement about
+// what a gesture MEANS.**
+pub fn author_on(w: VoxelWorld, x: float, z: float, yaw: float) -> Author {
+  (aoq, aor) = px_to_hex(x, z);
+  Author { au_x: x, au_z: z, au_yaw: yaw,
+           au_y: (ground_h(w, aoq, aor) as float) * w.w_unit }
 }
 
 // The answer to a gesture. `ak_n` is what it did — cells, edges, whatever the

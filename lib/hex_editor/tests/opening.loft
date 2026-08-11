@@ -43,10 +43,10 @@ fn owned_of(w: VoxelWorld, mat: integer) -> integer {
   n
 }
 
-fn at_the_wall() -> Author {
+fn at_the_wall(w: VoxelWorld) -> Author {
   // Standing ON a ring cell, which is where an author is when they open a wall.
   (x, z) = hex_to_px(2, 0);
-  hex_editor::author_at(x, z, 0.0)
+  hex_editor::author_on(w, x, z, 0.0)
 }
 
 fn test_an_opening_changes_a_material_and_deletes_no_edge() {
@@ -55,7 +55,7 @@ fn test_an_opening_changes_a_material_and_deletes_no_edge() {
   w = walled();
   walls0 = owned_of(w, hex_editor::WALL_MAT);
   doors0 = owned_of(w, hex_editor::DOOR_MAT);
-  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 1);
+  ack = hex_editor::open_ahead(w, at_the_wall(w), hex_editor::DOOR_MAT, 1);
   assert(ack.ak_ok, "the opening was cut: {ack.ak_why}");
   walls1 = owned_of(w, hex_editor::WALL_MAT);
   doors1 = owned_of(w, hex_editor::DOOR_MAT);
@@ -67,7 +67,7 @@ fn test_an_opening_changes_a_material_and_deletes_no_edge() {
 
 fn test_a_wider_opening_takes_more_edges() {
   w = walled();
-  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 2);
+  ack = hex_editor::open_ahead(w, at_the_wall(w), hex_editor::DOOR_MAT, 2);
   assert(ack.ak_ok, "a two-edge opening: {ack.ak_why}");
   assert(ack.ak_n == 2, "took two edges, got {ack.ak_n}");
   assert(owned_of(w, hex_editor::DOOR_MAT) == 2, "and both are doors");
@@ -77,7 +77,7 @@ fn test_a_window_is_its_own_material_not_a_door() {
   // They differ in what the RENDERER does — a door leaves nothing, a window leaves
   // a sill below and a head above — so they cannot share a material.
   w = walled();
-  hex_editor::open_ahead(w, at_the_wall(), hex_editor::WINDOW_MAT, 1);
+  hex_editor::open_ahead(w, at_the_wall(w), hex_editor::WINDOW_MAT, 1);
   assert(owned_of(w, hex_editor::WINDOW_MAT) == 1, "one window");
   assert(owned_of(w, hex_editor::DOOR_MAT) == 0, "and no door");
   assert(hex_editor::is_opening(hex_editor::WINDOW_MAT), "a window is an opening");
@@ -91,7 +91,7 @@ fn test_opening_thin_air_is_refused() {
   // is a boundary the model believes in and the picture cannot show.
   w = world();
   before = w.w_tau;
-  ack = hex_editor::open_ahead(w, hex_editor::author_at(0.0, 0.0, 0.0),
+  ack = hex_editor::open_ahead(w, hex_editor::author_on(w, 0.0, 0.0, 0.0),
                                hex_editor::DOOR_MAT, 1);
   assert(!ack.ak_ok, "an opening with no wall is refused");
   assert(ack.ak_why != "", "with a reason: {ack.ak_why}");
@@ -102,7 +102,7 @@ fn test_a_material_that_is_not_an_opening_is_refused_without_an_offer() {
   // Nominal, like every other material in this editor: a fence is not "nearly" a
   // door, and offering one would change what the hole IS.
   w = walled();
-  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::FENCE_MAT, 1);
+  ack = hex_editor::open_ahead(w, at_the_wall(w), hex_editor::FENCE_MAT, 1);
   assert(!ack.ak_ok, "a fence is not an opening");
   assert(!ack.ak_why.contains("offer"), "and gets no offer: {ack.ak_why}");
 }
@@ -110,7 +110,7 @@ fn test_a_material_that_is_not_an_opening_is_refused_without_an_offer() {
 fn test_an_absurd_width_is_refused_with_one() {
   // Ordinal, so it does: a width has a nearest admissible value.
   w = walled();
-  ack = hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 40);
+  ack = hex_editor::open_ahead(w, at_the_wall(w), hex_editor::DOOR_MAT, 40);
   assert(!ack.ak_ok, "forty edges is refused");
   assert(ack.ak_why.contains("offer 6"), "with the widest that fits: {ack.ak_why}");
   assert(ack.ak_why.contains("residual 34"), "and how far off: {ack.ak_why}");
@@ -120,7 +120,7 @@ fn test_the_renderer_can_find_the_opening_by_position() {
   // What `emit_run_wall` needs: given a point on the wall, what is the edge made
   // of. Without this the band is drawn whole and the hole never reaches a picture.
   w = walled();
-  hex_editor::open_ahead(w, at_the_wall(), hex_editor::DOOR_MAT, 1);
+  hex_editor::open_ahead(w, at_the_wall(w), hex_editor::DOOR_MAT, 1);
   (x, z) = hex_to_px(2, 0);
   found = 0;
   for d in 0..6 {

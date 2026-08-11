@@ -73,7 +73,7 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
       zs = tail[..p2];
       yaw = (tail[p2 + 1..].trim() as float ?? 0.0) * PI / 180.0 ?? 0.0;
     }
-    a = hex_editor::author_at(xs as float ?? 0.0, zs as float ?? 0.0, yaw);
+    a = hex_editor::author_on(w, xs as float ?? 0.0, zs as float ?? 0.0, yaw);
     said = "placed {a.au_x},{a.au_z}";
     return true;
   }
@@ -135,7 +135,7 @@ fn main() {
 
   w = world_new(0.25, hex_editor::W_RESERVE, W_EPS, W_THETA).wn_world;
   seed_ground(w, 30);
-  a = hex_editor::author_at(0.0, 0.0, 0.0);
+  a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
   // ⚠ AN `EditSession`, NOT A BARE `WallRuns` — plan 22 `W4`. A key press is a
   // gesture applied to a SESSION, and the server has held one since the headless
   // thread landed. A runner holding only the wall runs could never call `press`

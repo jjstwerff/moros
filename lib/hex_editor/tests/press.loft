@@ -47,7 +47,7 @@ fn test_the_grade_is_taken_under_the_author_not_at_the_origin() {
          + "it exists for (origin {origin_h}, shelf {shelf_h})");
 
   (ax, az) = hex_to_px(11, 11);
-  a = author_at(ax, az, 0.0);
+  a = author_on(w, ax, az, 0.0);
   assert(grade_under(w, a) == shelf_h,
          "grade_under answered {grade_under(w, a)} for an author standing on a "
          + "shelf at {shelf_h} — it is not reading the ground under the author");
@@ -63,7 +63,7 @@ fn test_the_grade_is_taken_under_the_author_not_at_the_origin() {
 fn test_an_unmapped_key_is_named_rather_than_refused() {
   w = flat();
   sess = EditSession {};
-  a = author_at(0.0, 0.0, 0.0);
+  a = author_on(w, 0.0, 0.0, 0.0);
   for k in ["W", "A", "S", "D", "", "ArrowLeft", "zzz"] {
     ack = press(sess, w, a, k);
     assert(ack.ak_why == PR_NONE,
@@ -76,7 +76,7 @@ fn test_an_unmapped_key_is_named_rather_than_refused() {
 fn test_every_mapped_key_is_reachable() {
   w = flat();
   sess = EditSession {};
-  a = author_at(0.0, 0.0, 0.0);
+  a = author_on(w, 0.0, 0.0, 0.0);
   for k in ["ArrowUp", "ArrowDown", "H", "O", "P", "F", "G"] {
     ack = press(sess, w, a, k);
     assert(ack.ak_why != PR_NONE,
@@ -97,10 +97,16 @@ fn test_pressing_the_house_key_is_calling_place_house() {
   // "rot 9 of 12, offer 8". `tools/scripts/house.keys` stands at 30° for exactly
   // this reason, and a test that did not would be measuring the doorstep.
   (ax, az) = hex_to_px(6, 6);
-  a = author_at(ax, az, 30.0 * PI / 180.0 ?? 0.0);
+  // ⚠ ONE POSE PER WORLD, and they must agree: `author_on` reads the ground, so a
+  // pose taken from one world and used on the other would be comparing two setups
+  // rather than two paths. Both fixtures are `flat()`, so these are equal by
+  // construction — and the assertion below would catch it if they ever were not.
+  ka_pose = author_on(by_key, ax, az, 30.0 * PI / 180.0 ?? 0.0);
+  ha_pose = author_on(by_hand, ax, az, 30.0 * PI / 180.0 ?? 0.0);
+  assert(ka_pose.au_y == ha_pose.au_y, "the two fixtures do not share a ground height");
 
-  ka = press(ks, by_key, a, "H");
-  ha = place_house(by_hand, a, HOUSE_W, HOUSE_D, grade_under(by_hand, a), hs.es_runs);
+  ka = press(ks, by_key, ka_pose, "H");
+  ha = place_house(by_hand, ha_pose, HOUSE_W, HOUSE_D, grade_under(by_hand, ha_pose), hs.es_runs);
 
   assert(ka.ak_ok == ha.ak_ok, "one placed a house and the other did not");
   assert(ka.ak_ok, "the fixture refused the house: {ka.ak_why}");
@@ -112,4 +118,44 @@ fn test_pressing_the_house_key_is_calling_place_house() {
          "pressing H did {by_key.w_tau} writes, calling place_house did "
          + "{by_hand.w_tau} — the key means something else now");
   assert(ka.ak_n == ha.ak_n, "the two disagree on how many cells were placed");
+}
+
+// ── `R1a` — the pose carries the ground under the feet ──────────────────────
+//
+// ⚠ WITHOUT THESE, `R1a` WOULD BE A FIELD NOBODY READS — the lower bound of
+// plans/README § What makes a step SAFE, and this tree's commonest defect. Nothing
+// consumes `au_y` until `R1b`, so the claim it can be surprised by is that the pose
+// AGREES WITH THE WORLD it was taken from.
+fn test_the_pose_carries_the_ground_under_it() {
+  w = flat();
+  // A shelf away from the origin, so a pose that answered a constant would be wrong.
+  for sq in 8..14 {
+    for sr in 8..14 { ground_set(w, sq, sr, 9, SURFACE_MAT); }
+  }
+  (fx, fz) = hex_to_px(0, 0);
+  (sx, sz) = hex_to_px(11, 11);
+  low  = author_on(w, fx, fz, 0.0);
+  high = author_on(w, sx, sz, 0.0);
+  assert(low.au_y != high.au_y,
+         "both poses read {low.au_y} — author_on is answering a constant, not the ground");
+  // The exact value, in the WORLD's own units rather than a global constant.
+  assert(high.au_y == (ground_h(w, 11, 11) as float) * w.w_unit,
+         "the shelf pose says {high.au_y}, the store says "
+         + "{(ground_h(w, 11, 11) as float) * w.w_unit}");
+  assert(low.au_y == 0.0, "the flat pose says {low.au_y}");
+}
+
+// ⚠ THE WORLD'S OWN UNIT, NOT A GLOBAL 0.25. A part world may be authored at
+// another unit entirely — `door/slat` is 0.125 — so a pose that reached for
+// `hex_proj::HEIGHT_SCALE` would be right on the landscape and wrong on every part.
+fn test_the_height_is_in_the_worlds_own_unit() {
+  fine = world_new(0.125, W_RESERVE, 8, 3).wn_world;
+  for fq in 0 - 3..4 {
+    for fr in 0 - 3..4 { ground_set(fine, fq, fr, 8, SURFACE_MAT); }
+  }
+  (px, pz) = hex_to_px(0, 0);
+  a = author_on(fine, px, pz, 0.0);
+  assert(a.au_y == 1.0,
+         "8 steps at 0.125 is 1.0 world units, the pose says {a.au_y} — a global "
+         + "0.25 would have answered 2.0");
 }

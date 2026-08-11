@@ -164,7 +164,7 @@ fn housed_world() -> VoxelWorld {
 fn test_a_house_lands_with_a_floor_and_four_walls() {
   w = housed_world();
   runs = hex_editor::WallRuns { items: [] };
-  ack = hex_editor::place_house(w, hex_editor::author_at(0.0, 0.0, PI / 6.0 ?? 0.0),
+  ack = hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, PI / 6.0 ?? 0.0),
                                 HOUSE_W, HOUSE_D, 12, runs);
   assert(ack.ak_ok, "the house went down: {ack.ak_why}");
   assert(ack.ak_n == 27, "a 5x4 footprint is 27 cells, got {ack.ak_n}");
@@ -187,7 +187,7 @@ fn test_the_four_runs_meet_end_to_end() {
   // un-mitred span leaves visible corner gaps, measured at 0.45 wu in S1.
   w = housed_world();
   runs = hex_editor::WallRuns { items: [] };
-  hex_editor::place_house(w, hex_editor::author_at(0.0, 0.0, PI / 6.0 ?? 0.0),
+  hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, PI / 6.0 ?? 0.0),
                           HOUSE_W, HOUSE_D, 12, runs);
   for i in 0..hex_editor::PLAN_SIDES {
     j = (i + 1) % hex_editor::PLAN_SIDES ?? 0;
@@ -204,7 +204,7 @@ fn test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing() {
   w = housed_world();
   runs = hex_editor::WallRuns { items: [] };
   before = w.w_tau;
-  ack = hex_editor::place_house(w, hex_editor::author_at(0.0, 0.0, 0.0),
+  ack = hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, 0.0),
                                 HOUSE_W, HOUSE_D, 12, runs);
   assert(!ack.ak_ok, "due east is refused");
   assert(ack.ak_why.contains("offer"), "with the rotation that would work: {ack.ak_why}");

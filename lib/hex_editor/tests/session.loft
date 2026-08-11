@@ -51,7 +51,7 @@ fn ring_at(rad: integer) -> vector<vector<integer>> {
 fn test_a_stencil_leaves_the_ring_intact_with_exactly_one_door() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   kb = 0; ka = 0; why = "";
   n = stencil_place(w, 0, 0, STENCIL_R, 1, STOREY_H, kb, ka, why);
   assert(n > 0, "the stencil placed nothing, so there is no ring to count");
@@ -77,7 +77,7 @@ fn test_a_stencil_leaves_the_ring_intact_with_exactly_one_door() {
 fn test_an_interior_cell_owns_no_wall() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   kb2 = 0; ka2 = 0; why2 = "";
   stencil_place(w, 0, 0, STENCIL_R, 1, STOREY_H, kb2, ka2, why2);
   edges = session_walls(w, 0, 0);
@@ -94,7 +94,7 @@ fn test_an_interior_cell_owns_no_wall() {
 fn test_a_ring_through_a_session_counts_what_the_geometry_says() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   r = 2;
   ack = session_fence(s, w, FENCE_MAT, r, 10.0);
   assert(ack.ak_ok, "the ring was refused: {ack.ak_why}");
@@ -110,7 +110,7 @@ fn test_a_ring_through_a_session_counts_what_the_geometry_says() {
 fn test_a_refused_ring_is_refused_and_writes_nothing() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   before = w.w_tau;
   ack = session_fence(s, w, 9, 2, 10.0);            // 9 is not a fence material
   assert(!ack.ak_ok, "a nominal material was accepted");
@@ -146,7 +146,7 @@ fn test_a_refused_ring_is_refused_and_writes_nothing() {
 fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 1.5708);                  // the gate's `7:0,0,1.5708`
+  session_at(s, w, 0.0, 0.0, 1.5708);                  // the gate's `7:0,0,1.5708`
   for k in 0..8 { session_raise(s, w, 1); }
   before_cell = session_cell(w, 0, 10);
   before_col = session_column(w, 0, 10);
@@ -160,7 +160,7 @@ fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
 
   // Dig beneath, from ON the summit — a cellar needs headroom above it, and the
   // author's own cell is what the handler digs under.
-  session_at(s, 0.0, 15.0, 0.0);                    // the gate's `7:0,15,0`
+  session_at(s, w, 0.0, 15.0, 0.0);                    // the gate's `7:0,15,0`
   dwhy = "";
   for k in 0..3 {
     nb = session_storey(s, w, 0 - 1, dwhy);
@@ -191,7 +191,7 @@ fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
   // went to index 0, positionally, so after a cellar a raise would have raised the
   // CELLAR FLOOR while the drawn ground held still. A test that only checked the
   // ground held would pass that perfectly. So raise once more and require it to follow.
-  session_at(s, 0.0, 0.0, 1.5708);
+  session_at(s, w, 0.0, 0.0, 1.5708);
   session_raise(s, w, 1);
   raised = session_cell(w, 0, 10);
   assert(raised[1] > after_cell[1],
@@ -215,7 +215,7 @@ fn test_a_cellar_under_the_ground_leaves_the_ground_where_it_was() {
 fn test_two_props_in_one_cell_accumulate_rather_than_replacing() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   first = session_prop(s, w, 1);
   assert(first.dr_code == DR_OK, "the first prop was refused: {first.dr_why}");
   assert(first.dr_count == 1, "{first.dr_count} in the cell after one prop");
@@ -238,7 +238,7 @@ fn test_two_props_in_one_cell_accumulate_rather_than_replacing() {
 fn test_a_prop_outside_the_palette_is_refused_without_an_offer() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   got = session_prop(s, w, PROP_ITEM_MAX + 1);
   assert(got.dr_code == DR_ITEM,
          "a prop outside the palette was placed ({got.dr_code})");
@@ -262,7 +262,7 @@ fn test_a_prop_outside_the_palette_is_refused_without_an_offer() {
 fn test_raising_the_ground_under_a_prop_does_not_delete_it() {
   w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   // ⚠ THE PROP GOES WHERE THE RAISE LANDS, AND THE ACK IS WHAT SAYS WHERE THAT IS.
   // `raise_ahead` writes along a RAY — `peak_cell` puts the stroke ten hexes in
   // front of the author — so a prop under the author's feet is never touched by it
@@ -638,8 +638,13 @@ fn test_a_cupboard_ignores_a_deck() {
 // over a wire twice. The last is the one nobody could see, and it is deliberate
 // behaviour rather than an accident.
 fn test_the_first_press_records_and_builds_nothing() {
+  // ⚠ A WORLD ONLY SO THE POSE CAN READ ITS GROUND — plan 22 `R1a`. These three
+  // measure the two-press DRAFT, which cares about x and z and nothing else; the
+  // world is here because `session_at` derives the author's height rather than
+  // inventing a zero, and deriving needs something to ask.
+  w = a_world();
   s = session_new();
-  session_at(s, 2.0, 0.0, 0.0);
+  session_at(s, w, 2.0, 0.0, 0.0);
   got = session_wall(s, WALL_MAT);
   assert(got.ds_code == DS_STARTED, "the first press answered {got.ds_code}");
   assert(s.es_draft.wd_open, "the draft is not open after the first press");
@@ -648,10 +653,15 @@ fn test_the_first_press_records_and_builds_nothing() {
 }
 
 fn test_the_second_press_builds_the_run_and_closes_the_draft() {
+  // ⚠ A WORLD ONLY SO THE POSE CAN READ ITS GROUND — plan 22 `R1a`. These three
+  // measure the two-press DRAFT, which cares about x and z and nothing else; the
+  // world is here because `session_at` derives the author's height rather than
+  // inventing a zero, and deriving needs something to ask.
+  w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   session_wall(s, WALL_MAT);
-  session_at(s, 6.0, 0.0, 0.0);
+  session_at(s, w, 6.0, 0.0, 0.0);
   got = session_wall(s, WALL_MAT);
   assert(got.ds_code == DS_RUN, "the second press answered {got.ds_code}");
   assert(got.ds_run.rd_reach > 5.99 && got.ds_run.rd_reach < 6.01,
@@ -665,15 +675,20 @@ fn test_the_second_press_builds_the_run_and_closes_the_draft() {
 // STARTS one. Nothing in the acknowledgement says which state you are in, which is
 // exactly why the behaviour is worth pinning.
 fn test_a_refused_second_press_closes_the_draft_too() {
+  // ⚠ A WORLD ONLY SO THE POSE CAN READ ITS GROUND — plan 22 `R1a`. These three
+  // measure the two-press DRAFT, which cares about x and z and nothing else; the
+  // world is here because `session_at` derives the author's height rather than
+  // inventing a zero, and deriving needs something to ask.
+  w = a_world();
   s = session_new();
-  session_at(s, 0.0, 0.0, 0.0);
+  session_at(s, w, 0.0, 0.0, 0.0);
   session_wall(s, WALL_MAT);
-  session_at(s, 0.1, 0.1, 0.0);
+  session_at(s, w, 0.1, 0.1, 0.0);
   refused = session_wall(s, WALL_MAT);
   assert(refused.ds_code == DS_REFUSED, "two presses in one place answered {refused.ds_code}");
   assert(!s.es_draft.wd_open, "the draft survived a refusal");
   // The control: the next press STARTS a draft rather than completing the old one.
-  session_at(s, 9.0, 0.0, 0.0);
+  session_at(s, w, 9.0, 0.0, 0.0);
   next = session_wall(s, WALL_MAT);
   assert(next.ds_code == DS_STARTED,
          "the press after a refusal answered {next.ds_code} — it completed a draft "

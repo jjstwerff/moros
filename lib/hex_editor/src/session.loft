@@ -92,7 +92,9 @@ pub struct EditSession {
 // numbers rather than inheriting a default that could drift away from them.
 pub fn session_new() -> EditSession {
   EditSession {
-    es_author: author_at(0.0, 0.0, 0.0),
+    // ⚠ 0.0 IS HONEST HERE AND NOWHERE ELSE: a fresh session has no world yet,
+    // and the first `session_at` derives the real height from one.
+    es_author: author_at(0.0, 0.0, 0.0, 0.0),
     es_runs:   WallRuns { items: [] },
     es_awalls: WallRuns { items: [] },
     es_roofs:  RoofPlans { items: [] },
@@ -118,8 +120,13 @@ pub fn session_ground(w: VoxelWorld, half: integer, h: integer, mat: integer) {
 // ⚠ IN WORLD UNITS, AS `7:` TAKES THEM. A gesture reads the author's position and
 // derives its own hex, so a session that placed by hex would be doing the conversion
 // the editor does and could do it differently.
-pub fn session_at(s: EditSession, x: float, z: float, yaw: float) {
-  s.es_author = author_at(x, z, yaw);
+// ⚠ IT TAKES THE WORLD NOW — plan 22 `R1a`. The wire's `7:` carries x, z and yaw
+// because that is what a person typed; the ground under those coordinates is a fact
+// about the WORLD, so a teleport derives it rather than inventing a zero. A session
+// that kept 0.0 here would put a fence on the ground floor of a building whose
+// author had just walked upstairs.
+pub fn session_at(s: EditSession, w: VoxelWorld, x: float, z: float, yaw: float) {
+  s.es_author = author_on(w, x, z, yaw);
 }
 
 // ── the gestures, threaded ───────────────────────────────────────────────────

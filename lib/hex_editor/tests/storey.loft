@@ -154,17 +154,17 @@ fn test_the_cellar_stair_opens_the_ground_only_where_the_fold_rule_demands_it() 
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   assert(n == 3, "a storey of 12 takes three strides of 3, got {n}: {why}");
   for d in 1..4 {
-    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), d);
     assert(hex_editor::ground_open(w, tq, tr),
            "tread {d} is open to the room above");
   }
   // ⚠ AND NOTHING ELSE IS. A gesture that opened the disc would be a cellar with no
   // floor over it at all, which every count here would still call a success.
   assert(!hex_editor::ground_open(w, 0, 0), "the room itself keeps its ceiling");
-  (bq, br) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 3.14159), 1);
+  (bq, br) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 3.14159), 1);
   assert(!hex_editor::ground_open(w, bq, br),
          "and so does the cell behind the author");
 }
@@ -176,7 +176,7 @@ fn test_a_cellar_stair_is_walkable_end_to_end() {
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   // ⚠ WALKED DOWNWARD, CARRYING THE FEET, and the first version of this test got it
   // wrong in a way worth keeping: it asked for the surface at each tread with the
   // feet at 41 — above the ground — and over the DEEPEST tread the floor is still
@@ -186,7 +186,7 @@ fn test_a_cellar_stair_is_walkable_end_to_end() {
   // every cell.
   feet = 40.0;
   for d in 0..3 {
-    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 3 - d);
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), 3 - d);
     sf = hex_voxel::world_surface(w, tq, tr, feet);
     drop = (feet as integer ?? 0) - sf.sf_units;
     assert(drop > 0 && drop <= 3,
@@ -357,9 +357,9 @@ fn test_a_stair_tread_shows_its_riser_at_any_stride() {
     w = world();
     why = "";
     hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-    n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), stride, why);
+    n = hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), stride, why);
     assert(n > 0, "a stair of stride {stride} went in: {why}");
-    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), 1);
     // ⚠ THE NEIGHBOUR'S COLUMN AT THE TREAD'S HEIGHT — which is the way round the
     // renderer asks it, and I got it backwards twice writing this. The tread stands
     // at `lo + stride`; beside it, at that same height, the room's own column holds
@@ -407,10 +407,10 @@ fn test_a_stair_tread_does_not_wall_itself_off_from_its_own_room() {
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   lo = 40 - hex_editor::STOREY_H;
   hi = 40 - hex_editor::SLAB_THICK;
-  (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 1);
+  (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), 1);
   assert(hex_editor::room_continues(w, tq, tr, lo, hi),
          "the first tread is part of the room, three units up though it is");
 }
@@ -424,15 +424,15 @@ fn test_a_second_cellar_climbs_to_the_room_above_and_not_to_the_ground() {
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   assert(n == 3, "the sub-basement gets its own three treads, got {n}: {why}");
   // Every tread lies between the two floors — never above the one it climbs to.
   deep = 40 - 2 * hex_editor::STOREY_H;
   mid = 40 - hex_editor::STOREY_H;
   for d in 1..4 {
-    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), d);
     sf = hex_voxel::world_surface(w, tq, tr, (mid - 1) as float);
     assert(sf.sf_units > deep && sf.sf_units < mid,
            "tread {d} at {sf.sf_units} is between {deep} and {mid}");
@@ -468,16 +468,16 @@ fn test_a_stair_stops_when_it_reaches_the_surface_rather_than_leaving_it() {
   // descends INTO, which is a quantity only the pre-cut world holds.
   pre: vector<integer> = [];
   for d in 0..24 {
-    (pq, pr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    (pq, pr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), d);
     pre += [hex_editor::terrain_h(pq, pr, w)];
   }
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  n = hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  n = hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   assert(n >= 0, "the stair is not an error on a slope: {why}");
   assert(n < 24, "the stair is no longer than the profile read ahead of it ({n} treads)");
   for d in 1..(n + 1) {
-    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), d);
+    (tq, tr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), d);
     gnd = pre[d] ?? 0;
     // ⚠ THE TOP OF THE COLUMN, NOT `world_surface` — the query alone cannot make
     // this claim. Asked for the surface under the ground, it answers the highest
@@ -506,7 +506,7 @@ fn test_the_stair_leaves_a_wall_standing_where_it_cuts() {
   w = world();
   why = "";
   hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
-  (wq, wr) = hex_editor::ray_cell_at(hex_editor::author_at(0.0, 0.0, 0.0), 3);
+  (wq, wr) = hex_editor::ray_cell_at(hex_editor::author_on(w, 0.0, 0.0, 0.0), 3);
   gl = hex_voxel::world_ground_layer(w, wq, wr);
   col = world_column(w, wq, wr);
   cells: vector<hex_voxel::Hex> = [];
@@ -521,7 +521,7 @@ fn test_the_stair_leaves_a_wall_standing_where_it_cuts() {
   }
   world_set_column(w, hex_voxel::Column { co_q: wq, co_r: wr, co_cells: cells,
                                           co_ids: ids });
-  hex_editor::cellar_stair(w, hex_editor::author_at(0.0, 0.0, 0.0), 3, why);
+  hex_editor::cellar_stair(w, hex_editor::author_on(w, 0.0, 0.0, 0.0), 3, why);
   assert(hex_editor::ground_open(w, wq, wr), "the stairwell did open that cell");
   after = hex_voxel::world_cell(w, wq, wr, hex_voxel::world_ground_layer(w, wq, wr));
   assert((after.h_wall_nw as integer ?? 0) == 7,

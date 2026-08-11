@@ -77,7 +77,7 @@ fn floor_spread(w: VoxelWorld) -> integer {
 
 fn house(w: VoxelWorld, x: float, grade: integer) -> Ack {
   runs = WallRuns { items: [] };
-  place_house(w, author_at(x, 0.0, YAW), W, D, grade, runs)
+  place_house(w, author_on(w, x, 0.0, YAW), W, D, grade, runs)
 }
 
 // ── flat ground is the control, and it must be untouched ────────────────────
