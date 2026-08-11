@@ -507,6 +507,27 @@ cannot follow it caves (`A9`) or spans (embankment → viaduct → bridge). That
 axis and its mirror, and it is why the 20-metre canyon `A8` measured is not a bug in the
 balance — past the point where a fill is a fill, the road spans.
 
+### ⚠ Instruments that were wrong before the thing they measured — five, this session
+
+Same session, same direction every time:
+
+- a probe compared corner `k` of one cell against corner `k` of the other, which are
+  **different corners**, and reported seams of 3.00 and 0.00 that meant nothing;
+- the first rock colour was chosen *darker* than the wall to separate by value, then
+  photographed as a **black hole** — a vertical face's normal is horizontal, so
+  `max(dot(N,L),0)` is zero and the whole of it is ambient;
+- a fixture measured a road climbing AWAY from the settle's seed, which converges in one
+  pass at any length, and reported `worst step 1` at 40 cells;
+- a guard asked *is this cell too high above its neighbour*, which is true climbing and
+  false descending — **twice**, once in `faced_between` and once in `stroke_over_limit`;
+- a picture script's houses were all REFUSED (yaw 0 is the odd orbit) and the frame rows
+  went red on a scene with no house in it.
+
+⚠ **AND ONE FINDING THIS SESSION DID NOT CAUSE**: the ground's height ramp is **0.77× the
+classifier's tolerance** from the character, and the test written to catch exactly that
+cannot see it because the ramp's colour is in neither `surfaces()` nor `classified()`.
+[OPEN_ISSUES](OPEN_ISSUES.md#-the-grounds-height-ramp-is-inside-the-classifiers-tolerance-of-the-character).
+
 ### ⚠ The toolchain moved mid-session
 
 `/usr/local/bin/loft` was replaced at 19:43, three minutes after a commit, with
