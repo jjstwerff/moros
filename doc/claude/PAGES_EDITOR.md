@@ -1,9 +1,15 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
-# PAGES_EDITOR — the editor as a page, with no server at all
+# PAGES_EDITOR — the editor as a page: the quick start, and one client with two authorities
 
-**Status: designed 2026-08-11, not built. One probe (`P4`) already run and it holds.** Every
-measurement below was taken on that date against this tree and the *emitted* browser page, not
-recalled.
+**Status: designed 2026-08-11. `P4` run and it holds; `W1` BUILT, `W4` built and one of four
+sites wired.** Every measurement below was taken on that date against this tree and the *emitted*
+browser page, not recalled.
+
+⚠ **THE TITLE SAID *"with no server at all"* AND THAT WAS THE WRONG FRAME.** The page is not the
+editor minus a server — it is the editor with the **authority local instead of remote**, and it is
+a **permanent quick-start demo** rather than a phase. A server is coming back for script
+compilation, multi-player and debugging. See § *The server is not legacy*, which is the section
+that decides the architecture.
 
 ⚠ **NO PLAN NUMBER YET, DELIBERATELY.** `plans/README.md`'s rule is *claim the issue before you
 name the directory — the number is the identity, and scanning the tree for a free one mints
@@ -139,38 +145,128 @@ it untenable.
 
 ---
 
+## ⚠ The server is not legacy — it is coming back, and that changes the shape
+
+> **The user, 2026-08-11:** *"beware that eventually lavition will need a server for compiling
+> scripts, multi-player and debugging."*
+
+**This is the constraint that decides the architecture, and the first draft of this file got it
+wrong.** It proposed a **new program**, `src/editor_page.loft`, beside `editor_client.loft` — *"three
+programs, one editor"*. That is correct only if the page is a destination. It is not: it is one
+**mode** of a client that will also, later, be attached to a server.
+
+⚠ **TWO RENDERER PROGRAMS IS A FORK, AND IT IS THE FORK THIS TREE ALREADY PAID FOR ONCE.**
+`html/editor.html` and the wasm client were two renderers for one editor; they were reconciled by
+**deleting one** (2026-08-02, after a 49,500-sample luminance comparison), and `tools/script.mjs`
+*still* carries a comment ordering the reader to keep in step with the deleted one. Building a
+second renderer now, while knowing a server is due back, is scheduling that reconciliation again.
+
+### The correction: one client, two authorities
+
+> **The page is not *the editor without a server*. It is the editor with the AUTHORITY LOCAL
+> instead of REMOTE.**
+
+That is a sharper form of this file's invariant and it is the one that survives the server's
+return. `src/editor_client.loft` already renders, already caches voxels in a `VoxelWorld`, and
+already meshes them. What changes per mode is **where a key press goes**:
+
+| mode | a press goes to | the authoritative world is |
+|---|---|---|
+| **local** (the page) | `hex_editor::press` in the client | the client's own |
+| **attached** (today's editor) | a wire message | the server's |
+| **multi-player** (later) | a wire message; other authors' edits arrive the same way | the server's |
+
+⚠ **`W4` IS WHAT MAKES THE SWITCH SAFE, AND THIS IS THE ARGUMENT FOR IT.** If a key means one
+thing locally and another over the wire, the two modes are two editors and the mode switch is a
+behaviour change. `press` is the reason they cannot drift — which promotes it from *tidy-up* to
+**precondition**.
+
+### What a page can never do, and it is exactly the user's list
+
+| needs a server | why the page cannot |
+|---|---|
+| **compiling scripts** | a routine is loft, and compiling loft needs a toolchain. The `--html` page *is* the compiler's output; it does not contain one. Plan [#15](https://github.com/jjstwerff/moros/issues/15) lands server-side |
+| **multi-player** | two authors need one authority, and a page is per-tab. `#8`'s `M1`/`X2` (many authors, one store) are the server's rows |
+| **debugging** | [`loft debug`](LOFT_DEBUGGER.md) attaches to a process. ⚠ Its own note says it *cannot reach a running server yet* — so this one is not "the server has it", it is **nobody has it**, and the page must not be read as the reason |
+
+**So the page's job is the authoring loop — build a house, see it, keep it** — and it is honest
+about stopping there. ⚠ **A page that grew its own script runner or its own second author would be
+re-implementing the server in the one environment that cannot host it.**
+
+### And local mode is PERMANENT — the quick start, not a phase
+
+> **The user, 2026-08-11:** *"but I still want to keep a quick start demo version around for people
+> not interested in the server features."*
+
+**That settles the one-client question rather than complicating it.** A demo kept *forever* is
+exactly the thing that must not be a second program: a separate `editor_page.loft` would be
+maintained by whoever remembered it, and this tree's most-repeated defect is *a thing built,
+green, and never checked again*. **A mode of the shipping client cannot rot on its own** — it
+breaks the moment the client does, loudly, in the client's own tests.
+
+Three consequences, and none of them is optional:
+
+1. **It is a supported configuration, so it gets a gate.** ⚠ **And it is the first gate in this
+   tree that needs NO server** — every one of the 39 dials `EDITOR_PORT`. It needs a browser, not a
+   port: open `_site/index.html` from `file://`, press the house keys, read the picture. **If that
+   gate does not exist, the demo is broken the first week nobody opens it.**
+2. **It must be complete for authoring, not crippled.** *"People not interested in the server
+   features"* are not a lesser audience to be nagged toward a server — the local mode's job is to
+   be the whole editor for someone who only wants to build. It says what it cannot do
+   (scripts, other authors, debugging) **once, where they would look for it**, and nowhere else.
+3. **Quick start means NO INSTALL.** A directory you can open, or serve with any static host —
+   no loft, no toolchain, no port. ⚠ **That is a real constraint on `build-pages.mjs`**: whatever
+   it emits has to work from `file://` as well as from a web server, and `fetch()` of a sibling
+   file is **blocked under `file://` by CORS**. So the base tree is *inlined into the page*, not
+   fetched beside it — which is exactly what routing's `build-site.mjs` already does and says why
+   (*"no external .mjs → no Pages MIME surprises"*).
+
+⚠ **POINT 3 IS A DESIGN CONSTRAINT THAT ARRIVED FROM ONE WORD.** *"Quick start"* rules out the
+fetch-a-manifest shape this file proposed two sections ago, and it does so on a mechanism —
+`file://` — that no amount of care would have surfaced later than the first person double-clicking
+the HTML. **The assets are baked in; `http_get` stays for the attached mode.**
+
 ## The target shape
 
 ```
 lavition/
-  src/editor_page.loft      ← NEW. the whole editor in one --html program:
-                              EditSession + gestures + mesher + renderer + panel
+  src/editor_client.loft    ← EXTENDED, not forked: one renderer, two authority modes.
+                              Local mode holds an EditSession and calls `press`;
+                              attached mode sends the wire message it always did.
   tools/build-pages.mjs     ← NEW. assembles _site/ — routing's build-site.mjs pattern, and
                               loft's own ide/scripts/build-base-fs.js for the base tree
-  _site/                    ← the deliverable: a directory you can serve statically
-    index.html                the --html page, with the host shim appended (until #851)
-    base-fs.json              data/parts/ baked into LayeredFS's base tree
+  _site/                    ← the deliverable: a directory you can serve statically,
+    index.html                  OR open from file:// — the quick start. ONE self-contained
+                                file: the --html page, the host shim (until #851), and
+                                data/parts/ INLINED as LayeredFS's base tree (see P5)
 ```
+
+⚠ **`_site/index.html` IS THE SAME ARTIFACT THE SERVER SERVES.** `read_client()` already hands
+`{source_dir()}/.loft/editor_client.html` to a browser at `/`. If the standalone page is a
+different file, there are two pages to keep in step; if it is the same file booted differently,
+there is one. **The mode is a boot decision, not a build decision.**
 
 ⚠ **`build-pages.mjs` IS A COPY OF A SCRIPT THAT EXISTS, NOT A NEW IDEA.** loft's
 `ide/scripts/build-base-fs.js` already bakes a directory into `base-fs.json`, and routing's
 `browser/build-site.mjs` already inlines a page and stages its data beside it. **Read both before
 writing a line of it** — and if the base tree can be produced by loft's script unchanged, use it.
 
-**Three programs, one editor.** `editor_server` (socket → gesture), `editor_run` (script →
-gesture), `editor_page` (key → gesture). ⚠ **The page is the third consumer, and that is a
-`hex_editor` argument rather than a page argument** — a library validated against one caller has
-not been shown to be general, which is the extraction bar's own clause.
+**Three drivers, one editor.** `editor_server` (socket → gesture), `editor_run` (script →
+gesture), and the client in **local mode** (key → gesture). ⚠ **The client is the third consumer
+of `hex_editor`, and that is a library argument rather than a page argument** — a library
+validated against one caller has not been shown to be general, which is the extraction bar's own
+clause.
 
 ⚠ **AND IT DISCHARGES A CLAUSE PLAN 19 RECORDS AS UNMET.** LAVITION_SPLIT lists *a second
-consumer* as one of two genuinely open clauses, answered only by the split itself. `editor_page`
+consumer* as one of two genuinely open clauses, answered only by the split itself. Local mode
 answers it **before** the split, in-tree, and for free: `editor_client.loft` and `editor_run.loft`
-both compile against a lavition-only `lib/` today (measured, `make probe-split`), so a program
-built from the two of them is **Moros-free by construction** rather than by discipline.
+both compile against a lavition-only `lib/` today (measured, `make probe-split`), so the composed
+program is **Moros-free by construction** rather than by discipline.
 
-⚠ **THE NEW PROGRAM GOES IN `PROGRAMS` IN `tools/layering.sh` IN THE SAME COMMIT.** That list is
-what `PROGRAM_DEBT` checks, and a program missing from it is a program whose Moros coupling nothing
-measures — which is the exact defect that guard was written for this morning.
+⚠ **IF A NEW PROGRAM IS ADDED AFTER ALL, IT GOES IN `PROGRAMS` IN `tools/layering.sh` IN THE SAME
+COMMIT.** That list is what `PROGRAM_DEBT` checks, and a program missing from it is a program whose
+Moros coupling nothing measures — the exact defect that guard was written for. Extending
+`editor_client.loft` instead means the check already covers it, which is one more reason to.
 
 ---
 
@@ -250,8 +346,9 @@ constants moved into the library.
 pub fn press(sess: EditSession, w: VoxelWorld, a: &Author, key: text) -> Ack
 ```
 
-One place that answers *what does this key do*. `editor_run` calls it, `editor_page` calls it, and
-`editor_server` calls it behind its wire ids. ⚠ **`script.mjs`'s 23-entry `KEYMAP` is then a
+One place that answers *what does this key do*. `editor_run` calls it, the client in **local
+mode** calls it, and `editor_server` calls it behind its wire ids — so a key cannot mean one thing
+in the page and another over the wire, which is what makes the two authority modes one editor. ⚠ **`script.mjs`'s 23-entry `KEYMAP` is then a
 TRANSPORT table, not a meaning table** — it may keep mapping keys to wire ids, because that is
 genuinely the socket's business; what it must stop doing is deciding what the key *means*.
 
@@ -328,7 +425,8 @@ can each kill an item outright.
 
 | | the claim | the probe | if it fires |
 |---|---|---|---|
-| **`P1`** | a **binary** `.hxw` survives `web::http_get` intact | fetch one part in a `--html` page and compare its bytes to the file | `W2`/`W3` route through `store_load_url_trusted` (measured present) or base64 the assets at build time. **Not fatal, but it changes the manifest format** |
+| **`P5`** | **`fetch()` of a sibling file is blocked under `file://`** — the claim that forces the assets to be INLINED rather than staged beside the page | open a two-file page from `file://` in headless Chrome and read the error | if it is NOT blocked, the assets may be staged beside `index.html` and the page gets smaller. ⚠ **Asserted from general browser behaviour and NOT yet measured here** — it is a design constraint resting on an unmeasured mechanism, which is what this table exists to stop |
+| **`P1`** | a **binary** `.hxw` survives `web::http_get` intact | fetch one part in a `--html` page and compare its bytes to the file | ⚠ **Only affects the ATTACHED mode now.** Local mode inlines its assets (`P5`), so a fetch failure no longer touches the quick start |
 | **`P2`** | `host_output`/`loftPush` round-trips a string from a `--html` page, and our JS can be appended to the emitted page at all | a ten-line page: `host_ask("PING")` → JS replies → assert | **`W5` is impossible and localStorage needs a loft ticket.** This is the one that decides whether the ask is buildable today |
 | **`P3`** | a built world fits in localStorage | `world_to_bytes` on the house scene from `tools/scripts/house.keys`, print the length | shard, or IndexedDB over the same bridge |
 | ✅ **`P4`** | one `--html` program can hold **both** the renderer and the gestures | ✅ **RUN 2026-08-11 — it holds.** See below | — |
@@ -379,6 +477,7 @@ else** at first, and the whole prop/door/vehicle surface can wait.
 | `W5` **or** `#851` + autosave | whichever route is available, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it |
 | `W2`/`W3` + the base tree | the assets | doors and props are parts; the house shell is not |
 | the rest of `W4` | every remaining key, and **delete the other three tables** | ⚠ the step is not done until they are gone |
+| **the demo gate** | open `_site/index.html`, build a house, read the picture | ⚠ **NOT OPTIONAL, and it is the first gate here needing NO server.** A permanent demo with no gate is broken the first week nobody opens it |
 
 ⚠ **THE ROUTE DECISION IS DEFERRED ON PURPOSE, AND IT IS CHEAP TO DEFER** because `W1` and `W4` —
 the two real pieces of work — are the same either way. **Ask [#851](https://github.com/loft-lang/loft/issues/851)
@@ -394,9 +493,11 @@ actually made**, and it is the one no existing gate covers.
 
 ## What this design deliberately does not do
 
-- **It does not replace the server.** The server keeps the gates, the walk, multi-client and the
-  tick. ⚠ **A page that quietly became the only editor would take 39 gates with it**, and that is
-  LAVITION_SPLIT's *trap* section almost word for word.
+- **It does not replace the server, and the server is not legacy.** It keeps the gates, the walk
+  and the tick today, and it is where **script compilation, multi-player and debugging** land —
+  see § *The server is not legacy*. ⚠ **A page that quietly became the only editor would take 39
+  gates with it**, which is LAVITION_SPLIT's *trap* section almost word for word — and would then
+  have to grow back the three things it structurally cannot host.
 - **It does not put invariants in JavaScript.** `tools/build-pages.mjs` assembles files; it decides
   nothing. Every rule stays a loft test — this tree's standing division, and the reason
   `build-pages.mjs` is allowed to exist at all.

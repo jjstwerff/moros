@@ -288,8 +288,11 @@ address (or the hostname `make browser` prints) cannot connect.
   id, every acknowledgement string, the ordering guarantees, and each message's fate under the
   design. Read this before writing a gate or a client
 - [Editor substrate](doc/claude/EDITOR_SUBSTRATE.md) — **the universal hex-world editor** and its libraries: package map, consumers and their configurations, seam rules, the document-format contract, **the ownership audit and the five target groups**
-- [Pages editor](doc/claude/PAGES_EDITOR.md) — **the editor as a static page, with no server at
-  all**: one invariant (*the page is the same editor with different I/O*), the five pieces of
+- [Pages editor](doc/claude/PAGES_EDITOR.md) — **the editor as a static page: the quick start, and
+  one client with two authorities**. ⚠ Not *the editor minus a server* — a server is coming back
+  for **script compilation, multi-player and debugging**, so the page is the same client with the
+  authority LOCAL instead of remote, and a **permanent** quick-start demo rather than a phase.
+  Two renderer programs would be the `html/editor.html` fork again. Its other half: one invariant (*the page is the same editor with different I/O*), the five pieces of
   library work it needs, and the count that justifies them — **what a key means is re-asserted in
   FOUR places today**, two of which say so in their own source and one of which cites a file
   deleted on 2026-08-02. ⚠ Its **filesystem correction** is the part to read: loft already ships
