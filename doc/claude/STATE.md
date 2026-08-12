@@ -37,6 +37,28 @@ ignored**, so an armed instrument reporting nothing reads as *there is nothing t
 **33,245 samples naming the library**. Not wrong — blind. **Set it, or you photograph your own
 `main`.**
 
+### ⏭ RE-EVALUATED THE SAME DAY: still half useful, and the fix is upstream not installed
+
+**`probe/perf/README.md` § *Is the sampler useful yet* has the table.** Short version, all on
+the installed `1dec17a0…` (aug 12 **09:38**):
+
+- ✅ **a program under `--interpret` profiles well** — percent and ms **by function, by loft
+  `file:line`, and by call path**.
+- ❌ **`loft test` still reports nothing.** The fix — loft `5db374d4`, *"A suite was the one loft
+  workload the profiler could not see"* — landed **11:57 today, two hours after our binary was
+  installed**. It resolves samples per test *before* merging (each test has its own `Data`, so a
+  raw sum would add up positions that mean nothing in common) and refuses where it cannot
+  answer. **Nothing changes here until `/usr/local/bin/loft` is replaced.**
+- ⚠ **the same silence has a second home**: `LOFT_PROFILE=1` on the **default** backend — the
+  command a person actually types — exits 0 with an empty terminal, because `arm_profiler()` is
+  in the *interpret* arm. [loft#865](https://github.com/loft-lang/loft/issues/865), filed today.
+- ⚠ **`LOFT_NO_NATIVE_LIBS=1` is a VISIBILITY switch and costs nothing**: `editor_run` over
+  `house.keys` is **175 samples / 0.668 s** without it and **33,248 / 0.635 s** with — 190× the
+  visible work at the same wall clock. **The sample count is the tell.**
+- ⚠ **it accounts for 355 ms of a 635 ms run** — parse, compile and cache load are outside the
+  picture by construction, so it answers *where did my program go*, never *why is this command
+  slow*.
+
 | where a test-shaped workload's time goes | 103,396 samples over 9.32 s |
 |---|---|
 | **`empty_cells` 24.6 %** | `[for i in 0..CHUNK_CELLS { StoredHex {} }]` — materialising a whole chunk |

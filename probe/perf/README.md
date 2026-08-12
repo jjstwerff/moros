@@ -73,6 +73,64 @@ kt=117 ColumnWrite×320` — one per chunk materialisation. 320 small structs is
 problem, and *a store that outlives its program* is worth someone's attention before it is a
 large one.
 
+## ⏭ IS THE SAMPLER USEFUL YET? — re-evaluated 2026-08-12, and the answer is *half*
+
+Asked again the same day. Everything below is measured on the **installed** binary,
+`1dec17a0aa464303f00f9616b24580bd64a19f48400272ba09f5606c2f1e9333` (`loft 2026.8.0`, aug 12
+09:38).
+
+| the workload | can it be profiled today |
+|---|---|
+| a program under **`--interpret`** | ✅ **yes, and it is good** — percent and ms **by function, by loft `file:line`, and by call path** |
+| a program on the **default** backend | ❌ nothing, and **no warning** — `LOFT_PROFILE=1` is accepted and ignored |
+| `--native` anything | ❌ same silence |
+| **`loft test` / `--tests`** — the workload we most want | ❌ nothing. Re-measured on `lavition_ui` and `hex_voxel`: **0 banners** |
+
+⚠ **THE SUITE FIX EXISTS UPSTREAM AND IS NOT IN OUR TOOLCHAIN.** `loft-lang/loft` `5db374d4`,
+*"A suite was the one loft workload the profiler could not see"*, landed **11:57 today** —
+**two hours after the binary we run was installed** (09:38). Its design is the one worth
+having: samples are resolved to `(function, file:line)` **per test, before merging**, because
+each test gets its own `Data` and a `pc` names different code in every one — summing the raw
+maps would produce something shaped exactly like a profile. One merged banner, not 39. It also
+*refuses* where it cannot answer (`--native` tests, `LOFT_ALLOC_SITES` across a suite) instead
+of going quiet. **Nothing here changes until `/usr/local/bin/loft` is replaced.**
+
+⚠ **AND THE SILENCE HAS A SECOND HOME NOBODY HAD LOOKED AT: THE DEFAULT PROGRAM PATH.**
+`state.arm_profiler()` sits in the **interpret** arm of `main.rs`'s program branch, so the
+command a person actually types — `LOFT_PROFILE=1 loft --lib lib/ prog.loft` — exits 0 with an
+empty terminal. That is #860's shape one branch over, on the path reached first. Filed as
+[loft#865](https://github.com/loft-lang/loft/issues/865); the fix is the sentence `5db374d4`
+already wrote for `--native` tests.
+
+### ⚠ The library flag is a VISIBILITY switch, and it costs nothing — measured both ways
+
+The entry above says *"set it, or the profile is a picture of your own `main`"*. Re-measured on
+`editor_run` over `house.keys`, and it is sharper than that:
+
+| | samples | accounted | wall |
+|---|---|---|---|
+| default | **175** | 75 ms | 0.668 s |
+| `LOFT_NO_NATIVE_LIBS=1` | **33,248** | 355 ms | 0.635 s |
+
+**190× the visible work at the same wall clock.** So the flag does not make you measure a
+different animal — the run costs the same — it decides whether the library's frames are
+credited to the library or to whichever program frame called in. ⚠ **And the sample count is
+the tell**: the sampler is an op clock, so *hundreds* of samples for a run that does real work
+means you are photographing your own `main`. `fixture.loft` is the confusing case — it profiles
+identically with and without the flag, because no cdylib is in play for its cone, which is
+invisible state. **Set it always.**
+
+⚠ **NOT EVEN HALF THE WALL CLOCK IS ACCOUNTED FOR, and that is by construction.** 355 ms of a
+635 ms run. `arm_profiler()` is called immediately before `execute_argv`, so parse, compile and
+cache load are deliberately outside the picture — which is right for *where did my program go*
+and wrong for *why is this command slow*. Two different questions; only one has this instrument.
+
+### What it answered here anyway
+
+`crc32_of` is **32.9 %** of the headless runner's visible work — the checksum `world_save`
+writes. `editor_run` saves once per run and the script it drove has 56 lines, so a third of the
+loft-level work in `make headless-same` is a checksum over 65 KB. Recorded, not chased.
+
 ## `write_cost.loft` — the fixture, not the store
 
 ```sh
