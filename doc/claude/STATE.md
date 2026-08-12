@@ -96,6 +96,22 @@ see this"* reproduced on the day it was read: **the grep the rule demands takes 
 was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
 it.
 
+⛔ **`find_chunk` — A SOUND DESIGN, MEASURED WORSE, NOTHING SHIPPED.** A one-entry memo *checked
+rather than trusted*: confirm the last chunk with `ck_cx`/`ck_cz` instead of re-deriving the key
+and probing the hash. A stale index falls through, so **nothing has to invalidate it** — `N = 1`,
+no silent failure. Written down with its failure paths and a falsifier first. ⚠ **It cost 2.9 %
+instead of saving 1.5–3 %**: `find_chunk` went **3.8 % → 8.8 %**, the guard line alone 7.8 %.
+Reverted; the op clock confirms it exactly.
+
+Two reasons — **the guard is four conditions** over three field reads and a `len()`, where the
+probe that priced it measured **two** compares with a literal index (⚠ *a probe of a simplified
+version of the thing is a probe of a different thing*) — **and it mostly misses**, which was the
+written falsifier. ⚠ Inlining `chunk_key` was measured too: **−0.74 %, not taken**, because it
+would put the store's key encoding in two places, one reader against six writers.
+
+✅ **And the probe found an ICE**: the wrong arity for loft's hash type panics the compiler
+([loft#874](https://github.com/loft-lang/loft/issues/874), three lines).
+
 ✅ **AND `world_ground_cell` — ITERATE, DO NOT INDEX.** `w.w_chunks[ci].ck_layers[i].ly_id` walks
 three levels for one field and the condition reads two, so an indexed scan pays **six**
 navigations per layer where a loop binding pays two. Measured first: 200k scans, **369 ms indexed

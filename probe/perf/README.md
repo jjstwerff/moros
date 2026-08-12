@@ -236,6 +236,49 @@ they are derived from.
 the suite is used as evidence that a change is safe: three green suites and a byte-identical
 `make parts` said nothing about whether anything could RUN.
 
+### ⛔ `find_chunk` — a sound design, measured WORSE, 2026-08-12
+
+`find_chunk` is 3.8 % and `chunk_key` 2.4 %. Both were probed; **nothing shipped**, and the
+reason is the useful part.
+
+**Where the time is** — 500k lookups, net of a 65 ms empty loop:
+
+| | |
+|---|---|
+| `find_chunk` body (key + hash probe) | **131 ms** |
+| the hash probe alone | 81 ms |
+| `chunk_key`, including its call | 50 ms — of which **42 % is the call** |
+
+**The design: a one-entry memo, checked rather than trusted.** Remember the last chunk resolved
+and confirm it with `ck_cx`/`ck_cz` instead of deriving the key and probing again. A stale index
+either names a different chunk or falls out of range, so it **falls through** — meaning *nothing
+anywhere has to invalidate it*. `N = 1`, no silent failure, no coordination with the seven sites
+that touch `w_index` or with `reindex`. Written down before the code, with the failure paths
+enumerated and a falsifier: *a gain near zero means consecutive lookups rarely hit the same chunk*.
+
+⚠ **IT COST 2.9 % INSTEAD OF SAVING 1.5–3 %.** `2,201,138 → 2,264,294`; `find_chunk` went
+**3.8 % → 8.8 %**, the guard line alone 7.8 %. Reverted, and the op clock confirms the revert
+exactly — back to 2,201,138 to the sample.
+
+Two reasons, and the second is the one to carry:
+
+- **the guard is four conditions**, over three reads of `w_last` and a `len()` call. The probe
+  that priced it measured **two** compares with a *literal* index — so it priced a simpler check
+  than the design needs. ⚠ **A probe of a simplified version of the thing is a probe of a
+  different thing**, and it reads as evidence.
+- **and it mostly misses.** That was the written falsifier, and it fired.
+
+⚠ **INLINING `chunk_key` WAS MEASURED TOO: −0.74 %, and not taken.** It would put the store's key
+encoding in two places — this reader and the six writers that build `ca_key` — where a divergence
+makes every lookup miss. Loud in a suite, and still the class that cost a whole gate run today.
+**0.74 % of a test-time profile does not buy a second home for the key.**
+
+✅ **AND THE PROBE FOUND AN ICE ON THE WAY.** `struct W { idx: hash<integer, At> }` — the wrong
+arity for loft's hash type, which is `hash<At[ca_key]>` — **panics the compiler** with `index out
+of bounds: the len is 6 but the index is 18446744073709551615` at `typedef.rs:1260`, and points
+its caret at the closing brace of `main`.
+[loft#874](https://github.com/loft-lang/loft/issues/874), three lines.
+
 ### ✅ `world_ground_cell` — iterate, do not index, 2026-08-12
 
 The top of the profile at **8.4 %**, and it scans a chunk's layers for the one labelled

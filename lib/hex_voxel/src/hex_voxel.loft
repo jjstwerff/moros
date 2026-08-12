@@ -303,6 +303,36 @@ fn chunk_key(cx: integer, cz: integer) -> integer {
   ((cx & 4294967295) << 32) | (cz & 4294967295)
 }
 
+// ⚠ A ONE-ENTRY MEMO WAS TRIED HERE AND MEASURED WORSE — plan-less experiment,
+// 2026-08-12, recorded so it is not re-attempted from the same reasoning.
+//
+// The idea: callers sample neighbouring hexes of one chunk, so remember the last
+// chunk resolved and confirm it with `ck_cx`/`ck_cz` rather than deriving the key
+// and probing the hash again. **Checked, never trusted** — a stale index either
+// names a different chunk or falls out of range, so nothing has to invalidate it,
+// which made it N=1 with no silent failure. The design was sound.
+//
+// ⚠ **IT COST 2.9 % INSTEAD OF SAVING 1.5–3 %.** `find_chunk` went from 3.8 % of
+// `hex_editor`'s suite to **8.8 %**, the guard line alone 7.8 %. Two reasons, and
+// the second is the one worth carrying:
+//
+//   · the guard is FOUR conditions — `w_last >= 0`, `< len(w_chunks)`, and two
+//     coordinate compares — over three reads of `w_last` and a `len()` call. The
+//     probe that priced it measured **two** compares with a literal index, so it
+//     priced a simpler check than the one the design needs.
+//   · and it mostly MISSES, which is the falsifier that was written down before
+//     building: consecutive lookups in this suite do not hit the same chunk often
+//     enough to pay for a guard on every call.
+//
+// **A probe of a simplified version of the thing is a probe of a different thing.**
+//
+// ⚠ AND INLINING `chunk_key` HERE WAS MEASURED TOO — **−0.74 %** (2,201,138 →
+// 2,184,933 samples), because the call is ~42 % of the key's cost. **Not taken.**
+// It would put the store's key ENCODING in two places: this reader and the six
+// writers that build `ca_key` through `chunk_key`. A divergence makes every lookup
+// miss — reads answer absent and writes create a duplicate chunk — which is loud in
+// a suite and is still the same class that cost this tree a whole gate run today.
+// **0.74 % of a test-time profile does not buy a second home for the key.**
 fn find_chunk(w: VoxelWorld, cx: integer, cz: integer) -> integer {
   e = w.w_index[chunk_key(cx, cz)];
   if e == null { return 0 - 1; }
