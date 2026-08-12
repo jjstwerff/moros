@@ -28,11 +28,31 @@ avoids. Net of it, one cell is **4.2–4.7 us through `world_set_cell` against 0
 hoisted: 10 to 14×.** The estimate below was pricing the fixed cost as though it were the
 subject.
 
-⛔ **AND THE SUITE DID NOT MOVE** — the five `hex_part` fixtures wired to it, **310 tests,
-44.8 s → 45.3 s**. `G3` had already taken this package's win, and once a fixture stops being
-write-dominated a 14× on its writes is worth a millisecond in forty-five seconds. **The row
-below was right that the speed argument was spent**; what it could not say is by how much, and
-*"measure it before claiming a number"* is the instruction that got followed.
+⚠ **AND WIRING IT BOUGHT NOTHING IN ONE SUITE AND −10.7 % IN THE NEXT**, which is the part
+worth carrying:
+
+| | fixtures | result |
+|---|---|---|
+| `hex_part` — five fixtures | 256–484 cells | **310 tests, 44.8 s → 45.3 s.** Noise |
+| `hex_editor` — 27 loops in 22 files, through `ground_fill` | up to **2401** cells | **−10.7 %** of the suite, sampled |
+| …its fixture-heaviest file, `slope_limit.loft` | 49×49 | **−28.6 %**, same 28 runs |
+
+**What separates them is how much of a test its fixture IS.** `hex_part` had already taken
+`G3`'s win, its rectangles are a tenth the size, and its tests write part documents to disk, so
+the write path is a small share of a large test; `hex_editor` re-lays a 2401-cell landscape per
+test and does its real work in memory. *A 14× on an operation is worth what that operation was
+worth to the caller.* **The row below was right that the speed argument was spent for the
+package it was aimed at** — and wrong that it was spent everywhere, which only wiring a second
+consumer could show.
+
+⚠ **THE EDITOR NEEDED ITS OWN VERB, NOT THE STORE'S.** `hex_editor::ground_fill` over
+`world_fill_ground`, because *which layer is the ground* is a **per-chunk** fact — a cellar puts
+`LABEL_GROUND` at index 1 in its chunk and not in the next one, so a rectangle crossing them
+needs two answers and no caller can pass either. ⚠ **And it is deliberately NOT `ground_set`
+repeated**: `ground_set` carries the cell's item, rotation and edges across, a fill has one value
+for the whole rectangle and overwrites them. That difference is what makes a bulk write bulk —
+the thing hoisted out of the loop *is* the per-cell read — and it is pinned in
+`hex_editor/tests/ground_fill.loft` rather than left in a name.
 
 ⚠ **WHAT KEPT `G2` ALIVE IS NOT SPEED — A DEFAULTED GROUND IS NOT A GROUND LAYER.** `G5` was to
 remove the last consumer (*a scenario states its ground instead of filling it*), and for a

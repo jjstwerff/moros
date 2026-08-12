@@ -1,0 +1,112 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `ground_fill` — GROUND_DEFAULT `G2` at the editor's own writer.
+//
+// The store's `world_fill` is tested against its loop in
+// `hex_voxel/tests/fill.loft`. What is left to say here is what belongs to the
+// EDITOR, and it is two things that pull in opposite directions:
+//
+//   1. **Over ground a fixture just laid, a fill IS the `ground_set` loop** — same
+//      cells, same clock, same layer. That is what lets a fixture stop paying per
+//      cell for its landscape.
+//   2. ⚠ **AND IT IS NOT THE SAME FUNCTION.** `ground_set` reads the cell and
+//      carries its item, rotation and edges across; a fill has one value for the
+//      whole rectangle and overwrites them. Every consumer that swaps the loop for
+//      the fill has to be laying ground, not editing it — so the difference is
+//      pinned here rather than left to whoever reads the name next.
+use hex_editor;
+use hex_voxel;
+
+const U = 0.25;
+
+fn mk() -> VoxelWorld { world_new(U, 0, 8, 3).wn_world }
+
+fn by_loop(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+           h: integer, mat: integer) {
+  for lq in q0..q1 {
+    for lr in r0..r1 {
+      assert(hex_editor::ground_set(w, lq, lr, h, mat) == CW_OK, "the loop");
+    }
+  }
+}
+
+// ── 1. The equivalence the fixtures rest on ─────────────────────────────────
+
+fn test_a_ground_fill_lays_what_the_ground_set_loop_lays() {
+  wf = mk();
+  wl = mk();
+  assert(hex_editor::ground_fill(wf, 0 - 8, 0 - 8, 9, 9, 40,
+                                 hex_editor::SURFACE_MAT) == CW_OK, "the fill");
+  by_loop(wl, 0 - 8, 0 - 8, 9, 9, 40, hex_editor::SURFACE_MAT);
+
+  // ⚠ THE CLOCK IS PART OF THE CLAIM, not an extra. `hex_editor`'s cost tests count
+  // `w_tau`, so a fixture that swapped write paths and moved it would break them
+  // with every cell still agreeing — which is exactly what `G3` had to check.
+  assert(wf.w_tau == wl.w_tau,
+         "the fill's clock is {wf.w_tau} and the loop's {wl.w_tau}");
+  assert(len(wf.w_chunks) == len(wl.w_chunks),
+         "{len(wf.w_chunks)} chunks against {len(wl.w_chunks)}");
+  for cq in 0 - 10..11 {
+    for cr in 0 - 10..11 {
+      a = world_ground_cell(wf, cq, cr);
+      b = world_ground_cell(wl, cq, cr);
+      assert(a.h_height == b.h_height && a.h_material == b.h_material,
+             "({cq},{cr}) is h {a.h_height} mat {a.h_material} against "
+           + "h {b.h_height} mat {b.h_material}");
+    }
+  }
+  // …and it did something: 17 x 17 cells at 40.
+  assert(world_ground_cell(wf, 0, 0).h_height == 40, "the fill laid nothing");
+  assert(world_ground_cell(wf, 0 - 8, 8).h_height == 40, "the corner is unlaid");
+  assert(!hex_occupied(world_ground_cell(wf, 9, 9)), "the fill spilled past its edge");
+}
+
+// ⚠ AND ON THE GROUND LAYER, WHEREVER THAT IS. A storey above does not move the
+// index, but it is the case a fixture actually builds, so it is the one to check —
+// a fill that wrote layer 0 blindly would be right here by luck.
+fn test_a_ground_fill_reaches_the_ground_under_a_storey() {
+  w = mk();
+  assert(hex_editor::ground_fill(w, 0 - 4, 0 - 4, 5, 5, 40,
+                                 hex_editor::SURFACE_MAT) == CW_OK, "the ground");
+  assert(hex_editor::storey_add(w, 0, 0, 1, 2, "") >= 0, "the storey");
+  before = world_ground_cell(w, 0, 0).h_height;
+
+  // ⚠ DOWNWARD, so `F1` cannot be what answers. Re-laying UP to 60 is refused —
+  // the storey sits less than ε above the ground and the fill would fold into it —
+  // and a refusal here would have made this test about the fold rule instead of
+  // about which layer the fill found.
+  assert(hex_editor::ground_fill(w, 0 - 4, 0 - 4, 5, 5, 20,
+                                 hex_editor::SURFACE_MAT) == CW_OK, "the re-lay");
+  assert(before == 40, "the fixture's ground was {before}, not 40");
+  assert(world_ground_cell(w, 0, 0).h_height == 20,
+         "the ground is {world_ground_cell(w, 0, 0).h_height} — the fill missed it");
+}
+
+// ── 2. The difference, pinned so nobody has to find it ──────────────────────
+
+// ⚠ THE FOOTGUN, AS A TEST. `ground_set` keeps what the cell holds; `ground_fill`
+// writes one value everywhere. Both are right for their job and the names do not
+// say so on their own, so this is where it is said.
+fn test_a_fill_overwrites_what_a_set_would_have_kept() {
+  w = mk();
+  assert(hex_editor::ground_fill(w, 0, 0, 4, 4, 40,
+                                 hex_editor::SURFACE_MAT) == CW_OK, "the ground");
+  // An edge on one cell — content a heightfield write has no value for.
+  marked = world_ground_cell(w, 1, 1);
+  marked.h_wall_ne = 3 as u8? ?? 0;
+  assert(hex_editor::ground_write(w, 1, 1, marked) == CW_OK, "the edge");
+  assert(world_ground_cell(w, 1, 1).h_wall_ne == 3, "the fixture set no edge");
+
+  // `ground_set` carries it across…
+  assert(hex_editor::ground_set(w, 1, 1, 45, hex_editor::SURFACE_MAT) == CW_OK, "set");
+  assert(world_ground_cell(w, 1, 1).h_wall_ne == 3,
+         "`ground_set` dropped the edge it exists to keep");
+
+  // …and `ground_fill` does not, which is the whole of the difference.
+  assert(hex_editor::ground_fill(w, 0, 0, 4, 4, 50,
+                                 hex_editor::SURFACE_MAT) == CW_OK, "fill");
+  assert(world_ground_cell(w, 1, 1).h_height == 50, "the fill did not land");
+  assert(world_ground_cell(w, 1, 1).h_wall_ne == 0,
+         "the fill kept an edge — then it is `ground_set` and the two names lie");
+}

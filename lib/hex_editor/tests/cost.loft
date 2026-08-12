@@ -28,9 +28,7 @@ use hex_grid;
 // land on ground that already exists rather than creating it.
 fn filled(rad: integer) -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
-  for q in 0 - rad..rad + 1 {
-    for r in 0 - rad..rad + 1 { hex_editor::ground_set(w, q, r, 4, hex_editor::SURFACE_MAT); }
-  }
+  hex_editor::ground_fill(w, 0 - rad, 0 - rad, rad + 1, rad + 1, 4, hex_editor::SURFACE_MAT);
   w
 }
 

@@ -14,9 +14,7 @@ const G = 40;
 
 fn plain() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 30)..31 {
-    for r in (0 - 30)..31 { ground_set(w, q, r, G, SURFACE_MAT); }
-  }
+  ground_fill(w, (0 - 30), (0 - 30), 31, 31, G, SURFACE_MAT);
   w
 }
 

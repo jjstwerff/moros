@@ -242,6 +242,28 @@ pub fn ground_set(w: VoxelWorld, q: integer, r: integer, h: integer, mat: intege
   ground_write(w, q, r, nc)
 }
 
+// LAY ground over a rectangle — the bulk sibling of `ground_set`, GROUND_DEFAULT
+// `G2`, and deliberately not the same function repeated.
+//
+// ⚠ **IT WRITES THE CELL WHOLE, WHERE `ground_set` EDITS ONE.** `ground_set` reads
+// what the cell already holds and carries its item, its rotation and its three
+// edges across; a fill has one value for every cell of the rectangle, so an item or
+// a wall inside it does **not** survive. That is not an oversight — it is what makes
+// a bulk write a bulk write, since the thing being hoisted out of the loop is
+// exactly the per-cell read. **A gesture editing dressed ground wants `ground_set`;
+// a fixture laying a field wants this**, and `tests/ground_fill.loft` pins the
+// difference so it is a documented fact rather than a surprise.
+//
+// The layer is each chunk's own — `world_fill_ground`, not an index. A cellar puts
+// `LABEL_GROUND` at position 1 in its chunk and not in the next one, so a rectangle
+// crossing them needs two answers and a caller cannot pass either.
+pub fn ground_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+                   h: integer, mat: integer) -> integer {
+  world_fill_ground(w, q0, r0, q1, r1,
+                    hex_voxel::Hex { h_height: h as u16? ?? 0,
+                                     h_material: mat as u8? ?? 0 }).cw_code
+}
+
 // ── A SURFACE IS ONE RUN WHATEVER LAYER EACH CELL IS ON — plan 20 `A9` ──────
 //
 // A road cut into a cliff keeps the rock above it, so its cells live on a layer

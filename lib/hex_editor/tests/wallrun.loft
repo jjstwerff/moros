@@ -15,9 +15,7 @@ use hex_grid;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
-  for q in 0 - 20..21 {
-    for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
-  }
+  hex_editor::ground_fill(w, 0 - 20, 0 - 20, 21, 21, 8, hex_editor::SURFACE_MAT);
   w
 }
 

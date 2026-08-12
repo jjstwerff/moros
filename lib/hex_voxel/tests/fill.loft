@@ -122,6 +122,31 @@ fn differs(a: VoxelWorld, b: VoxelWorld, q0: integer, r0: integer,
   ""
 }
 
+// And the oracle for the GROUND fill — `hex_editor`'s `ground_write` spelled out.
+fn loop_ground_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+                    c: Hex) -> ColumnWrite {
+  for gq in q0..q1 {
+    for gr in r0..r1 {
+      res = world_set_cell(w, gq, gr, world_ground_layer(w, gq, gr), c);
+      if res.cw_code != CW_OK { return res; }
+    }
+  }
+  ColumnWrite { cw_code: CW_OK, cw_layer: 0 - 1, cw_detail: "" }
+}
+
+// A chunk whose ground is NOT layer 0: a cellar dug under it takes index 0 and
+// pushes `LABEL_GROUND` to 1. `co_ids` with a 0 at the insert position is how the
+// store is told a layer is new there — `world_set_column_as` step 3.
+fn with_cellar(w: VoxelWorld, q: integer, r: integer) {
+  assert(world_set_column(w, Column { co_q: q, co_r: r,
+                                      co_cells: [cell(100, 1)] }).cw_code == CW_OK,
+         "the ground");
+  assert(world_set_column(w, Column { co_q: q, co_r: r,
+                                      co_cells: [cell(50, 3), cell(100, 1)],
+                                      co_ids: [0, LABEL_GROUND] }).cw_code == CW_OK,
+         "the cellar");
+}
+
 // ── The ordinary case: one chunk, one layer, nothing in the way ─────────────
 
 fn test_a_fill_writes_exactly_what_the_loop_writes() {
@@ -364,4 +389,65 @@ fn test_a_fill_of_the_ground_default_leaves_no_chunk() {
          "filling the ground with the ground stored {len(wf.w_chunks)} chunks");
   d = differs(wf, wl, 0 - 2, 0 - 2, 6, 6, true);
   assert(d == "", "a defaulted fill and its loop parted: {d}");
+}
+
+// ── `world_fill_ground` — the layer index is a PER-CHUNK fact ───────────────
+
+fn test_a_ground_fill_writes_what_a_ground_layer_loop_writes() {
+  wf = mk();
+  wl = mk();
+  rf = world_fill_ground(wf, 0, 0, 16, 16, cell(40, 1));
+  rl = loop_ground_fill(wl, 0, 0, 16, 16, cell(40, 1));
+  assert(rf.cw_code == CW_OK && rl.cw_code == CW_OK, "a plain ground fill was refused");
+  assert(wf.w_tau == TAU0 + 256, "the clock moved to {wf.w_tau}, not {TAU0 + 256}");
+  // ⚠ VIRGIN GROUND IS THE CASE EVERY FIXTURE IS, and it is the one where the
+  // index does not exist yet: the first write mints the layer and the answer to
+  // *which layer is the ground here* changes from −1 to 0 underneath the fill.
+  assert(world_ground_layer(wf, 0, 0) == 0,
+         "the fill left the ground at layer {world_ground_layer(wf, 0, 0)}");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 18, 18, true);
+  assert(d == "", "a ground fill and its loop parted: {d}");
+}
+
+// ⚠ THE ONE THAT SEPARATES `world_fill_ground` FROM `world_fill(…, 0, …)`. Dig a
+// cellar and the ground moves to layer 1, where a fill that trusts an index would
+// pave the cellar floor instead — silently, because both are terrain and both read
+// back as a height.
+fn test_a_ground_fill_finds_the_ground_over_a_cellar() {
+  w = mk();
+  with_cellar(w, 1, 1);
+  assert(world_ground_layer(w, 1, 1) == 1,
+         "the fixture left the ground at layer {world_ground_layer(w, 1, 1)}");
+
+  assert(world_fill_ground(w, 0, 0, 4, 4, cell(120, 1)).cw_code == CW_OK, "the fill");
+  assert(world_cell(w, 1, 1, 1).h_height == 120,
+         "the ground did not take: layer 1 reads {world_cell(w, 1, 1, 1).h_height}");
+  assert(world_cell(w, 1, 1, 0).h_height == 50,
+         "the cellar was paved over: layer 0 reads {world_cell(w, 1, 1, 0).h_height}");
+  assert(world_cell(w, 1, 1, 0).h_material == 3,
+         "the cellar's material became {world_cell(w, 1, 1, 0).h_material}");
+}
+
+// ⚠ AND THE ANSWER IS PER CHUNK, NOT PER WORLD — so one rectangle can need two
+// different indices, which is the whole reason this function exists rather than a
+// caller resolving one index and passing it in.
+fn test_one_ground_fill_spans_chunks_whose_ground_is_at_different_indices() {
+  wf = mk();
+  wl = mk();
+  // (1,1) is in chunk (0,0) and gets a cellar; (0−4,1) is in chunk (−1,0) and
+  // does not, so its ground stays at layer 0.
+  with_cellar(wf, 1, 1);
+  with_cellar(wl, 1, 1);
+  assert(world_set_cell(wf, 0 - 4, 1, 0, cell(100, 1)).cw_code == CW_OK, "setup");
+  assert(world_set_cell(wl, 0 - 4, 1, 0, cell(100, 1)).cw_code == CW_OK, "setup");
+  assert(world_ground_layer(wf, 1, 1) == 1 && world_ground_layer(wf, 0 - 4, 1) == 0,
+         "the fixture did not build two different ground indices");
+
+  rf = world_fill_ground(wf, 0 - 6, 0, 4, 4, cell(120, 1));
+  rl = loop_ground_fill(wl, 0 - 6, 0, 4, 4, cell(120, 1));
+  assert(rf.cw_code == CW_OK && rl.cw_code == CW_OK, "a two-chunk ground fill was refused");
+  assert(world_cell(wf, 1, 1, 1).h_height == 120, "chunk (0,0)'s ground is at layer 1");
+  assert(world_cell(wf, 0 - 4, 1, 0).h_height == 120, "chunk (-1,0)'s ground is at layer 0");
+  d = differs(wf, wl, 0 - 8, 0 - 2, 6, 6, false);
+  assert(d == "", "a ground fill across two indices parted from its loop: {d}");
 }

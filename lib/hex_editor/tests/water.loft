@@ -22,9 +22,7 @@ const BED = 8;                 // how far the water's surface sits below its ban
 // each cell's downstream neighbour is `(q + 1, r)`.
 fn river(fall: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 14)..15 {
-    for r in (0 - 14)..15 { ground_set(w, q, r, G, SURFACE_MAT); }
-  }
+  ground_fill(w, (0 - 14), (0 - 14), 15, 15, G, SURFACE_MAT);
   why = "";
   for q2 in (0 - 12)..13 {
     // ⚠ THE VERDICT IS ASSERTED, IN THE FIXTURE. The first version of this helper

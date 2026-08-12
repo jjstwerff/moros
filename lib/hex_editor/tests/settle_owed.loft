@@ -106,9 +106,7 @@ fn test_the_boundary_is_the_pass_cap() {
 // added without touching the 54 `brush` call sites.
 fn test_it_reads_the_world_and_not_a_gesture() {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 10)..11 {
-    for r in (0 - 4)..5 { ground_set(w, q, r, G, SURFACE_MAT); }
-  }
+  ground_fill(w, (0 - 10), (0 - 4), 11, 5, G, SURFACE_MAT);
   for q2 in 0..6 { ground_set(w, q2, 0, G + q2 * 4, ROAD_MAT); }
   assert(slope_owed(w, 0, 0) == 3,
     "a hand-written road at 4 per hex against a limit of 1 owes "

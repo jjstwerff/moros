@@ -1426,6 +1426,30 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
 // four of them are the slowest files in this tree. See `GROUND_DEFAULT.md` `G2`.
 pub fn world_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
                   li: integer, c: Hex) -> ColumnWrite {
+  fill_rect(w, q0, r0, q1, r1, li, false, c)
+}
+
+// The same rectangle laid on **each chunk's own ground layer**, which is what a
+// caller passing an INDEX cannot say: `LABEL_GROUND` is at position 0 in most
+// chunks and at 1 in any chunk with a cellar dug under it, and a rectangle crosses
+// chunks that disagree. Its loop is
+//
+//     for q in q0..q1 { for r in r0..r1 {
+//       world_set_cell(w, q, r, world_ground_layer(w, q, r), c) } }
+//
+// which is exactly what `hex_editor`'s `ground_write` does one cell at a time.
+//
+// ⚠ **−1 IS THE ORDINARY ANSWER OVER VIRGIN GROUND**, not an error: the chunk has
+// no ground layer *yet*, `world_set_cell` mints one, and the index is re-resolved
+// after that first write — which is the only reason a fill onto untouched land can
+// take the hoisted path at all.
+pub fn world_fill_ground(w: VoxelWorld, q0: integer, r0: integer,
+                         q1: integer, r1: integer, c: Hex) -> ColumnWrite {
+  fill_rect(w, q0, r0, q1, r1, 0, true, c)
+}
+
+fn fill_rect(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+             li: integer, ground: boolean, c: Hex) -> ColumnWrite {
   // An empty rectangle is a legal no-op, exactly as the loop is.
   if q1 <= q0 || r1 <= r0 { return ok_write(); }
   fcx0 = world_chunk_of(q0);
@@ -1444,7 +1468,7 @@ pub fn world_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
       if q1 < sq1 { sq1 = q1; }
       if r0 > sr0 { sr0 = r0; }
       if r1 < sr1 { sr1 = r1; }
-      res = fill_chunk(w, fcx, fcz, sq0, sr0, sq1, sr1, li, c);
+      res = fill_chunk(w, sq0, sr0, sq1, sr1, li, ground, c);
       if res.cw_code != CW_OK { return res; }
     }
   }
@@ -1465,21 +1489,31 @@ pub fn world_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
 //     order; the fill reports the first in chunk order. Both refuse, both leave the
 //     cells before it written — the same guarantee `world_set_cell` gives, which is
 //     per cell and never was per rectangle.
-fn fill_chunk(w: VoxelWorld, cx: integer, cz: integer,
-              q0: integer, r0: integer, q1: integer, r1: integer,
-              li: integer, c: Hex) -> ColumnWrite {
+fn fill_chunk(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+              li: integer, ground: boolean, c: Hex) -> ColumnWrite {
+  // ⚠ WHICH LAYER, ASKED ONCE PER CHUNK — because that is the grain the answer has.
+  // `world_ground_layer` resolves a chunk, not a cell, so a ground fill pays one
+  // scan per tile where its loop pays one per cell.
+  fli = li;
+  if ground { fli = world_ground_layer(w, q0, r0); }
   // The FIRST cell is the ordinary write, and it is what makes everything after it
   // safe: it materialises the chunk and the layer if they are missing, moves the
   // window if it has to, and refuses if any rule says so. A refusal here is the
   // refusal the loop's first call would have made, in the same state.
-  first = world_set_cell(w, q0, r0, li, c);
+  first = world_set_cell(w, q0, r0, fli, c);
   if first.cw_code != CW_OK { return first; }
 
-  ci = find_chunk(w, cx, cz);
+  ci = find_chunk(w, world_chunk_of(q0), world_chunk_of(r0));
+  // ⚠ AND RE-ASKED AFTER THAT WRITE, which is the whole of why a ground fill onto
+  // untouched land is fast: before it the chunk had no ground layer and the answer
+  // was −1, after it the layer exists and every remaining cell can be hoisted onto
+  // it. Without this, virgin ground — the case every fixture is — takes the slow
+  // path for all 1089 of its cells.
+  if ground { fli = world_ground_layer(w, q0, r0); }
   // ⚠ THE CHUNK CAN STILL BE ABSENT — a write of an ABSENT cell into virgin ground
   // mints a layer, empties it and drops the chunk again (`E1`). Nothing to hoist
   // onto, so the rest goes through `world_set_cell` like the loop.
-  fast = ci >= 0 && li >= 0 && li < len(w.w_chunks[ci].ck_layers);
+  fast = ci >= 0 && fli >= 0 && fli < len(w.w_chunks[ci].ck_layers);
   if fast && hex_occupied(c) {
     // ⚠ `F1` IS THE ONE CHECK THAT IS GENUINELY PER-CELL — it looks for the nearest
     // occupied terrain cell above and below IN THIS COLUMN, and neighbouring columns
@@ -1488,7 +1522,7 @@ fn fill_chunk(w: VoxelWorld, cx: integer, cz: integer,
     // `world_set_cell`, so `F1` keeps exactly one home and no fill can outrun it.
     ffl = 0;
     for fly in w.w_chunks[ci].ck_layers {
-      if ffl != li && fly.ly_kind == KIND_TERRAIN { fast = false; break; }
+      if ffl != fli && fly.ly_kind == KIND_TERRAIN { fast = false; break; }
       ffl = ffl + 1;
     }
   }
@@ -1502,7 +1536,22 @@ fn fill_chunk(w: VoxelWorld, cx: integer, cz: integer,
         // (`G5b`), so writing that cell twice is genuinely two changes and the
         // clock moves twice. Measured — the fill read 18 against the loop's 17.
         if gq != q0 || gr != r0 {
-          gres = world_set_cell(w, gq, gr, li, c);
+          // ⚠ RE-RESOLVED PER CELL ON THIS PATH, and only here — so this loop IS
+          // `ground_write`'s loop rather than a hoisted version of it that needs an
+          // argument. A slow write can drop an emptied layer (`E1`) and renumber
+          // the ones above it, and a cached ground index would then be stale.
+          //
+          // ⚠ **AND CACHING IT INSTEAD PASSES EVERY TEST — measured, sabotaged, and
+          // kept anyway.** No fill can reach the stale case today: a fill writes one
+          // constant cell, `world_set_cell` only goes slow when the chunk or the
+          // layer is missing or the window must move, and none of those drops a
+          // layer out of a chunk that survives. The one place a fill does elide is
+          // the ground default, where the whole chunk goes and the answer is the
+          // default's own layer either way. **That is an argument, and the point of
+          // the line is not to need one.**
+          gli = fli;
+          if ground { gli = world_ground_layer(w, gq, gr); }
+          gres = world_set_cell(w, gq, gr, gli, c);
           if gres.cw_code != CW_OK { return gres; }
         }
       }
@@ -1540,7 +1589,7 @@ fn fill_chunk(w: VoxelWorld, cx: integer, cz: integer,
   for fq in q0..q1 {
     for fr in r0..r1 {
       fix = cell_index(fq, fr);
-      prev = w.w_chunks[ci].ck_layers[li].ly_cells[fix];
+      prev = w.w_chunks[ci].ck_layers[fli].ly_cells[fix];
       // `T1` — one tick per write that CHANGED something, cell by cell exactly as
       // `world_set_cell` counts them, so a fixture that swaps a loop for a fill
       // does not move `w_tau` and every cost test still means what it meant.
@@ -1549,8 +1598,8 @@ fn fill_chunk(w: VoxelWorld, cx: integer, cz: integer,
          || prev.sv_wall_nw != nv.sv_wall_nw || prev.sv_wall_ne != nv.sv_wall_ne
          || prev.sv_wall_e != nv.sv_wall_e {
         w.w_tau = w.w_tau + 1;
-        w.w_chunks[ci].ck_layers[li].ly_cells[fix] = nv;
-        w.w_chunks[ci].ck_layers[li].ly_ver = w.w_tau;
+        w.w_chunks[ci].ck_layers[fli].ly_cells[fix] = nv;
+        w.w_chunks[ci].ck_layers[fli].ly_ver = w.w_tau;
       }
     }
   }

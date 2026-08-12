@@ -19,9 +19,7 @@ fn steps_deg(steps: integer) -> float {
 
 fn plain() -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 24)..25 {
-    for r in (0 - 24)..25 { ground_set(w, q, r, G, SURFACE_MAT); }
-  }
+  ground_fill(w, (0 - 24), (0 - 24), 25, 25, G, SURFACE_MAT);
   w
 }
 
@@ -29,9 +27,7 @@ fn plain() -> VoxelWorld {
 // step on all six of its sides at once.
 fn pillar(mat: integer, up: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 24)..25 {
-    for r in (0 - 24)..25 { ground_set(w, q, r, G, mat); }
-  }
+  ground_fill(w, (0 - 24), (0 - 24), 25, 25, G, mat);
   ground_set(w, 0, 0, G + up, mat);
   w
 }

@@ -398,9 +398,7 @@ fn test_a_refused_ring_records_no_trunk() {
 // `hex_proj::HEIGHT_SCALE` would be right on the landscape and wrong on every part.
 fn test_the_height_is_in_the_worlds_own_unit() {
   fine = world_new(0.125, W_RESERVE, 8, 3).wn_world;
-  for fq in 0 - 3..4 {
-    for fr in 0 - 3..4 { ground_set(fine, fq, fr, 8, SURFACE_MAT); }
-  }
+  ground_fill(fine, 0 - 3, 0 - 3, 4, 4, 8, SURFACE_MAT);
   (px, pz) = hex_to_px(0, 0);
   a = author_on(fine, px, pz, 0.0);
   assert(a.au_y == 1.0,
@@ -419,9 +417,7 @@ fn test_the_height_is_in_the_worlds_own_unit() {
 // A wall to open, with the author standing on it.
 fn ring_world() -> VoxelWorld {
   rw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
-  for rq in 0 - 12..13 {
-    for rr in 0 - 12..13 { ground_set(rw, rq, rr, 8, SURFACE_MAT); }
-  }
+  ground_fill(rw, 0 - 12, 0 - 12, 13, 13, 8, SURFACE_MAT);
   fence_disc(rw, 0, 0, 2, WALL_MAT, 2.0);
   rw
 }

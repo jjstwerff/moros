@@ -28,9 +28,7 @@ fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   // Only what the strokes can reach: the target is PEAK_AHEAD east and the brush
   // is PEAK_R around it, so nothing beyond that window is ever read or written.
-  for q in 0 - 10..21 {
-    for r in 0 - 12..13 { hex_editor::ground_set(w, q, r, 0, hex_editor::SURFACE_MAT); }
-  }
+  hex_editor::ground_fill(w, 0 - 10, 0 - 12, 21, 13, 0, hex_editor::SURFACE_MAT);
   w
 }
 

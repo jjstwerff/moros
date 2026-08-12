@@ -735,14 +735,36 @@ That also explains the row that looks worst: 33×33 straddles four tiles, so it 
 fixed cost four times and its *ratio* falls while its *marginal* cost is the lowest of the
 three.
 
-### ⛔ AND THE SUITE DID NOT MOVE — which is the finding
+### ⛔ NOTHING IN ONE SUITE, −10.7 % IN THE NEXT — and the difference is the finding
 
-The five `hex_part` fixtures were wired to it (`place`, `expand`, `bind`, `bake`, `scale`).
-**310 tests, 44.8 s before and 45.3 s after** — noise. `G3` had already taken this file's
-big win, and once a fixture stops being write-dominated a 14× on the write is worth
-~1 ms of a 45 s suite. **`G2`'s speed argument was spent before it was built, exactly as
-GROUND_DEFAULT said**; what is new is that the number is measured instead of estimated,
-and that `world_fill` is a correct primitive with callers rather than an open question.
+The same change was wired into two packages and only one of them felt it.
+
+| | fixtures | result |
+|---|---|---|
+| `hex_part` — `place`, `expand`, `bind`, `bake`, `scale` | 256–484 cells | **310 tests, 44.8 s → 45.3 s.** Noise |
+| `hex_editor` — 27 loops in 22 files, via `ground_fill` | up to **2401** cells (49×49) | **2,472,585 → 2,208,143 samples, −10.7 %** |
+| …and its fixture-heaviest file, `slope_limit.loft` | 49×49, 28 tests | **224,744 → 160,464, −28.6 %**, same 28 runs |
+
+⚠ **AND THE SMALLER NUMBER INCLUDES THREE TESTS THE LARGER ONE DOES NOT** — 424 runs before,
+427 after, because `ground_fill.loft` is new. The comparison is conservative by exactly that.
+
+**What separates them is how much of a test its fixture IS.** `hex_part` had already taken
+`G3`'s win, its rectangles are a tenth the size, and its tests write part documents to disk —
+so the write path is a small share of a large test. `hex_editor` re-lays a 2401-cell landscape
+per test and does its real work in memory. *A 14× on an operation is worth what that operation
+was worth, and that is a property of the caller, not of the change.*
+
+### ⚠ AND THE WALL CLOCK SAID THE OPPOSITE — 2m04 before, 4m03 after
+
+Measured on this box, one run each, and **it is the wrong sign**: the wired suite came back
+**twice as slow**. The sampler on the same tree says −10.7 %, and the single file says −28.6 %
+across 28 identical runs. This box is shared with other agents' work, so a lone wall-clock
+reading is a measurement of the box.
+
+⚠ **A NUMBER THAT DISAGREES WITH THE MECHANISM IS A CUE TO CHANGE INSTRUMENT, NOT TO BELIEVE
+IT** — and equally not to dismiss it. What settled it was the *same file, same run count,
+counted in samples*: work rather than seconds, and the instrument this directory already
+established for exactly this question.
 
 ### ⚠ THE INSTRUMENT WAS WRONG FIRST, AND IT SAID SO OUT LOUD
 

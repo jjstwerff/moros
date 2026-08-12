@@ -454,7 +454,7 @@ must be checked against first.**
 | lattice | `hex_to_px`, `px_to_hex`, `hex_round`, `hex_neighbor`, `hex_distance`, `hex_corner_px`, `hex_edge_corners`, `hex_canon_edge`, `cell_*` |
 | validation and recovery | `trace`, `validate`, `shoelace2`, `wall_count`, `edgeset_digest`, `rebuild*`, `field_digest`, `field_exact`, `field_norm` |
 | rigs | `rig_*`, `joint_*`, `bone_obb`, `pose_of`, `wheel_value/angle/skid` |
-| the store | `world_new`, `world_column`, `world_set_column`, `world_set_cell`, `world_fill`, `world_set_dressing`, `world_cell`, `world_set_ground`, `world_snapshot`, `world_save/load`, `world_chunk_version`, `world_is_stale` |
+| the store | `world_new`, `world_column`, `world_set_column`, `world_set_cell`, `world_fill`, `world_fill_ground`, `world_set_dressing`, `world_cell`, `world_set_ground`, `world_snapshot`, `world_save/load`, `world_chunk_version`, `world_is_stale` |
 | loft's durable store | `store_load`, `store_load_key`, `store_load_keys`, `store_load_range`, `store_load_url`, `store_load_url_trusted` |
 
 ---

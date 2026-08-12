@@ -29,10 +29,17 @@ when the step landed, and this file duplicating it is how it grows back.
 byte-identical. The record is [GROUND_DEFAULT § What `G2` turned up](GROUND_DEFAULT.md); two
 things belong out here, because neither is about a fill:
 
-- ⛔ **A 14× ON THE OPERATION AND NOTHING ON THE SUITE** — 310 tests, 44.8 s → 45.3 s. A win on a
-  call is not a win on a caller, and *"measure it before claiming a number"* is what separated
-  them. ⚠ **The ratio was the wrong column throughout**: a fixture pays ~1200 us per CHUNK that
-  neither write path avoids, and the plan's *"about 2×"* was pricing that as the subject.
+- ⛔ **A 14× ON THE OPERATION, NOTHING IN ONE SUITE AND −10.7 % IN THE NEXT.** `hex_part`:
+  310 tests, 44.8 s → 45.3 s, noise. `hex_editor`, through its own `ground_fill`: **2,472,585 →
+  2,208,143 samples**, and −28.6 % on its fixture-heaviest file. **A win on a call is worth what
+  that call was worth to the caller** — `hex_part`'s fixtures are a tenth the size and its tests
+  write documents to disk; `hex_editor` re-lays a 2401-cell landscape per test in memory. ⚠ **The
+  ratio was the wrong column throughout**: a fixture pays ~1200 us per CHUNK that neither write
+  path avoids, and the plan's *"about 2×"* priced that as the subject.
+- ⚠ **AND THE WALL CLOCK SAID THE OPPOSITE — 2m04 before, 4m03 after.** Wrong *sign*, on a box
+  shared with other agents' work. The sampler on the same tree, same file, same 28 runs, settled
+  it. **A number that disagrees with the mechanism is a cue to change instrument** — not to
+  believe it, and not to wave it away.
 - ⚠ **A GUARD ON A RULE IS ONLY VISIBLE WHERE THE RULE'S ANSWER VARIES.** Sabotaging the `F1`
   hand-back left the obvious fold test green — its storey cleared the fill in *every* column, so
   the skipped check would have said *legal* each time. The test that sees it drops **one** of 64

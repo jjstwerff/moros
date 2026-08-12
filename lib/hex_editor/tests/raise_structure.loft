@@ -20,9 +20,7 @@ const RAD = 7;
 
 fn world_at(h: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 24)..25 {
-    for r in (0 - 24)..25 { ground_set(w, q, r, h, SURFACE_MAT); }
-  }
+  ground_fill(w, (0 - 24), (0 - 24), 25, 25, h, SURFACE_MAT);
   w
 }
 

@@ -155,9 +155,7 @@ fn test_seating_reports_what_it_cost() {
 
 fn housed_world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
-  for q in 0 - 24..25 {
-    for r in 0 - 24..25 { hex_editor::ground_set(w, q, r, 12, hex_editor::SURFACE_MAT); }
-  }
+  hex_editor::ground_fill(w, 0 - 24, 0 - 24, 25, 25, 12, hex_editor::SURFACE_MAT);
   w
 }
 
