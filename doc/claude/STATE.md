@@ -96,7 +96,30 @@ see this"* reproduced on the day it was read: **the grep the rule demands takes 
 was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
 it.
 
-⛔ **AND `empty_cells` HAS NO CHEAP WIN — looked for, not found, so NO CODE CHANGED.** The two
+⛔ **THE FLAT BYTE BLOB WAS PROBED AND IT FOUND TWO LOFT DEFECTS INSTEAD OF A DESIGN.** The
+load-bearing claim — *cells are cheaper as flat bytes than as 7-field structs* — could not be
+measured, because the probe for it would not run:
+
+- ⚠ **a comprehension yielding a RANGED integer stops terminating above SIXTEEN elements.**
+  `[for i in 0..17 { 0 as u8? ?? 0 }]` does not finish; 16 takes 40 ms; 4096 plain integers take
+  50 ms; the same bytes by **append loop** take 40 ms.
+  [loft#871](https://github.com/loft-lang/loft/issues/871). **That is exactly how a flat-byte
+  layer is built**, so route B reads as unworkable until you bisect the harness instead of the
+  idea.
+- ⚠ **and the append form is not a safe substitute for a comprehension.** It is **2.1×** faster
+  for structs, so `empty_cells` did have a local win — worth **0.6 %** in the suite — and it
+  **broke two dressing tests**. Four hypotheses for why were each refuted by their own probe
+  (shared storage, intra-vector aliasing, scale, and the struct-field shape the store uses):
+  identical values in every probe, different behaviour in the consumer.
+  [loft#872](https://github.com/loft-lang/loft/issues/872). **Reverted** — 0.6 % does not buy a
+  change to the store's core whose mechanism nobody can state.
+
+⏭ **ROUTE B IS NOT REFUTED AND IS NOT READY.** Its arithmetic holds (one allocation instead of
+1024, an encoder that becomes a copy, ≈ 33 % of the suite), but it cannot be built on the
+comprehension and the append form is not safe here. **Both are upstream and filed; either landing
+changes the price, and until then the design has no honest cost.**
+
+⛔ **AND THE SURVEY BELOW WAS WRONG WHEN IT WAS WRITTEN.** The two
 steps before it were exact identities (a missing early exit; a floor divide that *is* a shift);
 this one builds 1024 records because **the structure says a layer has 1024 cells**. Checked
 first: loft has **no** bulk/repeat/sized vector constructor (`OpPreAllocVector` is internal), all

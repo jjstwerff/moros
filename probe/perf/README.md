@@ -236,7 +236,61 @@ they are derived from.
 the suite is used as evidence that a change is safe: three green suites and a byte-identical
 `make parts` said nothing about whether anything could RUN.
 
-### ⛔ `empty_cells` HAS NO CHEAP WIN — looked for, not found, 2026-08-12
+### ⛔ THE FLAT BYTE BLOB — and the two loft defects found trying to price it, 2026-08-12
+
+**Route B was probed, not built, and the probe found two language defects instead.** The design
+protocol's step 3 is *the cheapest test that could prove the load-bearing claim false*; the claim
+was **a layer's cells are cheaper as flat bytes than as 7-field structs**, and the probe for it
+would not run.
+
+⚠ **THE HARNESS WAS THE FINDING.** Three probe attempts timed out at 600 s on workloads of a few
+thousand operations. Bisecting the harness rather than the idea:
+
+| `loft --interpret`, one-line programs | wall |
+|---|---|
+| `[for i in 0..16 { 0 as u8? ?? 0 }]` | **0.04 s** |
+| `[for i in 0..17 { 0 as u8? ?? 0 }]` | **> 25 s**, killed |
+| `[for i in 0..512 { 0 as u8? ?? 0 }]` | **> 120 s**, killed |
+| `[for i in 0..32 { 0 as u16? ?? 0 }]` | **> 25 s**, killed |
+| `[for i in 0..7168 { 0 }]` — plain `integer` | **0.06 s** |
+| the same 7168 bytes by **append loop** | **0.04 s** |
+
+**A comprehension yielding a RANGED integer stops terminating above sixteen elements.**
+[loft#871](https://github.com/loft-lang/loft/issues/871). Not the size, not the cast — the
+element type, with a cliff at exactly 16 → 17. ⚠ **That is what a flat-byte-blob layer is built
+with**, so route B reads as unworkable until the harness is bisected; the append form is instant
+and is the workaround.
+
+### ⛔ AND THE MICRO-WIN IT UNCOVERED DID NOT SURVIVE THE SUITE
+
+The same bisect showed the append form is **2.1×** faster for structs too — 100 × 1024 elements,
+**179 ms** by comprehension against **85 ms** by append. So `empty_cells` did have a local win
+after all, and the section below saying it had none **was wrong when it was written**: that survey
+asked whether loft had a *bulk constructor* (it does not) and never compared the **two forms it
+does have**. ⚠ *Checking for a missing feature is not the same as comparing the ones present.*
+
+**Applied, measured, reverted.** In the suite it was worth **0.6 %** (2,222,770 → 2,208,893), and
+it **broke two dressing tests** — a prop vanished when the ground under it was raised.
+
+⚠ **FOUR HYPOTHESES FOR WHY WERE EACH REFUTED BY THEIR OWN PROBE**: two calls do not share
+storage; cells within one vector do not alias; neither changes at 1024 rather than 4; and neither
+changes when the vector goes into a struct field inside a vector of structs — the shape the store
+actually uses. **The two forms produce identical values in every probe and different behaviour in
+the consumer.** [loft#872](https://github.com/loft-lang/loft/issues/872) carries it with the four
+refutations attached, so nobody repeats them.
+
+**Not shipped.** 0.6 % does not buy a change to the store's core whose mechanism nobody can state
+— and the fifth hypothesis forming was the cue to stop, not to fire again.
+
+### ⏭ SO ROUTE B IS NOT REFUTED, AND IT IS NOT READY
+
+Its arithmetic still holds — one allocation instead of 1024, an encoder that becomes a copy, and
+a reach of ≈ 33 % of the suite. What the probe established is that it **cannot be built on the
+comprehension** (#871) and that **the append form is not a safe substitute in this position**
+(#872). Both are upstream, both are filed, and either landing changes the price. **Until then the
+design has no honest cost.**
+
+### ⛔ `empty_cells` — the earlier survey, kept because it was WRONG in an instructive way
 
 **No code was changed for this one, and that is the result.** The two steps before it were exact
 identities — a missing early exit, and a floor divide that *is* a shift. `empty_cells` is not:

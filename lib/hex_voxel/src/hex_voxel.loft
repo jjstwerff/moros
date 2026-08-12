@@ -324,6 +324,32 @@ pub fn world_has_chunk(w: VoxelWorld, q: integer, r: integer) -> boolean {
   find_chunk(w, world_chunk_of(q), world_chunk_of(r)) >= 0
 }
 
+// ⚠ **THE COMPREHENSION IS KEPT, AND THE APPEND LOOP WAS TRIED AND REVERTED.**
+// This is 1024 records per layer and **6.8 %** of `hex_editor`'s test suite, so it
+// looks like the obvious next win. On a microbenchmark the append form is **2.1×**
+// faster — 100 × 1024 elements is 179 ms by comprehension against 85 ms by append,
+// same value, same types. In the suite it was worth **0.6 %**, and it **broke two
+// dressing tests**: a prop vanished when the ground under it was raised.
+//
+// ⚠ **FOUR HYPOTHESES FOR WHY WERE EACH REFUTED BY THEIR OWN PROBE**, so do not
+// re-derive them: two calls do NOT share storage; cells within one vector do NOT
+// alias each other; neither is true at 1024 rather than 4; and neither changes when
+// the vector goes into a struct field inside a vector of structs, which is the shape
+// the store actually uses. The two forms produce identical values in every probe and
+// different behaviour in the consumer. **Not shipped, because 0.6 % does not buy a
+// change to the store's core whose mechanism nobody can state.**
+//
+// ⏭ [loft#872](https://github.com/loft-lang/loft/issues/872) carries the finding with
+// the four refutations attached.
+//
+// ⚠ AND THE SAME PATH HAS A CLIFF, found on the way: for a **ranged** element type a
+// comprehension stops terminating above **16 elements** —
+// `[for i in 0..17 { 0 as u8? ?? 0 }]` does not finish where 16 takes 40 ms and 4096
+// plain integers take 50 ms ([loft#871](https://github.com/loft-lang/loft/issues/871)).
+// `StoredHex` is a struct so this function is clear of it, but a **flat-byte-blob**
+// layer — the obvious next representation — is built exactly that way, and reads as
+// unworkable until you bisect the harness instead of the idea.
+//
 fn empty_cells() -> vector<StoredHex> {
   [for i in 0..CHUNK_CELLS { StoredHex {} }]
 }
