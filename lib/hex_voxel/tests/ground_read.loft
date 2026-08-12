@@ -1,0 +1,171 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `G5a` — AN ABSENT CHUNK READS AS THE GROUND, AND AS NOTHING ELSE.
+//
+// [GROUND_DEFAULT.md](../../../doc/claude/GROUND_DEFAULT.md)'s invariant ends with the
+// clause this file is about: *a defaulted cell and a written one of the same value are
+// **indistinguishable, because they are the same cell**.*
+//
+// ⚠ **SO THE TEST IS AN EQUIVALENCE, NOT FIVE BRANCH CHECKS.** Asserting that each
+// reader returns the default where a chunk is absent proves only that five branches
+// were written; it cannot be surprised by any of them being subtly different from
+// what a REAL defaulted chunk answers — the wrong layer index, a missing label, a
+// surface that reports `sf_occ: 0`. Every row below asks the same question of two
+// worlds — one where the ground was AUTHORED cell by cell, one where it is the
+// default and nothing was written — and requires the same answer.
+//
+// ⚠ **AND THE AUTHORED WORLD IS THE ORACLE**, which is what makes it able to fail:
+// it is built by `world_set_column`, the path that has been minting first layers
+// since long before this design, so nothing in it is a restatement of `G5a`'s code.
+use hex_voxel;
+
+const RESERVE = 100;
+
+fn grass(h: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: 4 as u8? ?? 0 }
+}
+
+// The oracle: a world with the ground WRITTEN over a whole chunk, no default.
+fn authored(h: integer) -> VoxelWorld {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  for q in 0..CHUNK_W {
+    for r in 0..CHUNK_W {
+      world_set_column(w, Column { co_q: q, co_r: r, co_cells: [grass(h)] });
+    }
+  }
+  w
+}
+
+// The subject: the same ground, said once, with nothing written at all.
+fn with_default(h: integer) -> VoxelWorld {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  assert(world_set_ground(w, grass(h)).cw_code == CW_OK, "the fixture's ground was refused");
+  w
+}
+
+// ⚠ THE FIXTURES MUST DIFFER IN STORAGE OR THE EQUIVALENCE IS VACUOUS: if the
+// defaulted world had chunks, every row below would be comparing two written worlds.
+fn test_the_two_fixtures_are_stored_differently() {
+  a = authored(200);
+  d = with_default(200);
+  assert(len(a.w_chunks) == 1, "the oracle stored {len(a.w_chunks)} chunks, want 1");
+  assert(len(d.w_chunks) == 0,
+         "the defaulted world stored {len(d.w_chunks)} chunks — it should have "
+       + "written nothing, and this test would be comparing two authored worlds");
+  assert(world_has_chunk(a, 5, 5) && !world_has_chunk(d, 5, 5),
+         "the two worlds agree about chunk existence, so nothing here is synthesised");
+}
+
+// ── the equivalence, reader by reader ───────────────────────────────────────
+
+fn test_the_ground_cell_is_the_same_either_way() {
+  a = authored(200);
+  d = with_default(200);
+  for q in [0, 1, 17, CHUNK_W - 1] {
+    for r in [0, 3, 31] {
+      ga = world_ground_cell(a, q, r);
+      gd = world_ground_cell(d, q, r);
+      assert(ga.h_height == gd.h_height && ga.h_material == gd.h_material,
+             "at ({q},{r}) authored reads {ga.h_height}/{ga.h_material} and "
+           + "defaulted {gd.h_height}/{gd.h_material}");
+      assert(gd.h_material == 4, "…and it is the ground, not nothing");
+    }
+  }
+}
+
+fn test_the_ground_layer_index_is_the_same_either_way() {
+  a = authored(200);
+  d = with_default(200);
+  assert(world_ground_layer(a, 7, 7) == world_ground_layer(d, 7, 7),
+         "authored says layer {world_ground_layer(a, 7, 7)} and defaulted "
+       + "{world_ground_layer(d, 7, 7)}");
+  assert(world_ground_layer(d, 7, 7) == 0, "…and it is layer 0");
+}
+
+fn test_the_cell_is_the_same_either_way_and_nothing_is_above_it() {
+  a = authored(200);
+  d = with_default(200);
+  ca = world_cell(a, 9, 9, 0);
+  cd = world_cell(d, 9, 9, 0);
+  assert(ca.h_height == cd.h_height && ca.h_material == cd.h_material,
+         "layer 0 reads {ca.h_height}/{ca.h_material} against {cd.h_height}/{cd.h_material}");
+  // ⚠ AND A STOREY THAT WAS NEVER BUILT IS STILL ABSENT — the default is ONE layer,
+  // not an infinite stack of them. Without this row the branch could answer the
+  // ground for every index and every row above would still pass.
+  for l in [1, 2, 7] {
+    assert(!hex_present(world_cell(d, 9, 9, l)),
+           "layer {l} of untouched ground answered a cell");
+    assert(!hex_present(world_cell(a, 9, 9, l)), "…and the oracle agrees");
+  }
+}
+
+fn test_the_column_is_the_same_either_way() {
+  a = authored(200);
+  d = with_default(200);
+  ca = world_column(a, 4, 6);
+  cd = world_column(d, 4, 6);
+  assert(len(ca.co_cells) == len(cd.co_cells),
+         "authored gives {len(ca.co_cells)} cells and defaulted {len(cd.co_cells)}");
+  assert(len(cd.co_cells) == 1, "…and it is one");
+  assert((ca.co_cells[0] ?? Hex {}).h_height == (cd.co_cells[0] ?? Hex {}).h_height,
+         "the heights differ");
+  // The LABEL matters: `I1` identifies corresponding layers across chunks by it, so
+  // a synthesised column carrying the wrong one would name a different layer.
+  assert(len(ca.co_ids) == len(cd.co_ids) && (ca.co_ids[0] ?? 0) == (cd.co_ids[0] ?? 0),
+         "authored labels {ca.co_ids} and defaulted {cd.co_ids}");
+  assert((cd.co_ids[0] ?? 0) == LABEL_GROUND, "…and it is the reserved ground label");
+}
+
+// ⚠ THE SURFACE IS ASKED FROM THREE HEIGHTS, because its loop chooses between `low`
+// and `best` depending on where the feet are, and a single-layer synthesis has to
+// give the same answer in every one of those cases rather than in the one that was
+// tried first.
+fn test_the_surface_is_the_same_either_way_from_any_height() {
+  a = authored(200);
+  d = with_default(200);
+  for feet in [0.0, 200.0, 500.0] {
+    sa = world_surface(a, 11, 2, feet);
+    sd = world_surface(d, 11, 2, feet);
+    assert(sa.sf_units == sd.sf_units && sa.sf_layer == sd.sf_layer
+           && sa.sf_occ == sd.sf_occ && sa.sf_smooth == sd.sf_smooth,
+           "at feet {feet}: authored units {sa.sf_units} layer {sa.sf_layer} occ "
+         + "{sa.sf_occ}, defaulted units {sd.sf_units} layer {sd.sf_layer} occ "
+         + "{sd.sf_occ}");
+    assert(sd.sf_units == 200, "…and it is the ground's height, got {sd.sf_units}");
+  }
+}
+
+// ── and absent still means TODAY ────────────────────────────────────────────
+//
+// ⚠ THE ROW THAT KEEPS `G5a` REVERTIBLE. With no ground set, every reader must give
+// exactly the answer it gave before this step — otherwise the six steps of this plan
+// stop being independent and a regression anywhere lands on all of them.
+fn test_a_world_with_no_ground_reads_as_nothing() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  assert(!hex_present(world_ground_cell(w, 3, 3)), "the ground answered a cell");
+  assert(!hex_present(world_cell(w, 3, 3, 0)), "layer 0 answered a cell");
+  assert(world_ground_layer(w, 3, 3) == 0 - 1,
+         "the ground layer is {world_ground_layer(w, 3, 3)}, want -1");
+  assert(len(world_column(w, 3, 3).co_cells) == 0, "the column is not empty");
+  s = world_surface(w, 3, 3, 0.0);
+  assert(s.sf_units == 0 - 1 && s.sf_layer == 0 - 1 && s.sf_occ == 0,
+         "the surface answered units {s.sf_units} layer {s.sf_layer} occ {s.sf_occ}");
+}
+
+// ⚠ AND A GROUND WITH NO MATERIAL IS NO SURFACE, which is `hex_occupied` against
+// `hex_present`: the two predicates part company exactly here, and `world_surface`'s
+// own loop tests the material. A synthesis using the wrong one would report a surface
+// the authored world does not have.
+fn test_a_default_with_no_material_is_not_a_surface() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  edge: Hex = Hex { h_height: 200 as u16? ?? 0, h_material: 0 as u8? ?? 0,
+                    h_wall_e: 1 as u8? ?? 0 };
+  assert(world_set_ground(w, edge).cw_code == CW_OK, "the fixture's ground was refused");
+  assert(world_has_ground_default(w), "an edge-only ground is still a ground");
+  assert(hex_present(world_ground_cell(w, 2, 2)), "…and it reads back");
+  s = world_surface(w, 2, 2, 500.0);
+  assert(s.sf_occ == 0 && s.sf_units == 0 - 1,
+         "a ground with no material reported a surface: units {s.sf_units} occ "
+       + "{s.sf_occ}");
+}

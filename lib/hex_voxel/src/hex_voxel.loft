@@ -501,7 +501,11 @@ pub fn world_layer_id(w: VoxelWorld, q: integer, r: integer, l: integer) -> inte
 // what unauthored ground has always read as. Callers pass it straight through.
 pub fn world_ground_layer(w: VoxelWorld, q: integer, r: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
-  if ci < 0 { return 0 - 1; }
+  // `G5a` — the synthesised ground is layer 0, which is where a minted one lands.
+  if ci < 0 {
+    if world_has_ground_default(w) { return 0; }
+    return 0 - 1;
+  }
   // ⚠ ITERATED, NOT INDEXED — 1.6× on the same scan, measured. `w.w_chunks[ci]
   // .ck_layers[i].ly_id` walks three levels for one field, and the condition reads
   // TWO fields, so an indexed scan pays six navigations per layer where a loop
@@ -526,7 +530,12 @@ pub fn world_ground_layer(w: VoxelWorld, q: integer, r: integer) -> integer {
 // reorder the editor's own gates.
 pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
-  if ci < 0 { return Hex {}; }
+  // `G5a` — THE chokepoint for *the ground here*, so it is the one this matters most
+  // at: every gesture that seats something asks it.
+  if ci < 0 {
+    if world_has_ground_default(w) { return w.w_ground; }
+    return Hex {};
+  }
   // ⚠ ITERATED, NOT INDEXED — see `world_ground_layer` above for the measurement.
   // This is the sampling chokepoint (*a mesh rebuild makes thousands*) and it was
   // the top of the profile at 8.4 %, most of it these two lines.
@@ -579,7 +588,18 @@ pub struct SurfaceAt {
 // slope the interpolated surface sits BELOW the cell's own value.
 pub fn world_surface(w: VoxelWorld, q: integer, r: integer, feet: float) -> SurfaceAt {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
-  if ci < 0 { return SurfaceAt { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true }; }
+  if ci < 0 {
+    // `G5a` — one occupied terrain layer, so the surface is the ground's height at
+    // layer 0 whatever the feet are: with a single layer the loop below reaches the
+    // same answer through `low` when nothing is at or under the feet and through
+    // `best` when it is. ⚠ `hex_occupied`, not `hex_present`: the loop tests the
+    // MATERIAL, so a default carrying only an edge is no surface here either.
+    if world_has_ground_default(w) && hex_occupied(w.w_ground) {
+      return SurfaceAt { sf_units: w.w_ground.h_height, sf_layer: 0, sf_occ: 1,
+                         sf_smooth: true };
+    }
+    return SurfaceAt { sf_units: 0 - 1, sf_layer: 0 - 1, sf_occ: 0, sf_smooth: true };
+  }
   ix = cell_index(q, r);
   base = w.w_chunks[ci].ck_base;
   // ⚠ THE TOLERANCE IS `θ`, WHICH IS WHAT §5 SAYS AND WHAT THIS DID NOT. It read
@@ -622,7 +642,16 @@ pub fn world_column(w: VoxelWorld, q: integer, r: integer) -> Column {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   // A missing chunk is an empty column, never a refusal: unauthored ground is a
   // legal answer, and `E1` makes absent and all-zero indistinguishable.
-  if ci < 0 { return Column { co_q: q, co_r: r, co_cells: [] }; }
+  //
+  // ⚠ `G5a` — AND IF THE WORLD HAS A GROUND, "unauthored" IS NOT EMPTY. It is the
+  // one cell a minted first layer would hold, under the reserved label it would take.
+  if ci < 0 {
+    if world_has_ground_default(w) {
+      return Column { co_q: q, co_r: r, co_cells: [w.w_ground],
+                      co_ids: [LABEL_GROUND] };
+    }
+    return Column { co_q: q, co_r: r, co_cells: [] };
+  }
   ch = w.w_chunks[ci];
   ix = cell_index(q, r);
   out: vector<Hex> = [];
@@ -651,7 +680,13 @@ pub fn world_column(w: VoxelWorld, q: integer, r: integer) -> Column {
 // is a column property; the read path needs one cell and should pay for one.
 pub fn world_cell(w: VoxelWorld, q: integer, r: integer, l: integer) -> Hex {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
-  if ci < 0 { return Hex {}; }
+  // `G5a` — an absent chunk is one defaulted ground layer at index 0, and nothing
+  // above it. A caller asking for layer 3 of untouched ground is asking about a
+  // storey that was never built, which is absence either way.
+  if ci < 0 {
+    if world_has_ground_default(w) && l == 0 { return w.w_ground; }
+    return Hex {};
+  }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return Hex {}; }
   if w.w_chunks[ci].ck_layers[l].ly_kind != KIND_TERRAIN { return Hex {}; }
   // The height is un-windowed here, so this builds a record regardless — the copy
@@ -1667,6 +1702,30 @@ pub fn world_set_ground(w: VoxelWorld, cell: Hex) -> ColumnWrite {
   w.w_ground = cell;
   ok_write()
 }
+
+// ── `G5a` — WHAT AN ABSENT CHUNK ANSWERS ────────────────────────────────────
+//
+// **A world is an infinite plane of its ground default**, so a chunk nobody wrote is
+// not nothing — it is one terrain layer, labelled `LABEL_GROUND`, every cell equal to
+// the default. The readers below synthesise exactly that, and the invariant's last
+// clause is why it is safe: *a defaulted cell and a written one of the same value are
+// indistinguishable, because they are the same cell.*
+//
+// ⚠ **THE SYNTHESISED CHUNK HAS EXACTLY ONE LAYER, AT INDEX 0.** That is not a
+// convention picked here — it is what `world_set_column_as` step 3 builds when a
+// chunk's first terrain layer is minted, and `lib/hex_voxel/tests/ground_read.loft`
+// pins the two against each other cell by cell rather than trusting this sentence.
+//
+// ⚠ **AND THE BRANCHES BELOW ASK `world_has_ground_default`, NOT A PRIVATE TWIN.**
+// This had one for a while — `fn world_has_ground_default(w)`, the same `hex_present(w.w_ground)`
+// under a second name — and it cost a cross-mode failure: a test file with its own
+// `defaulted` helper compiled on the interpreter and died under `--native` with
+// `error[E0425]: cannot find function n_defaulted in this scope`. One home for the
+// predicate removes both the duplication and the collision.
+//
+// ⚠ **AND IT IS `hex_present`, NOT `hex_occupied`, THAT DECIDES WHETHER THERE IS A
+// DEFAULT AT ALL** — a ground of nothing is exactly today, and `world_ground_default`
+// answers `Hex {}` for it, so every branch below falls through to the old answer.
 
 // Replaces the FIRST section with this tag, or appends. Duplicates of a tag are
 // not refused — the format carries whatever it was handed, and refusing here
