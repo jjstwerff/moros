@@ -920,75 +920,37 @@ pub const PR_NONE = "not a gesture";
 // measured against the guess rather than against the editor.
 pub const PR_SELECT = "an opening needs a profile, and nothing selects one yet";
 
-// One opening press, as an `Ack` — the shape `press` answers in.
+// ── `press(key)` WAS HERE, AND IT IS GONE — plan 22 `V3` ────────────────────
 //
-// ⚠ THE SENTENCE IS THE DRIVER'S AND THE REFUSAL IS THE GESTURE'S. `OpeningMade`
-// carries a code and a reason; a runner wants *"why not"* in words and a server
-// composes its own. So this keeps the reason and drops the shape, exactly as every
-// other branch of `press` does.
-fn open_press(sess: EditSession, w: VoxelWorld, a: Author, kind: integer) -> Ack {
-  op_made = session_open_kind(sess, w, a, kind, STOREY_H);
-  if !op_made.om_ok { return ack_no(op_made.om_why); }
-  ack_ok(1)
-}
-
-pub fn press(sess: EditSession, w: VoxelWorld, a: Author, key: text) -> Ack {
-  if key == "ArrowUp"   { return raise_ahead(w, a, 1); }
-  if key == "ArrowDown" { return raise_ahead(w, a, 0 - 1); }
-  if key == "H" {
-    return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
-  }
-  // ── THE OPENING FAMILY — plan 22 `S3`, and `R3`'s regression is retired here ──
-  //
-  // ⚠ SIX KEYS, ONE GESTURE. They read `open_ahead(w, a, DOOR_MAT, 1)` and
-  // `open_ahead(w, a, WINDOW_MAT, 1)` — the RUNNER's meaning, a MATERIAL — against a
-  // wire that has always meant a PROFILE, and `R3` made them say *"an opening needs
-  // a profile, and nothing selects one yet"* rather than pick between two axes. It
-  // does now: the units are the outline, the tens the depth, the twenties the
-  // composition, and every one of the six is a `kind` the selection can also hold.
-  //
-  // ⚠ THE KIND COMES FROM THE KEY AND THE SELECTION IS NOT MOVED. That is the
-  // collapse being LOSSLESS rather than a rename: `press("N")` and `36:11` leave the
-  // same world AND the same session, so a key still means one thing in every driver.
-  // The key stops carrying a profile at `V1`, when the scripts say `select` and
-  // `opening` instead — `S2b`'s verb is already there and already gated.
-  //
-  // ⚠ AND `STOREY_H` IS THE SERVER'S `WALL_UP`, the same 12 under two names. It is a
-  // wall's own height, and `hex_editor` is where the vocabulary of a wall lives; the
-  // server's constant is the copy, recorded here so a grep finds the pair.
-  if key == "O" { return open_press(sess, w, a, OP_ROUND); }
-  if key == "P" { return open_press(sess, w, a, OP_POINTED); }
-  if key == "I" { return open_press(sess, w, a, OP_SEGMENT); }
-  if key == "U" { return open_press(sess, w, a, OP_CIRCLE); }
-  if key == "N" { return open_press(sess, w, a, 10 + OP_ROUND); }
-  if key == "M" { return open_press(sess, w, a, 20 + OP_ROUND); }
-  // ⚠ `F` AND `G` LIKEWISE — one ring gesture, two materials. `script.mjs`'s own
-  // comment on `G` is *"the same tool with wall material — a hex RING, not a
-  // line"*, which is the distinction this shared call makes structural.
-  //
-  // ⚠ `a.au_y` WAS `0.0` HERE, AND IT PUT EVERY FENCE ON THE GROUND FLOOR — plan 22
-  // `R1b`. The reference is not decoration: `fence_ring` → `fence_disc` →
-  // `wall_set` → `edge_layer(wld, oq, orr, ref)`, so it picks WHICH LAYER the edge
-  // is stored on. An author standing on a deck at 16 with the ground at 4 rang the
-  // yard below, and the read-back agreed with the write because both named the
-  // ground. That is `R1a`'s field having a consumer.
-  //
-  // ⚠ AND THE SERVER'S `author_at(px, pz, 0.0, py)` FORCES THE YAW TO ZERO, which
-  // this does not — because the ring provably does not read it. `fence_ring` takes
-  // `px_to_hex(au_x, au_z)` and hands a cell to `fence_disc`; `trunk_of` does the
-  // same. Pinned by a test that rings twice at two yaws rather than by copying a
-  // zero whose meaning nobody could check.
-  if key == "F" { return ring_set(sess, w, a, FENCE_MAT, FENCE_R, a.au_y); }
-  if key == "G" { return ring_set(sess, w, a, WALL_MAT,  FENCE_R, a.au_y); }
-  Ack { ak_ok: false, ak_why: PR_NONE }
-}
-
-// ⚠ THERE IS DELIBERATELY NO `is_gesture(key)` COMPANION. The first draft had one,
-// deriving its answer by running `press` against a scratch world so the key list
-// could not be stated twice — which meant *asking whether a key is a gesture built
-// a house*. A predicate with a side effect and a cost is worse than the duplication
-// it avoids. **Ask `press`, then read `ak_why == PR_NONE`**: one call, one answer,
-// no second list.
+// It was the chokepoint `W4` built: eleven keys, one body, so that what a key means
+// stopped being re-asserted in four places. It did that job and then stopped being
+// the right shape, because a key is a KEYBOARD's business and a verb is what
+// travels — onto the wire, into a script, into a house type's own declaration.
+//
+// What replaces it is two levels, both below: `verb_of(key)` says which verb a key
+// names, and `press_verb(…, verb)` says what a verb does. A caller resolves in that
+// order; `src/editor_run.loft` is the one that did, and it was the last production
+// caller this function had (`V2b`). `editor_server`'s `MSG_HOUSE` passes a literal
+// verb (`V2a`), and `editor_client` never called it.
+//
+// ⚠ **AND THE DELETION IS NOT A RENAME, WHICH IS WHY IT NEEDED THE THREE STEPS
+// BEFORE IT.** `verb_of` is not injective — `O P I U N M` all answer `opening` —
+// so a key press cuts **what is chosen** rather than what the key used to spell.
+// `K1` gave the scripts `select`, `K2a` converted the eighteen presses that carried
+// a profile, and only then could `V2b` move the runner. Deleting this earlier would
+// have changed what every one of those scripts built, silently: the store takes
+// `DOOR_MAT` whatever the profile and the outline lives in the session, so no world
+// instrument in the tree could have seen it.
+//
+// ⚠ **`open_press` WENT WITH IT** — it existed to turn `session_open_kind`'s
+// `OpeningMade` into the `Ack` this function answered in, and `press_verb` reads the
+// selection through `session_opening` instead. One caller, one lifetime.
+//
+// ⚠ **AND THE NAME IS NOT REUSED.** `press_verb` could take the plain `press` now
+// that nothing collides, and it deliberately does not: both forms are
+// `(sess, w, a, text)`, so a stale `press(…, "H")` would compile, run, and answer
+// *not a gesture* at runtime instead of failing to build. The longer name is the
+// only thing that distinguishes the two layers to a reader or to a compiler.
 
 // ── THE VERB LAYER — plan 22 `V1` ───────────────────────────────────────────
 //

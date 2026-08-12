@@ -239,7 +239,12 @@ wire_run() {
   : > "$OUT/$1.server"
   nohup $LOFT --interpret --lib lib/ src/editor_server.loft > "$OUT/$1.server" 2>&1 &
   wsrv=$!
-  for _ in $(seq 1 120); do
+  # ⚠ 240 s, NOT 120 — and the reason is a measurement. These servers are
+  # INTERPRETED from source, so the first one after any library edit recompiles;
+  # `verbed`'s run gave up at 120 s with its log ending mid-advice while the run
+  # three minutes later listened fine. A window that is sometimes long enough is a
+  # flake generator, and this tree already pays for those.
+  for _ in $(seq 1 240); do
     grep -q 'listening on port' "$OUT/$1.server" && break
     kill -0 "$wsrv" 2>/dev/null || break
     sleep 1
@@ -352,7 +357,7 @@ fi
 # identical. Verified by doing exactly that: F's world row goes red and nothing else
 # moves.
 if [ ! -s worlds/k1w-keyed.hxw ] || [ ! -s worlds/k1w-verbed.hxw ]; then
-  bad "the server saved no world — `save` did not reach it"
+  bad "the server saved no world — \`save\` did not reach it"
 elif cmp -s worlds/k1w-keyed.hxw worlds/k1w-verbed.hxw; then
   ok "and the world it saved: $(md5sum < worlds/k1w-keyed.hxw | cut -c1-12), \
 $(wc -c < worlds/k1w-keyed.hxw) bytes"

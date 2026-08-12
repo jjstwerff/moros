@@ -127,7 +127,40 @@ serves**, differing only in where a key press goes.
 | ✅ `K1` | **a script says a VERB** — `verb <name>` and `select <kind>` in both readers, and the runner grew a **session read-back** because the world cannot see what a conversion loses. `make probe-verbs` |
 | ✅ `K2a` | **the 18 opening presses are converted** — `select <kind>` + `verb opening` in 8 scripts, every other key untouched. `make probe-convert` |
 | ✅ `V2b` | **`editor_run` resolves through `verb_of`** — the **last production caller of `press(key)`**. No equality could see the step; `probe/k1` check `G` can |
-| ⏭ next | **`V3`** — delete `press(key)`. ⏭ Nothing in production calls it already; two test files keep it alive. ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
+| ⏭ next | **`D1`** (the derived mode) or **`B1`** (local mode in the client). ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ⏭ `V3` — A GREEN SUITE IS THE WRONG INSTRUMENT FOR A DELETION, 2026-08-12
+
+**`hex_editor::press(key)` and its private `open_press` are gone.** Two levels remain:
+`verb_of(key)` names a verb, `press_verb(…, verb)` runs it.
+
+⚠ **A DELETION MAKES TESTS PASS BY REMOVING THEIR SUBJECT**, so `make fast` going green proves
+nothing about it. The instrument is the **test-name diff** — 40 test functions before, 36 after
+(`hex_editor` **428 → 424**) — with every change accounted for: four **spent** (they compared two
+bodies and one is gone), one **moved** (`…_the_six_keys_cut_six_different_things` →
+`opening.loft`'s `…_the_five_outlines_the_family_can_select_cut_five_different_things`, over
+kinds instead of keys), two **retired into rows that already held their claim**, two **renamed**.
+
+⚠ **AND *"the claim is held next door"* IS MEASURED, NOT ASSERTED.** Three sabotages, each red on
+the row that inherited a retirement: `session_opening` wired to a constant → `…_the_five_outlines…`
+reports `1 2 3 4 cut outlines 1 1 1 1` (the moved control catching exactly what it was written to
+catch); `verb_of("W") = VB_PLACE` → `…_a_key_that_is_not_a_gesture_names_no_verb`; `verb_of("G")`
+unbound → `…_every_verb_the_definition_produces_is_bound`.
+
+⚠ **THE NAME `press` IS DELIBERATELY NOT REUSED**, against the design's own *"this takes the name
+`press` once nothing is left to collide with"*. Both forms are `(sess, w, a, text)`, so a stale
+`press(…, "H")` after a rename would **compile, run, and answer *not a gesture* at runtime**. The
+note was about collision; free is not the same as valuable. One `sed` reverses it.
+
+⚠ **AND A PROBE'S OWN 120-SECOND WINDOW WAS A FLAKE GENERATOR.** `probe/k1`'s second server gave
+up mid-compile — these servers are interpreted from source, so the first after any library edit
+rebuilds — and the failure printed 4 lines of compile *advice*, which reads as an error whichever
+happened. 240 s now, and the message says **still building** or **died** rather than showing a
+tail that cannot tell them apart. ⚠ A second bug in the same failure path: `` `save` `` inside a
+double-quoted message **ran `save` as a command**, so a real failure reported
+`save: not found`. Both only ever execute when something else is already wrong, which is how
+they survived four green runs.
 
 ## ⏭ `V2b` — NO EQUALITY COULD SEE THE STEP IT TOOK, 2026-08-12
 

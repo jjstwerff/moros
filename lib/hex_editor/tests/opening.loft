@@ -279,6 +279,37 @@ fn a_session_at_a_wall(w: VoxelWorld) -> hex_editor::EditSession {
   s
 }
 
+// ⚠ MOVED HERE AT `V3`, FROM `press.loft`'s `test_the_six_keys_cut_six_different_
+// things` — and it is the control that caught `open_press` wired to a constant.
+//
+// Its old form pressed six KEYS; the keys are gone, so it asks the same question of
+// the five outlines a selection can hold. **The test below it is satisfied by a
+// gesture that ignores its selection entirely** — three kinds could differ by luck
+// of the fixture — and this is what makes that impossible: four outlines that differ
+// from each other, and a fifth that is the FIRST outline again at another depth,
+// which is the family's own claim that `11` is `1` stopped short.
+fn test_the_five_outlines_the_family_can_select_cut_five_different_things() {
+  kinds: vector<integer> = [];
+  depths: vector<float> = [];
+  for want in [1, 2, 3, 4, 11] {
+    w = walled();
+    s = a_session_at_a_wall(w);
+    assert(hex_editor::session_select_open(s, want).ak_ok, "kind {want} is not selectable");
+    made = hex_editor::session_opening(s, w, at_the_wall(w), hex_editor::STOREY_H);
+    assert(made.om_ok, "kind {want} was refused: {made.om_why}");
+    o = s.es_open.items[0] ?? hex_editor::opening_none();
+    kinds += [o.op_kind];
+    depths += [o.op_depth];
+  }
+  assert((kinds[0] ?? 0) != (kinds[1] ?? 0) && (kinds[1] ?? 0) != (kinds[2] ?? 0)
+         && (kinds[2] ?? 0) != (kinds[3] ?? 0),
+         "1 2 3 4 cut outlines {kinds[0]} {kinds[1]} {kinds[2]} {kinds[3]}");
+  assert((kinds[4] ?? 0) == (kinds[0] ?? 0),
+         "11 cut outline {kinds[4]} and 1 cut {kinds[0]} — a niche is the same curve");
+  assert((depths[4] ?? 0.0) < (depths[0] ?? 0.0),
+         "…stopped short: 11 is {depths[4]} deep and 1 is {depths[0]}");
+}
+
 fn test_the_selection_decides_what_the_next_opening_cuts() {
   // Three selections, three worlds, one opening each — and the openings must differ
   // in the ways the selection names and in no others.

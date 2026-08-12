@@ -91,7 +91,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`V1`** — the verb vocabulary, `verb_of(key)`, and a `press` that takes a verb | S | **DONE.** Eleven keys through both layers, compared as whole-world BYTES · 6 sabotages red · hex_editor 420 → 428 | ✅ Done |
 | ✅ **`V2a`** — the server's `MSG_HOUSE` takes the VERB | XS | **DONE.** `make headless-same` green, sabotage red (`served:` empty against `house placed 27 cells, 84 wall edges, ridge at 21`) · `make gate` 48 PASS | ✅ Done |
 | ✅ **`V2b`** — `editor_run` resolves through `verb_of`; the **last production caller of `press(key)`** | S | **DONE.** ⚠ no equality can see this step — `probe/k1` check `G` (choose pointed, press `O`, the selection decides), seen red on the old line · `make headless-same` · `make probe-verbs` · `make probe-convert` | ✅ Done |
-| **`V3`** — delete `press(key)` | S | ⏭ nothing in production calls it **already**; what remains is the two test files keeping it alive | ⏭ **Next** |
+| ✅ **`V3`** — delete `press(key)` | S | **DONE.** ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is, 40 → 36 with every change accounted for, and three sabotages proving the retired claims are held where they were said to go | ✅ Done |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | ✅ **`K1`** — scripts accept both spellings: `key H` and `verb place`, plus `select <kind>` | S | **DONE.** Both drivers, twin scripts, compared on the world AND on the session · `make probe-verbs` · ⚠ the row's own control was blind — see below | ✅ Done |
 | ✅ **`K2a`** — convert the presses that LOSE information: 18 opening keys in 8 scripts | S | **DONE.** Each script beside a committed baseline of itself, through a server: sentences, saved world **and** kinds · `make probe-convert` · ⚠ the first two are blind to a niche's depth — measured | ✅ Done |
@@ -241,6 +241,39 @@ exits 1 when it matches nothing, which is precisely what that control wants to s
 ⚠ **AND A FRESH SERVER PER SCRIPT.** Two runs against one process differ in every
 `hex (q,r) — +N −M chunks` line, because the streaming set carries over — a fact about a viewer,
 not a gesture, and filtering it would have meant choosing what counts as noise.
+
+## What `V3` turned up (2026-08-12) — a green suite is the wrong instrument for a deletion
+
+**`hex_editor::press(key)` and its private `open_press` are gone.** What a key means is two
+levels and nothing else: `verb_of(key)` names a verb, `press_verb(…, verb)` runs it.
+
+⚠ **A DELETION MAKES TESTS PASS BY REMOVING THEIR SUBJECT**, so `make fast` going green proves
+nothing about it. The instrument is the **test-name diff** — 40 test functions before, 36 after,
+`hex_editor` 428 → 424 — with every change accounted for: **four spent** (they compared two
+bodies and one is gone), **one moved** (`…_the_six_keys_cut_six_different_things` →
+`opening.loft`'s `…_the_five_outlines_the_family_can_select_cut_five_different_things`, over
+kinds instead of keys), **two retired into rows that already held their claim**, and **two
+renamed** where the subject changed from a key to a verb.
+
+⚠ **AND *"the claim is held next door"* IS MEASURED HERE, NOT ASSERTED.** Three sabotages, each
+red on the row that inherited a retirement: `session_opening` wired to a constant kind →
+`…_the_five_outlines…` reports `1 2 3 4 cut outlines 1 1 1 1`, which is **the moved control
+catching exactly what it was written to catch**; `verb_of("W") = VB_PLACE` →
+`…_a_key_that_is_not_a_gesture_names_no_verb`; `verb_of("G")` unbound →
+`…_every_verb_the_definition_produces_is_bound`. Without those the retirements are a sentence,
+and this tree has shipped a gate header describing coverage that had already moved.
+
+⚠ **THE NAME `press` IS DELIBERATELY NOT REUSED**, against the design's own note that *"this
+takes the name `press` once nothing is left to collide with"*. Both forms are
+`(sess, w, a, text)`, so a stale `press(…, "H")` after a rename would **compile, run, and answer
+*not a gesture* at runtime** rather than fail to build — the longer name is the only thing that
+distinguishes the two layers to a reader or to a compiler. The note was about collision; free is
+not the same as valuable. One `sed` reverses this if the user disagrees.
+
+⚠ **ONE SURVIVING ROW CANNOT BE SURPRISED, AND ITS LIMIT IS WRITTEN AT THE SITE.**
+`…_the_definition_names_the_verb_each_direct_key_is_written_to_name` is a declaration checked
+against a hand-written second declaration. It is kept because nothing else states the key→verb
+table in words, and it is honest **only beside** the two rows that can fail.
 
 ## What `V2b` turned up (2026-08-12) — no equality could see the step it took
 

@@ -1,10 +1,13 @@
 // V1 — A KEY NAMES A VERB, AND THE VERB IS WHAT TRAVELS.
 //
-// plan 22 `V1`. `press(key)` and `press_verb(verb)` are two bodies at once, on
-// purpose and only until `V3`: the upper bound of a safe step is that the old path
-// and the new one both run and are compared **exactly**, and this file is that
-// comparison. Every key the editor has is driven through both and the two worlds are
-// compared as BYTES.
+// plan 22 `V1`, and ⚠ **`V3` HAS SINCE DELETED ONE OF THE TWO BODIES.** For the
+// length of `V1`–`V2b` this file was the comparison that made the move safe: the old
+// path and the new one both running, every one of the eleven keys driven through
+// both, the two worlds compared as BYTES. `press(key)` is gone, so those two rows
+// are retired — see below, where what they proved and what replaces it is written
+// out rather than left to a git log. What remains is the DEFINITION (`verb_of`) and
+// the behaviour of the layer under it (`press_verb`), including the byte instrument
+// itself and the blindness that justified building it.
 //
 // ⚠ **BYTES, NOT `w_tau`, AND THE DIFFERENCE IS MEASURED BELOW RATHER THAN
 // ASSERTED.** The edit clock counts writes that changed something, so a fence ring
@@ -13,9 +16,11 @@
 // blindness on the record, and it is the row that says why this file encodes a whole
 // world to answer a question a counter looks able to answer.
 //
-// ⚠ **AND THE DUPLICATION IS WHAT MAKES THIS FILE ABLE TO FAIL.** If `press(key)`
-// were `press_verb(verb_of(key))` today, every equality here would be a tautology.
-// The two tables are independent for exactly the length of `V2`.
+// ⚠ **AND THE DUPLICATION WAS WHAT MADE THOSE ROWS ABLE TO FAIL.** Had `press(key)`
+// been written as `press_verb(verb_of(key))` on day one, every equality here would
+// have been a tautology and the move would have been unverifiable. The two tables
+// were independent for exactly the length of `V2`, which is what a transitional
+// instrument is: built to be deleted, and worthless if it is built to survive.
 use hex_editor;
 use hex_voxel;
 use hex_grid;
@@ -92,14 +97,37 @@ fn world_for(key: text) -> VoxelWorld {
   flat()
 }
 
-// ── THE EQUALITY — every key, through both layers ───────────────────────────
+// ── THE DEFINITION, AND WHAT STOPS IT BEING A SELF-TEST ─────────────────────
 //
-// The five keys whose verb carries everything the key carried. The opening family is
-// the next test, because its verb deliberately carries LESS than its key did.
-fn test_every_direct_key_resolves_through_the_verb_layer_to_the_same_world() {
-  // ⚠ WRITTEN OUT ON BOTH SIDES, NOT DERIVED. `W4`'s whole finding is that four
-  // tables disagreed; deriving the expectation from `verb_of` would be a table
-  // checked against itself, which is the one thing this step is told not to be.
+// ⚠ **TWO EQUALITIES LIVED HERE AND `V3` RETIRED THEM, because their left-hand side
+// is deleted.** `test_every_direct_key_resolves_through_the_verb_layer_to_the_same_
+// world` drove all eleven keys through `press(key)` AND `press_verb(verb_of(key))`
+// and compared the worlds as BYTES; `test_the_opening_family_is_the_verb_plus_the_
+// selection` did the same for the six opening kinds against `select` + cut. They
+// were the instrument that made the move safe — the old path and the new one running
+// at once, compared exactly — and with `press(key)` gone there is one path, so both
+// would now be tautologies.
+//
+// **What they proved is spent, not lost.** They were seen green across `V1`, `V2a`
+// and `V2b`; what has to survive them is the DEFINITION, and that is below. The byte
+// comparison itself is still exercised — `test_two_worlds_built_the_same_way_are_the_
+// same_bytes` and `test_the_edit_clock_cannot_tell_a_fence_from_a_wall` both use it.
+
+// The key → verb table, written out by hand against the one the library declares.
+//
+// ⚠ **THIS ROW CANNOT BE SURPRISED AND IT IS KEPT ANYWAY, WITH ITS LIMIT NAMED.** It
+// is a declaration checked against a second declaration: if both were edited the same
+// way it would stay green, which is exactly what `plans/README` means by a self-test.
+// What makes the pair honest is the two rows underneath it —
+// `test_the_five_direct_verbs_do_five_different_things` (the five verbs BUILD five
+// different worlds, compared as bytes) and `test_every_verb_the_definition_produces_
+// is_bound` (nothing the table can name is unbound). Those can be surprised; this one
+// says which name goes with which key, which nothing else states in words.
+//
+// ⚠ **AND IT IS WRITTEN OUT RATHER THAN DERIVED.** Deriving both sides from one list
+// is a table checked against itself, and `W4`'s whole finding is that four tables
+// disagreed.
+fn test_the_definition_names_the_verb_each_direct_key_is_written_to_name() {
   keys  = ["ArrowUp", "ArrowDown", "H", "F", "G"];
   verbs = [VB_RAISE, VB_LOWER, VB_PLACE, VB_FENCE, VB_WALL];
   for vi in 0..5 {
@@ -107,96 +135,14 @@ fn test_every_direct_key_resolves_through_the_verb_layer_to_the_same_world() {
     want = verbs[vi] ?? "";
     assert(verb_of(k) == want,
            "key '{k}' names verb '{verb_of(k)}' and the definition says '{want}'");
-
-    by_key  = world_for(k);
-    by_verb = world_for(k);
-    ks = EditSession {};
-    vs = EditSession {};
-    ka = press(ks, by_key, pose_for(k, by_key), k);
-    va = press_verb(vs, by_verb, pose_for(k, by_verb), verb_of(k));
-
-    assert(ka.ak_ok == va.ak_ok,
-           "key '{k}' and verb '{want}' disagree about whether it worked: "
-         + "{ka.ak_why} / {va.ak_why}");
-    // ⚠ AND BOTH MUST HAVE WORKED, or two refusals compare equal and the row is
-    // an assertion about an empty world.
-    assert(ka.ak_ok, "key '{k}' was refused by the fixture: {ka.ak_why}");
-    assert(by_key.w_tau > 0, "key '{k}' changed nothing, so there is nothing to compare");
-
-    assert(same_world(by_key, by_verb),
-           "key '{k}' and verb '{want}' differ at byte {first_difference(by_key, by_verb)} "
-         + "— the definition resolves to a different gesture than the key does");
-    assert(ka.ak_n == va.ak_n,
-           "key '{k}' did {ka.ak_n} and verb '{want}' did {va.ak_n}");
-    // The ring is the one of the five that writes SESSION state as well as world
-    // state, and a trunk is what an annex later hangs on — `R1b`'s finding is that
-    // the two used to be laid and remembered eleven hundred lines apart.
-    assert(ks.es_trunk.tk_live == vs.es_trunk.tk_live
-           && ks.es_trunk.tk_x == vs.es_trunk.tk_x
-           && ks.es_trunk.tk_z == vs.es_trunk.tk_z
-           && ks.es_trunk.tk_r == vs.es_trunk.tk_r,
-           "key '{k}' left trunk live {ks.es_trunk.tk_live} r {ks.es_trunk.tk_r} and "
-         + "verb '{want}' left live {vs.es_trunk.tk_live} r {vs.es_trunk.tk_r}");
   }
-}
-
-// ⚠ **THE OPENING FAMILY IS WHERE THE KEY STOPS CARRYING A PROFILE**, so the two
-// paths are only equal once the selection says what the key used to say. That IS the
-// step: `press("N")` becomes `select 11` then `opening`, and this asserts the
-// substitution is lossless before any script or caller is converted.
-fn test_the_opening_family_is_the_verb_plus_the_selection() {
-  // The wire's own table, from `tools/script.mjs`'s KEYMAP — `36:1 2 3 4 11 21`.
-  keys  = ["O", "P", "I", "U", "N", "M"];
-  kinds = [1, 2, 3, 4, 11, 21];
-  for oi in 0..6 {
-    k = keys[oi] ?? "";
-    kind = kinds[oi] ?? 0;
-    assert(verb_of(k) == VB_OPENING,
-           "key '{k}' names '{verb_of(k)}' and the six are one verb");
-
-    by_key  = walled();
-    by_verb = walled();
-    ks = EditSession {};
-    vs = EditSession {};
-    // `21` is a composition — an embrasure needs a niche to cut into — so the
-    // fixture makes that explicit rather than letting the row pass as a refusal.
-    if kind >= 20 {
-      kn = press(ks, by_key, pose_for(k, by_key), "N");
-      vn = press_verb_sel(vs, by_verb, pose_for(k, by_verb), 11);
-      assert(kn.ak_ok && vn.ak_ok, "the fixture could not cut the niche: {kn.ak_why} / {vn.ak_why}");
-    }
-
-    ka = press(ks, by_key, pose_for(k, by_key), k);
-    va = press_verb_sel(vs, by_verb, pose_for(k, by_verb), kind);
-
-    assert(ka.ak_ok == va.ak_ok,
-           "key '{k}' and select {kind} + opening disagree: {ka.ak_why} / {va.ak_why}");
-    assert(ka.ak_ok, "key '{k}' was refused: {ka.ak_why}");
-    assert(same_world(by_key, by_verb),
-           "key '{k}' and select {kind} + opening differ at byte "
-         + "{first_difference(by_key, by_verb)}");
-    // ⚠ AND THE SESSION, which is the half a world cannot show: the `Opening` is what
-    // the renderer draws, and two paths agreeing on the cells while disagreeing on
-    // the shape is exactly the divergence this layer closes.
-    assert(len(ks.es_open.items) == len(vs.es_open.items),
-           "key '{k}' recorded {len(ks.es_open.items)} openings and the verb "
-         + "{len(vs.es_open.items)}");
-    ko = ks.es_open.items[len(ks.es_open.items) - 1] ?? opening_none();
-    vo = vs.es_open.items[len(vs.es_open.items) - 1] ?? opening_none();
-    assert(ko.op_kind == vo.op_kind && ko.op_lo == vo.op_lo && ko.op_hi == vo.op_hi
-           && ko.op_depth == vo.op_depth && ko.op_near == vo.op_near
-           && ko.op_spring == vo.op_spring && ko.op_half == vo.op_half,
-           "key '{k}' cut kind {ko.op_kind} depth {ko.op_depth} and select {kind} + "
-         + "opening cut kind {vo.op_kind} depth {vo.op_depth}");
+  // …and the six that collapse. ⚠ THE POINT OF THE FAMILY: `verb_of` is deliberately
+  // NOT injective, so the key is not recoverable from the verb and a driver that
+  // wanted a profile has to ask the selection.
+  for ok in ["O", "P", "I", "U", "N", "M"] {
+    assert(verb_of(ok) == VB_OPENING,
+           "key '{ok}' names '{verb_of(ok)}' and the six are one verb");
   }
-}
-
-// Choose, then cut — the two calls a converted script will make, as one helper so
-// the test above reads as the substitution it is asserting.
-fn press_verb_sel(s: EditSession, w: VoxelWorld, a: Author, kind: integer) -> Ack {
-  sel = session_select_open(s, kind);
-  if !sel.ak_ok { return sel; }
-  press_verb(s, w, a, VB_OPENING)
 }
 
 // ── THE CONTROLS ────────────────────────────────────────────────────────────
@@ -212,8 +158,8 @@ fn test_the_edit_clock_cannot_tell_a_fence_from_a_wall() {
   wg = flat();
   sf = EditSession {};
   sg = EditSession {};
-  af = press(sf, wf, pose_for("F", wf), "F");
-  ag = press(sg, wg, pose_for("G", wg), "G");
+  af = press_verb(sf, wf, pose_for("F", wf), verb_of("F"));
+  ag = press_verb(sg, wg, pose_for("G", wg), verb_of("G"));
   assert(af.ak_ok && ag.ak_ok, "the fixture refused a ring: {af.ak_why} / {ag.ak_why}");
   assert(wf.w_tau == wg.w_tau,
          "a fence did {wf.w_tau} writes and a wall did {wg.w_tau} — if these ever "
@@ -232,8 +178,8 @@ fn test_two_worlds_built_the_same_way_are_the_same_bytes() {
   a2 = flat();
   s1 = EditSession {};
   s2 = EditSession {};
-  press(s1, a1, pose_for("H", a1), "H");
-  press(s2, a2, pose_for("H", a2), "H");
+  press_verb(s1, a1, pose_for("H", a1), verb_of("H"));
+  press_verb(s2, a2, pose_for("H", a2), verb_of("H"));
   assert(same_world(a1, a2),
          "two identical presses differ at byte {first_difference(a1, a2)} — the "
        + "encoder carries something that is not the world");

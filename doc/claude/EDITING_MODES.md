@@ -449,7 +449,7 @@ key-naming wording still branches on `om_code`.
 | ✅ **`V1`** — the verb vocabulary **and** `verb_of(key)` **and** a `press` that takes a verb, in one step | `press(key)`, unchanged and still called | for every key: `press(key)` and `press(verb_of(key))` leave worlds with equal `w_tau`. ⚠ **The declaration alone is NOT a step** — a table checked against itself cannot be surprised |
 | ✅ **`V2a`** — the server's `MSG_HOUSE` | the key form everywhere else | a literal `"H"` carries no profile, so this site could move first |
 | ✅ **`V2b`** — `editor_run`, and it was the **last production caller of `press(key)`** | `tools/script.mjs`, which has not moved | ⚠ not an equality — the equalities cannot see this step. `probe/k1` check `G`: choose POINTED, press `O`, and the *selection* decides |
-| **`V3`** — delete `press(key)` | — | nothing calls it: ⏭ **already true of production code**; what is left is the two test files that keep it alive |
+| ✅ **`V3`** — delete `press(key)` | — | ⚠ not "the suite is green" — a deletion makes tests pass by removing their subject. The instrument is the **test-name diff**, and every retirement names where its claim went |
 
 ### ✅ `V1` — and the row's own instrument was too weak, measured
 
@@ -546,6 +546,46 @@ selection must still be 2.** A key cuts; it does not re-choose.
 caller at a time, so the runner and the wire disagree about what `key O` means until `V3`
 deletes the key form. That divergence is **bounded by `K2a`**: no script presses an opening key
 any more, so nothing exercises it. Stated here rather than discovered later.
+
+### ✅ `V3` — the chokepoint is deleted, and a green suite is the wrong instrument
+
+**Built 2026-08-12.** `hex_editor::press(key)` and its private `open_press` are gone. What a
+key means is two levels now and nothing else: **`verb_of(key)` names a verb, `press_verb(…,
+verb)` runs it**, and a caller resolves in that order.
+
+⚠ **A DELETION MAKES TESTS PASS BY REMOVING THEIR SUBJECT, so "the suite is green" says
+nothing.** The instrument is the **test-name diff** — 40 functions before, 36 after, every
+change accounted for:
+
+| retired | where the claim went |
+|---|---|
+| `…_every_direct_key_resolves_through_the_verb_layer_to_the_same_world` | **spent.** It compared two bodies as BYTES; one body is gone, so it would now be a tautology |
+| `…_the_opening_family_is_the_verb_plus_the_selection` | **spent**, same reason |
+| `…_the_six_opening_keys_are_one_verb_with_six_selections` | **spent**; what it protected is `opening.loft`'s `…_the_selection_decides_what_the_next_opening_cuts` |
+| `…_the_six_keys_cut_six_different_things` | ✅ **MOVED** to `opening.loft` as `…_the_five_outlines_the_family_can_select_cut_five_different_things` — over kinds instead of keys |
+| `…_an_unmapped_key_is_named_rather_than_refused` | `verb.loft`'s `…_a_key_that_is_not_a_gesture_names_no_verb` **+** `…_an_unbound_verb_is_named_rather_than_refused`; their composition **is** the row |
+| `…_every_mapped_key_is_reachable` | `verb.loft`'s `…_every_verb_the_definition_produces_is_bound`, over the same eleven keys through `verb_of` |
+
+⚠ **AND THE "WHERE THE CLAIM WENT" COLUMN IS MEASURED, NOT ASSERTED.** Three sabotages, each
+red on the row that inherited a retirement: `session_opening` wired to a constant kind →
+`…_the_five_outlines…` reports `1 2 3 4 cut outlines 1 1 1 1` (**the moved control still catches
+exactly what it was written to catch**); `verb_of("W") = VB_PLACE` → `…_names_no_verb`; and
+`verb_of("G")` unbound → `…_every_verb_the_definition_produces_is_bound`. Without those, *"the
+claim is held next door"* is a sentence, and this tree has shipped a gate whose header described
+coverage that had already moved.
+
+⚠ **THE NAME `press` IS DELIBERATELY NOT REUSED.** `press_verb` could take it now that nothing
+collides — and both forms are `(sess, w, a, text)`, so a stale `press(…, "H")` would **compile,
+run, and answer *not a gesture* at runtime** instead of failing to build. The longer name is the
+only thing that distinguishes the two layers to a reader or to a compiler; the design's *"a
+rename is free here"* was about collision, and free is not the same as valuable.
+
+⚠ **AND ONE ROW SURVIVES THAT CANNOT BE SURPRISED, WITH ITS LIMIT WRITTEN DOWN.**
+`…_the_definition_names_the_verb_each_direct_key_is_written_to_name` is a declaration checked
+against a hand-written second declaration: edit both the same way and it stays green. It is kept
+because it is the only place the key→verb table is stated in words, and it is honest **only
+beside** the two rows that can fail — the five verbs building five different worlds, and every
+verb the table can name being bound.
 
 ## Phase 4 — the mode, derived
 

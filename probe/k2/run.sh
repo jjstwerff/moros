@@ -85,13 +85,23 @@ wire() {
   : > "$OUT/$tag.server"
   nohup $LOFT --interpret --lib lib/ src/editor_server.loft > "$OUT/$tag.server" 2>&1 &
   wsrv=$!
-  for _ in $(seq 1 120); do
+  # ⚠ 240 s, NOT 120 — and the reason is a measurement, not caution. These servers
+  # are INTERPRETED from source, so the first one after any library edit recompiles;
+  # `probe/k1`'s `verbed` run gave up at 120 s with its log ending mid-advice while a
+  # run three minutes later listened fine. A window that is sometimes long enough is
+  # a flake generator.
+  for _ in $(seq 1 240); do
     grep -q 'listening on port' "$OUT/$tag.server" && break
     kill -0 "$wsrv" 2>/dev/null || break
     sleep 1
   done
   if ! grep -q 'listening on port' "$OUT/$tag.server"; then
-    bad "the server never listened for $tag"; tail -4 "$OUT/$tag.server"
+    if kill -0 "$wsrv" 2>/dev/null; then
+      bad "the server for $tag was still building after 240 s (alive, no 'listening')"
+    else
+      bad "the server for $tag died before listening"
+    fi
+    grep -vE '^advice|^warning|^ *[0-9]* \||^ *--> |^ *\^|^note:|^$' "$OUT/$tag.server" | tail -4
     kill "$wsrv" 2>/dev/null; return 1
   fi
   node tools/script.mjs "$script" > "$OUT/$tag.wire" 2>&1
