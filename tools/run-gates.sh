@@ -303,9 +303,26 @@ if [ "${1:-}" = "--one" ]; then
   # opposite — so a green gate says nothing, and a red one says everything.
   # `GATE_VERBOSE=1` brings the timings back for profiling, which is a different
   # question from "is it green".
-  if [ "$verdict" != PASS ] || [ -n "${GATE_VERBOSE:-}" ]; then
+  # ⚠ A RED GATE PRINTS ITS VERDICT WHOLE; ONLY A GREEN ONE IS CUT TO FIT.
+  # The 100-character cut was applied to both, and on a failure it hid the one thing
+  # the run is for: which `ok` conjunct is false. OPEN_ISSUES says so twice about
+  # `part_limb` — *"the failing field is not visible from the suite output, it has to
+  # be re-run by hand against a server"* — and that re-run was paid again on
+  # 2026-08-12. A truncated PASS costs a reader nothing, because the field that
+  # matters is already in the word PASS; a truncated FAIL costs a diagnosis.
+  if [ "$verdict" != PASS ]; then
+    printf '%-4s %-20s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
+           "$(printf '%s' "$out" | tail -1)"
+  elif [ -n "${GATE_VERBOSE:-}" ]; then
     printf '%-4s %-20s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
            "$(printf '%s' "$out" | tail -1 | cut -c1-100)"
+  fi
+  # ⚠ AND THE ROWS, NOT ONLY THE VERDICT. A gate prints its failing rows to stdout
+  # and the summary keeps only the LAST line, so a four-row failure arrived as one
+  # `ok:false`. ⚠ `sed '$d'` DROPS THE LAST LINE FIRST — it is the verdict, already
+  # printed above, and without this every red gate says the same JSON twice.
+  if [ "$verdict" != PASS ]; then
+    printf '%s\n' "$out" | sed '$d' | tail -11 | sed 's/^/     /'
   fi
   if [ "$verdict" != PASS ] && [ -s ".gate-$name.err" ]; then
     sed 's/^/     /' ".gate-$name.err" | head -5

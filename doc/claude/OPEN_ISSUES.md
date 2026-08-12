@@ -18,7 +18,7 @@ found — an unrevised design reads like a finding.
 
 ---
 
-## ✅ `gates/world/part_limb` was FLAKY under contention — FIXED, and the cause was a settle at zero
+## ◐ `gates/world/part_limb` under contention — the settle-at-zero cause is FIXED, one red since
 
 **Seen 2026-08-10/11, three times in `make gate` at `GATE_JOBS=4`, and never once when run
 by itself.** It passes alone at HEAD, alone on the branch, and under contention on every
@@ -64,6 +64,31 @@ exactly like a guard. The evidence is `g.picture`, which `openPart` clears at it
 construction rather than statistically: `fineFloats` is `drawnFloats()` read immediately
 after `openPart` returns, and `openPart` can no longer return until that is non-zero — so a
 zero is now reachable only through a timeout, which prints.
+
+### ⚠ It went red once more on 2026-08-12 — attributed to the BOX, and the diagnosis cost is fixed
+
+**One red in three full suites**, at **32.4 s** against **16.5 s** solo, and **5 of 5 green**
+under `make gate-rep G=part_limb`. The other two full suites were **48 PASS / 0 FAIL**. `uptime`
+during the session read a load average of **35** on a box three agents share — which is this
+file's own rule from 2026-08-08, one section down: *a red `part_limb` is a statement about the
+machine; check `uptime` before believing any full-suite red.*
+
+⚠ **AND THE LEADING FIELDS WERE HEALTHY** — `cellFloats 540, meshFloats 216, fineFloats 1800,
+plankH 2.1667` — so it is **not** the settle-at-zero the fix above closed, and not the
+`cellFloats: 0` signature of the loaded-box note either. Which conjunct it was is unknown,
+because the verdict was cut at 100 characters. **That is the third time this file has recorded
+"the failing field is not visible from the suite output".**
+
+✅ **SO THE INSTRUMENT IS FIXED RATHER THAN THE SENTENCE REPEATED.** `tools/run-gates.sh` now
+prints a **red** gate's verdict **whole** and the last 11 rows of its stdout — where `verdict()`
+writes each claim with `<-- FAIL` against the ones that failed. A green gate is still silent and
+`GATE_VERBOSE=1` still cuts a PASS to 100 characters: **a truncated PASS costs a reader nothing,
+a truncated FAIL costs a diagnosis.** ⚠ Checked in all three directions rather than assumed —
+`fence` sabotaged (the failing `ordinalOffers:false` now visible where the cut hid it),
+`part_limb` sabotaged on two rows (both `<-- FAIL` lines printed, `bad: 2`), and both silent
+again once restored. ⚠ **And `sed '$d'` drops the last line before the rows print**, because it
+is the verdict already on the line above — without it every red gate said the same JSON twice,
+which the first version did.
 
 ## Contents
 
