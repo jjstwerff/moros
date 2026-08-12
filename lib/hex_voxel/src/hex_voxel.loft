@@ -545,7 +545,15 @@ pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
     if gcl.ly_id == LABEL_GROUND && gcl.ly_kind == KIND_TERRAIN { gl = gn; break; }
     gn = gn + 1;
   }
-  if gl < 0 { return Hex {}; }
+  // ⚠ `G5b` MAKES THIS REACHABLE FOR A CHUNK THAT EXISTS. A ground layer equal to the
+  // default everywhere is dropped, and if a storey above keeps the chunk alive there
+  // is then no `LABEL_GROUND` layer to find — but the ground is still there, because
+  // the default is what an unwritten cell reads as. Without this, elision punches
+  // back exactly the hole `G5a.1` closed.
+  if gl < 0 {
+    if world_has_ground_default(w) { return ground_copy(w); }
+    return Hex {};
+  }
   e = w.w_chunks[ci].ck_layers[gl].ly_cells[cell_index(q, r)];
   return cell_or_ground(w, w.w_chunks[ci].ck_base, w.w_chunks[ci].ck_layers[gl], e);
 }
@@ -1350,10 +1358,16 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
     // measured in 2026-08 (`probe/perf/README.md`: *"short-circuiting step 6:
     // 116 → 98 ms"*) and the finding was written down and never applied — which
     // is why it is worth saying that the two lines below are the whole of it.
-    any = stored_present(ly.ly_cells[ix]);
+    // ⚠ `G5b` — WHAT AN UNWRITTEN CELL OF *THIS* LAYER READS AS, hoisted: it is one
+    // value for the whole layer, and computing it inside the sweep would put a
+    // `cell_or_ground` on each of 1024 turns to learn a constant.
+    blank = cell_or_ground(w, w.w_chunks[ci].ck_base, ly, StoredHex {});
+    any = !hex_same(cell_or_ground(w, w.w_chunks[ci].ck_base, ly, ly.ly_cells[ix]),
+                    blank);
     if !any {
       for j in 0..CHUNK_CELLS {
-        if stored_present(ly.ly_cells[j]) { any = true; break; }
+        if !hex_same(cell_or_ground(w, w.w_chunks[ci].ck_base, ly, ly.ly_cells[j]),
+                     blank) { any = true; break; }
       }
     }
     if any { live += [ly]; }
@@ -1738,6 +1752,25 @@ fn ground_copy(w: VoxelWorld) -> Hex {
         h_item: w.w_ground.h_item, h_item_rotation: w.w_ground.h_item_rotation,
         h_wall_nw: w.w_ground.h_wall_nw, h_wall_ne: w.w_ground.h_wall_ne,
         h_wall_e: w.w_ground.h_wall_e }
+}
+
+// ── `G5b` — WHAT STORAGE MAY DROP ──────────────────────────────────────────
+//
+// **A cell is elidable iff it reads the same as an UNWRITTEN one.** That is the whole
+// rule, and it is `E1` generalised rather than replaced: with no ground default an
+// unwritten cell reads as `Hex {}`, no present cell can read as that (absence *is*
+// material 0), and the rule collapses to today's *no present cells* — including an
+// absent cell carrying a stale height, which `hex_of` already discards on read.
+// **Today is the special case, so nothing moves until a scenario sets a ground.**
+//
+// ⚠ **AND IT IS PER LAYER WITHOUT BRANCHING ON THE LAYER.** `cell_or_ground` already
+// knows that an unwritten GROUND cell reads as the default and an unwritten cellar
+// cell reads as nothing, so asking it what a blank reads as is the same question in
+// both — where a rule testing `LABEL_GROUND` here would be a second home for that.
+fn hex_same(a: Hex, b: Hex) -> boolean {
+  a.h_height == b.h_height && a.h_material == b.h_material && a.h_item == b.h_item
+    && a.h_item_rotation == b.h_item_rotation && a.h_wall_nw == b.h_wall_nw
+    && a.h_wall_ne == b.h_wall_ne && a.h_wall_e == b.h_wall_e
 }
 
 fn cell_or_ground(w: VoxelWorld, base: integer, ly: Layer, sv: StoredHex) -> Hex {

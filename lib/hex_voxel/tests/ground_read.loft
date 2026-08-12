@@ -247,11 +247,87 @@ fn test_a_second_terrain_layer_is_not_filled_with_ground() {
   w = world_new(0.25, RESERVE, 8, 3).wn_world;
   assert(world_set_ground(w, grass(200)).cw_code == CW_OK, "the fixture's ground was refused");
   // two layers at one cell: the ground, and a storey above it
+  // ⚠ THE GROUND CELL DIFFERS FROM THE DEFAULT ON PURPOSE — `G5b`. Written AT the
+  // default it would make the ground layer elidable everywhere, the layer would be
+  // dropped, and layer 0 would name the STOREY: a true statement about elision that
+  // says nothing about the over-reach this row is the control for.
   world_set_column(w, Column { co_q: 2, co_r: 2,
-    co_cells: [grass(200), grass(400)] });
+    co_cells: [grass(300), grass(400)] });
   // …and at a cell where only the first was ever written
   assert(hex_present(world_cell(w, 9, 9, 0)), "the ground layer is not there");
   assert(!hex_present(world_cell(w, 9, 9, 1)),
          "an unwritten cell of the SECOND layer answered {world_cell(w, 9, 9, 1).h_material} "
        + "— the default filled a storey");
+}
+
+// ── `G5b` — STORAGE HOLDS ONLY WHAT DIFFERS ─────────────────────────────────
+
+// ⚠ THE POINT OF THE WHOLE PLAN, AS ONE ROW: writing the ground onto ground stores
+// nothing at all. Today this costs a chunk, 1024 records and a file entry.
+fn test_writing_the_default_stores_nothing() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  assert(world_set_ground(w, grass(200)).cw_code == CW_OK, "the fixture's ground was refused");
+  for q in 0..4 {
+    for r in 0..4 {
+      assert(world_set_column(w, Column { co_q: q, co_r: r, co_cells: [grass(200)] }).cw_code
+             == CW_OK, "writing the ground was refused at ({q},{r})");
+    }
+  }
+  assert(len(w.w_chunks) == 0,
+         "{len(w.w_chunks)} chunks stored for 16 writes of the ground itself");
+  // …and it still reads as the ground, which is what makes storing nothing correct
+  // rather than merely cheap.
+  assert(world_ground_cell(w, 2, 2).h_material == 4, "the ground stopped reading");
+}
+
+// …and a cell that DIFFERS is stored, or the row above passes on a store that
+// silently drops everything.
+fn test_a_cell_that_differs_is_still_stored() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  world_set_ground(w, grass(200));
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [grass(300)] });
+  assert(len(w.w_chunks) == 1, "{len(w.w_chunks)} chunks for one differing cell");
+  assert(world_ground_cell(w, 1, 1).h_height == 300, "the differing cell did not stick");
+  assert(world_ground_cell(w, 2, 2).h_height == 200, "…and its neighbour is the ground");
+}
+
+// ⚠ A LAYER THAT COMES TO EQUAL THE DEFAULT EVERYWHERE IS DROPPED — the counterpart
+// of `E1`, and the rule that keeps a world from accumulating chunks that say nothing.
+fn test_a_layer_that_becomes_the_default_is_dropped() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  world_set_ground(w, grass(200));
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [grass(300)] });
+  assert(len(w.w_chunks) == 1, "the fixture stored nothing");
+
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [grass(200)] });
+  assert(len(w.w_chunks) == 0,
+         "the cell was written back to the ground and {len(w.w_chunks)} chunks remain");
+  assert(world_ground_cell(w, 1, 1).h_height == 200, "and it reads as the ground");
+}
+
+// ⚠ AND DROPPING THE GROUND LAYER MUST NOT PUNCH BACK THE HOLE `G5a.1` CLOSED. With a
+// storey keeping the chunk alive, the ground layer can go while the chunk stays — and
+// then there is no `LABEL_GROUND` layer to find. The ground is still there.
+fn test_the_ground_survives_its_own_layer_being_dropped() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  world_set_ground(w, grass(200));
+  world_set_column(w, Column { co_q: 2, co_r: 2, co_cells: [grass(200), grass(400)] });
+  assert(len(w.w_chunks) == 1, "the storey did not keep the chunk alive");
+  assert(world_ground_cell(w, 2, 2).h_material == 4,
+         "the ground reads as {world_ground_cell(w, 2, 2).h_material} where its layer "
+       + "was dropped — the hole is back");
+  assert(world_ground_cell(w, 9, 9).h_height == 200, "…and at an untouched cell too");
+}
+
+// ⚠ AND WITH NO DEFAULT, ELISION IS EXACTLY WHAT IT WAS. `E1` is generalised, not
+// replaced, and `tests/elision.loft` is the full statement of the old rule — this is
+// the one row that says the generalisation did not move it.
+fn test_with_no_default_elision_is_unchanged() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  world_set_column(w, Column { co_q: 3, co_r: 4, co_cells: [grass(200)] });
+  assert(len(w.w_chunks) == 1, "the fixture wrote nothing");
+  world_set_column(w, Column { co_q: 3, co_r: 4,
+    co_cells: [Hex { h_height: 0 as u16? ?? 0, h_material: 0 as u8? ?? 0 }] });
+  assert(len(w.w_chunks) == 0,
+         "an emptied layer left {len(w.w_chunks)} chunks with no ground default set");
 }
