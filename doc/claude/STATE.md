@@ -37,7 +37,37 @@ ignored**, so an armed instrument reporting nothing reads as *there is nothing t
 **33,245 samples naming the library**. Not wrong — blind. **Set it, or you photograph your own
 `main`.**
 
-### ⏭ RE-EVALUATED THE SAME DAY: still half useful, and the fix is upstream not installed
+### ✅ AND IT IS USABLE NOW — loft `61057fa0…` installed 13:21, and the suite is NOT flat
+
+**All three gaps are closed on the installed binary** (stamped at both ends; `make fast` 141
+files, `make parts` byte-identical, programs run — a toolchain swap has broken this tree
+silently before). `loft test` gets **one merged report**; the default backend **announces** that
+it cannot be sampled ([loft#865](https://github.com/loft-lang/loft/issues/865), filed here
+today); and a report that went past a `use`d library **leads with the blind spot** instead of
+inverting silently. ⚠ **The report goes to STDERR** — `loft test > out.txt` keeps the results and
+loses the profile, which reads as *no profile was produced*.
+
+⚠ **AND THE FIRST THING IT SAID CORRECTS TWO ENTRIES IN THIS FILE.** `hex_editor`'s suite,
+**5,210,109 samples over 72 s across 424 runs** (identical with and without
+`LOFT_NO_NATIVE_LIBS=1`, so these are the real figures):
+
+| | |
+|---|---|
+| `world_set_column_as` **22.3 %** · `stored_present` **20.8 %** | **43 % in two functions** |
+| + `world_chunk_of` 7.9 % · `world_ground_cell` 4.7 % · `empty_cells` 4.4 % | **60 % in five**, all `hex_voxel` |
+| hottest path | `ground_set → … → world_set_cell → **set_cell_slow** → world_set_column → world_set_column_as` |
+
+⚠ ***"`hex_editor` 56 s, 235 tests, FLAT — no fixture dominating"* (below) IS TRUE PER FILE AND
+FALSE PER FUNCTION.** The per-file clocks said *spread evenly, real work*; the sampler says **one
+write path**.
+
+⚠ **AND THE FIXTURE BUILT THAT MORNING TO STAND IN FOR THE SUITE GOT THE WEIGHTS WRONG BOTH
+WAYS**: `empty_cells` **24.6 % → 4.4 %** (over by 5.6×) and `stored_present` **10.0 % → 20.8 %**
+(under by 2×). **A test-shaped program is not the test suite.** GROUND_DEFAULT's premise stands,
+but the row to aim at is the **elision scan**, not chunk materialisation. ⚠ `crc32_of` is 2.9 %
+here and **45.6 %** of `hex_voxel`'s own suite.
+
+### ⏭ THE EARLIER ANSWER, KEPT — it was half useful, and the fix was upstream not installed
 
 **`probe/perf/README.md` § *Is the sampler useful yet* has the table.** Short version, all on
 the installed `1dec17a0…` (aug 12 **09:38**):

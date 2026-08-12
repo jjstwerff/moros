@@ -73,7 +73,53 @@ kt=117 ColumnWrite×320` — one per chunk materialisation. 320 small structs is
 problem, and *a store that outlives its program* is worth someone's attention before it is a
 large one.
 
-## ⏭ IS THE SAMPLER USEFUL YET? — re-evaluated 2026-08-12, and the answer is *half*
+## ✅ THE SAMPLER IS USABLE — and the suite it could not see was not flat after all
+
+**loft `61057fa0…` (aug 12 13:21) installed, and all three gaps below are closed.** Re-measured
+on it, stamped at both ends:
+
+| | |
+|---|---|
+| `LOFT_PROFILE=1 loft test` | ✅ **one merged report** — `688401 samples over 8.43 s across 146 runs` for `hex_voxel` |
+| the **default** backend | ✅ announces: *"the loft-level profiler is interpreter-only — this program runs native"*, naming both cures ([loft#865](https://github.com/loft-lang/loft/issues/865)) |
+| a `use`d library | ✅ the report **leads with the blind spot**: *"THIS RUN CALLED INTO `use`d LIBRARIES (280 calls)… the ranking can invert"*, and *"4 samples is too few to rank, and the library calls above are why. Start with `LOFT_NO_NATIVE_LIBS=1` rather than a longer run"* |
+
+⚠ **THE REPORT GOES TO STDERR.** `loft test > out.txt` keeps the test results and loses the
+profile; it looks exactly like *no profile was produced*. Cost one confused measurement here.
+
+### ⏭ WHERE `hex_editor`'s SUITE ACTUALLY GOES — 5,210,109 samples, 424 runs, 72 s
+
+**The question this file was written for on 2026-08-06, answered.** `LOFT_NO_NATIVE_LIBS=1`
+changes **nothing** for it — same sample count to the digit, same ranking — so the store is
+interpreted either way here and these are the real figures.
+
+| | |
+|---|---|
+| `world_set_column_as` **22.3 %** · `stored_present` **20.8 %** | **43 % in two functions** |
+| `world_chunk_of` 7.9 % · `world_ground_cell` 4.7 % · `empty_cells` 4.4 % | **60 % in five**, all `hex_voxel` |
+| the hottest path | `ground_set → ground_write → layer_write → world_set_cell → **set_cell_slow** → world_set_column → world_set_column_as` |
+
+⚠ **SO *"`hex_editor` 56 s, 235 tests, FLAT — no fixture dominating"* IS TRUE PER FILE AND FALSE
+PER FUNCTION.** The per-file wall clocks said *spread evenly, it is real work*; the sampler says
+**one write path**, and the first write to any chunk cannot take the fast one.
+
+⚠ **AND IT CORRECTS THE HAND-WRITTEN STAND-IN BELOW, WHICH IS THE POINT OF BEING ABLE TO PROFILE
+THE REAL THING.** `fixture.loft` was built that morning precisely because the suite could not be
+profiled, and it got the weights wrong in both directions:
+
+| | `fixture.loft` | the actual suite |
+|---|---|---|
+| `empty_cells` | **24.6 %** | **4.4 %** — over-weighted 5.6× |
+| `stored_present` | **10.0 %** | **20.8 %** — under-weighted 2× |
+
+**A test-shaped program is not the test suite**, and nothing short of the sampler could have said
+so. GROUND_DEFAULT's premise survives — the elision scan and the column path are still most of
+it — but the row it should be aimed at is `stored_present`, not chunk materialisation.
+
+⚠ **AND `crc32_of` IS 2.9 % HERE AND 45.6 % IN `hex_voxel`'s OWN SUITE** — nearly half that
+package's test time is a checksum over saved worlds. Recorded, not chased.
+
+## ⏭ IS THE SAMPLER USEFUL YET? — the earlier answer, kept: it was *half*
 
 Asked again the same day. Everything below is measured on the **installed** binary,
 `1dec17a0aa464303f00f9616b24580bd64a19f48400272ba09f5606c2f1e9333` (`loft 2026.8.0`, aug 12
