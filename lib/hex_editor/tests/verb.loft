@@ -1,0 +1,321 @@
+// V1 — A KEY NAMES A VERB, AND THE VERB IS WHAT TRAVELS.
+//
+// plan 22 `V1`. `press(key)` and `press_verb(verb)` are two bodies at once, on
+// purpose and only until `V3`: the upper bound of a safe step is that the old path
+// and the new one both run and are compared **exactly**, and this file is that
+// comparison. Every key the editor has is driven through both and the two worlds are
+// compared as BYTES.
+//
+// ⚠ **BYTES, NOT `w_tau`, AND THE DIFFERENCE IS MEASURED BELOW RATHER THAN
+// ASSERTED.** The edit clock counts writes that changed something, so a fence ring
+// and a wall ring — the same edges, the same count, a different material — leave
+// **equal `w_tau`**. `test_the_edit_clock_cannot_tell_a_fence_from_a_wall` is that
+// blindness on the record, and it is the row that says why this file encodes a whole
+// world to answer a question a counter looks able to answer.
+//
+// ⚠ **AND THE DUPLICATION IS WHAT MAKES THIS FILE ABLE TO FAIL.** If `press(key)`
+// were `press_verb(verb_of(key))` today, every equality here would be a tautology.
+// The two tables are independent for exactly the length of `V2`.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+fn ground(gw: VoxelWorld, half: integer) {
+  for gq in 0 - half..half + 1 {
+    for gr in 0 - half..half + 1 { ground_set(gw, gq, gr, 8, SURFACE_MAT); }
+  }
+}
+
+fn flat() -> VoxelWorld {
+  fw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  ground(fw, 20);
+  fw
+}
+
+// A world with a ring of wall in it, so the opening family has something to cut —
+// `press.loft`'s fixture, restated here because a test file is its own scope.
+fn walled() -> VoxelWorld {
+  ww = walled_ground();
+  fence_disc(ww, 0, 0, 2, WALL_MAT, 2.0);
+  ww
+}
+
+fn walled_ground() -> VoxelWorld {
+  wg = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  ground(wg, 12);
+  wg
+}
+
+// ── THE INSTRUMENT ──────────────────────────────────────────────────────────
+//
+// The index of the first byte on which two worlds differ, `-1` if they are the same
+// world and `-2` if they are not even the same length.
+//
+// ⚠ **THE LENGTH IS A SEPARATE ANSWER** for `bytes.loft`'s reason: a length mismatch
+// and a content mismatch want different diagnoses, and comparing over the shorter of
+// the two reports the interesting case as "byte 0" or as nothing at all.
+fn first_difference(x: VoxelWorld, y: VoxelWorld) -> integer {
+  bx = world_to_bytes(x, []);
+  by = world_to_bytes(y, []);
+  if len(bx) != len(by) { return 0 - 2; }
+  for bi in 0..len(bx) {
+    if (bx[bi] as integer? ?? 0) != (by[bi] as integer? ?? 0) { return bi; }
+  }
+  0 - 1
+}
+
+fn same_world(x: VoxelWorld, y: VoxelWorld) -> boolean { first_difference(x, y) == 0 - 1 }
+
+// The pose each key wants, and it is not the same one.
+//
+// ⚠ **30° FOR THE HOUSE IS NOT DECORATION** — only 6 of the lattice's 12 facings have
+// mitred corners and yaw 0 lands on an odd one, so a house pressed at 0 is refused
+// with `rot 9 of 12, offer 8`. ⚠ **AND THE OPENING FAMILY STANDS ON THE WALL**: an
+// author inside the footprint has no wall in front of them, which is the live defect
+// `house.keys` has carried since it was written.
+fn pose_for(key: text, w: VoxelWorld) -> Author {
+  if key == "H" {
+    (hx, hz) = hex_to_px(6, 6);
+    return author_on(w, hx, hz, 30.0 * PI / 180.0 ?? 0.0);
+  }
+  if key == "O" || key == "P" || key == "I" || key == "U" || key == "N" || key == "M" {
+    (ox, oz) = hex_to_px(2, 0);
+    return author_on(w, ox, oz, 0.0);
+  }
+  author_on(w, 0.0, 0.0, 0.0)
+}
+
+fn world_for(key: text) -> VoxelWorld {
+  if key == "O" || key == "P" || key == "I" || key == "U" || key == "N" || key == "M" {
+    return walled();
+  }
+  flat()
+}
+
+// ── THE EQUALITY — every key, through both layers ───────────────────────────
+//
+// The five keys whose verb carries everything the key carried. The opening family is
+// the next test, because its verb deliberately carries LESS than its key did.
+fn test_every_direct_key_resolves_through_the_verb_layer_to_the_same_world() {
+  // ⚠ WRITTEN OUT ON BOTH SIDES, NOT DERIVED. `W4`'s whole finding is that four
+  // tables disagreed; deriving the expectation from `verb_of` would be a table
+  // checked against itself, which is the one thing this step is told not to be.
+  keys  = ["ArrowUp", "ArrowDown", "H", "F", "G"];
+  verbs = [VB_RAISE, VB_LOWER, VB_PLACE, VB_FENCE, VB_WALL];
+  for vi in 0..5 {
+    k = keys[vi] ?? "";
+    want = verbs[vi] ?? "";
+    assert(verb_of(k) == want,
+           "key '{k}' names verb '{verb_of(k)}' and the definition says '{want}'");
+
+    by_key  = world_for(k);
+    by_verb = world_for(k);
+    ks = EditSession {};
+    vs = EditSession {};
+    ka = press(ks, by_key, pose_for(k, by_key), k);
+    va = press_verb(vs, by_verb, pose_for(k, by_verb), verb_of(k));
+
+    assert(ka.ak_ok == va.ak_ok,
+           "key '{k}' and verb '{want}' disagree about whether it worked: "
+         + "{ka.ak_why} / {va.ak_why}");
+    // ⚠ AND BOTH MUST HAVE WORKED, or two refusals compare equal and the row is
+    // an assertion about an empty world.
+    assert(ka.ak_ok, "key '{k}' was refused by the fixture: {ka.ak_why}");
+    assert(by_key.w_tau > 0, "key '{k}' changed nothing, so there is nothing to compare");
+
+    assert(same_world(by_key, by_verb),
+           "key '{k}' and verb '{want}' differ at byte {first_difference(by_key, by_verb)} "
+         + "— the definition resolves to a different gesture than the key does");
+    assert(ka.ak_n == va.ak_n,
+           "key '{k}' did {ka.ak_n} and verb '{want}' did {va.ak_n}");
+    // The ring is the one of the five that writes SESSION state as well as world
+    // state, and a trunk is what an annex later hangs on — `R1b`'s finding is that
+    // the two used to be laid and remembered eleven hundred lines apart.
+    assert(ks.es_trunk.tk_live == vs.es_trunk.tk_live
+           && ks.es_trunk.tk_x == vs.es_trunk.tk_x
+           && ks.es_trunk.tk_z == vs.es_trunk.tk_z
+           && ks.es_trunk.tk_r == vs.es_trunk.tk_r,
+           "key '{k}' left trunk live {ks.es_trunk.tk_live} r {ks.es_trunk.tk_r} and "
+         + "verb '{want}' left live {vs.es_trunk.tk_live} r {vs.es_trunk.tk_r}");
+  }
+}
+
+// ⚠ **THE OPENING FAMILY IS WHERE THE KEY STOPS CARRYING A PROFILE**, so the two
+// paths are only equal once the selection says what the key used to say. That IS the
+// step: `press("N")` becomes `select 11` then `opening`, and this asserts the
+// substitution is lossless before any script or caller is converted.
+fn test_the_opening_family_is_the_verb_plus_the_selection() {
+  // The wire's own table, from `tools/script.mjs`'s KEYMAP — `36:1 2 3 4 11 21`.
+  keys  = ["O", "P", "I", "U", "N", "M"];
+  kinds = [1, 2, 3, 4, 11, 21];
+  for oi in 0..6 {
+    k = keys[oi] ?? "";
+    kind = kinds[oi] ?? 0;
+    assert(verb_of(k) == VB_OPENING,
+           "key '{k}' names '{verb_of(k)}' and the six are one verb");
+
+    by_key  = walled();
+    by_verb = walled();
+    ks = EditSession {};
+    vs = EditSession {};
+    // `21` is a composition — an embrasure needs a niche to cut into — so the
+    // fixture makes that explicit rather than letting the row pass as a refusal.
+    if kind >= 20 {
+      kn = press(ks, by_key, pose_for(k, by_key), "N");
+      vn = press_verb_sel(vs, by_verb, pose_for(k, by_verb), 11);
+      assert(kn.ak_ok && vn.ak_ok, "the fixture could not cut the niche: {kn.ak_why} / {vn.ak_why}");
+    }
+
+    ka = press(ks, by_key, pose_for(k, by_key), k);
+    va = press_verb_sel(vs, by_verb, pose_for(k, by_verb), kind);
+
+    assert(ka.ak_ok == va.ak_ok,
+           "key '{k}' and select {kind} + opening disagree: {ka.ak_why} / {va.ak_why}");
+    assert(ka.ak_ok, "key '{k}' was refused: {ka.ak_why}");
+    assert(same_world(by_key, by_verb),
+           "key '{k}' and select {kind} + opening differ at byte "
+         + "{first_difference(by_key, by_verb)}");
+    // ⚠ AND THE SESSION, which is the half a world cannot show: the `Opening` is what
+    // the renderer draws, and two paths agreeing on the cells while disagreeing on
+    // the shape is exactly the divergence this layer closes.
+    assert(len(ks.es_open.items) == len(vs.es_open.items),
+           "key '{k}' recorded {len(ks.es_open.items)} openings and the verb "
+         + "{len(vs.es_open.items)}");
+    ko = ks.es_open.items[len(ks.es_open.items) - 1] ?? opening_none();
+    vo = vs.es_open.items[len(vs.es_open.items) - 1] ?? opening_none();
+    assert(ko.op_kind == vo.op_kind && ko.op_lo == vo.op_lo && ko.op_hi == vo.op_hi
+           && ko.op_depth == vo.op_depth && ko.op_near == vo.op_near
+           && ko.op_spring == vo.op_spring && ko.op_half == vo.op_half,
+           "key '{k}' cut kind {ko.op_kind} depth {ko.op_depth} and select {kind} + "
+         + "opening cut kind {vo.op_kind} depth {vo.op_depth}");
+  }
+}
+
+// Choose, then cut — the two calls a converted script will make, as one helper so
+// the test above reads as the substitution it is asserting.
+fn press_verb_sel(s: EditSession, w: VoxelWorld, a: Author, kind: integer) -> Ack {
+  sel = session_select_open(s, kind);
+  if !sel.ak_ok { return sel; }
+  press_verb(s, w, a, VB_OPENING)
+}
+
+// ── THE CONTROLS ────────────────────────────────────────────────────────────
+//
+// ⚠ **THE INSTRUMENT IS CHECKED AGAINST SOMETHING IT SHOULD FIND, AND `w_tau` FAILS
+// THAT CHECK HERE.** A fence ring and a wall ring write the same edges of the same
+// disc with a different material: the same number of writes, each changing
+// something, so the edit clock reports **the same number** for two different worlds.
+// Every equality above would still pass with `verb_of("G")` returning `VB_FENCE` if
+// this file counted instead of encoding.
+fn test_the_edit_clock_cannot_tell_a_fence_from_a_wall() {
+  wf = flat();
+  wg = flat();
+  sf = EditSession {};
+  sg = EditSession {};
+  af = press(sf, wf, pose_for("F", wf), "F");
+  ag = press(sg, wg, pose_for("G", wg), "G");
+  assert(af.ak_ok && ag.ak_ok, "the fixture refused a ring: {af.ak_why} / {ag.ak_why}");
+  assert(wf.w_tau == wg.w_tau,
+         "a fence did {wf.w_tau} writes and a wall did {wg.w_tau} — if these ever "
+       + "differ the counter is no longer blind and this control has stopped "
+       + "justifying the byte comparison");
+  assert(!same_world(wf, wg),
+         "a fence ring and a wall ring encode to identical bytes — the instrument "
+       + "this file rests on cannot see a material either");
+}
+
+// …and the byte comparison must not be blind in the other direction: two worlds
+// built the same way must come out EQUAL, or every assertion above passes by
+// reporting a difference that is always there.
+fn test_two_worlds_built_the_same_way_are_the_same_bytes() {
+  a1 = flat();
+  a2 = flat();
+  s1 = EditSession {};
+  s2 = EditSession {};
+  press(s1, a1, pose_for("H", a1), "H");
+  press(s2, a2, pose_for("H", a2), "H");
+  assert(same_world(a1, a2),
+         "two identical presses differ at byte {first_difference(a1, a2)} — the "
+       + "encoder carries something that is not the world");
+  assert(len(world_to_bytes(a1, [])) > 8192,
+         "the fixture encodes to {len(world_to_bytes(a1, []))} bytes, which is too "
+       + "small to hold a layer — the comparison is not reaching the payload");
+}
+
+// ⚠ **AND THE FIVE MUST NOT ALL BE THE SAME GESTURE**, or `press_verb` wired to a
+// constant satisfies every equality above. `verb_of` is deliberately not injective
+// over the opening keys; over these five it must be.
+fn test_the_five_direct_verbs_do_five_different_things() {
+  keys = ["ArrowUp", "ArrowDown", "H", "F", "G"];
+  seen: vector<text> = [];
+  for dk in keys {
+    v = verb_of(dk);
+    for prev in seen {
+      assert(prev != v, "two of the five direct keys both name '{v}'");
+    }
+    seen += [v];
+  }
+  // …and the verbs must build five different worlds, which the names alone do not
+  // promise. Compared against the FIRST, so a table that answered one gesture for
+  // everything is caught wherever it sits in the list.
+  base = flat();
+  bs = EditSession {};
+  press_verb(bs, base, pose_for("ArrowUp", base), VB_RAISE);
+  for ov in ["lower", "place", "fence", "wall"] {
+    other = flat();
+    os = EditSession {};
+    okey = "F";
+    if ov == "place" { okey = "H"; }
+    oa = press_verb(os, other, pose_for(okey, other), ov);
+    assert(oa.ak_ok, "verb '{ov}' was refused by the fixture: {oa.ak_why}");
+    assert(!same_world(base, other),
+           "verb '{ov}' and verb 'raise' build the same world — one table answers "
+         + "one gesture");
+  }
+}
+
+// A key that is not a gesture names no verb — the `PR_NONE` question one level up.
+// ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
+// would run a gesture on every step of a walk.
+fn test_a_key_that_is_not_a_gesture_names_no_verb() {
+  for nk in ["W", "A", "S", "D", "", "ArrowLeft", "K", "zzz"] {
+    assert(verb_of(nk) == VB_NONE,
+           "key '{nk}' is not a gesture and the definition gives it verb "
+         + "'{verb_of(nk)}'");
+  }
+}
+
+// …and the same for the layer under it: a verb nobody bound is `PR_NONE`, not a
+// refusal, because a caller that cannot tell *no such verb* from *the gesture said
+// no* reports one as the other.
+fn test_an_unbound_verb_is_named_rather_than_refused() {
+  w = flat();
+  s = EditSession {};
+  a = pose_for("F", w);
+  // ⚠ THE BASELINE IS THE FIXTURE'S, NOT ZERO. `flat()` lays 41×41 cells of ground,
+  // so `w_tau == 0` would have been an assertion about the fixture — it went red at
+  // 1682 first, which is exactly the ground and nothing an unbound verb did.
+  before = w.w_tau;
+  for uv in ["", "ring", "roof", "Place", "PLACE", "opening ", "verb"] {
+    ack = press_verb(s, w, a, uv);
+    assert(ack.ak_why == PR_NONE,
+           "verb '{uv}' is bound to nothing and press_verb answered '{ack.ak_why}'");
+    assert(!ack.ak_ok, "verb '{uv}' is bound to nothing and it reported success");
+  }
+  assert(w.w_tau == before,
+         "seven unbound verbs did {w.w_tau - before} writes between them");
+}
+
+// …and the discriminator above must not pass by refusing everything: every verb the
+// definition can produce has to be bound.
+fn test_every_verb_the_definition_produces_is_bound() {
+  w = flat();
+  s = EditSession {};
+  for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G"] {
+    v = verb_of(bk);
+    assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
+    ack = press_verb(s, w, pose_for(bk, w), v);
+    assert(ack.ak_why != PR_NONE,
+           "key '{bk}' names verb '{v}' and nothing is bound to it");
+  }
+}

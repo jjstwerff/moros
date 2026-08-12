@@ -100,7 +100,27 @@ serves**, differing only in where a key press goes.
 | ✅ `S2a` | **the opening's CHOOSING is `hex_editor::opening_make`** — the sixth gesture the headless thread has taken out of the socket, and the one `S1` needed: an opening profile's only possible consumer is the opening gesture, which was not callable from a test |
 | ✅ `S2b` | **the selection** — `es_open_kind`, `49:<kind>` to choose, and a bare `36:` cuts what is chosen. The admissible set is a PREDICATE, not a range: `5`, `15`, `25` and `30` are nothing at all |
 | ✅ `S3` | **the six opening keys are one gesture** — `O P I U N M` reach `session_open_kind`, and pressing a key equals selecting-then-cutting in world AND session. ⚠ A key does **not** re-choose: `36:<kind>` does not either, and a key that did in one driver only would diverge under a green test |
-| ⏭ next | **`V1`** — the verb vocabulary and `verb_of(key)`, where a key stops carrying a profile at all |
+| ✅ `V1` | **a key names a VERB.** `verb_of(key)` and `press_verb(…, verb)` beside an unchanged `press(key)`; six verbs — `raise` `lower` `place` `opening` `fence` `wall` — and all eleven keys driven through both layers, compared as **whole-world bytes** |
+| ⏭ next | **`K1`/`K2` BEFORE `V2`** — the scripts learn to say `select` and `opening`, because the runner cannot see the regression `V2` would cause (below). The server's `MSG_HOUSE` can move now |
+
+⚠ **`V1`'s OWN PHASE ROW NAMED A BLIND INSTRUMENT, AND SO WOULD THE OBVIOUS ALTERNATIVE.** The row
+said *equal `w_tau`*; a fence ring and a wall ring write **the same edges of the same disc**, so
+the edit clock reports one number for two different worlds and `verb_of("G") = fence` would have
+passed. The comparison is the **whole world as bytes** — `world_to_bytes`, `W1`'s encoder getting
+its second consumer — and the swap shows at byte 7590. ⚠ **And the bytes are blind the other way**:
+the opening wired to a constant leaves the six worlds **byte-identical**, because the store gets
+`DOOR_MAT` whatever the kind and the outline lives in the session's `Opening`. **Neither
+instrument alone can see this step**; both are asserted, and the `w_tau` blindness is itself a
+test so it cannot rot into a comment.
+
+⏭ **AND `V1` REORDERED THE PHASE AFTER IT.** `V2` was to move `editor_run` first; measured, **the
+runner cannot see the regression that move would cause.** `house.keys` presses `O` and `P` and both
+now cut (`O: 1`, `P: 1`, τ 3911 — the *"cuts no door"* defect is closed), so resolving them through
+`verb_of` turns the pointed head round. The world is **byte-identical** (`open_ahead` writes
+`DOOR_MAT` whatever the kind), the outline is in the session, and **the session is not in the world
+format**. `ak_n` is `1` for all six, so the transcript is blind too. **`K1`+`K2` first**, or `V2`
+lands a silent profile regression under a green `headless-same`. The server's `MSG_HOUSE` is the
+exception — a literal `"H"` carries no profile.
 
 ⚠ **`S1`'s PREMISE WAS MEASURED AND IT IS FALSE.** The row said *"the session is saved and
 replayed"*, naming `world_to_bytes`. **None of the session is in those bytes** — and the load path
@@ -139,8 +159,11 @@ byte-identical before and after, τ 3909 both, and only the sentence changed. �
 live defect nobody had measured: `house.keys` cuts NO door and NO window, in EITHER driver.** Its
 own comment says *"stand ON the wall's own cells"* and both poses answer *"no wall here to open"*
 on the server too, so `shots/s6-house.png` has never had one. **It is the pose** — the same house
-opens from `-3 2` and from `-6 -1`. ⏭ **Left for the user's eyes**: the working poses found so far
-are on a face that script's camera does not see, and picking one composes a picture.
+opens from `-3 2` and from `-6 -1`.
+✅ **CLOSED by the `eye` step the same day** — the poses are on the perimeter and both cut. Re-measured
+2026-08-12 while planning `V2`: `O: 1`, `P: 1`, τ 3911. ⚠ **Left here rather than deleted because the
+sentence had already been read forward once**: `V2`'s decomposition was drafted on it, and the script
+it named as unable to exercise the opening keys is now the one that can.
 
 ⚠ **THE CAMERA LIBRARY IS DESIGNED AND DELIBERATELY WAITING.** `hex_cam` has three consumers
 (this client, the server, and **crawler**) and a finished design in

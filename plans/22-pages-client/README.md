@@ -15,9 +15,10 @@ can be opened and driven.**
 say *not yet* instead of doing the wrong thing), `S0`/`S2a`/`S2b` (the scene records
 travel with the store, the opening's choosing is in the library, and a SELECTION decides what it
 cuts), and `P2` is **run and green** — so `W5` is
-buildable today with no loft change.
-**Next:** **`V1`** — the verb vocabulary and `verb_of(key)`, where a key stops carrying a
-profile at all. The full step decomposition is
+buildable today with no loft change. **`V1`** is built — a key names a verb, and the key stops
+carrying a profile.
+**Next:** **`V2`** — the callers move to verbs one at a time, `editor_run` first. The full step
+decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -84,7 +85,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`S3`** = **`R2`** — `O P I U N M` collapse to ONE `opening` verb | M | **DONE.** Six keys against six selections: equal `w_tau` AND equal `Opening` · 4 sabotages red · `R3`'s regression retired | ✅ Done |
 | ✅ **`S0`** — the scene records go with the store they describe | XS | **DONE.** Found while checking `S1`'s premise: `9:` left the previous world's cottage in the session and `37:` hung a balcony on it | ✅ Done |
 | ✅ **`S2a`** — the opening's CHOOSING moves into `hex_editor` | S | **DONE.** The server's report is **identical over 8 scripts and 240 lines**; 5 new loft tests, 4 sabotages red | ✅ Done |
-| **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
+| ✅ **`V1`** — the verb vocabulary, `verb_of(key)`, and a `press` that takes a verb | S | **DONE.** Eleven keys through both layers, compared as whole-world BYTES · 6 sabotages red · hex_editor 420 → 428 | ✅ Done |
+| **`V2`**–**`V3`** — callers moved one at a time, then `press(key)` deleted | M | ⚠ **not "the same script builds the same world" — that instrument is blind here**, see below. The server's `MSG_HOUSE` can move now; the script-reading callers wait on `K2` | ⏭ **Reordered — `K1`/`K2` first** |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | **`K1`**–**`K3`** — scripts accept both spellings, convert one at a time, then drop keys | S | a converted script and its original build the same world | Blocked on `V1` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
@@ -134,6 +136,44 @@ negative chunk coordinate *through* `world_cell`, and deleting the sign extensio
 left all four tests green: an unsigned `-1` becomes 4294967295, lands in `ck_cx`, and nothing
 downstream looks at it again. **A claim tested only through a consumer is a claim about the
 consumer.**
+
+## What `V1` turned up (2026-08-12)
+
+**`verb_of(key)` and `press_verb(sess, w, a, verb)` beside an unchanged `press(key)`**, with
+`lib/hex_editor/tests/verb.loft` driving all eleven keys through both layers. Six verbs —
+`raise` `lower` `place` `opening` `fence` `wall`. Six sabotages seen red: two swapped rows in the
+definition, a walk key given a verb, a verb left unbound, the opening wired to a constant, and
+`wall` bound to the fence's material.
+
+⚠ **THE PHASE ROW'S OWN INSTRUMENT WAS TOO WEAK AND IT WAS MEASURED, NOT ARGUED.** The row said
+*equal `w_tau`* — and a fence ring and a wall ring write **the same edges of the same disc**, each
+write changing something, so the edit clock reports one number for two different worlds. `verb_of`
+mapping `G` to the fence verb would have passed every equality in this step. The comparison is
+the **whole world as bytes** (`world_to_bytes` — `W1`'s encoder, second consumer); the swap shows
+at **byte 7590**. ⚠ **And the blindness is a test rather than a comment**, so the day `w_tau` stops
+being blind, the row justifying a whole-world encode says so itself.
+
+⚠ **AND THE BYTES ARE BLIND TO THE PROFILE.** `press_verb`'s opening wired to a constant leaves the
+six worlds **byte-identical** — `open_ahead` writes `DOOR_MAT` whatever the kind, and the outline
+lives in the session's `Opening`. Caught by the session comparison, not the store one: **a
+stronger world instrument did not remove the need for the session half.** When one instrument
+cannot answer, the answer is a second instrument.
+
+⚠ **AND THE STEP CANNOT OVERREACH, BECAUSE THE TEST WILL NOT LET IT.** `fence`/`wall` are one
+`ring` verb waiting for a material selection — the shape `S2b` gave the opening family — and
+collapsing them today goes red on one of the two. `raise`/`lower` stay two verbs permanently: a
+direction is part of the action, not a selection. The decomposition is enforced rather than
+remembered.
+
+⏭ **AND IT REORDERED THE PHASE THAT FOLLOWS IT.** `V2` was to move `editor_run` first; measured, the
+runner **cannot see the regression that move would cause**. `house.keys` presses `O` and `P` and —
+since `eye` moved its poses onto the perimeter — **both now cut** (`O: 1`, `P: 1`, τ 3911), so
+resolving them through `verb_of` turns the pointed head round. The world is **byte-identical**
+(`open_ahead` writes `DOOR_MAT` whatever the kind), the session holds the outline, and **the session
+is not in the world format** — `S1`'s finding, spent. `ak_n` is `1` for all six, so the transcript is
+blind too. **`K1`+`K2` come first**, or `V2` lands a silent profile regression under a green
+`headless-same`. The server's `MSG_HOUSE` is the exception — a literal `"H"` carries no profile — and
+can move now. [EDITING_MODES § phase 3](../../doc/claude/EDITING_MODES.md#-and-that-reorders-v2-the-runner-cannot-see-the-regression-it-would-cause).
 
 ## What `P2` turned up (2026-08-11)
 

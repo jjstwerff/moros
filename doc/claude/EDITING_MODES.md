@@ -160,9 +160,15 @@ ends — **the four-site divergence again, rebuilt on a new message.**
 
 > **The key→verb map is resolved where the KEYBOARD is; the verb travels.**
 
-So the message is `48:<verb>` — or in local mode, no message at all and the same resolution
+So the message is `<id>:<verb>` — or in local mode, no message at all and the same resolution
 in-process. That is what makes the two authority modes one editor
 ([PAGES_EDITOR](PAGES_EDITOR.md)) rather than two that agree by discipline.
+
+⚠ **AND THE ID IS NOT `48`, WHICH THIS SECTION SAID TWICE.** `48` became **EYE** and `49`
+**SELECT** on 2026-08-12, both while this paragraph sat unread — the next free id is **`50`**.
+Left as a marker rather than quietly corrected: *a design naming a wire id it does not own yet*
+is a small instance of the same class as a plan naming a file that has been deleted, and this
+tree has shipped one of those too.
 
 ⚠ **A VERB IS THEREFORE A PUBLISHED NAME AND A KEY IS NOT.** Verbs go on the wire, into scripts and
 into a type's declaration, so renaming one breaks recordings — `tools/scripts/*.keys` drives every
@@ -440,9 +446,69 @@ key-naming wording still branches on `om_code`.
 
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
-| **`V1`** — the verb vocabulary **and** `verb_of(key)` **and** a `press` that takes a verb, in one step | `press(key)`, unchanged and still called | for every key: `press(key)` and `press(verb_of(key))` leave worlds with equal `w_tau`. ⚠ **The declaration alone is NOT a step** — a table checked against itself cannot be surprised |
+| ✅ **`V1`** — the verb vocabulary **and** `verb_of(key)` **and** a `press` that takes a verb, in one step | `press(key)`, unchanged and still called | for every key: `press(key)` and `press(verb_of(key))` leave worlds with equal `w_tau`. ⚠ **The declaration alone is NOT a step** — a table checked against itself cannot be surprised |
 | **`V2`** — one caller at a time moves to verbs: `editor_run`, then the server, then the client | the key form, until each caller's equality test is green | a caller that resolves a key differently from `verb_of` — which is the four-site divergence trying to come back |
 | **`V3`** — delete `press(key)` | — | nothing calls it: a grep, and the suite |
+
+### ✅ `V1` — and the row's own instrument was too weak, measured
+
+**Built 2026-08-12.** `verb_of(key)` and `press_verb(sess, w, a, verb)` sit beside `press(key)`,
+which is unchanged and still called; `lib/hex_editor/tests/verb.loft` drives **every one of the
+eleven keys through both layers**. Six verbs: `raise` · `lower` · `place` · `opening` · `fence` ·
+`wall`. Six sabotages seen red.
+
+⚠ **THE ROW SAID `w_tau` AND `w_tau` CANNOT SEE A MATERIAL.** A fence ring and a wall ring write
+**the same edges of the same disc**, each write changing something — so the edit clock reports the
+same number for two different worlds, and every equality in this step would have passed with
+`verb_of("G")` returning the fence verb. The comparison is **the whole world as bytes**
+(`world_to_bytes`, which is `W1`'s encoder getting its second consumer): the swap shows at **byte
+7590**. ⚠ **And the blindness is a TEST, not a note** — `test_the_edit_clock_cannot_tell_a_fence_
+from_a_wall` asserts the two rings leave equal `w_tau` *and* different bytes, so the day the
+counter stops being blind, the row that justifies encoding a whole world says so itself.
+
+⚠ **AND THE BYTES ARE BLIND TO THE PROFILE, WHICH IS THE OTHER HALF.** Wiring `press_verb`'s
+opening to a constant instead of the selection leaves the six worlds **byte-identical** — because
+`open_ahead` writes `DOOR_MAT` whatever the kind, and the outline lives in the session's `Opening`
+where the renderer reads it. The sabotage was caught by the session comparison, not the store one.
+**A stronger world instrument did not remove the need for the session half**, which is `S3`'s
+finding standing up to a better tool rather than being retired by it.
+
+⚠ **`fence`/`wall` AND `raise`/`lower` ARE EACH TWO VERBS, FOR OPPOSITE REASONS.** A direction is
+part of the action — every editor has *zoom in* and *zoom out* — so `raise` and `lower` stay two
+verbs however far the layer grows. A **material** is not: `fence` and `wall` are one `ring` verb
+waiting for a selection to hold the material, exactly as the opening family waited for
+`es_open_kind`. ⏭ **And the step cannot be taken early**: the equality goes red on one of the two
+the moment `verb_of` maps both keys to one verb, so the decomposition is enforced by the test
+rather than by anybody remembering it.
+
+⚠ **`verb_of` IS DELIBERATELY NOT INJECTIVE, AND THE KEY IS NOT RECOVERABLE FROM THE VERB.** Six
+opening keys answer one verb, so a script that says `opening` and never says `select` cuts whatever
+was last chosen. That is the collapse finishing — the key stops carrying a profile **here** — and
+it is why `K1`–`K3` convert the scripts to say both before `V3` deletes `press(key)`.
+
+### ⏭ And that reorders `V2`: the runner CANNOT see the regression it would cause
+
+**Measured 2026-08-12, before writing a line of `V2`.** The phase table says `V2` moves
+`editor_run` first. Run it and the ordering falls over:
+
+- `tools/scripts/house.keys` presses `O` **and** `P`, and since the `eye` step moved its poses onto
+  the wall's perimeter **both now cut** — `O: 1`, `P: 1`, τ 3911. (The *"house.keys cuts no door
+  and no window"* defect is closed; a plan reading that sentence forward would pick the wrong
+  script.)
+- Resolving them through `verb_of` makes both say `opening`, so `P` cuts a **round** head where it
+  cut a pointed one — a real regression.
+- ⚠ **And every instrument the runner has is blind to it.** `open_ahead` writes `DOOR_MAT` whatever
+  the kind, so the world is **byte-identical**; the outline lives in the session's `Opening`, and
+  `S1` measured that **none of the session is in the world format**. The transcript cannot see it
+  either — `ak_n` is `1` for all six.
+
+> **So `V2` on a script-reading caller is blocked on `K1`+`K2`, not the other way round.** Either
+> the script says `select 2` before `opening`, or the runner grows a session read-back. Taking
+> `V2` first would land a silent profile regression **under a green `headless-same`** — the exact
+> shape `W4` exists to prevent, one layer further out.
+
+⚠ **The server's `MSG_HOUSE` site is the exception and can move now**: it passes a literal `"H"`,
+which carries no profile, so `verb_of` throws nothing away there.
 
 ## Phase 4 — the mode, derived
 

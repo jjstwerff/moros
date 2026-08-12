@@ -989,3 +989,96 @@ pub fn press(sess: EditSession, w: VoxelWorld, a: Author, key: text) -> Ack {
 // a house*. A predicate with a side effect and a cost is worse than the duplication
 // it avoids. **Ask `press`, then read `ak_why == PR_NONE`**: one call, one answer,
 // no second list.
+
+// ── THE VERB LAYER — plan 22 `V1` ───────────────────────────────────────────
+//
+// **A key names a VERB; the verb names what happens.** Two levels, and the split is
+// the whole design ([EDITING_MODES § the mechanism](../../../doc/claude/EDITING_MODES.md)):
+//
+// ```
+//   the DEFINITION      key  → verb                stable · declared · a person's
+//   the FLEXIBLE layer  verb → gesture + params    data · grows with the catalogue
+// ```
+//
+// ⚠ **A VERB IS A PUBLISHED NAME AND A KEY IS NOT.** The verb is what travels — on
+// the wire, into `tools/scripts/*.keys`, into a house type's own declaration — while
+// the key is resolved **where the keyboard is** and may be remapped freely. That
+// asymmetry is not decoration: a client sending its keystroke to a server that
+// resolves the key itself would mean two different things at the two ends, which is
+// the four-site divergence `press` exists to close, rebuilt on a new message. So
+// **name the verbs carefully and the keys casually.**
+//
+// ⚠ **TEXT, NOT AN ENUM.** The verb goes on the wire and into a script that a person
+// reads and writes; an integer code would need a name↔number table at both ends,
+// which is the second table this layer exists to remove.
+pub const VB_NONE    = "";
+pub const VB_RAISE   = "raise";
+pub const VB_LOWER   = "lower";
+pub const VB_PLACE   = "place";
+pub const VB_OPENING = "opening";
+pub const VB_FENCE   = "fence";
+pub const VB_WALL    = "wall";
+
+// The DEFINITION — what key means what, and the only layer a person may remap.
+//
+// `VB_NONE` is *this key names no verb*, which is `PR_NONE`'s question one level up:
+// a walk key, a camera key, or nothing at all.
+//
+// ⚠ **SIX KEYS, ONE VERB.** `O P I U N M` all answer `opening`, and the profile they
+// used to carry comes from the selection (`session_select_open`) instead. That is
+// the collapse `S3` measured, finished: the key stops carrying a profile **here**.
+// ⏭ Which means `verb_of` is deliberately NOT injective and the key form is not
+// recoverable from the verb — a script that says `opening` and never says `select`
+// gets whatever was last chosen, which is why `K1`–`K3` convert the scripts to say
+// both before `V3` deletes `press(key)`.
+pub fn verb_of(key: text) -> text {
+  if key == "ArrowUp"   { return VB_RAISE; }
+  if key == "ArrowDown" { return VB_LOWER; }
+  if key == "H" { return VB_PLACE; }
+  if key == "O" || key == "P" || key == "I" || key == "U"
+     || key == "N" || key == "M" { return VB_OPENING; }
+  if key == "F" { return VB_FENCE; }
+  if key == "G" { return VB_WALL; }
+  VB_NONE
+}
+
+// The FLEXIBLE layer — what a verb does, here, with what is chosen.
+//
+// ⚠ **THIS IS A SECOND BODY BESIDE `press` ON PURPOSE, AND ONLY UNTIL `V3`.** The
+// two paths run at once and a test drives every key through both, comparing the
+// worlds **as bytes** — which is the only way to move a chokepoint without a period
+// where two tables both exist and neither is known to be the authority. `W1` moved
+// the world format the same way. `V2` moves the callers one at a time; `V3` deletes
+// `press(key)`, and this takes the name `press` once nothing is left to collide
+// with — a rename is free here and only here, because `hex_editor` is unpublished.
+//
+// ⚠ **AND THE DUPLICATION IS WHAT MAKES THE TEST ABLE TO FAIL.** Writing
+// `press(key) = press_verb(verb_of(key))` today would make the equality a tautology
+// — a table checked against itself, which cannot be surprised.
+//
+// ⚠ **`raise`/`lower` AND `fence`/`wall` ARE TWO VERBS EACH, AND FOR DIFFERENT
+// REASONS.** A direction is part of the action — every editor has *zoom in* and
+// *zoom out* — so `raise` and `lower` stay two verbs however the layer grows. A
+// MATERIAL is not: `fence` and `wall` are one `ring` verb waiting for a selection to
+// hold the material, exactly as the opening family waited for `es_open_kind`. They
+// cannot collapse before that selection exists — the equality below would go red on
+// one of them the moment `verb_of` mapped both keys to one verb, which is the test
+// enforcing the decomposition rather than a rule anybody has to remember.
+pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text) -> Ack {
+  if verb == VB_RAISE { return raise_ahead(w, a, 1); }
+  if verb == VB_LOWER { return raise_ahead(w, a, 0 - 1); }
+  if verb == VB_PLACE {
+    return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
+  }
+  // ⚠ THE PROFILE COMES FROM THE SELECTION AND FROM NOWHERE ELSE. `session_opening`
+  // is the entry point `S2b` built for exactly this — reading `es_open_kind` here
+  // instead would be the tenth site that knows what a selection is.
+  if verb == VB_OPENING {
+    vo_made = session_opening(sess, w, a, STOREY_H);
+    if !vo_made.om_ok { return ack_no(vo_made.om_why); }
+    return ack_ok(1);
+  }
+  if verb == VB_FENCE { return ring_set(sess, w, a, FENCE_MAT, FENCE_R, a.au_y); }
+  if verb == VB_WALL  { return ring_set(sess, w, a, WALL_MAT,  FENCE_R, a.au_y); }
+  Ack { ak_ok: false, ak_why: PR_NONE }
+}
