@@ -7502,92 +7502,48 @@ fn main() {
           // round-headed NICHE and `1` a round-headed doorway — the same curve,
           // stopped short — which is the claim the whole family rests on, and it
           // would be lost if a niche were spelled as a sixth "kind".
-          okind = ev.payload as integer ?? hex_editor::OP_ROUND;
-          odepth = 1.0;
-          oinback = false;
-          // ⚠ THE TWENTIES ARE COMPOSITION: cut this profile into the BACK of the
-          // niche already there, rather than into the wall. That is the embrasure —
-          // a castle's window seat is a deep recess with benches in its reveal and a
-          // small window at the back — and it needs no "embrasure" primitive, only
-          // an opening that can name the surface it is cut from.
-          if okind >= 20 { oinback = true; okind = okind - 20; }
-          else if okind >= 10 { odepth = 0.55; okind = okind - 10; }
+          // ⚠ THE CHOOSING IS `hex_editor::opening_make` NOW — plan 22 `S2a`, and it
+          // is the sixth gesture the headless thread has taken out of this socket.
+          // The tens-and-twenties reading, the projection onto the wall, the four
+          // profile branches and the niche host were eighty lines here, and none of
+          // them needed a port — but none of them could be reached without one
+          // either. What stays is the store write, the dirty mark and the sentences.
           oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw, py),
                                         hex_editor::DOOR_MAT, 1);
           if !oack.ak_ok {
             srv.send_to(ev.cid, "S:opening refused — {oack.ak_why}");
             println("editor: opening refused — {oack.ak_why}");
           } else {
-            // ⚠ THE HOLE GOES ON THE WALL, not at the cell's centre. A cell
-            // centre can sit half a hex off the run — 0.75 m — and an opening 1.1 m
-            // wide centred there misses the wall entirely: measured, three of four
-            // profiles cut nothing at all while the fourth worked by luck of
-            // rounding. The author stands BESIDE a wall, so the hole is at the
-            // nearest point ON it, which is a projection rather than a lookup.
-            owx = px;
-            owz = pz;
-            obest = 1000000.0;
-            for orun in sess.es_runs.items {
-              ot = hex_way::track_new();
-              hex_way::track_straight(ot, orun.wr_x0, orun.wr_z0, orun.wr_x1, orun.wr_z1);
-              od = hex_way::seg_distance(ot, 0, px, pz);
-              if od < obest {
-                obest = od;
-                olen = hex_way::seg_len(ot, 0);
-                (odx, odz) = hex_way::seg_tangent(ot, 0, 0.0);
-                os = (px - orun.wr_x0) * odx + (pz - orun.wr_z0) * odz;
-                if os < 0.0 { os = 0.0; }
-                if os > olen { os = olen; }
-                (owx, owz) = hex_way::seg_point(ot, 0, os);
-              }
-            }
-            ow = vec3(owx, 0.0, owz);
-            if oinback {
-              // The host is the last niche on this wall: the one whose void stops
-              // short, because that is the only kind with a back to cut into.
-              ohost = 0 - 1;
-              ohi = 0;
-              for ohn in sess.es_open.items {
-                if hex_editor::opening_at_front(ohn) && !hex_editor::opening_at_back(ohn) {
-                  ohost = ohi;
-                }
-                ohi = ohi + 1;
-              }
-              if ohost < 0 {
+            omade = hex_editor::opening_make(
+              sess.es_runs, sess.es_open, px, pz,
+              ev.payload as integer ?? hex_editor::OP_ROUND, WALL_UP, HEIGHT_SCALE);
+            if omade.om_back {
+              if omade.om_code == hex_editor::OM_NO_HOST {
                 srv.send_to(ev.cid, "S:no niche to cut into — make one with N first");
                 println("editor: embrasure refused — no niche");
+              } else if !omade.om_ok {
+                srv.send_to(ev.cid, "S:window refused — {omade.om_why}");
+                println("editor: embrasure refused — {omade.om_why}");
               } else {
-                ohostop = sess.es_open.items[ohost] ?? hex_editor::door_opening(0.0, 0.0, 0.9, 12);
-                owin = hex_editor::opening_in_back(ohostop, 0.7, 4, 9, okind, HEIGHT_SCALE);
-                ofit = hex_editor::opening_fits_in(ohostop, owin);
-                if !ofit.ak_ok {
-                  srv.send_to(ev.cid, "S:window refused — {ofit.ak_why}");
-                  println("editor: embrasure refused — {ofit.ak_why}");
-                } else {
-                  sess.es_open.items += [owin];
-                  mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
-                  srv.send_to(ev.cid, "S:a window in the niche's back at "
-                                    + "{oack.ak_q},{oack.ak_r}");
-                  println("editor: embrasure window at ({oack.ak_q},{oack.ak_r})");
-                }
+                sess.es_open.items += [omade.om_open];
+                mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
+                srv.send_to(ev.cid, "S:a window in the niche's back at "
+                                  + "{oack.ak_q},{oack.ak_r}");
+                println("editor: embrasure window at ({oack.ak_q},{oack.ak_r})");
               }
-            } else if okind == hex_editor::OP_CIRCLE {
-              sess.es_open.items += [hex_editor::oculus_opening(
-                ow.x, ow.z, 1.1, 6, HEIGHT_SCALE, odepth)];
-            } else if okind == hex_editor::OP_FLAT && odepth >= 1.0 {
-              sess.es_open.items += [hex_editor::door_opening(ow.x, ow.z, 0.9, WALL_UP)];
             } else {
-              // A niche starts at a seat's height rather than at the floor: a sleeping
-              // alcove is cut into the wall above the bed, not into the skirting.
-              onlo = 0;
-              if odepth < 1.0 { onlo = 2; }
-              sess.es_open.items += [hex_editor::profile_opening(
-                ow.x, ow.z, 1.1, onlo, 7 + onlo, okind, 0.0, HEIGHT_SCALE, odepth)];
+              sess.es_open.items += [omade.om_open];
             }
+            // ⚠ AND THIS RUNS AFTER THE EMBRASURE BRANCH TOO, WHICH IS A DEFECT KEPT
+            // DELIBERATELY IN THIS STEP. A `20:`-family press already sends TWO
+            // sentences — its own, and then this one — and a REFUSED embrasure says
+            // "no niche to cut into" and then "opened a profile 1 hole" over the top
+            // of it. The move is proved by the wire being byte-identical, so the
+            // wire cannot change in the same breath; it is the next commit's.
             mark_dirty(dirty, oack.ak_q, oack.ak_r, 3);
-            srv.send_to(ev.cid, "S:opened a profile {okind} hole at "
+            srv.send_to(ev.cid, "S:opened a profile {omade.om_kind} hole at "
                               + "{oack.ak_q},{oack.ak_r}");
-            println("editor: opened profile {okind} at ({oack.ak_q},{oack.ak_r})");
+            println("editor: opened profile {omade.om_kind} at ({oack.ak_q},{oack.ak_r})");
           }
         } else if ev.msg_id == MSG_SLAB {
           skind = ev.payload as integer ?? 0;

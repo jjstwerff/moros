@@ -320,7 +320,8 @@ registry — which is also what puts it under part mode's *a part has no ring of
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
 | **`S1`** — a **selection** in `EditSession`: the current opening profile, door type, window type | ⚠ **NOT the byte round-trip — that premise was measured false, see below.** The selection is DRIVER state beside `es_author`, and its replay is the SCRIPT | ⚠ **`S1` alone cannot go red**, so it merges into `S2`: the field, the verb that sets it, and a consumer that reads it |
-| **`S2`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by cutting two openings with different selections and diffing the cells, never by reading the line |
+| ✅ **`S2a`** — the opening's **choosing** moves into `hex_editor::opening_make` | the server's `36:` handler, driven through eight scripts and diffed | ⚠ **the instrument is the server's own `println` stream, not `script.mjs`'s** — see below. 240 lines, identical |
+| **`S2b`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by building two openings with different selections and diffing the **`Opening`**, never by reading the line. ⚠ **NOT the cells**: the store write is `DOOR_MAT` whatever the profile, so cells cannot see it |
 | **`S3` = `R2`** — `opening` becomes ONE verb taking its profile from the selection; `O P I U N M` all resolve to it | the six old keys, kept and still sending `36:<kind>` | the six old keys and the one verb with six selections must produce **six identical worlds**. ⚠ This is the step that proves the collapse is lossless, and it is why the old keys stay until it is green |
 
 ### ⚠ `S1`'s premise was measured and it is FALSE — 2026-08-11
@@ -352,6 +353,30 @@ The field, the verb that sets it and a consumer that reads it are one step.
 Saving a world and reloading it loses every wall run, roof plan, leaf, opening, annex, prop, slab
 and hole; what is drawn falls back to per-edge panels and a roof from cells. That is a format
 plan, and it is where plan [17](../../plans/17-parts/README.md)'s two ◐ rows already sit.
+
+### ✅ `S2a` — and the choosing had no way to be tested, which is what blocked `S1`
+
+**Eighty lines of the `36:` handler are `hex_editor::opening_make` now** — the tens-and-twenties
+reading, the projection onto the wall, the four profile branches and the niche host. Sixth gesture
+out of the socket, same argument each time; the new one is that **an opening profile's only
+possible consumer is the opening gesture**, and it could not be called from a test.
+
+⚠ **THE FIRST INSTRUMENT MEASURED THE MACHINE.** Diffing what `tools/script.mjs` printed showed
+differences, and every one was a `rebuilt N chunks` line moving: `key` sleeps 250 ms and then
+reads *the last status line*, so which broadcast it catches is a race. The server's own `println`
+stream is deterministic — **240 lines over eight scripts, identical**, only the per-run
+`run-<n>.rec` id differing, covering profiles 1–4 and the embrasure.
+
+⚠ **A PREDICTION WAS WRONG AND THE TEST IS BETTER FOR IT.** *"Halving the unit doubles the arch"*
+measured **9 then 12**: the springing is a fixed count of height units, only the rise scales, and
+the rise truncates. What is exact is the rise in WORLD units — never above the true semicircle,
+within one of the world's own units below it — and that is the clause the hard-coded-0.25 sabotage
+goes red on.
+
+⚠ **AND ONE DEFECT WAS FOUND AND LEFT**: the handler's closing `opened a profile K hole` runs
+after the embrasure branch too, so a refused embrasure says *"no niche to cut into"* and then
+*"opened a profile 1 hole"* on top of it. A move is proved by the wire not changing, so the wire
+cannot change in the same breath.
 
 ## Phase 3 — the verb layer
 

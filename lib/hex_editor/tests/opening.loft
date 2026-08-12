@@ -131,3 +131,130 @@ fn test_the_renderer_can_find_the_opening_by_position() {
   }
   assert(found > 0, "the door is findable from a point on it");
 }
+
+// ── `S2a` — THE CHOOSING, WHICH USED TO NEED A SOCKET ────────────────────────
+//
+// ⚠ EVERY CLAIM BELOW WAS UNREACHABLE FROM A TEST UNTIL 2026-08-11. The wall
+// projection, the tens-and-twenties reading and the niche host lived in
+// `editor_server`'s `36:` handler, so the only instrument was a scripted
+// screenshot — and the handler's own comments record what that cost: *"measured,
+// three of four profiles cut nothing at all while the fourth worked by luck of
+// rounding"*. Moving them is plan 22 `S2a`; the wire is proved unchanged over
+// eight scripts and 240 report lines.
+
+fn a_run(x0: float, z0: float, x1: float, z1: float) -> hex_editor::WallRuns {
+  out = hex_editor::WallRuns { items: [] };
+  out.items += [hex_editor::WallRun { wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1 }];
+  out
+}
+
+fn no_openings() -> hex_editor::Openings { hex_editor::Openings { items: [] } }
+
+// ⚠ THE DEFECT THE PROJECTION EXISTS FOR. A cell centre can sit half a hex off the
+// run — 0.75 m — and a hole 1.1 m wide centred there misses the wall entirely.
+fn test_the_hole_lands_on_the_wall_and_not_where_the_author_stands() {
+  runs = a_run(0.0, 0.0, 12.0, 0.0);
+  made = hex_editor::opening_make(runs, no_openings(), 4.0, 2.5,
+                                  hex_editor::OP_ROUND, 12, 0.25);
+  assert(made.om_ok, "the fixture refused: {made.om_why}");
+  assert(made.om_open.op_z > 0.0 - 0.001 && made.om_open.op_z < 0.001,
+         "the hole is at z={made.om_open.op_z} and the wall is at z=0 — the author "
+       + "stood 2.5 away from it");
+  assert(made.om_open.op_x > 3.999 && made.om_open.op_x < 4.001,
+         "and it slid along the run to x={made.om_open.op_x} rather than staying at 4");
+  // ⚠ THE CONTROL, and it is what makes the assertion above mean *projected*: with
+  // no run to project onto, the author's own position is the honest answer, and a
+  // routine that always answered z=0 would pass the first half of this test.
+  none = hex_editor::opening_make(hex_editor::WallRuns { items: [] }, no_openings(),
+                                  4.0, 2.5, hex_editor::OP_ROUND, 12, 0.25);
+  assert(none.om_open.op_z > 2.499 && none.om_open.op_z < 2.501,
+         "with no wall anywhere the hole is at z={none.om_open.op_z}, not under the "
+       + "author at 2.5");
+}
+
+// ⚠ THE CLAIM THE WHOLE FAMILY RESTS ON: `11` is a round-headed NICHE and `1` a
+// round-headed doorway — THE SAME CURVE, STOPPED SHORT. If the tens were a sixth
+// kind instead of a depth, these two would differ in outline as well.
+fn test_the_tens_are_depth_and_the_units_are_the_profile() {
+  runs = a_run(0.0, 0.0, 12.0, 0.0);
+  door  = hex_editor::opening_make(runs, no_openings(), 4.0, 1.0, 1, 12, 0.25);
+  niche = hex_editor::opening_make(runs, no_openings(), 4.0, 1.0, 11, 12, 0.25);
+  assert(door.om_ok && niche.om_ok, "the fixture refused one of them");
+  assert(door.om_kind == niche.om_kind && door.om_kind == hex_editor::OP_ROUND,
+         "the outlines differ: {door.om_kind} against {niche.om_kind}");
+  assert(door.om_open.op_depth >= 1.0,
+         "a doorway goes through: depth {door.om_open.op_depth}");
+  assert(niche.om_open.op_depth < 1.0,
+         "a niche stops short: depth {niche.om_open.op_depth}");
+  // A niche starts at a seat's height rather than at the floor — a sleeping alcove
+  // is cut into the wall above the bed, not into the skirting.
+  assert(niche.om_open.op_lo > door.om_open.op_lo,
+         "the niche's sill is at {niche.om_open.op_lo} and the doorway's at "
+       + "{door.om_open.op_lo}");
+}
+
+// ⚠ THE TWENTIES ARE COMPOSITION, and the refusal is by NAME rather than by silence.
+fn test_an_embrasure_with_no_niche_is_refused_by_name() {
+  runs = a_run(0.0, 0.0, 12.0, 0.0);
+  made = hex_editor::opening_make(runs, no_openings(), 4.0, 1.0, 21, 12, 0.25);
+  assert(!made.om_ok, "a window was cut into a niche that does not exist");
+  assert(made.om_code == hex_editor::OM_NO_HOST,
+         "refused with code {made.om_code}, not OM_NO_HOST");
+  assert(made.om_back, "and it still knows it was asked for a back-cut");
+}
+
+// …and with one, the child starts where the host STOPS. That datum is the whole
+// reason an embrasure needs no primitive of its own.
+fn test_an_embrasure_starts_where_its_niche_stops() {
+  runs = a_run(0.0, 0.0, 12.0, 0.0);
+  open = no_openings();
+  host = hex_editor::opening_make(runs, open, 4.0, 1.0, 11, 12, 0.25);
+  assert(host.om_ok, "the niche was refused: {host.om_why}");
+  open.items += [host.om_open];
+
+  win = hex_editor::opening_make(runs, open, 4.0, 1.0, 21, 12, 0.25);
+  assert(win.om_ok, "the embrasure was refused: {win.om_why}");
+  assert(win.om_open.op_near > 0.0,
+         "the window is cut from the wall's own face (near {win.om_open.op_near}), "
+       + "not from the back of the niche");
+  assert(win.om_open.op_near == host.om_open.op_depth,
+         "it starts at {win.om_open.op_near} and the niche stops at "
+       + "{host.om_open.op_depth}");
+  // ⚠ AND A DOORWAY IS NOT A HOST. `opening_at_back` is what tells a niche from a
+  // hole that already goes through, and without it the last DOOR would be chosen.
+  through = no_openings();
+  through.items += [hex_editor::opening_make(runs, no_openings(), 4.0, 1.0, 1, 12, 0.25).om_open];
+  nohost = hex_editor::opening_make(runs, through, 4.0, 1.0, 21, 12, 0.25);
+  assert(nohost.om_code == hex_editor::OM_NO_HOST,
+         "a doorway was accepted as a niche to cut into");
+}
+
+// ⚠ THE WORLD'S OWN UNIT REACHES THE PROFILE — `R1a`'s lesson, one gesture over: a
+// part world is authored at another unit entirely (`door/slat` is 0.125), so a head
+// struck in world units has to be measured in the world it is struck in.
+//
+// ⚠ THE PREDICTION WRITTEN FIRST WAS WRONG, AND THE MEASUREMENT IS THE BETTER
+// CLAIM. It asserted *halving the unit doubles `op_hi`* and got **9 then 12**,
+// because the SPRINGING is a fixed count of height units and only the RISE above it
+// scales — and even the rise does not double, because it truncates: a round head of
+// half-span 0.625 rises 2 units at 0.25 (2.5 truncated) and 5 at 0.125. So what is
+// exact is the rise in WORLD units: never above the true semicircle, and within one
+// of the world's own units below it.
+fn test_the_profiles_head_is_measured_in_the_worlds_unit() {
+  runs = a_run(0.0, 0.0, 12.0, 0.0);
+  coarse = hex_editor::opening_make(runs, no_openings(), 4.0, 1.0, 1, 12, 0.25);
+  fine   = hex_editor::opening_make(runs, no_openings(), 4.0, 1.0, 1, 12, 0.125);
+  half = coarse.om_open.op_half;
+  assert(fine.om_open.op_half == half, "the two spans differ, so nothing below compares");
+  crise = ((coarse.om_open.op_hi - coarse.om_open.op_spring) as float) * 0.25;
+  frise = ((fine.om_open.op_hi - fine.om_open.op_spring) as float) * 0.125;
+  // ⚠ THE ONE THAT CATCHES A HARD-CODED CONSTANT: a `profile_opening` reaching for a
+  // global 0.25 would strike the identical head in both worlds.
+  assert(crise != frise,
+         "both heads rise {crise} — the world's unit is not reaching the profile");
+  assert(crise <= half && frise <= half,
+         "a head rose above its own semicircle: {crise} / {frise} against {half}");
+  assert(half - crise < 0.25 && half - frise < 0.125,
+         "and each is within one of ITS OWN units of the true rise: "
+       + "{half - crise} at 0.25, {half - frise} at 0.125");
+}

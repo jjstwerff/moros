@@ -2473,6 +2473,140 @@ pub fn opening_fits_in(host: Opening, child: Opening) -> Ack {
   ack_ok(1)
 }
 
+// ── WHAT ONE PRESS OF THE OPENING GESTURE DECIDES — plan 22 `S2a` ───────────
+//
+// ⚠ THIS WAS EIGHTY LINES IN `editor_server`'s `36:` HANDLER, which is the sixth
+// time the headless thread has moved a gesture's CHOOSING out of the socket and
+// the reason is the same every time: none of it needs a port, and none of it could
+// be reached without one. The wall projection, the four profile branches, the
+// niche host and the two refusals are geometry over state a session already holds.
+// What stays in the server is what a server owes — the store write, the dirty mark
+// and the sentences.
+//
+// ⚠ AND `S1` IS WHY IT MOVED NOW. A selection with no consumer is a field nobody
+// reads; the only consumer an opening profile can have is the opening gesture, and
+// it was not callable from a test.
+
+pub const OM_OK      = 0;
+pub const OM_NO_HOST = 1;    // an embrasure with no niche to cut into
+pub const OM_NO_FIT  = 2;    // …or one that does not fit the niche it names
+
+// ⚠ THE OPENING IS ALWAYS PRESENT, EVEN ON A REFUSAL, and it is never read there.
+// `Opening` has no field defaults — deliberately, so that nothing can construct a
+// hole of no size by accident — so a refusal carries a zero one rather than the
+// struct growing defaults it does not want.
+pub struct OpeningMade {
+  om_ok:   boolean,
+  om_code: integer = OM_OK,
+  om_why:  text = "",
+  om_open: Opening,
+  om_back: boolean = false,   // cut into a niche's BACK — the embrasure
+  om_kind: integer = 0,       // the profile, after the tens and twenties are read off
+  om_x:    float = 0.0,       // where it landed ON the wall, not where the author stood
+  om_z:    float = 0.0,
+}
+
+fn om_nothing() -> Opening {
+  Opening { op_x: 0.0, op_z: 0.0, op_half: 0.0, op_lo: 0, op_hi: 0, op_depth: 0.0,
+            op_near: 0.0, op_spring: 0 - 1, op_kind: OP_FLAT, op_radius: 0.0 }
+}
+
+// ⚠ THE HOLE GOES ON THE WALL, not at the author's own position. A cell centre can
+// sit half a hex off the run — 0.75 m — and an opening 1.1 m wide centred there
+// misses the wall entirely: measured, three of four profiles cut nothing at all
+// while the fourth worked by luck of rounding. The author stands BESIDE a wall, so
+// the hole is at the nearest point ON it, which is a projection rather than a
+// lookup. With no run at all the author's own position is the honest answer.
+//
+// ⚠ `annex_host` PROJECTS THE SAME WAY AND IS NOT THIS. It wants the outward normal
+// and how much host there is; this wants the point. Two readers of one geometry, and
+// merging them would give each the other's baggage.
+pub fn run_point_near(runs: WallRuns, x: float, z: float) -> (float, float) {
+  rp_x = x;
+  rp_z = z;
+  rp_best = 1000000.0;
+  for rp_run in runs.items {
+    rp_t = hex_way::track_new();
+    hex_way::track_straight(rp_t, rp_run.wr_x0, rp_run.wr_z0, rp_run.wr_x1, rp_run.wr_z1);
+    rp_d = hex_way::seg_distance(rp_t, 0, x, z);
+    if rp_d < rp_best {
+      rp_best = rp_d;
+      rp_len = hex_way::seg_len(rp_t, 0);
+      (rp_tx, rp_tz) = hex_way::seg_tangent(rp_t, 0, 0.0);
+      rp_s = (x - rp_run.wr_x0) * rp_tx + (z - rp_run.wr_z0) * rp_tz;
+      if rp_s < 0.0 { rp_s = 0.0; }
+      if rp_s > rp_len { rp_s = rp_len; }
+      (rp_x, rp_z) = hex_way::seg_point(rp_t, 0, rp_s);
+    }
+  }
+  (rp_x, rp_z)
+}
+
+// The opening one press asks for, at the author's position, from the wire's `kind`.
+//
+// ⚠ SHAPE AND DEPTH ARE INDEPENDENT AXES, so `kind` carries both: the units are the
+// outline and the tens are how far it goes. `11` is a round-headed NICHE and `1` a
+// round-headed doorway — the same curve, stopped short — which is the claim the
+// whole family rests on, and it would be lost if a niche were a sixth "kind".
+// ⚠ AND THE TWENTIES ARE COMPOSITION: cut this profile into the BACK of the niche
+// already there rather than into the wall. That is the embrasure — a castle's
+// window seat is a deep recess with benches in its reveal and a small window at the
+// back — and it needs no "embrasure" primitive, only an opening that can name the
+// surface it is cut from.
+//
+// `up` is a wall's own height and `unit` the world's height scale; both are the
+// caller's because a part world is authored at another unit entirely.
+pub fn opening_make(runs: WallRuns, open: Openings, x: float, z: float,
+                    kind: integer, up: integer, unit: float) -> OpeningMade {
+  om_k = kind;
+  om_depth = 1.0;
+  om_back = false;
+  if om_k >= 20 { om_back = true; om_k = om_k - 20; }
+  else if om_k >= 10 { om_depth = 0.55; om_k = om_k - 10; }
+  (om_wx, om_wz) = run_point_near(runs, x, z);
+
+  if om_back {
+    // The host is the last niche on this wall: the one whose void stops short,
+    // because that is the only kind with a back to cut into.
+    om_host = 0 - 1;
+    om_i = 0;
+    for om_n in open.items {
+      if opening_at_front(om_n) && !opening_at_back(om_n) { om_host = om_i; }
+      om_i = om_i + 1;
+    }
+    if om_host < 0 {
+      return OpeningMade { om_ok: false, om_code: OM_NO_HOST, om_open: om_nothing(),
+                           om_back: true, om_kind: om_k, om_x: om_wx, om_z: om_wz };
+    }
+    om_hostop = open.items[om_host] ?? door_opening(0.0, 0.0, 0.9, 12);
+    om_win = opening_in_back(om_hostop, 0.7, 4, 9, om_k, unit);
+    om_fit = opening_fits_in(om_hostop, om_win);
+    if !om_fit.ak_ok {
+      return OpeningMade { om_ok: false, om_code: OM_NO_FIT, om_why: om_fit.ak_why,
+                           om_open: om_nothing(), om_back: true, om_kind: om_k,
+                           om_x: om_wx, om_z: om_wz };
+    }
+    return OpeningMade { om_ok: true, om_open: om_win, om_back: true, om_kind: om_k,
+                         om_x: om_wx, om_z: om_wz };
+  }
+
+  if om_k == OP_CIRCLE {
+    return OpeningMade { om_ok: true, om_kind: om_k, om_x: om_wx, om_z: om_wz,
+                         om_open: oculus_opening(om_wx, om_wz, 1.1, 6, unit, om_depth) };
+  }
+  if om_k == OP_FLAT && om_depth >= 1.0 {
+    return OpeningMade { om_ok: true, om_kind: om_k, om_x: om_wx, om_z: om_wz,
+                         om_open: door_opening(om_wx, om_wz, 0.9, up) };
+  }
+  // A niche starts at a seat's height rather than at the floor: a sleeping alcove
+  // is cut into the wall above the bed, not into the skirting.
+  om_lo = 0;
+  if om_depth < 1.0 { om_lo = 2; }
+  OpeningMade { om_ok: true, om_kind: om_k, om_x: om_wx, om_z: om_wz,
+                om_open: profile_opening(om_wx, om_wz, 1.1, om_lo, 7 + om_lo, om_k,
+                                         0.0, unit, om_depth) }
+}
+
 // How far into the wall the void reaches, in world units, given the band's own
 // thickness — where an alcove's back wall stands, and where a statue's feet go.
 pub fn opening_reach(o: Opening, band: float) -> float { o.op_depth * band }

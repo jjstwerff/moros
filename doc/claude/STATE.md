@@ -38,7 +38,8 @@ serves**, differing only in where a key press goes.
 | ✅ `R1a`/`R1b` | **the ring is reconciled.** The pose carries the ground under the feet (`au_y`), `press` rings at it instead of at `0.0`, and the ring's TRUNK is `sess.es_trunk` — the ninth registry — instead of four locals beside the socket |
 | ✅ `R3` | `O`/`P` answer **`PR_SELECT`** — *an opening needs a profile, and nothing selects one yet* — instead of cutting the runner's material where the wire means a profile |
 | ✅ `S0` | **the scene records go with the store they describe.** `9:` used to leave the previous world's cottage in the session, and `37:` hung a balcony on it |
-| ⏭ next | **`S2`** — the selection **and** the verb that sets it **and** a consumer, in one step. `S1` alone is gone: its round-trip test rested on a premise measured false |
+| ✅ `S2a` | **the opening's CHOOSING is `hex_editor::opening_make`** — the sixth gesture the headless thread has taken out of the socket, and the one `S1` needed: an opening profile's only possible consumer is the opening gesture, which was not callable from a test |
+| ⏭ next | **`S2b`** — the selection, the verb that sets it, and `press`'s `O` reading it. Now buildable, because the consumer is in the library |
 
 ⚠ **`S1`'s PREMISE WAS MEASURED AND IT IS FALSE.** The row said *"the session is saved and
 replayed"*, naming `world_to_bytes`. **None of the session is in those bytes** — and the load path

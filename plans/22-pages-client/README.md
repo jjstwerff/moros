@@ -80,6 +80,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`R3`** — `press` answers **`PR_SELECT`** for `O`/`P` until a selection exists | XS | **DONE.** Both tests seen red first · `house.keys` through the runner is **byte-identical**, τ 3909 · the wire path untouched | ✅ Done |
 | **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds**. ⚠ **`S1` merged into `S2`** — its round-trip test rested on a premise measured false | ⏭ **Next** |
 | ✅ **`S0`** — the scene records go with the store they describe | XS | **DONE.** Found while checking `S1`'s premise: `9:` left the previous world's cottage in the session and `37:` hung a balcony on it | ✅ Done |
+| ✅ **`S2a`** — the opening's CHOOSING moves into `hex_editor` | S | **DONE.** The server's report is **identical over 8 scripts and 240 lines**; 5 new loft tests, 4 sabotages red | ✅ Done |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | **`K1`**–**`K3`** — scripts accept both spellings, convert one at a time, then drop keys | S | a converted script and its original build the same world | Blocked on `V1` |
@@ -207,6 +208,34 @@ still pass, because the library tests only cross one hop.
 ⚠ **AND IT PAYS ONE `world_to_hex` SITE.** `editor_server.loft` is 29 → **28**, because the
 deleted branch re-derived the ring's centre through `moros_render` that `fence_ring` already had.
 Plan 19 `L6.3a`'s bill, one line smaller for free.
+
+## What `S2a` turned up (2026-08-11) — the choosing had no way to be tested
+
+**Eighty lines of `36:`'s handler moved into `hex_editor::opening_make`** — the tens-and-twenties
+reading, the projection onto the wall, the four profile branches and the niche host. This is the
+sixth gesture the headless thread has taken out of the socket, and the reason is the one that made
+`S1` unbuildable: **the only consumer an opening profile can have is the opening gesture, and it
+was not callable from a test.**
+
+⚠ **THE FIRST INSTRUMENT MEASURED THE MACHINE.** Diffing what `tools/script.mjs` printed for
+eight scripts showed differences — and every one was a `rebuilt N chunks` line moving, because
+`key` sleeps 250 ms and then reads *the last status line*, so which broadcast it catches is a
+race. The server's own `println` stream is the deterministic instrument: **240 lines over eight
+scripts, identical**, with only the per-run `run-<n>.rec` id differing. It covers profiles 1, 2, 3
+and 4 and the embrasure.
+
+⚠ **AND ONE PREDICTION WAS WRONG, WHICH IS WHY THE TEST IS BETTER THAN INTENDED.** *"Halving the
+world's unit doubles the arch's height"* measured **9 then 12**: the SPRINGING is a fixed count of
+height units and only the RISE above it scales — and even the rise does not double, because it
+truncates (half-span 0.625 rises 2 units at 0.25 and 5 at 0.125). What is exact is the rise in
+WORLD units: never above the true semicircle, and within one of the world's own units below it.
+The sabotage that hard-codes 0.25 is red on exactly that clause.
+
+⚠ **AND A DEFECT WAS FOUND AND DELIBERATELY NOT FIXED**: the `36:` handler's closing
+`opened a profile K hole` runs **after the embrasure branch too**, so a `2x` press sends two
+sentences and a REFUSED embrasure says *"no niche to cut into"* and then *"opened a profile 1
+hole"* over the top of it. A move is proved by the wire being byte-identical, so the wire cannot
+change in the same breath.
 
 ## What checking `S1`'s premise turned up (2026-08-11) — and it was a live defect
 
