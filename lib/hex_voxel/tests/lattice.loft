@@ -1,0 +1,111 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHICH CHUNK, AND WHERE IN IT — the two functions on every cell access.
+//
+// `world_chunk_of` and `local_of` divide a hex coordinate into a chunk index and an
+// offset inside it. They are called several times per cell read and per cell write,
+// and together they were **16.4 %** of `hex_editor`'s test suite: a branch, a
+// fallible division and a multiply, spelling out floor division because `/`
+// truncates toward zero.
+//
+// A chunk axis is a POWER OF TWO, so a floor divide is `>>` and the non-negative
+// remainder is `&`. This file is why that substitution is a fact rather than a
+// belief.
+//
+// ⚠ **THE OLD BODIES ARE WRITTEN OUT HERE AND COMPARED AGAINST THE LIVE ONES.**
+// Not because the arithmetic is hard, but because it rests on two properties of
+// loft that nothing in this tree had recorded: `>>` **sign-extends** (a logical
+// shift would turn `-1` into 288230376151711743 and every negative chunk would
+// address memory that is not there), and `&` yields the **non-negative** remainder.
+// Both hold on the interpreter and under `--native`, measured — and a test is what
+// keeps that true after a backend change rather than after a bug report.
+use hex_voxel;
+
+// The bodies as they were before 2026-08-12, verbatim.
+fn was_chunk_of(v: integer) -> integer {
+  if v >= 0 { v / CHUNK_W ?? 0 } else { 0 - ((CHUNK_W - 1 - v) / CHUNK_W ?? 0) }
+}
+fn was_local_of(v: integer) -> integer { v - was_chunk_of(v) * CHUNK_W }
+
+// ⚠ THREE CONSTANTS, ONE FACT. `CHUNK_W_SHIFT` and `CHUNK_W_MASK` are `CHUNK_W` said
+// two more ways, so the relationship is asserted where a reader can see it fail.
+// Change the width alone and this is the row that says which two did not follow.
+fn test_the_shift_and_the_mask_are_the_chunk_width() {
+  assert((1 << CHUNK_W_SHIFT) == CHUNK_W,
+         "1 << {CHUNK_W_SHIFT} is {1 << CHUNK_W_SHIFT} and a chunk is {CHUNK_W} wide");
+  assert(CHUNK_W_MASK == CHUNK_W - 1,
+         "the mask is {CHUNK_W_MASK} and the width is {CHUNK_W}");
+  // …and the width must actually BE a power of two, or neither substitution holds
+  // however carefully the two constants are kept in step.
+  assert((CHUNK_W & (CHUNK_W - 1)) == 0,
+         "a chunk axis of {CHUNK_W} is not a power of two — `>>` and `&` are not "
+       + "floor division and remainder for it, whatever the constants say");
+  assert(CHUNK_CELLS == CHUNK_W * CHUNK_W,
+         "{CHUNK_CELLS} cells for a {CHUNK_W}x{CHUNK_W} chunk");
+}
+
+// The substitution itself, over the range that matters: several chunks either side
+// of the origin, and every boundary in between.
+fn test_the_shift_is_the_floor_division_it_replaced() {
+  for v in 0 - 200..201 {
+    assert(world_chunk_of(v) == was_chunk_of(v),
+           "chunk_of({v}) is {world_chunk_of(v)} and the division said "
+         + "{was_chunk_of(v)}");
+    assert(local_of(v) == was_local_of(v),
+           "local_of({v}) is {local_of(v)} and the subtraction said "
+         + "{was_local_of(v)}");
+  }
+}
+
+// ⚠ THE BOUNDARIES ONE AT A TIME, because a sweep that is right everywhere reports
+// one number and says nothing about WHERE it would break. These are the values a
+// sign error moves: the cell below the origin, the first cell of the chunk below,
+// and the one below that.
+fn test_the_edges_below_zero_land_where_they_must() {
+  assert(world_chunk_of(0 - 1) == 0 - 1, "the cell below the origin is in chunk 0");
+  assert(local_of(0 - 1) == CHUNK_W - 1,
+         "…at its far edge, got {local_of(0 - 1)}");
+  assert(world_chunk_of(0 - CHUNK_W) == 0 - 1,
+         "the first cell of the chunk below is in chunk {world_chunk_of(0 - CHUNK_W)}");
+  assert(local_of(0 - CHUNK_W) == 0,
+         "…at offset 0, got {local_of(0 - CHUNK_W)}");
+  assert(world_chunk_of(0 - CHUNK_W - 1) == 0 - 2,
+         "one below that is chunk {world_chunk_of(0 - CHUNK_W - 1)}");
+  assert(world_chunk_of(CHUNK_W - 1) == 0 && world_chunk_of(CHUNK_W) == 1,
+         "the boundary above zero is in the wrong chunk");
+}
+
+// ⚠ AND THE PROPERTY THE WHOLE ADDRESSING RESTS ON, stated directly rather than
+// inferred from the two above: a coordinate is its chunk times the width plus its
+// offset, and the offset is always inside the chunk. A logical shift satisfies
+// neither for a negative coordinate.
+fn test_a_coordinate_is_its_chunk_and_its_offset() {
+  for v in 0 - 200..201 {
+    assert(world_chunk_of(v) * CHUNK_W + local_of(v) == v,
+           "{v} splits into chunk {world_chunk_of(v)} offset {local_of(v)}, which "
+         + "recombines to {world_chunk_of(v) * CHUNK_W + local_of(v)}");
+    assert(local_of(v) >= 0 && local_of(v) < CHUNK_W,
+           "offset {local_of(v)} for {v} is outside the chunk");
+  }
+}
+
+// …and the pair reaches the cell index the store actually addresses with, so this
+// file is about the store rather than about arithmetic.
+fn test_the_cell_index_stays_inside_the_chunk() {
+  for q in 0 - 40..41 {
+    for r in [0 - 33, 0 - 1, 0, 1, 33] {
+      i = cell_index(q, r);
+      assert(i >= 0 && i < CHUNK_CELLS,
+             "cell_index({q},{r}) is {i}, outside a chunk of {CHUNK_CELLS}");
+    }
+  }
+  // Distinctness, because a mask that folded two cells together would keep every
+  // index in range and quietly overwrite: the origin and its four neighbours in
+  // the index space must all differ.
+  assert(cell_index(0, 0) != cell_index(0 - 1, 0)
+         && cell_index(0, 0) != cell_index(0, 0 - 1)
+         && cell_index(0 - 1, 0) != cell_index(0, 0 - 1),
+         "two different cells share an index: {cell_index(0, 0)} "
+       + "{cell_index(0 - 1, 0)} {cell_index(0, 0 - 1)}");
+}

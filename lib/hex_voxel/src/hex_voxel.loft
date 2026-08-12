@@ -120,6 +120,29 @@ pub const LABEL_FIRST   = 2;        // `ν` starts here — 1 is reserved above
 
 pub const CHUNK_W    = 32;          // hexes per axis
 pub const CHUNK_CELLS = 1024;       // CHUNK_W * CHUNK_W
+// ⚠ THE SAME 32, SAID TWO MORE WAYS — because a chunk axis is a power of two and
+// `world_chunk_of` / `local_of` are on every cell access in the store. A floor
+// divide by a power of two IS an arithmetic shift, and the non-negative remainder
+// IS a mask; both were spelled out as a branch and a division, and together they
+// were **16.4 %** of `hex_editor`'s test suite.
+//
+// ⚠ THREE NAMES FOR ONE FACT IS A DUPLICATION, so it is asserted rather than
+// trusted: `tests/lattice.loft` requires `1 << CHUNK_W_SHIFT == CHUNK_W` and
+// `CHUNK_W_MASK == CHUNK_W - 1`. Change the width and the suite says which two
+// constants did not follow.
+//
+// ⚠ **`CHUNK_W_SHIFT`, NOT `CHUNK_SHIFT` — AND THAT IS A COLLISION, NOT A STYLE.**
+// `src/editor_server.loft` declares `const CHUNK_SHIFT = 3` for an **8-wide MESH
+// chunk**, a different chunk entirely, and a public name is global across a
+// consumer's whole dependency graph. The first spelling here compiled, passed
+// `hex_voxel`'s 151 tests and `make lib-test`'s 3300 on both backends — and took
+// the editor program from building to `error: constant 'CHUNK_SHIFT' conflicts`,
+// with **every one of the 53 gates** reporting `SERVER NEVER LISTENED`. That is
+// CLAUDE.md's *"a package suite cannot see this"* reproduced exactly. Grepped
+// `lib/`, `src/`, `../loft-libs-world/` and the registry before the rename: zero
+// hits for these two.
+pub const CHUNK_W_SHIFT = 5;          // 1 << 5 == CHUNK_W
+pub const CHUNK_W_MASK  = 31;         // CHUNK_W - 1
 pub const LAYER_CAP  = 64;          // layers per chunk
 pub const WINDOW     = 65536;       // what a u16 relative height spans
 
@@ -253,12 +276,24 @@ pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) ->
 // packages, so which one a bare call meant was decided by the order of the `use` block
 // — `gridmesh` won in the server and this package won in the client, from the same two
 // names. `tools/names.sh` found it; the rest of this API is `world_*` anyway.
-pub fn world_chunk_of(v: integer) -> integer {
-  if v >= 0 { v / CHUNK_W ?? 0 } else { 0 - ((CHUNK_W - 1 - v) / CHUNK_W ?? 0) }
-}
+// ⚠ AN ARITHMETIC SHIFT, AND IT IS THE SAME FUNCTION — not an approximation of it.
+// This was a branch and a fallible division: `if v >= 0 { v / 32 } else { 0 - ((31
+// - v) / 32) }`, which is floor division written out because `/` truncates toward
+// zero. A chunk axis is a power of two, and `>>` on a signed integer floors by
+// construction — so the branch, the division and its `?? 0` all go.
+//
+// ⚠ MEASURED EQUAL BEFORE IT WAS BELIEVED, on both backends: every value in
+// `-200..200` through the old body and the new one, zero mismatches interpreted and
+// zero under `--native`. loft's `>>` sign-extends and `&` yields the non-negative
+// remainder — neither is a language guarantee anybody had written down here, and a
+// LOGICAL shift would have turned `-1` into 288230376151711743 silently.
+// `tests/lattice.loft` keeps that comparison as a test rather than a memory.
+pub fn world_chunk_of(v: integer) -> integer { v >> CHUNK_W_SHIFT }
 
-// The non-negative remainder, likewise: `v % 32` is negative for negative `v`.
-pub fn local_of(v: integer) -> integer { v - world_chunk_of(v) * CHUNK_W }
+// The non-negative remainder, likewise: `v % 32` is negative for negative `v`, and
+// the mask is not — `-1 & 31` is 31, which is the cell at the far edge of the chunk
+// below, exactly what the subtraction used to compute.
+pub fn local_of(v: integer) -> integer { v & CHUNK_W_MASK }
 
 pub fn cell_index(q: integer, r: integer) -> integer {
   local_of(q) * CHUNK_W + local_of(r)

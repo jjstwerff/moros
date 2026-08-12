@@ -189,6 +189,53 @@ it would matter. `test_the_widest_tile_the_types_allow_is_still_accepted` pins t
 fact so the next reader does not have to re-derive it, and `CW_WINDOW` stops being an untested
 branch nobody can explain.
 
+### ✅ AND `world_chunk_of` — a floor divide by a power of two, 2026-08-12
+
+`world_chunk_of` **12.4 %** and `local_of` **2.0 %** and `chunk_key` 2.0 % were the addressing
+arithmetic on every cell access, and the first two were spelled out the long way:
+
+```
+was:  if v >= 0 { v / CHUNK_W ?? 0 } else { 0 - ((CHUNK_W - 1 - v) / CHUNK_W ?? 0) }
+      v - world_chunk_of(v) * CHUNK_W
+now:  v >> CHUNK_W_SHIFT
+      v & CHUNK_W_MASK
+```
+
+A chunk axis is a power of two, so a floor divide **is** an arithmetic shift and the
+non-negative remainder **is** a mask. `2,462,718 → 2,222,770` samples, **−9.7 %** on top of the
+two write-path steps — **5,210,109 → 2,222,770 over the three, −57.3 %**.
+
+⚠ **THE SUBSTITUTION RESTS ON TWO LANGUAGE PROPERTIES NOTHING HERE HAD RECORDED**, so both were
+measured on **both backends** before the edit: loft's `>>` **sign-extends** and `&` yields the
+**non-negative** remainder. `lib/hex_voxel/tests/lattice.loft` keeps the old bodies verbatim and
+compares them over `-200..200`; the sabotage that makes the shift logical reports
+`chunk_of(-200) is 288230376151711737` — every negative chunk addressing memory that is not
+there.
+
+### ⚠ AND IT BROKE THE EDITOR WHILE EVERY TEST STAYED GREEN — the collision, walked into
+
+The first spelling used `CHUNK_SHIFT` / `CHUNK_MASK`. **`src/editor_server.loft:174` already
+declares `const CHUNK_SHIFT = 3`** — *"1 << 3 = 8 cells per axis"*, an **8-wide MESH chunk**,
+a different chunk entirely.
+
+| | |
+|---|---|
+| `hex_voxel`'s own suite | **151 green** |
+| `make lib-test` | **3300 passed**, 22 of 22, **both backends** |
+| `make fast` | **144 files green** |
+| the editor program | `error: constant 'CHUNK_SHIFT' conflicts` — **would not build** |
+| `make gate` | **all 53** reporting `SERVER NEVER LISTENED` |
+
+That is CLAUDE.md's *"a package suite cannot see this"* reproduced exactly, on the same day it
+was read. **The rule is to grep `lib/`, `src/`, `../loft-libs-world/` and the registry before
+adding a public name, and it was not followed** — the grep was done *after* the gates went red,
+and took ten seconds. `CHUNK_W_SHIFT` / `CHUNK_W_MASK` have zero hits anywhere, and they say what
+they are derived from.
+
+⚠ **THE GATES WERE THE ONLY INSTRUMENT THAT SAW IT**, which is worth remembering the next time
+the suite is used as evidence that a change is safe: three green suites and a byte-identical
+`make parts` said nothing about whether anything could RUN.
+
 ### ⏭ WHAT IS LEFT — and it is the READ path now, not the write
 
 `world_chunk_of` **12.4 %** (a floor-divide, called on every cell access), `empty_cells` **6.4 %**

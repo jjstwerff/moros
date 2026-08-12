@@ -81,9 +81,24 @@ that becomes load-bearing the day a height field widens, and deleting it would b
 justified by a type. `lib/hex_voxel/tests/window.loft` pins the reachability fact so `CW_WINDOW`
 stops being a branch nobody can explain.
 
-⏭ **THE WRITE PATH IS NO LONGER THE TOP OF THE PROFILE.** What is left is the READ: `world_chunk_of`
-**12.4 %** (a floor-divide on every cell access), `empty_cells` **6.4 %** (GROUND_DEFAULT's own
-target), `stored_present` 5.9 % (now `hex_of`'s), `hex_of` 3.9 %.
+✅ **AND `world_chunk_of` — A FLOOR DIVIDE BY A POWER OF TWO.** `v >> CHUNK_W_SHIFT` and
+`v & CHUNK_W_MASK` replace a branch, a fallible division and a multiply.
+**5,210,109 → 2,222,770 samples over the three steps: −57.3 %.** Both language properties it
+rests on (`>>` sign-extends, `&` is the non-negative remainder) were measured on **both
+backends** first, and `lib/hex_voxel/tests/lattice.loft` keeps the old bodies to compare against.
+
+⚠ **AND IT BROKE THE EDITOR WHILE EVERY TEST STAYED GREEN.** The first spelling was
+`CHUNK_SHIFT` — and **`src/editor_server.loft:174` already declares `const CHUNK_SHIFT = 3`**, an
+8-wide MESH chunk. `hex_voxel` 151 green, `make lib-test` **3300 on both backends**, `make fast`
+144 files, `make parts` byte-identical — and the editor program **would not build**, with **all
+53 gates** reporting `SERVER NEVER LISTENED`. That is this file's own *"a package suite cannot
+see this"* reproduced on the day it was read: **the grep the rule demands takes ten seconds and
+was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
+it.
+
+⏭ **THE WRITE PATH IS NO LONGER THE TOP OF THE PROFILE.** What is left is the READ:
+`world_ground_cell` 8.4 %, `empty_cells` 6.8 % (GROUND_DEFAULT's own target), `world_set_cell`
+6.7 %, `hex_of` 6.6 %.
 
 ⚠ **AND THAT GREP FOUND A LIVE INCONSISTENCY, MEASURED: `world_set_cell` DOES NOT ELIDE.** Clear
 a cell through the fast path and the layer *and* the chunk stay in the directory, where the
