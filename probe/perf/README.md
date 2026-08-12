@@ -17,6 +17,62 @@ instrument or the check on the instrument.
 ⚠ **`lavition_ui` is the existence proof**: 65 tests in 447 ms, 6.6 ms each. Nothing about the
 harness makes a test slow. What makes a test slow is what the test builds.
 
+## `fixture.loft` — the same question, answered by loft's own SAMPLER (2026-08-12)
+
+```sh
+LOFT_NO_NATIVE_LIBS=1 LOFT_PROFILE=1 loft --interpret --lib lib/ probe/perf/fixture.loft
+```
+
+⚠ **THE PROFILER CANNOT BE POINTED AT THE TESTS, WHICH IS WHY THIS PROGRAM EXISTS.** Measured
+on loft `1dec17a0…`: a plain interpreted program reports a profile; `loft test`, `loft test
+<name>` and `loft --tests <file>` report **none**, because `state.arm_profiler()` has exactly one
+call site — `main.rs`'s program branch. Filed as
+[loft#860](https://github.com/loft-lang/loft/issues/860). ⚠ **The variable is accepted and
+ignored**, so an armed instrument reporting nothing reads as *"there is nothing to see"*.
+
+⚠ **AND THE FIRST PROFILE WAS BLIND, NOT WRONG.** A `use`d library loads as a native cdylib and
+the sampler walks the INTERPRETER's stack, so with the default binding the whole of `hex_editor`
+and `hex_voxel` is invisible and their time lands on whichever program frame called in. One run
+of `editor_run`: **172 samples naming three program functions**, against **33,245 naming
+`crc32_of`, `world_set_column_as`, `stored_present`…** once `LOFT_NO_NATIVE_LIBS=1` was set.
+**Set it, or the profile is a picture of your own `main`.**
+
+### What it says — 103,396 samples over 9.32 s, 80 test-shaped fixtures
+
+| | self time | |
+|---|---|---|
+| **`empty_cells`** | **24.6 %** · 2.29 s | `hex_voxel.loft:293` — `[for i in 0..CHUNK_CELLS { StoredHex {} }]`, materialising a whole chunk |
+| `world_set_cell` | 13.4 % · 1.25 s | |
+| `world_chunk_of` | 10.4 % · 970 ms | `:257`, once per cell |
+| **`stored_present`** | **10.0 %** · 934 ms | `:94`, and it is step 6's elision scan — every cell of every layer, on every column write |
+| `world_set_column_as` | 9.5 % · 882 ms | |
+| `ground_set` | 5.5 % · 515 ms | the fixture's own loop |
+
+> **the hottest path, innermost first:**
+> `ground_set → ground_write → layer_write → world_set_cell → set_cell_slow → world_set_column
+> → world_set_column_as → empty_cells`
+
+⚠ **AND THAT PATH CONTRADICTS A SENTENCE THIS TREE HAS BEEN CARRYING.** STATE records
+*"`hex_editor`'s fixtures were already on the fast path — `ground_set` → `layer_write` is
+`world_set_cell`"*. They reach `world_set_cell` and then fall through **`set_cell_slow`** into the
+column machinery, because the chunk does not exist yet: 320 chunk materialisations across 80
+worlds, ~7 ms each. The fast path is real and the FIRST write to any chunk cannot take it.
+
+✅ **WHICH IS [GROUND_DEFAULT](../../doc/claude/GROUND_DEFAULT.md)'s PREMISE, WITH A NUMBER.**
+*A chunk nobody wrote returns the default without existing* removes exactly the 24.6 % + 9.5 %
+this profile puts on materialising and rewriting columns. `G1` measured the in-place write
+winning 17× against the column path; this says how much of a **test suite** that path is.
+
+⚠ **THE FIXTURE COSTS 2.2× THE SUBJECT**, on this probe's own clock: 3803 ms of ground against
+1710 ms of ring, for the same 40 iterations. GROUND_DEFAULT's *"the fixture costs ten times the
+subject"* was measured on a heavier file; the ratio moves with the fixture and the direction does
+not.
+
+⚠ **AND ONE THING RECORDED, NOT CHASED:** the run ends with `1 stores not freed at program exit:
+kt=117 ColumnWrite×320` — one per chunk materialisation. 320 small structs is not a memory
+problem, and *a store that outlives its program* is worth someone's attention before it is a
+large one.
+
 ## `write_cost.loft` — the fixture, not the store
 
 ```sh

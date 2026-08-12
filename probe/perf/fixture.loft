@@ -1,0 +1,67 @@
+// WHERE A TEST'S TIME GOES — the fixture, profiled, because the profiler cannot be
+// pointed at the tests themselves.
+//
+// ⚠ `LOFT_PROFILE` ARMS ON THE PROGRAM PATH AND ON NOTHING ELSE. Measured 2026-08-12
+// on loft `1dec17a0…`: a plain interpreted program reports a profile, and
+// `loft test`, `loft test <name>` and `loft --tests <file>` all report **none** —
+// `state.arm_profiler()` has exactly one call site, in `main.rs`'s program branch.
+// Filed as [loft#860](https://github.com/loft-lang/loft/issues/860), with the sharp
+// edge noted: the variable is accepted and ignored, so an armed instrument reporting
+// nothing reads as *"there is nothing to see"*.
+//
+// So this is the closest honest proxy: **a program that does what a test does.**
+// Every suite fixture in `hex_editor` starts by making ground to build on —
+// `session_ground` or a hand-rolled twin — and then runs a gesture or two over it.
+// This repeats that at the suite's own scale and says so, rather than pretending to
+// be the suite.
+//
+// ⚠ AND IT RUNS THE LIBRARIES INTERPRETED, WHICH IS NOT OPTIONAL HERE. A `use`d
+// library loads as a native cdylib, and the sampler walks the INTERPRETER's call
+// stack — so with the default binding the whole of `hex_editor` and `hex_voxel` is
+// invisible and their time lands on whichever program frame called in. Measured on
+// one run of `editor_run`: 172 samples naming three program functions, against
+// 33,245 samples naming `crc32_of`, `world_set_column_as`, `stored_present` … once
+// `LOFT_NO_NATIVE_LIBS=1` was set. **The first profile was not wrong, it was blind.**
+//
+//   LOFT_NO_NATIVE_LIBS=1 LOFT_PROFILE=1 loft --interpret --lib lib/ probe/perf/fixture.loft
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+// The fixture the tests build, at the size they build it. `press.loft` grounds 41x41
+// (`half` 20), `opening.loft` 25x25, `fence.loft` 29x29 — this takes the middle one
+// and repeats it, because a suite's cost is one fixture times many tests rather than
+// one big world.
+const HALF  = 12;
+const TESTS = 40;      // ~ the count in one heavier test file
+
+fn main() {
+  // ── 1. the fixture alone ──────────────────────────────────────────────────
+  t0 = now();
+  for _ in 0..TESTS {
+    fw = world_new(0.25, 0, 8, 3).wn_world;
+    hex_editor::session_ground(fw, HALF, 8, hex_editor::SURFACE_MAT);
+  }
+  t1 = now();
+
+  // ── 2. the fixture PLUS a gesture, which is what a test actually is ───────
+  //
+  // ⚠ THE SUBJECT IS DELIBERATELY SMALL BESIDE THE SETUP, because that is the
+  // shape being measured: GROUND_DEFAULT's own finding is that a fixture can cost
+  // ten times the subject it tests. A probe that ran a huge gesture over a tiny
+  // world would answer a question nobody has.
+  for _ in 0..TESTS {
+    gw = world_new(0.25, 0, 8, 3).wn_world;
+    hex_editor::session_ground(gw, HALF, 8, hex_editor::SURFACE_MAT);
+    gs = hex_editor::session_new();
+    hex_editor::session_at(gs, gw, 0.0, 0.0, 0.0);
+    hex_editor::fence_ring(gw, gs.es_author, hex_editor::FENCE_MAT, 3, 2.0);
+  }
+  t2 = now();
+
+  ground_ms = t1 - t0;
+  both_ms = t2 - t1;
+  println("fixture only : {ground_ms} ms for {TESTS} worlds of {(2 * HALF + 1) * (2 * HALF + 1)} cells");
+  println("fixture+ring : {both_ms} ms for the same {TESTS}");
+  println("the ring     : {both_ms - ground_ms} ms — the SUBJECT, beside its setup");
+}

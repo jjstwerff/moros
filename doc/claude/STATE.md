@@ -22,6 +22,37 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ⏭ LOFT'S SAMPLER, POINTED AT WHAT A TEST DOES — 2026-08-12
+
+**`probe/perf/fixture.loft`**, and two instrument findings before any number is worth reading.
+
+⚠ **THE PROFILER CANNOT BE POINTED AT THE TESTS.** `LOFT_PROFILE=1` arms on a program and on
+nothing else — `loft test`, `loft test <name>` and `loft --tests <file>` all report **no
+profile**, because `state.arm_profiler()` has one call site in `main.rs`'s program branch.
+[loft#860](https://github.com/loft-lang/loft/issues/860). ⚠ **The variable is accepted and
+ignored**, so an armed instrument reporting nothing reads as *there is nothing to see*.
+
+⚠ **AND A `use`d LIBRARY IS A NATIVE CDYLIB THE SAMPLER CANNOT SEE INTO.** The first profile was
+**172 samples naming three program functions**; the same run under `LOFT_NO_NATIVE_LIBS=1` was
+**33,245 samples naming the library**. Not wrong — blind. **Set it, or you photograph your own
+`main`.**
+
+| where a test-shaped workload's time goes | 103,396 samples over 9.32 s |
+|---|---|
+| **`empty_cells` 24.6 %** | `[for i in 0..CHUNK_CELLS { StoredHex {} }]` — materialising a whole chunk |
+| `world_set_cell` 13.4 % · `world_chunk_of` 10.4 % · **`stored_present` 10.0 %** | the last is step 6's elision scan: every cell of every layer, on every column write |
+| `world_set_column_as` 9.5 % · `ground_set` 5.5 % | |
+
+⚠ **THE HOT PATH CONTRADICTS A SENTENCE BELOW.** This file records *"`hex_editor`'s fixtures were
+already on the fast path"*; the sampler's hottest path is `ground_set → … → world_set_cell →
+**set_cell_slow** → world_set_column → world_set_column_as → empty_cells`. The fast path is real
+and **the first write to any chunk cannot take it** — 320 materialisations across 80 worlds, ~7 ms
+each.
+
+✅ **WHICH IS [GROUND_DEFAULT](GROUND_DEFAULT.md)'s PREMISE WITH A NUMBER ON IT**: *a chunk nobody
+wrote returns the default without existing* removes the 24.6 % + 9.5 % this puts on materialising
+and rewriting columns. And the fixture costs **2.2×** the subject beside it.
+
 ## ⏭ THE CAMERA IS NO LONGER THE CHARACTER — `eye`, 2026-08-12
 
 **A script can stand the camera in the world and look back at whoever is building.** All five
