@@ -1,0 +1,367 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `world_fill` — GROUND_DEFAULT `G2`, and the one claim it makes.
+//
+// > A fill is the loop it replaces. Same cells, same clock, same refusal.
+//
+// So every test here is an EQUIVALENCE against
+// `for q in q0..q1 { for r in r0..r1 { world_set_cell(…) } }` written out in
+// `loop_fill` below, and the interesting cases are the ones where the two paths
+// could diverge: a rectangle that spans chunks, a chunk that has to be REBASED by
+// the write, a column that `F1` constrains, and every refusal.
+//
+// ⚠ **AN EQUIVALENCE TEST IS ONLY AS GOOD AS WHAT IT COMPARES**, which
+// `G5a.1` had to learn: the oracle there wrote every cell, so no untouched cell was
+// ever compared and a seam hid in the gap. `differs` below compares the CELLS
+// (through the public column read, over a region wider than the rectangle), the
+// CHUNK DIRECTORY, the LAYER BYTES as a crc, and the CLOCK — and
+// `..._nothing_outside_the_rectangle_...` is the one that can see a fill that
+// wrote a whole tile because it clipped its own chunk slice wrong.
+//
+// ⚠ **AND ONE THING IS DELIBERATELY *NOT* CLAIMED ACROSS CHUNKS: `ly_ver`.** A
+// fill is chunk-major and the loop is row-major, so over a rectangle covering four
+// tiles the two interleave their writes differently and each layer's version stamp
+// lands on a different tick. The CELLS and the total `w_tau` are identical either
+// way — a version is a fact about *when this layer last changed*, and both answers
+// are true. Within one chunk the orders coincide and the stamps are compared.
+use hex_voxel;
+
+// ⚠ A FRESH WORLD'S CLOCK IS ALREADY AT 1, so every count below is `1 + cells`.
+// It is not decoration: `G3`'s substitution was checked with exactly this number
+// (*"the same `w_tau`, 257 either way"* for 256 cells), and a fixture that swapped
+// write paths and moved the clock would break every cost test in `hex_editor` with
+// every cell still agreeing.
+const TAU0 = 1;
+
+fn mk() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
+fn mk_reserved(rho: integer) -> VoxelWorld { world_new(0.25, rho, 8, 3).wn_world }
+
+fn cell(h: integer, m: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
+}
+
+// ── The oracle: the loop `world_fill` says it is ────────────────────────────
+fn loop_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+             li: integer, c: Hex) -> ColumnWrite {
+  for lq in q0..q1 {
+    for lr in r0..r1 {
+      res = world_set_cell(w, lq, lr, li, c);
+      if res.cw_code != CW_OK { return res; }
+    }
+  }
+  ColumnWrite { cw_code: CW_OK, cw_layer: 0 - 1, cw_detail: "" }
+}
+
+// ── The comparison, and it is the whole test file ───────────────────────────
+//
+// Empty when the two worlds are the same world. `stamps` asks for `ly_ver`
+// equality as well, which only holds when the write ORDER coincided.
+fn differs(a: VoxelWorld, b: VoxelWorld, q0: integer, r0: integer,
+           q1: integer, r1: integer, stamps: boolean) -> text {
+  if a.w_tau != b.w_tau { return "the clock is {a.w_tau} against {b.w_tau}"; }
+  if len(a.w_chunks) != len(b.w_chunks) {
+    return "{len(a.w_chunks)} chunks against {len(b.w_chunks)}";
+  }
+  for di in 0..len(a.w_chunks) {
+    ka = a.w_chunks[di];
+    kb = b.w_chunks[di];
+    if ka.ck_cx != kb.ck_cx || ka.ck_cz != kb.ck_cz {
+      return "chunk {di} is ({ka.ck_cx},{ka.ck_cz}) against ({kb.ck_cx},{kb.ck_cz})";
+    }
+    if ka.ck_base != kb.ck_base {
+      return "chunk {di} is based at {ka.ck_base} against {kb.ck_base}";
+    }
+    if len(ka.ck_layers) != len(kb.ck_layers) {
+      return "chunk {di} holds {len(ka.ck_layers)} layers against {len(kb.ck_layers)}";
+    }
+    // The BYTES, not the values — a crc is what a client compares, and two worlds
+    // that read the same cell by cell and store it differently are not the same
+    // world. `world_layer_crc` takes a hex, so the chunk's own corner names it.
+    hq = ka.ck_cx << CHUNK_W_SHIFT;
+    hr = ka.ck_cz << CHUNK_W_SHIFT;
+    for dl in 0..len(ka.ck_layers) {
+      if ka.ck_layers[dl].ly_id != kb.ck_layers[dl].ly_id {
+        return "chunk {di} layer {dl} is labelled {ka.ck_layers[dl].ly_id} "
+             + "against {kb.ck_layers[dl].ly_id}";
+      }
+      ca = world_layer_crc(a, hq, hr, dl);
+      cb = world_layer_crc(b, hq, hr, dl);
+      if ca != cb {
+        return "chunk {di} layer {dl} crc {ca} against {cb}";
+      }
+      if stamps && ka.ck_layers[dl].ly_ver != kb.ck_layers[dl].ly_ver {
+        return "chunk {di} layer {dl} was stamped {ka.ck_layers[dl].ly_ver} "
+             + "against {kb.ck_layers[dl].ly_ver}";
+      }
+    }
+  }
+  // And the cells, through the reader every consumer uses — over a region WIDER
+  // than the rectangle, so a fill that spilled shows up here.
+  for dq in q0..q1 {
+    for dr in r0..r1 {
+      cola = world_column(a, dq, dr);
+      colb = world_column(b, dq, dr);
+      if len(cola.co_cells) != len(colb.co_cells) {
+        return "({dq},{dr}) reads {len(cola.co_cells)} layers against "
+             + "{len(colb.co_cells)}";
+      }
+      for dc in 0..len(cola.co_cells) {
+        ea = cola.co_cells[dc];
+        eb = colb.co_cells[dc];
+        if ea.h_height != eb.h_height || ea.h_material != eb.h_material
+           || ea.h_item != eb.h_item || ea.h_item_rotation != eb.h_item_rotation
+           || ea.h_wall_nw != eb.h_wall_nw || ea.h_wall_ne != eb.h_wall_ne
+           || ea.h_wall_e != eb.h_wall_e {
+          return "({dq},{dr}) layer {dc} is h {ea.h_height} mat {ea.h_material} "
+               + "against h {eb.h_height} mat {eb.h_material}";
+        }
+      }
+    }
+  }
+  ""
+}
+
+// ── The ordinary case: one chunk, one layer, nothing in the way ─────────────
+
+fn test_a_fill_writes_exactly_what_the_loop_writes() {
+  wf = mk();
+  wl = mk();
+  rf = world_fill(wf, 0, 0, 16, 16, 0, cell(5, 1));
+  rl = loop_fill(wl, 0, 0, 16, 16, 0, cell(5, 1));
+  assert(rf.cw_code == CW_OK, "the fill was refused: {rf.cw_detail}");
+  assert(rl.cw_code == rf.cw_code, "the loop said {rl.cw_code}, the fill {rf.cw_code}");
+  // ⚠ THE FIXTURE HAS TO HAVE DONE SOMETHING — 256 cells and a clock that moved
+  // once per cell. Without this the equivalence is satisfied by two empty worlds.
+  assert(wf.w_tau == TAU0 + 256,
+         "the fill moved the clock {wf.w_tau} times, not {TAU0 + 256}");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 18, 18, true);
+  assert(d == "", "a fill and its loop parted: {d}");
+}
+
+// ⚠ THE ONE THAT SEES A CHUNK SLICE CLIPPED WRONG. A fill walks tiles, so a bound
+// that is not clipped back to the rectangle writes the whole 32×32 — which every
+// test above would still pass, because they only ever look inside the rectangle.
+fn test_nothing_outside_the_rectangle_is_touched() {
+  w = mk();
+  assert(world_fill(w, 2, 3, 6, 9, 0, cell(5, 1)).cw_code == CW_OK, "refused");
+  assert(w.w_tau == TAU0 + 24, "{w.w_tau - TAU0} cells were written, not 4 x 6");
+  for oq in 0 - 2..12 {
+    for orr in 0 - 2..14 {
+      inside = oq >= 2 && oq < 6 && orr >= 3 && orr < 9;
+      here = world_cell(w, oq, orr, 0);
+      assert(hex_occupied(here) == inside,
+             "({oq},{orr}) is {hex_occupied(here)} where inside is {inside}");
+    }
+  }
+}
+
+// ── Four tiles, and the chunk-major order ───────────────────────────────────
+
+fn test_a_fill_across_four_chunks_writes_the_same_cells_as_the_loop() {
+  wf = mk();
+  wl = mk();
+  rf = world_fill(wf, 0 - 8, 0 - 8, 8, 8, 0, cell(300, 2));
+  rl = loop_fill(wl, 0 - 8, 0 - 8, 8, 8, 0, cell(300, 2));
+  assert(rf.cw_code == CW_OK && rl.cw_code == CW_OK, "a plain fill was refused");
+  // The rectangle straddles the origin, so it is the four tiles that meet there —
+  // and the NEGATIVE half is the part that matters: a chunk walk that floor-divides
+  // the wrong way puts (−8,−8) in tile 0 and writes it twice.
+  assert(len(wf.w_chunks) == 4, "{len(wf.w_chunks)} chunks — the rectangle spans 4");
+  assert(wf.w_tau == TAU0 + 256, "the clock moved to {wf.w_tau}, not {TAU0 + 256}");
+  // ⚠ `stamps` IS FALSE HERE ON PURPOSE — see the header. The cells, the crcs, the
+  // directory and the total clock are all compared; only WHICH tick stamped each
+  // layer differs, because the two paths visit the tiles in a different order.
+  d = differs(wf, wl, 0 - 10, 0 - 10, 10, 10, false);
+  assert(d == "", "a fill and its loop parted across chunks: {d}");
+}
+
+// ── What the write had to move ──────────────────────────────────────────────
+
+// ⚠ THE REBASE. The first cell of a fill may move the chunk's floor, and every
+// cell after it is encoded against that floor — so the base has to be read AFTER
+// the first write. Read before, every hoisted cell lands at the wrong height while
+// the one cell that went through `world_set_cell` sits correctly among them, which
+// is a seam no cell-count test can see.
+fn test_a_fill_that_rebases_the_chunk_agrees_with_the_loop() {
+  wf = mk();
+  wl = mk();
+  // A tall cell OUTSIDE the rectangle bases the chunk at 60000.
+  assert(world_set_cell(wf, 20, 20, 0, cell(60000, 3)).cw_code == CW_OK, "setup");
+  assert(world_set_cell(wl, 20, 20, 0, cell(60000, 3)).cw_code == CW_OK, "setup");
+  assert(wf.w_chunks[0].ck_base == 60000,
+         "the fixture based the chunk at {wf.w_chunks[0].ck_base}");
+
+  assert(world_fill(wf, 0, 0, 8, 8, 0, cell(5, 1)).cw_code == CW_OK, "the fill");
+  assert(loop_fill(wl, 0, 0, 8, 8, 0, cell(5, 1)).cw_code == CW_OK, "the loop");
+  assert(wf.w_chunks[0].ck_base == 5,
+         "the fill left the chunk based at {wf.w_chunks[0].ck_base}, not 5");
+  // The heights that prove it: the filled cells at 5, and the tall one still at
+  // 60000 after its bytes were re-encoded.
+  assert(world_cell(wf, 7, 7, 0).h_height == 5,
+         "the last filled cell reads {world_cell(wf, 7, 7, 0).h_height}");
+  assert(world_cell(wf, 20, 20, 0).h_height == 60000,
+         "the rebase lost the tall cell: {world_cell(wf, 20, 20, 0).h_height}");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 24, 24, true);
+  assert(d == "", "a rebasing fill and its loop parted: {d}");
+}
+
+// ⚠ `F1` IS THE ONE RULE A FILL CANNOT HOIST — it asks about the nearest occupied
+// terrain cell in THIS column, and neighbouring columns hold different ones. So a
+// chunk with a second terrain layer takes the per-cell path, and this is the test
+// that says the two agree there.
+fn test_a_fill_beside_another_terrain_layer_agrees_with_the_loop() {
+  wf = mk();
+  wl = mk();
+  // A ground at 100 and a storey at 200 across the whole area, so every column of
+  // the fill has something above it to fold against.
+  for sq in 0..8 {
+    for sr in 0..8 {
+      assert(world_set_column(wf, Column { co_q: sq, co_r: sr,
+                                           co_cells: [cell(100, 1), cell(200, 2)] })
+             .cw_code == CW_OK, "setup");
+      assert(world_set_column(wl, Column { co_q: sq, co_r: sr,
+                                           co_cells: [cell(100, 1), cell(200, 2)] })
+             .cw_code == CW_OK, "setup");
+    }
+  }
+  assert(len(wf.w_chunks[0].ck_layers) == 2,
+         "the fixture built {len(wf.w_chunks[0].ck_layers)} layers, not 2");
+
+  assert(world_fill(wf, 0, 0, 8, 8, 0, cell(120, 1)).cw_code == CW_OK, "the fill");
+  assert(loop_fill(wl, 0, 0, 8, 8, 0, cell(120, 1)).cw_code == CW_OK, "the loop");
+  assert(world_cell(wf, 3, 3, 0).h_height == 120,
+         "the ground did not move: {world_cell(wf, 3, 3, 0).h_height}");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 10, 10, true);
+  assert(d == "", "a fill under a storey parted from its loop: {d}");
+}
+
+// ⚠ AND THIS IS THE ONE THAT CAN SEE THE GUARD AT ALL — measured, after the
+// obvious version of it could not. Sabotaged to hoist over `F1` regardless, the
+// test above stayed GREEN: its storey is 80 above the fill everywhere, so the
+// per-cell answer is *legal* in every column and skipping the check changes
+// nothing. A guard on a rule is only visible where the rule's answer VARIES, so
+// this fixture drops one column's storey to 5 above the fill and leaves the other
+// 63 at 80 — the fill must refuse at that column and stop exactly where the loop
+// stopped, with the same 45 cells written.
+fn test_a_fill_is_refused_at_the_one_column_the_fold_forbids() {
+  wf = mk();
+  wl = mk();
+  for uq in 0..8 {
+    for ur in 0..8 {
+      top = 200;
+      if uq == 5 && ur == 5 { top = 125; }
+      assert(world_set_column(wf, Column { co_q: uq, co_r: ur,
+                                           co_cells: [cell(100, 1), cell(top, 2)] })
+             .cw_code == CW_OK, "setup");
+      assert(world_set_column(wl, Column { co_q: uq, co_r: ur,
+                                           co_cells: [cell(100, 1), cell(top, 2)] })
+             .cw_code == CW_OK, "setup");
+    }
+  }
+  // 120 clears the storey at 200 by 80 and breaches the one at 125 by 5, where ε
+  // is 8 — so 45 columns take it and the 46th refuses.
+  rf = world_fill(wf, 0, 0, 8, 8, 0, cell(120, 1));
+  rl = loop_fill(wl, 0, 0, 8, 8, 0, cell(120, 1));
+  assert(rf.cw_code == CW_FOLD,
+         "the fill wrote through a fold it should have refused: code {rf.cw_code}");
+  assert(rl.cw_code == CW_FOLD, "the oracle did not refuse either — bad fixture");
+  assert(world_cell(wf, 5, 5, 0).h_height == 100,
+         "the forbidden column moved to {world_cell(wf, 5, 5, 0).h_height}");
+  assert(world_cell(wf, 5, 4, 0).h_height == 120,
+         "the column before it did not take: {world_cell(wf, 5, 4, 0).h_height}");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 10, 10, true);
+  assert(d == "", "a part-written fill and its loop parted: {d}");
+}
+
+// ── The refusals, and that a refusal is the loop's refusal ──────────────────
+
+fn test_a_fill_that_breaches_the_fold_is_refused_exactly_as_the_loop_is() {
+  wf = mk();
+  wl = mk();
+  for fq in 0..4 {
+    for fr in 0..4 {
+      assert(world_set_cell(wf, fq, fr, 0, cell(100, 1)).cw_code == CW_OK, "setup");
+      assert(world_set_cell(wl, fq, fr, 0, cell(100, 1)).cw_code == CW_OK, "setup");
+    }
+  }
+  // ε is 8, so a storey 2 above the ground breaches `F1`.
+  rf = world_fill(wf, 0, 0, 4, 4, 1, cell(102, 2));
+  rl = loop_fill(wl, 0, 0, 4, 4, 1, cell(102, 2));
+  assert(rf.cw_code == CW_FOLD, "a folded fill was accepted, code {rf.cw_code}");
+  assert(rl.cw_code == rf.cw_code,
+         "the loop refused with {rl.cw_code}, the fill with {rf.cw_code}");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 6, 6, true);
+  assert(d == "", "a refused fill and a refused loop parted: {d}");
+}
+
+fn test_a_fill_below_the_reserve_is_refused_and_writes_nothing() {
+  w = mk_reserved(100);
+  r = world_fill(w, 0, 0, 8, 8, 0, cell(50, 1));
+  assert(r.cw_code == CW_RESERVE, "a fill under the reserve was accepted: {r.cw_code}");
+  assert(r.cw_detail != "", "…and it said why");
+  // ⚠ NOTHING, not "most of it" — the first cell refuses before any hoisting, so a
+  // refusal leaves the world exactly as it was, which is what `world_set_column_as`
+  // promises and what a partially-applied fill would quietly break.
+  assert(w.w_tau == TAU0, "the refused fill moved the clock to {w.w_tau}");
+  assert(len(w.w_chunks) == 0, "the refused fill left {len(w.w_chunks)} chunks");
+}
+
+// `P2` — terrain content may not land in a dressing layer, and a fill is terrain.
+fn test_a_fill_into_a_dressing_layer_is_refused() {
+  w = mk();
+  assert(world_set_cell(w, 0, 0, 0, cell(100, 1)).cw_code == CW_OK, "setup");
+  assert(world_set_dressing(w, Column { co_q: 0, co_r: 0,
+                                        co_cells: [cell(105, 4)] }).cw_code == CW_OK,
+         "setup");
+  assert(world_layer_kind(w, 0, 0, 1) == KIND_DRESSING,
+         "the fixture put no dressing layer at index 1");
+  r = world_fill(w, 0, 0, 4, 4, 1, cell(300, 2));
+  assert(r.cw_code == CW_MIX, "terrain reached a dressing layer, code {r.cw_code}");
+}
+
+// ── What a hoisted record must not be ───────────────────────────────────────
+
+// ⚠ ONE `StoredHex` IS BUILT AND WRITTEN INTO EVERY CELL OF THE RECTANGLE, so this
+// asks the question that hoisting raises: are those 256 cells 256 values, or 256
+// views of one? Change one and the rest must not move.
+fn test_one_cell_of_a_filled_rectangle_can_be_changed_alone() {
+  w = mk();
+  assert(world_fill(w, 0, 0, 8, 8, 0, cell(50, 1)).cw_code == CW_OK, "the fill");
+  assert(world_set_cell(w, 3, 4, 0, cell(90, 7)).cw_code == CW_OK, "the change");
+  assert(world_cell(w, 3, 4, 0).h_height == 90, "the change did not land");
+  moved = 0;
+  for aq in 0..8 {
+    for ar in 0..8 {
+      if aq != 3 || ar != 4 {
+        if world_cell(w, aq, ar, 0).h_height != 50 { moved = moved + 1; }
+      }
+    }
+  }
+  assert(moved == 0, "changing one filled cell moved {moved} of its neighbours");
+}
+
+fn test_an_empty_rectangle_is_a_legal_no_op() {
+  w = mk();
+  assert(world_fill(w, 4, 4, 4, 9, 0, cell(5, 1)).cw_code == CW_OK, "a zero width");
+  assert(world_fill(w, 4, 9, 9, 4, 0, cell(5, 1)).cw_code == CW_OK, "an inverted one");
+  assert(w.w_tau == TAU0, "an empty rectangle wrote something: clock {w.w_tau}");
+  assert(len(w.w_chunks) == 0, "an empty rectangle made {len(w.w_chunks)} chunks");
+}
+
+// ⚠ `G5b` THROUGH A FILL. A write equal to the ground default allocates nothing —
+// so filling a region with the ground it already has leaves no chunk at all, and
+// the fill has no chunk to hoist onto. It must still agree with the loop, which is
+// the case that says the fallback path is not a second implementation.
+fn test_a_fill_of_the_ground_default_leaves_no_chunk() {
+  wf = mk();
+  wl = mk();
+  assert(world_set_ground(wf, cell(200, 4)).cw_code == CW_OK, "setup");
+  assert(world_set_ground(wl, cell(200, 4)).cw_code == CW_OK, "setup");
+  assert(world_fill(wf, 0, 0, 4, 4, 0, cell(200, 4)).cw_code == CW_OK, "the fill");
+  assert(loop_fill(wl, 0, 0, 4, 4, 0, cell(200, 4)).cw_code == CW_OK, "the loop");
+  assert(len(wf.w_chunks) == 0,
+         "filling the ground with the ground stored {len(wf.w_chunks)} chunks");
+  d = differs(wf, wl, 0 - 2, 0 - 2, 6, 6, true);
+  assert(d == "", "a defaulted fill and its loop parted: {d}");
+}

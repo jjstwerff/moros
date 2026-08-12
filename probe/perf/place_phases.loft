@@ -101,6 +101,12 @@ fn per_ns(ms: integer, count: integer) -> integer { ms * 1000000 / count ?? 0 }
 // `G2` buys nothing and every step after it delivers a fraction of what it
 // promises. This runs FIRST for exactly that reason.
 //
+// ⚠ `G2` IS BUILT NOW AND `fill_cost.loft` TIMES THE REAL THING — the bound below
+// held, and it was loose in the direction this comment predicted: a hoisted cell
+// costs 0.3-0.5 us against 4.2-4.7. What it could not foresee is that the fixed
+// cost it calls "once instead of 256 times" is ~1200 us PER CHUNK and dominates a
+// small fixture, so the gain on the operation did not reach the suite at all.
+//
 // ⚠ `G1` ADDS NO LIBRARY CODE, so there is no `world_fill` to time. The bulk
 // cost is therefore BOUNDED FROM ABOVE rather than measured: `world_set_cell`
 // is the existing in-place write, and a `world_fill` inner loop can only be

@@ -706,6 +706,57 @@ clothes, twice.**
 world. Nothing reached disk — `fence.mjs` sends no `8:` or `9:` — but **pick a port after
 checking it is free, not before**, and keep the pid of what you start.
 
+## ✅ `fill_cost.loft` — `world_fill` priced, and the ratio is not the finding
+
+**GROUND_DEFAULT `G2`, built and measured 2026-08-12.** The plan carried an *estimate* —
+*"what is left for `world_fill` to win is the ~2× between 25 us a cell and whatever a
+hoisted inner loop costs"* — written before three optimisations landed in this very write
+path. An estimate against a moving subject is not a number.
+
+```sh
+loft --interpret --lib lib/ probe/perf/fill_cost.loft
+```
+
+| shape | chunks | `world_set_cell` loop | `world_fill` | ratio |
+|---|---|---|---|---|
+| 1×1 — **the fixed cost** | 1 | 1200 us | 1200 us | **100 %** |
+| 16×16 — `place`/`expand`'s target | 1 | 2300 us | 1300 us | 176 % |
+| 22×22 — `bind`/`scale`'s 484 columns | 1 | 3250 us | 1425 us | 228 % |
+| 33×33 — `hex_editor/tests/field`'s | 4 | 9950 us | 5150 us | 193 % |
+
+⚠ **THE RATIO IS THE WRONG COLUMN, AND THE 1×1 ROW IS WHY IT IS THERE.** Every reading
+includes a **fixed cost of ~1200 us per CHUNK** — a fresh world, a chunk materialised,
+`empty_cells`'s 1024 records — which both paths pay identically and neither can avoid. Net
+of it, the **marginal** cost of one cell is:
+
+> **4.2–4.7 us through `world_set_cell`, against 0.3–0.5 us hoisted — 10 to 14×**, not 2×.
+
+That also explains the row that looks worst: 33×33 straddles four tiles, so it pays the
+fixed cost four times and its *ratio* falls while its *marginal* cost is the lowest of the
+three.
+
+### ⛔ AND THE SUITE DID NOT MOVE — which is the finding
+
+The five `hex_part` fixtures were wired to it (`place`, `expand`, `bind`, `bake`, `scale`).
+**310 tests, 44.8 s before and 45.3 s after** — noise. `G3` had already taken this file's
+big win, and once a fixture stops being write-dominated a 14× on the write is worth
+~1 ms of a 45 s suite. **`G2`'s speed argument was spent before it was built, exactly as
+GROUND_DEFAULT said**; what is new is that the number is measured instead of estimated,
+and that `world_fill` is a correct primitive with callers rather than an open question.
+
+### ⚠ THE INSTRUMENT WAS WRONG FIRST, AND IT SAID SO OUT LOUD
+
+The first run reported a **one-cell fill at 2025 us against a 256-cell fill at 1350** — a
+marginal cost per cell that is *negative*. The first timed block absorbs a warm-up. The
+probe now runs 40 discarded worlds before it times anything and prints the 1×1 shape
+**twice, first and last**: 1200 / 1200 us, agreeing. ⚠ **An impossible number is the good
+case** — it announces the artefact. The same artefact one shape smaller would have read as
+a plausible result.
+
+⚠ **AND EVERY SHAPE IS TIMED A B B A**, because this box drifts: two runs of unchanged code
+have reported 107 ms and 271 ms for one loop. Both readings of each path are printed, so a
+pair that disagrees with itself is the instrument talking.
+
 ## `profile_counts.mjs` / `profile_tau.mjs` — the instrument, and its two checks
 
 `27:2` arms a per-message profile; `27:3` reports `id count us tau` per message id. See

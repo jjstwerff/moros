@@ -1,10 +1,13 @@
 # A layer is born with a default cell — the ground's, per scenario
 
-**Status: COMPLETE except `G2`.** `G1`, `G3` (2026-08-06), `G4`, `G5a`, `G5a.1`, `G5b`, `G6` and
-`G7` (2026-08-12) are built. ⚠ **`G2` (`world_fill`) is deliberately not built** — `G1` measured
-its speed argument away (`G3` took the 14× with `world_set_cell`, leaving `world_fill` about 2×),
-and `G5` removed its remaining consumer: a scenario states its ground instead of filling it. Written before the code on purpose: the failure paths below are what turned the first
-shape of this design into the third, and each turn was cheaper on the page than in the store.
+**Status: COMPLETE.** `G1`, `G3` (2026-08-06), `G4`, `G5a`, `G5a.1`, `G5b`, `G6`, `G7` and
+`G2` (2026-08-12) are built. ⚠ **`G2` (`world_fill`) landed LAST and out of order, and its own
+row said it should not exist** — `G1` had measured its speed argument away and `G5` had removed
+its consumer. Built anyway, on the plan's own terms (*"measure it before claiming a number"*),
+and both halves of that came back: the hoisted write is **10–14× per cell, not 2×**, and the
+suite it was wired into **did not move at all**. See *What `G2` turned up* below. Written before
+the code on purpose: the failure paths below are what turned the first shape of this design into
+the third, and each turn was cheaper on the page than in the store.
 
 ⚠ **`G4` IS THE DEFAULT ITSELF AND NOTHING READS IT YET** — `w_ground` on `VoxelWorld`,
 `world_set_ground` with `R1` checked where the ground is STATED, and a `GRND` section in the
@@ -12,6 +15,50 @@ codec. **Absent means today, byte for byte**: `make parts` is byte-identical and
 at its previous count. `lib/hex_voxel/tests/ground_default.loft` is eight tests, and a step
 nothing reads still went red three ways — the `R1` check removed (1 red), the codec not reading
 the tag back (3), the codec not writing it (3).
+
+## ✅ What `G2` turned up — a 14× on the write, and nothing on the clock
+
+**Both halves are the finding, and they are not in tension.** Every number and the instrument
+that produced it are in [`probe/perf/README.md`](../../probe/perf/README.md) § `fill_cost.loft`;
+this is what they mean for the design.
+
+⚠ **THE RATIO WAS THE WRONG COLUMN, WHICH IS WHERE *"about 2×"* CAME FROM.** A fixture's cost
+carries ~1200 us of fixed work **per chunk** — a fresh layer is 1024 records — that neither path
+avoids. Net of it, one cell is **4.2–4.7 us through `world_set_cell` against 0.3–0.5 us
+hoisted: 10 to 14×.** The estimate below was pricing the fixed cost as though it were the
+subject.
+
+⛔ **AND THE SUITE DID NOT MOVE** — the five `hex_part` fixtures wired to it, **310 tests,
+44.8 s → 45.3 s**. `G3` had already taken this package's win, and once a fixture stops being
+write-dominated a 14× on its writes is worth a millisecond in forty-five seconds. **The row
+below was right that the speed argument was spent**; what it could not say is by how much, and
+*"measure it before claiming a number"* is the instruction that got followed.
+
+⚠ **WHAT KEPT `G2` ALIVE IS NOT SPEED — A DEFAULTED GROUND IS NOT A GROUND LAYER.** `G5` was to
+remove the last consumer (*a scenario states its ground instead of filling it*), and for a
+**scenario** it did. Not for a **fixture**: `place.loft` and `expand.loft` write terrain
+precisely so a part stamped there is not the chunk's first terrain layer — *"a part stamped into
+a chunk with no terrain becomes that chunk's GROUND layer and takes `LABEL_GROUND` instead of the
+label it minted"*. A ground default leaves those chunks no layer at all (`G5b` drops one equal
+to the default everywhere), so the fixture would stop testing what it exists to test. **A test
+that needs a chunk with real terrain in it still has to write cells.**
+
+### ⚠ Three the tests found that this design had not enumerated
+
+- **A rewrite is a no-op only where the write TOOK.** The fallback re-wrote its own first cell —
+  free everywhere except over a ground default, where each write mints a layer, finds every cell
+  elidable and drops the chunk again (`G5b`), so one cell written twice is two changes. The clock
+  read **18 against the loop's 17**, on the equivalence's first run and invisible to any
+  cell-by-cell comparison.
+- ⚠ **A GUARD ON A RULE IS ONLY VISIBLE WHERE THE RULE'S ANSWER VARIES.** Sabotaged to hoist
+  straight over `F1`, the obvious fold test stayed **green**: its storey cleared the fill in every
+  column, so the skipped check would have said *legal* each time. The test that sees it drops
+  **one** of 64 columns to 5 above. Same shape as `faced_between` and `stroke_over_limit`.
+- **The base is re-read for CREATION, not for rebasing** — and the comment first said the
+  opposite. A rebase moves the floor down to the lowest present height, which *is* the fill's own
+  height, so the old-base arithmetic underflows and `as u16?` clamps it to the same answer.
+  Sabotaged to read the base early, the rebase test stays green and three creation tests fail.
+  ⚠ **A test passing is not evidence that the reason you wrote down is the reason.**
 
 ## ⏭ What `G1` turned up, and it reordered the plan
 
@@ -36,6 +83,14 @@ scan and step 6's 1024-cell elision scan entirely. Of the 7,051 us the bound all
 is the once-only fixed cost: **94 % of what a `world_fill` would still pay is per-cell**, so
 `G2`'s headroom over just calling `world_set_cell` is about **2×**, not 14×. The plan had
 `G2` as the mechanism that recovers the 109 ms; measured, it recovers the last 6 % of it.
+
+⚠ **AND `G2`, BUILT, PUTS THAT LAST SENTENCE AT 10–14× — because "94 % is per-cell" was
+measured on a `world_set_column` body and then charged to a fill that does not have one.**
+A hoisted cell costs **0.3–0.5 us against 4.2–4.7**; the 2× was the ratio *including* the
+per-chunk fixed cost, which no write path avoids and which is most of what a small fixture
+pays. Both readings are right about different quantities, and the one this row wanted — *what
+does the extra call cost* — is the marginal one. ⚠ **The conclusion still stands**: `G3` was
+right to land first, and the suite did not move when `G2` finally landed either.
 
 ✅ **SO `G3` LANDED FIRST, AND WITHOUT `G2`.** Four fixtures, four test files, one substitution
 — measured end to end, interpreted, this box:
@@ -304,7 +359,7 @@ step can still read.
 | | | why it is safe alone |
 |---|---|---|
 | ✅ **`G1`** | **The probe, and it could kill the design.** Two columns added to `place_phases`: *(a)* lay the same 256 cells without the per-call overhead, *(b)* read 256 columns from a world where the chunk does **not exist**. **No library change.** | (a) says whether the 109 ms is per-call overhead — if one call still costs ~100 ms the cost is per-*cell* and `G2` is pointless. (b) is the floor the design was thought to be reaching for. **Built. (a) confirmed the design and reordered the plan; (b) refuted its own question.** ⚠ There is no `world_fill` at this step, so (a) bounds a bulk write from ABOVE with `world_set_cell` — an upper bound is enough to answer a *"is it at least"* question |
-| ⏭ **`G2`** | `world_fill(w, q0, r0, q1, r1, cell)` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**. No existing caller changes and no existing behaviour moves. It is the mechanism `G5` needs, which is the only reason it survives `G1` — ⚠ **its speed argument is spent.** `G3` took the 14× without it, and what is left for `world_fill` to win is the ~2× between 25 us a cell and whatever a hoisted inner loop costs. Build it for `G5`, and measure it before claiming a number |
+| ✅ **`G2`** | `world_fill(w, q0, r0, q1, r1, li, cell)` — a rectangle in one call. ⚠ **It takes a LAYER INDEX**, which this row did not: a fill is the bulk sibling of `world_set_cell`, not of a column write, and half-open bounds so `world_fill(w, 0, 0, 16, 16, …)` is the loop it replaces. | **DONE 2026-08-12, and it reimplements nothing.** The first cell of every chunk goes through `world_set_cell` — the one implementation of materialising a chunk, minting a layer, moving a window and refusing — and every case the hoisted loop cannot honour is handed back to it cell by cell. ⚠ **So `F1` keeps one home**: it is the only rule that is genuinely per-cell, and a chunk holding another terrain layer takes the per-cell path outright. `lib/hex_voxel/tests/fill.loft` is twelve tests, every one an equivalence against the loop written out |
 | ✅ **`G3`** | The fixtures use it — `target()` stops paying the column write. | tests only. The suite time moves and nothing shipped changed. **Built with `world_set_cell`, not with `G2`'s `world_fill`** — `hex_part` 77 s → 35 s, 254 tests green, with cells, layer CRCs and `w_tau` all equal either way |
 | ✅ **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | **DONE 2026-08-12.** absent = today, byte for byte — `make parts` byte-identical, `make lib-test` 3300 → 3316 (the 8 new tests × two backends), `make fast` 145 files, `make gate` 53/53. ⚠ **The value is a FIELD and the section is only the FORMAT** — `w_sections` says of itself that the library never reads it, so a `GRND` there would be both a second home and a tag a consumer never wrote; the codec steers it to `w_ground` on the way in. ⚠ **And `R1` is checked in `world_set_ground`**, which is failure path 5: unrefused there, a ground under the reserve surfaces in an unrelated chunk much later |
 | ✅ **`G5a`** | **The READERS consult it**: `world_column`, `world_cell`, `world_surface`, `world_ground_cell` and `world_ground_layer` answer the ground for an untouched cell — ⚠ **whether or not its chunk exists**, which is `G5a.1` and a correction to the row this table used to carry. | **DONE 2026-08-12.** ⚠ **`G5` SPLIT, AND THE ORDER IS FORCED**: a write that skips allocation before the readers answer for an absent chunk is data loss, so readers first. `G5a` alone is *correct but not yet economical* — a world authored flat still costs what it costs today, and every read agrees with it. Tested as an **EQUIVALENCE** against a world whose ground was written cell by cell, which is the invariant's own last clause; four sabotages red |

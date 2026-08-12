@@ -341,8 +341,11 @@ address (or the hostname `make browser` prints) cannot connect.
   test file), why three hypotheses about the write path were each refuted by their own probe,
   why the format does **not** move in either direction (an absent chunk is already absent; the
   default rides in a section), and why the risk is not presence at 108 sites but **extent** —
-  everything that answers *what is there* by walking the chunk list. Seven steps, `G1` able to
-  kill it. Designed, not built
+  everything that answers *what is there* by walking the chunk list. Seven steps, **all built**
+  (2026-08-12) — and read the two that were built LAST for what they cost: `G6` needed **no
+  code** (the mesher already drew a defaulted chunk, which had to be measured rather than
+  believed), and `G2` was built after its own row said not to, returning **10–14× on the write
+  and nothing at all on the suite**
 - [Camera indoors](doc/claude/CAMERA_INDOORS.md) — **five camera settings over one query**: AUTO,
   FOLLOW, SNUG (claustrophobic), CUTAWAY (de-roofed, for editing) and EYES (first person) want
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.

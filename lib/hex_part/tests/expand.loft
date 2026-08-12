@@ -57,18 +57,20 @@ fn wipe() {
 // can re-derive it. That is a real placement rule — a house is put ON a
 // landscape — and `test_..._no_terrain_...` below pins the refusal, so this
 // seeding is not hiding the case, it is separating it.
+// ⚠ ONE `world_fill`, NOT A LOOP OF CELL WRITES — GROUND_DEFAULT `G2`, and the
+// second time this fixture has been rewritten for the same reason. `G3` swapped a
+// one-cell `world_set_column` per cell (415 us) for `world_set_cell` (25 us); this
+// swaps the loop itself for one call. Measured in `probe/perf/fill_cost.loft`: the
+// marginal cost of a hoisted cell is **0.3 us against 4.2**, and what is left is
+// the per-CHUNK cost of materialising a 1024-record layer, which no write path can
+// avoid. The equivalence is `hex_voxel/tests/fill.loft` — same cells, same clock,
+// same refusal.
 fn target() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
-  for q in (0 - 2)..14 {
-    for r in (0 - 2)..14 {
-      // ⚠ `world_set_cell`, not a one-cell column write — 25 us against 415, and
-      // this loop runs per test. See `probe/perf/place_phases.loft` `G1`.
-      assert(world_set_cell(w, q, r, 0,
-        Hex { h_height: 5 as u16? ?? 0,
-              h_material: 1 as u8? ?? 0 }).cw_code == CW_OK,
-        "the ground at ({q},{r}) was refused");
-    }
-  }
+  assert(world_fill(w, 0 - 2, 0 - 2, 14, 14, 0,
+                    Hex { h_height: 5 as u16? ?? 0,
+                          h_material: 1 as u8? ?? 0 }).cw_code == CW_OK,
+         "the fixture ground was refused");
   w
 }
 

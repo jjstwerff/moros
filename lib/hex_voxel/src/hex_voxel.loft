@@ -1397,6 +1397,166 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
   ok_write()
 }
 
+// ── `G2` — THE SAME WRITE, N TIMES, WITH THE PER-CELL LOOKUPS PAID ONCE ──────
+//
+// `world_fill` is **defined** as, and tested as,
+//
+//     for q in q0..q1 { for r in r0..r1 { world_set_cell(w, q, r, li, c) } }
+//
+// — same cells, same clock, same refusal, same row-major order. The only thing it
+// changes is how often the work that does not depend on WHICH cell is done: the
+// chunk lookup, the four rule checks, and building the `StoredHex` are facts about
+// the chunk and the value, and a 256-cell rectangle paid for all of them 256 times.
+//
+// ⚠ **IT REIMPLEMENTS NOTHING.** The first cell of every chunk goes through
+// `world_set_cell` itself, which is the one implementation of materialising a
+// chunk, minting a layer, moving a window and refusing — and every case the
+// hoisted loop cannot honour is handed back to it cell by cell. So there is no
+// second home for any rule: what is hoisted is exactly what the first call already
+// proved, and what is per-cell stays where it was.
+//
+// The bounds are HALF-OPEN, like every loft range: `world_fill(w, 0, 0, 16, 16, …)`
+// writes the same 256 cells `for q in 0..16 { for r in 0..16 { … } }` does.
+//
+// ⚠ **`G2`'S SPEED ARGUMENT WAS SPENT BEFORE IT WAS BUILT AND ITS CONSUMER IS NOT
+// THE ONE THE PLAN NAMED.** `G3` took the 14× with `world_set_cell`; `G5` let a
+// scenario STATE its ground instead of writing it. What survives is the fixture
+// that needs a chunk with real terrain in it — a defaulted ground is not a ground
+// LAYER, so a test that stamps a part onto terrain still has to write cells, and
+// four of them are the slowest files in this tree. See `GROUND_DEFAULT.md` `G2`.
+pub fn world_fill(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+                  li: integer, c: Hex) -> ColumnWrite {
+  // An empty rectangle is a legal no-op, exactly as the loop is.
+  if q1 <= q0 || r1 <= r0 { return ok_write(); }
+  fcx0 = world_chunk_of(q0);
+  fcx1 = world_chunk_of(q1 - 1);
+  fcz0 = world_chunk_of(r0);
+  fcz1 = world_chunk_of(r1 - 1);
+  // Chunk by chunk, because every fact worth hoisting belongs to a chunk. The
+  // slices are clipped to the rectangle, so a fill smaller than a tile touches one.
+  for fcx in fcx0..=fcx1 {
+    for fcz in fcz0..=fcz1 {
+      sq0 = fcx << CHUNK_W_SHIFT;
+      sq1 = (fcx + 1) << CHUNK_W_SHIFT;
+      sr0 = fcz << CHUNK_W_SHIFT;
+      sr1 = (fcz + 1) << CHUNK_W_SHIFT;
+      if q0 > sq0 { sq0 = q0; }
+      if q1 < sq1 { sq1 = q1; }
+      if r0 > sr0 { sr0 = r0; }
+      if r1 < sr1 { sr1 = r1; }
+      res = fill_chunk(w, fcx, fcz, sq0, sr0, sq1, sr1, li, c);
+      if res.cw_code != CW_OK { return res; }
+    }
+  }
+  ok_write()
+}
+
+// One chunk's slice of the rectangle. Row-major within it, so the whole fill is
+// row-major within a chunk and chunk-major across them — and that ORDER is the one
+// place a fill is not literally its loop. Two consequences, both stated rather than
+// hidden, and both tested in `tests/fill.loft`:
+//
+//   · **`ly_ver` across chunks.** The two paths interleave their writes differently,
+//     so each layer's version stamp lands on a different tick. The cells and the
+//     total `w_tau` are identical; a version is *when this layer last changed*, and
+//     both answers are true.
+//   · **WHICH refusal comes back**, when a multi-chunk rectangle holds more than one
+//     column that a rule forbids. The loop reports the one it reaches first in row
+//     order; the fill reports the first in chunk order. Both refuse, both leave the
+//     cells before it written — the same guarantee `world_set_cell` gives, which is
+//     per cell and never was per rectangle.
+fn fill_chunk(w: VoxelWorld, cx: integer, cz: integer,
+              q0: integer, r0: integer, q1: integer, r1: integer,
+              li: integer, c: Hex) -> ColumnWrite {
+  // The FIRST cell is the ordinary write, and it is what makes everything after it
+  // safe: it materialises the chunk and the layer if they are missing, moves the
+  // window if it has to, and refuses if any rule says so. A refusal here is the
+  // refusal the loop's first call would have made, in the same state.
+  first = world_set_cell(w, q0, r0, li, c);
+  if first.cw_code != CW_OK { return first; }
+
+  ci = find_chunk(w, cx, cz);
+  // ⚠ THE CHUNK CAN STILL BE ABSENT — a write of an ABSENT cell into virgin ground
+  // mints a layer, empties it and drops the chunk again (`E1`). Nothing to hoist
+  // onto, so the rest goes through `world_set_cell` like the loop.
+  fast = ci >= 0 && li >= 0 && li < len(w.w_chunks[ci].ck_layers);
+  if fast && hex_occupied(c) {
+    // ⚠ `F1` IS THE ONE CHECK THAT IS GENUINELY PER-CELL — it looks for the nearest
+    // occupied terrain cell above and below IN THIS COLUMN, and neighbouring columns
+    // hold different ones. It is vacuous only when there is no other terrain layer
+    // here to fold against; where there is, every cell is handed to
+    // `world_set_cell`, so `F1` keeps exactly one home and no fill can outrun it.
+    ffl = 0;
+    for fly in w.w_chunks[ci].ck_layers {
+      if ffl != li && fly.ly_kind == KIND_TERRAIN { fast = false; break; }
+      ffl = ffl + 1;
+    }
+  }
+  if !fast {
+    for gq in q0..q1 {
+      for gr in r0..r1 {
+        // ⚠ THE FIRST CELL IS SKIPPED HERE AND REWRITTEN ON THE FAST PATH BELOW,
+        // and the difference is not tidiness. A rewrite is a no-op only where the
+        // first write TOOK: fill a region with the world's own ground and every
+        // write mints a layer, finds every cell elidable and drops the chunk again
+        // (`G5b`), so writing that cell twice is genuinely two changes and the
+        // clock moves twice. Measured — the fill read 18 against the loop's 17.
+        if gq != q0 || gr != r0 {
+          gres = world_set_cell(w, gq, gr, li, c);
+          if gres.cw_code != CW_OK { return gres; }
+        }
+      }
+    }
+    return ok_write();
+  }
+
+  // Everything the fast path of `world_set_cell` decides per cell has now been
+  // decided once: the chunk index, the layer's kind, `R1`, `W1`, `F1`, and the
+  // record itself. What is left is what genuinely differs per cell — where it goes,
+  // and whether it changes anything.
+  //
+  // ⚠ THE BASE IS READ AFTER THE FIRST WRITE, and the reason is CREATION rather
+  // than rebasing: on virgin ground there was no chunk to read a base from at all,
+  // and a fresh one is based on its first content. Read before, every hoisted cell
+  // is encoded against a floor of zero while the one cell that went through
+  // `world_set_cell` sits correctly among them — measured, three tests red.
+  //
+  // ⚠ A REBASE IS BENIGN HERE, AND ONLY BY ACCIDENT — worth writing down so the
+  // next reader does not take the tests as proof it is handled. A rebase moves the
+  // floor DOWN to the lowest present height, and the fill's own cell IS that
+  // height, so `h - new_base` is 0 while `h - old_base` is negative and the
+  // `as u16?` clamps it to 0 as well. Same answer, different route: sabotaged to
+  // read the base early, the rebase test stays green and three creation tests fail.
+  fbase = w.w_chunks[ci].ck_base;
+  fh = c.h_height as integer ?? 0;
+  nv = StoredHex { sv_height: (fh - fbase) as u16? ?? 0,
+                   sv_material: c.h_material, sv_item: c.h_item,
+                   sv_item_rotation: c.h_item_rotation,
+                   sv_wall_nw: c.h_wall_nw, sv_wall_ne: c.h_wall_ne,
+                   sv_wall_e: c.h_wall_e };
+  // The first cell is rewritten by this loop and that is deliberate: it now holds
+  // exactly `nv`, so it changes nothing, bumps no clock, and costs one comparison
+  // instead of a per-cell test for it.
+  for fq in q0..q1 {
+    for fr in r0..r1 {
+      fix = cell_index(fq, fr);
+      prev = w.w_chunks[ci].ck_layers[li].ly_cells[fix];
+      // `T1` — one tick per write that CHANGED something, cell by cell exactly as
+      // `world_set_cell` counts them, so a fixture that swaps a loop for a fill
+      // does not move `w_tau` and every cost test still means what it meant.
+      if prev.sv_height != nv.sv_height || prev.sv_material != nv.sv_material
+         || prev.sv_item != nv.sv_item || prev.sv_item_rotation != nv.sv_item_rotation
+         || prev.sv_wall_nw != nv.sv_wall_nw || prev.sv_wall_ne != nv.sv_wall_ne
+         || prev.sv_wall_e != nv.sv_wall_e {
+        w.w_tau = w.w_tau + 1;
+        w.w_chunks[ci].ck_layers[li].ly_cells[fix] = nv;
+        w.w_chunks[ci].ck_layers[li].ly_ver = w.w_tau;
+      }
+    }
+  }
+  ok_write()
+}
+
 // ── Change, and what a cache may ask ─────────────────────────────────────────
 //
 // A cache built at clock `c` over a region is valid iff every layer it read still

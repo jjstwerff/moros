@@ -22,6 +22,23 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ✅ GROUND_DEFAULT IS CLOSED — `G2` BUILT LAST, AGAINST ITS OWN ROW — 2026-08-12
+
+`world_fill` is in `hex_voxel`, wired to the five `hex_part` fixtures, 12 equivalence tests in
+`lib/hex_voxel/tests/fill.loft`, `make lib-test` **3386 green on both backends**, `make parts`
+byte-identical. The record is [GROUND_DEFAULT § What `G2` turned up](GROUND_DEFAULT.md); two
+things belong out here, because neither is about a fill:
+
+- ⛔ **A 14× ON THE OPERATION AND NOTHING ON THE SUITE** — 310 tests, 44.8 s → 45.3 s. A win on a
+  call is not a win on a caller, and *"measure it before claiming a number"* is what separated
+  them. ⚠ **The ratio was the wrong column throughout**: a fixture pays ~1200 us per CHUNK that
+  neither write path avoids, and the plan's *"about 2×"* was pricing that as the subject.
+- ⚠ **A GUARD ON A RULE IS ONLY VISIBLE WHERE THE RULE'S ANSWER VARIES.** Sabotaging the `F1`
+  hand-back left the obvious fold test green — its storey cleared the fill in *every* column, so
+  the skipped check would have said *legal* each time. The test that sees it drops **one** of 64
+  columns. Same shape as `faced_between` and `stroke_over_limit`, and now written down a third
+  time.
+
 ## ⏭ LOFT'S SAMPLER, POINTED AT WHAT A TEST DOES — 2026-08-12
 
 **`probe/perf/fixture.loft`**, and two instrument findings before any number is worth reading.
@@ -210,7 +227,9 @@ a cell through the fast path and the layer *and* the chunk stay in the directory
 column path drops both. `E1`'s *"elision is maintained on write"* is true of `world_set_column_as`
 and false of the fast path — invisible in the drawing, **visible in the bytes**. Recorded, not
 fixed: the cure is cheap now, but whether an empty layer on disk is a defect or a tolerated state
-is a format decision.
+is a format decision. ⚠ **`G2`'s `world_fill` inherits it rather than adding a second answer** —
+its hoisted loop is the fast path's write, so a fill that CLEARS a region leaves the layer
+standing exactly as 1024 `world_set_cell` calls would. One behaviour, two callers, still open.
 
 ### ✅ AND IT IS USABLE NOW — loft `61057fa0…` installed 13:21, and the suite is NOT flat
 

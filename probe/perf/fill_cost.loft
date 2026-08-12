@@ -1,0 +1,108 @@
+// WHAT `world_fill` IS WORTH — GROUND_DEFAULT `G2`, priced rather than argued.
+//
+//   loft --interpret --lib lib/ probe/perf/fill_cost.loft
+//
+// The plan carried an estimate — *"what is left for `world_fill` to win is the ~2×
+// between 25 us a cell and whatever a hoisted inner loop costs"* — written before
+// three optimisations landed in this very write path (step 6's elision scan, step
+// 4's window sweep, and `world_chunk_of` as a shift). An estimate against a moving
+// subject is not a number, so this measures the two paths against each other on
+// the shapes the tree's own fixtures use.
+//
+// ⚠ `now()` IS MILLISECONDS, which cost `place_phases` a whole run of `0 ms`.
+// Every shape below is repeated enough times to be tens of ms.
+//
+// ⚠ AND THE BOX DRIFTS — two runs of unchanged code reported 107 ms and 271 ms for
+// the same loop while the process's own phase counter said 108 both times. So each
+// shape is timed FOUR times, A B B A, and both readings of each path are printed:
+// a pair that disagrees with itself is the instrument talking, not the subject.
+use hex_voxel;
+
+fn blank() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
+fn grass() -> Hex { Hex { h_height: 5 as u16? ?? 0, h_material: 1 as u8? ?? 0 } }
+
+// The loop the four `target()` fixtures run today, since `G3`.
+fn by_cell(w: VoxelWorld, n: integer) {
+  for lq in 0..n {
+    for lr in 0..n {
+      world_set_cell(w, lq, lr, 0, grass());
+    }
+  }
+}
+
+fn by_fill(w: VoxelWorld, n: integer) {
+  world_fill(w, 0, 0, n, n, 0, grass());
+}
+
+// One shape, both paths, twice each in A B B A order. `reps` fresh worlds per
+// reading, because a fixture builds a NEW world per test — measuring a re-fill of
+// the same region would price the one case no fixture has.
+fn shape(name: text, n: integer, reps: integer) {
+  a0 = now();
+  for i1 in 0..reps { w1 = blank(); by_cell(w1, n); }
+  a1 = now();
+  b0 = now();
+  for i2 in 0..reps { w2 = blank(); by_fill(w2, n); }
+  b1 = now();
+  c0 = now();
+  for i3 in 0..reps { w3 = blank(); by_fill(w3, n); }
+  c1 = now();
+  d0 = now();
+  for i4 in 0..reps { w4 = blank(); by_cell(w4, n); }
+  d1 = now();
+
+  cells = n * n;
+  // ⚠ THE CHUNK COUNT IS PART OF THE READING, not decoration. The fixed cost below
+  // is paid PER CHUNK — a fresh 32x32 layer is 1024 records — so a 33x33 fixture
+  // straddling four tiles pays it four times and its ratio looks worse than a
+  // 22x22 that pays it once, with the same marginal cost per cell.
+  wk = blank(); by_fill(wk, n);
+  loop_ms = (a1 - a0) + (d1 - d0);
+  fill_ms = (b1 - b0) + (c1 - c0);
+  println("{name}  {cells} cells in {len(wk.w_chunks)} chunks x {reps} worlds x2");
+  println("    world_set_cell loop  {a1 - a0} ms / {d1 - d0} ms"
+        + "   -> {(loop_ms * 1000) / (2 * reps) ?? 0} us per world");
+  println("    world_fill           {b1 - b0} ms / {c1 - c0} ms"
+        + "   -> {(fill_ms * 1000) / (2 * reps) ?? 0} us per world");
+  println("    per cell             {(loop_ms * 1000) / (2 * reps * cells) ?? 0} us"
+        + "  ->  {(fill_ms * 1000) / (2 * reps * cells) ?? 0} us");
+  println("    ratio                {(loop_ms * 100) / fill_ms ?? 0} %  "
+        + "(100 = no gain, 200 = twice as fast)");
+}
+
+// ⚠ THE CONTROL THAT SAYS THE TWO PATHS BUILT THE SAME THING. A faster path that
+// wrote less is not faster, and the equivalence lives in `tests/fill.loft` — this
+// is the probe's own guard against measuring a no-op.
+fn control(n: integer) {
+  wa = blank(); by_cell(wa, n);
+  wb = blank(); by_fill(wb, n);
+  same = wa.w_tau == wb.w_tau && len(wa.w_chunks) == len(wb.w_chunks)
+       && world_layer_crc(wa, 0, 0, 0) == world_layer_crc(wb, 0, 0, 0);
+  println("control at {n}x{n}: clock {wa.w_tau}/{wb.w_tau}, "
+        + "chunks {len(wa.w_chunks)}/{len(wb.w_chunks)}, "
+        + "crc {world_layer_crc(wa, 0, 0, 0)}/{world_layer_crc(wb, 0, 0, 0)}"
+        + "  -> {same}");
+}
+
+fn main() {
+  control(16);
+  // ⚠ A WARM-UP, AND IT IS NOT A RITUAL — it is here because the instrument was
+  // WRONG without it. The first timed block absorbed something (first-call cost in
+  // the interpreter, most likely) and reported a ONE-CELL fill at 2025 us against a
+  // 256-cell fill at 1350 — a marginal cost per cell that is negative, which is the
+  // shape of a measurement artefact rather than a surprising result. Both 1x1
+  // readings below are printed, first and last, and they now agree.
+  for wq in 0..40 { ww = blank(); by_cell(ww, 8); wf = blank(); by_fill(wf, 8); }
+  println("");
+  // 16x16 is `place.loft`'s and `expand.loft`'s target; 22x22 is `bind.loft`'s
+  // 484 columns; 33x33 is the 1089-cell fixture in `hex_editor/tests/field.loft`.
+  // ⚠ ONE CELL FIRST, WHICH IS THE FIXED COST AND NOT A SHAPE ANYBODY FILLS: a
+  // fresh world, a chunk materialised, and `empty_cells`'s 1024 records. Every
+  // ratio below is capped by it, so a fill's marginal cost per cell can only be
+  // read as the DIFFERENCE between two shapes.
+  shape("the fixed cost 1x1", 1, 20);
+  shape("place/expand  16x16", 16, 20);
+  shape("bind          22x22", 22, 20);
+  shape("field         33x33", 33, 10);
+  shape("the fixed cost 1x1, again", 1, 20);
+}
