@@ -37,6 +37,43 @@ ignored**, so an armed instrument reporting nothing reads as *there is nothing t
 **33,245 samples naming the library**. Not wrong — blind. **Set it, or you photograph your own
 `main`.**
 
+### ✅ AND THE ELISION SCAN IS GONE — `hex_editor`'s suite is 25 % smaller, 2026-08-12
+
+**One change in `world_set_column_as` step 6**, a pure optimisation: the OR it computes is
+unchanged, only how much of it is evaluated. `probe/perf/README.md` has the full record.
+
+| | before | after |
+|---|---|---|
+| `hex_editor`'s suite | 5,210,109 samples | **3,896,879** — **−25.2 %**, same 424 runs |
+| `write_cost.loft` | 516,072 | **287,924** — **−44.2 %** |
+| step 6's scan line | 8.6 % of the suite | **absent from the table** |
+
+**The invariant: a column write changes exactly ONE cell, `ix`.** A layer with content there is
+live in O(1); the sweep is only needed to prove ABSENCE, the rare answer — and it stops at the
+first present cell now instead of running to 1024 after the answer is known.
+
+⚠ **THE SHORT-CIRCUIT HAD BEEN MEASURED IN AUGUST AND NEVER APPLIED** (*"116 → 98 ms"*, written
+down and left). The `ix`-first half is what was missing: a `break` only helps if a present cell
+comes early, and the touched cell can sit at index 1023.
+
+⚠ **AND NOTHING TESTED ELISION AT ALL** — the only test counting layers was `storey.loft`'s,
+counting them going *up*. It is invisible from outside: **a dropped layer and an undropped empty
+one both read back as absence**, so only the bytes differ. `lib/hex_voxel/tests/elision.loft` is
+the rule now — 5 tests, 2 sabotages red, one of them reporting silent data loss.
+
+⏭ **WHAT IS LEFT IS STEP 4 (the window fit) AND IT IS A DIFFERENT PROBLEM** — 25 % of the suite
+between `stored_present` and its loop, and it **cannot** early-exit. The fast path it wants is
+sound only if *every stored cell is inside the window by construction*, and ⚠ **three functions
+write `ly_cells` without passing through this path** (`world_set_cell`, `world_set_dressing`,
+`world_put_layer`). Proving that is the next step's first probe.
+
+⚠ **AND THAT GREP FOUND A LIVE INCONSISTENCY, MEASURED: `world_set_cell` DOES NOT ELIDE.** Clear
+a cell through the fast path and the layer *and* the chunk stay in the directory, where the
+column path drops both. `E1`'s *"elision is maintained on write"* is true of `world_set_column_as`
+and false of the fast path — invisible in the drawing, **visible in the bytes**. Recorded, not
+fixed: the cure is cheap now, but whether an empty layer on disk is a defect or a tolerated state
+is a format decision.
+
 ### ✅ AND IT IS USABLE NOW — loft `61057fa0…` installed 13:21, and the suite is NOT flat
 
 **All three gaps are closed on the installed binary** (stamped at both ends; `make fast` 141

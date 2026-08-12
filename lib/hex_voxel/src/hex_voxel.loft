@@ -1145,8 +1145,28 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
   // than a compaction pass that does not exist (`E1`).
   live: vector<Layer> = [];
   for ly in w.w_chunks[ci].ck_layers {
-    any = false;
-    for j in 0..CHUNK_CELLS { if stored_present(ly.ly_cells[j]) { any = true; } }
+    // ⚠ THE CELL THIS WRITE TOUCHED IS ASKED FIRST, AND IT DECIDES THE COMMON
+    // CASE IN O(1). A column write changes exactly one index — `ix` — so a layer
+    // holding content THERE is live and there is nothing to scan. Only proving
+    // ABSENCE needs the sweep, and absence is the rare answer: a layer empties
+    // when the last thing in it is cleared.
+    //
+    // ⚠ A REBASE CANNOT CHANGE THIS ANSWER. It rewrites `sv_height`, and height
+    // is not one of the five fields `stored_present` reads — so the presence of
+    // every cell is identical before and after, and the check is safe to make
+    // after step 5 whatever step 4 did.
+    //
+    // ⚠ AND THE SWEEP STOPS AT THE FIRST PRESENT CELL. It computes an OR; running
+    // it to 1024 after the answer is known is the same waste one loop out. It was
+    // measured in 2026-08 (`probe/perf/README.md`: *"short-circuiting step 6:
+    // 116 → 98 ms"*) and the finding was written down and never applied — which
+    // is why it is worth saying that the two lines below are the whole of it.
+    any = stored_present(ly.ly_cells[ix]);
+    if !any {
+      for j in 0..CHUNK_CELLS {
+        if stored_present(ly.ly_cells[j]) { any = true; break; }
+      }
+    }
     if any { live += [ly]; }
   }
   w.w_chunks[ci].ck_layers = live;

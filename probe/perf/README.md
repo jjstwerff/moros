@@ -119,6 +119,75 @@ it — but the row it should be aimed at is `stored_present`, not chunk material
 ⚠ **AND `crc32_of` IS 2.9 % HERE AND 45.6 % IN `hex_voxel`'s OWN SUITE** — nearly half that
 package's test time is a checksum over saved worlds. Recorded, not chased.
 
+### ✅ AND THE ELISION SCAN IS GONE — the suite is **25 % smaller**, 2026-08-12
+
+**One change in `world_set_column_as` step 6**, and it is a pure optimisation: the OR it
+computes is unchanged, only how much of it is evaluated.
+
+| | before | after |
+|---|---|---|
+| `hex_editor`'s suite | 5,210,109 samples | **3,896,879** — **−25.2 %**, same 424 runs |
+| `probe/perf/write_cost.loft` | 516,072 | **287,924** — **−44.2 %** |
+| `stored_present`'s share of the suite | 20.8 % | **13.8 %** |
+| step 6's scan line | **8.6 %** | **absent from the by-line table** |
+
+**The invariant it rests on: a column write changes exactly ONE cell, index `ix`.** So a layer
+holding content there is live in O(1) and there is nothing to scan; the sweep is only needed to
+prove ABSENCE, which is the rare answer. (A rebase rewrites `sv_height`, and height is not one of
+the five fields `stored_present` reads, so it cannot change any answer here.) The sweep also
+**stops at the first present cell** now — it computes an OR and ran to 1024 after the answer was
+known.
+
+⚠ **THE SHORT-CIRCUIT WAS MEASURED IN THIS FILE IN AUGUST AND NEVER APPLIED** — *"short-circuiting
+step 6: 116 → 98 ms"*, written down, correct, and left on the floor. The `ix`-first half is what
+was missing: a `break` only helps when a present cell comes early in the scan order, and the cell
+the write touched can sit at index 1023.
+
+⚠ **NOTHING TESTED ELISION AT ALL** — grepped across `hex_voxel` and `hex_editor`, the only test
+that counted layers was `storey.loft`'s, counting them going *up*. The rule was carried by a
+comment, and it is invisible from outside: **a dropped layer and an undropped empty one both read
+back as absence**, so only the bytes differ. `lib/hex_voxel/tests/elision.loft` is that rule now,
+five tests, and two sabotages seen red — the fast path without its fallback scan reports
+*"clearing one cell dropped a layer that still holds another — 0 layers left"* (silent data
+loss), and step 6 dropping nothing reports the empty layer and the empty chunk.
+
+### ⏭ WHAT IS LEFT IS STEP 4, AND IT IS A DIFFERENT PROBLEM
+
+`stored_present` is still **13.8 %** of the suite and step 4's loop **11.2 %** more
+(`hex_voxel.loft:1066`/`1067`). It **cannot** early-exit: it needs a true min/max over the whole
+tile.
+
+**The fast path it wants, and the invariant that would make it sound.** Step 4's scan feeds
+exactly two decisions — *refuse if the tile spans ≥ `WINDOW`* and *rebase if the column falls
+outside `[base, base + WINDOW)`*. Every **stored** cell is inside that window **by construction**:
+`sv_height` is a `u16` offset from `ck_base`. So the existing tile can never trigger either
+condition on its own — **only the incoming column can**, and its span (`clo`/`chi`) is already
+computed before the scan. If the incoming column fits, the scan is unnecessary.
+
+⚠ **AND THE INVARIANT IS NOT LOCALLY GUARANTEED TODAY, WHICH IS WHY THIS IS NOT DONE HERE.**
+Three other functions write `ly_cells` without passing through this path — `world_set_cell`'s
+fast path, `world_set_dressing` and `world_put_layer`. Before step 4 may trust the window, those
+must be shown to preserve it. **That is the next step's first probe, not an assumption to build
+on.**
+
+⚠ **AND THE SAME GREP FOUND A LIVE INCONSISTENCY, MEASURED (`/tmp` probe, this session):
+`world_set_cell` DOES NOT ELIDE.** Write a cell through the column path and clear it through the
+fast path, and the layer *and* the chunk stay in the directory — where the column path drops
+both:
+
+```
+after write:  layers 1  chunks 1
+after clear:  layers 1  chunks 1   ← the column path leaves 0 and 0
+```
+
+So `E1`'s *"elision is an invariant maintained on write"* is true of `world_set_column_as` and
+**false of the fast path**. It is invisible in the drawn result (an empty layer reads as absence)
+and visible in the **bytes** — two semantically identical worlds can encode differently depending
+on which path cleared them, which is exactly what `world_to_bytes` comparisons rest on.
+**Recorded, not fixed**: the cure is now cheap (the same O(1) `stored_present(nv)` test), but it
+changes what the fast path *does* rather than how fast it does it, and whether an empty layer on
+disk is a defect or a tolerated state is a format decision.
+
 ## ⏭ IS THE SAMPLER USEFUL YET? — the earlier answer, kept: it was *half*
 
 Asked again the same day. Everything below is measured on the **installed** binary,

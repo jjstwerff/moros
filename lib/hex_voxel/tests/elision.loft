@@ -1,0 +1,125 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// ELISION — A LAYER THAT EMPTIES LEAVES, AND ONE THAT DID NOT MUST STAY.
+//
+// `E1`: elision is an invariant maintained ON WRITE rather than a compaction pass
+// that does not exist, and clause 2 takes the chunk out of the directory when its
+// last layer goes. `world_set_column_as` step 6 is that rule.
+//
+// ⚠ **NOTHING TESTED IT.** Grepped 2026-08-12 across `hex_voxel` and `hex_editor`:
+// the only test that counted layers at all was `storey.loft`'s, which counts them
+// going UP. The rule was carried by a comment and by the format's own tolerance —
+// a dropped layer reads back as absence, and an undropped empty one reads back as
+// absence too, so the drawn result is identical either way and only the bytes on
+// disk differ. **That is the shape of a rule nothing can be surprised by**, which is
+// why this file exists before the write path is optimised rather than after.
+//
+// ⚠ AND IT IS THE POSITIVE CONTROL FOR A FAST PATH. Step 6 now asks the cell the
+// write TOUCHED first, because a column write changes exactly one index and a layer
+// holding content there is live in O(1) instead of 1024. `…_survives_when_content
+// _remains_elsewhere` is the case that separates a correct fast path from one that
+// answered only about `ix`: seen red against exactly that sabotage.
+use hex_voxel;
+
+fn mk_world() -> VoxelWorld { world_new(0.25, 100, 8, 3).wn_world }
+fn cell_at(h: integer, m: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }
+}
+// An absent cell — the thing a clear leaves behind. `stored_present` reads five
+// fields and height is not one of them, so a height with no material is nothing.
+fn nothing() -> Hex { Hex { h_height: 0 as u16? ?? 0, h_material: 0 as u8? ?? 0 } }
+
+// ⚠ THROUGH THE PUBLIC READER, not the vector. `world_chunk_layers` takes CHUNK
+// coordinates, so the hex is divided down first — the same `world_chunk_of` the
+// write path uses, which is what makes "the chunk this cell is in" one answer
+// rather than two.
+fn layers_at(w: VoxelWorld, q: integer, r: integer) -> integer {
+  world_chunk_layers(w, world_chunk_of(q), world_chunk_of(r))
+}
+
+// The rule itself: content in, layer exists; content out, layer goes.
+fn test_a_layer_whose_last_cell_is_cleared_is_dropped() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 3, co_r: 4, co_cells: [cell_at(200, 1)] });
+  assert(layers_at(w, 3, 4) == 1,
+         "the fixture wrote nothing: {layers_at(w, 3, 4)} layers");
+
+  world_set_column(w, Column { co_q: 3, co_r: 4, co_cells: [nothing()] });
+  assert(layers_at(w, 3, 4) == 0,
+         "the layer emptied and {layers_at(w, 3, 4)} of them are still stored — "
+       + "`E1` says elision is maintained on write");
+}
+
+// ⚠ `E1` CLAUSE 2 — and it is a separate claim, because a chunk with zero layers
+// is still a directory entry until something removes it.
+fn test_a_chunk_whose_last_layer_goes_leaves_the_directory() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 3, co_r: 4, co_cells: [cell_at(200, 1)] });
+  assert(len(w.w_chunks) == 1, "the fixture made {len(w.w_chunks)} chunks");
+
+  world_set_column(w, Column { co_q: 3, co_r: 4, co_cells: [nothing()] });
+  assert(len(w.w_chunks) == 0,
+         "the chunk's last layer went and {len(w.w_chunks)} chunks are still in "
+       + "the directory — the file would carry an empty one waiting for a sweep "
+       + "that does not exist");
+}
+
+// ⚠ **THE CASE THAT SEPARATES A CORRECT FAST PATH FROM A WRONG ONE.** Step 6 asks
+// the touched cell first; if that were the WHOLE answer, clearing it would drop a
+// layer that still holds content at another cell — a silent data loss whose only
+// symptom is that something stopped being there.
+//
+// Two cells in one chunk, far apart in the index space so no scan order makes this
+// pass by luck.
+fn test_a_layer_survives_when_content_remains_elsewhere() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [cell_at(200, 1)] });
+  world_set_column(w, Column { co_q: 20, co_r: 20, co_cells: [cell_at(200, 1)] });
+  assert(layers_at(w, 1, 1) == 1, "the fixture built {layers_at(w, 1, 1)} layers");
+  assert(world_chunk_of(1) == world_chunk_of(20),
+         "the two cells are in different chunks along q — this test cannot see the "
+       + "case it exists for");
+  assert(cell_index(1, 1) != cell_index(20, 20),
+         "…and they must be different CELLS of it, or nothing is left behind");
+
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [nothing()] });
+  assert(layers_at(w, 20, 20) == 1,
+         "clearing one cell dropped a layer that still holds another — "
+       + "{layers_at(w, 20, 20)} layers left");
+  // …and the content that remained is still readable, which is the claim a layer
+  // count only stands in for.
+  assert(world_cell(w, 20, 20, 0).h_material == 1,
+         "the surviving cell reads material {world_cell(w, 20, 20, 0).h_material}");
+}
+
+// ⚠ AND THE OTHER DIRECTION, so the rule above cannot be satisfied by never
+// dropping anything: with the far cell cleared too, both go.
+fn test_the_last_one_out_takes_the_layer_with_it() {
+  w = mk_world();
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [cell_at(200, 1)] });
+  world_set_column(w, Column { co_q: 20, co_r: 20, co_cells: [cell_at(200, 1)] });
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [nothing()] });
+  assert(layers_at(w, 20, 20) == 1, "the fixture lost the layer early");
+
+  world_set_column(w, Column { co_q: 20, co_r: 20, co_cells: [nothing()] });
+  assert(len(w.w_chunks) == 0,
+         "both cells are empty and {len(w.w_chunks)} chunks remain");
+}
+
+// ⚠ A WALL IS CONTENT WITH NO GROUND UNDER IT — `E1e`, and the reason
+// `stored_present` reads five fields rather than asking whether the cell is
+// occupied. A hex stores three of its six edges, so a region's boundary lives half
+// in cells outside it; keying elision on material alone made a fence survive or
+// vanish according to which side of it the ground happened to be.
+fn test_a_cell_holding_only_a_wall_keeps_its_layer() {
+  w = mk_world();
+  wall: Hex = Hex { h_height: 200 as u16? ?? 0, h_material: 0 as u8? ?? 0,
+                    h_wall_e: 1 as u8? ?? 0 };
+  world_set_column(w, Column { co_q: 5, co_r: 5, co_cells: [wall] });
+  assert(layers_at(w, 5, 5) == 1,
+         "a cell whose only content is an edge was elided — {layers_at(w, 5, 5)} "
+       + "layers. A layer of nothing but walls would be dropped whole, silently");
+  assert(world_cell(w, 5, 5, 0).h_wall_e == 1,
+         "the wall did not survive the round trip through the store");
+}
