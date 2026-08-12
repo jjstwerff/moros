@@ -920,20 +920,48 @@ pub const PR_NONE = "not a gesture";
 // measured against the guess rather than against the editor.
 pub const PR_SELECT = "an opening needs a profile, and nothing selects one yet";
 
+// One opening press, as an `Ack` — the shape `press` answers in.
+//
+// ⚠ THE SENTENCE IS THE DRIVER'S AND THE REFUSAL IS THE GESTURE'S. `OpeningMade`
+// carries a code and a reason; a runner wants *"why not"* in words and a server
+// composes its own. So this keeps the reason and drops the shape, exactly as every
+// other branch of `press` does.
+fn open_press(sess: EditSession, w: VoxelWorld, a: Author, kind: integer) -> Ack {
+  op_made = session_open_kind(sess, w, a, kind, STOREY_H);
+  if !op_made.om_ok { return ack_no(op_made.om_why); }
+  ack_ok(1)
+}
+
 pub fn press(sess: EditSession, w: VoxelWorld, a: Author, key: text) -> Ack {
   if key == "ArrowUp"   { return raise_ahead(w, a, 1); }
   if key == "ArrowDown" { return raise_ahead(w, a, 0 - 1); }
   if key == "H" {
     return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
   }
-  // ⚠ `O` AND `P` ARE A GESTURE WITH NO BINDING YET — plan 22 `R3`, and it is a
-  // regression taken on purpose. They read `open_ahead(w, a, DOOR_MAT, 1)` and
-  // `open_ahead(w, a, WINDOW_MAT, 1)`, which is the RUNNER's meaning: a material.
-  // The wire's is a profile (`36:1` is round-headed, `36:2` pointed, both cut with
-  // `DOOR_MAT`), so the two axes never lined up and `WINDOW_MAT` on an edge was a
-  // world no `36:` message can produce. See `PR_SELECT` above for why answering
-  // *something* here would be worse than answering nothing.
-  if key == "O" || key == "P" { return Ack { ak_ok: false, ak_why: PR_SELECT }; }
+  // ── THE OPENING FAMILY — plan 22 `S3`, and `R3`'s regression is retired here ──
+  //
+  // ⚠ SIX KEYS, ONE GESTURE. They read `open_ahead(w, a, DOOR_MAT, 1)` and
+  // `open_ahead(w, a, WINDOW_MAT, 1)` — the RUNNER's meaning, a MATERIAL — against a
+  // wire that has always meant a PROFILE, and `R3` made them say *"an opening needs
+  // a profile, and nothing selects one yet"* rather than pick between two axes. It
+  // does now: the units are the outline, the tens the depth, the twenties the
+  // composition, and every one of the six is a `kind` the selection can also hold.
+  //
+  // ⚠ THE KIND COMES FROM THE KEY AND THE SELECTION IS NOT MOVED. That is the
+  // collapse being LOSSLESS rather than a rename: `press("N")` and `36:11` leave the
+  // same world AND the same session, so a key still means one thing in every driver.
+  // The key stops carrying a profile at `V1`, when the scripts say `select` and
+  // `opening` instead — `S2b`'s verb is already there and already gated.
+  //
+  // ⚠ AND `STOREY_H` IS THE SERVER'S `WALL_UP`, the same 12 under two names. It is a
+  // wall's own height, and `hex_editor` is where the vocabulary of a wall lives; the
+  // server's constant is the copy, recorded here so a grep finds the pair.
+  if key == "O" { return open_press(sess, w, a, OP_ROUND); }
+  if key == "P" { return open_press(sess, w, a, OP_POINTED); }
+  if key == "I" { return open_press(sess, w, a, OP_SEGMENT); }
+  if key == "U" { return open_press(sess, w, a, OP_CIRCLE); }
+  if key == "N" { return open_press(sess, w, a, 10 + OP_ROUND); }
+  if key == "M" { return open_press(sess, w, a, 20 + OP_ROUND); }
   // ⚠ `F` AND `G` LIKEWISE — one ring gesture, two materials. `script.mjs`'s own
   // comment on `G` is *"the same tool with wall material — a hex RING, not a
   // line"*, which is the distinction this shared call makes structural.

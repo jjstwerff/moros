@@ -322,7 +322,7 @@ registry — which is also what puts it under part mode's *a part has no ring of
 | **`S1`** — a **selection** in `EditSession`: the current opening profile, door type, window type | ⚠ **NOT the byte round-trip — that premise was measured false, see below.** The selection is DRIVER state beside `es_author`, and its replay is the SCRIPT | ⚠ **`S1` alone cannot go red**, so it merges into `S2`: the field, the verb that sets it, and a consumer that reads it |
 | ✅ **`S2a`** — the opening's **choosing** moves into `hex_editor::opening_make` | the server's `36:` handler, driven through eight scripts and diffed | ⚠ **the instrument is the server's own `println` stream, not `script.mjs`'s** — see below. 240 lines, identical |
 | ✅ **`S2b`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by building two openings with different selections and diffing the **`Opening`**, never by reading the line. ⚠ **NOT the cells**: the store write is `DOOR_MAT` whatever the profile, so cells cannot see it |
-| **`S3` = `R2`** — `opening` becomes ONE verb taking its profile from the selection; `O P I U N M` all resolve to it | the six old keys, kept and still sending `36:<kind>` | the six old keys and the one verb with six selections must produce **six identical worlds**. ⚠ This is the step that proves the collapse is lossless, and it is why the old keys stay until it is green |
+| ✅ **`S3` = `R2`** — `opening` becomes ONE verb taking its profile from the selection; `O P I U N M` all resolve to it | the six old keys, kept and still sending `36:<kind>` | the six old keys and the one verb with six selections must produce **six identical worlds**. ⚠ This is the step that proves the collapse is lossless, and it is why the old keys stay until it is green |
 
 ### ⚠ `S1`'s premise was measured and it is FALSE — 2026-08-11
 
@@ -404,6 +404,37 @@ exists to answer, and it now carries `· opening <kind>`.
 in outline and depth and agree everywhere else, in `lib/hex_editor/tests/opening.loft`. The
 subject line's own rows are in `subject.mjs`, beside `40:`'s, including that a **refused**
 selection sends no `H:` and leaves the standing choice intact.
+
+### ✅ `S3` — the collapse, and the fork it turned on
+
+**Built 2026-08-12.** `O P I U N M` reach ONE gesture — `session_open_kind` — instead of six
+branches, and `R3`'s deliberate regression is retired: the opening keys are ordinary gestures
+again. The equality is the row's own: for each of the six, **pressing the key and
+selecting-then-cutting leave the same world and the same session.**
+
+⚠ **THE FORK, AND IT IS WORTH THE PARAGRAPH.** The obvious reading of *collapse* is that a key
+means **choose this and cut it** — the way picking a brush works, and defensible: pressing `N`
+arguably IS what you are now working on. It was **refused**, because `36:<kind>` on the wire does
+not move the selection either, and a key that re-chose in one driver and not the other would
+leave **different sessions from one keystroke while leaving identical worlds**. The equality test
+that proves the collapse looks at worlds — so that divergence would have hidden under a green
+test, which is the exact shape `W4` exists to prevent. The key stops carrying a profile at `V1`,
+by which time `K1`–`K3` have converted the scripts to `select` + `opening`.
+
+⚠ **THE TABLE IS WRITTEN OUT ON BOTH SIDES, NOT DERIVED.** The test names the wire's own values —
+`1 2 3 4 11 21`, from `script.mjs`'s KEYMAP — beside the keys. Deriving both sides from one list
+is a table checked against itself, and `W4`'s finding is that **four** tables disagreed.
+
+⚠ **AND THE CONTROL IS THAT THE SIX ARE NOT ONE HOLE.** An `open_press` wired to a constant
+satisfies every equality above; a second test requires `O P I U` to cut four different outlines
+and `N` to cut **the first outline again at another depth** — the family's own claim that `11` is
+`1` stopped short.
+
+⚠ **A SABOTAGE AIMED ELSEWHERE FOUND A REAL DEFECT**: pressing `M` with no niche came back as
+`refused: ` **with nothing after it**. The library left `om_why` empty because the SERVER composes
+that sentence — right for the wire, useless to a runner or a page. *Reason, offer, residual, never
+a blank no* applies to every driver, so the reason lives in `opening_make` now and the server's
+key-naming wording still branches on `om_code`.
 
 ## Phase 3 — the verb layer
 

@@ -16,8 +16,8 @@ say *not yet* instead of doing the wrong thing), `S0`/`S2a`/`S2b` (the scene rec
 travel with the store, the opening's choosing is in the library, and a SELECTION decides what it
 cuts), and `P2` is **run and green** — so `W5` is
 buildable today with no loft change.
-**Next:** **`S3`** — `O P I U N M` collapse to one `opening` verb. The full step
-decomposition is
+**Next:** **`V1`** — the verb vocabulary and `verb_of(key)`, where a key stops carrying a
+profile at all. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -81,7 +81,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | **DONE.** 5 sabotages seen red · `make lib-test` rc=0 both backends (hex_editor 400→404) · `make parts` byte-identical · `make gate` 47 PASS / 0 FAIL | ✅ Done |
 | ✅ **`R3`** — `press` answers **`PR_SELECT`** for `O`/`P` until a selection exists | XS | **DONE.** Both tests seen red first · `house.keys` through the runner is **byte-identical**, τ 3909 · the wire path untouched | ✅ Done |
 | ✅ **`S2b`** — the selection, the verb that sets it, and the gesture that reads it | S | **DONE.** Three selections cut three different `Opening`s · 5 sabotages red · `49:` on the wire, `36:` bare cuts what is chosen | ✅ Done |
-| **`S3`** = **`R2`** — `O P I U N M` collapse to ONE `opening` verb | M | the six old keys and one verb with six selections produce **six identical worlds** | ⏭ **Next** |
+| ✅ **`S3`** = **`R2`** — `O P I U N M` collapse to ONE `opening` verb | M | **DONE.** Six keys against six selections: equal `w_tau` AND equal `Opening` · 4 sabotages red · `R3`'s regression retired | ✅ Done |
 | ✅ **`S0`** — the scene records go with the store they describe | XS | **DONE.** Found while checking `S1`'s premise: `9:` left the previous world's cottage in the session and `37:` hung a balcony on it | ✅ Done |
 | ✅ **`S2a`** — the opening's CHOOSING moves into `hex_editor` | S | **DONE.** The server's report is **identical over 8 scripts and 240 lines**; 5 new loft tests, 4 sabotages red | ✅ Done |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
@@ -211,6 +211,28 @@ still pass, because the library tests only cross one hop.
 ⚠ **AND IT PAYS ONE `world_to_hex` SITE.** `editor_server.loft` is 29 → **28**, because the
 deleted branch re-derived the ring's centre through `moros_render` that `fence_ring` already had.
 Plan 19 `L6.3a`'s bill, one line smaller for free.
+
+## What `S3` turned up (2026-08-12) — the collapse, and the fork it turned on
+
+**Six keys reach one gesture now**, and `R3`'s deliberate regression is retired. The equality is
+the row's own and it holds for all six: pressing the key and selecting-then-cutting leave the
+same world **and the same session**.
+
+⚠ **THE FORK IS THE FINDING.** The obvious reading of *collapse* is that a key means **choose
+this and cut it**, the way picking a brush works. Refused — because `36:<kind>` does not move the
+selection either, so a key that re-chose in one driver and not the other would leave **different
+sessions from one keystroke while leaving identical worlds**, and the equality test that proves
+the collapse looks at worlds. A divergence hiding under a green test is what `W4` exists to
+prevent. There is a test for the decision, not just for the behaviour.
+
+⚠ **THE TABLE IS WRITTEN OUT ON BOTH SIDES.** The test names the wire's own `1 2 3 4 11 21`
+beside the six keys rather than deriving both from one list — a table checked against itself
+cannot be surprised, and `W4`'s whole finding is that **four** tables disagreed.
+
+⚠ **AND A SABOTAGE AIMED ELSEWHERE FOUND A DEFECT IN THE NEW CODE**: `M` with no niche refused
+with an **empty reason**. The library left `om_why` blank because the server composes that
+sentence — right for the wire, useless to a runner or a page, and *never a blank no* is a rule
+about every driver.
 
 ## What `S2b` turned up (2026-08-12)
 

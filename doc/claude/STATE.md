@@ -68,7 +68,8 @@ serves**, differing only in where a key press goes.
 | ✅ `S0` | **the scene records go with the store they describe.** `9:` used to leave the previous world's cottage in the session, and `37:` hung a balcony on it |
 | ✅ `S2a` | **the opening's CHOOSING is `hex_editor::opening_make`** — the sixth gesture the headless thread has taken out of the socket, and the one `S1` needed: an opening profile's only possible consumer is the opening gesture, which was not callable from a test |
 | ✅ `S2b` | **the selection** — `es_open_kind`, `49:<kind>` to choose, and a bare `36:` cuts what is chosen. The admissible set is a PREDICATE, not a range: `5`, `15`, `25` and `30` are nothing at all |
-| ⏭ next | **`S3`** — `O P I U N M` collapse to one `opening` verb: six keys and six selections must build six identical worlds |
+| ✅ `S3` | **the six opening keys are one gesture** — `O P I U N M` reach `session_open_kind`, and pressing a key equals selecting-then-cutting in world AND session. ⚠ A key does **not** re-choose: `36:<kind>` does not either, and a key that did in one driver only would diverge under a green test |
+| ⏭ next | **`V1`** — the verb vocabulary and `verb_of(key)`, where a key stops carrying a profile at all |
 
 ⚠ **`S1`'s PREMISE WAS MEASURED AND IT IS FALSE.** The row said *"the session is saved and
 replayed"*, naming `world_to_bytes`. **None of the session is in those bytes** — and the load path

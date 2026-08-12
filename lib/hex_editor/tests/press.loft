@@ -75,11 +75,10 @@ fn test_an_unmapped_key_is_named_rather_than_refused() {
 // …and a real gesture must NOT answer PR_NONE, or the discriminator above passes
 // by refusing everything.
 //
-// ⚠ `O` AND `P` STAY ON THIS LIST AFTER `R3`, and that is the point of the third
-// answer. They are gestures the editor HAS and has not bound yet, so they answer
-// `PR_SELECT` — a refusal with a reason — rather than *not a gesture*. Moving them
-// to the list above would have said the editor cannot cut an opening at all, which
-// is false: the wire cuts one on every `36:`.
+// ⚠ `O` AND `P` STAYED ON THIS LIST THROUGH `R3`, when they answered `PR_SELECT` —
+// a refusal WITH A REASON rather than *not a gesture* — because the editor had an
+// opening and had not bound it. `S3` bound it, and they are ordinary gestures again;
+// the list is unchanged either way, which is the point of the third answer.
 fn test_every_mapped_key_is_reachable() {
   w = flat();
   sess = EditSession {};
@@ -217,22 +216,12 @@ fn test_no_key_writes_a_material_the_wire_cannot() {
   }
 }
 
-// ⚠ AND THE REFUSAL SAYS WHICH KIND OF NO IT IS. `PR_NONE` means *this key is not a
-// gesture* — a walk key, a camera key — and answering it for `O` would tell a reader
-// the editor has no opening at all. It has one; nothing has chosen a profile for it.
-fn test_an_opening_key_says_it_is_waiting_rather_than_unknown() {
-  w = flat();
-  sess = EditSession {};
-  a = author_on(w, 0.0, 0.0, 0.0);
-  against_a_wall(w, a);
-  for k in ["O", "P"] {
-    ack = press(sess, w, a, k);
-    assert(!ack.ak_ok, "key '{k}' cut an opening: {ack.ak_why}");
-    assert(ack.ak_why != PR_NONE,
-           "key '{k}' answered PR_NONE — that says it is a walk key, and it is not");
-    assert(ack.ak_why == PR_SELECT, "key '{k}' said '{ack.ak_why}'");
-  }
-}
+// ⚠ `R3`'s `PR_SELECT` TEST LIVED HERE AND `S3` RETIRED IT, which is what that step
+// was for: *"until `R2` can land"*. `O`/`P` answered *an opening needs a profile,
+// and nothing selects one yet*; they cut one now, and the successor claim —
+// **the opening keys are gestures again, and none of them says PR_SELECT** — is at
+// the bottom of this file beside the collapse it belongs to. Said here rather than
+// deleted silently, because a test that vanishes reads as coverage lost.
 
 // ── `R1b` — the ring, at the feet, and remembered as a trunk ────────────────
 //
@@ -418,4 +407,166 @@ fn test_the_height_is_in_the_worlds_own_unit() {
   assert(a.au_y == 1.0,
          "8 steps at 0.125 is 1.0 world units, the pose says {a.au_y} — a global "
          + "0.25 would have answered 2.0");
+}
+
+// ── `S3` — THE SIX KEYS COLLAPSE, AND IT HAS TO BE LOSSLESS ──────────────────
+//
+// ⚠ ONE VERB NEEDED SIX KEYS BECAUSE THE PROFILE WAS ENCODED IN THE KEY, and a
+// seventh profile would have needed a seventh key. `S2b` gave the profile somewhere
+// else to live; this is the step that proves moving it there loses nothing.
+//
+// The claim, and it is the one the whole modes design rests on: **for every kind the
+// six keys can send, pressing the key and selecting-then-cutting leave the same
+// world and the same session.** If they ever differ, the profile has two homes.
+
+// A wall to open, with the author standing on it — `opening.loft`'s fixture, here
+// because a key press needs a session and that file has no `press`.
+fn ring_world() -> VoxelWorld {
+  rw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  for rq in 0 - 12..13 {
+    for rr in 0 - 12..13 { ground_set(rw, rq, rr, 8, SURFACE_MAT); }
+  }
+  fence_disc(rw, 0, 0, 2, WALL_MAT, 2.0);
+  rw
+}
+
+fn on_the_wall(w: VoxelWorld) -> Author {
+  (owx, owz) = hex_to_px(2, 0);
+  author_on(w, owx, owz, 0.0)
+}
+
+// A niche for the embrasure to be cut into — `21` is composition, so `M` has nothing
+// to do until an `N` has been pressed. The fixture makes that explicit rather than
+// letting the row pass as a refusal.
+fn with_a_niche(s: EditSession, w: VoxelWorld) {
+  wn = press(s, w, on_the_wall(w), "N");
+  assert(wn.ak_ok, "the fixture could not cut the niche an embrasure needs: {wn.ak_why}");
+}
+
+fn test_the_six_opening_keys_are_one_verb_with_six_selections() {
+  // The wire's own table, from `tools/script.mjs`'s KEYMAP — `36:1` `36:2` `36:3`
+  // `36:4` `36:11` `36:21`. ⚠ WRITTEN OUT RATHER THAN DERIVED: deriving both sides
+  // from one list is a table checked against itself, and the whole point of `W4` is
+  // that four tables disagreed.
+  keys  = ["O", "P", "I", "U", "N", "M"];
+  kinds = [1, 2, 3, 4, 11, 21];
+  for ki in 0..6 {
+    k = keys[ki] ?? "";
+    kind = kinds[ki] ?? 0;
+
+    by_key = ring_world();
+    by_sel = ring_world();
+    ks = EditSession {};
+    ss = EditSession {};
+    if kind >= 20 { with_a_niche(ks, by_key); with_a_niche(ss, by_sel); }
+
+    ka = press(ks, by_key, on_the_wall(by_key), k);
+    assert(session_select_open(ss, kind).ak_ok, "kind {kind} is not selectable — the key can "
+         + "send a profile the selection cannot hold, so the collapse LOSES it");
+    sm = session_opening(ss, by_sel, on_the_wall(by_sel), STOREY_H);
+
+    assert(ka.ak_ok == sm.om_ok,
+           "key '{k}' and selection {kind} disagree about whether it worked: "
+         + "{ka.ak_why} / {sm.om_why}");
+    assert(ka.ak_ok, "key '{k}' was refused: {ka.ak_why}");
+    // ⚠ THE WORLD, on the exact clock — a hole cut at a different height or on a
+    // different edge moves it.
+    assert(by_key.w_tau == by_sel.w_tau,
+           "key '{k}' did {by_key.w_tau} writes and selection {kind} did "
+         + "{by_sel.w_tau}");
+    // ⚠ AND THE SESSION, which is the half a world cannot show: the `Opening` is
+    // what the renderer draws, and two paths agreeing on the cells while disagreeing
+    // on the shape is precisely the divergence this step is closing.
+    assert(len(ks.es_open.items) == len(ss.es_open.items),
+           "key '{k}' recorded {len(ks.es_open.items)} openings and selection "
+         + "{kind} recorded {len(ss.es_open.items)}");
+    ko = ks.es_open.items[len(ks.es_open.items) - 1] ?? opening_none();
+    so = ss.es_open.items[len(ss.es_open.items) - 1] ?? opening_none();
+    assert(ko.op_kind == so.op_kind && ko.op_lo == so.op_lo && ko.op_hi == so.op_hi
+           && ko.op_depth == so.op_depth && ko.op_near == so.op_near
+           && ko.op_spring == so.op_spring && ko.op_half == so.op_half,
+           "key '{k}' cut kind {ko.op_kind} lo {ko.op_lo} hi {ko.op_hi} depth "
+         + "{ko.op_depth} near {ko.op_near}, and selection {kind} cut kind "
+         + "{so.op_kind} lo {so.op_lo} hi {so.op_hi} depth {so.op_depth} near "
+         + "{so.op_near}");
+  }
+}
+
+// ⚠ AND THE SIX MUST NOT ALL BE THE SAME HOLE, or the equality above is satisfied by
+// a `press` that ignores its key entirely. This is that test's control, and it is
+// the one that failed first when `open_press` was wired to a constant.
+fn test_the_six_keys_cut_six_different_things() {
+  kinds: vector<integer> = [];
+  depths: vector<float> = [];
+  for k in ["O", "P", "I", "U", "N"] {
+    w = ring_world();
+    s = EditSession {};
+    ack = press(s, w, on_the_wall(w), k);
+    assert(ack.ak_ok, "key '{k}' was refused: {ack.ak_why}");
+    o = s.es_open.items[0] ?? opening_none();
+    kinds += [o.op_kind];
+    depths += [o.op_depth];
+  }
+  // Four outlines, and the fifth is the FIRST outline again at another depth — which
+  // is the family's own claim: `11` is `1` stopped short.
+  assert((kinds[0] ?? 0) != (kinds[1] ?? 0) && (kinds[1] ?? 0) != (kinds[2] ?? 0)
+         && (kinds[2] ?? 0) != (kinds[3] ?? 0),
+         "O P I U cut outlines {kinds[0]} {kinds[1]} {kinds[2]} {kinds[3]}");
+  assert((kinds[4] ?? 0) == (kinds[0] ?? 0),
+         "N cut outline {kinds[4]} and O cut {kinds[0]} — a niche is the same curve");
+  assert((depths[4] ?? 0.0) < (depths[0] ?? 0.0),
+         "…stopped short: N is {depths[4]} deep and O is {depths[0]}");
+}
+
+// ⚠ `PR_SELECT` IS GONE FROM `O`/`P` AND `R3`'s OTHER HALF IS NOT. The constant
+// still exists and still means *a gesture with no binding yet*; what changed is that
+// the opening family has one. A test that only asserted the new behaviour would let
+// the constant rot into something nothing can answer.
+fn test_the_opening_keys_are_gestures_again() {
+  w = ring_world();
+  s = EditSession {};
+  a = on_the_wall(w);
+  for k in ["O", "P", "I", "U", "N", "M"] {
+    ack = press(s, w, a, k);
+    assert(ack.ak_why != PR_NONE, "key '{k}' is not a gesture at all");
+    assert(ack.ak_why != PR_SELECT,
+           "key '{k}' still says there is no selection, and `S2b` gave it one");
+  }
+}
+
+// ⚠ AND A KEY DOES NOT RE-CHOOSE, which is the fork `S3` turned on and therefore the
+// row that has to exist. Letting a key mean *choose this and cut it* — the way
+// picking a brush works — is defensible and was refused: `36:<kind>` on the wire
+// would have to move the selection too, or the runner and the server leave different
+// SESSIONS from one keystroke while leaving identical worlds. A divergence under a
+// green equality test is the exact shape `W4` exists to prevent.
+fn test_pressing_an_opening_key_does_not_move_the_selection() {
+  w = ring_world();
+  s = EditSession {};
+  before = s.es_open_kind;
+  assert(session_select_open(s, OP_SEGMENT).ak_ok, "the fixture could not choose");
+  for k in ["O", "P", "I", "U", "N"] {
+    ww = ring_world();
+    press(s, ww, on_the_wall(ww), k);
+  }
+  assert(s.es_open_kind == OP_SEGMENT,
+         "five key presses moved the choice from {OP_SEGMENT} to {s.es_open_kind} — "
+       + "the wire's `36:<kind>` does not, so the two drivers now disagree about "
+       + "what the author is working on");
+  assert(before != OP_SEGMENT, "the fixture chose the default, so it proves nothing");
+}
+
+// ⚠ AND A REFUSAL SAYS WHY, IN EVERY DRIVER. `M` with no niche came back as
+// `refused: ` with nothing after it — the library left `om_why` empty because the
+// SERVER composes that sentence, which is right for the wire and useless to a runner
+// or a page. Found by a sabotage aimed at something else, which is what a fixture
+// control is for.
+fn test_an_embrasure_with_no_niche_is_refused_in_words() {
+  w = ring_world();
+  s = EditSession {};
+  ack = press(s, w, on_the_wall(w), "M");
+  assert(!ack.ak_ok, "an embrasure was cut with no niche to cut it into");
+  assert(ack.ak_why != "", "and it said why, rather than refusing in silence");
+  assert(ack.ak_why != PR_NONE && ack.ak_why != PR_SELECT,
+         "…with a reason of its own: {ack.ak_why}");
 }

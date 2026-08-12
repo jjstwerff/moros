@@ -2592,7 +2592,15 @@ pub fn opening_make(runs: WallRuns, open: Openings, x: float, z: float,
       om_i = om_i + 1;
     }
     if om_host < 0 {
+      // ⚠ A REASON, NOT A BLANK NO. This carried an empty `om_why` and the server
+      // covered for it with a sentence of its own — right for the WIRE, where the
+      // words may name a key, and wrong for every other driver: `editor_run` printed
+      // `refused: ` with nothing after it. The doorstep rule is *reason, offer,
+      // residual, never a blank no*, and a caller that wants nicer words still has
+      // `om_code` to branch on.
       return OpeningMade { om_ok: false, om_code: OM_NO_HOST, om_open: opening_none(),
+                           om_why: "no niche to cut into — an embrasure is cut into "
+                                 + "the back of one, so there has to be one first",
                            om_back: true, om_kind: om_k, om_x: om_wx, om_z: om_wz };
     }
     om_hostop = open.items[om_host] ?? door_opening(0.0, 0.0, 0.9, 12);

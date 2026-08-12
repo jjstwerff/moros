@@ -276,13 +276,36 @@ pub fn session_select_open(s: EditSession, kind: integer) -> Ack {
 // authored at another unit entirely, so an arch struck against `hex_proj`'s constant
 // would be right on the landscape and wrong on every part.
 pub fn session_opening(s: EditSession, w: VoxelWorld, a: Author, up: integer) -> OpeningMade {
+  session_open_kind(s, w, a, s.es_open_kind, up)
+}
+
+// …and the same gesture told which kind THIS TIME — plan 22 `S3`.
+//
+// ⚠ THE ONE-SHOT DOES NOT MOVE THE SELECTION, and that is the decision the collapse
+// turned on rather than a detail. Six keys reach ONE gesture now instead of six
+// branches, which is the collapse; what they do NOT do is re-choose. `36:<kind>` on
+// the wire does not either, so a key means the same thing in every driver — which is
+// `W4`'s whole invariant, and the thing that would have been broken by the obvious
+// alternative.
+//
+// ⚠ THE ALTERNATIVE, WRITTEN DOWN BECAUSE IT LOOKS RIGHT: let a key mean *choose
+// this and cut it*, the way picking a brush works. It is defensible — pressing `N`
+// arguably IS what you are now working on — and it was refused for one reason: the
+// wire's `36:<kind>` would have to move the selection too, or the runner and the
+// server would leave different SESSIONS from one keystroke while leaving identical
+// worlds, and the equality test that proves the collapse looks at worlds. A
+// divergence under a green test is the exact shape `W4` exists to prevent.
+//
+// The key stops carrying a profile at `V1`, by which point the scripts say
+// `select` and `opening` — and then this entry point is the only one left.
+pub fn session_open_kind(s: EditSession, w: VoxelWorld, a: Author, kind: integer,
+                         up: integer) -> OpeningMade {
   so_ack = open_ahead(w, a, DOOR_MAT, 1);
   if !so_ack.ak_ok {
     return OpeningMade { om_ok: false, om_why: so_ack.ak_why, om_open: opening_none(),
-                         om_kind: s.es_open_kind };
+                         om_kind: kind };
   }
-  so_made = opening_make(s.es_runs, s.es_open, a.au_x, a.au_z, s.es_open_kind, up,
-                         w.w_unit);
+  so_made = opening_make(s.es_runs, s.es_open, a.au_x, a.au_z, kind, up, w.w_unit);
   if so_made.om_ok { s.es_open.items += [so_made.om_open]; }
   so_made
 }
