@@ -182,6 +182,26 @@ default region reintroduces exactly the cost this removes — and the world file
 chunks that say nothing. Its counterpart is elision: **a layer that comes to equal the default
 everywhere is dropped**, the same rule `E1` already applies to an emptied one.
 
+## ⚠ What `G6` turned up: the plane was already there
+
+**A world with no ground default draws 384 triangles over an absent chunk — the full tile.**
+The first version of `G6`'s test asserted it drew *nothing*, and the expectation was wrong, not
+the mesher: the **unbounded** pass has always meshed an absent cell as ground at height 0, which
+is what `editor: world: INFINITE` on the server's banner has been saying all along. Only the
+**bounded** pass — the one a part thumbnail uses, where a world is a small object whose edge
+should be an edge — marks a material-0 cell `FACE_ABSENT`.
+
+⚠ **SO THE GROUND DEFAULT DOES NOT CREATE THE PLANE THE READER STANDS ON. IT DECIDES WHAT THAT
+PLANE IS** — its height and its material, where today it is silently height 0 of the surface
+material. That is a smaller change to the picture than this document implied, and a bigger one to
+the *store*: `G5b`'s sixteen writes of the ground leaving zero chunks is where the value is.
+
+⚠ **AND THE STREAMER'S CHECK IS A CODE READ, NOT A MEASUREMENT** — said plainly because the
+design asked for the opposite. Its loop sweeps `home.cy ± CHUNK_R` and filters by
+`chunk_in_range`, so it demonstrably asks for chunks that do not exist; but *demonstrating it at
+runtime* needs a world with a ground set, which is `G7`. **The gate that measures it belongs to
+`G7`, not here.**
+
 ## ⚠ The failure path this design did NOT enumerate — `G5a.1`, found by probe
 
 **The step said *synthesise the ground where the CHUNK is absent*. The invariant says
@@ -280,7 +300,7 @@ step can still read.
 | ✅ **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | **DONE 2026-08-12.** absent = today, byte for byte — `make parts` byte-identical, `make lib-test` 3300 → 3316 (the 8 new tests × two backends), `make fast` 145 files, `make gate` 53/53. ⚠ **The value is a FIELD and the section is only the FORMAT** — `w_sections` says of itself that the library never reads it, so a `GRND` there would be both a second home and a tag a consumer never wrote; the codec steers it to `w_ground` on the way in. ⚠ **And `R1` is checked in `world_set_ground`**, which is failure path 5: unrefused there, a ground under the reserve surfaces in an unrelated chunk much later |
 | ✅ **`G5a`** | **The READERS consult it**: `world_column`, `world_cell`, `world_surface`, `world_ground_cell` and `world_ground_layer` answer the ground for an untouched cell — ⚠ **whether or not its chunk exists**, which is `G5a.1` and a correction to the row this table used to carry. | **DONE 2026-08-12.** ⚠ **`G5` SPLIT, AND THE ORDER IS FORCED**: a write that skips allocation before the readers answer for an absent chunk is data loss, so readers first. `G5a` alone is *correct but not yet economical* — a world authored flat still costs what it costs today, and every read agrees with it. Tested as an **EQUIVALENCE** against a world whose ground was written cell by cell, which is the invariant's own last clause; four sabotages red |
 | ✅ **`G5b`** | **The WRITERS**: a write equal to the default does not allocate; a layer equal to it everywhere is dropped. | **DONE 2026-08-12.** One rule: **a cell is elidable iff it reads the same as an UNWRITTEN one** — `E1` generalised, not replaced. With no default an unwritten cell reads `Hex {}`, no present cell can read as that, and the rule collapses to today's *no present cells*. ⚠ **AND `b1` FELL OUT OF `b2` RATHER THAN NEEDING A GUARD**: writing the ground onto ground materialises a layer, finds every cell elidable and drops the layer *and the chunk* — 16 writes of the default leave **zero chunks**. ⚠ **AND IT RE-OPENED `G5a.1`'s SEAM IN A THIRD PLACE**: a ground layer equal to the default is dropped, so a chunk kept alive by a storey has no `LABEL_GROUND` layer to find — `world_ground_cell` answers the default there too. Two sabotages red |
-| **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | the step that changes what you SEE, and the one the gates are for. ⚠ It is last because everything before it is inert until a scenario sets a ground — so a regression here cannot be blamed on the four steps below it |
+| ✅ **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | **DONE 2026-08-12, and it needed NO CODE.** `face_grid_for` asks `world_ground_cell` per cell and never walks `w_chunks`, so it inherited `G5a`'s synthesis — which is a claim that had to be **measured**, and `lib/hex_mesh/tests/ground_mesh.loft` is that: a defaulted chunk meshes to the **same `mesh_crc`** as an authored one, near and far, dented and clean. The streamer's loop sweeps a box around the CHARACTER and filters by hex distance, never asking whether a chunk exists — read, not believed. ⚠ **AND IT FOUND THAT THE EDITOR ALREADY DREW AN INFINITE FLOOR** — see below |
 | **`G7`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | the feature, on a store that is already green |
 
 ⚠ **`G1` IS NOT A FORMALITY.** Three hypotheses about this write path were each refuted by their

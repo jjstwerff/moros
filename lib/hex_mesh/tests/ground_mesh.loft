@@ -1,0 +1,162 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `G6` — DOES THE MESHER DRAW GROUND THAT WAS NEVER WRITTEN?
+//
+// [GROUND_DEFAULT.md](../../../doc/claude/GROUND_DEFAULT.md) calls `G6` *the step that
+// changes what you SEE*, and names the walkers it is about: the mesher must mesh a
+// defaulted chunk, and the streamer must bound by DISTANCE rather than by which chunks
+// exist. Its own instruction about the second is the one that matters:
+//
+// > ⚠ **Check this rather than believe it**: a streamer that enumerates existing
+// > chunks instead would stream nothing and the world would look empty.
+//
+// ⚠ **AND THE ANSWER FOR THE MESHER IS THAT `G5a` ALREADY DID IT** — which is a claim
+// that has to be MEASURED rather than read off the call graph. `face_grid_for` asks
+// `world_ground_cell` per cell and never walks `w_chunks`, so it inherits the
+// synthesis; this file is the difference between that being true and being plausible.
+//
+// ⚠ **THE TEST IS AN EQUIVALENCE, FOR THE SAME REASON `ground_read.loft` IS.**
+// Asserting that a defaulted chunk produces *some* triangles proves it is not empty;
+// it cannot be surprised by triangles at the wrong height, the wrong material, or a
+// normal computed from a hole. Every row compares against the mesh of a world whose
+// ground was WRITTEN — the picture the editor draws today.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+
+const U = 0.25;
+const H = 40;
+
+// The oracle: ground written over the tile the mesher will ask about, and the two-cell
+// skirt `face_grid_for` reads around it.
+fn authored() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 4..hex_mesh::MESH_CHUNK + 4 {
+    for r in 0 - 4..hex_mesh::MESH_CHUNK + 4 {
+      hex_editor::ground_set(w, q, r, H, hex_editor::SURFACE_MAT);
+    }
+  }
+  w
+}
+
+// The subject: the same ground, said once, with nothing written.
+fn defaulted() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  set = world_set_ground(w, Hex { h_height: H as u16? ?? 0,
+                                  h_material: hex_editor::SURFACE_MAT as u8? ?? 0 });
+  assert(set.cw_code == CW_OK, "the fixture's ground was refused: {set.cw_detail}");
+  w
+}
+
+// ⚠ THE FIXTURES MUST DIFFER IN STORAGE, or this file compares two authored worlds.
+fn test_the_defaulted_world_stores_nothing() {
+  d = defaulted();
+  assert(len(d.w_chunks) == 0,
+         "the defaulted world stored {len(d.w_chunks)} chunks");
+  assert(len(authored().w_chunks) > 0, "…and the oracle stored some");
+}
+
+// ⚠ THE ROW `G6` EXISTS FOR. A mesher that walked `w_chunks` would return an empty
+// mesh here and the world would be a void the character stands in.
+fn test_a_chunk_that_does_not_exist_still_becomes_triangles() {
+  d = defaulted();
+  m = hex_mesh::chunk_mesh_mat(0, 0, d, hex_editor::SURFACE_MAT);
+  want = hex_mesh::MESH_CHUNK * hex_mesh::MESH_CHUNK * 7;
+  assert(len(m.vertices) == want,
+         "a defaulted chunk meshed {len(m.vertices)} vertices, want {want} — the "
+       + "ground the reader is standing on was not drawn");
+  assert(len(m.triangles) == hex_mesh::MESH_CHUNK * hex_mesh::MESH_CHUNK * 6,
+         "{len(m.triangles)} triangles");
+}
+
+// …and it is the SAME mesh, not merely a non-empty one.
+fn test_the_defaulted_mesh_is_the_authored_mesh() {
+  a = hex_mesh::chunk_mesh_mat(0, 0, authored(), hex_editor::SURFACE_MAT);
+  d = hex_mesh::chunk_mesh_mat(0, 0, defaulted(), hex_editor::SURFACE_MAT);
+  assert(len(a.vertices) == len(d.vertices) && len(a.triangles) == len(d.triangles),
+         "authored {len(a.vertices)}/{len(a.triangles)}, defaulted "
+       + "{len(d.vertices)}/{len(d.triangles)}");
+  // ⚠ THE CRC IS THE INSTRUMENT THE STREAMER ITSELF USES — `Q:{cx},{cz},{crc}` on the
+  // wire — so equality here is equality of the thing the client is told about. Counts
+  // alone would pass on a tile drawn at the wrong height.
+  assert(hex_mesh::mesh_crc(a) == hex_mesh::mesh_crc(d),
+         "the two meshes differ: authored crc {hex_mesh::mesh_crc(a)}, defaulted "
+       + "{hex_mesh::mesh_crc(d)}");
+}
+
+// ⚠ AND A CHUNK FAR FROM THE ORIGIN, because the streamer asks for whatever is within
+// `DRAW_HEXES` of the character and the character walks. A synthesis that only worked
+// near (0,0) would draw a world that ran out.
+fn test_a_far_chunk_meshes_the_same() {
+  d = defaulted();
+  near = hex_mesh::chunk_mesh_mat(0, 0, d, hex_editor::SURFACE_MAT);
+  far  = hex_mesh::chunk_mesh_mat(37, 0 - 21, d, hex_editor::SURFACE_MAT);
+  assert(len(far.vertices) == len(near.vertices),
+         "a far chunk meshed {len(far.vertices)} against {len(near.vertices)}");
+  assert(len(far.vertices) > 0, "…and neither is empty");
+}
+
+// ⚠ **THE EDITOR ALREADY DREW AN INFINITE FLOOR, AND FINDING THAT OUT IS WHAT `G6`
+// TURNED UP.** This row first asserted that a world with no ground draws NOTHING over
+// an absent chunk. It drew **384 triangles** — the full tile — and the expectation was
+// wrong, not the mesher: the unbounded pass has always meshed an absent cell as ground
+// at height 0, which is what `editor: world: INFINITE` on the server's banner means.
+//
+// So the ground default does not CREATE the plane the reader stands on. It decides
+// **what that plane is** — its height and its material — where today it is silently
+// height 0 of the surface material.
+fn test_with_no_default_the_infinite_floor_is_height_zero() {
+  w = world_new(U, 0, 10, 4).wn_world;
+  m = hex_mesh::chunk_mesh_mat(0, 0, w, hex_editor::SURFACE_MAT);
+  assert(len(m.triangles) == hex_mesh::MESH_CHUNK * hex_mesh::MESH_CHUNK * 6,
+         "an absent chunk drew {len(m.triangles)} triangles — the unbounded pass has "
+       + "always drawn the full tile");
+  // …and it is a DIFFERENT mesh from the defaulted one, or the rows above are
+  // comparing a floor to itself and the default changes nothing.
+  d = hex_mesh::chunk_mesh_mat(0, 0, defaulted(), hex_editor::SURFACE_MAT);
+  assert(hex_mesh::mesh_crc(m) != hex_mesh::mesh_crc(d),
+         "the floor at height 0 and the floor at height {H} have the same crc — the "
+       + "ground default is not reaching the picture");
+}
+
+// ⚠ AND THE **BOUNDED** PASS IS WHERE ABSENCE IS VISIBLE AS ABSENCE. `face_grid_for`
+// marks a material-0 cell `FACE_ABSENT` only when bounded — the pass a part thumbnail
+// uses, where a world is a small object and its edge should be an edge. There the
+// default genuinely changes whether anything is drawn at all.
+fn test_the_bounded_pass_draws_the_default_and_nothing_without_one() {
+  bare = world_new(U, 0, 10, 4).wn_world;
+  mb = hex_mesh::chunk_mesh_mat_bounded(0, 0, bare, hex_editor::SURFACE_MAT);
+  assert(len(mb.triangles) == 0,
+         "bounded, with no ground: {len(mb.triangles)} triangles over an absent chunk");
+
+  md = hex_mesh::chunk_mesh_mat_bounded(0, 0, defaulted(), hex_editor::SURFACE_MAT);
+  assert(len(md.triangles) > 0,
+         "bounded, WITH a ground: nothing drawn — a defaulted world would be a void");
+  // and it is the authored picture, not merely a non-empty one
+  ma = hex_mesh::chunk_mesh_mat_bounded(0, 0, authored(), hex_editor::SURFACE_MAT);
+  assert(hex_mesh::mesh_crc(md) == hex_mesh::mesh_crc(ma),
+         "bounded defaulted crc {hex_mesh::mesh_crc(md)} against authored "
+       + "{hex_mesh::mesh_crc(ma)}");
+}
+
+// ⚠ AND THE DENT: a chunk that EXISTS because one cell was written still draws the
+// ground everywhere else. This is `G5a.1`'s seam at the mesh, and it is the shape the
+// editor actually produces — nobody meshes a world with no buildings in it.
+fn test_a_written_cell_does_not_punch_a_hole_in_the_mesh() {
+  d = defaulted();
+  hex_editor::ground_set(d, 1, 1, H + 8, hex_editor::SURFACE_MAT);
+  assert(len(d.w_chunks) == 1, "the dent did not create a chunk");
+
+  a = authored();
+  hex_editor::ground_set(a, 1, 1, H + 8, hex_editor::SURFACE_MAT);
+
+  md = hex_mesh::chunk_mesh_mat(0, 0, d, hex_editor::SURFACE_MAT);
+  ma = hex_mesh::chunk_mesh_mat(0, 0, a, hex_editor::SURFACE_MAT);
+  assert(len(md.vertices) == len(ma.vertices),
+         "dented defaulted {len(md.vertices)} vertices, dented authored "
+       + "{len(ma.vertices)}");
+  assert(hex_mesh::mesh_crc(md) == hex_mesh::mesh_crc(ma),
+         "the dented meshes differ: {hex_mesh::mesh_crc(md)} against "
+       + "{hex_mesh::mesh_crc(ma)}");
+}
