@@ -34,6 +34,51 @@ fn by_fill(w: VoxelWorld, n: integer) {
   world_fill(w, 0, 0, n, n, 0, grass());
 }
 
+// ── A SLOPED fixture, which no constant fill can lay ────────────────────────
+//
+// Ten of `hex_editor`'s fixtures ramp — `G - k * q`, `G + q * step`. The height
+// varies per cell, so `world_fill`'s hoisted record is useless… along that axis.
+// Across the OTHER axis the height is constant, so a ramp is a stack of strips and
+// each strip is a fill. This prices that decomposition against the per-cell loop.
+fn ramp_by_cell(w: VoxelWorld, n: integer) {
+  for rq in 0..n {
+    for rr in 0..n {
+      world_set_cell(w, rq, rr, 0, Hex { h_height: (5 + rq) as u16? ?? 0,
+                                         h_material: 1 as u8? ?? 0 });
+    }
+  }
+}
+
+fn ramp_by_strip(w: VoxelWorld, n: integer) {
+  for sq in 0..n {
+    world_fill(w, sq, 0, sq + 1, n, 0, Hex { h_height: (5 + sq) as u16? ?? 0,
+                                             h_material: 1 as u8? ?? 0 });
+  }
+}
+
+fn ramp_shape(name: text, n: integer, reps: integer) {
+  ra0 = now();
+  for j1 in 0..reps { rw1 = blank(); ramp_by_cell(rw1, n); }
+  ra1 = now();
+  rb0 = now();
+  for j2 in 0..reps { rw2 = blank(); ramp_by_strip(rw2, n); }
+  rb1 = now();
+  rc0 = now();
+  for j3 in 0..reps { rw3 = blank(); ramp_by_strip(rw3, n); }
+  rc1 = now();
+  rd0 = now();
+  for j4 in 0..reps { rw4 = blank(); ramp_by_cell(rw4, n); }
+  rd1 = now();
+  rloop = (ra1 - ra0) + (rd1 - rd0);
+  rfill = (rb1 - rb0) + (rc1 - rc0);
+  println("{name}  {n * n} cells x {reps} worlds x2");
+  println("    per-cell loop        {ra1 - ra0} ms / {rd1 - rd0} ms"
+        + "   -> {(rloop * 1000) / (2 * reps) ?? 0} us per world");
+  println("    strip fills          {rb1 - rb0} ms / {rc1 - rc0} ms"
+        + "   -> {(rfill * 1000) / (2 * reps) ?? 0} us per world");
+  println("    ratio                {(rloop * 100) / rfill ?? 0} %");
+}
+
 // One shape, both paths, twice each in A B B A order. `reps` fresh worlds per
 // reading, because a fixture builds a NEW world per test — measuring a re-fill of
 // the same region would price the one case no fixture has.
@@ -104,5 +149,8 @@ fn main() {
   shape("place/expand  16x16", 16, 20);
   shape("bind          22x22", 22, 20);
   shape("field         33x33", 33, 10);
+  println("");
+  ramp_shape("ramp  41x41 (cave/water)", 41, 8);
+  ramp_shape("ramp  49x13 (road_debt) ", 25, 8);
   shape("the fixed cost 1x1, again", 1, 20);
 }

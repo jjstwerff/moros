@@ -589,7 +589,7 @@ fn test_a_road_walked_down_a_ramp_also_lands_inside_its_limit() {
   rl_r = 0;
   w = world_new(U, 0, 8, 3).wn_world;
   for q in (0 - 4)..30 {
-    for r in (0 - 6)..7 { ground_set(w, q, r, G + 200 - q * 3, SURFACE_MAT); }
+    ground_fill(w, q, (0 - 6), q + 1, 7, G + 200 - q * 3, SURFACE_MAT);
   }
   hs: vector<integer> = [];
   for s in 0..24 { hs += [ground_h(w, s, 0)]; }

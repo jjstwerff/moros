@@ -31,7 +31,7 @@ const N   = 26;
 fn rise(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 4).wn_world;
   for q in (0 - 8)..40 {
-    for r in (0 - 8)..9 { ground_set(w, q, r, G + k * q, SURFACE_MAT); }
+    ground_fill(w, q, (0 - 8), q + 1, 9, G + k * q, SURFACE_MAT);
   }
   w
 }

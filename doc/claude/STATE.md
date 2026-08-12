@@ -29,13 +29,18 @@ when the step landed, and this file duplicating it is how it grows back.
 byte-identical. The record is [GROUND_DEFAULT § What `G2` turned up](GROUND_DEFAULT.md); two
 things belong out here, because neither is about a fill:
 
-- ⛔ **A 14× ON THE OPERATION, NOTHING IN ONE SUITE AND −10.7 % IN THE NEXT.** `hex_part`:
+- ⛔ **A 14× ON THE OPERATION, NOTHING IN ONE SUITE AND −12.9 % IN THE NEXT.** `hex_part`:
   310 tests, 44.8 s → 45.3 s, noise. `hex_editor`, through its own `ground_fill`: **2,472,585 →
-  2,208,143 samples**, and −28.6 % on its fixture-heaviest file. **A win on a call is worth what
-  that call was worth to the caller** — `hex_part`'s fixtures are a tenth the size and its tests
-  write documents to disk; `hex_editor` re-lays a 2401-cell landscape per test in memory. ⚠ **The
+  2,208,143** samples for the flat fixtures and **→ 2,152,279** for the nine ramped ones, with
+  −28.6 % on its fixture-heaviest file. **A win on a call is worth what that call was worth to
+  the caller** — `hex_part`'s fixtures are a tenth the size and its tests write documents to
+  disk; `hex_editor` re-lays a 2401-cell landscape per test in memory. The ramps say it twice:
+  the **best** ratio on the fixture (3×) and the **smallest** effect on the suite. ⚠ **And the
   ratio was the wrong column throughout**: a fixture pays ~1200 us per CHUNK that neither write
   path avoids, and the plan's *"about 2×"* priced that as the subject.
+- ⏭ **A SLOPED FIXTURE IS A STACK OF STRIPS** — every ramp in this tree is affine in one axis, so
+  the height is constant along the other and no ramp primitive was needed. Worth knowing before
+  anyone designs one.
 - ⚠ **AND THE WALL CLOCK SAID THE OPPOSITE — 2m04 before, 4m03 after.** Wrong *sign*, on a box
   shared with other agents' work. The sampler on the same tree, same file, same 28 runs, settled
   it. **A number that disagrees with the mechanism is a cue to change instrument** — not to

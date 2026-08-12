@@ -26,8 +26,8 @@ const G = 200;                 // high enough that a deep cut cannot reach `ρ`
 // a dome would mix it with the fall-line one in a single strip.
 fn ramp(k: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 20)..21 {
-    for r in (0 - 20)..21 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
+  for r in (0 - 20)..21 {
+    ground_fill(w, (0 - 20), r, 21, r + 1, G - k * r, SURFACE_MAT);
   }
   w
 }

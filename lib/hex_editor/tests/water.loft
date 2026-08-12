@@ -297,8 +297,8 @@ fn test_a_road_on_dry_ground_spans_nothing() {
 // constant `r`. Nothing is authored on it, so a river laid here has only the ground.
 fn slope(k: integer) -> VoxelWorld {
   w = world_new(U, 0, 8, 3).wn_world;
-  for q in (0 - 20)..21 {
-    for r in (0 - 20)..21 { ground_set(w, q, r, G - k * r, SURFACE_MAT); }
+  for r in (0 - 20)..21 {
+    ground_fill(w, (0 - 20), r, 21, r + 1, G - k * r, SURFACE_MAT);
   }
   w
 }

@@ -754,6 +754,32 @@ so the write path is a small share of a large test. `hex_editor` re-lays a 2401-
 per test and does its real work in memory. *A 14× on an operation is worth what that operation
 was worth, and that is a property of the caller, not of the change.*
 
+### ✅ A SLOPE IS A STACK OF STRIPS — the ramped fixtures, wired too
+
+Ten of `hex_editor`'s fixtures **ramp** (`G - k * q`, `G + q * step`), so no constant-cell fill
+can lay them. But every one of them is affine in **one** axis, which means the height is
+constant along the *other* — so a ramp is a stack of strips and each strip is a fill.
+
+| | per-cell loop | strip fills | ratio |
+|---|---|---|---|
+| 41×41 ramp (`cave`, `water`) | 25312 us | 11000 us | **230 %** |
+| 25×25 ramp (`road_debt` shape) | 9937 us | 3312 us | **300 %** |
+
+⚠ **AND THE SUITE FELT A TENTH OF THAT** — 2,208,143 → **2,152,279** samples, **−2.5 %**, with
+`cave.loft` alone at **301,131 → 288,630, −4.2 %** over the same 13 runs. The ratio on the
+fixture is *better* than the flat case; the effect on the suite is smaller, because these nine
+fixtures serve fewer tests. **Twice as fast is a fact about the call, and how much of the caller
+it was is a separate measurement every time.**
+
+⚠ **The rewrite swaps the loop order for a ramp along `r`** (`cave`, `water` iterate `r` and
+fill along `q`), and that is safe for the one reason worth writing down: **a chunk is based on
+its first content**, and the first cell of any chunk is its minimum `(q, r)` corner in *either*
+order — so the base, the encoding and the layer bytes are identical, not merely the heights.
+
+**Left alone: two loops** — `slope_limit`'s `road_at` and `settle_owed`'s road pass. Both write
+over ground that already exists, where a fill stops at the first refusal and a loop ignores them,
+and the second reads `ground_h` per cell so it has no constant to hoist at all.
+
 ### ⚠ AND THE WALL CLOCK SAID THE OPPOSITE — 2m04 before, 4m03 after
 
 Measured on this box, one run each, and **it is the wrong sign**: the wired suite came back

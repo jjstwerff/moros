@@ -36,12 +36,21 @@ worth carrying:
 | `hex_part` — five fixtures | 256–484 cells | **310 tests, 44.8 s → 45.3 s.** Noise |
 | `hex_editor` — 27 loops in 22 files, through `ground_fill` | up to **2401** cells | **−10.7 %** of the suite, sampled |
 | …its fixture-heaviest file, `slope_limit.loft` | 49×49 | **−28.6 %**, same 28 runs |
+| …and nine **ramped** fixtures as stacks of strips | 41×41 sloped | a further **−2.5 %** (2.3–3.0× on the fixture) |
 
 **What separates them is how much of a test its fixture IS.** `hex_part` had already taken
 `G3`'s win, its rectangles are a tenth the size, and its tests write part documents to disk, so
 the write path is a small share of a large test; `hex_editor` re-lays a 2401-cell landscape per
 test and does its real work in memory. *A 14× on an operation is worth what that operation was
-worth to the caller.* **The row below was right that the speed argument was spent for the
+worth to the caller* — and the ramps are the same lesson a second time, with the **best** ratio
+on the fixture (3×) and the **smallest** effect on the suite, because they serve fewer tests.
+
+⚠ **A SLOPED FIXTURE IS STILL A FILL, ONE STRIP AT A TIME.** Every ramp here is affine in one
+axis, so the height is constant along the other and the rectangle decomposes into strips with no
+new primitive at all. The order swaps for a ramp along `r`, and that is safe for a reason worth
+stating rather than assuming: **a chunk is based on its first content**, and the first cell of
+any chunk is its minimum `(q, r)` corner in either order — so the stored bytes match, not just
+the heights. **The row below was right that the speed argument was spent for the
 package it was aimed at** — and wrong that it was spent everywhere, which only wiring a second
 consumer could show.
 

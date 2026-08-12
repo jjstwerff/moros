@@ -33,7 +33,7 @@ fn flat() -> VoxelWorld {
 fn ramp(k: integer) -> VoxelWorld {
   w = world_new(U, 0, EPS, 3).wn_world;
   for q in (0 - 24)..25 {
-    for r in (0 - 6)..7 { ground_set(w, q, r, G - k * q, SURFACE_MAT); }
+    ground_fill(w, q, (0 - 6), q + 1, 7, G - k * q, SURFACE_MAT);
   }
   w
 }
