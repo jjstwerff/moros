@@ -507,8 +507,13 @@ it is why `K1`–`K3` convert the scripts to say both before `V3` deletes `press
 > `V2` first would land a silent profile regression **under a green `headless-same`** — the exact
 > shape `W4` exists to prevent, one layer further out.
 
-⚠ **The server's `MSG_HOUSE` site is the exception and can move now**: it passes a literal `"H"`,
-which carries no profile, so `verb_of` throws nothing away there.
+✅ **The server's `MSG_HOUSE` site is the exception, and it has moved** (`V2a`, same day): it
+passed a literal `"H"`, which carries no profile, so `verb_of` throws nothing away there — and
+the wire already agreed, since `MSG_HOUSE` carries no keystroke at all. `make headless-same` is
+green and its sabotage (`VB_FENCE` at that site) red, printing `served:` empty against the
+runner's `house placed 27 cells, 84 wall edges, ridge at 21`. **That also retires the "built and
+never called" state `V1` would otherwise have held across a session boundary** — this tree's
+commonest defect, and the reason `V2a` was not left for later.
 
 ## Phase 4 — the mode, derived
 

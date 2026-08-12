@@ -7848,7 +7848,21 @@ fn main() {
           // saying what happened. A refusal carries the rotation that would have
           // worked — the lattice has six placeable facings of twelve, and the author
           // is owed the one to turn to rather than a silent 30° swing.
-          hack = hex_editor::press(sess, wld, hex_editor::author_at(px, pz, yaw, py), "H");
+          // ⚠ **THE VERB, NOT THE KEY — plan 22 `V2`, and this is the ONE site that
+          // could move today.** `verb_of` throws a key's profile away (six opening
+          // keys answer one `opening`), so every caller that resolves a SCRIPT's keys
+          // has to wait for `K1`/`K2` to teach the scripts to say `select` first —
+          // measured, and the runner cannot even see the regression it would cause,
+          // because the outline lives in the session and the session is not in the
+          // world format. This site passes a **literal**: there is no profile here to
+          // lose, and a server has no keyboard to resolve anyway.
+          //
+          // ⚠ AND THE WIRE ALREADY AGREES WITH THAT. `MSG_HOUSE` carries no keystroke
+          // — the client decided what `H` meant before it sent anything — which is the
+          // same split the verb layer makes explicit: the key is resolved where the
+          // keyboard is, and the verb travels.
+          hack = hex_editor::press_verb(sess, wld, hex_editor::author_at(px, pz, yaw, py),
+                                        hex_editor::VB_PLACE);
           if !hack.ak_ok {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");

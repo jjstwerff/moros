@@ -101,7 +101,8 @@ serves**, differing only in where a key press goes.
 | ✅ `S2b` | **the selection** — `es_open_kind`, `49:<kind>` to choose, and a bare `36:` cuts what is chosen. The admissible set is a PREDICATE, not a range: `5`, `15`, `25` and `30` are nothing at all |
 | ✅ `S3` | **the six opening keys are one gesture** — `O P I U N M` reach `session_open_kind`, and pressing a key equals selecting-then-cutting in world AND session. ⚠ A key does **not** re-choose: `36:<kind>` does not either, and a key that did in one driver only would diverge under a green test |
 | ✅ `V1` | **a key names a VERB.** `verb_of(key)` and `press_verb(…, verb)` beside an unchanged `press(key)`; six verbs — `raise` `lower` `place` `opening` `fence` `wall` — and all eleven keys driven through both layers, compared as **whole-world bytes** |
-| ⏭ next | **`K1`/`K2` BEFORE `V2`** — the scripts learn to say `select` and `opening`, because the runner cannot see the regression `V2` would cause (below). The server's `MSG_HOUSE` can move now |
+| ✅ `V2a` | **the server's `MSG_HOUSE` takes the verb** — the one caller with no profile to lose, so `press_verb` has a production consumer rather than only tests |
+| ⏭ next | **`K1`/`K2` BEFORE `V2b`** — the scripts learn to say `select` and `opening`, because the runner cannot see the regression the verb move would cause (below) |
 
 ⚠ **`V1`'s OWN PHASE ROW NAMED A BLIND INSTRUMENT, AND SO WOULD THE OBVIOUS ALTERNATIVE.** The row
 said *equal `w_tau`*; a fence ring and a wall ring write **the same edges of the same disc**, so
