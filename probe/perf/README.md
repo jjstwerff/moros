@@ -236,6 +236,45 @@ they are derived from.
 the suite is used as evidence that a change is safe: three green suites and a byte-identical
 `make parts` said nothing about whether anything could RUN.
 
+### ✅ `world_ground_cell` — iterate, do not index, 2026-08-12
+
+The top of the profile at **8.4 %**, and it scans a chunk's layers for the one labelled
+`LABEL_GROUND`. The scan was indexed:
+
+```
+was:  for i in 0..len(w.w_chunks[ci].ck_layers) {
+        if w.w_chunks[ci].ck_layers[i].ly_id == LABEL_GROUND
+           && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN { … }
+now:  for gcl in w.w_chunks[ci].ck_layers {
+        if gcl.ly_id == LABEL_GROUND && gcl.ly_kind == KIND_TERRAIN { … }
+```
+
+`w.w_chunks[ci].ck_layers[i].ly_id` walks **three levels for one field**, and the condition
+reads **two** — six navigations per layer where a loop binding pays two. Measured on a standalone
+probe before the edit: 200k scans over a 4-layer chunk, **369 ms indexed against 229 ms
+iterated, 1.6×**.
+
+⚠ **THE BINDING IS A REFERENCE, NOT A COPY**, which is the thing that would have made this a
+pessimisation rather than a win — a `Layer` carries 1024 cells. Established from the tree's own
+code rather than assumed: `world_set_column_as`'s rebase mutates `ly.ly_cells[j].sv_height`
+through exactly this form and the change sticks.
+
+**2,222,770 → 2,201,138 samples, −1.0 %**, `world_ground_cell` 8.4 % → 7.9 %. Three scans of the
+same shape were rewritten (`world_ground_cell`, `world_ground_layer`, `world_put_layer`).
+
+⚠ **AND THE PREDICTION WAS 1.5–2.5 %, SO IT UNDER-DELIVERED.** The two hot by-line rows inside
+the function were the scan's condition, and they added to 4.1 % — but a 1.6× on them is not 1.6×
+on the function, because `find_chunk`, `cell_index` and the four-level cell navigation are the
+rest of it and did not move. **Recorded because the gap is the useful part**: a by-line total is
+not a budget for the improvement, it is a budget for the *work at that line*.
+
+⏭ **WHAT IS LEFT IN IT IS NOT LOCAL.** The remaining self-time is `find_chunk` + the four-level
+`ck_layers[gl].ly_cells[cell_index(q, r)]` navigation, on a function whose callers sample
+**neighbouring hexes of the same chunk** in a loop (a mesh rebuild). The fix is a one-entry
+memo of *last chunk key → (chunk index, ground layer index)* — and ⚠ **the chunk vector is
+REORDERED when an emptied chunk is dropped** (`reindex`), so a stale memo is a silent wrong-cell
+read. That is a design with an invalidation invariant, not a local edit.
+
 ### ⛔ THE FLAT BYTE BLOB — and the two loft defects found trying to price it, 2026-08-12
 
 **Route B was probed, not built, and the probe found two language defects instead.** The design

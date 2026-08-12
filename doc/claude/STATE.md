@@ -96,6 +96,20 @@ see this"* reproduced on the day it was read: **the grep the rule demands takes 
 was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
 it.
 
+✅ **AND `world_ground_cell` — ITERATE, DO NOT INDEX.** `w.w_chunks[ci].ck_layers[i].ly_id` walks
+three levels for one field and the condition reads two, so an indexed scan pays **six**
+navigations per layer where a loop binding pays two. Measured first: 200k scans, **369 ms indexed
+against 229 ms iterated**. Three scans of that shape rewritten; **2,222,770 → 2,201,138, −1.0 %**.
+⚠ The binding is a **reference, not a copy** — established from the rebase mutating through the
+same form, not assumed, because a `Layer` carries 1024 cells. ⚠ **Predicted 1.5–2.5 %, delivered
+1.0 %**: a by-line total is a budget for the *work at that line*, not for the improvement.
+
+⏭ **AND WHAT IS LEFT IN IT IS NOT LOCAL** — `find_chunk` plus a four-level cell navigation, on a
+function whose callers sample **neighbouring hexes of one chunk** in a loop. A one-entry memo of
+*last chunk → (index, ground layer)* is the fix, and ⚠ **the chunk vector is REORDERED when an
+emptied chunk is dropped**, so a stale memo is a silent wrong-cell read. A design with an
+invalidation invariant, not an edit.
+
 ⛔ **THE FLAT BYTE BLOB WAS PROBED AND IT FOUND TWO LOFT DEFECTS INSTEAD OF A DESIGN.** The
 load-bearing claim — *cells are cheaper as flat bytes than as 7-field structs* — could not be
 measured, because the probe for it would not run:

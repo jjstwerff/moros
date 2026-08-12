@@ -451,9 +451,17 @@ pub fn world_layer_id(w: VoxelWorld, q: integer, r: integer, l: integer) -> inte
 pub fn world_ground_layer(w: VoxelWorld, q: integer, r: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0 - 1; }
-  for i in 0..len(w.w_chunks[ci].ck_layers) {
-    if w.w_chunks[ci].ck_layers[i].ly_id == LABEL_GROUND
-       && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN { return i; }
+  // ⚠ ITERATED, NOT INDEXED — 1.6× on the same scan, measured. `w.w_chunks[ci]
+  // .ck_layers[i].ly_id` walks three levels for one field, and the condition reads
+  // TWO fields, so an indexed scan pays six navigations per layer where a loop
+  // binding pays two. 200k scans over a 4-layer chunk: 369 ms indexed, 229 ms
+  // iterated. ⚠ The binding is a REFERENCE, not a copy — `world_set_column_as`'s
+  // rebase mutates through exactly this form and the change sticks — so a layer's
+  // 1024 cells are not touched by taking it.
+  gli = 0;
+  for gly in w.w_chunks[ci].ck_layers {
+    if gly.ly_id == LABEL_GROUND && gly.ly_kind == KIND_TERRAIN { return gli; }
+    gli = gli + 1;
   }
   0 - 1
 }
@@ -468,10 +476,14 @@ pub fn world_ground_layer(w: VoxelWorld, q: integer, r: integer) -> integer {
 pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return Hex {}; }
+  // ⚠ ITERATED, NOT INDEXED — see `world_ground_layer` above for the measurement.
+  // This is the sampling chokepoint (*a mesh rebuild makes thousands*) and it was
+  // the top of the profile at 8.4 %, most of it these two lines.
   gl = 0 - 1;
-  for i in 0..len(w.w_chunks[ci].ck_layers) {
-    if w.w_chunks[ci].ck_layers[i].ly_id == LABEL_GROUND
-       && w.w_chunks[ci].ck_layers[i].ly_kind == KIND_TERRAIN { gl = i; break; }
+  gn = 0;
+  for gcl in w.w_chunks[ci].ck_layers {
+    if gcl.ly_id == LABEL_GROUND && gcl.ly_kind == KIND_TERRAIN { gl = gn; break; }
+    gn = gn + 1;
   }
   if gl < 0 { return Hex {}; }
   e = w.w_chunks[ci].ck_layers[gl].ly_cells[cell_index(q, r)];
@@ -1426,8 +1438,11 @@ pub fn world_put_layer(w: VoxelWorld, cx: integer, cz: integer, base: integer,
   }
   w.w_chunks[ci].ck_base = base;
   li = 0 - 1;
-  for i in 0..len(w.w_chunks[ci].ck_layers) {
-    if w.w_chunks[ci].ck_layers[i].ly_id == id { li = i; }
+  // Same shape as the two ground scans, iterated for the same measured reason.
+  pli = 0;
+  for ply in w.w_chunks[ci].ck_layers {
+    if ply.ly_id == id { li = pli; }
+    pli = pli + 1;
   }
   if li < 0 {
     w.w_chunks[ci].ck_layers += [Layer { ly_id: id, ly_kind: kind, ly_ver: ver,
