@@ -1,8 +1,15 @@
 # A layer is born with a default cell — the ground's, per scenario
 
-**Status: `G1` and `G3` built (2026-08-06); `G2` and `G4`–`G7` designed, not built.** Written
-before the code on purpose: the failure paths below are what turned the first shape of this
-design into the third, and each turn was cheaper on the page than in the store.
+**Status: `G1`, `G3` (2026-08-06) and `G4` (2026-08-12) built; `G2` and `G5`–`G7` designed, not
+built.** Written before the code on purpose: the failure paths below are what turned the first
+shape of this design into the third, and each turn was cheaper on the page than in the store.
+
+⚠ **`G4` IS THE DEFAULT ITSELF AND NOTHING READS IT YET** — `w_ground` on `VoxelWorld`,
+`world_set_ground` with `R1` checked where the ground is STATED, and a `GRND` section in the
+codec. **Absent means today, byte for byte**: `make parts` is byte-identical and every suite is
+at its previous count. `lib/hex_voxel/tests/ground_default.loft` is eight tests, and a step
+nothing reads still went red three ways — the `R1` check removed (1 red), the codec not reading
+the tag back (3), the codec not writing it (3).
 
 ## ⏭ What `G1` turned up, and it reordered the plan
 
@@ -246,7 +253,7 @@ step can still read.
 | ✅ **`G1`** | **The probe, and it could kill the design.** Two columns added to `place_phases`: *(a)* lay the same 256 cells without the per-call overhead, *(b)* read 256 columns from a world where the chunk does **not exist**. **No library change.** | (a) says whether the 109 ms is per-call overhead — if one call still costs ~100 ms the cost is per-*cell* and `G2` is pointless. (b) is the floor the design was thought to be reaching for. **Built. (a) confirmed the design and reordered the plan; (b) refuted its own question.** ⚠ There is no `world_fill` at this step, so (a) bounds a bulk write from ABOVE with `world_set_cell` — an upper bound is enough to answer a *"is it at least"* question |
 | ⏭ **`G2`** | `world_fill(w, q0, r0, q1, r1, cell)` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**. No existing caller changes and no existing behaviour moves. It is the mechanism `G5` needs, which is the only reason it survives `G1` — ⚠ **its speed argument is spent.** `G3` took the 14× without it, and what is left for `world_fill` to win is the ~2× between 25 us a cell and whatever a hoisted inner loop costs. Build it for `G5`, and measure it before claiming a number |
 | ✅ **`G3`** | The fixtures use it — `target()` stops paying the column write. | tests only. The suite time moves and nothing shipped changed. **Built with `world_set_cell`, not with `G2`'s `world_fill`** — `hex_part` 77 s → 35 s, 254 tests green, with cells, layer CRCs and `w_tau` all equal either way |
-| **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | absent = today, byte for byte. Negative control: every suite at the same count, and a file written here loads in the previous build |
+| ✅ **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | **DONE 2026-08-12.** absent = today, byte for byte — `make parts` byte-identical, `make lib-test` 3300 → 3316 (the 8 new tests × two backends), `make fast` 145 files, `make gate` 53/53. ⚠ **The value is a FIELD and the section is only the FORMAT** — `w_sections` says of itself that the library never reads it, so a `GRND` there would be both a second home and a tag a consumer never wrote; the codec steers it to `w_ground` on the way in. ⚠ **And `R1` is checked in `world_set_ground`**, which is failure path 5: unrefused there, a ground under the reserve surfaces in an unrelated chunk much later |
 | **`G5`** | **The accessors consult it**: `world_column`, `world_cell`, `world_surface` synthesise the ground where the chunk is absent. A write equal to the default does not allocate; a layer equal to it everywhere is dropped. | the model change, but still invisible to any world that has not set a ground. ⚠ **This is where `E1` is restated** — and the restatement belongs in `WORLD_MODEL` Part II, not only here |
 | **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | the step that changes what you SEE, and the one the gates are for. ⚠ It is last because everything before it is inert until a scenario sets a ground — so a regression here cannot be blamed on the four steps below it |
 | **`G7`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | the feature, on a store that is already green |

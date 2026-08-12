@@ -222,6 +222,27 @@ pub struct VoxelWorld {
   // consumers keeps compiling and a world simply has no sections until something
   // puts one there.
   w_sections: vector<Section> = [],
+  // ── THE GROUND DEFAULT — plan `G4`, [GROUND_DEFAULT.md](../../../doc/claude/GROUND_DEFAULT.md)
+  //
+  // *A world is an infinite plane of its ground default, and storage holds only what
+  // differs from it.* This is that default, and **absent means today, exactly**:
+  // `Hex {}` has no material, `hex_present` says so, and every path behaves as it
+  // always has until a scenario sets one. That is what makes `G4` revertible by
+  // deleting a line and what lets the work stop here.
+  //
+  // ⚠ **NOTHING READS IT YET** — `G5` is where the accessors consult it. What `G4`
+  // can be surprised by is the round trip (a default that does not survive save and
+  // load is a scenario that silently forgets its own ground) and the `R1` check
+  // (a ground under the reserve must be refused where it is STATED, not where a
+  // layer is later born from it).
+  //
+  // ⚠ **A FIELD, AND A SECTION ONLY IN THE FORMAT.** `w_sections` says of itself
+  // that it is *the consumer's bytes, which this library never reads*, so the
+  // default does not live there — the codec writes a `GRND` section from this field
+  // and reads it back into it. One home for the value, and the format still moves
+  // not at all: an old build sees a tag it ignores, a new build sees a file without
+  // one and starts absent.
+  w_ground: Hex = Hex {},
 }
 
 // A column: ABSOLUTE heights, indexed by the chunk's layer order. It carries NO
@@ -1614,6 +1635,39 @@ pub fn world_section_at(w: VoxelWorld, tag: integer) -> integer {
   0 - 1
 }
 
+// ── THE GROUND DEFAULT — `G4` ────────────────────────────────────────────────
+//
+// The tag the codec writes it under. A four-character section tag like every other,
+// and free — `PART`, `WALL`, `OPEN` and `WTTH` are the ones in use.
+pub fn ground_tag() -> integer { section_tag("GRND") }
+
+// What this world's untouched ground is, or an absent cell if it has none.
+pub fn world_ground_default(w: VoxelWorld) -> Hex { w.w_ground }
+
+// ⚠ ABSENCE IS `hex_present`, NOT A SEPARATE FLAG. A ground with no material is not
+// ground — it is exactly the nothing an unwritten cell already reads as — so the
+// predicate the store already uses for *is there anything here* answers this too,
+// and there is no second field that can disagree with the first.
+pub fn world_has_ground_default(w: VoxelWorld) -> boolean { hex_present(w.w_ground) }
+
+// Set it, or refuse — and the refusal is `R1`, checked HERE.
+//
+// ⚠ **`R1` IS CHECKED WHERE THE GROUND IS STATED, NOT WHERE A LAYER IS BORN FROM
+// IT.** GROUND_DEFAULT.md's failure path 5: a scenario that sets a ground under the
+// reserve and is not refused here surfaces the failure in an unrelated chunk much
+// later, when some layer inherits it — a wrong answer a long way from its cause.
+// `check_column` uses the same comparison for an authored cell, deliberately: a
+// defaulted cell is an absolute height like any other.
+pub fn world_set_ground(w: VoxelWorld, cell: Hex) -> ColumnWrite {
+  if hex_present(cell) && cell.h_height < w.w_reserve {
+    return ColumnWrite { cw_code: CW_RESERVE, cw_layer: 0 - 1,
+                         cw_detail: "ground height {cell.h_height} is below the "
+                                  + "reserve {w.w_reserve}" };
+  }
+  w.w_ground = cell;
+  ok_write()
+}
+
 // Replaces the FIRST section with this tag, or appends. Duplicates of a tag are
 // not refused — the format carries whatever it was handed, and refusing here
 // would mean this library had an opinion about content it cannot read.
@@ -1934,6 +1988,22 @@ pub fn world_to_bytes(w: VoxelWorld, palette: vector<integer>,
     bw_i32(wtb, wtb_s.sc_tag);
     bw_i32(wtb, len(wtb_s.sc_bytes));
     for wtb_b in wtb_s.sc_bytes { bw_u8(wtb, wtb_b); }
+  }
+  // ⚠ THE GROUND DEFAULT, AND ONLY IF THERE IS ONE — `G4`. A world that has not set
+  // one writes NOTHING here, so its bytes are what they were before this existed:
+  // that is the whole safety property, and `make parts` byte-identical is its check.
+  // Eight bytes, the cell's own fields in the layer cell's order, height ABSOLUTE
+  // because a default belongs to no chunk and so has no base to be relative to.
+  if hex_present(w.w_ground) {
+    bw_i32(wtb, ground_tag());
+    bw_i32(wtb, 8);
+    bw_u16(wtb, w.w_ground.h_height);
+    bw_u8(wtb, w.w_ground.h_material);
+    bw_u8(wtb, w.w_ground.h_item);
+    bw_u8(wtb, w.w_ground.h_item_rotation);
+    bw_u8(wtb, w.w_ground.h_wall_nw);
+    bw_u8(wtb, w.w_ground.h_wall_ne);
+    bw_u8(wtb, w.w_ground.h_wall_e);
   }
   wtb.b_data
 }
@@ -2274,7 +2344,19 @@ pub fn world_from_bytes(b: vector<u8>) -> WorldLoad {
     }
     sb: vector<u8> = [];
     for _sbi in 0..slen { sb += [br_u8(r) as u8? ?? 0]; }
-    w.w_sections += [Section { sc_tag: stag, sc_bytes: sb }];
+    // ⚠ `GRND` GOES TO THE FIELD, NOT TO `w_sections` — `G4`, and it is the same
+    // one-home rule the field's own comment states: a default that were both a
+    // section AND a field could disagree with itself across a save. A file that has
+    // no such section simply leaves the default absent, which is a world exactly as
+    // this library read it before the tag existed.
+    if stag == ground_tag() && slen == 8 {
+      w.w_ground = Hex { h_height: ((sb[0] ?? 0) | ((sb[1] ?? 0) << 8)) as u16? ?? 0,
+                         h_material: sb[2] ?? 0, h_item: sb[3] ?? 0,
+                         h_item_rotation: sb[4] ?? 0, h_wall_nw: sb[5] ?? 0,
+                         h_wall_ne: sb[6] ?? 0, h_wall_e: sb[7] ?? 0 };
+    } else {
+      w.w_sections += [Section { sc_tag: stag, sc_bytes: sb }];
+    }
   }
   // ⚠ ASKED ONCE, HERE. Every primitive above answers 0 past the end and sets the
   // flag; a buffer that ran out mid-record would otherwise decode as a world made

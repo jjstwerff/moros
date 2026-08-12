@@ -96,6 +96,30 @@ see this"* reproduced on the day it was read: **the grep the rule demands takes 
 was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
 it.
 
+## ✅ GROUND_DEFAULT `G4` — THE DEFAULT EXISTS, AND NOTHING READS IT YET — 2026-08-12
+
+**[GROUND_DEFAULT](GROUND_DEFAULT.md) is the plan the profiling arrived at**, and `G4` is its
+fourth step: `w_ground` on `VoxelWorld`, `world_set_ground` with `R1` checked, and a `GRND`
+section in the codec. `G1` and `G3` were already built; `G2` and `G5`–`G7` remain.
+
+| | |
+|---|---|
+| **absent means today, byte for byte** | `make parts` **byte-identical** · `make lib-test` 3300 → **3316** (8 new tests × two backends) · `make fast` 145 files · `make gate` 53/53 |
+| the value is a **FIELD**, the section is only the **FORMAT** | `w_sections` says of itself that the library never reads it, so a `GRND` living there would be a second home *and* a tag no consumer wrote. The codec steers it into `w_ground` on the way in |
+| `R1` is checked in `world_set_ground` | failure path 5 of the design: unrefused where the ground is **stated**, a value under the reserve surfaces in an unrelated chunk much later, when some layer inherits it |
+| clearing is never refused | a cell with no material is not ground, so `Hex {}` is always legal — without that there would be no way back to *today* on a world whose reserve is above zero |
+
+⚠ **A STEP NOTHING READS STILL HAS TO GO RED, AND THIS ONE DOES THREE WAYS.** Sabotaged: the
+`R1` check removed (1 red), the codec not reading `GRND` back (3 red), the codec not writing it
+(3 red). ⚠ **And the first sabotage run reported 0 for all three** — the harness `cd`'d to the
+repo root, where `loft test` has no package, and a broken harness reports the same zero a vacuous
+test does. The control row (unsabotaged → 0 failures) is what separated them.
+
+⏭ **`G5` IS NEXT AND IT IS THE MODEL CHANGE**: the accessors synthesise the ground where a chunk
+is absent, a write equal to the default does not allocate, and a layer equal to it everywhere is
+dropped. ⚠ **`G5` before `G6`, never together** — the store answering for absent chunks and the
+picture showing it are two causes for one wrong frame.
+
 ⛔ **`world_set_column_as` — TWO TRANSFORMATIONS, NO GAIN, NOTHING SHIPPED.** 7.0 % of the suite
 and **no by-line row in the top fifteen** — the cost is spread, which is the shape with no single
 edit. (1) Building the `StoredHex` only when the write is needed rather than before the

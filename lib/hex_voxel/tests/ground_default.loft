@@ -1,0 +1,153 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE GROUND DEFAULT — `G4`, and what it can be surprised by.
+//
+// [GROUND_DEFAULT.md](../../../doc/claude/GROUND_DEFAULT.md)'s invariant: *a world is
+// an infinite plane of its ground default, and storage holds only what differs from
+// it.* `G4` is the default itself — the field, the `R1` check, and the round trip —
+// with **nothing reading it yet**; `G5` is where the accessors consult it.
+//
+// ⚠ **A STEP THAT NOTHING READS STILL HAS TO BE ABLE TO GO RED**, which is the lower
+// bound in [plans/README](../../../plans/README.md) and this tree's commonest defect
+// wearing a planning hat. Two claims here can fail for real reasons:
+//
+//   · **the round trip** — a default that does not survive save and load is a
+//     scenario that silently forgets its own ground, and the symptom would appear
+//     at `G5` as *the accessors do not consult it*, which is the wrong diagnosis.
+//   · **`R1`** — a ground below the reserve refused where it is STATED. Failure
+//     path 5 in the design: unrefused here, it surfaces in an unrelated chunk much
+//     later, when some layer inherits it.
+//
+// And one that guards everything else: **absent means today, byte for byte.**
+use hex_voxel;
+
+const RESERVE = 100;
+
+fn mk() -> VoxelWorld { world_new(0.25, RESERVE, 8, 3).wn_world }
+fn grass(h: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: 4 as u8? ?? 0 }
+}
+
+// ⚠ THE ONE THAT MAKES THE OTHER SIX STEPS REVERTIBLE: a new world has no ground,
+// and `hex_present` is the whole of "absent" — there is no second flag to disagree.
+fn test_a_world_starts_with_no_ground_default() {
+  w = mk();
+  assert(!world_has_ground_default(w), "a fresh world already has a ground");
+  assert(!hex_present(world_ground_default(w)),
+         "…and it reads as present: material {world_ground_default(w).h_material}");
+}
+
+fn test_a_ground_can_be_set_and_read_back() {
+  w = mk();
+  set = world_set_ground(w, grass(200));
+  assert(set.cw_code == CW_OK, "a legal ground was refused: {set.cw_detail}");
+  assert(world_has_ground_default(w), "the ground did not take");
+  g = world_ground_default(w);
+  assert(g.h_height == 200 && g.h_material == 4,
+         "read back height {g.h_height} material {g.h_material}");
+}
+
+// ⚠ `R1`, AT THE PLACE THE GROUND IS STATED — design failure path 5.
+fn test_a_ground_below_the_reserve_is_refused_and_changes_nothing() {
+  w = mk();
+  assert(world_set_ground(w, grass(200)).cw_code == CW_OK, "the fixture was refused");
+
+  bad = world_set_ground(w, grass(RESERVE - 1));
+  assert(bad.cw_code == CW_RESERVE,
+         "a ground below the reserve was accepted with code {bad.cw_code}");
+  assert(bad.cw_detail != "", "…and it said why");
+  // ⚠ AND THE STANDING GROUND DID NOT MOVE. A refusal that half-applied would leave
+  // a world whose ground is neither the old one nor the one that was refused.
+  assert(world_ground_default(w).h_height == 200,
+         "the refused ground took anyway: {world_ground_default(w).h_height}");
+}
+
+// ⚠ AND AN ABSENT CELL IS NOT SUBJECT TO `R1` — clearing the ground is always legal,
+// whatever height it carries, because a cell with no material is not ground at all.
+// Without this the rule would forbid `world_set_ground(w, Hex {})` on a world whose
+// reserve is above zero, and there would be no way back to *today*.
+fn test_clearing_the_ground_is_never_refused() {
+  w = mk();
+  world_set_ground(w, grass(200));
+  cleared = world_set_ground(w, Hex {});
+  assert(cleared.cw_code == CW_OK, "clearing was refused: {cleared.cw_detail}");
+  assert(!world_has_ground_default(w), "the ground is still there after clearing");
+}
+
+// ── the round trip ──────────────────────────────────────────────────────────
+
+fn test_the_ground_survives_bytes() {
+  w = mk();
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [grass(300)] });
+  assert(world_set_ground(w, grass(250)).cw_code == CW_OK, "the fixture was refused");
+
+  back = world_from_bytes(world_to_bytes(w, []));
+  assert(back.wl_code == WL_OK, "the world did not decode: {back.wl_detail}");
+  assert(world_has_ground_default(back.wl_world),
+         "the ground did not survive the round trip");
+  g = world_ground_default(back.wl_world);
+  assert(g.h_height == 250 && g.h_material == 4,
+         "it came back as height {g.h_height} material {g.h_material}");
+  // …and the world itself is still there, so this is not a round trip of nothing.
+  assert(world_cell(back.wl_world, 1, 1, 0).h_height == 300,
+         "the authored cell did not survive either");
+}
+
+// ⚠ AND IT DOES NOT LAND IN `w_sections`. The tag rides in the FORMAT and the value
+// lives in the field; a default that were both could disagree with itself across a
+// save, and a consumer walking its own sections would find a tag it never wrote.
+fn test_the_ground_does_not_appear_as_a_consumer_section() {
+  w = mk();
+  world_set_ground(w, grass(250));
+  back = world_from_bytes(world_to_bytes(w, []));
+  assert(back.wl_code == WL_OK, "the world did not decode: {back.wl_detail}");
+  assert(len(back.wl_world.w_sections) == 0,
+         "{len(back.wl_world.w_sections)} sections came back for a world that set "
+       + "none — the ground leaked into the consumer's list");
+  assert(world_section_at(back.wl_world, ground_tag()) < 0,
+         "…and `GRND` is findable through the section API");
+}
+
+// ⚠ A CONSUMER'S OWN SECTIONS STILL ROUND-TRIP BESIDE IT, or the branch that steers
+// `GRND` to the field has quietly eaten everything else.
+fn test_a_consumer_section_survives_beside_the_ground() {
+  w = mk();
+  world_set_ground(w, grass(250));
+  world_set_section(w, section_tag("MINE"), [1 as u8? ?? 0, 2 as u8? ?? 0]);
+  back = world_from_bytes(world_to_bytes(w, []));
+  assert(back.wl_code == WL_OK, "the world did not decode: {back.wl_detail}");
+  assert(len(back.wl_world.w_sections) == 1,
+         "{len(back.wl_world.w_sections)} consumer sections came back, want 1");
+  assert(world_has_ground_default(back.wl_world), "and the ground came back too");
+}
+
+// ── absent means TODAY, byte for byte ───────────────────────────────────────
+//
+// ⚠ THE SAFETY PROPERTY OF THE WHOLE PLAN, and the reason six of its seven steps are
+// revertible: until a scenario sets a ground, nothing anywhere behaves differently.
+// The tree-level control is `make parts` byte-identical; this is the in-library one.
+fn test_a_world_with_no_ground_encodes_exactly_as_it_did() {
+  w = mk();
+  world_set_column(w, Column { co_q: 1, co_r: 1, co_cells: [grass(300)] });
+  before = world_to_bytes(w, []);
+
+  // Setting an ABSENT ground must be a no-op in the bytes — not merely "small".
+  assert(world_set_ground(w, Hex {}).cw_code == CW_OK, "clearing was refused");
+  after = world_to_bytes(w, []);
+  assert(len(before) == len(after),
+         "an absent ground added {len(after) - len(before)} bytes");
+  for i in 0..len(before) {
+    assert((before[i] ?? 0) == (after[i] ?? 0),
+           "an absent ground changed byte {i}");
+  }
+
+  // …and the control: a PRESENT one does add exactly its section — 8 bytes of cell
+  // plus the tag and the length. Without this the row above passes on an encoder
+  // that never writes the section at all.
+  world_set_ground(w, grass(250));
+  with = world_to_bytes(w, []);
+  assert(len(with) == len(before) + 16,
+         "a ground added {len(with) - len(before)} bytes, want 16 (tag 4, len 4, "
+       + "cell 8)");
+}
