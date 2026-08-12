@@ -22,6 +22,34 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ⏭ THE CAMERA IS NO LONGER THE CHARACTER — `eye`, 2026-08-12
+
+**A script can stand the camera in the world and look back at whoever is building.** All five
+camera modes are DERIVED from the character's pose, so until now the only way to change a view
+was to move the character — and moving the character moves **where the next gesture lands**.
+Every picture in this tree was taken from behind the person building it.
+
+```
+eye <x> <z> [height]     the camera stands there, looking at the character
+eye off                  release; the mode takes over again
+```
+
+`48:<x>,<z>[,<h>]` on the wire, `48:` to release. `h` is above the **ground** at `(x, z)`.
+[WIRE_PROTOCOL](WIRE_PROTOCOL.md) has the row; [SCRIPTED_EDITOR §1](SCRIPTED_EDITOR.md) has why
+it is not a sixth mode. Gated by `tools/gates/world/eye.mjs` — 13 rows, all read off the `C:`
+matrices, including the character projected through `proj · view` into the clip volume.
+
+⚠ **THE COMPOSITION RULE IS A MEASUREMENT.** Aiming from a point on the **character→house
+axis** puts a 1.8-unit figure against a 9-unit building at the same bearing and it reads as
+part of the wall — *in frame and invisible*, which the projection arithmetic cannot tell from
+visible. Put the eye **across** that line.
+
+✅ **AND IT CLOSED THE `house.keys` DEFECT REPORTED THE DAY BEFORE.** Its `O`/`P` had cut
+nothing since the script was written, because both poses stood INSIDE the footprint; they are
+on the perimeter now and the wire says `opened profile 1 at (-2,1)` / `profile 2 at (-1,2)`.
+⏭ **`shots/s6-house.png` and `s6-door.png` want your eyes** — the acceptance is *does a person
+call it a house with a door in it*.
+
 ## ⏭ PICK UP HERE — plan 22, THE PAGES CLIENT, and it is the priority
 
 **[#22](https://github.com/jjstwerff/moros/issues/22) · [plan](../../plans/22-pages-client/README.md)

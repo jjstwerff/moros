@@ -4,6 +4,19 @@
 # four walls that meet), a door and a window cut into it (S5), and the roof the
 # house now carries (S6). Then stand back and look, which is the only test that
 # answers the question this step asks.
+#
+# ⚠ THE DOOR AND THE WINDOW WERE CUT FROM INSIDE THE HOUSE AND CUT NOTHING, for as
+# long as this script has existed. Both poses answered *"no wall here to open —
+# stand against one"*, in BOTH drivers, so `s6-house.png` never had either. It was
+# the pose, not the gesture: the two below are on the house's own perimeter and are
+# measured, not guessed — `opened profile 1 at (-2,1)` and `opened profile 2 at
+# (-1,2)` come back on the wire.
+#
+# ⚠ AND THE CAMERA IS NO LONGER THE CHARACTER. `eye` stands it in the world looking
+# back at whoever is standing there, so the last two shots can show the house from
+# outside WITH its author in the doorway — which is what the acceptance question
+# actually asks. Before this, every picture in this tree was taken from behind the
+# person building it.
 
 echo --- flat ground to build on
 at 0 0 0
@@ -15,11 +28,28 @@ at -6 -6 30
 key H
 
 echo --- a door and a window in its near wall (stand ON the wall's own cells)
-at -3 -1 30
+at -3 2 30
 key O
-at -1 -3 30
+at -1 3 30
 key P
 
-echo --- stand back at a corner, where a gable shows as a gable
-at -18 -6 15
+# ⚠ THE AUTHOR STEPS OUT BEFORE THEY ARE PHOTOGRAPHED, and the first attempt is why:
+# aimed at the pose that CUT the door — hard against the wall's own cells — the eye
+# looked at a figure the wall was standing in front of. In frame and invisible, which
+# the projection arithmetic cannot tell apart from visible. So the shot moves them
+# clear of the wall first, and then the house is BEHIND them, which is the picture the
+# acceptance question is about.
+# ⚠ AND THE EYE GOES OFF THE CHARACTER→HOUSE AXIS, which is a composition rule
+# rather than a taste: standing the eye on that line puts a 1.8-unit figure against
+# a 9-unit building at the same bearing, and it reads as part of the wall. Three
+# angles were photographed; the one that shows a PERSON is the one across the line.
+echo --- the author outside their own house, from across the line
+at -6 5 30
+eye -18 -6 7
 snap s6-house
+
+echo --- and square on to the door they just cut
+eye -13 12 5
+snap s6-door
+
+eye off

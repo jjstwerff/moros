@@ -466,6 +466,19 @@ const MSG_BIND = 46;
 // they write different terrains, one is a disc and one is a line, and a mode that meant
 // two things would make every acknowledgement ambiguous.
 const MSG_WATER = 47;     // waterways: lay a stream as you walk (plan 20 `A10`)
+// ⚠ THE PLACED EYE — `48:<x>,<z>[,<h>]`, and empty releases it.
+//
+// Every one of the five camera modes is DERIVED from the character's pose, so the
+// only way a script could change the view was to move the character — and moving
+// the character moves where the next gesture lands. This stands the eye at a point
+// in the WORLD, looking back at the character, so a picture can show a house from
+// outside with whoever built it standing in the door.
+//
+// ⚠ `h` IS ABOVE THE GROUND AT `(x, z)`, not an absolute height. A script that had
+// to know the terrain to place a camera would be a script that breaks the moment
+// anything is raised under it — and every existing gesture already takes the
+// ground under the feet as its datum (`R1a`).
+const MSG_EYE   = 48;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -5099,8 +5112,42 @@ fn cam_pivot_x(cx: float, cyaw: float) -> float { cx + (0.0 - sin(cyaw)) * figur
 fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() * 0.34 }
 fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
 
+// Where a placed eye stands, and whether one is placed at all — `48:`.
+//
+// ⚠ ONE STRUCT RATHER THAN FOUR PARAMETERS, and `cam_wire` is why: it already
+// carries ten and loft's own advice nudges at eight. Four more would make the two
+// call sites a line of positional floats nobody can read.
+struct PlacedEye {
+  pe_on: boolean = false,
+  pe_x:  float = 0.0,
+  pe_y:  float = 0.0,       // absolute, in world units — the caller resolved the ground
+  pe_z:  float = 0.0,
+}
+
 fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: float,
-            dist: float, slide: float, mode: integer, wld: VoxelWorld) -> text {
+            dist: float, slide: float, mode: integer, wld: VoxelWorld,
+            eye_at: PlacedEye) -> text {
+  // ── A PLACED EYE, AND IT IS THE FIRST BRANCH ON PURPOSE ────────────────────
+  //
+  // Everything below this line orbits the character. This does not: the eye is
+  // where the author put it and the TARGET is the character, so a script can stand
+  // outside a house and look back at whoever is standing in the door of it.
+  //
+  // ⚠ IT AIMS AT THE CHEST, NOT AT THE FEET. `cyy` is the ground under the
+  // character, and a camera aimed there puts the figure in the top half of the
+  // frame with the sky above it — the picture a script wants is the person and the
+  // building behind them, which is what half a figure of lift buys.
+  //
+  // ⚠ AND IT TAKES NO PITCH AND NO BOOM. Those are the follow solve's answers to
+  // *where should the eye be*, and here the author has already answered it. Nothing
+  // eases either: a tripod that drifted into place would make two consecutive
+  // `snap`s of one scene different pictures.
+  if eye_at.pe_on {
+    return "C:{mat_wire(mat4_look_at(vec3(eye_at.pe_x, eye_at.pe_y, eye_at.pe_z),
+                                     vec3(cx, cyy + figure_wu() * 0.55, cz),
+                                     vec3(0.0, 1.0, 0.0)))};"
+      + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
+  }
   // ── EYES: THE EYE *IS* THE HEAD, AND THE TARGET SWINGS WITH THE PITCH ──────
   //
   // ⚠ SETTING `dist` TO ZERO IS NOT ENOUGH, and that is worth stating because it
@@ -5809,6 +5856,21 @@ fn main() {
   // out on the same `for pc in clients` loop the camera does — so the day the solve
   // splits, only the state moves and no wire changes.
   cam_mode = MODE_AUTO;
+  // ── THE PLACED EYE — `48:`, and it is NOT a sixth mode ──────────────────────
+  //
+  // ⚠ EVERY ONE OF THE FIVE MODES IS DERIVED FROM THE CHARACTER'S POSE, which is
+  // exactly why this is not one of them: the five answer *how do I follow*, and
+  // this answers *stand over there and look back at them*. A script could only
+  // change the view by moving the character, so the camera and the author were the
+  // same thing — and moving the author moves where the next gesture lands.
+  //
+  // ⚠ IT DOES NOT REPLACE THE MODE, IT SUSPENDS IT. Releasing goes back to whatever
+  // `40:` last said, at whatever the ease had reached, because a placed eye is a
+  // photographer's tripod and not a decision about following.
+  eye_on = false;
+  eye_x = 0.0;
+  eye_y = 0.0;
+  eye_z = 0.0;
   cam_snug = false;          // what AUTO has degraded to; ignored when a mode is chosen
   cam_amb = AMB_FOLLOW;      // the ambient, EASED, because a step is a flash
   cam_lamp = LAMP_FOLLOW;    // …and the head-lamp, eased with it
@@ -5987,7 +6049,8 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp, derives: false }]; }
-            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, cam_slide, cam_mode, wld));
+            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, cam_slide, cam_mode, wld,
+                                          PlacedEye { pe_on: eye_on, pe_x: eye_x, pe_y: eye_y, pe_z: eye_z }));
             // ⚠ AND ITS `V:`, HERE, BECAUSE THIS IS WHERE A CLIENT ARRIVES. The tick
             // sends on CHANGE, so a viewer that joins while the mode is already set
             // gets nothing until the mode next moves — which in a finished scene is
@@ -7454,6 +7517,65 @@ fn main() {
             srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing));
             println("editor: camera mode {cam_mode}");
           }
+        } else if ev.msg_id == MSG_EYE {
+          // ── STAND THE EYE THERE AND LOOK BACK — plan 22, `48:` ──────────────
+          //
+          // ⚠ NOT A SIXTH MODE, and the difference is what it is derived FROM. The
+          // five answer *how do I follow this character*; this answers *where do I
+          // stand to see them*. Folding it into `40:` would make the mode table
+          // stop being a table of following rules.
+          if ev.payload == "" {
+            eye_on = false;
+            srv.send_to(ev.cid, "S:eye released — mode {cam_mode}");
+            println("editor: eye released — mode {cam_mode}");
+            cam_pub = true;
+          } else {
+            eyi = ev.payload.find(",");
+            if eyi == null {
+              srv.send_to(ev.cid, "S:eye refused — say <x>,<z> or <x>,<z>,<height>");
+              println("editor: eye refused — no z");
+            } else {
+              eyx = ev.payload[..eyi] as float ?? 0.0;
+              eyrest = ev.payload[eyi + 1..];
+              eyj = eyrest.find(",");
+              eyz = eyrest as float ?? 0.0;
+              // ⚠ THE DEFAULT IS A PERSON'S OWN EYE HEIGHT, so a bare `48:x,z` is
+              // somebody standing there looking at you rather than a drone. A
+              // raised three-quarter view is a decision and gets said out loud.
+              eyh = eye_wu();
+              if eyj != null {
+                eyz = eyrest[..eyj] as float ?? 0.0;
+                eyh = eyrest[eyj + 1..] as float ?? eye_wu();
+              }
+              // ⚠ THE DISTANCE IS ORDINAL AND IT HAS A REAL CEILING, so it is
+              // refused with the offer and the residual rather than clamped
+              // (`K-FIT`). The ceiling is not taste: chunks are streamed within
+              // `DRAW_HEXES` of the CHARACTER and the fog is centred there too, so
+              // an eye beyond that photographs the inside of the fog and reports a
+              // successful picture of nothing.
+              eydx = eyx - px;
+              eydz = eyz - pz;
+              eyd = sqrt(eydx * eydx + eydz * eydz) ?? 0.0;
+              eymax = (DRAW_HEXES as float) * hex_grid::HEX_LEN;
+              if eyd > eymax {
+                srv.send_to(ev.cid, "S:eye refused — {eyd} from the character is "
+                                  + "past what is streamed; offer {eymax}, "
+                                  + "residual {eyd - eymax}");
+                println("editor: eye refused — {eyd} > {eymax}");
+              } else {
+                // The ground under the eye, so a height is a height above where a
+                // person would be standing rather than above the sea.
+                eye_x = eyx;
+                eye_z = eyz;
+                eye_y = ground_under(wld, eyx, eyz, 0.0) + eyh;
+                eye_on = true;
+                srv.send_to(ev.cid, "S:eye at {eye_x},{eye_y},{eye_z} looking at "
+                                  + "the character {eyd} away");
+                println("editor: eye at ({eye_x},{eye_y},{eye_z}) — {eyd} from the character");
+                cam_pub = true;
+              }
+            }
+          }
         } else if ev.msg_id == MSG_LABELS {
           lbi = ev.payload.find(",");
           lbq = 0;
@@ -8423,7 +8545,22 @@ fn main() {
       // Exact rather than tolerant, and it takes the SNAP with it: the tick that
       // declares rest is the one that closes the last 0.001, and a `!cam_rested`
       // test would be the only tick it never published.
-      cam_pub = cam_dist != cam_pd || cam_pitch != cam_pp || cam_slide != cam_ps;
+      //
+      // ⚠ IT ACCUMULATES, AND THE `||` IS THERE FOR A RACE RATHER THAN FOR A BUG
+      // ANYBODY HAS SEEN — which is worth saying exactly, because the obvious
+      // stronger claim was measured and did not hold. `48:` sets `cam_pub` in the
+      // EVENT loop; this line is in the TICK body, which runs only on a pass where
+      // 33 ms have elapsed. So the overwrite loses the flag only when a tick falls
+      // between the handler and the publish — and the gate passes with the plain
+      // `=` in place, twice, including with the camera brought to rest first.
+      //
+      // What IS measured is who publishes: a probe on the send branch reads
+      // `moved=false cam_pub=true` for exactly the two passes that carry a placed
+      // eye and its release, so the handler's flag is the publisher and nothing
+      // else is covering for it. Reset once per pass at the top, set by anybody,
+      // read at the bottom — the shape `moved` already has, and it removes the race
+      // by construction rather than by timing.
+      cam_pub = cam_pub || cam_dist != cam_pd || cam_pitch != cam_pp || cam_slide != cam_ps;
       acc_cam = acc_cam + (ticks() - tph);
       tph = ticks();
 
@@ -9088,7 +9225,8 @@ fn main() {
     // that evolves per tick has to say so itself.
     if moved || cam_pub {
       for pc in clients {
-        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, cam_mode, wld));
+        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, cam_mode, wld,
+                                     PlacedEye { pe_on: eye_on, pe_x: eye_x, pe_y: eye_y, pe_z: eye_z }));
       }
     }
     // ── `V:` — WHAT THIS VIEWER HIDES, AND HOW DARK ITS ROOM IS ────────────────

@@ -964,13 +964,34 @@ for (const raw of lines) {
   // and every reading of it would be wrong in a way no threshold could catch. The
   // list is *what sends*: `cam`, `mesh`, `feet`, `wait`, `echo` and `frame` itself
   // only read, so they leave it standing.
-  if (['at', 'key', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save'].includes(cmd)) {
+  if (['at', 'key', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
     lastShot = null;
   }
   if (cmd === 'at') {
     const [x, z, yaw = 0] = rest.map(Number);
     ws.send(`7:${x},${z},${(yaw * Math.PI) / 180}`);
     console.log('  ' + await ack('placed', 10000));
+  } else if (cmd === 'eye') {
+    // `eye <x> <z> [height]` — stand the CAMERA there and look back at the
+    // character. `eye off` releases it and the camera mode takes over again.
+    //
+    // ⚠ THIS IS THE VERB `at` COULD NEVER BE. `at` moves the character, and the
+    // camera is derived from the character — so every picture in this tree was
+    // taken from behind whoever was building, and moving the camera moved where
+    // the next gesture landed. A script wanting *the house from outside, with the
+    // author standing in its door* had no way to ask.
+    //
+    // ⚠ AND IT IS ON THE `lastShot = null` LIST ABOVE, because it changes the
+    // picture even though it changes nothing in the world — which is exactly the
+    // case `frame` exists to catch.
+    if (rest[0] === 'off') {
+      ws.send('48:');
+      console.log('  ' + await ack('eye ', 10000));
+    } else {
+      const [x, z, h] = rest.map(Number);
+      ws.send(`48:${x},${z}${h === undefined || Number.isNaN(h) ? '' : `,${h}`}`);
+      console.log('  ' + await ack('eye ', 10000));
+    }
   } else if (cmd === 'key') {
     const k = rest[0];
     const msg = KEYMAP[k];

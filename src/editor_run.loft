@@ -106,8 +106,13 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // `wait`, `snap`, `hold`, `rate`, `step` are the SERVER's vocabulary: they wait
   // for an acknowledgement, photograph a renderer, or drive a tick, and none of
   // those exists here. Skipped rather than refused, so one script serves both.
+  // ⚠ `eye` IS HERE FOR THE SAME REASON `snap` IS: it photographs, and there is no
+  // renderer in this program. A camera placed where nobody is looking is not a
+  // refusal, it is a verb this driver has no use for — so one script still serves
+  // both, which is the whole reason this skip list exists.
   if cmd == "wait" || cmd == "snap" || cmd == "hold" || cmd == "rate"
-     || cmd == "step" || cmd == "turn" || cmd == "keys" || cmd == "save" {
+     || cmd == "step" || cmd == "turn" || cmd == "keys" || cmd == "save"
+     || cmd == "eye" {
     return true;
   }
   said = "unknown command '{cmd}'";

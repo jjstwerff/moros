@@ -42,6 +42,46 @@ snapshot carries a whole PNG, and a session would otherwise be a recording made 
 
 **Status: BUILT.** On by default; `recordings/run-<t>.rec`.
 
+### ⚠ The camera was the character, and now it does not have to be — `eye`, 2026-08-12
+
+**All five camera modes are DERIVED from the character's pose**, so for as long as this
+editor has existed a script could only change the view by moving the character — and moving
+the character moves **where the next gesture lands**. Every picture in this tree was taken
+from behind the person building. There was no way to ask for *the house from outside, with
+its author standing in front of it*.
+
+```
+eye <x> <z> [height]     stand the camera THERE, looking back at the character
+eye off                  release it; the camera mode takes over again
+```
+
+on the wire as **`48:<x>,<z>[,<h>]`** and `48:` to release. `h` is **above the ground at
+`(x, z)`**, defaulting to a person's own eye height, because a script that had to know the
+terrain to place a camera breaks the moment anything is raised under it.
+
+| | |
+|---|---|
+| it is **not** a sixth mode | the five answer *how do I follow*; this answers *where do I stand to see them*. Folding it into `40:` would stop that table being a table of following rules |
+| it **suspends** the mode, never replaces it | releasing returns to whatever `40:` last said, at whatever the ease had reached — a tripod is not a decision about following |
+| nothing eases into place | two consecutive `snap`s of one scene must be the same picture |
+| a distance past what is **streamed** is refused with an offer | chunks are streamed within `DRAW_HEXES` of the CHARACTER and the fog is centred there, so an eye beyond that photographs the inside of the fog and reports a successful picture of nothing |
+
+⚠ **AND THE COMPOSITION RULE IS A MEASUREMENT, NOT A TASTE.** Aiming from a point on the
+**character→house axis** puts a 1.8-unit figure against a 9-unit building at the same
+bearing, and it reads as part of the wall — the figure was *in frame and invisible*, which
+the projection arithmetic cannot tell from visible. Put the eye **across** that line. Three
+angles were photographed before one showed a person.
+
+⚠ **`editor_run` SKIPS IT, beside `snap`.** There is no renderer in that program, so a
+camera placed where nobody is looking is a verb it has no use for rather than a refusal —
+which is what keeps one script serving both drivers.
+
+**Gated by [`tools/gates/world/eye.mjs`](../../tools/gates/world/eye.mjs)**, which reads the
+`C:` matrices off the wire and projects the character's own world position through
+`proj · view` to test the clip volume — the arithmetic the GPU does, not a resemblance to
+it — with a point behind the eye as the control that stops that instrument answering
+*inside* for everything.
+
 ---
 
 ## 2. What is scriptable is what is a FUNCTION
