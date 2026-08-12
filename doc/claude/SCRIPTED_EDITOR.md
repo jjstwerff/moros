@@ -82,6 +82,37 @@ which is what keeps one script serving both drivers.
 it — with a point behind the eye as the control that stops that instrument answering
 *inside* for everything.
 
+### ⚠ A script says a VERB now, not a keystroke — plan 22 `K1`, 2026-08-12
+
+**A script is a document, not a keyboard.** It outlives the layout it was written on and it
+is read by a person deciding what a scene does, so `verb place` says that where `key H` says
+which finger moved. Both spellings are accepted, in **both** readers, and `K3` drops the key
+form once every script has been converted.
+
+```
+verb <name>      raise · lower · place · opening · fence · wall
+select <kind>    what the NEXT opening cuts — `49:<kind>` on the wire
+```
+
+⚠ **`select` IS NOT COSMETIC, AND THAT IS THE WHOLE STEP.** `hex_editor::verb_of` is
+deliberately not injective: `O P I U N M` all name one `opening` verb, so a converted script
+that says `opening` and never says `select` cuts **whatever was chosen last**. `key P` becomes
+two lines, not one.
+
+⚠ **AND THE OBVIOUS WAY TO CHECK A CONVERSION CANNOT SEE THAT.** Diff the worlds and a
+pointed window converted as a round one is **equal byte for byte** — `open_ahead` writes
+`DOOR_MAT` whatever the profile, the head lives in the session's `Opening`, and none of the
+session is in the world format ([`S1`](../../plans/22-pages-client/README.md)). So
+`editor_run` grew a **session read-back**: its last lines print the nine registries and every
+opening's geometry, and [`probe/k1/run.sh`](../../probe/k1/run.sh) (`make probe-verbs`) checks
+that instrument against a deliberately mis-converted script before trusting it to report
+agreement.
+
+⚠ **A KEY DOES NOT RE-CHOOSE, SO THE TWO SPELLINGS END ON DIFFERENT SELECTIONS.** That is
+`S3`'s fork, visible: `key O` `key P` finishes holding the selection it started with, its verb
+twin finishes holding `2`. The probe **asserts they differ** — agreement there would mean a
+key had silently re-chosen.
+
 ---
 
 ## 2. What is scriptable is what is a FUNCTION

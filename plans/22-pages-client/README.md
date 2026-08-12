@@ -17,8 +17,11 @@ travel with the store, the opening's choosing is in the library, and a SELECTION
 cuts), and `P2` is **run and green** — so `W5` is
 buildable today with no loft change. **`V1`** is built — a key names a verb, and the key stops
 carrying a profile.
-**Next:** **`V2`** — the callers move to verbs one at a time, `editor_run` first. The full step
-decomposition is
+**`V2a`** moved the server's `MSG_HOUSE`, and **`K1`** taught the scripts to say `verb` and
+`select` — with the runner grown a **session read-back**, because the world cannot see the
+profile a conversion loses.
+**Next:** **`K2`** — the 23 scripts convert one at a time, each green before the next; then
+`V2b` can move `editor_run` without a silent profile regression. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -89,7 +92,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`V2a`** — the server's `MSG_HOUSE` takes the VERB | XS | **DONE.** `make headless-same` green, sabotage red (`served:` empty against `house placed 27 cells, 84 wall edges, ridge at 21`) · `make gate` 48 PASS | ✅ Done |
 | **`V2b`**–**`V3`** — the script-reading callers, then `press(key)` deleted | M | ⚠ **not "the same script builds the same world" — that instrument is blind here**, see below | ⏭ **Blocked on `K2`, not on `V2a`** |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
-| **`K1`**–**`K3`** — scripts accept both spellings, convert one at a time, then drop keys | S | a converted script and its original build the same world | Blocked on `V1` |
+| ✅ **`K1`** — scripts accept both spellings: `key H` and `verb place`, plus `select <kind>` | S | **DONE.** Both drivers, twin scripts, compared on the world AND on the session · `make probe-verbs` · ⚠ the row's own control was blind — see below | ✅ Done |
+| **`K2`**–**`K3`** — convert the 23 scripts one at a time, then drop the key spelling | S | a converted script and its original build the same world **and the same session** | ⏭ **Next** |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | **`B1`** — local mode in `editor_client.loft`: hold an `EditSession`, route presses to `press` | M | both modes build the same world from one script | Blocked on `W4` |
 | **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`, `P5` |
@@ -175,6 +179,66 @@ is not in the world format** — `S1`'s finding, spent. `ak_n` is `1` for all si
 blind too. **`K1`+`K2` come first**, or `V2` lands a silent profile regression under a green
 `headless-same`. The server's `MSG_HOUSE` is the exception — a literal `"H"` carries no profile — and
 can move now. [EDITING_MODES § phase 3](../../doc/claude/EDITING_MODES.md#-and-that-reorders-v2-the-runner-cannot-see-the-regression-it-would-cause).
+
+## What `K1` turned up (2026-08-12) — the row's own control could not see the step
+
+**`verb <name>` and `select <kind>` in both readers** — `src/editor_run.loft`, which calls the
+gestures, and `tools/script.mjs`, which drives the socket. `probe/k1/run.sh` (`make
+probe-verbs`) drives a twin pair of scripts through both and compares them exactly: six checks,
+three of them controls.
+
+⚠ **THE PHASE ROW SAID *"run one converted script and its original and diff the world"* AND
+THAT IS BLIND TO THE ONLY MISTAKE THIS CONVERSION MAKES.** `key P` becomes `select 2` + `verb
+opening`; write `select 1` and the world is equal **byte for byte**, because `open_ahead` writes
+`DOOR_MAT` whatever the profile and the head lives in the session's `Opening` — which `S1`
+measured is not in the world format at all. It is `V1`'s blindness one layer out, carried
+forward in a table nobody had run.
+
+✅ **So the runner grew the session read-back** [EDITING_MODES § phase
+3](../../doc/claude/EDITING_MODES.md) already named as the alternative to converting the
+scripts. It turns out to be needed *for* converting them — it is what makes `K2` an assertion
+rather than a hope, and what `V2b` will read. It prints the nine registries and every opening's
+**geometry**, not only `op_kind`: a digest of the label alone agrees with itself for as long as
+the label is copied correctly.
+
+⚠ **AND THE READ-BACK IS CHECKED BEFORE IT IS BELIEVED.** `wrong.keys` is `verbed.keys` with one
+character changed, and control `C` requires **both** halves at once: the same world (so the
+store's blindness is measured rather than assumed) and a **different** scene (so the reader is
+not blind too). The first half flipping would mean the store had learned to carry a profile,
+which would be good news and would need this argument rewritten.
+
+⚠ **THE TWO SPELLINGS MUST END ON DIFFERENT SELECTIONS.** A key does not re-choose — `S3`'s
+fork — so `key O` `key P` finishes on the selection it started with while its verb twin
+finishes on `2`. The digest prints the standing choice on its own line and the probe asserts
+the two differ; agreement there would mean a key had silently re-chosen.
+
+⚠ **`script.mjs`'s NEW SIX-ROW TABLE IS NOT A FIFTH SITE.** `KEYMAP` decides what a KEY means,
+which is `W4`'s subject; `VERBMAP` decides which message id implements a VERB, which is a fact
+about the wire and is that file's own business — it drives a socket. What it does not hold is a
+**profile**: `36:1 2 3 4 11 21` collapses to one `36:`, so which head a door gets stopped being
+something a JS table knows. ⏭ It is deleted, not converted, on the day the wire carries a verb.
+
+⚠ **AND THE WIRE HALF WANTS TWO INSTRUMENTS FOR THE SAME REASON, BLIND IN OPPOSITE DIRECTIONS.**
+Measured by sabotage, not argued: pointing `VERBMAP.wall` at the fence message leaves **all six
+server sentences identical** — `do_fence` reports `fenced 42 edges … radius 3` for a fence ring
+and a wall ring alike — and the saved world differs at byte 54068. Pointing `VERBMAP.opening` at
+a fixed `36:1` is the mirror: the saved world is byte-identical and the sentence says `opened
+profile 1` where the original said `2`. **So the wire half compares the sentences AND the world
+the server saves**, and neither would have been reached by reading the source: nobody notices
+what a `println` leaves out.
+
+⚠ **THREE INSTRUMENT BUGS WERE FOUND IN THE PROBE ITSELF, EACH READING AS A PASS.** The first
+capture was **25 sentences** of which 21 were part-library thumbnails printed before the server
+opened — a count that is mostly boilerplate reads as coverage. The same capture **lost the last
+gesture of every run**, because `script.mjs` returns 250 ms after its last send and the server
+was killed still writing; two runs truncated at the same place agree perfectly. And the
+unknown-verb control printed a heading and **no verdict**: its helper ended in a `grep` that
+exits 1 when it matches nothing, which is precisely what that control wants to see, so the whole
+`if` body was skipped. The gesture lines are now named one at a time rather than counted.
+
+⚠ **AND A FRESH SERVER PER SCRIPT.** Two runs against one process differ in every
+`hex (q,r) — +N −M chunks` line, because the streaming set carries over — a fact about a viewer,
+not a gesture, and filtering it would have meant choosing what counts as noise.
 
 ## What `P2` turned up (2026-08-11)
 

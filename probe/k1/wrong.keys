@@ -1,0 +1,34 @@
+# K1 — THE SABOTAGE, AND IT IS THE ONE THE STEP EXISTS FOR.
+#
+# `verbed.keys` with ONE character changed: the second window is chosen as a round
+# head (1) where the original pressed `P` for a pointed one (2). That is the exact
+# mistake a hand conversion makes, and it is the mistake no instrument this tree had
+# could see — the two worlds are equal BYTE FOR BYTE, because `open_ahead` writes
+# `DOOR_MAT` whatever the profile and the head lives in the session's `Opening`.
+#
+# `run.sh` requires this file to build a world identical to `verbed.keys`'s and a
+# SESSION that differs. If either half ever stops holding, the read-back has gone
+# blind or the store has learned to carry a profile — and both want saying out loud.
+
+echo --- flat ground to build on
+at 0 0 0
+verb raise
+wait rebuilt
+
+echo --- a house, on one of the six facings the lattice can mitre
+at -6 -6 30
+verb place
+
+echo --- a ROUND-headed door and a ROUND window where a POINTED one was meant
+at -3 2 30
+select 1
+verb opening
+at -1 3 30
+select 1
+verb opening
+
+echo --- a fence ring, and a wall ring, well clear of the house
+at 14 14 0
+verb fence
+at -16 10 0
+verb wall

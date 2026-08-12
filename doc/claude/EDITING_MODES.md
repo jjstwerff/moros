@@ -531,10 +531,68 @@ returns one of three values", it would be a self-test and it would have to merge
 
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
-| **`K1`** — `tools/scripts/*.keys` accepts **both** spellings, `key H` and `verb place` | every existing script, unchanged — **no gate moves on the day the format changes** | a verb spelling that drives a different gesture from its key spelling: run one converted script and its original and diff the world |
+| ✅ **`K1`** — `tools/scripts/*.keys` accepts **both** spellings, `key H` and `verb place` | every existing script, unchanged — **no gate moves on the day the format changes** | ⚠ **the row said *diff the world* and that instrument is blind here** — see below. Both drivers, compared on the world AND on the session |
 | **`K2`** — convert the 23 scripts, one at a time, each green before the next | the key form, still accepted | as `K1`, per script |
 | **`K3`** — drop the key spelling | — | nothing uses it: a grep over `tools/scripts/` |
 | **`T1`** — a **type** declares defaults and, optionally, `(key, verb)` pairs | the built-in set, until a declared type reproduces it exactly | ⚠ **the invariant**: a type added as *data* must reproduce today's cottage byte for byte in `make parts`. If that needs a `.loft` edit, the table is not data yet |
+
+### ✅ `K1` — and the row's own negative control was blind, again
+
+**Built 2026-08-12.** Both readers take `verb <name>` and `select <kind>`:
+`src/editor_run.loft`, which calls the gestures, and `tools/script.mjs`, which drives the
+socket. `probe/k1/run.sh` (`make probe-verbs`) runs a twin pair of scripts —
+`keyed.keys` and `verbed.keys`, the same six gestures in both spellings — through **both**
+drivers and compares them exactly.
+
+⚠ **THE ROW SAID *"run one converted script and its original and diff the world"*, AND THAT
+CANNOT SEE THE ONE MISTAKE A CONVERSION MAKES.** `key P` becomes `select 2` + `verb opening`,
+and writing `select 1` there leaves a world equal **byte for byte**: `open_ahead` writes
+`DOOR_MAT` whatever the profile, the head is in the session's `Opening`, and `S1` measured
+that none of the session is in the world format. The row's instrument was the same one `V1`
+had already caught being blind, one layer out — a phase table can carry a blind control
+forward for as long as nobody runs it.
+
+> So `editor_run` grew the **session read-back** this section already named as the
+> alternative to converting the scripts. It turns out to be needed *for* converting them: it
+> is what makes `K2` an assertion rather than a hope, and it is what `V2b` will read.
+
+⚠ **AND THE READ-BACK IS CHECKED AGAINST SOMETHING IT SHOULD FIND BEFORE IT IS BELIEVED.**
+`wrong.keys` is `verbed.keys` with one character changed. Control `C` requires **both** halves
+at once — the same world (so the store really is blind, and the argument for reading the
+session back is a measurement) and a **different** scene (so the reader is not blind too).
+Either half flipping is worth saying out loud: the first would mean the store had learned to
+carry a profile.
+
+⚠ **THE TWO SPELLINGS MUST END ON DIFFERENT SELECTIONS, AND THE PROBE ASSERTS IT.** `key O`
+`key P` finishes holding the selection it started with — a key does not re-choose, which is
+the fork `S3` refused — while its verb twin finishes holding `2`. The digest prints the
+standing choice on its own line for exactly that reason: it is `es_author`'s category, *this
+driver's choice, never the editor's*, and the twins agreeing on it would mean a key had
+silently re-chosen.
+
+⚠ **`script.mjs` GAINED A SIX-ROW TABLE AND THIS IS NOT A FIFTH SITE.** `KEYMAP` says what a
+KEY means, which is the fact `W4` exists to unify; `VERBMAP` says which message id implements
+a VERB, which is a fact about the wire and is that file's own business — it drives a socket,
+so something there names a message id. What it does **not** hold is a profile: the six
+opening keys are one row now, and which head a door gets stopped being something a JS table
+knows. ⏭ It is deleted rather than converted on the day the wire carries a verb.
+
+⚠ **AND `verb` SENDS AND READS EXACTLY AS `key` DOES, DELIBERATELY.** `K1`'s bar is that *no
+gate moves on the day the format changes*, so a converted line has to put the same sentence in
+the transcript at the same moment.
+
+⚠ **THE WIRE HALF NEEDS TWO INSTRUMENTS FOR THE SAME REASON THE HEADLESS HALF DOES, AND THEY
+ARE BLIND IN OPPOSITE DIRECTIONS.** Sabotaged, not argued: `VERBMAP.wall` pointed at the fence
+message leaves **all six server sentences identical** — `do_fence` reports `fenced 42 edges …
+radius 3` for a fence ring and a wall ring alike — and the world the server saves differs at
+byte 54068. `VERBMAP.opening` pinned to `36:1` is the mirror: byte-identical world, and the
+sentence reads `opened profile 1` where the original said `2`. **Neither gap was reachable by
+reading the source — nobody notices what a `println` leaves out.**
+
+⚠ **`select` WAITS FOR AN ANSWER RATHER THAN SLEEPING, AND `ack` HAD TO LEARN A LIST.**
+Choosing can be refused (`5` is not an opening kind), and waiting on the success wording alone
+turns a refusal into a timeout — the instrument reporting *nothing arrived* where what arrived
+was the answer.
 
 ⚠ **`T1` IS WHERE THE SYSTEM STARTS TO GROW, AND IT IS LAST FOR A REASON.** Every step above
 narrows what a type has to be able to say; declaring the format first would be designing a

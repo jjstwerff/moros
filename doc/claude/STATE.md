@@ -102,7 +102,60 @@ serves**, differing only in where a key press goes.
 | ✅ `S3` | **the six opening keys are one gesture** — `O P I U N M` reach `session_open_kind`, and pressing a key equals selecting-then-cutting in world AND session. ⚠ A key does **not** re-choose: `36:<kind>` does not either, and a key that did in one driver only would diverge under a green test |
 | ✅ `V1` | **a key names a VERB.** `verb_of(key)` and `press_verb(…, verb)` beside an unchanged `press(key)`; six verbs — `raise` `lower` `place` `opening` `fence` `wall` — and all eleven keys driven through both layers, compared as **whole-world bytes** |
 | ✅ `V2a` | **the server's `MSG_HOUSE` takes the verb** — the one caller with no profile to lose, so `press_verb` has a production consumer rather than only tests |
-| ⏭ next | **`K1`/`K2` BEFORE `V2b`** — the scripts learn to say `select` and `opening`, because the runner cannot see the regression the verb move would cause (below) |
+| ✅ `K1` | **a script says a VERB** — `verb <name>` and `select <kind>` in both readers, and the runner grew a **session read-back** because the world cannot see what a conversion loses. `make probe-verbs` |
+| ⏭ next | **`K2`** — convert the 23 scripts one at a time, each green before the next. Then `V2b` can move `editor_run` |
+
+## ⏭ `K1` — AND THE ROW'S OWN NEGATIVE CONTROL WAS BLIND, 2026-08-12
+
+**Both script readers take `verb` and `select` now** — `src/editor_run.loft` (which calls the
+gestures) and `tools/script.mjs` (which drives the socket) — and
+[`probe/k1/run.sh`](../../probe/k1/run.sh) drives a twin pair of scripts through both.
+
+⚠ **THE PHASE ROW SPECIFIED *"run one converted script and its original and diff the world"*,
+AND THAT CANNOT SEE THE ONE MISTAKE THE CONVERSION MAKES.** `key P` becomes `select 2` + `verb
+opening`; write `select 1` and the two worlds are equal **byte for byte** — `open_ahead` writes
+`DOOR_MAT` whatever the profile, the head is in the session's `Opening`, and `S1` measured that
+none of the session is in the world format. **It is `V1`'s blindness one layer out**, sitting
+in a table nobody had run yet.
+
+✅ **So the runner grew the session read-back** EDITING_MODES named as the *alternative* to
+converting the scripts — and it turns out to be what makes converting them an assertion rather
+than a hope. It prints the nine registries and each opening's **geometry**, never only
+`op_kind`: a digest of the label agrees with itself for as long as the label is copied
+correctly.
+
+⚠ **CONTROL `C` REQUIRES BOTH HALVES AT ONCE** — a deliberately mis-converted script must leave
+the **same world** (so the store's blindness is measured, not assumed) and a **different
+scene** (so the new reader is not blind too). The first half flipping would be good news and
+would need the argument rewritten.
+
+⚠ **AND THE TWO SPELLINGS MUST END ON DIFFERENT SELECTIONS.** A key does not re-choose —
+`S3`'s fork — so the key twin finishes on the selection it started with and the verb twin on
+`2`. The probe asserts they differ; agreement would mean a key had silently re-chosen.
+
+⚠ **`script.mjs`'s NEW `VERBMAP` IS NOT A FIFTH SITE.** `KEYMAP` decides what a KEY means —
+`W4`'s subject; this decides which message id implements a VERB, which is a fact about the wire
+and is that file's own business. What it does not hold is a **profile**: six rows collapse to
+one `36:`. ⏭ Deleted, not converted, when the wire carries a verb.
+
+⚠ **AND THE WIRE HALF WANTS TWO INSTRUMENTS TOO, BLIND IN OPPOSITE DIRECTIONS — MEASURED BY
+SABOTAGE.** `VERBMAP.wall` pointed at the fence message leaves **all six server sentences
+identical** (`do_fence` says `fenced 42 edges … radius 3` for either ring) and the saved world
+differs at byte 54068; `VERBMAP.opening` pinned to `36:1` is the mirror — byte-identical world,
+and the sentence says `opened profile 1` where the original said `2`. So the wire half compares
+the sentences **and** the world the server saves. Neither gap was reachable by reading the
+source: nobody notices what a `println` leaves out.
+
+⚠ **THREE INSTRUMENT BUGS WERE IN THE PROBE ITSELF AND EACH READ AS A PASS.** The first capture
+was **25 sentences**, 21 of them part thumbnails printed before the server opened; it **lost the
+last gesture of every run** to the shutdown, and two runs truncated at the same place agree
+perfectly; and the unknown-verb control printed a heading and **no verdict**, because its helper
+ended in a `grep` that exits 1 when it matches nothing — which is exactly what that control
+wants to see. Gesture lines are named one at a time now, never counted.
+
+⚠ **A FRESH SERVER PER SCRIPT.** Two runs against one process differ in every
+`hex (q,r) — +N −M chunks` line, because the streaming set carries over — a fact about a viewer,
+not a gesture.
 
 ⚠ **`V1`'s OWN PHASE ROW NAMED A BLIND INSTRUMENT, AND SO WOULD THE OBVIOUS ALTERNATIVE.** The row
 said *equal `w_tau`*; a fence ring and a wall ring write **the same edges of the same disc**, so

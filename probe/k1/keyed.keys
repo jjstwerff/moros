@@ -1,0 +1,37 @@
+# K1 — THE ORIGINAL SPELLING. Every verb the editor has, said as a KEY.
+#
+# The twin of `verbed.keys`, which says the same six things as verbs. Neither is a
+# picture: this pair exists so `probe/k1/run.sh` can compare what the two spellings
+# BUILD, in both drivers, before `K2` converts a single real script.
+#
+# ⚠ IT DOES NOT WALK AND IT TAKES NO PHOTOGRAPHS, so the same file drives the
+# headless runner and the server unchanged — which is the comparison.
+
+echo --- flat ground to build on
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house, on one of the six facings the lattice can mitre
+at -6 -6 30
+key H
+
+echo --- a ROUND-headed door and a POINTED window in its near wall
+at -3 2 30
+key O
+at -1 3 30
+key P
+
+echo --- a fence ring, and a wall ring, well clear of the house
+at 14 14 0
+key F
+at -16 10 0
+key G
+
+# ⚠ THE SAVE IS THE WIRE HALF'S SECOND INSTRUMENT, and it is here because the first
+# one is blind to a material: `do_fence` says `fenced 42 edges … radius 3` for a
+# fence ring and for a wall ring alike, so a `VERBMAP` row pointing `wall` at the
+# fence message would pass a comparison of sentences. The world knows. `editor_run`
+# skips `save` — there is no server there — so this line costs the headless half
+# nothing.
+save k1w-keyed

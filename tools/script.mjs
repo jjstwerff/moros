@@ -158,6 +158,34 @@ const KEYMAP = {
   X: '39:0',              // a SLAB over the last house — a floor WITH A THICKNESS
   Z: '39:1',              // a stairwell through it, with a reveal in the thickness
 };
+// ── THE SECOND SPELLING — plan 22 `K1` ──────────────────────────────────────
+//
+// `verb <name>` beside `key <k>`, and the two run side by side until `K3` drops
+// the key form. A script is a document rather than a keyboard: it outlives the
+// layout it was written on, and `verb place` says what the scene does where `key H`
+// says which finger moved.
+//
+// ⚠ **THIS IS A SMALLER TABLE THAN THE ONE IT REPLACES, AND THE DIFFERENCE IS NOT
+// THE ROW COUNT.** `KEYMAP` decides what a KEY means — which is the fact re-asserted
+// in four places that `W4` exists to close. This decides which message id implements
+// a VERB, which is a fact about the wire and is this file's own business: it drives a
+// socket, so something here has to name a message id. What it deliberately does not
+// hold is a PROFILE. `O`…`M` differ in `KEYMAP` (`36:1 2 3 4 11 21`) and a converted
+// script says `select 2` then `verb opening`, so the head a door gets stops being
+// something a JS table knows.
+//
+// ⏭ **AND IT DISAPPEARS WHEN THE WIRE TAKES A VERB.** `EDITING_MODES` says the wire
+// carries the verb and never the key; on the day a message does, `verb <name>` is a
+// passthrough and this table is deleted rather than converted. Six rows of debt, said
+// out loud — `hex_editor::verb_of` is the authority for what a key names, and
+// `hex_editor::press_verb` for what a verb does.
+const VERBMAP = {
+  raise: '5:1', lower: '5:-1',
+  place: '32:',           // a house where you are looking
+  opening: '36:',         // …with the profile from the SELECTION, not from here
+  fence: '23:3,3',        // ring the disc you stand in, in fence material
+  wall: '23:1,3',         // …the same ring in wall material
+};
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -543,14 +571,19 @@ ws.send('1:');
 // The camera has to be asked for, or the server sends no `C:` and never ticks a view.
 await sleep(400); ws.send('2:1.5,');
 
+// ⚠ A LIST OF PREFIXES IS ONE ANSWER, NOT SEVERAL — plan 22 `K1`. A gesture that
+// can refuse says so in a different sentence, and waiting on the success wording
+// alone turns a refusal into a timeout: the instrument reports *nothing arrived*
+// where what arrived was the answer. `select` is the first caller that needs it.
 const ack = async (prefix, limitMs = 40000) => {
+  const want = Array.isArray(prefix) ? prefix : [prefix];
   const from = status.length;
   for (let t = 0; t < limitMs; t += 50) {
     await sleep(50);
-    const m = status.slice(from).find((x) => x.startsWith(prefix));
+    const m = status.slice(from).find((x) => want.some((p) => x.startsWith(p)));
     if (m) return m;
   }
-  return `(no "${prefix}" in ${limitMs}ms)`;
+  return `(no "${want.join('" or "')}" in ${limitMs}ms)`;
 };
 // ── ⚠ WAIT FOR THE EVIDENCE, NOT FOR A DURATION — plan 19 `L5` ──────────────
 //
@@ -964,7 +997,11 @@ for (const raw of lines) {
   // and every reading of it would be wrong in a way no threshold could catch. The
   // list is *what sends*: `cam`, `mesh`, `feet`, `wait`, `echo` and `frame` itself
   // only read, so they leave it standing.
-  if (['at', 'key', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
+  // ⚠ `select` IS ON THIS LIST THOUGH IT MOVES NOTHING IN THE WORLD — plan 22 `K1`.
+  // It rewrites the SUBJECT BAR (`· opening <kind>`), which is 24 rows of every
+  // frame this file classifies, so a `snap` taken before it and judged after it
+  // would be judged against a strip that has changed.
+  if (['at', 'key', 'verb', 'select', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
     lastShot = null;
   }
   if (cmd === 'at') {
@@ -1000,6 +1037,27 @@ for (const raw of lines) {
     await sleep(250);
     const said = status[status.length - 1];
     if (said) console.log('  ' + said);
+  } else if (cmd === 'verb') {
+    // ⚠ IT SENDS AND READS EXACTLY AS `key` DOES, DELIBERATELY. `K1`'s own bar is
+    // that **no gate moves on the day the format changes** — so a converted line
+    // must put the same sentence in the transcript at the same moment, or `K2`
+    // would be a spelling change that reds a picture gate. The one thing this
+    // knows that `key` does not is that the id comes from the VERB.
+    const v = rest[0];
+    const vmsg = VERBMAP[v];
+    if (!vmsg) { console.log(`  !! no verb '${v}' — see hex_editor::press_verb`); continue; }
+    ws.send(vmsg);
+    await sleep(250);
+    const vsaid = status[status.length - 1];
+    if (vsaid) console.log('  ' + vsaid);
+  } else if (cmd === 'select') {
+    // `select <kind>` — what the NEXT opening cuts, until something says otherwise.
+    // ⚠ IT WAITS FOR AN ANSWER RATHER THAN SLEEPING, because a refusal is a real
+    // outcome here: `5` is not an opening kind and the standing choice does not
+    // move. Both wordings are waited for, so a refused selection reads as a
+    // refusal instead of as a dead wire.
+    ws.send(`49:${rest[0]}`);
+    console.log('  ' + await ack(['opening ', 'selection refused'], 10000));
   } else if (cmd === 'hold') {
     const bit = HELD[rest[0]];
     const want = Number(rest[1]);

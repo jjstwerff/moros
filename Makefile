@@ -551,6 +551,13 @@ probe-p2:
 probe-split:
 	@sh probe/l6/run.sh
 
+# K1 (plan 22) — DOES A SCRIPT SAYING `verb` BUILD WHAT THE SAME SCRIPT SAYING `key`
+# BUILT? Both readers, compared exactly, plus the control that says why the obvious
+# instrument (diff the world) is blind to the one mistake a conversion makes.
+# `K1_WIRE=0` skips the server half and needs no port.
+probe-verbs:
+	@sh probe/k1/run.sh
+
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
 	  tools/gates/world/*.mjs tools/gates/character/*.mjs

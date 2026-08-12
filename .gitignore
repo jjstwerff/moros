@@ -30,6 +30,10 @@ lib/**/.loft/
 # anything. probe/b1's white control is BUILT by run.sh for the same reason.
 probe/**/.loft/
 probe/**/*.png
+# …and the same for a probe's scratch: logs, transcripts and captured server
+# output are what its run.sh produces on the spot, and a committed one is a claim
+# about a run nobody made. `probe/k1/out/` is the first.
+probe/**/out/
 
 # `loft update` writes the same stubs at the ROOT, for the script-level
 # loft.lock that `src/` runs against. Its resolver cache is noise; the api/

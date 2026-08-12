@@ -48,6 +48,68 @@ fn seed_ground(w: VoxelWorld, half: integer) {
   }
 }
 
+// What a gesture did, in a driver's words — shared by `key` and `verb` so the two
+// spellings cannot come to report differently — plan 22 `K1`.
+//
+// ⚠ NOT EVERY GESTURE HAS A SENTENCE. `raise_ahead` succeeds with an empty
+// `ak_why`, and printing that verbatim made the press SILENT — which in a script's
+// transcript reads as "the key did nothing", the one thing a driver must never say
+// when something happened. A gesture without words gets what was ASKED and its
+// count instead, which is why `what` is the caller's word rather than a key: a
+// converted line says `place: 27` where the original said `H: 27`.
+fn said_ack(ack: Ack, what: text, said: &text) -> boolean {
+  if ack.ak_why == hex_editor::PR_NONE {
+    said = "no gesture for {what}";
+    return false;
+  }
+  if !ack.ak_ok { said = "refused: {ack.ak_why}"; return true; }
+  said = ack.ak_why;
+  if said == "" { said = "{what}: {ack.ak_n}"; }
+  true
+}
+
+// ── THE SESSION, READ BACK — plan 22 `K1` ────────────────────────────────────
+//
+// ⚠ **THE WORLD IS BLIND TO EVERYTHING THIS STEP IS ABOUT, AND THAT IS MEASURED
+// RATHER THAN FEARED.** `open_ahead` writes `DOOR_MAT` whatever the profile, so a
+// round-headed door and a pointed one leave worlds that are equal **byte for
+// byte** (`V1`, and `probe/k1/run.sh` control `C`). The head lives in the
+// session's `Opening`, and none of the session is in the world format (`S1`). So a
+// script converted from `key P` to `select 1` + `verb opening` would build a
+// provably identical world with the wrong arch in it, and every instrument this
+// runner had would have said the conversion was lossless.
+//
+// [EDITING_MODES § phase 3](../doc/claude/EDITING_MODES.md) names the two ways out
+// — *either the script says `select 2` before `opening`, or the runner grows a
+// session read-back*. This is the second one, and `K2` needs it: it is what makes
+// converting a script an assertion instead of a hope.
+//
+// ⚠ **IT PRINTS THE GEOMETRY, NOT ONLY THE KIND.** `op_kind` is the number the
+// gesture was handed and stamped back; the springing, the depth and the datum are
+// what the renderer actually reads. A digest of the label alone would agree with
+// itself for as long as the label was copied correctly.
+// ⚠ **AND THE STANDING SELECTION IS ON ITS OWN LINE, BECAUSE A CONVERTED SCRIPT
+// MUST LEAVE A DIFFERENT ONE.** A key deliberately does not re-choose (`S3`), so a
+// run of `key O` `key P` ends with the selection it started with, while its verb
+// twin ends holding whatever it last said `select` about. That is not drift to be
+// tolerated: it is `es_author`'s category — *this driver's choice, never the
+// editor's* — and the two spellings agreeing on it would mean a key HAD re-chosen.
+// `probe/k1/run.sh` compares the scene without this line and asserts this line
+// differs.
+fn session_digest(sess: EditSession) -> text {
+  d = "session: runs {len(sess.es_runs.items)} roofs {len(sess.es_roofs.items)} "
+    + "leaves {len(sess.es_leaves.items)} openings {len(sess.es_open.items)} "
+    + "annex {len(sess.es_annex.items)} props {len(sess.es_props.items)} "
+    + "slabs {len(sess.es_slabs.items)} holes {len(sess.es_holes.items)} "
+    + "trunk {sess.es_trunk.tk_live}/{sess.es_trunk.tk_r}";
+  for op in sess.es_open.items {
+    d += "\n  opening kind {op.op_kind} at {op.op_x},{op.op_z} half {op.op_half} "
+       + "band {op.op_lo}..{op.op_hi} spring {op.op_spring} "
+       + "depth {op.op_near}..{op.op_depth}";
+  }
+  d + "\nchosen: opening {sess.es_open_kind}"
+}
+
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
 fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &text) -> boolean {
@@ -87,19 +149,35 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // that *"one script serves both"* was false the moment a script walked.
     //
     // What is left here is a driver's business: saying what happened.
-    ack = hex_editor::press(sess, w, a, rest);
-    if ack.ak_why == hex_editor::PR_NONE {
-      said = "no gesture for key {rest}";
-      return false;
-    }
-    if !ack.ak_ok { said = "refused: {ack.ak_why}"; return true; }
-    // ⚠ NOT EVERY GESTURE HAS A SENTENCE. `raise_ahead` succeeds with an empty
-    // `ak_why`, and printing that verbatim made the press SILENT — which in a
-    // script's transcript reads as "the key did nothing", the one thing a driver
-    // must never say when something happened. The old table said "raise true"
-    // here; a gesture without words gets its key and its count instead.
-    said = ack.ak_why;
-    if said == "" { said = "{rest}: {ack.ak_n}"; }
+    return said_ack(hex_editor::press(sess, w, a, rest), rest, said);
+  }
+
+  // ── THE SECOND SPELLING — plan 22 `K1` ──────────────────────────────────────
+  //
+  // ⚠ **A KEY IS A KEYBOARD'S BUSINESS AND A VERB IS WHAT TRAVELS.** A script is a
+  // document, not a keyboard: it outlives the layout it was written on, and it is
+  // read by a person deciding what a scene does. `verb place` says that; `key H`
+  // says which finger moved. The two run side by side until `K3`, which is the
+  // upper bound of a safe step — the old path and the new one both running and
+  // compared exactly (`probe/k1/run.sh`).
+  //
+  // ⚠ **AND THE CONVERSION IS NOT A SPELLING CHANGE FOR THE OPENING FAMILY.**
+  // `verb_of` is deliberately not injective: six keys answer one `opening`, so a
+  // script that says `opening` and never says `select` cuts whatever was chosen
+  // last. That is why `select` lands in the same step — a script converted without
+  // it would still build a world, silently, with the wrong head on every door.
+  if cmd == "verb" {
+    return said_ack(hex_editor::press_verb(sess, w, a, rest), rest, said);
+  }
+
+  if cmd == "select" {
+    // ⚠ CHOOSING IS A GESTURE AND IT REFUSES LIKE ONE. `5` is not *nearly* an
+    // oculus, so `session_select_open` says no without an offer and leaves the
+    // standing choice alone — which is the server's `49:` behaviour, because it is
+    // the same call.
+    sel = hex_editor::session_select_open(sess, rest as integer ?? 0 - 1);
+    if !sel.ak_ok { said = "selection refused — {sel.ak_why}"; return true; }
+    said = "opening {sel.ak_n} selected";
     return true;
   }
 
@@ -155,6 +233,8 @@ fn main() {
     if !ok { println("editor_run: {line}"); }
     n = n + 1;
   }
+
+  println(session_digest(sess));
 
   path = "{source_dir()}/../worlds/{name}.hxw";
   code = world_save(w, path, []);
