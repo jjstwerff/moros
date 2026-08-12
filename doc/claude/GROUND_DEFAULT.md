@@ -182,6 +182,30 @@ default region reintroduces exactly the cost this removes — and the world file
 chunks that say nothing. Its counterpart is elision: **a layer that comes to equal the default
 everywhere is dropped**, the same rule `E1` already applies to an emptied one.
 
+## ⚠ The failure path this design did NOT enumerate — `G5a.1`, found by probe
+
+**The step said *synthesise the ground where the CHUNK is absent*. The invariant says
+*infinite plane*. They disagree, and following the step literally leaves a seam:**
+
+```
+default 200/4, one cell written at (0,0)
+  written cell             h 300 mat 7
+  untouched, chunk EXISTS  h 0   mat 0     <- a hole in the grass
+  untouched, chunk ABSENT  h 200 mat 4
+```
+
+Two untouched cells cannot differ by whether a **neighbour** was written — that is the
+invariant's own last clause. At `G6` this would have arrived as *the terrain has holes
+around every building*, with its cause four steps away and a picture to diagnose it from.
+
+⚠ **AND THE EQUIVALENCE TEST COULD NOT SEE IT**, which is the sharper lesson: the oracle
+wrote **every** cell, so no untouched cell of an existing chunk was ever compared. A second
+fixture pair — one cell written into an otherwise untouched world, against the same dent over
+fully-authored ground — is what catches it.
+
+⚠ **AND IT IS THE GROUND LAYER ONLY.** Answering the default for any absent cell fills every
+cellar and storey with earth; the control for that over-reach is its own test.
+
 ## Failure paths — enumerated before the code
 
 1. **A default that is ON by default changes every existing world.** A chunk's ground layer
@@ -254,8 +278,8 @@ step can still read.
 | ⏭ **`G2`** | `world_fill(w, q0, r0, q1, r1, cell)` — a rectangle in one call: one `check_column`, one `find_chunk`, one window pass, one elision pass. | a **pure addition**. No existing caller changes and no existing behaviour moves. It is the mechanism `G5` needs, which is the only reason it survives `G1` — ⚠ **its speed argument is spent.** `G3` took the 14× without it, and what is left for `world_fill` to win is the ~2× between 25 us a cell and whatever a hoisted inner loop costs. Build it for `G5`, and measure it before claiming a number |
 | ✅ **`G3`** | The fixtures use it — `target()` stops paying the column write. | tests only. The suite time moves and nothing shipped changed. **Built with `world_set_cell`, not with `G2`'s `world_fill`** — `hex_part` 77 s → 35 s, 254 tests green, with cells, layer CRCs and `w_tau` all equal either way |
 | ✅ **`G4`** | `World` gains a ground default, **absent by default**, in a section so it round-trips. `world_new` checks it against `ρ` (`R1`) at the one place it can be stated. Nothing reads it yet. | **DONE 2026-08-12.** absent = today, byte for byte — `make parts` byte-identical, `make lib-test` 3300 → 3316 (the 8 new tests × two backends), `make fast` 145 files, `make gate` 53/53. ⚠ **The value is a FIELD and the section is only the FORMAT** — `w_sections` says of itself that the library never reads it, so a `GRND` there would be both a second home and a tag a consumer never wrote; the codec steers it to `w_ground` on the way in. ⚠ **And `R1` is checked in `world_set_ground`**, which is failure path 5: unrefused there, a ground under the reserve surfaces in an unrelated chunk much later |
-| ✅ **`G5a`** | **The READERS consult it**: `world_column`, `world_cell`, `world_surface`, `world_ground_cell` and `world_ground_layer` synthesise the ground where the chunk is absent. | **DONE 2026-08-12.** ⚠ **`G5` SPLIT, AND THE ORDER IS FORCED**: a write that skips allocation before the readers answer for an absent chunk is data loss, so readers first. `G5a` alone is *correct but not yet economical* — a world authored flat still costs what it costs today, and every read agrees with it. Tested as an **EQUIVALENCE** against a world whose ground was written cell by cell, which is the invariant's own last clause; four sabotages red |
-| **`G5b`** | **The WRITERS**: a write equal to the default does not allocate; a layer equal to it everywhere is dropped. | the other half, and where the cost actually goes away. ⚠ **This is where `E1` is restated** — and the restatement belongs in `WORLD_MODEL` Part II, not only here. ⚠ **It folds into step 6 rather than beside it**: with no default, *equal to the default everywhere* IS *empty everywhere*, so today's rule is the special case and `G5b`'s fast path is the one `world_set_column_as` already has |
+| ✅ **`G5a`** | **The READERS consult it**: `world_column`, `world_cell`, `world_surface`, `world_ground_cell` and `world_ground_layer` answer the ground for an untouched cell — ⚠ **whether or not its chunk exists**, which is `G5a.1` and a correction to the row this table used to carry. | **DONE 2026-08-12.** ⚠ **`G5` SPLIT, AND THE ORDER IS FORCED**: a write that skips allocation before the readers answer for an absent chunk is data loss, so readers first. `G5a` alone is *correct but not yet economical* — a world authored flat still costs what it costs today, and every read agrees with it. Tested as an **EQUIVALENCE** against a world whose ground was written cell by cell, which is the invariant's own last clause; four sabotages red |
+| **`G5b`** | ⏭ **NEXT — the WRITERS**: a write equal to the default does not allocate; a layer equal to it everywhere is dropped. | the other half, and where the cost actually goes away. ⚠ **This is where `E1` is restated** — and the restatement belongs in `WORLD_MODEL` Part II, not only here. ⚠ **It folds into step 6 rather than beside it**: with no default, *equal to the default everywhere* IS *empty everywhere*, so today's rule is the special case and `G5b`'s fast path is the one `world_set_column_as` already has |
 | **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | the step that changes what you SEE, and the one the gates are for. ⚠ It is last because everything before it is inert until a scenario sets a ground — so a regression here cannot be blamed on the four steps below it |
 | **`G7`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | the feature, on a store that is already green |
 

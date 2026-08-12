@@ -533,7 +533,7 @@ pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
   // `G5a` — THE chokepoint for *the ground here*, so it is the one this matters most
   // at: every gesture that seats something asks it.
   if ci < 0 {
-    if world_has_ground_default(w) { return w.w_ground; }
+    if world_has_ground_default(w) { return ground_copy(w); }
     return Hex {};
   }
   // ⚠ ITERATED, NOT INDEXED — see `world_ground_layer` above for the measurement.
@@ -547,7 +547,7 @@ pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
   }
   if gl < 0 { return Hex {}; }
   e = w.w_chunks[ci].ck_layers[gl].ly_cells[cell_index(q, r)];
-  return hex_of(w.w_chunks[ci].ck_base, e);
+  return cell_or_ground(w, w.w_chunks[ci].ck_base, w.w_chunks[ci].ck_layers[gl], e);
 }
 
 // ── The OTHER surface question — the one that takes a height ─────────────────
@@ -619,8 +619,12 @@ pub fn world_surface(w: VoxelWorld, q: integer, r: integer, feet: float) -> Surf
   bestl = 0 - 1; lowl = 0 - 1; li = 0 - 1;
   for ly in w.w_chunks[ci].ck_layers {
     li = li + 1;
-    if ly.ly_kind == KIND_TERRAIN && stored_occupied(ly.ly_cells[ix]) {
-      hh = base + ly.ly_cells[ix].sv_height;
+    // `G5a.1` — the EFFECTIVE cell, so an unwritten ground cell of an existing
+    // chunk is the surface it is everywhere else. `hex_occupied` on it is the same
+    // material test the stored one made.
+    eff = cell_or_ground(w, base, ly, ly.ly_cells[ix]);
+    if ly.ly_kind == KIND_TERRAIN && hex_occupied(eff) {
+      hh = eff.h_height;
       occ = occ + 1;
       // `F1″` makes layer order height order, so the first occupied one is the
       // lowest — no sort, and no assumption beyond the invariant.
@@ -647,7 +651,7 @@ pub fn world_column(w: VoxelWorld, q: integer, r: integer) -> Column {
   // one cell a minted first layer would hold, under the reserved label it would take.
   if ci < 0 {
     if world_has_ground_default(w) {
-      return Column { co_q: q, co_r: r, co_cells: [w.w_ground],
+      return Column { co_q: q, co_r: r, co_cells: [ground_copy(w)],
                       co_ids: [LABEL_GROUND] };
     }
     return Column { co_q: q, co_r: r, co_cells: [] };
@@ -660,7 +664,7 @@ pub fn world_column(w: VoxelWorld, q: integer, r: integer) -> Column {
     ids += [ly.ly_id];
     if ly.ly_kind == KIND_TERRAIN {
       c = ly.ly_cells[ix];
-      out += [hex_of(ch.ck_base, c)];
+      out += [cell_or_ground(w, ch.ck_base, ly, c)];
     } else {
       out += [Hex {}];   // dressing holds no cell here; see #14
     }
@@ -684,7 +688,7 @@ pub fn world_cell(w: VoxelWorld, q: integer, r: integer, l: integer) -> Hex {
   // above it. A caller asking for layer 3 of untouched ground is asking about a
   // storey that was never built, which is absence either way.
   if ci < 0 {
-    if world_has_ground_default(w) && l == 0 { return w.w_ground; }
+    if world_has_ground_default(w) && l == 0 { return ground_copy(w); }
     return Hex {};
   }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return Hex {}; }
@@ -693,7 +697,7 @@ pub fn world_cell(w: VoxelWorld, q: integer, r: integer, l: integer) -> Hex {
   // is the conversion, not a workaround. (It also WAS a workaround for loft H12,
   // now fixed: returning `local.vec[i]` used to hand back a dead value.)
   e = w.w_chunks[ci].ck_layers[l].ly_cells[cell_index(q, r)];
-  return hex_of(w.w_chunks[ci].ck_base, e);
+  return cell_or_ground(w, w.w_chunks[ci].ck_base, w.w_chunks[ci].ck_layers[l], e);
 }
 
 // ── Write — the whole routine ────────────────────────────────────────────────
@@ -1701,6 +1705,47 @@ pub fn world_set_ground(w: VoxelWorld, cell: Hex) -> ColumnWrite {
   }
   w.w_ground = cell;
   ok_write()
+}
+
+// ⚠ **AND AN UNWRITTEN CELL OF AN EXISTING CHUNK ANSWERS IT TOO — `G5a.1`.**
+//
+// The design said *synthesise the ground where the CHUNK is absent*, and following
+// that literally leaves a seam the invariant forbids: write one cell and the other
+// 1023 of its chunk read as **nothing** while the untouched chunk next door reads as
+// grass. Measured before it was fixed — default 200/4, one cell written at (0,0):
+//
+//     written cell             h 300 mat 7
+//     untouched, chunk EXISTS  h 0   mat 0     <- a hole in the grass
+//     untouched, chunk ABSENT  h 200 mat 4
+//
+// *A defaulted cell and a written one of the same value are indistinguishable* — so
+// two untouched cells cannot differ by whether a NEIGHBOUR was written. At `G6` this
+// would have arrived as *the terrain has holes around every building*, with its cause
+// four steps away.
+//
+// ⚠ **AND IT IS THE GROUND LAYER ONLY.** The default is the ground plane; a cellar's
+// unwritten cells are genuinely absent, and answering the ground for them would fill
+// every storey with earth. `LABEL_GROUND` + `KIND_TERRAIN` is the test, the same pair
+// `world_ground_layer` uses.
+// ⚠ **A COPY, NEVER THE FIELD ITSELF.** Returning `w.w_ground` directly leaked a
+// store per call — `store table exhausted: 65535 stores live at once` from
+// `hex_editor/tests/face.loft`, on a reader called once per cell. Every other reader
+// here hands back a value CONSTRUCTED by `hex_of`, and `world_cell`'s own comment
+// already says why: *the copy is the conversion, not a workaround.* The default is
+// the one value that was tempting to pass through, and it is the one that must not be.
+fn ground_copy(w: VoxelWorld) -> Hex {
+  Hex { h_height: w.w_ground.h_height, h_material: w.w_ground.h_material,
+        h_item: w.w_ground.h_item, h_item_rotation: w.w_ground.h_item_rotation,
+        h_wall_nw: w.w_ground.h_wall_nw, h_wall_ne: w.w_ground.h_wall_ne,
+        h_wall_e: w.w_ground.h_wall_e }
+}
+
+fn cell_or_ground(w: VoxelWorld, base: integer, ly: Layer, sv: StoredHex) -> Hex {
+  if stored_present(sv) { return hex_of(base, sv); }
+  if hex_present(w.w_ground) && ly.ly_id == LABEL_GROUND && ly.ly_kind == KIND_TERRAIN {
+    return ground_copy(w);
+  }
+  Hex {}
 }
 
 // ── `G5a` — WHAT AN ABSENT CHUNK ANSWERS ────────────────────────────────────

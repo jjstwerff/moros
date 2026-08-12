@@ -169,3 +169,89 @@ fn test_a_default_with_no_material_is_not_a_surface() {
          "a ground with no material reported a surface: units {s.sf_units} occ "
        + "{s.sf_occ}");
 }
+
+// ── `G5a.1` — THE SEAM: A CHUNK THAT EXISTS BUT WHOSE CELL WAS NEVER WRITTEN ──
+//
+// ⚠ **THE ROWS ABOVE COULD NOT SEE THIS AND IT WAS A REAL DEFECT.** The oracle wrote
+// EVERY cell, so no untouched cell of an existing chunk was ever compared. Measured
+// on the first build of `G5a`: with a default of 200/4 and one cell written at (0,0),
+// its neighbour at (5,5) read `h 0 mat 0` — **a hole in the grass** — while an
+// untouched chunk read the ground. Two untouched cells differing by whether a
+// NEIGHBOUR was written is exactly what the invariant forbids.
+//
+// The design said *synthesise where the CHUNK is absent*; the invariant says
+// *infinite plane*. The invariant wins, and this pair of fixtures is why.
+
+// One cell written into an otherwise untouched world that HAS a ground.
+fn dented() -> VoxelWorld {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  assert(world_set_ground(w, grass(200)).cw_code == CW_OK, "the fixture's ground was refused");
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 300 as u16? ?? 0, h_material: 7 as u8? ?? 0 }] });
+  w
+}
+
+// …and the oracle: the same dent, over ground that was written out in full.
+fn dented_oracle() -> VoxelWorld {
+  w = authored(200);
+  world_set_column(w, Column { co_q: 0, co_r: 0,
+    co_cells: [Hex { h_height: 300 as u16? ?? 0, h_material: 7 as u8? ?? 0 }] });
+  w
+}
+
+fn test_a_neighbour_being_written_does_not_punch_a_hole() {
+  d = dented();
+  o = dented_oracle();
+  assert(world_has_chunk(d, 5, 5),
+         "the chunk does not exist, so this test is the absent-chunk case again");
+
+  for q in [1, 5, 17, 31] {
+    a = world_ground_cell(o, q, q);
+    b = world_ground_cell(d, q, q);
+    assert(a.h_height == b.h_height && a.h_material == b.h_material,
+           "at ({q},{q}) the authored world reads {a.h_height}/{a.h_material} and "
+         + "the defaulted one {b.h_height}/{b.h_material} — a neighbour's write "
+         + "changed what an untouched cell says");
+    assert(b.h_material == 4, "…and it is the ground, not a hole");
+  }
+  // the dent itself is still the dent, in both
+  assert(world_ground_cell(d, 0, 0).h_height == 300
+         && world_ground_cell(o, 0, 0).h_height == 300,
+         "the written cell moved: {world_ground_cell(d, 0, 0).h_height}");
+}
+
+// ⚠ AND THE SURFACE AND THE COLUMN AGREE THERE TOO, because `world_surface` tests the
+// STORED cell's material in its own loop and would skip an unwritten one — reporting
+// no surface where the reader is standing on grass.
+fn test_the_surface_and_column_agree_over_a_dented_chunk() {
+  d = dented();
+  o = dented_oracle();
+  sa = world_surface(o, 5, 5, 500.0);
+  sb = world_surface(d, 5, 5, 500.0);
+  assert(sa.sf_units == sb.sf_units && sa.sf_occ == sb.sf_occ,
+         "authored surface units {sa.sf_units} occ {sa.sf_occ}, defaulted "
+       + "{sb.sf_units} occ {sb.sf_occ}");
+  assert(sb.sf_units == 200, "…and it is the ground's height, got {sb.sf_units}");
+
+  ca = world_column(o, 5, 5);
+  cb = world_column(d, 5, 5);
+  assert(len(ca.co_cells) == len(cb.co_cells), "the columns are different lengths");
+  assert((ca.co_cells[0] ?? Hex {}).h_height == (cb.co_cells[0] ?? Hex {}).h_height,
+         "the column heights differ over an untouched cell");
+}
+
+// ⚠ AND A NON-GROUND LAYER IS NOT FILLED. The default is the ground PLANE; answering
+// it for a cellar's unwritten cells would pack every storey with earth. The control
+// that keeps `cell_or_ground` from being "any absent cell reads as the ground".
+fn test_a_second_terrain_layer_is_not_filled_with_ground() {
+  w = world_new(0.25, RESERVE, 8, 3).wn_world;
+  assert(world_set_ground(w, grass(200)).cw_code == CW_OK, "the fixture's ground was refused");
+  // two layers at one cell: the ground, and a storey above it
+  world_set_column(w, Column { co_q: 2, co_r: 2,
+    co_cells: [grass(200), grass(400)] });
+  // …and at a cell where only the first was ever written
+  assert(hex_present(world_cell(w, 9, 9, 0)), "the ground layer is not there");
+  assert(!hex_present(world_cell(w, 9, 9, 1)),
+         "an unwritten cell of the SECOND layer answered {world_cell(w, 9, 9, 1).h_material} "
+       + "— the default filled a storey");
+}
