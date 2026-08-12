@@ -37,9 +37,17 @@
 #      → the first half red means the store has learned to carry a profile (good
 #        news, and this file's argument for B would need rewriting); the second half
 #        red means the read-back has gone blind and B is worthless
-#   D  CONTROL — a key does NOT re-choose, so the two spellings must leave DIFFERENT
-#      standing selections
-#      → red means `key O` moved the selection, which is the fork `S3` refused
+#   G  a key no longer carries a PROFILE — plan 22 `V2b`
+#      → the one claim A, B and C cannot make: they compare a key spelling against a
+#        verb spelling that CHOSE what the key already meant, so they agree whether or
+#        not the runner resolves through `verb_of`. `carried.keys` chooses POINTED and
+#        presses `O`. Seen red on the line before the step
+#   D  CONTROL — …and a key does not RE-choose: after `key O` the selection stands
+#      → red means `key O` moved it, which is the fork `S3` refused. ⚠ **This check
+#        moved at `V2b`**: it used to require the two spellings to end on DIFFERENT
+#        selections, which held only because `keyed.keys` never said `select` — a
+#        property of the fixture, not of the system. Once that script had to choose,
+#        the difference evaporated and the check went red on nothing
 #   E  CONTROL — an unknown verb is refused out loud in both drivers
 #      → red means a typo in a converted script builds a world silently
 #   F  the wire: the same pair through the SERVER says the same things AND saves the
@@ -155,15 +163,40 @@ else
       | grep '^>' | head -1 | cut -c1-72)"
 fi
 
-say "D  CONTROL — a key does not re-choose, so the selections must differ"
-kc=$(cat "$OUT/keyed.chosen")
-vc=$(cat "$OUT/verbed.chosen")
-if [ -z "$kc" ] || [ -z "$vc" ]; then
-  bad "no standing selection was reported at all"
-elif [ "$kc" = "$vc" ]; then
-  bad "both spellings ended on '$kc' — a key moved the selection, which S3 refused"
+say "G  a key no longer carries a profile — plan 22 \`V2b\`"
+# ⚠ THE ONE CLAIM NO EQUALITY ABOVE CAN MAKE. A, B and C all compare a key spelling
+# against a verb spelling that CHOSE what the key already meant, so they agree
+# whether or not the key resolves through `verb_of`. This chooses POINTED and presses
+# `O` — the key that used to mean *round* and nothing else — and reads the kind back
+# out of the session. Red before `V2b`, green after.
+run_headless carried
+ck=$(grep -m1 'opening kind' "$OUT/carried.scene" | sed 's/^ *opening kind \([0-9]*\).*/\1/')
+if [ -z "$ck" ]; then
+  bad "carried.keys cut no opening at all — the fixture, not the claim"
+  sed -n '1,3p' "$OUT/carried.scene"
+elif [ "$ck" = "2" ]; then
+  ok "select 2 then \`key O\` cut kind $ck — the selection decides, not the key"
 else
-  ok "keyed ended on '$kc', verbed on '$vc'"
+  bad "select 2 then \`key O\` cut kind $ck — the key still carries its own profile"
+fi
+
+say "D  CONTROL — …and it does not RE-choose"
+# ⚠ THIS CHECK MOVED AT `V2b`, AND THE REASON IS WORTH THE LINES. It used to compare
+# the two spellings' standing selections and require them to DIFFER — which held only
+# because `keyed.keys` never said `select`, so it was reading a property of the
+# fixture. Once that script had to choose (see its own comment), the difference
+# evaporated and the check went red on nothing.
+#
+# The claim underneath it is `S3`'s fork and it is unchanged: **a key press cuts, and
+# does not move what is chosen.** `carried.keys` states it directly — it selects 2,
+# presses `O`, and must still hold 2 afterwards. A key that re-chose would leave 1.
+cc=$(cat "$OUT/carried.chosen")
+if [ -z "$cc" ]; then
+  bad "no standing selection was reported at all"
+elif [ "$cc" = "chosen: opening 2" ]; then
+  ok "after \`key O\` the selection is still what was chosen — '$cc'"
+else
+  bad "\`key O\` left '$cc' where 'chosen: opening 2' was chosen — a key re-chose, which S3 refused"
 fi
 
 say "E  CONTROL — an unknown verb is refused out loud (the runner)"
@@ -277,13 +310,15 @@ fi
 rm -f probe/k1/typo-wire.keys
 
 say "F  the same sentences from both spellings"
-# Two differences are there by construction and both are named rather than tolerated:
-# the converted script CHOOSES out loud, which the original never does, and each
-# script saves under its own file name so the two worlds can be compared. The save's
-# chunk count and return code still compare — only the destination is normalised.
+# ⚠ THE SELECTION SENTENCES ARE COMPARED NOW, NOT FILTERED — plan 22 `V2b`. They used
+# to be dropped from the verb side, because the converted script chose out loud and
+# the original never did. Both choose since `keyed.keys` had to become valid on both
+# sides of `V2b`, so the two transcripts line up whole and the filter would only hide
+# a difference. One difference is left by construction: each script saves under its
+# own file name, so the destination is normalised and the chunk count and return code
+# still compare.
 norm() { sed -e 's/-> k1w-[a-z]*/-> <name>/' "$1"; }
-grep -v '^editor: opening [0-9]* selected' "$OUT/verbed.said" | norm /dev/stdin \
-  > "$OUT/verbed.said.cmp"
+norm "$OUT/verbed.said" > "$OUT/verbed.said.cmp"
 norm "$OUT/keyed.said" > "$OUT/keyed.said.cmp"
 if [ ! -s "$OUT/keyed.said.cmp" ]; then
   bad "the server said nothing about the key run"

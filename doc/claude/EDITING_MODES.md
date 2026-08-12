@@ -447,8 +447,9 @@ key-naming wording still branches on `om_code`.
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
 | ✅ **`V1`** — the verb vocabulary **and** `verb_of(key)` **and** a `press` that takes a verb, in one step | `press(key)`, unchanged and still called | for every key: `press(key)` and `press(verb_of(key))` leave worlds with equal `w_tau`. ⚠ **The declaration alone is NOT a step** — a table checked against itself cannot be surprised |
-| **`V2`** — one caller at a time moves to verbs: `editor_run`, then the server, then the client | the key form, until each caller's equality test is green | a caller that resolves a key differently from `verb_of` — which is the four-site divergence trying to come back |
-| **`V3`** — delete `press(key)` | — | nothing calls it: a grep, and the suite |
+| ✅ **`V2a`** — the server's `MSG_HOUSE` | the key form everywhere else | a literal `"H"` carries no profile, so this site could move first |
+| ✅ **`V2b`** — `editor_run`, and it was the **last production caller of `press(key)`** | `tools/script.mjs`, which has not moved | ⚠ not an equality — the equalities cannot see this step. `probe/k1` check `G`: choose POINTED, press `O`, and the *selection* decides |
+| **`V3`** — delete `press(key)` | — | nothing calls it: ⏭ **already true of production code**; what is left is the two test files that keep it alive |
 
 ### ✅ `V1` — and the row's own instrument was too weak, measured
 
@@ -514,6 +515,37 @@ green and its sabotage (`VB_FENCE` at that site) red, printing `served:` empty a
 runner's `house placed 27 cells, 84 wall edges, ridge at 21`. **That also retires the "built and
 never called" state `V1` would otherwise have held across a session boundary** — this tree's
 commonest defect, and the reason `V2a` was not left for later.
+
+### ✅ `V2b` — the runner resolves through `verb_of`, and no equality could see it
+
+**Built 2026-08-12.** `src/editor_run.loft`'s `key` branch is
+`press_verb(sess, w, a, verb_of(rest))`, and it was the **last production caller of
+`press(key)` in the tree** — the server moved at `V2a`, and `editor_client` never called it.
+
+⚠ **THE STEP'S OWN CLAIM IS INVISIBLE TO EVERY EQUALITY BUILT FOR IT.** `probe/k1`'s A, B and C
+compare a key spelling against a verb spelling that **chose what the key already meant**, so
+they agree whether or not the runner resolves through `verb_of`. The check that can fail is
+`carried.keys`: choose **pointed**, then press `O` — the key that used to mean *round* and
+nothing else — and read the kind back out of the session. **Seen red on the old line** (`cut
+kind 1`) before the change, green after.
+
+⚠ **AND THE FIXTURE HAD TO BECOME VALID ON BOTH SIDES OF THE CHANGE.** `keyed.keys` pressed
+`key P` with no `select`, which is the *old* meaning written into a file — so the day the runner
+moved, check B went red on a **script** rather than on a defect. It selects before it presses
+now: before the step the key already meant what was chosen, after it the key means whatever is
+chosen, and the same file passes both ways. **A fixture that only encodes the old meaning turns
+a correct step into a red suite**, and that is a fact about the fixture, not about the step.
+
+⚠ **ONE CHECK TURNED OUT TO BE READING THE FIXTURE, NOT THE SYSTEM.** `D` required the two
+spellings to end on **different** standing selections — true only because `keyed.keys` never
+said `select`. Once it had to, the difference evaporated. The claim underneath is `S3`'s and is
+unchanged, so it moved to where it can be stated directly: **select 2, press `O`, and the
+selection must still be 2.** A key cuts; it does not re-choose.
+
+⏭ **`tools/script.mjs` HAS NOT MOVED, AND ITS `key O` STILL SENDS `36:1`.** `V2` takes one
+caller at a time, so the runner and the wire disagree about what `key O` means until `V3`
+deletes the key form. That divergence is **bounded by `K2a`**: no script presses an opening key
+any more, so nothing exercises it. Stated here rather than discovered later.
 
 ## Phase 4 — the mode, derived
 

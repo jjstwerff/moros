@@ -148,8 +148,29 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // so the two agreed everywhere anyone looked, and `SCRIPTED_EDITOR.md`'s claim
     // that *"one script serves both"* was false the moment a script walked.
     //
-    // What is left here is a driver's business: saying what happened.
-    return said_ack(hex_editor::press(sess, w, a, rest), rest, said);
+    // ⚠ **TWO LEVELS NOW, NOT ONE — plan 22 `V2b`, and this was the LAST caller of
+    // `press(key)` in the tree.** A key names a VERB and the verb names what
+    // happens; resolving in that order is what stops a driver from being a fourth
+    // place that decides what a keystroke means.
+    //
+    // ⚠ **AND IT IS NOT A RENAME: `verb_of` IS NOT INJECTIVE.** `O P I U N M` all
+    // answer `opening`, so a key press cuts **what is chosen** rather than what the
+    // key used to spell — `key O` after `select 2` cuts a pointed one. That is the
+    // collapse finishing, and it is why `K1`/`K2` taught the scripts to say `select`
+    // first: every script that pressed an opening key was converted before this line
+    // moved, because no world instrument could have seen the difference (the store
+    // takes `DOOR_MAT` whatever the profile, and the outline lives in the session).
+    // `probe/k1/run.sh` check `G` is the claim, and it was seen red on the old line.
+    //
+    // ⏭ **`tools/script.mjs` HAS NOT MOVED**, deliberately — `V2` takes one caller at
+    // a time, and its `key O` still sends `36:1`. The divergence is real, bounded and
+    // temporary, and `K2a` removed every script that could show it.
+    //
+    // What is left here is a driver's business: saying what happened. A key nobody
+    // bound answers `VB_NONE`, which `press_verb` reports as `PR_NONE` — the same
+    // answer `press` gave, so the sentence below did not have to change.
+    return said_ack(hex_editor::press_verb(sess, w, a, hex_editor::verb_of(rest)),
+                    rest, said);
   }
 
   // ── THE SECOND SPELLING — plan 22 `K1` ──────────────────────────────────────

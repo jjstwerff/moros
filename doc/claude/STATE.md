@@ -126,7 +126,35 @@ serves**, differing only in where a key press goes.
 | ✅ `V2a` | **the server's `MSG_HOUSE` takes the verb** — the one caller with no profile to lose, so `press_verb` has a production consumer rather than only tests |
 | ✅ `K1` | **a script says a VERB** — `verb <name>` and `select <kind>` in both readers, and the runner grew a **session read-back** because the world cannot see what a conversion loses. `make probe-verbs` |
 | ✅ `K2a` | **the 18 opening presses are converted** — `select <kind>` + `verb opening` in 8 scripts, every other key untouched. `make probe-convert` |
-| ⏭ next | **`V2b`** — `editor_run` resolves through `verb_of`; the profile regression it was blocked on is gone. ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ✅ `V2b` | **`editor_run` resolves through `verb_of`** — the **last production caller of `press(key)`**. No equality could see the step; `probe/k1` check `G` can |
+| ⏭ next | **`V3`** — delete `press(key)`. ⏭ Nothing in production calls it already; two test files keep it alive. ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ⏭ `V2b` — NO EQUALITY COULD SEE THE STEP IT TOOK, 2026-08-12
+
+**`src/editor_run.loft`'s `key` branch is `press_verb(sess, w, a, verb_of(rest))`**, and that was
+the **last production caller of `press(key)`** in the tree — the server moved at `V2a`,
+`editor_client` never called it.
+
+⚠ **THE STEP'S CLAIM IS INVISIBLE TO EVERY EQUALITY BUILT FOR IT.** `probe/k1`'s A, B and C
+compare a key spelling against a verb spelling that **chose what the key already meant**, so they
+pass whether or not the runner resolves through `verb_of`. The check that can fail is new —
+`carried.keys` chooses **pointed**, presses `O` (the key that used to mean *round* and nothing
+else) and reads the kind out of the session. **Seen red on the old line** (`cut kind 1`).
+
+⚠ **AND THE FIXTURE ENCODED THE OLD MEANING, SO A CORRECT STEP TURNED THE SUITE RED.**
+`keyed.keys` pressed `key P` with no `select`; the day the runner moved, check B failed on a
+**script** rather than on a defect. It selects before it presses now, which makes the same file
+valid on **both** sides of the change. ⏭ Worth carrying forward: **a fixture written in the old
+vocabulary is not evidence about the new one.**
+
+⚠ **AND ONE CHECK WAS READING THE FIXTURE, NOT THE SYSTEM.** `D` required the two spellings to
+end on **different** selections — true only because `keyed.keys` never said `select`. Once it
+had to, the difference evaporated. `S3`'s claim underneath is unchanged, so it moved to where it
+can be stated directly: *select 2, press `O`, and the selection must still be 2.*
+
+⏭ **`tools/script.mjs` HAS NOT MOVED** — its `key O` still sends `36:1`. `V2` takes one caller at
+a time, so the runner and the wire disagree about what `key O` means until `V3`; the divergence
+is **bounded by `K2a`**, because no script presses an opening key any more.
 
 ## ⏭ `K2a` — THE SCRIPTS SAY IT NOW, AND THE STEP SPLIT, 2026-08-12
 

@@ -90,7 +90,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`S2a`** — the opening's CHOOSING moves into `hex_editor` | S | **DONE.** The server's report is **identical over 8 scripts and 240 lines**; 5 new loft tests, 4 sabotages red | ✅ Done |
 | ✅ **`V1`** — the verb vocabulary, `verb_of(key)`, and a `press` that takes a verb | S | **DONE.** Eleven keys through both layers, compared as whole-world BYTES · 6 sabotages red · hex_editor 420 → 428 | ✅ Done |
 | ✅ **`V2a`** — the server's `MSG_HOUSE` takes the VERB | XS | **DONE.** `make headless-same` green, sabotage red (`served:` empty against `house placed 27 cells, 84 wall edges, ridge at 21`) · `make gate` 48 PASS | ✅ Done |
-| **`V2b`**–**`V3`** — the script-reading callers, then `press(key)` deleted | M | ⚠ **not "the same script builds the same world" — that instrument is blind here**, see below | ⏭ **Blocked on `K2`, not on `V2a`** |
+| ✅ **`V2b`** — `editor_run` resolves through `verb_of`; the **last production caller of `press(key)`** | S | **DONE.** ⚠ no equality can see this step — `probe/k1` check `G` (choose pointed, press `O`, the selection decides), seen red on the old line · `make headless-same` · `make probe-verbs` · `make probe-convert` | ✅ Done |
+| **`V3`** — delete `press(key)` | S | ⏭ nothing in production calls it **already**; what remains is the two test files keeping it alive | ⏭ **Next** |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | ✅ **`K1`** — scripts accept both spellings: `key H` and `verb place`, plus `select <kind>` | S | **DONE.** Both drivers, twin scripts, compared on the world AND on the session · `make probe-verbs` · ⚠ the row's own control was blind — see below | ✅ Done |
 | ✅ **`K2a`** — convert the presses that LOSE information: 18 opening keys in 8 scripts | S | **DONE.** Each script beside a committed baseline of itself, through a server: sentences, saved world **and** kinds · `make probe-convert` · ⚠ the first two are blind to a niche's depth — measured | ✅ Done |
@@ -240,6 +241,37 @@ exits 1 when it matches nothing, which is precisely what that control wants to s
 ⚠ **AND A FRESH SERVER PER SCRIPT.** Two runs against one process differ in every
 `hex (q,r) — +N −M chunks` line, because the streaming set carries over — a fact about a viewer,
 not a gesture, and filtering it would have meant choosing what counts as noise.
+
+## What `V2b` turned up (2026-08-12) — no equality could see the step it took
+
+**`src/editor_run.loft`'s `key` branch is `press_verb(sess, w, a, verb_of(rest))`**, and it was
+the **last production caller of `press(key)`**: the server moved at `V2a`, `editor_client` never
+called it, and what keeps it alive now is two test files.
+
+⚠ **THE STEP'S CLAIM IS INVISIBLE TO EVERY EQUALITY BUILT FOR IT.** `probe/k1`'s A, B and C
+compare a key spelling against a verb spelling that **chose what the key already meant** — so
+they pass whether or not the runner resolves through `verb_of`. The check that can fail is new:
+`carried.keys` chooses **pointed**, presses `O` — the key that used to mean *round* and nothing
+else — and reads the kind out of the session. **Seen red first** (`cut kind 1`), green after.
+
+⚠ **AND THE FIXTURE ENCODED THE OLD MEANING, SO A CORRECT STEP TURNED THE SUITE RED.**
+`keyed.keys` pressed `key P` with no `select`; the day the runner moved, check B failed on a
+**script** rather than on a defect. It selects before it presses now, which makes the same file
+valid on **both** sides of the change — before it the key already meant what was chosen, after
+it the key means whatever is chosen. Worth remembering the next time a chokepoint moves: a
+fixture written in the old vocabulary is not evidence about the new one.
+
+⚠ **AND ONE CHECK WAS READING THE FIXTURE RATHER THAN THE SYSTEM.** `D` required the two
+spellings to end on **different** standing selections — which held only because `keyed.keys`
+never said `select`. Once it had to, the difference evaporated and `D` went red on nothing. The
+claim underneath is `S3`'s and is unchanged, so it moved to where it can be stated directly:
+select 2, press `O`, and the selection must still be 2. **A check that passes because of how a
+fixture happens to be written is not a check about the system.**
+
+⏭ **`tools/script.mjs` HAS NOT MOVED**, deliberately — `V2` takes one caller at a time, and its
+`key O` still sends `36:1`. The runner and the wire disagree about what `key O` means until `V3`
+deletes the key form, and the divergence is **bounded by `K2a`**: no script presses an opening
+key any more, so nothing exercises it.
 
 ## What `K2a` turned up (2026-08-12) — and it split the step
 

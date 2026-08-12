@@ -16,10 +16,18 @@ echo --- a house, on one of the six facings the lattice can mitre
 at -6 -6 30
 key H
 
+# ⚠ IT CHOOSES BEFORE IT PRESSES, AND THAT IS PLAN 22 `V2b` RATHER THAN A TIDY-UP.
+# Until the runner resolved keys through `verb_of`, `key P` meant *pointed* on its
+# own and these two lines were unnecessary. They are what makes this fixture valid on
+# BOTH sides of that change: before it, the key already meant what was chosen; after
+# it, the key means whatever is chosen. Without them `key P` cut a round head the day
+# the runner moved, and check B went red on a script rather than on a defect.
 echo --- a ROUND-headed door and a POINTED window in its near wall
 at -3 2 30
+select 1
 key O
 at -1 3 30
+select 2
 key P
 
 echo --- a fence ring, and a wall ring, well clear of the house

@@ -1,0 +1,31 @@
+# V2b — A KEY NO LONGER CARRIES A PROFILE.
+#
+# The claim of the step, as a script: choose a POINTED opening, then press `O` — the
+# key that used to mean *round*, and nothing else. After `V2b` the runner resolves a
+# key through `verb_of`, six opening keys name one `opening` verb, and the profile
+# comes from the selection. So this must cut kind **2**.
+#
+# ⚠ IT IS RED BEFORE THE STEP AND GREEN AFTER, which is the whole reason it exists:
+# `press("O")` cut a hard-coded `OP_ROUND` whatever was chosen, and no equality
+# between the two spellings could see that — they agreed precisely because the script
+# selected what the key already meant.
+#
+# ⚠ AND IT IS RUNNER-ONLY, deliberately. `V2` moves ONE CALLER AT A TIME, and this is
+# `editor_run`'s turn: `tools/script.mjs` still sends `36:1` for `key O`, so the same
+# file driven over the wire would cut a round one and be right to. That divergence is
+# what `V3` closes by deleting the key form; until then it is stated rather than
+# discovered.
+
+echo --- flat ground to build on
+at 0 0 0
+key ArrowUp
+wait rebuilt
+
+echo --- a house, on one of the six facings the lattice can mitre
+at -6 -6 30
+key H
+
+echo --- choose POINTED, then press the key that used to mean ROUND
+at -3 2 30
+select 2
+key O
