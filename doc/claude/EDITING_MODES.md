@@ -532,7 +532,8 @@ returns one of three values", it would be a self-test and it would have to merge
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
 | ✅ **`K1`** — `tools/scripts/*.keys` accepts **both** spellings, `key H` and `verb place` | every existing script, unchanged — **no gate moves on the day the format changes** | ⚠ **the row said *diff the world* and that instrument is blind here** — see below. Both drivers, compared on the world AND on the session |
-| **`K2`** — convert the 23 scripts, one at a time, each green before the next | the key form, still accepted | as `K1`, per script |
+| ✅ **`K2a`** — convert the presses that LOSE information: the 18 opening keys in 8 scripts | the key form, still accepted; every other key untouched | ⚠ three instruments, because the first two are blind to a niche's depth — see below |
+| **`K2b`** — convert the rest | — | blocked: `press` has no verb for `R`, `E`, `B`, `J`, `X`… — twelve keys, and `K3` cannot start before they exist |
 | **`K3`** — drop the key spelling | — | nothing uses it: a grep over `tools/scripts/` |
 | **`T1`** — a **type** declares defaults and, optionally, `(key, verb)` pairs | the built-in set, until a declared type reproduces it exactly | ⚠ **the invariant**: a type added as *data* must reproduce today's cottage byte for byte in `make parts`. If that needs a `.loft` edit, the table is not data yet |
 
@@ -593,6 +594,45 @@ reading the source — nobody notices what a `println` leaves out.**
 Choosing can be refused (`5` is not an opening kind), and waiting on the success wording alone
 turns a refusal into a timeout — the instrument reporting *nothing arrived* where what arrived
 was the answer.
+
+### ✅ `K2a` — and it split, because only one family loses anything
+
+**Built 2026-08-12.** The 18 opening presses across 8 scripts are `select <kind>` + `verb
+opening` now. **Every other key was left alone**, and that is the step's own shape rather than
+laziness: `verb_of` is one-to-one everywhere except the opening family, so those 18 are the
+only presses `V2b` could silently regress. Converting `key ArrowUp` (77 of them) changes a
+spelling and nothing else, and it cannot even finish — `press` has no verb for `R`, `E`, `Q`,
+`B`, `C`, `J`, `K`, `V`, `Y`, `T`, `X` or `Z`. **`K3` is blocked on those twelve, not on `K2`.**
+
+⚠ **THE EIGHT SCRIPTS HAVE NO GATE BETWEEN THEM.** The suite drives `cache`, `indoors`,
+`cellar`, `clientmesh` and `deck`; `annex`, `door`, `embrasure`, `furnish`, `house`, `niche`,
+`opening` and `profiles` are run by hand. So `make gate` staying green says nothing about this
+conversion, and `probe/k2/` (`make probe-convert`) is their only check: each script beside a
+committed baseline of itself, both driven through a server.
+
+⚠ **AND BOTH WIRE INSTRUMENTS ARE BLIND TO A NICHE'S DEPTH — MEASURED, NOT SUSPECTED.** The
+server prints `om_kind`, whose own field comment reads *"the profile, after the tens and
+twenties are read off"*, so a doorway, a **niche** and an **embrasure** all report `opened
+profile 1`; and the store gets `DOOR_MAT` whatever the depth, so the saved worlds are
+byte-identical. Sabotaged to prove it: `niche.keys` converted with `select 1` three times where
+it meant `1 11 11` leaves **all six sentences identical and the world at the same md5**. Only a
+third check — the kind sequence, read out of `script.mjs`'s own `KEYMAP` and walked with the
+selection carried forward — goes red.
+
+> ⏭ **That is also a live wording defect, recorded and not fixed here.** An author who cuts a
+> niche is told exactly what an author who cut a doorway is told. `S2a` froze this sentence on
+> purpose while the choosing moved; naming the depth is a change to make deliberately.
+
+⚠ **AND THE HEADLESS RUNNER COULD NOT STAND IN, WHICH WAS THE FIRST IDEA.** `K1`'s session
+read-back is precisely the instrument that sees a depth — and `press` has no `R`, so seven of
+these eight scripts build **no wall at all** in `editor_run` and every opening in them is
+refused with *"no wall here to open"*. The strongest instrument in the tree had nothing to look
+at.
+
+⚠ **ONE SCRIPT CARRIES THE SELECTION FORWARD ON PURPOSE.** `niche.keys` chooses `11` once and
+cuts twice, because a selection stands until something moves it — that is what makes `select` a
+tool rather than an argument. The check walks the selection rather than expecting one `select`
+per opening, or it would have called the idiomatic script wrong.
 
 ⚠ **`T1` IS WHERE THE SYSTEM STARTS TO GROW, AND IT IS LAST FOR A REASON.** Every step above
 narrows what a type has to be able to say; declaring the format first would be designing a

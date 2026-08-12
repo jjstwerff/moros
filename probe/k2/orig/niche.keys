@@ -21,16 +21,11 @@ key R
 
 echo --- a doorway, then two niches beside it
 at -5 -0.9 90
-select 1
-verb opening
-# ⚠ CHOSEN ONCE AND CUT TWICE — a selection stands until something moves it, which
-# is what makes `select` a tool rather than an argument. Saying `select 11` again on
-# the next line would work and would teach the wrong thing.
+key O
 at 0 -0.9 90
-select 11
-verb opening
+key N
 at 5 -0.9 90
-verb opening
+key N
 
 echo --- the front: three openings, alike at a glance
 at 0 -12 90

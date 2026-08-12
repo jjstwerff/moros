@@ -16,8 +16,7 @@ key R
 at 6 4 0
 key R
 at -2 2.5 90
-select 11
-verb opening
+key N
 
 echo --- and a figure standing in the niche, sized by the niche
 key T

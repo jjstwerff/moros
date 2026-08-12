@@ -23,14 +23,11 @@ key R
 
 echo --- a plain doorway to compare against, then the window seat
 at -4 -0.9 90
-select 1
-verb opening
+key O
 at 2 -0.9 90
-select 11
-verb opening
+key N
 at 2 -0.9 90
-select 21
-verb opening
+key M
 
 # ⚠ THE SEAT SIDE IS +z. A wall run's front face is the side its normal points at,
 # which is not the side the author stood on to cut the niche — worth stating,

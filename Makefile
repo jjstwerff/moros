@@ -558,6 +558,14 @@ probe-split:
 probe-verbs:
 	@sh probe/k1/run.sh
 
+# K2 (plan 22) — DOES A CONVERTED SCRIPT BUILD WHAT IT BUILT BEFORE? The eight
+# scripts that press an opening key have NO gate between them, so this is their only
+# check: each one beside its pre-conversion baseline, through a server, compared on
+# the sentences, the saved world AND the kinds — because the first two are blind to
+# a niche's depth. `sh probe/k2/run.sh niche` runs one.
+probe-convert:
+	@sh probe/k2/run.sh
+
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \
 	  tools/gates/world/*.mjs tools/gates/character/*.mjs

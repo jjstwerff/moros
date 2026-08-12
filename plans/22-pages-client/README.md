@@ -93,7 +93,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`V2b`**–**`V3`** — the script-reading callers, then `press(key)` deleted | M | ⚠ **not "the same script builds the same world" — that instrument is blind here**, see below | ⏭ **Blocked on `K2`, not on `V2a`** |
 | **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | Blocked on `V2` |
 | ✅ **`K1`** — scripts accept both spellings: `key H` and `verb place`, plus `select <kind>` | S | **DONE.** Both drivers, twin scripts, compared on the world AND on the session · `make probe-verbs` · ⚠ the row's own control was blind — see below | ✅ Done |
-| **`K2`**–**`K3`** — convert the 23 scripts one at a time, then drop the key spelling | S | a converted script and its original build the same world **and the same session** | ⏭ **Next** |
+| ✅ **`K2a`** — convert the presses that LOSE information: 18 opening keys in 8 scripts | S | **DONE.** Each script beside a committed baseline of itself, through a server: sentences, saved world **and** kinds · `make probe-convert` · ⚠ the first two are blind to a niche's depth — measured | ✅ Done |
+| **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Blocked on twelve keys having no verb** — `R E Q B C J K V Y T X Z` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | **`B1`** — local mode in `editor_client.loft`: hold an `EditSession`, route presses to `press` | M | both modes build the same world from one script | Blocked on `W4` |
 | **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`, `P5` |
@@ -239,6 +240,43 @@ exits 1 when it matches nothing, which is precisely what that control wants to s
 ⚠ **AND A FRESH SERVER PER SCRIPT.** Two runs against one process differ in every
 `hex (q,r) — +N −M chunks` line, because the streaming set carries over — a fact about a viewer,
 not a gesture, and filtering it would have meant choosing what counts as noise.
+
+## What `K2a` turned up (2026-08-12) — and it split the step
+
+**The 18 opening presses across 8 scripts are `select <kind>` + `verb opening` now**, and
+**every other key was left alone**. That is the step's shape rather than laziness: `verb_of` is
+one-to-one everywhere except the opening family, so those 18 are the only presses `V2b` could
+silently regress. And the rest cannot be finished anyway — `press` has no verb for `R`, `E`,
+`Q`, `B`, `C`, `J`, `K`, `V`, `Y`, `T`, `X` or `Z`. **`K3` is blocked on those twelve, not on
+`K2`.**
+
+⚠ **THE EIGHT SCRIPTS HAVE NO GATE BETWEEN THEM.** The suite drives `cache`, `indoors`,
+`cellar`, `clientmesh` and `deck`; these eight are run by hand. `make gate` staying green says
+nothing about the conversion, so `probe/k2/` is their only check — each script beside a
+committed baseline of itself, both through a server of its own.
+
+⚠ **AND BOTH WIRE INSTRUMENTS ARE BLIND TO A NICHE'S DEPTH.** The server prints `om_kind`,
+whose own field comment says *"the profile, after the tens and twenties are read off"*, so a
+doorway, a niche and an embrasure all report `opened profile 1`; the store gets `DOOR_MAT`
+whatever the depth, so the saved worlds are byte-identical. **Sabotaged to prove it**:
+`niche.keys` converted as `select 1` three times where it means `1 11 11` leaves all six
+sentences identical **and the world at the same md5**. Only the third check — the kind sequence,
+read out of `script.mjs`'s own `KEYMAP` and walked with the selection carried forward — goes
+red.
+
+> ⏭ **A live wording defect, recorded not fixed.** An author who cuts a niche is told exactly
+> what an author who cut a doorway is told. `S2a` froze that sentence deliberately while the
+> choosing moved; naming the depth is a change to make on purpose.
+
+⚠ **AND `K1`'s SESSION READ-BACK COULD NOT STAND IN, WHICH WAS THE FIRST IDEA.** It is exactly
+the instrument that sees a depth — and `press` has no `R`, so **seven of these eight scripts
+build no wall at all** in `editor_run` and every opening in them is refused with *"no wall here
+to open"*. The strongest instrument in the tree had nothing to look at.
+
+⚠ **ONE SCRIPT CARRIES THE SELECTION FORWARD ON PURPOSE.** `niche.keys` chooses `11` once and
+cuts twice — a selection stands until something moves it, which is what makes `select` a tool
+rather than an argument. The check walks the selection instead of expecting one `select` per
+opening, or it would have called the idiomatic script wrong.
 
 ## What `P2` turned up (2026-08-11)
 

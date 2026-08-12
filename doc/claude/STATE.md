@@ -103,7 +103,37 @@ serves**, differing only in where a key press goes.
 | ✅ `V1` | **a key names a VERB.** `verb_of(key)` and `press_verb(…, verb)` beside an unchanged `press(key)`; six verbs — `raise` `lower` `place` `opening` `fence` `wall` — and all eleven keys driven through both layers, compared as **whole-world bytes** |
 | ✅ `V2a` | **the server's `MSG_HOUSE` takes the verb** — the one caller with no profile to lose, so `press_verb` has a production consumer rather than only tests |
 | ✅ `K1` | **a script says a VERB** — `verb <name>` and `select <kind>` in both readers, and the runner grew a **session read-back** because the world cannot see what a conversion loses. `make probe-verbs` |
-| ⏭ next | **`K2`** — convert the 23 scripts one at a time, each green before the next. Then `V2b` can move `editor_run` |
+| ✅ `K2a` | **the 18 opening presses are converted** — `select <kind>` + `verb opening` in 8 scripts, every other key untouched. `make probe-convert` |
+| ⏭ next | **`V2b`** — `editor_run` resolves through `verb_of`; the profile regression it was blocked on is gone. ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ⏭ `K2a` — THE SCRIPTS SAY IT NOW, AND THE STEP SPLIT, 2026-08-12
+
+**18 opening presses across 8 scripts**, and **every other key left alone**. That is the shape
+of the step: `verb_of` is one-to-one everywhere except the opening family, so those 18 are the
+only presses `V2b` could silently regress — and the rest cannot be finished anyway, because
+`press` has no verb for `R E Q B C J K V Y T X Z`. **`K3` is blocked on those twelve.**
+
+⚠ **THE EIGHT SCRIPTS HAVE NO GATE BETWEEN THEM** — the suite drives `cache`, `indoors`,
+`cellar`, `clientmesh` and `deck`. So `make gate` staying green says nothing about this, and
+`probe/k2/` is their only check: each script beside a **committed baseline of itself**, both
+through a server of its own.
+
+⚠ **AND BOTH WIRE INSTRUMENTS ARE BLIND TO A NICHE'S DEPTH.** The server prints `om_kind` —
+*"the profile, after the tens and twenties are read off"*, its own field comment — so a doorway,
+a **niche** and an **embrasure** all report `opened profile 1`; and `DOOR_MAT` goes into the
+store whatever the depth, so the saved worlds are byte-identical. **Sabotaged**: `niche.keys`
+converted as `select 1` three times where it means `1 11 11` leaves **all six sentences
+identical and the world at the same md5**. Only the kind sequence — read out of `script.mjs`'s
+own `KEYMAP`, walked with the selection carried forward — goes red.
+
+⏭ **THAT IS ALSO A LIVE WORDING DEFECT, RECORDED AND NOT FIXED.** An author cutting a niche is
+told what an author cutting a doorway is told. `S2a` froze the sentence on purpose while the
+choosing moved; naming the depth is a deliberate change.
+
+⚠ **AND `K1`'s SESSION READ-BACK COULD NOT STAND IN.** It is exactly the instrument that sees a
+depth — and `press` has no `R`, so **seven of the eight scripts build no wall at all** in
+`editor_run` and every opening in them is refused. The strongest instrument in the tree had
+nothing to look at.
 
 ## ⏭ `K1` — AND THE ROW'S OWN NEGATIVE CONTROL WAS BLIND, 2026-08-12
 

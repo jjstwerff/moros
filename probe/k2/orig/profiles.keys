@@ -17,17 +17,13 @@ key R
 
 echo --- round, pointed, segmental, oculus
 at -7 -0.9 90
-select 1
-verb opening
+key O
 at -2 -0.9 90
-select 2
-verb opening
+key P
 at 3 -0.9 90
-select 3
-verb opening
+key I
 at 8 -0.9 90
-select 4
-verb opening
+key U
 
 echo --- look along the elevation
 at 0 -14 90

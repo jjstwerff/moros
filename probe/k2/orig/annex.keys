@@ -35,8 +35,7 @@ key K
 
 echo --- a niche in the cottage wall, and a figure standing in it
 at -3 4.2 90
-select 11
-verb opening
+key N
 key T
 
 echo --- the joinery, off the axis so the shared wall and the two fronts read
