@@ -1061,14 +1061,40 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
   // 4 — fit the window across the WHOLE chunk once this column is applied: one
   // base serves every column in the tile, so the span is a tile-wide question.
   lo = clo; hi = chi; seen = cseen;
-  for ly in w.w_chunks[ci].ck_layers {
-    if ly.ly_kind == KIND_TERRAIN {
-      for j in 0..CHUNK_CELLS {
-        if j != ix && stored_present(ly.ly_cells[j]) {
-          h = w.w_chunks[ci].ck_base + ly.ly_cells[j].sv_height;
-          if !seen { lo = h; hi = h; seen = true; }
-          if h < lo { lo = h; }
-          if h > hi { hi = h; }
+  // ⚠ THE STORED CELLS ARE INSIDE THE WINDOW BY THE FIELD'S TYPE, so only the
+  // INCOMING column can move it — and that is what makes the sweep skippable.
+  //
+  // `StoredHex.sv_height` is a **u16**: every stored cell sits at `base + [0,
+  // 65535]` and `WINDOW` is 65536. So no existing cell can be below the base or at
+  // or past the far edge, and no existing PAIR can span the window — **whatever
+  // path wrote it**. That is stronger than "the write path maintains it": three
+  // other functions write `ly_cells` without coming through here
+  // (`world_set_cell`, `world_set_dressing`, `world_put_layer`) and none of them
+  // can break this, because the type will not hold a value that would.
+  //
+  // The two decisions below are therefore about the column and nothing else: it
+  // needs a rebase when it falls outside the window, and the tile can only span
+  // too far when it does. While the column fits, `lo` and `hi` are never read.
+  //
+  // ⚠ AND WHEN IT DOES NOT FIT, THE SWEEP STILL RUNS AND STILL DECIDES. It is not
+  // an approximation of the old answer, it is the old answer computed on the rare
+  // path: a column *below* the base with the tile already spanning 65535 must be
+  // REFUSED, not rebased, and only the true minimum over the tile can tell those
+  // apart. The guard asks about the column; the sweep answers about the tile.
+  if seen && (lo < w.w_chunks[ci].ck_base || hi >= w.w_chunks[ci].ck_base + WINDOW) {
+    for ly in w.w_chunks[ci].ck_layers {
+      if ly.ly_kind == KIND_TERRAIN {
+        for j in 0..CHUNK_CELLS {
+          // ⚠ NO `if !seen` SEEDING ANY MORE — the guard admits only `seen`, so
+          // `lo`/`hi` always start at the column's own span and every present cell
+          // is folded into it. The seeding branch was reachable when the sweep ran
+          // unconditionally and a column carried no content; it cannot be now, and
+          // a dead branch that looks live is how the next reader mis-reads this.
+          if j != ix && stored_present(ly.ly_cells[j]) {
+            h = w.w_chunks[ci].ck_base + ly.ly_cells[j].sv_height;
+            if h < lo { lo = h; }
+            if h > hi { hi = h; }
+          }
         }
       }
     }

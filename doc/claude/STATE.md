@@ -61,11 +61,29 @@ counting them going *up*. It is invisible from outside: **a dropped layer and an
 one both read back as absence**, so only the bytes differ. `lib/hex_voxel/tests/elision.loft` is
 the rule now — 5 tests, 2 sabotages red, one of them reporting silent data loss.
 
-⏭ **WHAT IS LEFT IS STEP 4 (the window fit) AND IT IS A DIFFERENT PROBLEM** — 25 % of the suite
-between `stored_present` and its loop, and it **cannot** early-exit. The fast path it wants is
-sound only if *every stored cell is inside the window by construction*, and ⚠ **three functions
-write `ly_cells` without passing through this path** (`world_set_cell`, `world_set_dressing`,
-`world_put_layer`). Proving that is the next step's first probe.
+✅ **AND STEP 4 WENT TOO — the suite is HALF what it was.** `5,210,109 → 3,896,879 → 2,462,718`
+samples, **−52.7 %** over the two steps, same 424 runs. `stored_present` 20.8 % → **5.9 %**; step
+4's loop gone from the by-line table.
+
+**Its invariant is STRUCTURAL rather than maintained**: `sv_height` is a **u16**, so every stored
+cell is at `base + [0, 65535]` against a `WINDOW` of 65536 — no stored cell can be outside the
+window **whatever wrote it**. That is what made the three other `ly_cells` writers need no audit:
+the type will not hold a value that would break it. Only the incoming column can move the floor,
+and its span is already computed.
+
+⚠ **AND THE SABOTAGE PASSED — which is the finding.** Skipping the sweep *unconditionally* leaves
+all five `window.loft` tests green, because **the sweep cannot change a decision**: it only lowers
+`lo`, and it is entered only when `lo < base` while every stored cell is `>= base` — so `lo` is
+always the column's own minimum, and when a rebase fires the column *is* the new floor. Its other
+output, `hi`, feeds two comparisons that are **unreachable** (`Hex.h_height` is a u16 too, so no
+tile can span 65536). ⚠ **The sweep is dead code today and is kept on purpose**: it is the guard
+that becomes load-bearing the day a height field widens, and deleting it would be a subtraction
+justified by a type. `lib/hex_voxel/tests/window.loft` pins the reachability fact so `CW_WINDOW`
+stops being a branch nobody can explain.
+
+⏭ **THE WRITE PATH IS NO LONGER THE TOP OF THE PROFILE.** What is left is the READ: `world_chunk_of`
+**12.4 %** (a floor-divide on every cell access), `empty_cells` **6.4 %** (GROUND_DEFAULT's own
+target), `stored_present` 5.9 % (now `hex_of`'s), `hex_of` 3.9 %.
 
 ⚠ **AND THAT GREP FOUND A LIVE INCONSISTENCY, MEASURED: `world_set_cell` DOES NOT ELIDE.** Clear
 a cell through the fast path and the layer *and* the chunk stay in the directory, where the

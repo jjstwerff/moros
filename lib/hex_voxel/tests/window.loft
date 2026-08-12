@@ -1,0 +1,138 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE WINDOW — WHAT A u16 OF RELATIVE HEIGHT CAN HOLD, AND WHEN THE FLOOR MOVES.
+//
+// `W1`: a chunk stores heights RELATIVE to its own base, so the base has to move
+// when a write lands below it. `world_set_column_as` step 4 is that decision, and
+// until 2026-08-12 it re-derived the whole tile's min and max — every cell of every
+// terrain layer, 1024 apiece — on **every** write, to answer it.
+//
+// ⚠ IT DOES NOT HAVE TO. `StoredHex.sv_height` is a **u16**, so every stored cell
+// is at `base + [0, 65535]` and `WINDOW` is 65536: no stored cell can be outside
+// the window and no stored pair can span it, **whatever wrote them**. So only the
+// INCOMING column can move the floor or overflow the span, and the sweep is needed
+// only when the column itself falls outside. These tests are that decision's
+// coverage — the rebase had some (`set_cell.loft`, `ground.loft`, `sparsity.loft`)
+// and the boundary had none.
+//
+// ⚠ AND `Hex.h_height` IS A u16 TOO, which makes the REFUSAL unreachable: absolute
+// heights live in `[0, 65535]` and a base is never negative, so no tile can span
+// 65536. `test_the_widest_tile_the_types_allow_is_still_accepted` pins that as a
+// FACT rather than leaving `CW_WINDOW` as an untested branch nobody can explain —
+// it is a guard against a future wider height field, and it says so.
+use hex_voxel;
+
+const RESERVE = 100;
+
+fn mk_world() -> VoxelWorld { world_new(0.25, RESERVE, 8, 3).wn_world }
+fn cell_at(h: integer) -> Hex {
+  Hex { h_height: h as u16? ?? 0, h_material: 1 as u8? ?? 0 }
+}
+fn put(w: VoxelWorld, q: integer, r: integer, h: integer) -> ColumnWrite {
+  world_set_column(w, Column { co_q: q, co_r: r, co_cells: [cell_at(h)] })
+}
+fn base_of(w: VoxelWorld, q: integer, r: integer) -> integer {
+  w.w_chunks[0].ck_base
+}
+
+// ── the live path: a column below the floor moves it ────────────────────────
+//
+// ⚠ THE CLAIM IS NOT "the base moved" — it is that everything already stored still
+// reads back at the SAME ABSOLUTE HEIGHT afterwards. A rebase re-encodes every
+// stored cell against the new floor, and a re-encoding that lost a unit would be
+// invisible to a base check and visible as terrain that sank.
+fn test_a_column_below_the_base_moves_the_floor_and_keeps_what_was_there() {
+  w = mk_world();
+  assert(put(w, 1, 1, 900).cw_code == CW_OK, "the fixture could not write high");
+  first = base_of(w, 1, 1);
+  assert(first == 900, "a chunk's floor is its first column's height, got {first}");
+
+  assert(put(w, 2, 2, 400).cw_code == CW_OK, "a column below the floor was refused");
+  assert(base_of(w, 2, 2) == 400,
+         "the floor did not follow the lower column: {base_of(w, 2, 2)}");
+  // Both cells, at their ABSOLUTE heights, after the re-encoding.
+  assert(world_cell(w, 1, 1, 0).h_height == 900,
+         "the high cell reads {world_cell(w, 1, 1, 0).h_height} after the rebase");
+  assert(world_cell(w, 2, 2, 0).h_height == 400,
+         "the low cell reads {world_cell(w, 2, 2, 0).h_height}");
+}
+
+// ⚠ AND A COLUMN THAT FITS MUST MOVE NOTHING. This is the case the fast path takes
+// — the sweep is skipped entirely — so it is the one where a wrong guard would show
+// as a floor that drifted or content that shifted under it.
+fn test_a_column_inside_the_window_moves_no_floor_and_disturbs_nothing() {
+  w = mk_world();
+  put(w, 1, 1, 900);
+  put(w, 2, 2, 400);
+  before = base_of(w, 1, 1);
+
+  for h in [401, 500, 65535, 900] {
+    assert(put(w, 3, 3, h).cw_code == CW_OK, "height {h} was refused");
+    assert(base_of(w, 3, 3) == before,
+           "writing {h} moved the floor from {before} to {base_of(w, 3, 3)}");
+  }
+  assert(world_cell(w, 1, 1, 0).h_height == 900,
+         "the first cell reads {world_cell(w, 1, 1, 0).h_height}");
+  assert(world_cell(w, 2, 2, 0).h_height == 400,
+         "the low cell reads {world_cell(w, 2, 2, 0).h_height}");
+  assert(world_cell(w, 3, 3, 0).h_height == 900,
+         "the last write reads {world_cell(w, 3, 3, 0).h_height}");
+}
+
+// ⚠ THE ONE THAT SEPARATES A GUARD ON THE COLUMN FROM A GUESS. The guard asks
+// whether the COLUMN is outside the window; the sweep then answers about the TILE.
+// A fast path that answered the second question with the first would rebase here
+// against the column alone and re-encode the high cell against a floor that is
+// 65135 below it — which a u16 cannot hold.
+//
+// Widest first, then a column below: the sweep must run, and the answer must be a
+// floor that still holds everything.
+fn test_the_floor_moves_under_a_tile_that_is_already_wide() {
+  w = mk_world();
+  put(w, 1, 1, 65535);
+  put(w, 2, 2, RESERVE);
+  assert(base_of(w, 1, 1) == RESERVE,
+         "the floor is {base_of(w, 1, 1)} and the lowest cell is {RESERVE}");
+  assert(world_cell(w, 1, 1, 0).h_height == 65535,
+         "the top cell reads {world_cell(w, 1, 1, 0).h_height} — the re-encoding "
+       + "lost it, which is what a u16 does when the span does not fit");
+  assert(world_cell(w, 2, 2, 0).h_height == RESERVE,
+         "the bottom cell reads {world_cell(w, 2, 2, 0).h_height}");
+}
+
+// ⚠ THE REFUSAL IS UNREACHABLE WHILE HEIGHTS ARE u16, AND THAT IS WORTH A TEST
+// RATHER THAN A COMMENT. `Hex.h_height` and `StoredHex.sv_height` are both u16 and
+// a base is never negative, so the widest tile the types can express is
+// `RESERVE..65535` — a span of {65535 - RESERVE}, which is inside `WINDOW`. So
+// `CW_WINDOW` is a guard against a future wider height field, not a branch this
+// store can take, and nothing should be written that only works because it fires.
+fn test_the_widest_tile_the_types_allow_is_still_accepted() {
+  w = mk_world();
+  assert(put(w, 1, 1, RESERVE).cw_code == CW_OK, "the floor of the range was refused");
+  assert(put(w, 2, 2, 65535).cw_code == CW_OK,
+         "the widest tile a u16 can express was refused as too wide — the window "
+       + "is {WINDOW} and this spans {65535 - RESERVE}");
+  assert(world_chunk_layers(w, 0, 0) == 1, "both cells should share one layer");
+  assert(world_cell(w, 1, 1, 0).h_height == RESERVE
+         && world_cell(w, 2, 2, 0).h_height == 65535,
+         "the extremes read {world_cell(w, 1, 1, 0).h_height} and "
+       + "{world_cell(w, 2, 2, 0).h_height}");
+}
+
+// ⚠ AND A WRITE WITH NO CONTENT DECIDES NOTHING. Clearing a cell carries no height
+// to compare, so it can neither move a floor nor overflow a span — the guard skips
+// the sweep on `!seen`, and this is that case reaching the store rather than an
+// argument that it does.
+fn test_clearing_a_cell_moves_no_floor() {
+  w = mk_world();
+  put(w, 1, 1, 900);
+  put(w, 2, 2, 400);
+  before = base_of(w, 1, 1);
+  world_set_column(w, Column { co_q: 1, co_r: 1,
+    co_cells: [Hex { h_height: 0 as u16? ?? 0, h_material: 0 as u8? ?? 0 }] });
+  assert(base_of(w, 2, 2) == before,
+         "a clear moved the floor from {before} to {base_of(w, 2, 2)}");
+  assert(world_cell(w, 2, 2, 0).h_height == 400,
+         "and the cell that remained reads {world_cell(w, 2, 2, 0).h_height}");
+}

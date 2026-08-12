@@ -151,7 +151,52 @@ five tests, and two sabotages seen red — the fast path without its fallback sc
 *"clearing one cell dropped a layer that still holds another — 0 layers left"* (silent data
 loss), and step 6 dropping nothing reports the empty layer and the empty chunk.
 
-### ⏭ WHAT IS LEFT IS STEP 4, AND IT IS A DIFFERENT PROBLEM
+### ✅ AND STEP 4 WENT TOO — the suite is **HALF** what it was, 2026-08-12
+
+| | | |
+|---|---|---|
+| `hex_editor`'s suite | **5,210,109** samples | → step 6 → **3,896,879** → step 4 → **2,462,718** |
+| | | **−52.7 % over the two steps**, same 424 runs |
+| `stored_present` | 20.8 % | → 13.8 % → **5.9 %** |
+| step 4's loop (`:1066`/`:1067`) | 11.2 % | → **absent from the by-line table** |
+
+**The invariant is STRUCTURAL, not maintained.** `StoredHex.sv_height` is a **u16**, so every
+stored cell sits at `base + [0, 65535]` and `WINDOW` is 65536 — no stored cell can be outside the
+window and no stored pair can span it, **whatever wrote it**. That is stronger than *"the write
+path maintains it"*: the three other functions that write `ly_cells` (`world_set_cell`,
+`world_set_dressing`, `world_put_layer`) needed no audit, because the **type** will not hold a
+value that would break it. So only the incoming column can move the floor or overflow the span,
+and its span is already computed above step 4. The sweep now runs only when the column itself
+falls outside the window.
+
+### ⚠ AND THE SABOTAGE PASSED — which is the finding, not a gap in the tests
+
+Skipping the sweep **unconditionally** leaves all five `window.loft` tests green. That is not a
+weak test file; it is a proof that **the sweep cannot change a decision**:
+
+- it can only lower `lo` — and it is entered only when `lo < base`, while every stored cell is
+  `>= base`. **So `lo` after the sweep always equals the column's own minimum.** When a rebase
+  fires, the column *is* the new floor; the sweep contributes nothing to it.
+- it can only raise `hi` — and `hi` feeds two comparisons that are **unreachable**:
+  `Hex.h_height` is a u16 too, so absolute heights live in `[0, 65535]` and a base is never
+  negative. No tile can span 65536, and none can reach `base + WINDOW`.
+
+⚠ **THE SWEEP IS THEREFORE DEAD CODE TODAY, AND IT IS KEPT ON PURPOSE.** It is the guard that
+becomes load-bearing the day a height field widens past u16 — deleting it would be a subtraction
+justified by a type, and the type is exactly the thing a future change moves. The guard makes it
+free instead: O(1) to skip, and the sweep still computes the true tile minimum on the path where
+it would matter. `test_the_widest_tile_the_types_allow_is_still_accepted` pins the reachability
+fact so the next reader does not have to re-derive it, and `CW_WINDOW` stops being an untested
+branch nobody can explain.
+
+### ⏭ WHAT IS LEFT — and it is the READ path now, not the write
+
+`world_chunk_of` **12.4 %** (a floor-divide, called on every cell access), `empty_cells` **6.4 %**
+(chunk materialisation — [GROUND_DEFAULT](../../doc/claude/GROUND_DEFAULT.md)'s own target),
+`stored_present` **5.9 %** (now `hex_of`'s, the read path), `hex_of` 3.9 %. **The write path is no
+longer the top of the profile.**
+
+### ⏭ THE EARLIER HANDOVER FOR STEP 4, KEPT — it was a different problem
 
 `stored_present` is still **13.8 %** of the suite and step 4's loop **11.2 %** more
 (`hex_voxel.loft:1066`/`1067`). It **cannot** early-exit: it needs a true min/max over the whole
