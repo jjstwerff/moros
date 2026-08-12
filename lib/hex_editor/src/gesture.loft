@@ -2491,6 +2491,19 @@ pub const OM_OK      = 0;
 pub const OM_NO_HOST = 1;    // an embrasure with no niche to cut into
 pub const OM_NO_FIT  = 2;    // …or one that does not fit the niche it names
 
+// Is this one of the openings the family can make? — plan 22 `S2b`.
+//
+// ⚠ THE ENCODING IS THE WIRE'S AND THE ADMISSIBLE SET IS NOT A RANGE. `36:` carries
+// the outline in the units and the depth in the tens, so `4` is an oculus, `14` an
+// oculus-shaped niche and `24` one in a niche's back — while `5`, `15` and `25` are
+// nothing at all, and neither is `30`. A `0..24` bound would wave through nine kinds
+// that no branch of `opening_make` answers, and the author would get a flat door
+// wearing a number they chose on purpose.
+pub fn opening_kind_ok(kind: integer) -> boolean {
+  if kind < 0 { return false; }
+  kind % 10 <= OP_CIRCLE && kind / 10 <= 2
+}
+
 // ⚠ THE OPENING IS ALWAYS PRESENT, EVEN ON A REFUSAL, and it is never read there.
 // `Opening` has no field defaults — deliberately, so that nothing can construct a
 // hole of no size by accident — so a refusal carries a zero one rather than the
@@ -2506,7 +2519,11 @@ pub struct OpeningMade {
   om_z:    float = 0.0,
 }
 
-fn om_nothing() -> Opening {
+// A hole of no size, for the `om_open` an `OpeningMade` carries on a REFUSAL and
+// nothing reads there. ⚠ `Opening` has no field defaults on purpose — so that
+// nothing can construct a void by accident — which is why this exists rather than
+// the struct growing them.
+pub fn opening_none() -> Opening {
   Opening { op_x: 0.0, op_z: 0.0, op_half: 0.0, op_lo: 0, op_hi: 0, op_depth: 0.0,
             op_near: 0.0, op_spring: 0 - 1, op_kind: OP_FLAT, op_radius: 0.0 }
 }
@@ -2575,7 +2592,7 @@ pub fn opening_make(runs: WallRuns, open: Openings, x: float, z: float,
       om_i = om_i + 1;
     }
     if om_host < 0 {
-      return OpeningMade { om_ok: false, om_code: OM_NO_HOST, om_open: om_nothing(),
+      return OpeningMade { om_ok: false, om_code: OM_NO_HOST, om_open: opening_none(),
                            om_back: true, om_kind: om_k, om_x: om_wx, om_z: om_wz };
     }
     om_hostop = open.items[om_host] ?? door_opening(0.0, 0.0, 0.9, 12);
@@ -2583,7 +2600,7 @@ pub fn opening_make(runs: WallRuns, open: Openings, x: float, z: float,
     om_fit = opening_fits_in(om_hostop, om_win);
     if !om_fit.ak_ok {
       return OpeningMade { om_ok: false, om_code: OM_NO_FIT, om_why: om_fit.ak_why,
-                           om_open: om_nothing(), om_back: true, om_kind: om_k,
+                           om_open: opening_none(), om_back: true, om_kind: om_k,
                            om_x: om_wx, om_z: om_wz };
     }
     return OpeningMade { om_ok: true, om_open: om_win, om_back: true, om_kind: om_k,

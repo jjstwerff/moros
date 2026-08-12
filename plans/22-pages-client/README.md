@@ -12,9 +12,11 @@ can be opened and driven.**
 
 **Built:** `W1` (a world is bytes), half of `W4` (`press`, two of four sites wired), `R1a`/`R1b`
 (the ring reconciled — the pose carries the feet, and the trunk is the session's), `R3` (`O`/`P`
-say *not yet* instead of doing the wrong thing), and `P2` is **run and green** — so `W5` is
+say *not yet* instead of doing the wrong thing), `S0`/`S2a`/`S2b` (the scene records
+travel with the store, the opening's choosing is in the library, and a SELECTION decides what it
+cuts), and `P2` is **run and green** — so `W5` is
 buildable today with no loft change.
-**Next:** **`S1`** — a selection in `EditSession`, which is what `R2` waits on. The full step
+**Next:** **`S3`** — `O P I U N M` collapse to one `opening` verb. The full step
 decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
@@ -78,7 +80,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`R1a`** — the pose carries the ground under the feet | S | **DONE.** `make lib-test` rc=0 both backends (hex_editor 398→400) · `make parts` byte-identical · the house script still `τ 3909` · two sabotages seen red | ✅ Done |
 | ✅ **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | **DONE.** 5 sabotages seen red · `make lib-test` rc=0 both backends (hex_editor 400→404) · `make parts` byte-identical · `make gate` 47 PASS / 0 FAIL | ✅ Done |
 | ✅ **`R3`** — `press` answers **`PR_SELECT`** for `O`/`P` until a selection exists | XS | **DONE.** Both tests seen red first · `house.keys` through the runner is **byte-identical**, τ 3909 · the wire path untouched | ✅ Done |
-| **`S1`**–**`S3`** — the selection: in the session, changed by a verb, then `O P I U N M` collapse to ONE `opening` | M | the six old keys and one verb with six selections produce **six identical worlds**. ⚠ **`S1` merged into `S2`** — its round-trip test rested on a premise measured false | ⏭ **Next** |
+| ✅ **`S2b`** — the selection, the verb that sets it, and the gesture that reads it | S | **DONE.** Three selections cut three different `Opening`s · 5 sabotages red · `49:` on the wire, `36:` bare cuts what is chosen | ✅ Done |
+| **`S3`** = **`R2`** — `O P I U N M` collapse to ONE `opening` verb | M | the six old keys and one verb with six selections produce **six identical worlds** | ⏭ **Next** |
 | ✅ **`S0`** — the scene records go with the store they describe | XS | **DONE.** Found while checking `S1`'s premise: `9:` left the previous world's cottage in the session and `37:` hung a balcony on it | ✅ Done |
 | ✅ **`S2a`** — the opening's CHOOSING moves into `hex_editor` | S | **DONE.** The server's report is **identical over 8 scripts and 240 lines**; 5 new loft tests, 4 sabotages red | ✅ Done |
 | **`V1`**–**`V3`** — the verb vocabulary, `verb_of(key)`, callers moved one at a time, then `press(key)` deleted | M | per key: `press(key)` and `press(verb_of(key))` leave equal `w_tau` | Blocked on `S3` |
@@ -208,6 +211,31 @@ still pass, because the library tests only cross one hop.
 ⚠ **AND IT PAYS ONE `world_to_hex` SITE.** `editor_server.loft` is 29 → **28**, because the
 deleted branch re-derived the ring's centre through `moros_render` that `fence_ring` already had.
 Plan 19 `L6.3a`'s bill, one line smaller for free.
+
+## What `S2b` turned up (2026-08-12)
+
+**It is `S1` and `S2` in one, and that was forced rather than chosen**: a selected profile's only
+possible consumer is the gesture that cuts one, so the field alone could not go red. It only
+became buildable at `S2a`, when that gesture stopped being eighty lines inside a socket handler.
+
+⚠ **THE ADMISSIBLE SET IS NOT A RANGE**, which is why it is a predicate and not a bound. The units
+are the outline (`0..4`) and the tens the depth, so `5`, `15`, `25` and `30` are nothing at all: a
+`0..24` check waves through **nine** kinds no branch of `opening_make` answers, and the author
+gets a flat door wearing a number they chose on purpose. Five outlines × three depths = **15**.
+
+⚠ **THE SELECTION IS NOT A REGISTRY**, and `session_scene_clear` leaves it alone on purpose — it
+is what THIS AUTHOR chose, `es_author`'s category, so it survives a load and a part open. That is
+`S0`'s finding used rather than restated.
+
+⚠ **AND `36:<kind>` DOES NOT MOVE IT.** A bare `36:` cuts what is chosen; `36:2` cuts a pointed one
+and leaves the choice standing. A key that silently re-chose would make *what am I working on*
+depend on what you last pressed — the question the subject line exists to answer, and it carries
+`· opening <kind>` now.
+
+⚠ **THE CLAIM IS THE `Opening`, NEVER THE LINE.** Three selections, three worlds, three openings
+that differ in outline and depth and agree everywhere else. Measured on the wire too, end to end:
+bare `36:` → `opened profile 1`, then `49:2` → `opened profile 2`, then `49:5` refused and the
+next bare `36:` **still** `profile 2` — a refused selection changed nothing.
 
 ## What `S2a` turned up (2026-08-11) — the choosing had no way to be tested
 

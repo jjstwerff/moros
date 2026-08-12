@@ -89,6 +89,23 @@ pub struct EditSession {
   // four locals beside the socket until `R1b` — which meant `K` could only mean
   // "on that trunk" for the one driver that happened to keep them.
   es_trunk:   Trunk = Trunk {},
+  // ── THE SELECTION — plan 22 `S2b`, and it is NOT a registry ─────────────────
+  //
+  // The nine above are records ABOUT THE STORE — `session_scene_clear` empties them
+  // when the store is replaced. This is not one of them: it is what THIS AUTHOR has
+  // chosen, which is `es_author`'s category. Two clients editing one world hold two
+  // selections, and neither belongs in the world's bytes — which is what killed
+  // `S1`'s round-trip test and merged it into this step.
+  //
+  // ⚠ IT SURVIVES A LOAD AND A PART, deliberately: choosing a round-headed door and
+  // then opening a part should not silently hand you back a flat one.
+  //
+  // ⚠ AND IT HOLDS THE WIRE'S OWN ENCODING FOR NOW — units the outline, tens the
+  // depth, twenties the composition. Splitting it into *outline* and *how deep* is
+  // the right shape and is deliberately not done here: the step that needs it is the
+  // one where six keys collapse to one verb, and inventing the split before then
+  // would be designing a container for contents nobody has measured.
+  es_open_kind: integer = OP_ROUND,
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -225,6 +242,49 @@ pub fn session_fence(s: EditSession, w: VoxelWorld, mat: integer, rad: integer, 
 
 pub fn session_open(s: EditSession, w: VoxelWorld, kind: integer, nedges: integer) -> Ack {
   open_ahead(w, s.es_author, kind, nedges)
+}
+
+// ── THE SELECTION, AND THE GESTURE THAT READS IT — plan 22 `S2b` ─────────────
+//
+// ⚠ CHOOSING IS A GESTURE TOO, and it refuses the way every other one does. A kind
+// that is not one is NOMINAL — `5` is not *nearly* an oculus — so it is refused
+// without an offer, and the selection does not move. A verb that clamped would let
+// an author pick a niche and get a doorway with nothing said.
+pub fn session_select_open(s: EditSession, kind: integer) -> Ack {
+  if !opening_kind_ok(kind) {
+    return ack_no("{kind} is not an opening kind; nominal, so there is no nearest one");
+  }
+  s.es_open_kind = kind;
+  ack_ok(kind)
+}
+
+// One press of the opening gesture, with the profile taken from the SELECTION
+// rather than from the key that was pressed.
+//
+// ⚠ THIS IS THE WHOLE POINT OF THE SELECTION EXISTING, and it is why `S1` could not
+// be built on its own: a chosen profile's only possible consumer is the gesture that
+// cuts one, and until `S2a` moved the choosing out of `editor_server`'s `36:`
+// handler there was nothing here to consume it.
+//
+// ⚠ BOTH HALVES, IN THE HANDLER'S OWN ORDER. `open_ahead` writes the store — the
+// edge material, which is what `X70` protects — and `opening_make` decides the
+// SHAPE, which lives beside the store because a profile is the picture's business.
+// A wrapper that did only the second would leave a hole in the drawing and a whole
+// wall in the world.
+//
+// ⚠ `w.w_unit`, NOT A GLOBAL. `R1a`'s finding, one gesture over: a part world is
+// authored at another unit entirely, so an arch struck against `hex_proj`'s constant
+// would be right on the landscape and wrong on every part.
+pub fn session_opening(s: EditSession, w: VoxelWorld, a: Author, up: integer) -> OpeningMade {
+  so_ack = open_ahead(w, a, DOOR_MAT, 1);
+  if !so_ack.ak_ok {
+    return OpeningMade { om_ok: false, om_why: so_ack.ak_why, om_open: opening_none(),
+                         om_kind: s.es_open_kind };
+  }
+  so_made = opening_make(s.es_runs, s.es_open, a.au_x, a.au_z, s.es_open_kind, up,
+                         w.w_unit);
+  if so_made.om_ok { s.es_open.items += [so_made.om_open]; }
+  so_made
 }
 
 // `12:` — a storey up, or a cellar down, under where the author is STANDING.

@@ -258,3 +258,121 @@ fn test_the_profiles_head_is_measured_in_the_worlds_unit() {
          "and each is within one of ITS OWN units of the true rise: "
        + "{half - crise} at 0.25, {half - frise} at 0.125");
 }
+
+// ── `S2b` — THE SELECTION, AND THE GESTURE THAT READS IT ────────────────────
+//
+// ⚠ `S1` WAS *"a selection in EditSession, nothing changes behaviour yet"* and it
+// could not be built: a chosen profile's only possible consumer is the gesture that
+// cuts one, and that gesture was eighty lines inside a socket handler until `S2a`.
+// A field nobody reads is this tree's commonest defect with a planning hat on, so
+// the field, the verb that sets it and the consumer are one step.
+//
+// ⚠ AND THE CLAIM IS NOT *the line says what is selected*. It is that picking a
+// profile CHANGES WHAT THE NEXT OPENING CUTS — diffed on the `Opening`, never read
+// off a sentence.
+
+fn a_session_at_a_wall(w: VoxelWorld) -> hex_editor::EditSession {
+  s = hex_editor::session_new();
+  hex_editor::session_at(s, w, 0.0, 0.0, 0.0);
+  s.es_runs.items += [hex_editor::WallRun { wr_x0: 0.0 - 6.0, wr_z0: 0.0,
+                                            wr_x1: 6.0, wr_z1: 0.0 }];
+  s
+}
+
+fn test_the_selection_decides_what_the_next_opening_cuts() {
+  // Three selections, three worlds, one opening each — and the openings must differ
+  // in the ways the selection names and in no others.
+  round = walled();
+  point = walled();
+  niche = walled();
+  rs = a_session_at_a_wall(round);
+  ps = a_session_at_a_wall(point);
+  ns = a_session_at_a_wall(niche);
+
+  assert(hex_editor::session_select_open(rs, hex_editor::OP_ROUND).ak_ok, "round");
+  assert(hex_editor::session_select_open(ps, hex_editor::OP_POINTED).ak_ok, "pointed");
+  assert(hex_editor::session_select_open(ns, 10 + hex_editor::OP_ROUND).ak_ok, "a round niche");
+
+  rm = hex_editor::session_opening(rs, round, at_the_wall(round), hex_editor::STOREY_H);
+  pm = hex_editor::session_opening(ps, point, at_the_wall(point), hex_editor::STOREY_H);
+  nm = hex_editor::session_opening(ns, niche, at_the_wall(niche), hex_editor::STOREY_H);
+  assert(rm.om_ok && pm.om_ok && nm.om_ok,
+         "the fixture refused one: {rm.om_why} / {pm.om_why} / {nm.om_why}");
+
+  assert(rm.om_open.op_kind == hex_editor::OP_ROUND,
+         "the round selection cut a {rm.om_open.op_kind}");
+  assert(pm.om_open.op_kind == hex_editor::OP_POINTED,
+         "the pointed selection cut a {pm.om_open.op_kind}");
+  // ⚠ THE CLAIM THE FAMILY RESTS ON, ONE LAYER UP: `11` is the SAME CURVE as `1`,
+  // stopped short. A selection that changed the outline as well would mean the tens
+  // had become a sixth kind somewhere between the verb and the gesture.
+  assert(nm.om_open.op_kind == hex_editor::OP_ROUND,
+         "the round NICHE changed outline to {nm.om_open.op_kind}");
+  assert(nm.om_open.op_depth < 1.0 && rm.om_open.op_depth >= 1.0,
+         "the niche stops short ({nm.om_open.op_depth}) and the doorway does not "
+       + "({rm.om_open.op_depth})");
+  // …and a head struck to a different curve is a different height.
+  assert(rm.om_open.op_hi != pm.om_open.op_hi,
+         "a round head and a pointed one both reach {rm.om_open.op_hi}");
+
+  // ⚠ AND EACH ONE REACHED THE REGISTRY THE RENDERER READS. A gesture that decided
+  // correctly and appended nothing draws no hole at all — the "built and never
+  // called" defect inside one function.
+  assert(len(rs.es_open.items) == 1 && len(ps.es_open.items) == 1
+         && len(ns.es_open.items) == 1,
+         "the openings did not reach the session: {len(rs.es_open.items)} / "
+       + "{len(ps.es_open.items)} / {len(ns.es_open.items)}");
+}
+
+// ⚠ THE STORE IS WRITTEN TOO, and that is why this wraps `open_ahead` rather than
+// only `opening_make`. The edge material is the store's index of which boundary is
+// passable — `X70` — and a gesture that set the shape and left the wall solid would
+// draw a hole nobody can walk through.
+fn test_the_opening_gesture_writes_the_edge_as_well_as_the_shape() {
+  w = walled();
+  s = a_session_at_a_wall(w);
+  before = w.w_tau;
+  made = hex_editor::session_opening(s, w, at_the_wall(w), hex_editor::STOREY_H);
+  assert(made.om_ok, "refused: {made.om_why}");
+  assert(w.w_tau > before, "the store was not written: τ {before} -> {w.w_tau}");
+  // …and a wall with nothing to open is refused, with nothing appended.
+  bare = world();
+  bs = a_session_at_a_wall(bare);
+  none = hex_editor::session_opening(bs, bare, hex_editor::author_on(bare, 0.0, 0.0, 0.0),
+                                     hex_editor::STOREY_H);
+  assert(!none.om_ok, "an opening was cut in thin air");
+  assert(len(bs.es_open.items) == 0,
+         "{len(bs.es_open.items)} openings were recorded for a hole that was refused");
+}
+
+// ⚠ A KIND THAT IS NOT ONE IS NOMINAL — `5` is not *nearly* an oculus, and `30` is
+// not nearly anything. Refused without an offer, and the selection DOES NOT MOVE:
+// the control is that the next opening still cuts what was chosen before.
+fn test_a_selection_that_is_not_one_is_refused_and_changes_nothing() {
+  w = walled();
+  s = a_session_at_a_wall(w);
+  assert(hex_editor::session_select_open(s, hex_editor::OP_POINTED).ak_ok, "pointed");
+  for bad in [5, 15, 25, 30, 99, 0 - 1] {
+    ack = hex_editor::session_select_open(s, bad);
+    assert(!ack.ak_ok, "{bad} was accepted as an opening kind");
+    assert(!ack.ak_why.contains("offer"), "and got no offer: {ack.ak_why}");
+  }
+  made = hex_editor::session_opening(s, w, at_the_wall(w), hex_editor::STOREY_H);
+  assert(made.om_ok, "refused: {made.om_why}");
+  assert(made.om_open.op_kind == hex_editor::OP_POINTED,
+         "a refused selection moved the choice to {made.om_open.op_kind}");
+}
+
+// ⚠ AND THE ADMISSIBLE SET IS NOT A RANGE, which is the whole reason it is a
+// predicate rather than a bound. `0..24` waves through nine kinds no branch answers.
+fn test_every_kind_the_family_can_make_is_selectable_and_no_others() {
+  ok = 0;
+  for k in 0..30 {
+    if hex_editor::opening_kind_ok(k) { ok = ok + 1; }
+  }
+  // Five outlines × three depths — through, niche, in the back of a niche.
+  assert(ok == 15, "{ok} kinds are admissible, and the family has 5 x 3");
+  for good in [0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 20, 21, 22, 23, 24] {
+    assert(hex_editor::opening_kind_ok(good), "{good} is one of the family");
+  }
+}

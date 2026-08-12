@@ -321,7 +321,7 @@ registry — which is also what puts it under part mode's *a part has no ring of
 |---|---|---|
 | **`S1`** — a **selection** in `EditSession`: the current opening profile, door type, window type | ⚠ **NOT the byte round-trip — that premise was measured false, see below.** The selection is DRIVER state beside `es_author`, and its replay is the SCRIPT | ⚠ **`S1` alone cannot go red**, so it merges into `S2`: the field, the verb that sets it, and a consumer that reads it |
 | ✅ **`S2a`** — the opening's **choosing** moves into `hex_editor::opening_make` | the server's `36:` handler, driven through eight scripts and diffed | ⚠ **the instrument is the server's own `println` stream, not `script.mjs`'s** — see below. 240 lines, identical |
-| **`S2b`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by building two openings with different selections and diffing the **`Opening`**, never by reading the line. ⚠ **NOT the cells**: the store write is `DOOR_MAT` whatever the profile, so cells cannot see it |
+| ✅ **`S2b`** — a verb that **changes** the selection, and the subject line says what is selected | the existing catalogue line, which the server already authors | ⚠ picking a profile must change what the next `opening` cuts — asserted by building two openings with different selections and diffing the **`Opening`**, never by reading the line. ⚠ **NOT the cells**: the store write is `DOOR_MAT` whatever the profile, so cells cannot see it |
 | **`S3` = `R2`** — `opening` becomes ONE verb taking its profile from the selection; `O P I U N M` all resolve to it | the six old keys, kept and still sending `36:<kind>` | the six old keys and the one verb with six selections must produce **six identical worlds**. ⚠ This is the step that proves the collapse is lossless, and it is why the old keys stay until it is green |
 
 ### ⚠ `S1`'s premise was measured and it is FALSE — 2026-08-11
@@ -377,6 +377,33 @@ goes red on.
 after the embrasure branch too, so a refused embrasure says *"no niche to cut into"* and then
 *"opened a profile 1 hole"* on top of it. A move is proved by the wire not changing, so the wire
 cannot change in the same breath.
+
+### ✅ `S2b` — and it is `S1` and `S2` in one, because a selection has ONE possible consumer
+
+**Built 2026-08-12.** `EditSession` carries `es_open_kind`, `session_select_open` changes it,
+and `session_opening` cuts with it — the field, the verb and the consumer in one step, because
+`S1` on its own could not go red. ⚠ **And it only became buildable at `S2a`**: the gesture a
+chosen profile feeds was eighty lines inside a socket handler.
+
+⚠ **THE SELECTION IS NOT A REGISTRY**, and `session_scene_clear` deliberately leaves it alone.
+The nine registries are records *about the store*; this is what THIS AUTHOR has chosen —
+`es_author`'s category — so it survives a load and a part open. Choosing a round-headed door
+and then opening a part must not silently hand you back a flat one.
+
+⚠ **THE ADMISSIBLE SET IS NOT A RANGE**, which is why it is a predicate. The units are the
+outline (`0..4`) and the tens the depth, so `5`, `15`, `25` and `30` are nothing at all: a
+`0..24` bound waves through **nine** kinds no branch of `opening_make` answers, and the author
+gets a flat door wearing a number they chose on purpose. Five outlines × three depths = 15.
+
+⚠ **AND `36:<kind>` DOES NOT MOVE THE SELECTION.** A bare `36:` cuts what is chosen; a `36:2`
+cuts a pointed one and leaves the choice where it was. A key that silently re-chose would make
+*what am I working on* depend on what you last pressed — which is the question the subject line
+exists to answer, and it now carries `· opening <kind>`.
+
+⚠ **THE CLAIM IS THE `Opening`, NOT THE LINE** — three selections cut three openings that differ
+in outline and depth and agree everywhere else, in `lib/hex_editor/tests/opening.loft`. The
+subject line's own rows are in `subject.mjs`, beside `40:`'s, including that a **refused**
+selection sends no `H:` and leaves the standing choice intact.
 
 ## Phase 3 — the verb layer
 

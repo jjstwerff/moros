@@ -144,7 +144,12 @@ check(stamped.edits === 0,
 // stencil's local; the check stays because the collision is invisible at both sites.
 check(stamped.closed.includes(`'${PART}'`),
       `and the close still names the part it had open (${stamped.closed})`);
-check(stamped.hudInside === `H:part ${PART} · AUTO · level off · road off · trace off`,
+// ⚠ THE WHOLE LINE, EXACTLY — and it is the one row in the suite that pins it, which
+// is why plan 22 `S2b` appearing here was the gate working rather than a flake:
+// appending `· opening <kind>` broke this and nothing else, because every other
+// reader of `H:` matches its own field with `includes`. An exact row is what makes a
+// field ADDED to the HUD a decision somebody takes on purpose.
+check(stamped.hudInside === `H:part ${PART} · AUTO · level off · road off · trace off · opening 1`,
       `and the subject still named it throughout (${JSON.stringify(stamped.hudInside)})`);
 
 // ── A7.3b-ii — the state part mode does not hold aside ──────────────────────

@@ -160,6 +160,39 @@ check(sawRefusal, 'the server refused 40:7 by name');
 check(refusedHuds.length === 0,
       `a REFUSED toggle sends no H: at all (${refusedHuds.length} sent)`);
 
+// ── `S2b` — WHAT IS SELECTED IS ON THE LINE, AND IT DECIDES THE NEXT HOLE ────
+//
+// ⚠ THE LINE IS THE PRESENTATION AND NOT THE CLAIM. CATALOGUE §C1 asks that the
+// author can see what they are working on, so the field belongs here beside the mode
+// — but *does the choice change what gets cut* is a claim about the STORE and lives
+// in `lib/hex_editor/tests/opening.loft`, where three selections cut three different
+// `Opening`s. What this can see, and a loft test cannot, is that the choice reached
+// the server at all and that a REFUSED one leaves the line alone.
+const beforeSel = g.huds.length;
+g.ws.send('49:11');                     // a round-headed NICHE
+await until(() => g.huds.length > beforeSel, 'the accepted selection sent no H:');
+const afterSel = g.huds.slice(beforeSel);
+check((afterSel[afterSel.length - 1] ?? '').includes('opening 11'),
+      `an accepted selection shows in the line: ${JSON.stringify(afterSel[afterSel.length - 1] ?? '')}`);
+
+// ⚠ THE SAME CONTROL AS `40:7`, ONE GESTURE OVER — and it is not redundant, because
+// this refusal is decided in `hex_editor` while the mode's is decided here. `5` is
+// not an opening kind: the units are the outline (0..4) and the tens the depth, so
+// five, fifteen and twenty-five are nothing at all. Nominal, so no offer.
+const beforeBadSel = g.huds.length;
+const saidBefore = g.all.length;
+g.ws.send('49:5');
+await absenceWindow(1500, 'no event marks this — see the check below');
+const badSelHuds = g.huds.slice(beforeBadSel);
+const sawSelRefusal = g.all.slice(saidBefore).some((m) => m.includes('selection refused'));
+check(sawSelRefusal, 'the server refused 49:5 by name');
+check(badSelHuds.length === 0,
+      `a REFUSED selection sends no H: at all (${badSelHuds.length} sent)`);
+// …and the line still carries the choice that WAS accepted, which is the half a
+// count of zero cannot show: nothing arrived, and what stands is still right.
+check((g.huds[g.huds.length - 1] ?? '').includes('opening 11'),
+      `and the standing choice is untouched: ${JSON.stringify(g.huds[g.huds.length - 1] ?? '')}`);
+
 // ── B2.2 again, mid-session — a second client gets the CURRENT line ──────────
 // Not the opening one: this client connects after two accepted toggles, and must
 // be told what is true now rather than what was true at boot.
