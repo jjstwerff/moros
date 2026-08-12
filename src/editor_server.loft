@@ -485,6 +485,22 @@ const MSG_EYE   = 48;
 // It is a step toward six keys becoming one verb, and it is the thing `S1` needed —
 // a selected profile's only possible consumer is the gesture that cuts one.
 const MSG_SELECT = 49;
+// ── `50:<height>,<material>` — THE GROUND A SCENARIO STANDS ON — GROUND_DEFAULT `G7`
+//
+// *A world is an infinite plane of its ground default, and storage holds only what
+// differs from it.* This is where a scenario says what that plane is: `50:200,4` is
+// grass at 200, `50:` clears it back to today.
+//
+// ⚠ **IT IS NOT A GESTURE AND IT WRITES NOTHING.** Every other message here changes
+// cells; this changes what an UNWRITTEN cell means, which is why it needs no author
+// position and no dirty marking of its own — every chunk in view is restated at once,
+// because every one of them may have been drawing the old plane.
+//
+// ⚠ **`MSG_PLANE`, NOT `MSG_GROUND` — that name is TAKEN**, by `42:` (the client's
+// verdict on the ground it derived itself). The compiler said so; a grep would have
+// said so first, and this is the third name collision in one session. The plane is
+// what this message names anyway, which is the better word for it.
+const MSG_PLANE = 50;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -7528,6 +7544,45 @@ fn main() {
             // one behaviour that separates a HUD from an echo of the keystroke.
             srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
             println("editor: camera mode {cam_mode}");
+          }
+        } else if ev.msg_id == MSG_PLANE {
+          // ── `G7` — WHAT UNTOUCHED GROUND IS ────────────────────────────────
+          //
+          // ⚠ THE REFUSAL IS `hex_voxel::world_set_ground`'s, INCLUDING `R1`. A
+          // ground below the reserve is refused where it is STATED — the design's
+          // failure path 5 — rather than surfacing in an unrelated chunk later when
+          // some layer inherits it. What stays here is the sentence.
+          gh = 0; gm = 0;
+          gpi = ev.payload.find(",");
+          if ev.payload != "" && gpi == null {
+            srv.send_to(ev.cid, "S:ground refused — say <height>,<material> or nothing to clear");
+            println("editor: ground refused — no material");
+          } else {
+            gcell = hex_voxel::Hex {};
+            if ev.payload != "" {
+              gh = ev.payload[..gpi] as integer ?? 0;
+              gm = ev.payload[gpi + 1..].trim() as integer ?? 0;
+              gcell = hex_voxel::Hex { h_height: gh as u16? ?? 0, h_material: gm as u8? ?? 0 };
+            }
+            gset = hex_voxel::world_set_ground(wld, gcell);
+            if gset.cw_code != hex_voxel::CW_OK {
+              srv.send_to(ev.cid, "S:ground refused — {gset.cw_detail}");
+              println("editor: ground refused — {gset.cw_detail}");
+            } else {
+              // ⚠ EVERY CHUNK IN VIEW IS DIRTY, and that is not laziness. The plane
+              // this changes is what every chunk that holds nothing was drawing, so
+              // the set of chunks affected is *all of them* — there is no smaller
+              // honest answer, and a mark around a position would leave the far ones
+              // showing the previous ground.
+              for gdz in loaded { mark_dirty_id(dirty, gdz); }
+              if hex_voxel::world_has_ground_default(wld) {
+                srv.send_to(ev.cid, "S:ground {gh} material {gm}");
+                println("editor: ground {gh} material {gm}, {len(dirty.items)} chunks to redraw");
+              } else {
+                srv.send_to(ev.cid, "S:ground cleared");
+                println("editor: ground cleared, {len(dirty.items)} chunks to redraw");
+              }
+            }
           }
         } else if ev.msg_id == MSG_SELECT {
           // ── WHAT THE NEXT OPENING WILL BE — plan 22 `S2b` ───────────────────

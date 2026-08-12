@@ -1,0 +1,34 @@
+# G7 — THE GROUND A SCENARIO STANDS ON, AND THE STREAMER OVER IT.
+#
+# GROUND_DEFAULT's whole point in one script: say what untouched ground IS, and the
+# world is that everywhere, without a cell being written.
+#
+# ⚠ THIS IS ALSO THE MEASUREMENT `G6` DEFERRED. Its streamer check was a code read —
+# the loop sweeps a box around the CHARACTER and filters by hex distance, never asking
+# whether a chunk exists — and demonstrating that at runtime needs a world with a
+# ground actually set, which is this step. Walk somewhere nothing was ever written and
+# the chunks still arrive.
+
+# ⚠ NO `wait rebuilt` HERE. Nothing has been asked to change yet, so the event never
+# comes and the wait runs its full 40 s into a discarded value — the same dead-wait
+# shape STATE.md records costing 71 % of a gate.
+echo --- a world with nothing in it
+at 0 0 0
+
+echo --- the ground is rock at 60, said once
+ground 60 2
+wait rebuilt
+
+echo --- and the character walks far from anything anybody authored
+at 240 -180 0
+wait rebuilt
+
+# ⚠ MEASURED 2026-08-12, and this is the row `G6` deferred:
+#
+#     editor: ground 60 material 2, 48 chunks to redraw
+#     editor: rebuilt 48 chunks in 971 ms
+#     editor: hex (139,-120) — +46 −48 chunks, 46 live
+#
+# 46 chunks ADDED at a hex where nothing was ever written. The streamer bounds by
+# DISTANCE FROM THE CHARACTER, not by which chunks exist — a streamer that enumerated
+# existing chunks would have added zero and the world would have looked empty.

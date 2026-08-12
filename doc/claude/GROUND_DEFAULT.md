@@ -1,7 +1,9 @@
 # A layer is born with a default cell — the ground's, per scenario
 
-**Status: `G1`, `G3` (2026-08-06), `G4` and `G5a` (2026-08-12) built; `G2`, `G5b` and `G6`–`G7`
-designed, not built.** Written before the code on purpose: the failure paths below are what turned the first
+**Status: COMPLETE except `G2`.** `G1`, `G3` (2026-08-06), `G4`, `G5a`, `G5a.1`, `G5b`, `G6` and
+`G7` (2026-08-12) are built. ⚠ **`G2` (`world_fill`) is deliberately not built** — `G1` measured
+its speed argument away (`G3` took the 14× with `world_set_cell`, leaving `world_fill` about 2×),
+and `G5` removed its remaining consumer: a scenario states its ground instead of filling it. Written before the code on purpose: the failure paths below are what turned the first
 shape of this design into the third, and each turn was cheaper on the page than in the store.
 
 ⚠ **`G4` IS THE DEFAULT ITSELF AND NOTHING READS IT YET** — `w_ground` on `VoxelWorld`,
@@ -196,11 +198,18 @@ PLANE IS** — its height and its material, where today it is silently height 0 
 material. That is a smaller change to the picture than this document implied, and a bigger one to
 the *store*: `G5b`'s sixteen writes of the ground leaving zero chunks is where the value is.
 
-⚠ **AND THE STREAMER'S CHECK IS A CODE READ, NOT A MEASUREMENT** — said plainly because the
-design asked for the opposite. Its loop sweeps `home.cy ± CHUNK_R` and filters by
-`chunk_in_range`, so it demonstrably asks for chunks that do not exist; but *demonstrating it at
-runtime* needs a world with a ground set, which is `G7`. **The gate that measures it belongs to
-`G7`, not here.**
+✅ **AND THE STREAMER'S CHECK IS A MEASUREMENT NOW — `G7` PAID IT.** `tools/scripts/plane.keys`
+sets a ground and walks somewhere nothing was ever written:
+
+```
+editor: ground 60 material 2, 48 chunks to redraw
+editor: rebuilt 48 chunks in 971 ms
+editor: hex (139,-120) — +46 −48 chunks, 46 live
+```
+
+**46 chunks ADDED at a hex nobody authored.** A streamer that enumerated existing chunks would
+have added zero and the world would have looked empty — which is exactly what the design said to
+check rather than believe.
 
 ## ⚠ The failure path this design did NOT enumerate — `G5a.1`, found by probe
 
@@ -301,7 +310,7 @@ step can still read.
 | ✅ **`G5a`** | **The READERS consult it**: `world_column`, `world_cell`, `world_surface`, `world_ground_cell` and `world_ground_layer` answer the ground for an untouched cell — ⚠ **whether or not its chunk exists**, which is `G5a.1` and a correction to the row this table used to carry. | **DONE 2026-08-12.** ⚠ **`G5` SPLIT, AND THE ORDER IS FORCED**: a write that skips allocation before the readers answer for an absent chunk is data loss, so readers first. `G5a` alone is *correct but not yet economical* — a world authored flat still costs what it costs today, and every read agrees with it. Tested as an **EQUIVALENCE** against a world whose ground was written cell by cell, which is the invariant's own last clause; four sabotages red |
 | ✅ **`G5b`** | **The WRITERS**: a write equal to the default does not allocate; a layer equal to it everywhere is dropped. | **DONE 2026-08-12.** One rule: **a cell is elidable iff it reads the same as an UNWRITTEN one** — `E1` generalised, not replaced. With no default an unwritten cell reads `Hex {}`, no present cell can read as that, and the rule collapses to today's *no present cells*. ⚠ **AND `b1` FELL OUT OF `b2` RATHER THAN NEEDING A GUARD**: writing the ground onto ground materialises a layer, finds every cell elidable and drops the layer *and the chunk* — 16 writes of the default leave **zero chunks**. ⚠ **AND IT RE-OPENED `G5a.1`'s SEAM IN A THIRD PLACE**: a ground layer equal to the default is dropped, so a chunk kept alive by a storey has no `LABEL_GROUND` layer to find — `world_ground_cell` answers the default there too. Two sabotages red |
 | ✅ **`G6`** | **The walkers**: the mesher meshes a defaulted chunk, and the streamer is *checked* to bound by distance rather than by which chunks exist. | **DONE 2026-08-12, and it needed NO CODE.** `face_grid_for` asks `world_ground_cell` per cell and never walks `w_chunks`, so it inherited `G5a`'s synthesis — which is a claim that had to be **measured**, and `lib/hex_mesh/tests/ground_mesh.loft` is that: a defaulted chunk meshes to the **same `mesh_crc`** as an authored one, near and far, dented and clean. The streamer's loop sweeps a box around the CHARACTER and filters by hex distance, never asking whether a chunk exists — read, not believed. ⚠ **AND IT FOUND THAT THE EDITOR ALREADY DREW AN INFINITE FLOOR** — see below |
-| **`G7`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | the feature, on a store that is already green |
+| ✅ **`G7`** | The scenario sets it — `world_new` takes it, and the editor exposes it. | **DONE 2026-08-12.** `world_new(…, ground: Hex = Hex {})`, defaulted so every call site keeps its meaning; ⚠ **`R1` is checked THROUGH `world_set_ground`, not copied** — one home, and a refusal comes back as `WC_RESERVE`, a world that cannot be made rather than one made wrong. On the wire: **`50:<height>,<material>`**, `50:` to clear, and `ground 60 2` in a script. ⚠ **It marks EVERY loaded chunk dirty**, because the plane it changes is what every chunk holding nothing was drawing — there is no smaller honest answer |
 
 ⚠ **`G1` IS NOT A FORMALITY.** Three hypotheses about this write path were each refuted by their
 own probe today, and the floor measurement says only ~78 % of a `world_set_column` call is body

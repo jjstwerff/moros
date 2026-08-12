@@ -268,21 +268,33 @@ pub struct Column {
 
 pub const WC_OK        = 0;
 pub const WC_CONSTANTS = 1;         // `C1`: ε > 2θ does not hold
+pub const WC_RESERVE   = 2;         // `R1`: the ground a scenario asked for is below ρ
 
 pub struct WorldNew { wn_code: integer, wn_world: VoxelWorld }
 
 // ⚠ `C1` is checked HERE and never assumed. A world with ε ≤ 2θ fails `B1`
 // SILENTLY — two layers can both fall within θ of one height — and the symptom is
 // intermittently wrong geometry at chunk borders, which reads as a renderer bug.
-pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer) -> WorldNew {
+// ⚠ **AND `G7` — THE GROUND A SCENARIO STARTS ON, STATED WHERE THE WORLD IS MADE.**
+// `ground` is defaulted to an absent cell, so every existing call site keeps its
+// meaning exactly: a world with no ground is today's world.
+//
+// ⚠ **`R1` IS CHECKED THROUGH `world_set_ground`, NOT COPIED HERE.** The rule is *no
+// content below the reserve*, and it already has a home; restating the comparison
+// would be the second place a scenario's ground can be judged, and the two would
+// drift the first time the reserve grew a rule. A refusal comes back as
+// `WC_RESERVE` — a world that cannot be made, rather than one made wrong.
+pub fn world_new(unit: float, reserve: integer, eps: integer, theta: integer,
+                 ground: Hex = Hex {}) -> WorldNew {
   if eps <= 2 * theta {
     return WorldNew { wn_code: WC_CONSTANTS, wn_world: VoxelWorld { w_unit: 1.0 } };
   }
-  WorldNew {
-    wn_code: WC_OK,
-    wn_world: VoxelWorld { w_chunks: [], w_unit: unit, w_reserve: reserve,
-                      w_eps: eps, w_theta: theta, w_next_id: LABEL_FIRST, w_tau: 1 },
+  wn = VoxelWorld { w_chunks: [], w_unit: unit, w_reserve: reserve,
+                    w_eps: eps, w_theta: theta, w_next_id: LABEL_FIRST, w_tau: 1 };
+  if world_set_ground(wn, ground).cw_code != CW_OK {
+    return WorldNew { wn_code: WC_RESERVE, wn_world: VoxelWorld { w_unit: 1.0 } };
   }
+  WorldNew { wn_code: WC_OK, wn_world: wn }
 }
 
 // ── Addressing ───────────────────────────────────────────────────────────────

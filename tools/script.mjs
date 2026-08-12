@@ -1001,7 +1001,7 @@ for (const raw of lines) {
   // It rewrites the SUBJECT BAR (`· opening <kind>`), which is 24 rows of every
   // frame this file classifies, so a `snap` taken before it and judged after it
   // would be judged against a strip that has changed.
-  if (['at', 'key', 'verb', 'select', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
+  if (['at', 'key', 'verb', 'select', 'ground', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
     lastShot = null;
   }
   if (cmd === 'at') {
@@ -1050,6 +1050,16 @@ for (const raw of lines) {
     await sleep(250);
     const vsaid = status[status.length - 1];
     if (vsaid) console.log('  ' + vsaid);
+  } else if (cmd === 'ground') {
+    // `ground <height> <material>` — what UNTOUCHED ground IS, GROUND_DEFAULT `G7`.
+    // `ground off` clears it back to today. Not a gesture: it writes no cell, it
+    // changes what a cell nobody wrote means.
+    if (rest[0] === 'off') {
+      ws.send('50:');
+    } else {
+      ws.send(`50:${rest[0]},${rest[1]}`);
+    }
+    console.log('  ' + await ack(['ground ', 'ground refused'], 10000));
   } else if (cmd === 'select') {
     // `select <kind>` — what the NEXT opening cuts, until something says otherwise.
     // ⚠ IT WAITS FOR AN ANSWER RATHER THAN SLEEPING, because a refusal is a real
