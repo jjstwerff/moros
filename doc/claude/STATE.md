@@ -96,6 +96,18 @@ see this"* reproduced on the day it was read: **the grep the rule demands takes 
 was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
 it.
 
+⛔ **`world_set_column_as` — TWO TRANSFORMATIONS, NO GAIN, NOTHING SHIPPED.** 7.0 % of the suite
+and **no by-line row in the top fifteen** — the cost is spread, which is the shape with no single
+edit. (1) Building the `StoredHex` only when the write is needed rather than before the
+comparison: **−0.01 %**, 201 samples of 2.2 M. ⚠ The model was wrong — `empty_cells` is 6.8 %
+because it allocates **1024 at once**, not because one record is dear. (2) Iterate instead of
+index, the transformation that won in `world_ground_cell`: **broke six tests** (*"the clock did
+not move for a CELL write"*) and ⚠ **I could not explain why** — three probes refuted the obvious
+stories (element assignment through a binding propagates; nested field writes propagate; three
+same-named `for` bindings in one function do not interfere). Reverted. ⏭ **The reason it resists a
+local edit is the reason it is 7 %**: straight-line work over six steps, and the two steps with a
+shape to exploit were already taken.
+
 ⛔ **`find_chunk` — A SOUND DESIGN, MEASURED WORSE, NOTHING SHIPPED.** A one-entry memo *checked
 rather than trusted*: confirm the last chunk with `ck_cx`/`ck_cz` instead of re-deriving the key
 and probing the hash. A stale index falls through, so **nothing has to invalidate it** — `N = 1`,

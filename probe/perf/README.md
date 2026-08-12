@@ -236,6 +236,37 @@ they are derived from.
 the suite is used as evidence that a change is safe: three green suites and a byte-identical
 `make parts` said nothing about whether anything could RUN.
 
+### ⛔ `world_set_column_as` — two transformations, no gain, 2026-08-12
+
+**7.0 % of the suite and its by-line rows are not in the top fifteen** — the cost is spread
+across the whole function, which is the shape that has no single edit. Two were tried anyway;
+**nothing shipped.**
+
+**1 — build the record only if it is needed.** Step 5 constructed a `StoredHex` and *then*
+compared `prev` against its fields, so every write that changed nothing still allocated one — and
+`T1` exists precisely because a write that changes nothing is the common case. Comparing against
+the source values instead is the same test and cannot be slower.
+
+⚠ **Measured: −0.01 %** (2,201,138 → 2,200,937). Real, in the right direction, and 201 samples
+out of 2.2 million. **The model behind it was wrong**: `empty_cells` is 6.8 % because it allocates
+**1024 records at once**, not because one record is dear — and this path is not called often
+enough for one to show. *A cost that is large in aggregate somewhere else is not evidence about a
+single instance here.*
+
+**2 — iterate instead of index**, the transformation that won 1.6× in `world_ground_cell`. Step 5
+reaches `w.w_chunks[ci].ck_layers[i]` **four times** per turn, three levels deep.
+
+⚠ **It broke six tests** — *"the clock did not move for a CELL write"* — and **I could not explain
+why.** Three hypotheses refuted by their own probe: a whole-element assignment through a loop
+binding **does** propagate; so does a nested field write; and three `for ly in …` loops over one
+vector in a single function **do not** interfere. Reverted, and the tree is back at its committed
+state.
+
+**Not pursued further.** One transformation measured 0.01 % and the other cost six red tests with
+an unexplained mechanism, against an upper bound of roughly half a percent. ⏭ **The reason this
+function resists a local edit is the reason it is 7 %**: it is straight-line work spread over six
+steps, and the two steps that *did* have a shape to exploit were already taken.
+
 ### ⛔ `find_chunk` — a sound design, measured WORSE, 2026-08-12
 
 `find_chunk` is 3.8 % and `chunk_key` 2.4 %. Both were probed; **nothing shipped**, and the
