@@ -236,6 +236,55 @@ they are derived from.
 the suite is used as evidence that a change is safe: three green suites and a byte-identical
 `make parts` said nothing about whether anything could RUN.
 
+### ⛔ `empty_cells` HAS NO CHEAP WIN — looked for, not found, 2026-08-12
+
+**No code was changed for this one, and that is the result.** The two steps before it were exact
+identities — a missing early exit, and a floor divide that *is* a shift. `empty_cells` is not:
+
+```
+fn empty_cells() -> vector<StoredHex> { [for i in 0..CHUNK_CELLS { StoredHex {} }] }
+```
+
+It builds 1024 records because **the structure says a layer has 1024 cells**. What was checked
+before concluding:
+
+| | |
+|---|---|
+| a bulk / repeat / sized vector constructor in loft | **none.** `OpPreAllocVector` is an internal op, not a loft-level call; `LOFT.md` documents the comprehension and nothing else |
+| the four call sites | **all necessary** — the dressing loop, the label insert, the terrain append, and `world_put_layer`. None creates a layer that is not then used |
+| a layer materialised and immediately dropped | only when a *clear* lands on a fresh chunk, which no gesture does |
+| a layer materialised before a refusal | `CW_WINDOW` is unreachable (see above), so no |
+
+⚠ **AND THE COST IS INTERPRETER ITERATIONS RATHER THAN ALLOCATIONS**, which is why it reads
+differently from the two wins before it: those were `O(1024) → O(1)` and help on **every**
+backend; this is `O(1024)` either way and only the constant moves. A shipped native run pays it
+too, just less.
+
+### ⏭ SO IT IS A REPRESENTATION CHANGE, AND THERE ARE TWO — both plan-shaped
+
+**A — do not materialise an absent chunk at all.** That is
+[GROUND_DEFAULT](../../doc/claude/GROUND_DEFAULT.md), already designed with seven steps and `G1`
+already measured. Its ceiling here is `empty_cells`' own **6.8 %**.
+
+**B — a layer's cells as a flat BYTE BLOB instead of `vector<StoredHex>`.** One allocation
+instead of 1024, and **the byte layout already exists** — `world_to_bytes` writes exactly these
+seven fields per cell, so the encoder becomes a copy rather than a walk. Its reach is much wider
+than A's, because everything that walks cells one struct at a time is on the same list:
+
+| | share of the suite |
+|---|---|
+| `world_ground_cell` | 8.4 % |
+| `empty_cells` | 6.8 % |
+| `hex_of` | 6.6 % |
+| `stored_present` | 6.4 % |
+| `crc32_of` + `crc_cell` | 4.6 % |
+| **together** | **≈ 33 %** |
+
+⚠ **B IS NOT PROPOSED HERE, IT IS ROUTED.** It changes `ly_cells` for every reader in the
+package, `hex_present`/`stored_present`, the CRC and the serialiser — a substrate change whose
+design has not been earned, and forcing a patch into it would re-introduce exactly the class the
+last three steps removed. **What is decided is only that `empty_cells` is not a local fix.**
+
 ### ⏭ WHAT IS LEFT — and it is the READ path now, not the write
 
 `world_chunk_of` **12.4 %** (a floor-divide, called on every cell access), `empty_cells` **6.4 %**

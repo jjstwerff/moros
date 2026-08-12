@@ -96,9 +96,25 @@ see this"* reproduced on the day it was read: **the grep the rule demands takes 
 was done after the gates went red, not before.** ⏭ The gates were the only instrument that saw
 it.
 
-⏭ **THE WRITE PATH IS NO LONGER THE TOP OF THE PROFILE.** What is left is the READ:
-`world_ground_cell` 8.4 %, `empty_cells` 6.8 % (GROUND_DEFAULT's own target), `world_set_cell`
-6.7 %, `hex_of` 6.6 %.
+⛔ **AND `empty_cells` HAS NO CHEAP WIN — looked for, not found, so NO CODE CHANGED.** The two
+steps before it were exact identities (a missing early exit; a floor divide that *is* a shift);
+this one builds 1024 records because **the structure says a layer has 1024 cells**. Checked
+first: loft has **no** bulk/repeat/sized vector constructor (`OpPreAllocVector` is internal), all
+four call sites create a layer that is then used, and nothing materialises before a refusal. ⚠
+And the cost is **interpreter iterations rather than allocations** — `O(1024)` on every backend,
+so unlike the two wins before it only the constant moves.
+
+⏭ **IT IS A REPRESENTATION CHANGE, AND THERE ARE TWO, BOTH PLAN-SHAPED.** **A** — don't
+materialise an absent chunk: that is [GROUND_DEFAULT](GROUND_DEFAULT.md), already designed, whose
+ceiling here is 6.8 %. **B** — a layer's cells as a **flat byte blob**: one allocation instead of
+1024, and **the byte layout already exists** (`world_to_bytes` writes exactly these seven fields,
+so the encoder becomes a copy). B's reach is everything that walks cells one struct at a time —
+`world_ground_cell` 8.4 % + `empty_cells` 6.8 % + `hex_of` 6.6 % + `stored_present` 6.4 % +
+`crc32_of` 4.6 % ≈ **33 % of the suite**. ⚠ **Routed, not proposed**: it changes `ly_cells` for
+every reader, the CRC and the serialiser.
+
+⏭ **THE PROFILE IS FLAT NOW** — nothing above 8.4 %, and the top ten are all store functions
+doing real per-cell work. **The next step is a design, not another local fix.**
 
 ⚠ **AND THAT GREP FOUND A LIVE INCONSISTENCY, MEASURED: `world_set_cell` DOES NOT ELIDE.** Clear
 a cell through the fast path and the layer *and* the chunk stay in the directory, where the
