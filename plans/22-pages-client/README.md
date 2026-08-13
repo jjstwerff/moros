@@ -133,7 +133,10 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.1b`** — the authority becomes TWO: no socket → local, and a key WRITES | S | **DONE 2026-08-13.** `make probe-auth`: 28 checks. The page and `editor_run` at `GROUND=0` agree on the **world** (`32952:1545220309`) and on the **session** — two instruments, because a ring's trunk is in one and its edges in the other. Nine sabotages | ✅ Done |
 | ✅ **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | **DONE as `B1b.1a` + `B1b.1b`.** ⛔ Its boot switch could not be asked for — `host_input()` BLOCKS with no host, measured ([loft#891](https://github.com/loft-lang/loft/issues/891)) — so route 3 replaced it: connect-or-local, with the panel saying which |
 | ✅ **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | **DONE 2026-08-13.** `make probe-auth` is 33 checks: a horizon where a page with no camera has only the clear colour, the picture holding still with nothing pressed, and the raise redrawing it — and the far ground unchanged, which is what separates a gesture from a camera. Meshing writes nothing: the digest is the same before and after (`hex_voxel` measured, 25 tiles) | ✅ Done |
-| **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | M | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws | ⏭ **next** |
+| ◐ **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | **L**, measured | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws. **Sized: 32 functions, 1342 lines, 9 constants, and nothing else of the server's** | ◐ **`c.1` done** |
+| ✅ **`B1b.2c.1`** — the five primitives the mesher needs, out of `moros_render` | S | **DONE 2026-08-13.** `make probe-emitters`: five `mesh_crc` pairs identical with a control, and the ambiguity error named all 10 server call sites so none could be missed | ✅ Done |
+| **`B1b.2c.2`** — `moros_render`'s five go; 14 tests move with them | S | ⚠ 3 more tests use them as FIXTURES for another subject and must build their own — `moros_render` may not depend on `hex_mesh` (it would hand `moros_sim` the whole `hex_editor` cone, which is why the mesher is its own package) | ⏭ next |
+| **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | M | ⚠ both copies live and compared per chunk per surface, the `W1` shape | Blocked on `c.2` |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -209,6 +212,53 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ◐ What sizing `B1b.2c` turned up (2026-08-13) — the blocker was an ARROW, and it is payable
+
+**Measured before any code**: the props mesher — `chunk_mesh_props` plus everything it reaches — is
+**32 functions, 1342 lines and 9 constants**, and it calls **nothing else of the server's**. That
+is a clean move, and it is an `L` rather than the `M` the row guessed.
+
+⛔ **AND IT COULD NOT MOVE, BECAUSE IT REACHES INTO `moros_render` AT THREE NAMES.** `hex_mesh` is
+a lavition package and `moros_render` is Moros's, so a mesher that reached for them would point the
+split's arrow backwards — [LAVITION_SPLIT](../../doc/claude/LAVITION_SPLIT.md)'s bar is *build,
+test and gate with the Moros tree absent*. ✅ **Payable rather than blocking**: the three are
+`emit_hex_surface`, `emit_item_placeholder` and `world_to_hex`, and with their two helpers they are
+**141 lines whose every dependency is already inside `hex_mesh`'s cone**. `world_to_hex` is a Moros
+name for `hex_grid::px_to_hex` — plan 19 `L6.3a`'s own bill, arriving through a different door.
+
+✅ **`B1b.2c.1` IS BUILT: the five are `hex_mesh`'s.** `make probe-emitters` — and the pair is
+compared where both are visible, which is exactly one place: **the SERVER**, because it imports
+both packages, a library test cannot (that is what the arrow means), and a probe program would have
+to import Moros to ask the question.
+
+```
+emit_hex_surface   : moros_render 2688447849 · hex_mesh 2688447849 — same (7/7 vertices, 6/6 triangles)
+emit_box           : moros_render 1180467051 · hex_mesh 1180467051 — same
+emit_cylinder_post : moros_render  187754942 · hex_mesh  187754942 — same
+placeholder TREE   : moros_render 1085967138 · hex_mesh 1085967138 — same
+placeholder PROP   : moros_render  459251911 · hex_mesh  459251911 — same
+CONTROL a box 0.1 deeper: different, as it must be
+```
+
+⚠ **THE CONTROL IS NOT DECORATION.** Five equalities prove nothing if `mesh_crc` answers the same
+number for everything, so one deliberately different box must differ — and each primitive is asked
+**separately**, because a total cannot say which of five moved wrong and a mechanical copy fails one
+function at a time.
+
+✅ **AND THE COMPILER FOUND EVERY CALL SITE, WHICH IS THE OPPOSITE OF THIS TREE'S USUAL PROBLEM.**
+Declaring the five in a second package made every bare call **ambiguous**, and loft refused the
+build naming each one — *"`emit_box` is declared by more than one package here — write
+hex_mesh::emit_box or moros_render::emit_box to say which"*. Ten sites, none of which could have
+been forgotten. ⚠ That is the mechanism CLAUDE.md records as *measured 2026-08-11*, doing exactly
+what it says on a real move.
+
+⏭ **WHAT `c.2` HAS TO SOLVE, AND IT IS NOT THE DELETION.** 14 of `moros_render`'s tests are ABOUT
+the five and move with them; **three more use them as fixtures for another subject** —
+`flag_occluders` and an adversarial vector test — and those cannot simply call `hex_mesh::`,
+because **`moros_render` must not depend on `hex_mesh`**: `moros_sim` depends on `moros_render`,
+so it would inherit `hex_editor`'s whole cone, which is the experiment `hex_mesh`'s own `loft.toml`
+records as *tried and reverted*. They build their own fixture geometry instead.
 
 ## ✅ What `B1b.2` turned up (2026-08-13) — three instruments were blind before the page was
 

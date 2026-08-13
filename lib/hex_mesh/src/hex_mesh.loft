@@ -1043,3 +1043,215 @@ pub fn tile_ready(w: VoxelWorld, cx: integer, cz: integer) -> boolean {
   if !chunk_present(w, q1, r1) { return false; }
   true
 }
+
+// ── THE PRIMITIVES A DRAWING NEEDS, AND WHY THEY LIVE HERE — plan 22 `B1b.2c` ─
+//
+// A hex surface, a box, a cylinder and an item placeholder. They were
+// `moros_render`'s, and they are geometry with nothing Moros about them: the
+// EDITOR's props mesher calls all five, and that mesher is on its way into this
+// package so the page can draw the nine surfaces the server draws.
+//
+// ⚠ THE ARROW WAS THE BLOCKER, NOT THE SIZE. `hex_mesh` is a lavition package and
+// `moros_render` is Moros's, so a mesher that reached for these would have pointed
+// the split's arrow backwards — [LAVITION_SPLIT](../../../doc/claude/LAVITION_SPLIT.md),
+// whose bar is *build, test and gate with the Moros tree absent*. Measured before
+// it was moved: 141 lines, and every name they need (`hex_to_world`,
+// `proj_corner_offset`, `HEX_LEN`, `vertex`) is already inside this package's cone.
+//
+// ⚠ `HEX_WIDTH` IS `HEX_LEN` AND IS NOT COPIED. `moros_render` declares
+// `HEX_WIDTH = HEX_LEN` — a Moros name for a `hex_grid` constant — and carrying the
+// alias would carry the reason plan 19 exists. The hex family's own name is used
+// here.
+
+// Emit a flat hex surface into a mesh.  Produces 7 vertices (centre +
+// 6 corners) and 6 triangles (fan from centre).  Returns the base
+// vertex index so callers can reference the vertices.
+pub fn emit_hex_surface(m: Mesh, q: integer, r: integer, height: integer) -> integer {
+  centre = hex_to_world(q, r, height);
+  up = vec3(0.0, 1.0, 0.0);   // flat surface normal
+  base = len(m.vertices);
+  // Centre vertex
+  m.vertices += [vertex(centre, up, vec2(0.5, 0.5))];
+  // 6 corner vertices
+  for ci in 0..6 {
+    off = proj_corner_offset(ci);
+    pos = vec3(centre.x + off.x, centre.y, centre.z + off.y);
+    u = (off.x / HEX_LEN) + 0.5;
+    v = (off.y / 1.0) * 0.5 + 0.5;
+    m.vertices += [vertex(pos, up, vec2(u, v))];
+  }
+  // 6 triangles: fan from centre to each edge
+  for ti in 0..6 {
+    next = (ti + 1) % 6;
+    tri = Triangle { a: base, b: base + 1 + ti, c: base + 1 + next };
+    m.triangles += [tri];
+  }
+  base
+}
+
+// ── Hex neighbour helpers ─────────────────────────────────────────
+
+// Neighbours come from `hex_grid`, which owns the lattice for the whole hex_*
+// family.  The table that used to live here took only `dir` and so could not be
+// parity-aware, while `hex_to_world` above staggers odd rows — the two disagreed.
+// It cost one unreachable neighbour and one direction pointing two hexes out, in
+// each parity; see tools/probes/neighbour_parity.py.  `hex_neighbor(q, r, dir)`
+// takes `r` precisely because odd-r diagonals depend on it.
+
+// ── Box primitive (Phase 6a.12 prereq) ────────────────────────────
+
+// Emit a single face of a box: 4 outward vertices a → b → c → d
+// (CCW from outside) with shared flat normal `n`.  4 verts + 2
+// triangles.
+fn emit_box_face(m: Mesh, a: Vec3, b: Vec3, c: Vec3, d: Vec3, n: Vec3) {
+  bf_base = len(m.vertices);
+  m.vertices += [vertex(a, n, vec2(0.0, 0.0))];
+  m.vertices += [vertex(b, n, vec2(1.0, 0.0))];
+  m.vertices += [vertex(c, n, vec2(1.0, 1.0))];
+  m.vertices += [vertex(d, n, vec2(0.0, 1.0))];
+  m.triangles += [Triangle { a: bf_base, b: bf_base + 1, c: bf_base + 2 }];
+  m.triangles += [Triangle { a: bf_base, b: bf_base + 2, c: bf_base + 3 }];
+}
+
+// Emit an axis-aligned rectangular box between `min_corner` and
+// `max_corner`.  6 faces (flat-shaded, outward normals), 24 verts
+// + 12 triangles total.  Degenerate inputs (any axis where max <=
+// min) emit nothing.
+pub fn emit_box(m: Mesh, min_corner: Vec3, max_corner: Vec3) {
+  bx0 = min_corner.x; by0 = min_corner.y; bz0 = min_corner.z;
+  bx1 = max_corner.x; by1 = max_corner.y; bz1 = max_corner.z;
+  if bx1 <= bx0 || by1 <= by0 || bz1 <= bz0 { return; }
+  // +X face
+  emit_box_face(m,
+    vec3(bx1, by0, bz1), vec3(bx1, by0, bz0),
+    vec3(bx1, by1, bz0), vec3(bx1, by1, bz1),
+    vec3(1.0, 0.0, 0.0));
+  // -X face
+  emit_box_face(m,
+    vec3(bx0, by0, bz0), vec3(bx0, by0, bz1),
+    vec3(bx0, by1, bz1), vec3(bx0, by1, bz0),
+    vec3(-1.0, 0.0, 0.0));
+  // +Y face (top)
+  emit_box_face(m,
+    vec3(bx0, by1, bz1), vec3(bx1, by1, bz1),
+    vec3(bx1, by1, bz0), vec3(bx0, by1, bz0),
+    vec3(0.0, 1.0, 0.0));
+  // -Y face (bottom)
+  emit_box_face(m,
+    vec3(bx0, by0, bz0), vec3(bx1, by0, bz0),
+    vec3(bx1, by0, bz1), vec3(bx0, by0, bz1),
+    vec3(0.0, -1.0, 0.0));
+  // +Z face (front)
+  emit_box_face(m,
+    vec3(bx0, by0, bz1), vec3(bx1, by0, bz1),
+    vec3(bx1, by1, bz1), vec3(bx0, by1, bz1),
+    vec3(0.0, 0.0, 1.0));
+  // -Z face (back)
+  emit_box_face(m,
+    vec3(bx1, by0, bz0), vec3(bx0, by0, bz0),
+    vec3(bx0, by1, bz0), vec3(bx1, by1, bz0),
+    vec3(0.0, 0.0, -1.0));
+}
+
+
+// Emit a placeholder mesh for a map item at `pos` with nominal
+// `scale` (typical: 1.0 = one hex width).  Dispatches on
+// `kind_name` (values from ItemDef.id_kind): tall cylindrical
+// shapes for PILLAR / TREE, box for everything else.  Geometry is
+// cheap / illustrative — the real assets are baked by the artist
+// pipeline.  Non-positive scale is a no-op.
+pub fn emit_item_placeholder(m: Mesh, kind_name: text, pos: Vec3, scale: float) {
+  if scale <= 0.0 { return; }
+  if kind_name == "PILLAR" || kind_name == "TREE" {
+    cyl_top = vec3(pos.x, pos.y + scale * 2.0, pos.z);
+    emit_cylinder_post(m, pos, cyl_top, scale * 0.3, 8);
+    return;
+  }
+  bp_half = scale / 2.0;
+  bp_min = vec3(pos.x - bp_half, pos.y, pos.z - bp_half);
+  bp_max = vec3(pos.x + bp_half, pos.y + scale, pos.z + bp_half);
+  emit_box(m, bp_min, bp_max);
+}
+
+// ── Cylinder post (Phase 6a.8) ────────────────────────────────────
+
+// Emit a cylindrical post between `base` and `top` with `radius`
+// and `seg_count` angular segments around the Y-axis.  Assumes the
+// axis is vertical (base.y < top.y).  Only the side surface is
+// emitted — no top/bottom caps.  Vertex normals are the outward
+// radial (smooth shading); per-segment quad winding puts the normal
+// outward.  Each segment contributes 4 vertices + 2 triangles.
+//
+// Degenerate inputs (seg_count < 3 or radius <= 0) emit nothing.
+pub fn emit_cylinder_post(
+  m: Mesh, base: Vec3, top: Vec3, radius: float, seg_count: integer
+) {
+  if seg_count < 3 { return; }
+  if radius <= 0.0 { return; }
+  // THE RING IS PERPENDICULAR TO THE AXIS — whatever the axis is.
+  //
+  // This takes two endpoints, which promises an arbitrary axis, and for a long
+  // time it built the ring in the XZ plane regardless. That is right for a
+  // POST and for nothing else: the cart's wheel rides a Z axle, so it came out
+  // as a flat ring lying on the ground (moros#14), and no test saw it because
+  // every caller and every test passed a vertical axis.
+  //
+  // The basis below is chosen so a +Y axis gives back exactly `(cos, 0, sin)`,
+  // which is what keeps every fence post and tree trunk vertex-for-vertex
+  // unchanged while a wheel finally stands up.
+  cp_dx = top.x - base.x;
+  cp_dy = top.y - base.y;
+  cp_dz = top.z - base.z;
+  cp_dl = sqrt(cp_dx * cp_dx + cp_dy * cp_dy + cp_dz * cp_dz) ?? 0.0;
+  if cp_dl <= 0.0 { return; }          // no axis, no cylinder — refuse, don't guess
+  cp_ux = cp_dx / cp_dl ?? 0.0;
+  cp_uy = cp_dy / cp_dl ?? 0.0;
+  cp_uz = cp_dz / cp_dl ?? 0.0;
+  // A reference the axis is never parallel to, so the cross product below
+  // cannot collapse. +Z unless the axis is itself near ±Z.
+  cp_rx = 0.0;
+  cp_ry = 0.0;
+  cp_rz = 1.0;
+  if cp_uz < 0.0 - 0.9 || cp_uz > 0.9 { cp_rx = 1.0; cp_rz = 0.0; }
+  // u = axis × ref, then v = u × axis: an orthonormal pair spanning the plane
+  // the ring lives in.
+  cp_px = cp_uy * cp_rz - cp_uz * cp_ry;
+  cp_py = cp_uz * cp_rx - cp_ux * cp_rz;
+  cp_pz = cp_ux * cp_ry - cp_uy * cp_rx;
+  cp_pl = sqrt(cp_px * cp_px + cp_py * cp_py + cp_pz * cp_pz) ?? 0.0;
+  if cp_pl <= 0.0 { return; }
+  cp_px = cp_px / cp_pl ?? 0.0;
+  cp_py = cp_py / cp_pl ?? 0.0;
+  cp_pz = cp_pz / cp_pl ?? 0.0;
+  cp_qx = cp_py * cp_uz - cp_pz * cp_uy;
+  cp_qy = cp_pz * cp_ux - cp_px * cp_uz;
+  cp_qz = cp_px * cp_uy - cp_py * cp_ux;
+  // `seg_count < 3` returned above.
+  cp_seg = (2.0 * PI / seg_count as float) ?? 0.0;
+  for cp_i in 0..seg_count {
+    i_cp = cp_i as float;
+    a0 = i_cp * cp_seg;
+    a1 = (i_cp + 1.0) * cp_seg;
+    cos0 = cos(a0);
+    sin0 = sin(a0);
+    cos1 = cos(a1);
+    sin1 = sin(a1);
+    n0 = vec3(cp_px * cos0 + cp_qx * sin0,
+              cp_py * cos0 + cp_qy * sin0,
+              cp_pz * cos0 + cp_qz * sin0);
+    n1 = vec3(cp_px * cos1 + cp_qx * sin1,
+              cp_py * cos1 + cp_qy * sin1,
+              cp_pz * cos1 + cp_qz * sin1);
+    cp_bl = vec3(base.x + radius * n0.x, base.y + radius * n0.y, base.z + radius * n0.z);
+    cp_br = vec3(base.x + radius * n1.x, base.y + radius * n1.y, base.z + radius * n1.z);
+    cp_tr = vec3(top.x + radius * n1.x, top.y + radius * n1.y, top.z + radius * n1.z);
+    cp_tl = vec3(top.x + radius * n0.x, top.y + radius * n0.y, top.z + radius * n0.z);
+    cp_base = len(m.vertices);
+    m.vertices += [vertex(cp_bl, n0, vec2(0.0, 0.0))];
+    m.vertices += [vertex(cp_br, n1, vec2(1.0, 0.0))];
+    m.vertices += [vertex(cp_tr, n1, vec2(1.0, 1.0))];
+    m.vertices += [vertex(cp_tl, n0, vec2(0.0, 1.0))];
+    m.triangles += [Triangle { a: cp_base, b: cp_base + 1, c: cp_base + 2 }];
+    m.triangles += [Triangle { a: cp_base, b: cp_base + 2, c: cp_base + 3 }];
+  }
+}

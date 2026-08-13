@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth plan-check play play-fast browser port-free
+.PHONY: probe-emitters client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -572,6 +572,17 @@ probe-b1a:
 # `AUTH_SABOTAGE=literal|nodirty|assume` runs the three controls.
 probe-auth:
 	@sh probe/b1b/auth.sh
+
+# B1b.2c (plan 22) — ARE THE MOVED EMITTERS THE SAME EMITTERS?
+#
+# Five primitives moved from `moros_render` into `hex_mesh` so the props mesher can
+# follow them (a lavition package cannot reach into a Moros one). Both copies are
+# live until the originals go, and this is the only place both are visible at once:
+# the SERVER imports both packages, a library test cannot, and a probe program would
+# have to import Moros to ask. It compares `mesh_crc` per primitive, with a control.
+probe-emitters:
+	@EDITOR_PROBE=emitcmp $(LOFT) --interpret --lib lib/ src/editor_server.loft 2>/dev/null \
+	  | grep -E '^  (emit|placeholder|CONTROL)|^emitcmp'
 
 # L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
 # Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers

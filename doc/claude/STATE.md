@@ -386,9 +386,35 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
+| ◐ `B1b.2c` | **THE MESHER'S BLOCKER WAS AN ARROW, AND IT IS PAID.** Five primitives out of `moros_render` into `hex_mesh`, proved identical by `make probe-emitters`. The props mesher itself is 1342 lines and is next |
 | ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ◐ `B1b.2c` — THE PROPS MESHER IS 1342 LINES, AND ITS BLOCKER WAS AN ARROW, 2026-08-13
+
+**Sized before any code**: `chunk_mesh_props` plus everything it reaches is **32 functions, 1342
+lines, 9 constants, and nothing else of the server's**. ⛔ **And it could not move**: it calls
+`moros_render` at three names, and `hex_mesh` is a lavition package — a mesher reaching for those
+would point [LAVITION_SPLIT](LAVITION_SPLIT.md)'s arrow backwards.
+
+✅ **PAYABLE, NOT BLOCKING — and `B1b.2c.1` paid it.** The three (`emit_hex_surface`,
+`emit_item_placeholder`, `world_to_hex`) plus two helpers are **141 lines whose every dependency is
+already in `hex_mesh`'s cone**, and `world_to_hex` is a Moros name for `hex_grid::px_to_hex` — plan
+19 `L6.3a`'s bill through a different door. `make probe-emitters`: five `mesh_crc` pairs identical,
+with a control that must differ.
+
+⚠ **THE PAIR IS COMPARED IN THE ONE PLACE BOTH ARE VISIBLE — THE SERVER.** A library test cannot
+see both (that is what the arrow means) and a probe program would have to import Moros to ask.
+
+✅ **AND THE COMPILER NAMED ALL TEN CALL SITES.** A second declaration made every bare call
+ambiguous and loft refused the build, one message per site — the mechanism CLAUDE.md records,
+doing its job on a real move.
+
+⏭ **`c.2` IS NOT JUST A DELETION**: 14 of `moros_render`'s tests are about the five and move with
+them, but **three use them as fixtures for another subject** and cannot call `hex_mesh::` —
+`moros_sim` depends on `moros_render`, so that arrow would hand it `hex_editor`'s whole cone, the
+experiment `hex_mesh`'s `loft.toml` records as tried and reverted.
 
 ## ✅ `B1b.2` — THE PAGE DRAWS WHAT IT WROTE, AND THREE INSTRUMENTS WERE BLIND FIRST, 2026-08-13
 
