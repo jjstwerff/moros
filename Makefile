@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -542,6 +542,15 @@ plan-check:
 # value this side computed.
 probe-p2:
 	@sh probe/p2/run.sh
+
+# P6 (plan 22) — DOES A `--html` PAGE HAVE A FILESYSTEM, AND DOES A WORLD SAVED IN
+# IT SURVIVE A RELOAD? The design measured `--html` binding 0 of 20 `fs_*` names and
+# wrote `W5`, an interim shim, on that premise. loft#851 landed; this is what says
+# so about the INSTALLED toolchain rather than about a changelog, and it retires
+# `W5`. Drives the page twice over http AND from `file://`, with the interpreter as
+# the oracle. `P6_SABOTAGE=persist` is the control.
+probe-p6:
+	@sh probe/p6/run.sh
 
 # L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
 # Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers

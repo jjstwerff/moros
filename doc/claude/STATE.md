@@ -368,7 +368,8 @@ serves**, differing only in where a key press goes.
 |---|---|
 | the invariant | **the page is the editor with the AUTHORITY LOCAL instead of REMOTE** — not the editor minus a server. A server is coming back for scripts, multi-player and debugging, so this is a MODE, never a second renderer |
 | ✅ `W1` | a world is BYTES — `world_to_bytes`/`world_from_bytes`, save and load are wrappers. `make parts` byte-identical, and `world_load` is **1.6× faster** |
-| ✅ `P2` | `host_output` → our JS → `loftPush` round-trips inside a `--html` page. `W5` needs no loft change |
+| ✅ `P2` | `host_output` → our JS → `loftPush` round-trips inside a `--html` page. ⚠ **SPENT** — it existed to make `W5` buildable, and `P6` cancelled `W5` |
+| ✅ `P6` | **a page has a FILESYSTEM, and a world saved in it survives a RELOAD** — http and `file://` alike, `make probe-p6`. 21 `fs_*` names against the design's **0 of 20**; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red. ⛔ **`W5` cancelled, `W3` retired, `P3` closed at under 2 % of localStorage** |
 | ◐ `W4` | `hex_editor::press` — what a key means, in one place instead of **four**. `editor_run` and the server's `MSG_HOUSE` wired; `editor_client` and `script.mjs` still carry theirs |
 | ✅ `R1a`/`R1b` | **the ring is reconciled.** The pose carries the ground under the feet (`au_y`), `press` rings at it instead of at `0.0`, and the ring's TRUNK is `sess.es_trunk` — the ninth registry — instead of four locals beside the socket |
 | ✅ `R3` | `O`/`P` answer **`PR_SELECT`** — *an opening needs a profile, and nothing selects one yet* — instead of cutting the runner's material where the wire means a profile |
@@ -382,7 +383,50 @@ serves**, differing only in where a key press goes.
 | ✅ `K2a` | **the 18 opening presses are converted** — `select <kind>` + `verb opening` in 8 scripts, every other key untouched. `make probe-convert` |
 | ✅ `V2b` | **`editor_run` resolves through `verb_of`** — the **last production caller of `press(key)`**. No equality could see the step; `probe/k1` check `G` can |
 | ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
-| ⏭ next | **`D1`** (the derived mode) or **`B1`** (local mode in the client). ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ⏭ next | **`B1`** — local mode in `editor_client.loft`. It is the ONLY thing between here and the milestone now: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ⛔ `P6` — A PAGE HAS A FILESYSTEM, AND A PHASE IS CANCELLED, 2026-08-13
+
+**`make probe-p6`.** [PAGES_EDITOR](PAGES_EDITOR.md) measured `--html` binding **0 of 20** `fs_*`
+names — *a page that draws cannot store* — raised
+[loft#851](https://github.com/loft-lang/loft/issues/851), and wrote **`W5`**, an interim
+`host_output`/`loftPush` storage shim, on that premise. #851 is closed and merged (`28e85b42`).
+
+| | the design measured | `P6` |
+|---|---|---|
+| `fs_*` names in an emitted page | **0 of 20** | **21** |
+| save a world and read it back in one run | impossible | `pass1 ok`, **8277 bytes** — the interpreter's own count |
+| …and after a **RELOAD** | impossible | `pass2 ok`, over **http and `file://` alike** |
+| a file the page was **given** (`W2`'s catalogue) | *"a fetched manifest"* | `base file 25 bytes, list_dir 1 entries` — **the line the interpreter prints for a real directory** |
+
+⛔ **`W5` IS CANCELLED AND `W3` RETIRED WITH IT**, both by their own escape clauses. ✅ **`P3` is
+closed too** — the house scene is 65,788 bytes, a `LayeredFS` delta measures **1.34×** that, so
+~88 KB against a ~5 MB budget: **under 2 %**. No sharding, no IndexedDB.
+
+⚠ **THE DEFERRAL IS THE PART TO CARRY FORWARD, NOT THE CANCELLATION.** The route decision was
+parked because `W1` and `W4` were the same work either way, so **nothing waited on it** — and by
+the time it had to be answered it had answered itself. Wait for a toolchain rather than build
+around it.
+
+⚠ **AND *"#851 LANDED"* IS A CHANGELOG, NOT A MEASUREMENT.** *Landed* is a claim about upstream's
+`main`; what decides a phase here is what `/usr/local/bin/loft` does. One grep apart, four days
+apart.
+
+⚠ **`file://` NEEDS NO BROWSER FLAG** — the quick start's whole premise, and it was worth its own
+run. The first pass carried `--allow-file-access-from-files`; taking it away changed nothing.
+
+⚠ **A SABOTAGE HALF-REFUTED A GUARD I HAD ARGUED FOR, WHICH IS WHY IT IS WORTH KEEPING HONESTLY.**
+The driver refuses to read the second load until the document is genuinely new (a stamp set before
+navigating that must be gone after). `P6_SABOTAGE=nostamp` **passes three of three** — the race
+did not reproduce. What it *does* buy: `noreload,nostamp` reports *"the reloaded page found NO
+file"*, a **driver** bug wearing a product failure's clothes with `delta bytes 11092` printed
+above contradicting it. **The guard is worth one evaluate for the DIAGNOSIS, not for the verdict.**
+
+⚠ **TWO ENVIRONMENT FACTS, BOTH COST TIME.** loft resolves a relative path against the program's
+**source directory**, not the process's cwd. And the chromium here is a **snap** with its own
+private `/tmp`, so a `--user-data-dir` under the real one leaves the browser with **no devtools
+port** and a driver hanging on a socket that never opens — the profile is repo-local for that
+reason.
 
 ## ⏭ `V3` — A GREEN SUITE IS THE WRONG INSTRUMENT FOR A DELETION, 2026-08-12
 

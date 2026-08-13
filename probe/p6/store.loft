@@ -1,0 +1,111 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// P6 (plan 22) — DOES A `--html` PAGE HAVE A FILESYSTEM, AND DOES IT SURVIVE A
+// RELOAD?
+//
+//   probe/p6/run.sh          (or `make probe-p6`)
+//
+// [PAGES_EDITOR § The filesystem correction](../../doc/claude/PAGES_EDITOR.md)
+// measured `--html` binding **0 of 20** `fs_*` names and raised
+// [loft#851](https://github.com/loft-lang/loft/issues/851) for it. That issue is
+// CLOSED — merged to `main` in `28e85b42` on 2026-08-11 — and the design's own
+// note says *"if #851 lands before this is built, SKIP `W5` entirely"*. This is
+// the measurement that decides it, because the tree's rule is to check the
+// toolchain rather than to believe a changelog.
+//
+// ⚠ THE PAGE IS DRIVEN TWICE, and the second load is the whole point. A file
+// surface that works inside one run proves the BINDING; only a reload proves the
+// `localStorage` delta, and "build a house, close the tab, reopen it" is the
+// milestone the design names as the first testable one.
+//
+// ⚠ AND THE INSTRUMENT IS CHECKED BEFORE IT IS BELIEVED, twice over:
+//
+//   * a path nothing ever wrote must read as ABSENT — a host that answers *fine*
+//     to every call passes every other line in this file;
+//   * the claim is a CELL, never a size. A file of the right length full of
+//     zeroes has the right size, and an absent chunk reads as the ground (`G5a`),
+//     so a world that loaded nothing answers height 0 — which is exactly what the
+//     mark below is chosen not to be.
+use hex_voxel;
+
+const PATH = "p6_world.hxw";
+const GHOST = "p6_never_written.hxw";
+
+// The mark. Deliberately not the ground: `world_new(…)`'s default ground is
+// `Hex {}`, so 0/0 is what a world that loaded NOTHING reads back.
+const MARK_Q = 5;
+const MARK_R = 0 - 3;
+const MARK_H = 4242;
+const MARK_M = 7;
+
+fn mark() -> Hex {
+  Hex { h_height: MARK_H as u16? ?? 0, h_material: MARK_M as u8? ?? 0 }
+}
+
+fn cell_is_the_mark(w: VoxelWorld) -> boolean {
+  got = world_cell(w, MARK_Q, MARK_R, 0);
+  h = got.h_height as integer? ?? 0;
+  m = got.h_material as integer? ?? 0;
+  println("P6   cell height {h} material {m}");
+  h == MARK_H && m == MARK_M
+}
+
+// ── The BASE TREE half — a file the page was GIVEN, never one it wrote ───────
+//
+// `data/parts/` is meant to become `LayeredFS`'s immutable base tree, and
+// `W2` says the part catalogue is *"a directory walk in the library and a fetched
+// manifest in a page"*. If a page can `list_dir` its base tree, there is no
+// manifest and no second code path. The interpreter reads a real directory; the
+// page reads `loftBaseFS`. Both must answer the same, which is loft#851's own
+// stated contract.
+const BASE_DIR = "base";
+const BASE_FILE = "base/hello.txt";
+
+fn base_report() {
+  f = file(BASE_FILE);
+  if f.format == Format.NotExists {
+    println("P6   base file MISSING");
+    return;
+  }
+  entries = list_dir(BASE_DIR);
+  println("P6   base file {f.size} bytes, list_dir {len(entries)} entries");
+}
+
+fn main() {
+  // ── The control, run on BOTH passes ───────────────────────────────────────
+  ghost_absent = file(GHOST).format == Format.NotExists;
+  println("P6 ghost-absent {ghost_absent}");
+  base_report();
+
+  if file(PATH).format != Format.NotExists {
+    // ── PASS 2 — a new document, and the world is still on disk ─────────────
+    ld = world_load(PATH);
+    println("P6 pass2 load code {ld.wl_code} detail [{ld.wl_detail}]");
+    marked = cell_is_the_mark(ld.wl_world);
+    if ghost_absent && ld.wl_code == WL_OK && marked {
+      println("P6 RESULT pass2 ok");
+    } else {
+      println("P6 RESULT pass2 bad ghost={ghost_absent} code={ld.wl_code} mark={marked}");
+    }
+    return;
+  }
+
+  // ── PASS 1 — build it, save it, and read it back inside this run ──────────
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  wr = world_set_cell(w, MARK_Q, MARK_R, 0, mark());
+  code = world_save(w, PATH, []);
+  sz = file(PATH).size;
+  println("P6 pass1 write {wr.cw_code} save {code} size {sz}");
+
+  ld = world_load(PATH);
+  println("P6 pass1 load code {ld.wl_code} detail [{ld.wl_detail}]");
+  marked = cell_is_the_mark(ld.wl_world);
+
+  if ghost_absent && wr.cw_code == CW_OK && code == WS_OK && sz > 0
+     && ld.wl_code == WL_OK && marked {
+    println("P6 RESULT pass1 ok size {sz}");
+  } else {
+    println("P6 RESULT pass1 bad ghost={ghost_absent} write={wr.cw_code} save={code} size={sz} load={ld.wl_code} mark={marked}");
+  }
+}

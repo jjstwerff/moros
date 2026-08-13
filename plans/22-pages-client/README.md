@@ -14,14 +14,18 @@ can be opened and driven.**
 (the ring reconciled — the pose carries the feet, and the trunk is the session's), `R3` (`O`/`P`
 say *not yet* instead of doing the wrong thing), `S0`/`S2a`/`S2b` (the scene records
 travel with the store, the opening's choosing is in the library, and a SELECTION decides what it
-cuts), and `P2` is **run and green** — so `W5` is
-buildable today with no loft change. **`V1`** is built — a key names a verb, and the key stops
-carrying a profile.
-**`V2a`** moved the server's `MSG_HOUSE`, and **`K1`** taught the scripts to say `verb` and
+cuts). **`V1`** is built — a key names a verb, and the key stops carrying a profile.
+**`V2a`** moved the server's `MSG_HOUSE`, **`K1`** taught the scripts to say `verb` and
 `select` — with the runner grown a **session read-back**, because the world cannot see the
-profile a conversion loses.
-**Next:** **`K2`** — the 23 scripts convert one at a time, each green before the next; then
-`V2b` can move `editor_run` without a silent profile regression. The full step decomposition is
+profile a conversion loses — and `V2b`/`V3` finished it: **`press(key)` is deleted.**
+
+✅ **AND THE STORAGE HALF OF THE MILESTONE IS DONE — `P6`, 2026-08-13.** A `--html` page has a
+filesystem, a world saved in it **survives a reload** (http and `file://` alike), and it reads its
+base tree exactly as the interpreter reads a directory. ⛔ **`W5` is cancelled and `W3` retired with
+it**; `P2`, which was run to make `W5` buildable, is spent. *Build a house, close the tab, reopen
+it* is now short exactly one thing: **a page with the gestures in it.**
+
+**Next:** **`B1`** — local mode in `editor_client.loft`. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -98,7 +102,9 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Blocked on twelve keys having no verb** — `R E Q B C J K V Y T X Z` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | **`B1`** — local mode in `editor_client.loft`: hold an `EditSession`, route presses to `press` | M | both modes build the same world from one script | Blocked on `W4` |
-| **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`, `P5` |
+| ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
+| ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
+| **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`. ⚠ **`P5` is no longer a blocker** — the inlined route is measured to work from `file://`, so `P5` decides only whether the page could be SMALLER |
 | **`B3`** — the demo gate | S | ⚠ **the first gate here needing NO server** | Blocked on `B2` |
 | — | | ⏭ **THE CLIENT IS TESTABLE HERE. Nothing below starts before this line.** | |
 | **`C1`** — the sampler probe: `surface_h_at` as a `fn(…)` parameter, camera pixel-identical | XS | `camera_indoors` still `subject 0.0188` | Deferred |
@@ -111,7 +117,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 
 | repo | owns | what "done" means |
 |---|---|---|
-| **`loft-lang/loft`** | the `--html` shell | [#851](https://github.com/loft-lang/loft/issues/851) — bind the `fs_*` contract the wasm host already defines, `LayeredFS` backing it. ⚠ **Ask before building `W5`**: the installed loft leads `main`, so this can land inside a session, and this tree's rule is to wait for a toolchain rather than build around it |
+| **`loft-lang/loft`** | the `--html` shell | ✅ **DONE.** [#851](https://github.com/loft-lang/loft/issues/851) — bind the `fs_*` contract the wasm host already defines, `LayeredFS` backing it — closed and merged `28e85b42`, and **verified against the installed toolchain** by `make probe-p6` on 2026-08-13. `W5` was never built. ⚠ The rule that produced this: *wait for a toolchain rather than build around it*, and then **measure the toolchain rather than the changelog** |
 | **`crawler`** | the third consumer of the camera | **read-only from here.** They declare `hex_field`/`hex_edge` and **no `hex_voxel`** — which is what forces `hex_cam` to take a height sampler rather than a world. ⚠ A shared package means `loft-libs-*` or the registry, and **a published package is one of the three things this tree does not do without asking** |
 
 ## Open questions
@@ -122,10 +128,80 @@ with an exact comparison — the effort letter did not change, the *recoverabili
    *Not decided; `C4` is the step that asks.*
 2. **Does the demo ship the whole part library, or a starter set?** `data/parts/` is 23 files and
    inlining it costs page weight the quick start pays on every open. *Wants a number from `B2`,
-   not an opinion.*
+   not an opinion.* ⚠ **`P6` narrowed it without answering it**: the mechanism is settled — a
+   `globalThis.loftBaseFS` object inlined ahead of loft's script, which the page reads exactly as
+   the interpreter reads a directory — so this is now a question about **weight only**, and `W2`'s
+   *fetched manifest* is off the table entirely.
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## What `P6` turned up (2026-08-13) — a phase cancelled, two open numbers closed
+
+**`make probe-p6`.** The design measured `--html` binding **0 of 20** `fs_*` names — *a page that
+draws cannot store* — raised [loft#851](https://github.com/loft-lang/loft/issues/851) for it, and
+wrote `W5`, an interim `host_output`/`loftPush` storage shim, on that premise. #851 is closed and
+merged (`28e85b42`, 2026-08-11). **This is the measurement that turns that into a decision.**
+
+| | the design measured | `P6` |
+|---|---|---|
+| `fs_*` names in an emitted page | **0 of 20** | **21** |
+| a world saved and read back in one run | impossible | `pass1 ok`, **8277 bytes** — the interpreter's own count |
+| …and after a **reload** | impossible | `pass2 ok`, over **http and `file://` alike** |
+| a file the page was **given** (`W2`'s catalogue) | *"a fetched manifest"* | `base file 25 bytes, list_dir 1 entries` — **the line the interpreter prints for a real directory** |
+
+⛔ **`W5` IS CANCELLED, AND ITS OWN ESCAPE CLAUSE IS WHAT CANCELLED IT** — *"if `#851` lands before
+this is built, SKIP `W5` entirely; it is the one item here whose best outcome is never existing."*
+⚠ **The deferral is the part to carry forward, not the cancellation.** The route decision was
+parked on purpose because `W1` and `W4` were the same work either way, so **nothing waited on it**
+— and by the time it had to be answered it had answered itself. This tree's rule is to wait for a
+toolchain rather than build around it; this is the case where waiting cost nothing and saved a
+package.
+
+⚠ **AND *"#851 LANDED"* IS A CHANGELOG, NOT A MEASUREMENT.** *Landed* is a claim about upstream's
+`main`; what decides a phase here is what `/usr/local/bin/loft` does. Those are one grep apart and
+they were four days apart. `W3` was priced against the same condition and is retired with it.
+
+✅ **`P3` FELL OUT OF THE SAME RUN** — the other number the design left open. The house scene is
+**65,788 bytes** on disk, and a `LayeredFS` delta measures **1.34×** the file (11,092 characters
+for an 8,277-byte world), so ~88 KB against a ~5 MB budget: **under 2 %**. **No sharding, no
+IndexedDB fallback.** And it is small for a normative reason rather than a lucky one —
+[WORLD_MODEL § `E1γ`](../../doc/claude/WORLD_MODEL.md), *storage holds only what differs from the
+ground*.
+
+⚠ **`file://` NEEDED NO BROWSER FLAG, AND THAT WAS WORTH A SEPARATE RUN.** The quick start's whole
+premise is a directory you open rather than serve. The first pass carried
+`--allow-file-access-from-files`; taking it away changed nothing, so it is out of the driver. A
+page opened off a person's own disk gets the same storage the served one does.
+
+⚠ **THE INSTRUMENTS WERE CHECKED BEFORE THEY WERE BELIEVED — every one of them.**
+
+- **The `fs_*` grep** runs beside a name it **must** find (`host_output`, bound before #851) and
+  one it must **not** (`fs_chmod`). A grep's default answer is *absent*, and this tree has shipped
+  three whose zero read as a clean result.
+- **The reload** is `P6_SABOTAGE=persist` — the host keeping its delta in memory — and it is
+  **seen red**: `pass1 ok` twice, with the second instrument reporting `delta bytes -1` for the
+  same reason. Two instruments, blind in opposite directions, red together.
+- **The base tree** is `P6_SABOTAGE=nobase`: withhold it and the page says `base file MISSING`.
+- **The oracle is the interpreter**, and its expected line is taken from its own output rather than
+  typed a second time — loft#851's stated contract is *the page answers what `--interpret`
+  answers*, so a hand-written copy would be a table checked against itself.
+
+⚠ **AND A SABOTAGE MEASURED THE VALUE OF A GUARD I HAD ARGUED FOR, AND HALF-REFUTED IT.** The
+driver waits for the second load to be a genuinely NEW document (a stamp set before navigating that
+must be gone after). `P6_SABOTAGE=nostamp` **passes three times out of three** — `Page.navigate`
+returns after the commit, so the race it guards did not reproduce. What it *does* buy was measured
+too: `noreload,nostamp` reports *"the reloaded page found NO file: the delta did not survive"* —
+a **driver** bug wearing a product failure's clothes, with `delta bytes 11092` printed directly
+above contradicting it. With the stamp the same run says *"the second load never printed a RESULT
+line"*. **The guard is worth one `Runtime.evaluate` for the diagnosis, not for the verdict**, and
+saying which is the honest version.
+
+⚠ **TWO ENVIRONMENT FACTS FELL OUT AND BOTH COST TIME.** loft resolves a relative path against the
+program's **source directory**, not the process's cwd — a `cd` into a scratch dir wrote the world
+beside `store.loft` anyway. And the chromium here is a **snap**, so it has its own private `/tmp`:
+a `--user-data-dir` under the real one leaves the browser with **no devtools port at all** and the
+driver hanging on a socket that will never open. The profile is repo-local for that reason.
 
 ## What `W1` turned up (2026-08-11)
 

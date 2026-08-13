@@ -99,6 +99,15 @@ probe/*.png
 # loft build artefacts beside a probe
 **/.loft/
 
+# `probe/p6` drives headless chromium and needs a FRESH profile per run, because
+# `localStorage` is the thing it measures. The profile is repo-local rather than
+# under `/tmp` — the chromium here is a snap and has its own private `/tmp`, where
+# a `--user-data-dir` leaves the browser with no devtools port at all.
+probe/**/.chrome-*
+# P6's world, written beside `store.loft` because loft resolves a relative path
+# against the program's SOURCE directory rather than the process's cwd.
+probe/p6/*.hxw
+
 # The gate suite copies the compiled server here — a loft binary roots its file I/O
 # at its own directory's parent, so it has to sit one level under the repository or
 # every snapshot and save lands in src/.loft/. Rebuilt every run; never committed.

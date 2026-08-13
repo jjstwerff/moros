@@ -83,22 +83,33 @@ loft ships **`VirtFS`**, and loft's own file paths already honour it under wasm 
 both halves of the request, it is loft's own, and it means `world_save(path)` — the call every
 other target already makes — is the whole persistence design.
 
-### But the two browser shells bind opposite halves, and that is the real gap
+### ✅ The two browser shells bound opposite halves — **FIXED UPSTREAM, and measured here**
 
 | shell | binds | missing |
 |---|---|---|
-| **`--html`** | `gl_*` (52 fns), `audio_*`, `host_http_*`, `host_input`/`host_output`, `time` | **`fs_*` — 0 of 20** |
+| **`--html`** | `gl_*` (52 fns), `audio_*`, `host_http_*`, `host_input`/`host_output`, `time` | ~~**`fs_*` — 0 of 20**~~ → **21, 2026-08-13** |
 | **the wasm host** (`tests/wasm/host.mjs`, the Web IDE) | `env`, **`fs_*` (20)**, `log`, `random`, **`storage`**, `time` | **graphics — 0** |
 
-**A rendering editor needs both and today it can have either.** Measured: a program calling
-`world_save`, `world_load` and `file()` compiles to `--html` **rc=0** and the emitted module has
-**no `fs_*` import at all** — so a host cannot even supply one from JS, because there is nothing
-to bind to. Nothing warns; a page silently has no filesystem.
+**A rendering editor needs both and for a while it could have either.** Measured then: a program
+calling `world_save`, `world_load` and `file()` compiled to `--html` **rc=0** and the emitted
+module had **no `fs_*` import at all** — so a host could not even supply one from JS, because
+there was nothing to bind to. Nothing warned; a page silently had no filesystem.
 
 ✅ **Raised as [loft#851](https://github.com/loft-lang/loft/issues/851)**
 (`enhancement` · `needs-design` · `wa:partial` · `area:wasm` · `hit-by:moros`): *`--html` binds the
-same `fs_*` contract the wasm host already defines, with `LayeredFS` as the backing.* It asks for
-a **binding, not a feature** — every piece already exists on their side.
+same `fs_*` contract the wasm host already defines, with `LayeredFS` as the backing.* It asked for
+a **binding, not a feature** — every piece already existed on their side.
+
+✅ **CLOSED AND MERGED (`28e85b42`, 2026-08-11), AND `make probe-p6` IS WHAT SAYS SO HERE.** The
+same program now emits a page with **21** `fs_*` names, saves an 8277-byte world — the interpreter's
+own byte count — reads it back, and **finds it again after a reload**, over `http` and `file://`
+alike. That retires `W5` below; the record is in that section, because a cancelled phase is the
+finding.
+
+⚠ **AND THE RULE THIS RAN UNDER IS WORTH KEEPING: A CLOSED TICKET IS A CHANGELOG, NOT A
+MEASUREMENT.** The design's escape clause said *skip `W5` if `#851` lands* — but *landed* is a
+claim about upstream's `main`, and what decides a phase here is what `/usr/local/bin/loft` does.
+Those are one grep apart and they were four days apart.
 
 ⚠ **MY MEASUREMENT WAS RIGHT AND MY SENTENCE WAS WRONG, WHICH IS THE INSTRUCTIVE PART.** The grep
 found nothing because it asked *the `--html` shell*, and I wrote the answer up as a property of
@@ -237,9 +248,15 @@ lavition/
                               loft's own ide/scripts/build-base-fs.js for the base tree
   _site/                    ← the deliverable: a directory you can serve statically,
     index.html                  OR open from file:// — the quick start. ONE self-contained
-                                file: the --html page, the host shim (until #851), and
-                                data/parts/ INLINED as LayeredFS's base tree (see P5)
+                                file: the --html page and data/parts/ INLINED as
+                                LayeredFS's base tree, which is a `globalThis.loftBaseFS`
+                                object defined ahead of loft's own script (P6 drives one).
+                                ⚠ NO host shim — #851 landed and W5 is cancelled.
 ```
+
+⚠ **AND `file://` NEEDS NO BROWSER FLAG, WHICH IS THE QUICK START'S WHOLE PREMISE.** Measured at
+`P6`: the same page loaded twice from `file://`, with no `--allow-file-access-from-files`, saves a
+world and finds it again. **A person opening `index.html` off their own disk gets the storage.**
 
 ⚠ **`_site/index.html` IS THE SAME ARTIFACT THE SERVER SERVES.** `read_client()` already hands
 `{source_dir()}/.loft/editor_client.html` to a browser at `/`. If the standalone page is a
@@ -314,8 +331,15 @@ the second is what the first cannot see.
 
 Measured: **`hex_part` touches no files.** It reads and writes sections of a `VoxelWorld`
 already in memory, and `part_file(root, name)` only builds a string. So *load a part from bytes*
-is `world_from_bytes` plus the existing `part_*` readers. **What is left is the catalogue**: today
-the library is a directory walk, and in a page it is a fetched manifest — see `W5`.
+is `world_from_bytes` plus the existing `part_*` readers.
+
+✅ **AND THE CATALOGUE HALF IS ANSWERED TOO — THERE IS NO MANIFEST.** This row read *"today the
+library is a directory walk, and in a page it is a fetched manifest"*, which is a second code path
+for the same question. Measured as part of `P6`: a page GIVEN a base tree reads a file out of it
+and `list_dir`s the directory, printing **`base file 25 bytes, list_dir 1 entries`** — the same
+line the interpreter prints for a real directory on disk, with the interpreter's own output as the
+oracle rather than a string typed twice. Control `P6_SABOTAGE=nobase` withholds the tree and the
+page says **`base file MISSING`**. **`data/parts/` can be the base tree and the walk is the walk.**
 
 ### `W3` — `glb_read`: `glb_from_bytes` beside `load_glb(path)`
 
@@ -323,9 +347,12 @@ Three `.glb` in `data/parts/`. Same wrapper rule as `W1`: the path form calls th
 ⚠ **Small, and it is the one place a stub is tempting** — a part whose mesh silently fails to load
 draws nothing and reads as a geometry bug, which is a shape this tree has paid for twice.
 
-⚠ **AND IT IS THE ITEM MOST LIKELY TO BE UNNECESSARY.** If [loft#851](https://github.com/loft-lang/loft/issues/851)
-lands, a `.glb` is just a file in the base tree and `load_glb(path)` already works. **Do `W3` only
-when a page actually needs a mesh and the binding has not arrived** — the house shell needs none.
+⛔ **AND IT IS UNNECESSARY — the condition it was priced against fired.** This row read *"if
+[loft#851](https://github.com/loft-lang/loft/issues/851) lands, a `.glb` is just a file in the base
+tree and `load_glb(path)` already works."* It landed, and `P6` measured a page reading its base
+tree exactly as the interpreter reads a directory. **Do `W3` only if a page turns out to need a
+mesh the base tree cannot carry** — the house shell needs none, and there is no longer a target
+that can draw but not open a file.
 
 ### ◐ `W4` — `hex_editor::press` — the chokepoint — **BUILT, ONE OF FOUR SITES WIRED**
 
@@ -359,31 +386,40 @@ exists; **it is done when the other three call it and their own tables are delet
 tree's commonest defect (*a function written, tested green and never wired*), and it has cost an
 entire phase's deliverable before. **Grep for callers before calling `W4` done.**
 
-### `W5` — `lavition_host`: an **interim shim**, and it is scaffolding by construction
+### ⛔ `W5` — `lavition_host`: **CANCELLED, and it is the best outcome it had** — 2026-08-13
 
-⚠ **THIS ITEM CHANGED MEANING AFTER THE FILESYSTEM CORRECTION.** It was designed as *the*
-persistence layer. It is now **a stand-in for [loft#851](https://github.com/loft-lang/loft/issues/851)**
-— the `fs_*` binding `--html` does not have — and its whole job is to be deleted.
+**Its own escape clause fired.** This section read *"if `#851` lands before this is built, SKIP
+`W5` entirely — it is the one item here whose best outcome is never existing."*
+[loft#851](https://github.com/loft-lang/loft/issues/851) is closed and merged (`28e85b42`,
+2026-08-11), and `make probe-p6` says so about the **installed** toolchain rather than about a
+changelog:
 
-```
-pub fn host_ask(request: text) -> text     // host_output(request) then host_input()
-```
+| | the design measured | `P6`, 2026-08-13 |
+|---|---|---|
+| `fs_*` names in an emitted `--html` page | **0 of 20** | **21** |
+| a world saved in a page, read back in the same run | impossible | `pass1 ok`, 8277 bytes — the interpreter's byte count |
+| …and after a **reload** | impossible | `pass2 ok`, over **http and `file://` alike** |
 
-The channel **is** bound in `--html` (measured), so this works today with no loft change: the page
-asks JS to read or write a localStorage key, and JS answers. It depends on nothing but the stdlib.
+**So persistence is `world_save(path)` and nothing else.** No shim, no `host_ask`, no package to
+name, and no seam to swap later. `W1`'s bytes API stays — it is right on every target, and
+`world_to_bytes` is what `V1`'s whole-world comparison reads.
 
-⚠ **THE SEAM IS PLACED SO THE SWAP IS ONE FILE.** Everything above it calls `W1`'s bytes API;
-`lavition_host` only decides *where the bytes live*. When `#851` lands, the page calls
-`world_save(path)` against `LayeredFS` and this package is **deleted, not deprecated** — and
-`W1` stays, because a bytes API under the path API is right on every target.
+⚠ **AND `P3` FELL OUT OF THE SAME RUN, WHICH WAS THE OTHER OPEN NUMBER.** The house scene
+(`tools/scripts/house.keys`) is **65,788 bytes** on disk; `LayeredFS` keeps its delta as a
+`localStorage` string, measured at **1.34×** the file, so ~88 KB against a ~5 MB budget — **under
+2 %**. loft's own estimate was *"typically < 50 KB"*. **No sharding, no IndexedDB fallback.**
 
-⚠ **NAME IT LAST AND GREP FIRST** — `lib/`, `../loft-libs-*/` and the registry. `hex_fit` refused
-a rename at `L6.1` and that refusal was a finding. ⚠ And it is deliberately **not** a
-`localStorage` package: the channel is the general thing, storage is one request on it. A package
-named for one request is `moros_terrain` again.
+⚠ **`file://` NEEDED NO FLAG, and that was worth measuring separately** — the quick start's whole
+premise is a directory you open rather than serve. The first run passed `--allow-file-access-from-files`;
+taking it away changed nothing, so the flag is out of the driver. A person opening `index.html`
+from their own disk gets the same page the server serves, with the same storage.
 
-⚠ **IF `#851` LANDS BEFORE THIS IS BUILT, SKIP `W5` ENTIRELY.** It is the one item here whose best
-outcome is never existing.
+⚠ **THE PROBE'S OWN INSTRUMENT WAS CHECKED BEFORE IT WAS BELIEVED, THREE WAYS.** The `fs_*` grep
+is run beside a name that **must** be found (`host_output`, bound before `#851`) and one that must
+**not** (`fs_chmod`), because a grep's default answer is *absent* and this tree has shipped three
+whose zero read as a clean result. The reload half is `P6_SABOTAGE=persist` — the host keeping its
+delta in memory — and it is **seen red**: `pass1 ok` twice, with the second instrument reporting
+`delta bytes -1` for the same reason.
 
 ### What is explicitly NOT library work
 
@@ -395,22 +431,22 @@ the invariant has been lost — say so and stop.
 
 ## The persistence format, and the one decision inside it
 
-**The target state is `LayeredFS`**: `data/parts/` is the immutable base tree, the edited world is
-the delta, localStorage holds the delta, and the page just calls `world_save(path)`. That needs
-[loft#851](https://github.com/loft-lang/loft/issues/851).
+✅ **THE TARGET STATE IS THE STATE — measured 2026-08-13, `make probe-p6`.** `data/parts/` is the
+immutable base tree, the edited world is the delta, localStorage holds the delta, and the page just
+calls `world_save(path)`. There is **no interim**: `W5` is cancelled, and the section above records
+why the deferral cost nothing.
 
-**The interim is the same bytes under one localStorage key**, written through `W5`. ⚠ **The two
-agree on the bytes and differ only on the route**, which is the whole reason `W1` is item one:
-`world_to_bytes` is what the shim carries *and* what `world_save` writes, so the switch changes
-no format and no test.
+⚠ **AND THE ONE DECISION INSIDE IT NEVER HAD TO BE TAKEN.** *"The two agree on the bytes and differ
+only on the route"* was the reason `W1` was item one — so that a later switch would change no format
+and no test. The switch never happened, and `W1` is worth its place anyway: `world_to_bytes` is what
+`V1`'s whole-world comparison reads and what `world_save` writes.
 
-⚠ **THE SIZE IS THE RISK AND IT IS NOT MEASURED YET** — `P3` below. Browsers cap localStorage at
-about 5 MB per origin, and a `.hxw` grows with what has been built. **The design does not
-pre-emptively shard**, because [WORLD_MODEL § `E1γ`](WORLD_MODEL.md) already makes it normative
-that storage holds only what *differs* from the ground, and a house is small. ⚠ **And loft has already
-priced this**: `WASM.md` puts a delta at *"typically < 50 KB"* against a 5–10 MB limit and names
-IndexedDB as the fallback for binary or large trees — so if `P3` fires, the answer is the fallback
-`LayeredFS` already documents, not a different design.
+✅ **THE SIZE WAS THE RISK AND IT IS MEASURED — `P3`, and it does not fire.** Browsers cap
+localStorage at about 5 MB per origin. The house scene is **65,788 bytes** on disk and a
+`LayeredFS` delta runs **1.34×** that (measured: 11,092 characters for an 8,277-byte world), so
+~88 KB — **under 2 %**. **No sharding and no IndexedDB fallback**, and the reason it is small is
+normative rather than lucky: [WORLD_MODEL § `E1γ`](WORLD_MODEL.md) says storage holds only what
+*differs* from the ground. loft's own estimate was *"typically < 50 KB"*, and it is the right order.
 
 ⚠ **AUTOSAVE ON THE EDIT CLOCK, NEVER ON A TIMER.** `w_tau` bumps once per write that changed
 something, so *save when tau moved* is exact, costs nothing when idle, and is the same on any box.
@@ -428,8 +464,9 @@ can each kill an item outright.
 | **`P5`** | **`fetch()` of a sibling file is blocked under `file://`** — the claim that forces the assets to be INLINED rather than staged beside the page | open a two-file page from `file://` in headless Chrome and read the error | if it is NOT blocked, the assets may be staged beside `index.html` and the page gets smaller. ⚠ **Asserted from general browser behaviour and NOT yet measured here** — it is a design constraint resting on an unmeasured mechanism, which is what this table exists to stop |
 | **`P1`** | a **binary** `.hxw` survives `web::http_get` intact | fetch one part in a `--html` page and compare its bytes to the file | ⚠ **Only affects the ATTACHED mode now.** Local mode inlines its assets (`P5`), so a fetch failure no longer touches the quick start |
 | ✅ **`P2`** | `host_output`/`loftPush` round-trips a string from a `--html` page, and our JS can be appended to the emitted page at all | ✅ **RUN 2026-08-11 — it holds**, `make probe-p2`. Three exchanges incl. a request JS refuses; two sabotages seen red | — |
-| **`P3`** | a built world fits in localStorage | `world_to_bytes` on the house scene from `tools/scripts/house.keys`, print the length | shard, or IndexedDB over the same bridge |
+| ✅ **`P3`** | a built world fits in localStorage | ✅ **RUN 2026-08-13 as part of `P6`** — the house scene is **65,788 bytes**, ~88 KB as a `LayeredFS` delta (1.34× measured), **under 2 %** of a ~5 MB budget | — |
 | ✅ **`P4`** | one `--html` program can hold **both** the renderer and the gestures | ✅ **RUN 2026-08-11 — it holds.** See below | — |
+| ✅ **`P6`** | **a `--html` page has a filesystem, and a world saved in it survives a reload** — the successor to the 0-of-20 grep, and the probe that CANCELS `W5` | ✅ **RUN 2026-08-13 — it holds**, `make probe-p6`. Interpreter as the oracle, then the page twice over `http` and twice from `file://`; the grep checked against a name it must find and one it must not; `P6_SABOTAGE=persist` seen red | — |
 
 ✅ **`P4` WAS THE ONE I FEARED MOST AND IT PASSED, WHICH IS WHY IT WAS RUN FIRST.** `L3′` records
 two *already-reverted* experiments where joining two packages' cones broke a third
@@ -474,15 +511,16 @@ else** at first, and the whole prop/door/vehicle surface can wait.
 | ✅ ~~`P4`~~, ✅ ~~`P2`~~ | **both run, both hold.** Nothing left that can reshape the work; `P5` only decides where the assets sit | done |
 | ✅ `W1` | world ⇄ bytes | **BUILT** — and 1.6× faster, not slower |
 | ◐ `W4` (house keys) | `press` for the arrows, `H`, `O`, `P`, `F`, `G` | **BUILT, and `editor_run` wired.** ⏭ **Next: the server, `editor_client`, `script.mjs` — and delete their tables.** `R`/`B`/`C`/`E` (wall run, storey, cellar, step) need adapting: they do not return an `Ack` |
-| `W5` **or** `#851` + autosave | whichever route is available, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it |
+| ⛔ ~~`W5`~~ **or** ✅ `#851` + autosave | **the route is decided: `#851`, measured.** `world_save(path)` against `LayeredFS`, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it. ⚠ **The STORAGE half of it is now done and gated** (`make probe-p6`); what is left is a page with the gestures in it, which is `B1` |
 | `W2`/`W3` + the base tree | the assets | doors and props are parts; the house shell is not |
 | the rest of `W4` | every remaining key, and **delete the other three tables** | ⚠ the step is not done until they are gone |
 | **the demo gate** | open `_site/index.html`, build a house, read the picture | ⚠ **NOT OPTIONAL, and it is the first gate here needing NO server.** A permanent demo with no gate is broken the first week nobody opens it |
 
-⚠ **THE ROUTE DECISION IS DEFERRED ON PURPOSE, AND IT IS CHEAP TO DEFER** because `W1` and `W4` —
-the two real pieces of work — are the same either way. **Ask [#851](https://github.com/loft-lang/loft/issues/851)
-before starting `W5`**; the installed loft leads `main` here, so a binding can land inside a
-session, and this tree's rule is to wait for a toolchain rather than build around it.
+✅ **THE ROUTE DECISION WAS DEFERRED ON PURPOSE AND THE DEFERRAL PAID.** `W1` and `W4` — the two
+real pieces of work — were the same either way, so nothing waited on it; and by the time it had to
+be answered, [#851](https://github.com/loft-lang/loft/issues/851) had landed and `W5` was never
+built. **This tree's rule is to wait for a toolchain rather than build around it**, and this is
+the case where waiting cost nothing and saved a package.
 
 ⚠ **THE FIRST MILESTONE IS DELIBERATELY *BUILD A HOUSE AND REOPEN THE TAB*, NOT *THE PAGE
 RENDERS*.** A page that draws is not evidence — the renderer already works, so a picture would be
