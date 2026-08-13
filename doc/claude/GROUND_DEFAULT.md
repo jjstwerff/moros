@@ -50,7 +50,16 @@ axis, so the height is constant along the other and the rectangle decomposes int
 new primitive at all. The order swaps for a ramp along `r`, and that is safe for a reason worth
 stating rather than assuming: **a chunk is based on its first content**, and the first cell of
 any chunk is its minimum `(q, r)` corner in either order — so the stored bytes match, not just
-the heights. **The row below was right that the speed argument was spent for the
+the heights.
+
+⛔ **AND A BULK PRIMITIVE HAS A FLOOR: three cells.** 13 strips of N, loop ÷ fill — **73 %** at
+width 1, **80 %** at 2, **107 %** at 3, 231 % at 13. Below three cells `world_fill` is a
+*pessimisation* by up to a quarter, because resolving the chunk, scanning for a second terrain
+layer and putting the first cell through `world_set_cell` **is** the call at that length. The
+last two fixtures lay roads exactly three wide and moved nothing (160,197 → 160,184 samples;
+85,696 → 85,653). **So the useful question about a fill is never *is it faster* but *how wide*.**
+They are wired regardless, for a reason that is not speed: the loops discarded `ground_set`'s
+return code, so a refused road cell was silently missing. **The row below was right that the speed argument was spent for the
 package it was aimed at** — and wrong that it was spent everywhere, which only wiring a second
 consumer could show.
 

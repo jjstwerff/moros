@@ -41,6 +41,10 @@ things belong out here, because neither is about a fill:
 - ⏭ **A SLOPED FIXTURE IS A STACK OF STRIPS** — every ramp in this tree is affine in one axis, so
   the height is constant along the other and no ramp primitive was needed. Worth knowing before
   anyone designs one.
+- ⛔ **AND A BULK PRIMITIVE HAS A FLOOR: THREE CELLS.** loop ÷ fill is **73 %** at width 1, 80 %
+  at 2, 107 % at 3, 231 % at 13 — so below three cells `world_fill` is a *pessimisation*, its own
+  setup being the whole call. The last two fixtures lay roads exactly three wide and moved
+  nothing. **The useful question about a bulk call is never *is it faster* but *how wide*.**
 - ⚠ **AND THE WALL CLOCK SAID THE OPPOSITE — 2m04 before, 4m03 after.** Wrong *sign*, on a box
   shared with other agents' work. The sampler on the same tree, same file, same 28 runs, settled
   it. **A number that disagrees with the mechanism is a cue to change instrument** — not to

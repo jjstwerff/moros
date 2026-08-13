@@ -527,9 +527,16 @@ fn test_both_orders_now_agree_about_the_limit() {
 // `stroke_over_limit`, so that is what these ask — directly, on the four shapes it
 // has to separate.
 
+// ⚠ A THREE-WIDE STRIP IS THE BREAK-EVEN WIDTH, MEASURED — so this is not here for
+// speed. `probe/perf/fill_cost.loft`: a fill is **73 %** of the loop at width 1 and
+// **107 %** at width 3, because resolving the chunk, scanning for a second terrain
+// layer and putting the first cell through `world_set_cell` is most of a short call.
+// What the fill buys instead is that the write is CHECKED: the loop it replaces
+// discarded `ground_set`'s code, so a refused road cell was silently missing.
 fn road_at(w: VoxelWorld, q0: integer, n: integer, h0: integer, step: integer) {
   for i in 0..n {
-    for r in (0 - 1)..2 { ground_set(w, q0 + i, r, h0 + i * step, ROAD_MAT); }
+    assert(ground_fill(w, q0 + i, 0 - 1, q0 + i + 1, 2, h0 + i * step, ROAD_MAT) == CW_OK,
+           "the road cell at q {q0 + i} was refused");
   }
 }
 

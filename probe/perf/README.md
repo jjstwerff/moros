@@ -776,9 +776,30 @@ fill along `q`), and that is safe for the one reason worth writing down: **a chu
 its first content**, and the first cell of any chunk is its minimum `(q, r)` corner in *either*
 order — so the base, the encoding and the layer bytes are identical, not merely the heights.
 
-**Left alone: two loops** — `slope_limit`'s `road_at` and `settle_owed`'s road pass. Both write
-over ground that already exists, where a fill stops at the first refusal and a loop ignores them,
-and the second reads `ground_h` per cell so it has no constant to hoist at all.
+### ⛔ WHERE A FILL STOPS PAYING — the break-even is three cells wide
+
+The last two loops — `slope_limit`'s `road_at` and `settle_owed`'s road pass — lay roads **three
+cells wide**, and that turned out to be the whole answer. 13 strips of N cells, both ways:
+
+| strip width | 1 | 2 | **3** | 4 | 6 | 13 |
+|---|---|---|---|---|---|---|
+| loop ÷ fill | **73 %** | **80 %** | **107 %** | 117 % | 131 % | 231 % |
+
+⚠ **BELOW THREE CELLS A FILL IS A PESSIMISATION**, by up to a quarter. It resolves the chunk,
+scans for a second terrain layer and puts its first cell through `world_set_cell` before it can
+hoist anything, and over a short strip that setup *is* the call. **A bulk primitive is not free
+and its floor is measurable** — so the useful question about `world_fill` is never *is it
+faster* but *how wide*.
+
+**Both were wired anyway, and the measurement said what it said:** `slope_limit` 160,197 →
+160,184 samples, `settle_owed` 85,696 → 85,653. Nothing, to three digits. What they buy is not
+speed — **the loops discarded `ground_set`'s return code**, so a refused road cell was silently
+missing, and the fill's code is now asserted. `settle_owed`'s pass also reads `ground_h` per
+cell, so its strip has a constant height only because *that fixture's* ramp varies along `q`
+alone — now asserted rather than assumed.
+
+⚠ **AND NOTHING EARLIER IN THIS SECTION IS NEAR THE FLOOR** — the nine ramped fixtures make
+strips 9 to 49 cells wide, so the break-even was checked against them after the fact, not before.
 
 ### ⚠ AND THE WALL CLOCK SAID THE OPPOSITE — 2m04 before, 4m03 after
 

@@ -129,6 +129,48 @@ fn control(n: integer) {
         + "  -> {same}");
 }
 
+// ── WHERE A FILL STARTS TO PAY — the break-even width ───────────────────────
+//
+// A fill is not free: it resolves the chunk, scans for a second terrain layer and
+// puts its first cell through `world_set_cell` before it can hoist anything. Over a
+// 2401-cell rectangle that is nothing; over a THREE-cell strip it is most of the
+// call. Two fixtures in `hex_editor` lay roads three cells wide, and the honest way
+// to decide whether they should use a fill is to find the width where it wins.
+fn strips_by_cell(w: VoxelWorld, runs: integer, width: integer) {
+  for cq in 0..runs {
+    for cr in 0..width {
+      world_set_cell(w, cq, cr, 0, Hex { h_height: (5 + cq) as u16? ?? 0,
+                                         h_material: 1 as u8? ?? 0 });
+    }
+  }
+}
+
+fn strips_by_fill(w: VoxelWorld, runs: integer, width: integer) {
+  for fq in 0..runs {
+    world_fill(w, fq, 0, fq + 1, width, 0, Hex { h_height: (5 + fq) as u16? ?? 0,
+                                                 h_material: 1 as u8? ?? 0 });
+  }
+}
+
+fn strip_shape(width: integer, runs: integer, reps: integer) {
+  sa0 = now();
+  for k1 in 0..reps { sw1 = blank(); strips_by_cell(sw1, runs, width); }
+  sa1 = now();
+  sb0 = now();
+  for k2 in 0..reps { sw2 = blank(); strips_by_fill(sw2, runs, width); }
+  sb1 = now();
+  sc0 = now();
+  for k3 in 0..reps { sw3 = blank(); strips_by_fill(sw3, runs, width); }
+  sc1 = now();
+  sd0 = now();
+  for k4 in 0..reps { sw4 = blank(); strips_by_cell(sw4, runs, width); }
+  sd1 = now();
+  sloop = (sa1 - sa0) + (sd1 - sd0);
+  sfill = (sb1 - sb0) + (sc1 - sc0);
+  println("  width {width}: {runs} strips  loop {sa1 - sa0}/{sd1 - sd0} ms   "
+        + "fill {sb1 - sb0}/{sc1 - sc0} ms   ratio {(sloop * 100) / sfill ?? 0} %");
+}
+
 fn main() {
   control(16);
   // ⚠ A WARM-UP, AND IT IS NOT A RITUAL — it is here because the instrument was
@@ -152,5 +194,13 @@ fn main() {
   println("");
   ramp_shape("ramp  41x41 (cave/water)", 41, 8);
   ramp_shape("ramp  49x13 (road_debt) ", 25, 8);
+  println("");
+  println("break-even: 13 strips of N cells, the shape `road_at` lays");
+  strip_shape(1, 13, 40);
+  strip_shape(2, 13, 40);
+  strip_shape(3, 13, 40);
+  strip_shape(4, 13, 40);
+  strip_shape(6, 13, 40);
+  strip_shape(13, 13, 20);
   shape("the fixed cost 1x1, again", 1, 20);
 }
