@@ -1,0 +1,28 @@
+// Does a `--html` page have a CLOCK, and does it advance between frames?
+//
+// `B1c` — the walk — is an INTEGRATION: the server turns `yaw` by
+// `TURN_RATE * dt` on a fixed tick. A page has frames, not ticks, so before any
+// design decides who owns the pose, this asks whether the page can even spell a
+// `dt`.
+//
+// ⚠ THE ANSWER MUST BE MEASURED ON THE PAGE, NOT ON THE INTERPRETER. `ticks()` is
+// a builtin the server uses forty times; whether the wasm/html host BINDS it is a
+// different question, and `host_input()` is this plan's own precedent for a name
+// that exists everywhere and blocks in one place (loft#891).
+use graphics;
+
+fn main() {
+  graphics::gl_create_window(320, 200, "clock");
+  t0 = ticks();
+  prev = t0;
+  moved = 0;
+  same = 0;
+  for _f in 0..60 {
+    graphics::gl_clear(0xFF101010);
+    graphics::gl_swap_buffers();
+    now = ticks();
+    if now > prev { moved = moved + 1; } else { same = same + 1; }
+    prev = now;
+  }
+  println("B1C CLOCK t0 {t0} end {prev} span {prev - t0} moved {moved} same {same}");
+}

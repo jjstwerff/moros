@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth pages probe-demo plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -562,6 +562,23 @@ probe-p6:
 # different client, which is how the sabotages run.
 probe-b1a:
 	@sh probe/b1a/run.sh
+
+# B2 (plan 22) — ASSEMBLE `_site/`, THE QUICK-START DEMO. It is a COPY of the client
+# engine build and asserts it arrived verbatim: the design's rule is that the demo and
+# the page the server serves are one artifact, because two would have to be kept in
+# step. Refuses an engine older than its own sources rather than shipping last week's
+# editor behind a build step.
+pages:
+	@node tools/build-pages.mjs
+
+# B2/B3 (plan 22) — DOES THE DEMO OPEN FROM A DISK? `_site/index.html` over `file://`
+# with no listener at either end: it boots, decides it is on its own, draws its own
+# world and a key WRITES into it. ⚠ The first check here that needs no port at all.
+# `DEMO_SABOTAGE=emptypage` is `B3`'s own warning made runnable (a page with the right
+# elements and no editor); `DEMO_SABOTAGE=deadkey` presses a key with no verb, so a
+# check that credits the passage of time with a gesture stays green.
+probe-demo: pages
+	@sh probe/b2/run.sh
 
 # B1b.1a (plan 22) — DOES THE PANEL SAY WHICH AUTHORITY IT HAS? The status line was
 # a literal reading `connected`, set at panel construction before any socket existed,

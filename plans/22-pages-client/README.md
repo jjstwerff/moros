@@ -50,7 +50,14 @@ is the SERVER's solve, so the page `B1b.1b` shipped had every number right and a
 local mode is visible. The recipe is `hex_mesh::chunk_meshes_all`, the server holds no copy of it,
 and `make probe-auth` reads the page's own line: **`grass` at boot, `grass,wall` after the rings**.
 
-**Next:** **`B1c`** — the walk in local mode, which is what stands between this page and a house.
+✅ **AND THE DEMO EXISTS — `B2`/`B3`, 2026-08-13.** `make pages` writes `_site/index.html` (the
+client engine build, verbatim, asserted) and `make probe-demo` opens it from `file://` with no
+listener at either end. ⛔ **Most of the step was cancelled by its first measurement**: the engine
+build already ran from a disk, so `B2` is packaging and a check rather than a port.
+
+**Next:** **`B2b`** — connections to potential servers, so a demo opened off a disk can attach to
+an editor that IS running; then **`B1c`** — the walk in local mode, which is what stands between
+this page and a house.
 `place` is refused at the origin in both drivers (*"a footprint at this facing has no mitred
 corners; turn one step"*) and local mode has no answer for `w` at all. The full step decomposition
 is
@@ -97,10 +104,13 @@ key press goes.
 | ✅ `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth site | ✅ **BOTH RUN.** `act`'s `fence` → the wall's message: **every sentence identical**, world `82d622b3` → `cdabc1dc`. `act`'s `place` → a raise: transcript, presence check and world all red. ⏭ The opening pair is **left out** rather than pinned — see the finding above; pinning would have made `p` stop cutting a pointed head, which is a change wearing a refactor's clothes |
 | ✅ `B1b.1a` | the panel's status is **derived from the client's own socket**, and moves when it moves | a fact is asserted only where it can be **known** | ⚠ **THREE, AND ONE OF THEM PASSED FIRST TIME.** `literal` (the line as it was) → red on the panel's first word and red with no server. `assume` (authority off the send, not off its success) → red where the client's claim meets the WIRE's log. `nodirty` (the fact moves, the panel is not told) → **green in both runs**, because the real server's `N:`/`H:` rebuild the panel anyway — which is what added the third situation, a socket that opens and says nothing, where `panel_dirty` has exactly one possible writer |
 | ✅ `B1b` | the local page and the runner build the **same world** from the same verbs | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind**, and the correction it made (**`world_to_bytes` AND the session**) is what the built version does. ✅ **NINE SABOTAGES.** The two that matter: `elsewhere` (the same gestures at an author one unit over) is invisible to every count and every sentence — a ring writes 42 edges wherever it is laid — and red on the world key alone; `scratchsession` (press into a session nobody keeps) leaves the world **byte-identical** and is red on the session alone |
-| `B3` | the demo gate opens `_site/index.html` **with no server** and reads a house out of the picture | the quick start **stays** working | ⚠ the gate must fail on an empty page — `[].every(…)` is `true`, and this tree has shipped a row that reported `ok` on a picture with no panel at all |
+| ✅ `B3` | the demo check opens `_site/index.html` **with no server** and reads an edit out of the picture | the quick start **stays** working | ✅ **BOTH RUN.** `emptypage` — a page with the right ELEMENTS and no editor — is red on **all seven** checks, which is this row's own warning made runnable. `deadkey` — press `z`, one of the twelve keys with no verb — is red on **D5/D6 alone** and green on the other five: the picture check sees a *gesture*, not the passage of time |
 
 ⚠ **`B2` (`build-pages.mjs`) has no exact-invariant surface** — it assembles files and decides
-nothing. Said in a line so the silence does not read as *gate done*.
+nothing. Said in a line so the silence does not read as *gate done*. ✅ **AND THAT IS WHY IT
+MERGED WITH `B3`**: a build step that decides nothing cannot go red on its own, which is the
+lower bound of a safe step, so *assemble the demo* and *open the demo* are one step. The one
+thing it does decide — refusing an engine older than its sources — is measured below.
 
 ⚠ **EVERY PHASE ABOVE IS CUT TO ANSWER ONE QUESTION — [*what am I comparing against while this
 step is half done?*](../README.md#what-makes-a-step-safe--and-it-is-not-how-few-lines-it-is)**
@@ -147,8 +157,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
-| **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`. ⚠ **`P5` is no longer a blocker** — the inlined route is measured to work from `file://`, so `P5` decides only whether the page could be SMALLER |
-| **`B3`** — the demo gate | S | ⚠ **the first gate here needing NO server** | Blocked on `B2` |
+| ✅ **`B2`** = **`B3`** — `tools/build-pages.mjs`, `_site/`, and the check that opens it | S | **DONE 2026-08-13.** `make probe-demo`: `_site/index.html` over `file://` with no listener at either end — boots, goes local in 180 dials, draws (world **5 colours** over the horizon against a 303-colour panel control), holds still, and `ArrowUp` **writes** (`local raise — 1 · world 16502:374721773`). Two sabotages, red in different places | ✅ Done |
 | — | | ⏭ **THE CLIENT IS TESTABLE HERE. Nothing below starts before this line.** | |
 | **`C1`** — the sampler probe: `surface_h_at` as a `fn(…)` parameter, camera pixel-identical | XS | `camera_indoors` still `subject 0.0188` | Deferred |
 | **`C2a`** — `lib/hex_cam/` holds a COPY of the routines, with its OWN tests | S | ⚠ passes the lower bound because those tests are real geometry that can be surprised — unlike a declaration checked against itself | Deferred |
@@ -178,6 +187,66 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `B2`/`B3` turned up (2026-08-13) — the demo needed no code, and the measurement is why
+
+**`make probe-demo`.** `_site/index.html` opens from a disk with no listener at either end,
+decides it is on its own, draws its own world and writes what it is pressed.
+
+⛔ **THE FIRST MEASUREMENT CANCELLED MOST OF THE STEP.** Before a line of `build-pages.mjs` was
+written, the existing engine build was opened from `file://` — and it already worked: **180 dials,
+`edits stay in this page`, `local drew grass`, and `ArrowUp` moving the world half from 5 colours
+to 195.** So `B2` is not *make the page work without a server*; that was true and untested. `B2`
+is **packaging plus a check**, and the page is a `cp`.
+
+⚠ **WHICH IS WHY `B2` AND `B3` ARE ONE COMMIT.** A copy decides nothing, so it cannot go red on
+its own — the lower bound of a safe step. The step that CAN go red is *open the demo and read an
+edit out of it*, and splitting them would have manufactured this tree's commonest defect on
+purpose: a build step, green, that nothing opens.
+
+⚠ **THE ONE THING THE BUILD DECIDES IS STALENESS, AND IT IS A REFUSAL RATHER THAN A SKIP.** An
+engine older than its own sources is refused by name (`the client engine is OLDER than 1 of its
+sources`), because a demo assembled from last week's editor passes its own check and ships. ⚠
+**That is the opposite of `run-gates.sh`'s rule** — *the build is never skipped on a guess* — and
+the difference is what the answer is used for: a timestamp that SKIPS a rebuild runs old code
+silently, a timestamp that REFUSES costs one `make client` when it is wrong.
+
+### Two sabotages, red in different places
+
+| | red where | and nowhere else |
+|---|---|---|
+| `emptypage` — the right elements, no editor | **all seven** — no banner, no authority, no readable shot | — |
+| `deadkey` — press `z`, a key with no verb | `D5` the picture did not change · `D6` no gesture reached the world | `D1`–`D4`, `D7` green: it booted, went local, drew, held still and named its surface |
+
+⚠ **`deadkey` IS THE ONE WORTH KEEPING.** *The picture changed after a key* is only evidence if
+*the picture does not change without one*, and this page re-meshes 49 tiles per gesture — a check
+reading a colour count seconds apart would pass on a page that redrew for any reason at all.
+
+### A `file://` page CAN reach a server, and that is what makes `B2b` possible
+
+**`probe/b1c/origin.mjs`** — a null-origin page dialling two ports on this box: **`live OPEN`,
+`dead ERROR`**, with `probe/b1b/static.mjs --ws-silent` printing `UPGRADE COMPLETED` as the other
+side's own evidence. So a demo opened off a disk beside a running editor is not barred by browser
+policy from attaching to it; what is missing is a way to TELL it where.
+
+⚠ **AND THE CONTROL IS WHY THE FIRST RUN SAID NOTHING.** Both dials errored — because the listener
+was never started (its arguments were in the wrong order), and a probe whose *live* case fails the
+same way as its *dead* case has measured the harness. The `dead ERROR` row is what separates *the
+browser refused* from *nothing was there*.
+
+### ⚠ And a `--html` page HAS a clock — measured, and with a trap beside it
+
+`probe/b1c/clock.loft` emitted a page whose host binds
+`loft_host_time_ticks_us() { return performance.now() * 1000; }` — monotonic and page-relative,
+which is `ticks()`'s contract. **`B1c`'s integrator can therefore be spelled in the page**, and
+the `host_input()` precedent (a name that exists everywhere and blocks in one place) does not
+repeat here.
+
+⛔ **BUT THE EMITTED PAGE SHIMS UNBOUND NAMES TO A CONSTANT AND ONLY `console.warn`s.**
+`loft_host_time_ticks_us` is in that shim's list with a fallback of **`0`** — so a build where the
+clock bridge is absent has every `ticks()` return the same instant, silently, and an integrator
+reading `dt = 0` simply never moves. **The name being present in the page is not the measurement;
+the clock ADVANCING is.**
 
 ## What `B1a` turned up (2026-08-13) — and no gate had ever pressed a key in the client
 

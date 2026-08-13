@@ -124,3 +124,18 @@ probe/b1b/.out/
 # at its own directory's parent, so it has to sit one level under the repository or
 # every snapshot and save lands in src/.loft/. Rebuilt every run; never committed.
 .gatebin/
+
+# `_site/` is the quick-start demo, and it is a COPY of `src/.loft/editor_client.html`
+# — 4.7 MB of build output, byte-identical to the page the server already serves.
+# `make pages` rebuilds it in a second from the engine build, and a committed copy is
+# a second page to keep in step, which is the one thing the design refuses.
+_site/
+
+# `probe/b2` drives that page from `file://` and keeps a transcript per run; the
+# comparison is inside one run, so there is no baseline to commit.
+probe/b2/.out/
+
+# `probe/b1c` builds throwaway pages beside itself to ask what a browser permits.
+probe/b1c/.loft/
+probe/b1c/.origin.html
+probe/b1c/.chrome/
