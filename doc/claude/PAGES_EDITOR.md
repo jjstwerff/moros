@@ -406,8 +406,8 @@ no format and no test.
 
 ⚠ **THE SIZE IS THE RISK AND IT IS NOT MEASURED YET** — `P3` below. Browsers cap localStorage at
 about 5 MB per origin, and a `.hxw` grows with what has been built. **The design does not
-pre-emptively shard**, because [GROUND_DEFAULT](GROUND_DEFAULT.md) already establishes that
-storage holds only what *differs* from the ground, and a house is small. ⚠ **And loft has already
+pre-emptively shard**, because [WORLD_MODEL § `E1γ`](WORLD_MODEL.md) already makes it normative
+that storage holds only what *differs* from the ground, and a house is small. ⚠ **And loft has already
 priced this**: `WASM.md` puts a delta at *"typically < 50 KB"* against a 5–10 MB limit and names
 IndexedDB as the fallback for binary or large trees — so if `P3` fires, the answer is the fallback
 `LayeredFS` already documents, not a different design.

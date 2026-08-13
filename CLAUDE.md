@@ -335,17 +335,16 @@ address (or the hostname `make browser` prints) cannot connect.
   (hill-then-build is *not* build-then-hill, and exactly where), and the traps: a `Mesh` that
   copies, a test that measured the wrong thing and passed, a probe that sampled its own output
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
-- [Ground default](doc/claude/GROUND_DEFAULT.md) — **the world is an infinite plane of its
-  ground, and storage holds only what differs**: a chunk nobody wrote returns the default
-  without existing. Why the fixture costs ten times the subject it tests (85% of the slowest
-  test file), why three hypotheses about the write path were each refuted by their own probe,
-  why the format does **not** move in either direction (an absent chunk is already absent; the
-  default rides in a section), and why the risk is not presence at 108 sites but **extent** —
-  everything that answers *what is there* by walking the chunk list. Seven steps, **all built**
-  (2026-08-12) — and read the two that were built LAST for what they cost: `G6` needed **no
-  code** (the mesher already drew a defaulted chunk, which had to be measured rather than
-  believed), and `G2` was built after its own row said not to, returning **10–14× on the write
-  and nothing at all on the suite**
+- [Ground default](doc/claude/GROUND_DEFAULT.md) — ✅ **CLOSED, and now a closure record.** The
+  rule it established is normative in [WORLD_MODEL § `E1γ`](doc/claude/WORLD_MODEL.md) — *a world
+  is an infinite plane of its ground `γ`, and storage holds only what differs* — and the numbers
+  are in [probe/perf](probe/perf/README.md). ⚠ **Closing it is what found that `E1` clause 3 of
+  the normative contract had been FALSE since `G5` shipped**, with every suite green: a plan is
+  not closed while its rule lives only in the plan. Read the record for what the steps cost —
+  three hypotheses about the write path each refuted by their own probe, `G6` needing **no code**
+  (the mesher already drew a defaulted chunk, measured rather than believed), and `G2` built
+  after its own row said not to, returning **10–14× on the write, nothing on one suite and
+  −12.9 % on the next**
 - [Camera indoors](doc/claude/CAMERA_INDOORS.md) — **five camera settings over one query**: AUTO,
   FOLLOW, SNUG (claustrophobic), CUTAWAY (de-roofed, for editing) and EYES (first person) want
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.

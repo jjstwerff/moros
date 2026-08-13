@@ -1,20 +1,42 @@
 # A layer is born with a default cell — the ground's, per scenario
 
-**Status: COMPLETE.** `G1`, `G3` (2026-08-06), `G4`, `G5a`, `G5a.1`, `G5b`, `G6`, `G7` and
-`G2` (2026-08-12) are built. ⚠ **`G2` (`world_fill`) landed LAST and out of order, and its own
-row said it should not exist** — `G1` had measured its speed argument away and `G5` had removed
-its consumer. Built anyway, on the plan's own terms (*"measure it before claiming a number"*),
-and both halves of that came back: the hoisted write is **10–14× per cell, not 2×**, and the
-suite it was wired into **did not move at all**. See *What `G2` turned up* below. Written before
-the code on purpose: the failure paths below are what turned the first shape of this design into
-the third, and each turn was cheaper on the page than in the store.
+**Status: ✅ CLOSED 2026-08-13 — [jjstwerff/moros#23](https://github.com/jjstwerff/moros/issues/23). All eight steps built** — `G1`, `G3` (2026-08-06), `G4`, `G5a`,
+`G5a.1`, `G5b`, `G6`, `G7` and `G2` (2026-08-12). **This file is now a CLOSURE RECORD**: what was
+learned, what was refuted, and what each step cost. The things it used to state that are *true of
+the world* have moved to the documents that own them:
 
-⚠ **`G4` IS THE DEFAULT ITSELF AND NOTHING READS IT YET** — `w_ground` on `VoxelWorld`,
-`world_set_ground` with `R1` checked where the ground is STATED, and a `GRND` section in the
-codec. **Absent means today, byte for byte**: `make parts` is byte-identical and every suite is
-at its previous count. `lib/hex_voxel/tests/ground_default.loft` is eight tests, and a step
-nothing reads still went red three ways — the `R1` check removed (1 red), the codec not reading
-the tag back (3), the codec not writing it (3).
+| what | where it lives now |
+|---|---|
+| **the rule** — *a world is an infinite plane of its ground `γ`* | [WORLD_MODEL § `E1γ`](WORLD_MODEL.md), normative, with `γ` in the notation, a `G0` audit row and four gate rows |
+| **the format claim** — no version bump, `γ` rides in a section | the same section |
+| **every number** — the write path, the fill, the break-even | [`probe/perf/README.md`](../../probe/perf/README.md) |
+| **the API** — `world_set_ground`, `world_fill`, `world_fill_ground`, `ground_fill` | [HEX_STACK § the package register](HEX_STACK.md) |
+
+⚠ **CLOSING IT IS WHAT FOUND THE LIVE INCONSISTENCY, WHICH IS THE ARGUMENT FOR DOING IT AT ALL.**
+`E1` clause 3 of the normative contract still read *"reading an absent chunk yields exactly what
+reading a stored all-zero one would"* — which the built code had made **false** for any world
+declaring a ground. Seven steps shipped, every suite green, and the document that is supposed to
+be right by definition disagreed with all of it. **A plan is not closed while its rule lives only
+in the plan.**
+
+⚠ **`G2` (`world_fill`) LANDED LAST, OUT OF ORDER, AND ITS OWN ROW SAID IT SHOULD NOT EXIST** —
+`G1` had measured its speed argument away and `G5` had removed its consumer. Built anyway, on the
+plan's own terms (*"measure it before claiming a number"*), and both halves came back: the hoisted
+write is **10–14× per cell, not 2×**, and the first suite it was wired into **did not move at
+all** while the second moved **−12.9 %**.
+
+⚠ **AND THE WHOLE DESIGN WAS WRITTEN BEFORE THE CODE ON PURPOSE.** The failure paths below are
+what turned the first shape of this design into the third, and each turn was cheaper on the page
+than in the store.
+
+## `G4` — the default itself, before anything read it
+
+`w_ground` on `VoxelWorld`, `world_set_ground` with `R1` checked where the ground is **stated**,
+and a `GRND` section in the codec. **Absent meant today, byte for byte**: `make parts`
+byte-identical, every suite at its previous count. `lib/hex_voxel/tests/ground_default.loft` is
+eight tests — and ⚠ **a step nothing read yet still went red three ways**, which is the lower
+bound in [plans/README](../../plans/README.md) being paid rather than argued: the `R1` check
+removed (1 red), the codec not reading the tag back (3), the codec not writing it (3).
 
 ## ✅ What `G2` turned up — a 14× on the write, and nothing on the clock
 
@@ -219,47 +241,39 @@ say it is to write every cell.
 whose body does nothing. The cost is spread through the body, so **the win is in making 256
 calls into one**, not in making each call cheaper.
 
-## The invariant
+## The invariant — MOVED, and this is a pointer
 
-> **A world is an infinite plane of its ground default, and storage holds only what differs
-> from it. A chunk that was never written returns the default; a layer that comes to equal the
-> default everywhere stops existing. A defaulted cell and a written one of the same value are
-> indistinguishable, because they are the same cell.**
+⚠ **THE RULE IS NORMATIVE NOW AND THIS DOCUMENT NO LONGER STATES IT.** It is
+[WORLD_MODEL § `E1γ`](WORLD_MODEL.md) — *a world is an infinite plane of its ground `γ`, and
+storage holds only what differs from it* — together with `γ` in the contract's notation, the
+`R1` row of the `G0` audit, and four gate rows. **Closing this plan is what put it there**, and
+the move mattered more than the tidy: `E1` clause 3 in the contract still read *"reading an
+absent chunk yields what a stored all-zero one would"*, which the built code had made **false**
+for any world declaring a ground.
 
-⚠ **THAT IS A STRONGER CLAIM THAN THIS DOCUMENT'S FIRST TWO DRAFTS, AND IT IS THE RIGHT ONE.**
-Draft 2 materialised the default when a *layer* was created, which makes flat ground cheap to
-*author* and still charges for every chunk the author never touched. The requirement is
-*"a chunk that has no written values should return the defaults even without internal data"* —
-so the default is a property of the **world**, consulted where a chunk is **absent**, and the
-sparsity that follows is the point rather than a side effect: **you pay for what you differ
-from the ground, and nothing else.**
+Two things this document argued that the contract now carries, kept here as the *record of how
+they were arrived at*:
 
-The last clause is the safety argument. It is what lets the 108 presence sites below stay
-untouched: they ask *is there a cell here*, and under this invariant the honest answer over
-untouched ground is **yes** — which is the behaviour change intended, not a rule they each
-have to re-state.
+- **Draft 2 materialised the default when a LAYER was created**, which makes flat ground cheap
+  to author and still charges for every chunk the author never touched. The requirement —
+  *"a chunk that has no written values should return the defaults even without internal data"* —
+  makes the default a property of the **world**, consulted where a chunk is **absent**. The
+  sparsity that follows is the point, not a side effect.
+- **The last clause is the safety argument.** It is what let the 108 presence sites stay
+  untouched: they ask *is there a cell here*, and the honest answer over untouched ground is
+  **yes** — the behaviour change intended, not a rule each site has to re-state.
 
-## The format does not move — checked, not assumed
+## The format did not move — checked, not assumed
 
-The reason this can be built safely is that **the default needs no new bytes anywhere the
-format already fixes.**
+⚠ **Also normative now** (WORLD_MODEL § `E1γ`), and the checking is the part worth keeping: an
+absent chunk is *already* absent from a format that is sparse over chunks, and `γ` rides in a
+tagged **section**, which is forward- and backward-compatible by construction. **No
+`WORLD_VERSION` bump in either direction** — verified against `world_set_section` /
+`world_section_at` rather than assumed. `probe/sparsity.loft`'s figures are about chunks that
+exist, so they move only for a world that sets a ground.
 
-- **An absent chunk is already absent from the file.** The format is sparse over chunks
-  (`SZ_HEADER + Σ chunks`), so an infinite default plane writes exactly the chunks that differ
-  from it — which is what a sparse format is for. Nothing about `SZ_CHUNK`, `SZ_LAYER` or
-  `SZ_LAYER_DIR` changes.
-- **The default itself rides in a SECTION**, and sections are forward- and backward-compatible
-  by construction: they are tagged, the library "carries whatever it was handed" rather than
-  having an opinion about content it cannot read, and *present-and-empty* is already a
-  distinguishable state. So **a new file loads in an old build** (which ignores the tag and sees
-  today's world) and **an old file loads in a new build** (no section → default absent → today).
-  ⚠ **No `WORLD_VERSION` bump, in either direction** — checked against
-  `world_set_section` / `world_section_at`, not assumed.
-- **`probe/sparsity.loft`'s exact figures** are about chunks that exist. They move only for a
-  world that *sets* a ground, and that world is a new test.
-
-⚠ **AND THAT IS WHY THE STEPS BELOW CAN STOP ANYWHERE.** Every one of them is a build that
-reads and writes the same files as the one before it.
+⚠ **AND THAT IS WHY THE STEPS BELOW COULD STOP ANYWHERE.** Every one of them shipped a tree
+whose files the previous step could still read.
 
 ## What it does change, and where the risk actually is
 

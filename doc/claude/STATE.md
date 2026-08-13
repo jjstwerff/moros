@@ -22,12 +22,23 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
-## ✅ GROUND_DEFAULT IS CLOSED — `G2` BUILT LAST, AGAINST ITS OWN ROW — 2026-08-12
+## ✅ GROUND_DEFAULT IS CLOSED — [#23](https://github.com/jjstwerff/moros/issues/23), 2026-08-13
 
-`world_fill` is in `hex_voxel`, wired to the five `hex_part` fixtures, 12 equivalence tests in
-`lib/hex_voxel/tests/fill.loft`, `make lib-test` **3386 green on both backends**, `make parts`
-byte-identical. The record is [GROUND_DEFAULT § What `G2` turned up](GROUND_DEFAULT.md); two
-things belong out here, because neither is about a fill:
+All eight steps built. **The rule is normative now** — [WORLD_MODEL § `E1γ`](WORLD_MODEL.md),
+*a world is an infinite plane of its ground `γ`, and storage holds only what differs from it* —
+and GROUND_DEFAULT.md is a closure record pointing at it.
+
+⚠ **CLOSING IT IS WHAT FOUND THE LIVE INCONSISTENCY, AND THAT IS THE ARGUMENT FOR CLOSING PLANS
+AT ALL.** `E1` clause 3 of the contract still read *"reading an absent chunk yields exactly what
+reading a stored all-zero one would"* — false since `G5` shipped, with every suite green the
+whole time. **A plan is not closed while its rule lives only in the plan**, and the document
+that is right *by definition* is exactly the one nothing re-derives, so nothing catches it
+drifting.
+
+`world_fill` is in `hex_voxel`, wired to five `hex_part` fixtures and 27 `hex_editor` loops, 15
+equivalence tests in `lib/hex_voxel/tests/fill.loft`, `make lib-test` **3398 green on both
+backends**, `make parts` byte-identical. Three more things belong out here, because none is
+about a fill:
 
 - ⛔ **A 14× ON THE OPERATION, NOTHING IN ONE SUITE AND −12.9 % IN THE NEXT.** `hex_part`:
   310 tests, 44.8 s → 45.3 s, noise. `hex_editor`, through its own `ground_fill`: **2,472,585 →

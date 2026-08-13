@@ -644,6 +644,7 @@ own units, versus unbounded, mutable, multi-layer, random access.
 | `ρ ∈ ℕ` | **floor reserve** — a world constant; terrain may not be authored below it |
 | `ε ∈ ℕ` | **minimum layer separation** — a world constant. In a walkable world this is headroom; the model only requires that layers be distinguishable |
 | `θ ∈ ℕ` | **match tolerance** — a world constant; the largest step read as continuous |
+| `γ` | the world's **ground default** — a cell, possibly absent. What an unwritten hex reads as (**E1**). `γ = ∅` is the ordinary world and means *nothing is there*, which is what every world was before it existed |
 
 ```
 occ_λ(x)  ⟺  m_λ(x) ≠ 0                       occupied iff the material is not absence
@@ -654,8 +655,8 @@ col_K(x)  =  ⟨ i : k(λᵢ) = T ∧ occ_{λᵢ}(x) ⟩   the column at x, in c
 
 ## 2. The objects
 
-**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(u, ρ, ε, θ)`, the label
-counter `ν`, the edit clock `τ`, and a palette.
+**A world** is a partial map `ℤ² ⇀ chunks`, plus the constants `(u, ρ, ε, θ)`, the **ground
+default `γ`**, the label counter `ν`, the edit clock `τ`, and a palette.
 
 **`u` is declared per world and the model never reads it.** Heights are integers; `u` says
 what one step means to a renderer, a collider or a player, and every other constant here is
@@ -699,6 +700,7 @@ Every bound in §4 is audited against `G0`:
 | layers per chunk, `64` | §2 | `CW_LAYER_CAP` | ✓ |
 | palette entries, `256` | `add` | returns `−1` | ✓ |
 | authored depth | **R1** | `CW_RESERVE` | ✓ |
+| the ground default `γ` | **R1**, at the world | `CW_RESERVE` — a world that cannot be made, rather than one made wrong | ✓ |
 | `ε > 2θ` | **C1** | refused at open | ✓ |
 | labels, `2³²` | **I4** | **degrades**: new layers unlabelled, reported | ✓ |
 | edit clock | **T1** | `u64` — see below | ✓ |
@@ -708,8 +710,8 @@ Every bound in §4 is audited against `G0`:
 
 ## 4. Invariants
 
-A world satisfying **F1**, **W1**, **E1**, **S1**, **R1**, **I1**, **I3**, **T1**, **T2**,
-**M1**, **M2**, **X4** and **Q1** is *well-formed*. The routine must
+A world satisfying **F1**, **W1**, **E1**, **E1γ**, **S1**, **R1**, **I1**, **I3**, **T1**,
+**T2**, **M1**, **M2**, **X4** and **Q1** is *well-formed*. The routine must
 never produce one that is not, and must refuse rather than try.
 
 ### Group 1 — geometry
@@ -750,13 +752,48 @@ A chunk is **representable** iff `max H − min H < 2¹⁶`. When it is, `b_K = 
 
 ### E1 — Absence has one representation
 
-> 1. A terrain layer with no occupied cell is **not stored**.
+> 1. A terrain layer whose every cell reads as an **unwritten** one is **not stored**.
 > 2. A chunk with `Λ_K = ⟨⟩` is **not in the directory**.
-> 3. Reading an absent layer or chunk yields exactly what reading a stored all-zero one
->    would.
+> 3. Reading an absent layer or chunk yields exactly what reading a stored one holding the
+>    **ground default `γ`** everywhere would.
 
 (3) makes (1) and (2) sound rather than lossy, and it is the clause a round-trip test cannot
 check — it needs the size probes.
+
+⚠ **CLAUSES 1 AND 3 SAID *ALL-ZERO* UNTIL 2026-08-12, AND THAT IS NOW FALSE FOR ANY WORLD
+THAT DECLARES A GROUND.** The generalisation is one sentence — *a cell is elidable iff it
+reads the same as an unwritten one* — and it **collapses to the old wording** when `γ = ∅`:
+an unwritten cell reads as nothing, no present cell can read as nothing, and clause 1 is
+again *no present cells*. So no existing world moves and no file changes.
+
+### E1γ — the world is an infinite plane of its ground
+
+> **A world is an infinite plane of `γ`, and storage holds only what differs from it. A
+> chunk that was never written reads as `γ`; a layer that comes to equal `γ` everywhere
+> stops existing. A defaulted cell and a written one of the same value are
+> indistinguishable, because they are the same cell.**
+
+The last clause is the load-bearing one, and it is what the design got wrong on its first
+pass: *"synthesise the ground where the CHUNK is absent"* leaves a **seam** — two untouched
+cells differing by whether a *neighbour* was written, which arrives as *the terrain has holes
+around every building*. Two untouched hexes may never disagree.
+
+⚠ **AND IT IS THE GROUND LAYER ONLY.** Answering `γ` for any absent *cell* fills every cellar
+and storey with earth; `γ` is what an unwritten hex's **outdoors** reads as, not what an
+unbuilt storey reads as.
+
+⚠ **`R1` IS CHECKED WHERE `γ` IS STATED**, not where a layer is later born from it — a ground
+under the reserve would otherwise surface in an unrelated chunk much later, with nothing at
+the failure site to name the cause.
+
+⚠ **The format does not move in either direction.** The chunk map is already partial, so an
+infinite plane writes exactly the chunks that differ from it; `γ` itself rides in a tagged
+section, which is forward- and backward-compatible by construction. **No version bump** — an
+old build reads a new file and sees today's world, a new build reads an old file and starts
+with `γ = ∅`.
+
+The record of how this was arrived at — seven steps, three refuted hypotheses, and the
+measurements — is [GROUND_DEFAULT.md](GROUND_DEFAULT.md).
 
 **E1 binds READERS as well as writers.** Because a column read returns one cell per layer
 *of the chunk*, a layer a column does not use comes back absent — and an absent cell's
@@ -1304,6 +1341,10 @@ A rule with no gate that has been **seen red** is a claim, not a contract.
 | **F1′** | non-consecutive pairs also separated, over a random column | — |
 | **W1** | every stored `s` in range after any write, including after rebase | force a span ≥ 2¹⁶ → `CW_WINDOW` |
 | **E1** | zero a layer's last cell → it leaves the file; reads unchanged | — |
+| **E1γ** | a defaulted cell and a written one of the same value read identically — over a world where the chunk EXISTS as well as one where it does not | write every cell instead, and compare cell for cell; the seam this catches was a hole around each building (`hex_voxel/tests/ground_read.loft`) |
+| **E1γ** | write `γ` onto its own ground → **no chunk is stored at all** | write something else → the chunk appears (`tests/ground_default.loft`) |
+| **E1γ** | a defaulted chunk MESHES to the same `mesh_crc` as an authored one, near and far | dent one cell → the crcs part (`hex_mesh/tests/ground_mesh.loft`) |
+| **R1** at `γ` | state a ground below `ρ` → `CW_RESERVE`, and the standing ground does not move | state it at `ρ` → accepted; clear it → always legal, a cell with no material is not ground |
 | **E1r** | read `cells[n-1]` as the roof → the storey lands on an absent layer | `world/storey.mjs` |
 | **E1e** | key elision on material → a layer of edges alone is dropped whole | clear the edges too → the chunk still leaves the file (`tests/sparsity.loft`, `probe/edgehold.loft`) |
 | **P1** | replace the column instead of the band → the cave under the house is deleted | `tests/stencil.loft` |
