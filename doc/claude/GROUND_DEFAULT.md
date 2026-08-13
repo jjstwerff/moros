@@ -58,8 +58,14 @@ width 1, **80 %** at 2, **107 %** at 3, 231 % at 13. Below three cells `world_fi
 layer and putting the first cell through `world_set_cell` **is** the call at that length. The
 last two fixtures lay roads exactly three wide and moved nothing (160,197 → 160,184 samples;
 85,696 → 85,653). **So the useful question about a fill is never *is it faster* but *how wide*.**
-They are wired regardless, for a reason that is not speed: the loops discarded `ground_set`'s
-return code, so a refused road cell was silently missing. **The row below was right that the speed argument was spent for the
+
+One kept the fill and one did not, and the split is the useful part. `slope_limit`'s `road_at`
+keeps it for a reason that is not speed — its loop discarded `ground_set`'s return code, so a
+refused road cell was silently missing. `settle_owed`'s pass went back to its loop: it reads
+`ground_h` per cell, so a fill is only possible by **manufacturing** a constant — asserting that
+each strip's three cells stand at one height, true of that fixture's ramp and of nothing else.
+⛔ **Twelve lines and a new premise to buy zero.** *A rewrite that needs a new assumption to be
+legal has to be paid for by the measurement.* **The row below was right that the speed argument was spent for the
 package it was aimed at** — and wrong that it was spent everywhere, which only wiring a second
 consumer could show.
 

@@ -791,12 +791,19 @@ hoist anything, and over a short strip that setup *is* the call. **A bulk primit
 and its floor is measurable** — so the useful question about `world_fill` is never *is it
 faster* but *how wide*.
 
-**Both were wired anyway, and the measurement said what it said:** `slope_limit` 160,197 →
-160,184 samples, `settle_owed` 85,696 → 85,653. Nothing, to three digits. What they buy is not
-speed — **the loops discarded `ground_set`'s return code**, so a refused road cell was silently
-missing, and the fill's code is now asserted. `settle_owed`'s pass also reads `ground_h` per
-cell, so its strip has a constant height only because *that fixture's* ramp varies along `q`
-alone — now asserted rather than assumed.
+**Both were wired to see what happened, and the measurement said what it said:** `slope_limit`
+160,197 → 160,184 samples, `settle_owed` 85,696 → 85,653. Nothing, to three digits.
+
+**`slope_limit`'s `road_at` KEPT the fill, for a reason that is not speed** — the loop discarded
+`ground_set`'s return code, so a refused road cell was silently missing from the fixture, and the
+fill's code is asserted.
+
+⛔ **`settle_owed`'s pass was REVERTED to its loop.** It reads `ground_h` per cell, so it has no
+constant to hoist: a fill only becomes possible by *manufacturing* one — asserting that the three
+cells of each strip stand at the same height, which is true of that fixture's ramp and of nothing
+else. **Twelve lines and a new fixture assumption, to buy zero.** At a width above the floor that
+trade might be worth making; at the floor it is only cost. *A rewrite that needs a new premise to
+be legal should be paid for by the measurement, and this one was not.*
 
 ⚠ **AND NOTHING EARLIER IN THIS SECTION IS NEAR THE FLOOR** — the nine ramped fixtures make
 strips 9 to 49 cells wide, so the break-even was checked against them after the fact, not before.
