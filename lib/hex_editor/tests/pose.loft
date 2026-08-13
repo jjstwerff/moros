@@ -1,0 +1,133 @@
+// THE WALKER'S INPUT MODEL — plan 22 `B1c.1`.
+//
+// ⚠ EVERY CASE HERE IS A PAIR A WEAKER INSTRUMENT WOULD CALL EQUAL, which is
+// `key.loft`'s rule and it is what caught the CRC32 digest at `B1b.1b`. A test
+// that only said *turning changes the yaw* would pass a function that turned the
+// wrong way, at the wrong rate, on the wrong key — and those are precisely the
+// three ways this can be wrong while the page still looks alive.
+use hex_editor;
+
+fn about(a: float, b: float) -> boolean { a - b < 0.000001 && b - a < 0.000001 }
+
+// ── WHICH KEY TURNS WHICH WAY ───────────────────────────────────────────────
+//
+// The sign is the fact the page cannot check for itself: a client that turned the
+// wrong way would look completely normal to anyone who did not already know which
+// way `d` goes. It is pinned against the SERVER's convention, which is what
+// `tools/script.mjs`'s `turn` has driven through every gate that turns.
+fn test_right_turns_positive_and_left_negative() {
+  assert(about(turn_dir(HELD_RIGHT), 1.0),
+         "D asked for {turn_dir(HELD_RIGHT)} instead of +1 — the page would turn "
+         + "the other way from the server and nothing on screen would say so");
+  assert(about(turn_dir(HELD_LEFT), 0.0 - 1.0),
+         "A asked for {turn_dir(HELD_LEFT)} instead of -1");
+  // ⚠ AND THE TWO ARE NOT THE SAME MAGNITUDE BY ACCIDENT: a rule answering +1 and
+  // -2 satisfies both assertions above taken singly.
+  assert(about(turn_dir(HELD_LEFT), 0.0 - turn_dir(HELD_RIGHT)),
+         "A and D are not opposite: {turn_dir(HELD_LEFT)} against "
+         + "{turn_dir(HELD_RIGHT)}");
+}
+
+fn test_no_key_and_both_keys_do_not_turn() {
+  assert(about(turn_dir(0), 0.0),
+         "an empty keymask asked for a turn of {turn_dir(0)}");
+  // Both held is a cancellation, not a precedence — the one behaviour here that
+  // could reasonably have gone the other way, so it is written down.
+  assert(about(turn_dir(HELD_LEFT | HELD_RIGHT), 0.0),
+         "A and D together asked for {turn_dir(HELD_LEFT | HELD_RIGHT)} — a person "
+         + "holding two opposite keys is owed no turn, not whichever was tested first");
+}
+
+// ⚠ THE WALK BITS MUST NOT TURN, and this is the test that would catch a mask typo.
+// `HELD_FWD` is 1 and `HELD_LEFT` is 4; a `keys & 1` written where `keys & 4` was
+// meant makes W turn you — which reads as a control bug in a browser and as nothing
+// at all in a suite that only ever presses A and D.
+fn test_the_walking_keys_do_not_turn() {
+  assert(about(turn_dir(HELD_FWD), 0.0),
+         "W asked for a turn of {turn_dir(HELD_FWD)} — the bit masks are crossed");
+  assert(about(turn_dir(HELD_BACK), 0.0),
+         "S asked for a turn of {turn_dir(HELD_BACK)} — the bit masks are crossed");
+  assert(about(turn_dir(HELD_FWD | HELD_BACK), 0.0),
+         "W+S asked for a turn of {turn_dir(HELD_FWD | HELD_BACK)}");
+}
+
+// ── HOW FAR ONE STEP TURNS ──────────────────────────────────────────────────
+
+// ⚠ THE RATE IS ASSERTED AS AN ANGLE, NOT AS THE CONSTANT. `yaw_turn(0, 1, dt) ==
+// TURN_RATE * dt` is a table checked against itself — it re-derives the function's
+// own body and cannot be surprised. This is the number a person would measure with
+// a protractor: one 33 ms step of held `d` is 0.0726 radians, about 4.16 degrees.
+fn test_one_step_turns_a_known_angle() {
+  assert(about(tick_dt(), 0.033),
+         "one step is {tick_dt()} s, not 0.033 — the page and the server would "
+         + "integrate different amounts of time for the same held key");
+  assert(about(yaw_turn(0.0, 1.0, tick_dt()), 0.0726),
+         "one 33 ms step of held D turned {yaw_turn(0.0, 1.0, tick_dt())} radians "
+         + "instead of 0.0726 (about 4.16 degrees)");
+}
+
+// Two steps are twice one step — the property that separates an integrator from a
+// snap. A `yaw_turn` that ignored `dt` and turned a fixed amount per call would
+// pass every assertion above this one.
+fn test_turning_accumulates_and_scales_with_dt() {
+  y1 = yaw_turn(0.0, 1.0, tick_dt());
+  y2 = yaw_turn(y1, 1.0, tick_dt());
+  assert(about(y2, y1 * 2.0),
+         "two steps turned {y2}, which is not twice one step ({y1})");
+  assert(about(y2, yaw_turn(0.0, 1.0, tick_dt() * 2.0)),
+         "two steps of dt turned {y2} but one step of 2*dt turned "
+         + "{yaw_turn(0.0, 1.0, tick_dt() * 2.0)} — the turn is not a rate");
+}
+
+// ⚠ IT DOES NOT WRAP, and that is asserted rather than assumed: `tools/script.mjs`
+// accumulates a per-tick delta precisely because a normalised difference *could not
+// express a half turn at all*, so a wrap introduced here would put that bug back
+// one level down.
+fn test_a_turn_past_a_full_circle_keeps_going() {
+  y = 0.0;
+  for _s in 0..200 { y = yaw_turn(y, 1.0, tick_dt()); }
+  assert(y > 2.0 * PI,
+         "200 steps of held D reached {y} radians — a full circle is {2.0 * PI}, so "
+         + "the yaw has been wrapped and `turn 540` can no longer mean what it says");
+}
+
+// ── THE POSE ────────────────────────────────────────────────────────────────
+
+// ⚠ A TURN MOVES NOTHING ELSE. The ring gestures read `au_y` to decide which LAYER
+// an edge is stored on (`R1a`), so a turn that quietly re-derived the height would
+// move a fence between storeys for pressing `d`.
+fn test_turning_moves_neither_the_feet_nor_the_ground() {
+  a = author_at(3.5, 0.0 - 2.25, 0.0, 12.0);
+  b = author_turn(a, HELD_RIGHT, tick_dt());
+  assert(about(b.au_x, 3.5) && about(b.au_z, 0.0 - 2.25),
+         "the turn moved the author to ({b.au_x},{b.au_z}) from (3.5,-2.25)");
+  assert(about(b.au_y, 12.0),
+         "the turn moved the feet to {b.au_y} from 12.0 — a ring would change "
+         + "storey for pressing D");
+  assert(!about(b.au_yaw, a.au_yaw),
+         "the turn did not change the yaw at all ({b.au_yaw})");
+}
+
+// ⚠ THE ORIGINAL POSE SURVIVES, which the page depends on: its camera is solved
+// from the pose, so the frame that turns wants both the old eye and the new one. A
+// mutating version would pass every other assertion in this file.
+fn test_the_pose_handed_in_is_not_changed() {
+  a = author_at(1.0, 2.0, 0.0, 4.0);
+  b = author_turn(a, HELD_RIGHT, tick_dt());
+  assert(about(a.au_yaw, 0.0),
+         "the pose handed in was mutated to {a.au_yaw} — a caller holding the old "
+         + "pose no longer has it");
+  assert(about(b.au_yaw, yaw_turn(0.0, 1.0, tick_dt())),
+         "the returned pose is at {b.au_yaw}, not one step from 0");
+}
+
+// A pose held with no turn key is the same pose — so a driver may call this every
+// tick without asking whether anything is held.
+fn test_an_untouched_pose_comes_back_unchanged() {
+  a = author_at(1.0, 2.0, 0.75, 4.0);
+  b = author_turn(a, 0, tick_dt());
+  assert(about(b.au_yaw, 0.75) && about(b.au_x, 1.0) && about(b.au_z, 2.0)
+         && about(b.au_y, 4.0),
+         "a pose with nothing held came back as ({b.au_x},{b.au_z}) yaw {b.au_yaw} "
+         + "y {b.au_y} — a driver cannot call this unconditionally");
+}

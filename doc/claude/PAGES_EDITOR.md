@@ -314,6 +314,22 @@ staleness refusal**, and the substance of the step is the check. The base tree i
 inlined for `data/parts/` — nothing in the client reads those yet, and inlining ahead of a reader
 is this tree's commonest defect.
 
+### ✅ And you can build a house in it — `B1c.1`, the turn
+
+**`place` was refused at yaw 0** — *"a footprint at this facing has no mitred corners; turn one
+step"* — and nothing in local mode could turn, because the pose is the driver's and no driver was
+integrating it. `hex_editor::pose` owns the held-key table, the turn rate and the step size now;
+the page consumes the **server's own fixed tick** from its own clock.
+
+⚠ **A FRAME TIME IS THE OBVIOUS `dt` AND IT IS THE WRONG ONE**, which the server's own comment
+records paying for. A page integrating its frame time would turn at a different rate on every
+machine and the two authorities would stop being one editor with every test green.
+
+✅ **AND THE DEMO IS ASSERTABLE BYTE FOR BYTE DESPITE A WALL CLOCK.** One key press is 3 **or** 4
+fixed steps depending on when the browser delivers it, so the final yaw is not reproducible — but
+the house is: `41145:1306471549` in every run, because the footprint takes a **lattice rotation**
+rather than the raw yaw. *The gesture quantises what the walker leaves continuous.*
+
 ### ✅ And the page can be told about servers it was not served by — `B2b`
 
 **`WS_URL` answers *the server that served me*, which is no answer for a page opened off a disk.**

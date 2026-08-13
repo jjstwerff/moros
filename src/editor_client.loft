@@ -471,6 +471,21 @@ struct Client {
   // decision, and it is printed with it, so *how long did it wait* is answerable
   // from a transcript.
   dials: integer,
+  // ── The page's own walker (plan 22 `B1c.1`) ────────────────────────────────
+  //
+  // `tick_at` is the clock this page last consumed a step at, in `ticks()`'s own
+  // microseconds; 0 means *never*, which is the first pass rather than a time.
+  tick_at: integer,
+  // Steps consumed, ever. It is the evidence that the CLOCK works — a page that
+  // draws perfectly and never ticks is what a missing time bridge looks like.
+  ticked: integer,
+  // Radians turned, ever. ⚠ A COUNT CANNOT SAY WHICH WAY: 300 steps of `a` and 300
+  // of `d` leave the same `ticked` and opposite worlds, and the page is the only
+  // place that knows what its own keys did.
+  turned_by: float,
+  said_still: boolean,
+  tick_begun: boolean,
+  said_walk: boolean,
   // Which of `ws_candidates()` this page is dialling — plan 22 `B2b`. ⚠ IT ONLY
   // EVER RISES, and that is `local`'s one-way rule one level down: a page that
   // wandered back to an earlier candidate could attach to a server it had already
@@ -839,6 +854,12 @@ const LOCAL_FOV   = 55.0;     // degrees — the server's number, for one pictur
 // much you can SEE, and nothing else; the server answers the same question with a
 // streaming set, which is `B1c`'s neighbourhood rather than this step's.
 const LOCAL_TILES = 3;
+
+// The most fixed steps one frame may work off. A tab restored after ten minutes in
+// the background has a backlog of eighteen thousand; this bounds the catch-up and
+// DROPS the rest rather than compressing it, because a compressed catch-up is the
+// variable-step bug this whole mechanism exists to avoid.
+const LOCAL_TICK_MAX = 8;
 
 fn local_camera(st: Client, a: hex_editor::Author) {
   lc_fx = cos(a.au_yaw);
@@ -1406,6 +1427,79 @@ fn local_act(sess: hex_editor::EditSession, st: Client, a: hex_editor::Author,
   }
 }
 
+// ── THE PAGE'S WALKER — plan 22 `B1c.1` ─────────────────────────────────────
+//
+// One pass of the frame loop, in local mode: consume however much real time has
+// passed in FIXED steps, and turn the author by what the held keys asked for.
+//
+// ⚠ THE HELD BITS ARE ALREADY COMPOSED — `poll_input` built `st.held` for the wire
+// and this reads the same integer, so the page cannot come to disagree with the
+// message it sends. What those bits MEAN is `hex_editor::turn_dir`, which the
+// server decodes with too: the wire's `4:<keybits>` had a sender and a receiver and
+// no declaration until `B1c.1`.
+//
+// ⚠ AND THE CLOCK IS CHECKED AGAINST ITSELF FIRST, WHICH IS NOT DEFENSIVENESS.
+// Measured (`probe/b1c/clock.loft`): the emitted page binds
+// `loft_host_time_ticks_us()` to `performance.now() * 1000` — but the same page
+// carries a shim that fills any name the host did NOT bind with a constant, and
+// that name's fallback is **0**, announced by nothing louder than a `console.warn`.
+// A page whose clock bridge went missing would therefore see `elapsed` of 0 for
+// ever, consume no ticks, and stand perfectly still — with every number on screen
+// right. So a walker that never gets a step SAYS SO, once.
+fn local_tick(st: Client, a: hex_editor::Author) -> hex_editor::Author {
+  now = ticks();
+  // The first pass has nothing to measure from: `st.tick_at` is set here rather
+  // than at construction because the page spends `LOCAL_AFTER` frames dialling
+  // before this ever runs, and counting that as elapsed time would spin the author
+  // through several seconds of held keys on the frame the authority moves.
+  //
+  // ⚠ A FLAG, NOT `tick_at == 0`, AND THE DIFFERENCE IS THE WHOLE DEAD-CLOCK
+  // GUARD. Written as `if st.tick_at == 0` this returns early on EVERY frame of a
+  // page whose clock is stuck at zero — which is precisely the page the warning
+  // below exists to catch, so the one situation it was written for is the one
+  // situation it could never reach. The first pass is a fact about passes, not a
+  // value the clock happens to have.
+  if !st.tick_begun { st.tick_begun = true; st.tick_at = now; return a; }
+  turned = a;
+  steps = 0;
+  // ⚠ ONE STEP PER ITERATION, AND THE CLOCK IS ADVANCED BY THE STEP rather than
+  // set to `now`. Setting it to `now` would silently swallow the remainder and make
+  // the turn rate depend on the frame rate again — the exact defect the server's
+  // own comment records paying for.
+  while now - st.tick_at >= hex_editor::TICK_US {
+    st.tick_at = st.tick_at + hex_editor::TICK_US;
+    turned = hex_editor::author_turn(turned, st.held, hex_editor::tick_dt());
+    steps = steps + 1;
+    // A guard on the BACKLOG, not on the walk: a tab restored after ten minutes in
+    // the background would otherwise work off eighteen thousand steps in one frame.
+    // ⚠ It drops time rather than compressing it — a compressed catch-up is the
+    // variable-step bug wearing a bound's clothes.
+    if steps >= LOCAL_TICK_MAX { st.tick_at = now; }
+  }
+  if steps > 0 {
+    st.ticked = st.ticked + steps;
+    // The camera is DERIVED from the pose, so it is re-solved on any tick that
+    // moved one — otherwise turning would rotate the author inside a fixed view,
+    // which reads as the keys doing nothing at all.
+    if turned.au_yaw != a.au_yaw {
+      local_camera(st, turned);
+      // ⚠ NOT A RE-MESH. A turn moves no cell, so the geometry the page already
+      // holds is still exactly right — only the matrix changed. Re-meshing here
+      // would put `local_act`'s 338,688 floats on a per-frame path, which is the
+      // cost that comment says a keystroke can afford and a frame cannot.
+      st.turned_by = st.turned_by + (turned.au_yaw - a.au_yaw);
+    }
+  } else if st.ticked == 0 && st.held != 0 && !st.said_still {
+    // ⚠ SAID ONCE, AND ONLY WITH A KEY HELD. Keys held and not one step consumed
+    // is the shape a dead clock takes, and it is indistinguishable on screen from
+    // a page that is simply working.
+    st.said_still = true;
+    println("client: local — keys are held and the clock has not advanced "
+            + "(ticks() reads {now}); this page cannot walk");
+  }
+  turned
+}
+
 // A message this page can only send. In local mode there is nowhere to send it, so
 // it is SAID rather than dropped — `reason, offer, residual, never a blank no`,
 // applied to a keystroke: silence reads to an author as the key being broken, and
@@ -1450,14 +1544,38 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
 
 fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
               a: hex_editor::Author) {
+  // ⚠ THE BIT MEANINGS ARE `hex_editor`'s NOW — plan 22 `B1c.1`. This composed
+  // `1/2/4/8` as literals while the server tested the same four with its own, which
+  // is one table spelled twice: the wire's `4:<keybits>` had a sender and a receiver
+  // and no declaration between them.
   bits = 0;
-  if graphics::gl_key_pressed(KEY_FORWARD) { bits = bits | 1; }
-  if graphics::gl_key_pressed(KEY_BACK) { bits = bits | 2; }
-  if graphics::gl_key_pressed(KEY_LEFT_TURN) { bits = bits | 4; }
-  if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | 8; }
+  if graphics::gl_key_pressed(KEY_FORWARD) { bits = bits | hex_editor::HELD_FWD; }
+  if graphics::gl_key_pressed(KEY_BACK) { bits = bits | hex_editor::HELD_BACK; }
+  if graphics::gl_key_pressed(KEY_LEFT_TURN) { bits = bits | hex_editor::HELD_LEFT; }
+  if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | hex_editor::HELD_RIGHT; }
   if bits != st.held {
     st.held = bits;
-    wire(h, st, "4:{bits}");
+    // ── WHERE HELD INPUT GOES — the same fork `act` is, one layer down ────────
+    //
+    // Attached, the bits go on the wire and the SERVER integrates them. Local,
+    // `local_tick` reads `st.held` directly and this page integrates them.
+    //
+    // ⚠ IT MUST NOT GO THROUGH `wire()` IN LOCAL MODE ANY MORE, and that is a
+    // correctness point rather than a saving: `wire` says *"'4:' is a server
+    // message and this page has no gesture for it yet"*, which was true until this
+    // step and is now a lie the page tells about itself. A stale apology is worse
+    // than none — it is the `ps_status` literal again, one message down.
+    if !st.local { wire(h, st, "4:{bits}"); }
+    // ⚠ AND THE HALF THAT IS STILL TRUE IS STILL SAID. `B1c.1` is the TURN; W and S
+    // move nobody yet, so a person holding them in the demo is owed the reason
+    // rather than silence — *reason, offer, residual, never a blank no*, and the
+    // offer is the key that does work.
+    if st.local && bits & (hex_editor::HELD_FWD | hex_editor::HELD_BACK) != 0
+       && !st.said_walk {
+      st.said_walk = true;
+      println("client: local — walking is not built yet (plan 22 `B1c.2`); "
+              + "a and d turn, and every gesture lands ahead of where you face");
+    }
   }
 
   // Arrows shape the ground rather than move — one step per PRESS, so they are
@@ -2242,6 +2360,8 @@ fn main() {
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
+    tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false, said_walk: false,
+    tick_begun: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
@@ -2507,6 +2627,21 @@ fn main() {
             + "{len(st.thumbs)} held, {len(st.tcams)} cameras)");
     }
     poll_input(h, st, sess, author);
+    // ── THE PAGE'S OWN TICK — plan 22 `B1c.1` ─────────────────────────────
+    //
+    // Attached, the pose is the SERVER's: it integrates the walk on its tick and
+    // sends the result back. Local, nothing was integrating it at all, so the
+    // author stood at the origin facing yaw 0 for ever — and `place` is refused
+    // there ("a footprint at this facing has no mitred corners; turn one step"),
+    // which is the live fact that made the demo unable to build a house.
+    //
+    // ⚠ THE STEP IS FIXED AND THE FRAME TIME IS NOT THE `dt`. A page integrating
+    // its own frame time would turn at a different rate on every machine, and the
+    // two authorities would stop being one editor while every test stayed green.
+    // This is the server's own hard-won rule — *one tick is one fixed step,
+    // always*, a backlog worked off one step per pass rather than one big one —
+    // and it is `hex_editor::TICK_US` so that neither program can spell it alone.
+    if st.local { author = local_tick(st, author); }
     draw_world(st);
     draw_panel(ui_panel, ui_painter);
     draw_swatches(ui_panel, ui_swatches, ui_painter);
@@ -2526,6 +2661,19 @@ fn main() {
       println("client: {frames} frames — meshes {st.c_mesh}, placements {st.c_place}, "
               + "drops {st.c_drop}, cameras {st.c_cam}, status {st.c_status}, "
               + "parts {len(st.parts)}");
+      // ⚠ THE WALKER'S OWN NUMBERS, AND ONLY WHERE THIS PAGE IS THE WALKER — plan
+      // 22 `B1c.1`. Attached they would be zero and meaningless: the pose is the
+      // server's there, and a page reporting its own idle integrator beside the
+      // server's walk would be two accounts of one fact.
+      //
+      // ⚠ TWO NUMBERS, BECAUSE ONE CANNOT ANSWER. `ticked` says the CLOCK advanced
+      // — the thing a missing time bridge takes away silently — and `turned_by`
+      // says the KEYS did something, which a step count cannot: 300 steps of `a`
+      // and 300 of `d` leave the same `ticked` and opposite worlds.
+      if st.local {
+        println("client: local walker — {st.ticked} steps, yaw {author.au_yaw} "
+                + "(turned {st.turned_by})");
+      }
     }
   }
   graphics::gl_destroy_window();

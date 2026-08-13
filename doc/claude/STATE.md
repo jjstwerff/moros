@@ -393,6 +393,69 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `B1c.1` — THE DEMO BUILDS A HOUSE: A CONTINUOUS TURN, A QUANTISED GESTURE, 2026-08-13
+
+**`make probe-demo`'s F block presses `h` before anything has turned, gets the refusal that has
+stood in front of this page since `B1b.1b`** — *"a footprint at this facing has no mitred corners;
+turn one step" (rot 9 of 12, offer 8)* — **then turns, then places 27 cells.** One run holds both
+halves: the negative control is the first key of the same sequence.
+
+⚠ **THE TURN IS THE HALF A HOUSE WAS WAITING ON, AND THE HALF WITH NO BLOCKERS.** `B1c` was left
+unsized because *the walk* is a design question; the turn is not part of that question — it touches
+no world, no terrain, no collision and no `moros_sim`. `hex_editor::pose` owns the held-key table
+(`HELD_*`, `turn_dir`), the rate and the step; 9 tests, 3 sabotages red in different places.
+
+- ⚠ **A FRAME TIME IS THE OBVIOUS `dt` AND IT IS THE WRONG ONE.** The page runs the server's fixed
+  step (`hex_editor::TICK_US`, a backlog worked off one step at a time) because the server's own
+  comment records paying for the alternative — *a loaded box took ONE tick that moved the walker as
+  far as five*. A page on its frame time would turn differently on every machine **with every test
+  green**.
+- ⛔ **AND THE CLOCK CAN BE BLIND, MEASURED BEFORE IT WAS USED.** The page binds
+  `loft_host_time_ticks_us()` to `performance.now() * 1000` — and carries a shim filling any
+  *unbound* name with a constant, that one's being **`0`**. A missing bridge would leave the page
+  drawing perfectly and standing still. The walker says so once, when keys are held and no step is
+  consumed.
+- ⛔ **AND THE DEAD-CLOCK GUARD WAS BROKEN IN EXACTLY THE SITUATION IT WAS WRITTEN FOR.** Keyed on
+  `tick_at == 0` as its *first pass* test, it returned early on every frame of a page whose clock is
+  stuck at zero — the one page it exists to catch. It is a `tick_begun` flag now: **the first pass
+  is a fact about passes, not a value the clock happens to have.** Found by reading, with nothing
+  red, so `DEMO_SABOTAGE=deadclock` builds a client whose `ticks()` never advances and the guard is
+  seen firing. ⚠ Its first run was composed with `noturn` and reported the guard silent —
+  correctly, since the message needs keys HELD: **a sabotage composed with another sabotage is a
+  third experiment.**
+- ⚠ **THE DECLARATION HAD TO MOVE, NOT JUST THE USES.** `TURN_RATE`/`TICK_US` were the server's;
+  leaving the `const`s standing would have left it reading its own whatever the library said —
+  `HOUSE_W` measured, `CHUNK_SHIFT` breaking the editor with every suite green.
+- ⚠ **AND `4:<keybits>` GOT A DECLARATION FOR THE FIRST TIME**: a sender ORing literals and a
+  receiver testing its own, with nothing between them.
+- ⚠ **ONE APOLOGY BECAME A LIE.** `wire()`'s *"'4:' is a server message and this page has no
+  gesture for it yet"* was true until this step. Held input forks on the authority now, as `act`
+  does. **A stale apology is worse than none** — the `ps_status` literal, one message down.
+- ⚠ **TWO INSTRUMENTS, AND A SABOTAGE PROVED WHY.** `DEMO_SABOTAGE=noturn` left the page consuming
+  **213 fixed steps** with nothing held: a step count says the CLOCK advanced and nothing about the
+  keys. `ticked` and `turned_by`, red in different places.
+- ⚠ **AND ONE SABOTAGE WAS SEEN BY ONE TEST ONLY.** `yaw_turn` ignoring `dt` tripped the
+  accumulation test alone — *"one step turns a known angle"* could not see it, because the fixed
+  amount substituted was the same 0.033.
+
+✅ **THE WORLD KEY IS IDENTICAL ACROSS RUNS (`41145:1306471549`) AND THE YAW IS NOT.** One key press
+is 3 **or** 4 steps depending on when the browser delivers it (0.7986 one run, 0.9438 the next), but
+the footprint takes a **lattice rotation**, not the raw yaw. **A wall-clock-driven browser demo can
+be asserted byte for byte, because the gesture quantises what the walker leaves continuous.**
+
+⏭ **AND IT NAMES A PRODUCT QUESTION LEFT UNANSWERED ON PURPOSE**: the gesture knows the admissible
+facing (`offer 8`) and does not take it, so an author presses, is refused, turns, is refused again.
+Whether `place` should snap to its own offer is an [EDITING_MODES](EDITING_MODES.md) question about
+what a verb means, and changing it here would have moved `probe-b1a`'s baseline under a step about
+turning.
+
+⏭ **THE WALK IS SIZED — 18 server functions, and TWO blockers.** `ground_under` → `hex_mesh::terrain_y`
+is a **cycle** (`hex_mesh` depends on `hex_editor`, recorded on `Author` since `R1a`), and
+`moros_sim::cliff_edges`/`fall_step` are the Moros arrow. Everything else it calls (`hex_edge`,
+`hex_grid`, `hex_way`, `hex_voxel`) is already a dependency. **Both have the same answer this tree
+has taken twice**: the driver supplies what it alone can know — `edges_walk` already takes its
+terrain as a `fn(integer, integer) -> integer`, and `C1` names the same shape for the camera.
+
 ## ✅ `B2`/`B3`/`B2b` — THE DEMO EXISTS, AND MOST OF IT WAS ALREADY TRUE, 2026-08-13
 
 **`make pages` writes `_site/index.html`; `make probe-demo` opens it from `file://` with no

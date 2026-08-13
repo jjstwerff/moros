@@ -201,11 +201,18 @@ const WALK_MS = 2.8;
 const STRIDE_M = 0.75;
 const LEG_SWING = 0.42;        // radians at the hip, peak
 const ARM_SWING = 0.30;
-// A/D turn rather than strafe, so every steering input — mouse or key — moves
-// the SAME yaw. A strafe would have been a second way to change where the
-// character stands relative to the camera, and the camera's whole contract is
-// that it is derived from the facing.
-const TURN_RATE = 2.20;        // radians per second
+// ⚠ A/D TURN AND THE RATE ARE `hex_editor`'s NOW — plan 22 `B1c.1`. They were
+// declared here, which is why a page with the same keyboard and the same author
+// could not turn at all. The reason A/D turn rather than strafe is unchanged and
+// moved with them: a strafe would be a second way to change where the character
+// stands relative to the camera, and the camera's whole contract is that it is
+// derived from the facing.
+//
+// ⚠ AND THE DECLARATION HAD TO GO, NOT JUST THE USES. A program declaring a name a
+// library publishes SHADOWS it invisibly (`HOUSE_W`, measured; `CHUNK_SHIFT` broke
+// the editor with every suite green) — so a `const TURN_RATE` left standing here
+// would go on being the server's own number whatever `hex_editor` said, and the two
+// drivers would diverge with nothing red.
 
 // Look sensitivity, radians per pixel of drag, and the pitch fence. Pitch is
 // clamped rather than wrapped: past vertical, "behind the character" stops
@@ -214,11 +221,11 @@ const LOOK_PER_PX = 0.0060;
 const PITCH_MIN = -0.20;
 const PITCH_MAX = 0.75;
 
-// The simulation tick. Movement integrates on the SERVER at a fixed rate, not
-// on the client and not per input event: a fixed step is what makes the walk
-// reproducible from an input log, which is `L7` (determinism) built in from
-// line one rather than retrofitted.
-const TICK_US = 33000;
+// The simulation tick — `hex_editor::TICK_US`, plan 22 `B1c.1`. A fixed step is
+// what makes the walk reproducible from an input log (`L7`, determinism built in
+// from line one rather than retrofitted), and it is a fact about the WALKER rather
+// than about this program: the page integrates the same 33 ms from its own clock,
+// which is the only reason its author and this one turn at the same speed.
 
 // The wire. Client→server ids are NUMBERS because `lib/server`'s event pump
 // parses `<int>:<payload>` and SILENTLY DROPS anything else as malformed.
@@ -6676,8 +6683,8 @@ fn main() {
     // how long it takes to get there does. That is the property that lets a script
     // be run many times and tuned separately.
     now_us = ticks();
-    tick_wait = TICK_US;
-    if sim_rate > 0.0 { tick_wait = (TICK_US as float / sim_rate ?? 0.0) as integer; }
+    tick_wait = hex_editor::TICK_US;
+    if sim_rate > 0.0 { tick_wait = (hex_editor::TICK_US as float / sim_rate ?? 0.0) as integer; }
     if tick_wait < 1 { tick_wait = 1; }
     // ── ACTIVE WHILE WATCHED, ASLEEP WHEN NOT ────────────────────────────
     //
@@ -6760,7 +6767,7 @@ fn main() {
       // what makes a recording replay to the same world, and what lets the clock
       // run at any speed without changing the result.
       last_us = last_us + tick_wait;
-      dt = TICK_US as float / 1000000.0 ?? 0.0;
+      dt = hex_editor::tick_dt();
 
       // The collision proxy, refreshed when it can no longer be right: when the
       // character has changed cell, when the world's EDIT CLOCK has moved, or when
@@ -7069,11 +7076,9 @@ fn main() {
 
       // A/D turn. Same yaw the mouse drives, so the two steering inputs cannot
       // disagree — there is one facing and everything else is derived from it.
-      turn = 0.0;
-      if keys & 8 != 0 { turn = turn + 1.0; }
-      if keys & 4 != 0 { turn = turn - 1.0; }
+      turn = hex_editor::turn_dir(keys);
       if turn != 0.0 {
-        yaw = yaw + turn * TURN_RATE * dt;
+        yaw = hex_editor::yaw_turn(yaw, turn, dt);
         moved = true;
       }
 

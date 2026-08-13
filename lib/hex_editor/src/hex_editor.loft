@@ -35,6 +35,11 @@ use names;
 use session;
 // The sentences the editor says — plan: the wire becomes transport.
 use say;
+// ⚠ AFTER `gesture`, because it takes an `Author`. What a HELD key means, how fast
+// it turns you and how big one step is — plan 22 `B1c`. Those three lived in
+// `src/editor_server.loft` alone, which is why a page with the same keyboard and
+// the same author could not move at all.
+use pose;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the

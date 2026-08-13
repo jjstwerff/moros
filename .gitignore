@@ -139,3 +139,5 @@ probe/b2/.out/
 probe/b1c/.loft/
 probe/b1c/.origin.html
 probe/b1c/.chrome/
+probe/b2/.deadclock.loft
+probe/b2/.loft/

@@ -571,12 +571,21 @@ probe-b1a:
 pages:
 	@node tools/build-pages.mjs
 
-# B2/B3 (plan 22) — DOES THE DEMO OPEN FROM A DISK? `_site/index.html` over `file://`
-# with no listener at either end: it boots, decides it is on its own, draws its own
-# world and a key WRITES into it. ⚠ The first check here that needs no port at all.
-# `DEMO_SABOTAGE=emptypage` is `B3`'s own warning made runnable (a page with the right
-# elements and no editor); `DEMO_SABOTAGE=deadkey` presses a key with no verb, so a
-# check that credits the passage of time with a gesture stays green.
+# B2/B3/B2b/B1c.1 (plan 22) — DOES THE DEMO OPEN FROM A DISK, AND CAN YOU BUILD IN IT?
+# `_site/index.html` over `file://` with no listener at either end: it boots, decides
+# it is on its own, draws its own world, a key WRITES into it (D), a TURN unblocks a
+# house where `place` was refused (F), and it attaches to a server it is told about
+# (E). ⚠ The first check here that needs no port at all.
+#   DEMO_SABOTAGE=emptypage   `B3`'s own warning made runnable — a page with the right
+#                             elements and no editor. Red on all seven D checks.
+#   DEMO_SABOTAGE=deadkey     press a key with no verb, so a check crediting the
+#                             passage of time with a gesture stays green.
+#   DEMO_SABOTAGE=noturn      the same house attempts with nothing turning between
+#                             them. Red on F2b ALONE — F2a still counts 213 steps,
+#                             which is why the clock and the keys are two checks.
+#   DEMO_SABOTAGE=deadclock   a client built with a `ticks()` that never advances.
+#                             ⚠ Compose it with nothing: the guard it checks needs
+#                             keys HELD, and `noturn` removes the presses.
 probe-demo: pages
 	@sh probe/b2/run.sh
 

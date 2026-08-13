@@ -48,13 +48,46 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            instead of a raise. The page runs, draws and writes
 #                            nothing, so a check that credits the mere passage of
 #                            time with a gesture stays green here.
+#   DEMO_SABOTAGE=noturn     the same five `h` attempts with nothing turning
+#                            between them. If `F3` were really about pressing the
+#                            key often enough rather than about the TURN, this
+#                            would pass. ⚠ SEEN RED on `F2b` alone while `F2a`
+#                            stayed green at 213 steps — which is why `F2` is two
+#                            checks and not one.
+#   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
+#                            which is what a missing time bridge looks like from
+#                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
+#                            checks fires only when keys are HELD, so
+#                            `deadclock,noturn` removes the very presses it needs
+#                            and reports the guard silent. A sabotage composed with
+#                            another sabotage is a third experiment.
 SAB="${DEMO_SABOTAGE:-}"
 KEYS="ArrowUp"
 case ",$SAB," in *,deadkey,*) KEYS="z" ;; esac
 
 echo "── D0  the demo is the client engine build ─────────────────────────"
 test -f "$ENGINE" || fail "no client engine build — run \`make client\`"
-node tools/build-pages.mjs || fail "build-pages refused"
+# ⚠ `deadclock` BUILDS A DIFFERENT CLIENT, which is `probe/b1a`'s pattern and the
+# only way to reach this one. The hazard is measured and real — the emitted page
+# fills any name the host did NOT bind with a constant, and
+# `loft_host_time_ticks_us`'s fallback is 0 — but it lives inside the wasm import
+# table, where nothing outside the page can reach in and break it. So the SOURCE is
+# sabotaged instead: a `ticks()` that never advances, exactly as a missing bridge
+# would look from inside loft.
+case ",$SAB," in
+  *,deadclock,*)
+    sed 's/^  now = ticks();/  now = 0;   \/\/ SABOTAGE deadclock/' src/editor_client.loft \
+      > probe/b2/.deadclock.loft
+    grep -q 'SABOTAGE deadclock' probe/b2/.deadclock.loft \
+      || fail "the deadclock sabotage patched nothing: local_tick has been reshaped"
+    echo "   SABOTAGE deadclock — building a client whose ticks() never advances"
+    loft --html --lib lib/ probe/b2/.deadclock.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.deadclock.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
+  *) node tools/build-pages.mjs || fail "build-pages refused" ;;
+esac
 case ",$SAB," in
   *,emptypage,*)
     # ⚠ THE RIGHT ELEMENTS AND NO EDITOR. A blank file would be caught by anything;
@@ -62,6 +95,9 @@ case ",$SAB," in
     # every selector the driver uses.
     printf '%s' '<!doctype html><meta charset=utf8><canvas id=c width=1200 height=660></canvas><pre id=out></pre>' > "$SITE"
     echo "   SABOTAGE emptypage — _site/index.html has the elements and no editor"
+    ;;
+  *,deadclock,*)
+    echo "   (the engine-identity check is skipped: this page is deliberately not it)"
     ;;
   *)
     if ! cmp -s "$SITE" "$ENGINE"; then
@@ -142,6 +178,100 @@ else no "D6 no gesture reached the world — the page drew but did not edit"; fi
 if [ -n "$drew" ]; then say "D7 surfaces: ${drew#client: }"
 else no "D7 the page never named a surface it drew"; fi
 
+
+# ── F  the demo can BUILD A HOUSE — plan 22 `B1c.1`, the turn ───────────────
+#
+# ⚠ THE NEGATIVE CONTROL IS THE FIRST KEY OF THE SAME RUN. `place` is refused at
+# yaw 0 — *"a footprint at this facing has no mitred corners; turn one step"* — and
+# that refusal was the live fact standing between this page and a house. So the
+# sequence presses `h` BEFORE anything has turned, and the run holds both halves:
+# the same key, the same page, refused and then accepted.
+#
+# ⚠ AND IT PRESSES `d` BETWEEN ATTEMPTS BECAUSE THE REFUSAL SAYS TO. A footprint
+# fits only the six lattice rotations (`rot 9 of 12, offer 8` — the even ones), and
+# one key press is 3 or 4 fixed steps depending on when the browser delivers it, so
+# *how far one press turns* is not reproducible. Retrying is the product's own
+# instruction rather than a way round a flaky check.
+echo
+echo "── F   turn, and build a house where it was refused ────────────────"
+F_KEYS="h,d,h,d,h,d,h,d,h"
+# ⚠ `noturn` IS THE CONTROL FOR THE WHOLE SECTION: the same five `h` presses with
+# nothing turning between them. If F3 were really about pressing `h` often enough,
+# this would pass.
+case ",$SAB," in *,noturn,*) F_KEYS="h,h,h,h,h"; echo "   SABOTAGE noturn — the same attempts with no turn between them" ;; esac
+timeout 300 node probe/b1b/press.mjs "file://$SITE" "$F_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/house.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/house.raw" > "$OUT/house.log" || true
+grep -E '^client: local (place|walker|drew)' "$OUT/house.log" | sed 's/^/   /'
+
+f_first_refusal=$(grep -m1 'local place refused' "$OUT/house.log" || true)
+f_placed=$(grep -m1 'local place — 27' "$OUT/house.log" || true)
+f_walker=$(grep 'local walker' "$OUT/house.log" | tail -1 || true)
+# ⚠ THE FIRST `h` OF THE RUN, not any refusal: a page that placed a house and then
+# refused a second one would satisfy a "there was a refusal" test.
+f_first_act=$(grep -m1 -e 'local place' "$OUT/house.log" || true)
+
+# F1 — refused before anything turned, and the reason names the fix.
+case "$f_first_act" in
+  *'place refused'*'turn one step'*)
+    say "F1 at boot: ${f_first_refusal#client: local }" ;;
+  *) no "F1 the first press was not a refusal naming the turn: '$f_first_act'" ;;
+esac
+
+# F2 — TWO CHECKS, BECAUSE ONE NUMBER CANNOT ANSWER, and the `noturn` sabotage is
+# what proved it: with nothing turning, the page still consumed **213 steps**. A
+# step count says the CLOCK advanced — the thing a missing time bridge takes away
+# silently — and says nothing whatever about the keys. Only the radians can.
+f_steps=$(printf '%s' "$f_walker" | sed -n 's/.*walker — \([0-9]*\) steps.*/\1/p')
+f_turn=$(printf '%s' "$f_walker" | sed -n 's/.*(turned \([-0-9.]*\)).*/\1/p')
+if [ -n "$f_steps" ] && [ "$f_steps" -gt 0 ] 2>/dev/null; then
+  say "F2a clock: $f_steps fixed steps consumed"
+else
+  no "F2a the clock never advanced (steps '$f_steps') — ticks() is stuck, and a page whose time bridge is missing draws perfectly and stands still"
+fi
+if [ -n "$f_turn" ] && [ "$f_turn" != "0" ]; then
+  say "F2b keys: the yaw moved $f_turn radians"
+else
+  no "F2b the clock ran and the pose did not move (turned '$f_turn') — the held bits never reached the walker"
+fi
+
+# ⚠ THE DEAD-CLOCK RUN JUDGES A DIFFERENT THING, and says so rather than reporting
+# the house checks as failures of the product. What is being asked is whether a page
+# whose clock never advances SAYS SO — the guard exists for a hazard that is real
+# (the emitted page's import shim answers 0 for any name the host did not bind) and
+# it was written wrong first: keyed on `tick_at == 0`, it returned early on every
+# frame of exactly the page it was written for.
+case ",$SAB," in *,deadclock,*)
+  if grep -q 'the clock has not advanced' "$OUT/house.log"; then
+    say "F* deadclock: $(grep -m1 'clock has not advanced' "$OUT/house.log" | sed 's/^client: local //')"
+  else
+    no "F* a page whose clock never advances said nothing — it draws perfectly and stands still"
+  fi
+  ;;
+esac
+
+# F3 — and then the same key placed a house.
+if [ -n "$f_placed" ]; then say "F3 after turning: ${f_placed#client: local }"
+else no "F3 no house was ever placed — the turn did not reach an admissible facing"; fi
+
+# F4 — the WORLD it built, exactly. ⚠ The yaw is continuous and NOT reproducible
+# (3 or 4 steps per press, browser-dependent); the world is, because the gesture
+# takes a lattice ROTATION rather than the raw yaw. That quantisation is what lets
+# a demo driven by wall-clock key presses be asserted byte for byte.
+f_key=$(printf '%s' "$f_placed" | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
+if [ "$f_key" = "41145:1306471549" ]; then
+  say "F4 and the world is exactly $f_key — a continuous turn, a quantised gesture"
+else
+  no "F4 the first house built world '$f_key', not 41145:1306471549"
+fi
+
+# F5 — and it reached the PICTURE. ⚠ A world key cannot see a drawing, and this is
+# `B1b.2c.4c`'s instrument: the page names the surfaces it installed.
+if grep -q 'local drew .*wall' "$OUT/house.log"; then
+  say "F5 drawn: $(grep -m1 'local drew .*wall' "$OUT/house.log" | sed 's/^client: local //')"
+else
+  no "F5 a house was placed and no wall was ever drawn"
+fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────
 #

@@ -1,0 +1,113 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE WALKER'S INPUT MODEL — plan 22 `B1c`.
+//
+// A gesture asks *what does this key DO*; this file asks the question one layer
+// under it: **what do the held keys mean, how fast do they move you, and how big
+// is one step**. Those are three facts, and until now every one of them lived in
+// `src/editor_server.loft` alone — so the page, which has the same keyboard and
+// the same author, had no way to move at all.
+//
+// ⚠ IT IS THE `W4` SHAPE ONE LEVEL DOWN. *What a key means* is `verb_of`; *what
+// a HELD key means* is here. The wire already carries the bits (`4:<keybits>`),
+// the client composes them and the server decodes them — two spellings of one
+// table, and a page that wanted to walk locally would have made a third.
+//
+// ⚠ AND THE POSE IS STILL THE DRIVER'S. Nothing here holds state: an `Author` goes
+// in and an `Author` comes out. `es_author` is *a driver's pose, never the
+// editor's* — a server writes it from its walker, a test teleports, and a page
+// integrates it on its own clock. What this file owns is the RULE, not the value.
+//
+// ⚠ WHAT IS DELIBERATELY NOT HERE YET: the walk itself. Moving `(x, z)` needs the
+// collision proxy (`hex_edge` over a window), the cliff rule and the fall, and two
+// of those reach outside this package's cone — `moros_sim::cliff_edges` /
+// `fall_step` are Moros-side, and `ground_under` needs `hex_mesh::terrain_y` where
+// **`hex_mesh` depends on this package** (a cycle, recorded on `Author` itself).
+// The TURN has neither problem: it touches no world at all. So it lands first, on
+// its own, and it is the half that a house is actually waiting on — `place` is
+// refused at yaw 0 with *"a footprint at this facing has no mitred corners; turn
+// one step"*.
+use gesture;
+
+// ── THE HELD BITS, AND THE WIRE ALREADY SPELLS THEM ─────────────────────────
+//
+// `4:<keybits>` — W=1 S=2 A=4 D=8, held. Named here because a bit whose meaning
+// is a comment in one file and a magic number in another is the divergence this
+// package exists to remove: the client ORs them together, the server tests them,
+// and neither could point at a declaration.
+//
+// ⚠ A/D TURN, THEY DO NOT STRAFE, and that is a decision rather than a shortage
+// of keys. The camera's whole contract is that it is derived from the facing, so
+// a strafe would be a second way to change where the character stands relative to
+// the camera — see the server's own note where these constants used to live.
+pub const HELD_FWD   = 1;
+pub const HELD_BACK  = 2;
+pub const HELD_LEFT  = 4;
+pub const HELD_RIGHT = 8;
+
+// Radians per second, at a full turn. It was `src/editor_server.loft`'s and the
+// page could not see it.
+pub const TURN_RATE = 2.20;
+
+// ── ONE STEP, AND WHY IT IS A CONSTANT RATHER THAN A FRAME TIME ─────────────
+//
+// 33 ms. The server paces itself by the wall clock and the page by frames, and
+// **both integrate this exact number** — a backlog is worked off one fixed step at
+// a time rather than one big one.
+//
+// ⚠ THE SERVER LEARNED THIS THE EXPENSIVE WAY and its comment says so: it read
+// `steps = elapsed / TICK_US` and integrated `steps * TICK_US` in a single pass,
+// so a loaded box took ONE tick that moved the walker as far as five and the
+// trajectory depended on the machine. *Reproducible in its INPUT and not in its
+// integration, which is the half that matters.*
+//
+// ⚠ WHICH IS EXACTLY THE TRAP A PAGE WOULD FALL INTO, because a frame time is the
+// obvious `dt` and it is right there. A page integrating its own frame time would
+// turn at a different rate on every machine, and the two authorities would stop
+// being one editor while every test stayed green.
+pub const TICK_US = 33000;
+
+// One step, in seconds — the `dt` every integrator takes.
+pub fn tick_dt() -> float { TICK_US as float / 1000000.0 ?? 0.0 }
+
+// ── WHAT THE HELD KEYS ASK FOR ─────────────────────────────────────────────
+
+// Which way the held keys turn: +1 right, -1 left, 0 for neither or both.
+//
+// ⚠ BOTH HELD IS ZERO, NOT A PRECEDENCE, and it is the one behaviour here that
+// could reasonably have gone another way. A person holding A and D has asked for
+// two opposite things, and the honest answer is *no turn* rather than *whichever
+// I test first* — which is also what makes this branchless-looking sum right: the
+// two contributions cancel.
+pub fn turn_dir(keys: integer) -> float {
+  d = 0.0;
+  if keys & HELD_RIGHT != 0 { d = d + 1.0; }
+  if keys & HELD_LEFT != 0 { d = d - 1.0; }
+  d
+}
+
+// The yaw after one step of turning. Pure arithmetic, deliberately: it is the one
+// line that must be identical in the server and in the page, and a function is how
+// two programs are stopped from each writing it.
+//
+// ⚠ IT DOES NOT WRAP, and the server's `turn <deg>` in `tools/script.mjs` is why.
+// That command accumulates a per-tick delta because *the difference form could not
+// express a half turn at all* — so a yaw normalised into (-PI, PI] here would put
+// the wrap back one level down, where the driver has already paid to remove it.
+// Every reader of `au_yaw` takes `cos`/`sin` of it, which are indifferent.
+pub fn yaw_turn(yaw: float, dir: float, dt: float) -> float {
+  yaw + dir * TURN_RATE * dt
+}
+
+// The author, turned. The pose keeps its position — a turn moves nothing else, so
+// `au_y` is unchanged by construction rather than re-derived from a world this
+// function is not given.
+//
+// ⚠ A NEW `Author` RATHER THAN A MUTATION, so a driver that wants the old pose
+// still has it. That matters at exactly one place today and it is not hypothetical:
+// the page's camera is solved from the pose, so *where the eye was* and *where it
+// is going* are both wanted on the same frame.
+pub fn author_turn(a: Author, keys: integer, dt: float) -> Author {
+  author_at(a.au_x, a.au_z, yaw_turn(a.au_yaw, turn_dir(keys), dt), a.au_y)
+}
