@@ -33,6 +33,24 @@ use surfaces;
 // The renderer's tile, in hexes. See the banner: NOT the store's `CHUNK_W`.
 pub const MESH_CHUNK = 8;
 
+// Which mesh tile a hex axis lands in — plan 22 `B1b.2a`.
+//
+// ⚠ IT IS FLOOR DIVISION AND NOT loft's `/`, which truncates toward zero: hex
+// `-1` belongs to tile `-1` (the tile covering `-8..-1`), and `-1 / 8` is `0`.
+// Every tile west or north of the origin would be meshed one tile over, and the
+// origin — where every fixture in this tree stands — is the one place the two
+// spellings agree. That is the shape of bug this package's own header warns
+// about, so the rule lives here beside `MESH_CHUNK` rather than in each caller.
+//
+// ⏭ `src/editor_server.loft` still spells it `q >> CHUNK_SHIFT` with its own
+// `CHUNK_SHIFT = 3` — a third copy of *how wide a mesh tile is*, and the one that
+// collided with `hex_voxel`'s name once already. It can take this when something
+// else touches that line.
+pub fn mesh_tile_of(v: integer) -> integer {
+  if v >= 0 { return v / MESH_CHUNK ?? 0; }
+  0 - ((MESH_CHUNK - 1 - v) / MESH_CHUNK ?? 0)
+}
+
 // The same corners for a caller with no grid in hand — `emit_ground_reveal`, and
 // every probe and test that asks what the ground is drawn as at one cell.
 //

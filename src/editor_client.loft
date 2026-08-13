@@ -714,6 +714,85 @@ fn set_camera(st: Client, body: text) {
   st.has_cam = true;
 }
 
+// ── THE PICTURE LOCAL MODE DRAWS — plan 22 `B1b.2a` ──────────────────────────
+//
+// ⚠ NOTHING WAS ON SCREEN AT ALL, AND `draw_world` SAYS WHY IN ONE LINE:
+// `if !st.has_cam { return; }`. The camera is the SERVER's solve, arriving as `C:`,
+// so a page with no server drew the sky and stopped — with the panel over it, which
+// is why the page still looked alive. A second authority had written a world nobody
+// could see.
+//
+// ⚠ THIS IS A STAND-IN AND IT IS WRITTEN AS ONE. `CAMERA_INDOORS.md`'s five modes —
+// AUTO, FOLLOW, SNUG, CUTAWAY, EYES — are a real solve over `shelter_at`, and they
+// are `C1`–`C4`'s job to move into `hex_cam` where both consumers can call them.
+// Re-implementing any of that here would be the `W4` shape on the camera: two
+// answers to *where is the eye*, diverging quietly. So this does the one thing a
+// page needs to be an editor — **see what you built** — from a fixed boom behind
+// the author, and `C3` replaces it whole.
+const LOCAL_BOOM  = 5.0;      // world units back along the facing
+const LOCAL_LIFT  = 3.2;      // …and up, so the ground ahead is in frame
+const LOCAL_AIM   = 0.9;      // the target sits at chest height, not at the feet
+const LOCAL_NEAR  = 0.1;
+const LOCAL_FAR   = 400.0;
+const LOCAL_FOV   = 55.0;     // degrees — the server's number, for one picture
+
+// How far the page meshes around the author, in MESH tiles (`hex_mesh::MESH_CHUNK`
+// is 8 hexes, and `hex_voxel::CHUNK_W` is 32 — different questions, said here
+// because the two are easy to confuse and this loop uses the first).
+//
+// ⚠ A VIEW RADIUS, NOT A WORLD SIZE. The world is an infinite plane of its ground
+// (`E1γ`), and `chunk_mesh_mat` will happily mesh a tile no chunk exists for —
+// measured: an empty world meshes 448 floats per tile. So this number decides how
+// much you can SEE, and nothing else; the server answers the same question with a
+// streaming set, which is `B1c`'s neighbourhood rather than this step's.
+const LOCAL_TILES = 3;
+
+fn local_camera(st: Client, a: hex_editor::Author) {
+  lc_fx = cos(a.au_yaw);
+  lc_fz = sin(a.au_yaw);
+  // ⚠ `.m`, AND THE STRUCT WITHOUT IT COMPILES. `Mat4` is a struct wrapping one
+  // `vector<float>`; `st.view` is that vector, because it is what
+  // `gl_set_uniform_mat4` takes and what `C:` parses into. Assigning the whole
+  // struct type-checked clean — so the field is written explicitly rather than
+  // left to whatever that acceptance means.
+  st.view = graphics::mat4_look_at(
+    graphics::vec3(a.au_x - lc_fx * LOCAL_BOOM, a.au_y + LOCAL_LIFT,
+                   a.au_z - lc_fz * LOCAL_BOOM),
+    graphics::vec3(a.au_x, a.au_y + LOCAL_AIM, a.au_z),
+    graphics::vec3(0.0, 1.0, 0.0)).m;
+  st.proj = graphics::mat4_perspective(LOCAL_FOV * PI / 180.0,
+                                       (WIN_W as float) / (WIN_H as float),
+                                       LOCAL_NEAR, LOCAL_FAR).m;
+  st.has_cam = true;
+}
+
+// Mesh the tiles around the author out of the page's OWN cache and install them.
+//
+// ⚠ IT IS `install_ground`, THE SAME FUNCTION AND THE SAME MESH IDS THE S3 PATH
+// USES. A local mode that filed its ground under private ids would accumulate
+// ground nothing can drop, and the id arithmetic is the server's on purpose.
+//
+// ⚠ AND `tile_ready` IS DELIBERATELY NOT CONSULTED. It asks *has the margin this
+// tile needs arrived from the server yet* — measured false for (0,0) on a world
+// this page authored itself, because nothing is arriving. Here the cache IS the
+// authority, so every tile is answerable and the guard would refuse the picture it
+// exists to protect.
+fn local_ground(st: Client, a: hex_editor::Author) -> integer {
+  (lg_q, lg_r) = hex_editor::px_to_hex(a.au_x, a.au_z);
+  lg_cx = hex_mesh::mesh_tile_of(lg_q);
+  lg_cz = hex_mesh::mesh_tile_of(lg_r);
+  lg_n = 0;
+  for lg_dx in 0 - LOCAL_TILES..LOCAL_TILES + 1 {
+    for lg_dz in 0 - LOCAL_TILES..LOCAL_TILES + 1 {
+      lg_m = hex_mesh::chunk_mesh_mat(lg_cx + lg_dx, lg_cz + lg_dz,
+                                      st.cache, hex_editor::SURFACE_MAT);
+      lg_n = lg_n + len(graphics::mesh_to_floats(lg_m));
+      install_ground(st, lg_cx + lg_dx, lg_cz + lg_dz, lg_m);
+    }
+  }
+  lg_n
+}
+
 fn chan255(cv: float) -> integer {
   ci = (cv * 255.0) as integer;
   if ci < 0 { return 0; }
@@ -1146,7 +1225,28 @@ fn local_act(sess: hex_editor::EditSession, st: Client, a: hex_editor::Author,
   // ⚠ IT ENCODES THE WHOLE WORLD PER PRESS, which is affordable for a gesture and
   // would not be for a frame. It is a per-EDGE cost by construction — every caller
   // below is edge-triggered — and it goes when the picture can answer instead.
-  println("client: local {verb} — {ack.ak_n} · world {world_key(st.cache)}");
+  // ⚠ AND THE PICTURE IS REBUILT HERE — plan 22 `B1b.2b`. Attached, a write comes
+  // back as a mesh the server has already rebuilt; local, nothing is coming, so the
+  // page that wrote the cell is the page that must re-mesh it. Without this the
+  // world moves and the picture does not, which is *the swap-and-look this plan
+  // refuses* wearing a renderer's clothes: every number would be right and the
+  // screen would be a photograph of the world before the gesture.
+  //
+  // ⛔ IT RE-MESHES THE WHOLE NEIGHBOURHOOD, AND THAT IS A MEASURED COST RATHER
+  // THAN A DESIGN. A gesture reports what it DID (`ak_n`) and not WHERE — a fence
+  // ring of radius 3 spans several tiles, and `Ack` carries one anchor — so the
+  // page has no dirty set to consult. `LOCAL_TILES` of 3 is 49 tiles and 338,688
+  // floats per press, which a keystroke can afford and a frame could not. ⏭ The
+  // cheap version needs the neighbourhood the page holds to be a THING rather than
+  // a loop, which is `B1c`'s question, and the server answers it with a streaming
+  // set of exactly this shape.
+  // ⚠ HOISTED OUT OF THE `println`, and not for style: a call inside a format
+  // string is a side effect nobody reading the line expects, and it cost a
+  // sabotage — `nomesh` could not delete the boot re-mesh as a LINE, so it patched
+  // something harmless instead and the run came back green.
+  redrawn = local_ground(st, a);
+  println("client: local {verb} — {ack.ak_n} · world {world_key(st.cache)} · "
+          + "{redrawn} floats redrawn");
   // ⚠ AND THE SESSION BESIDE IT, BECAUSE ONE INSTRUMENT CANNOT ANSWER. A ring
   // writes its edges into the store and its TRUNK into the session, so a page that
   // rang with a scratch session would key a byte-identical world and hold a
@@ -2150,6 +2250,14 @@ fn main() {
           println("client: no server answered in {st.dials} dials — "
                   + "this page edits its own world");
           st.panel_dirty = true;
+          // ⚠ AND THE PICTURE STARTS HERE, ON THE FRAME THE AUTHORITY MOVES —
+          // plan 22 `B1b.2a`. There is nothing to draw before it: attached, the
+          // camera and every mesh arrive from the server; local, this is the
+          // moment the page becomes the thing that answers both.
+          local_camera(st, author);
+          lg_boot = local_ground(st, author);
+          println("client: local — {lg_boot} ground floats in {len(st.parts)} "
+                  + "drawables · world {world_key(st.cache)}");
         }
       }
       if st.hello {

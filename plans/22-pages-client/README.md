@@ -41,7 +41,15 @@ world** — the same world and the same session `editor_run` builds from the sam
 a CRC32 over this format is structurally blind to every per-cell change, because each layer's
 cells are followed by their own CRC32.
 
-**Next:** **`B1b.2`** — local mode DRAWS what it wrote. The full step decomposition is
+✅ **AND `B1b.2` IS BUILT — THE PAGE DRAWS WHAT IT WROTE, 2026-08-13.** A camera of its own, its
+own ground meshed out of its own cache, and a re-mesh on every write. ⛔ **Nothing had been on
+screen at all**, and `draw_world` says why in one line: `if !st.has_cam { return; }` — the camera
+is the SERVER's solve, so the page `B1b.1b` shipped had every number right and a blank world half.
+
+**Next:** **`B1b.2c`** — the other eight surfaces. A fence laid in local mode is written, keyed
+and INVISIBLE: `chunk_meshes_all` composes all nine and is a program-local function in
+`editor_server.loft`, whose own comment says it was spelled out twice and must never be a third
+time. **The page is that third caller.** The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -124,7 +132,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.1a`** — the client SAYS which authority it has | XS | **DONE 2026-08-13.** `make probe-auth`: 15 checks, **three** situations over one page build — a real server, a static server with no `/ws`, and a socket that opens and says nothing. Three sabotages, each red somewhere different; `make probe-b1a` unmoved | ✅ Done |
 | ✅ **`B1b.1b`** — the authority becomes TWO: no socket → local, and a key WRITES | S | **DONE 2026-08-13.** `make probe-auth`: 28 checks. The page and `editor_run` at `GROUND=0` agree on the **world** (`32952:1545220309`) and on the **session** — two instruments, because a ring's trunk is in one and its edges in the other. Nine sabotages | ✅ Done |
 | ✅ **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | **DONE as `B1b.1a` + `B1b.1b`.** ⛔ Its boot switch could not be asked for — `host_input()` BLOCKS with no host, measured ([loft#891](https://github.com/loft-lang/loft/issues/891)) — so route 3 replaced it: connect-or-local, with the panel saying which |
-| **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | a picture, and the world digest unchanged by drawing it | ⏭ **next** — `B1b.1b` left it the digest to be unchanged against |
+| ✅ **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | **DONE 2026-08-13.** `make probe-auth` is 33 checks: a horizon where a page with no camera has only the clear colour, the picture holding still with nothing pressed, and the raise redrawing it — and the far ground unchanged, which is what separates a gesture from a camera. Meshing writes nothing: the digest is the same before and after (`hex_voxel` measured, 25 tiles) | ✅ Done |
+| **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | M | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws | ⏭ **next** |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -201,6 +210,108 @@ spawn point is REFUSED** — *"a footprint at this facing has no mitred corners;
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
 
+## ✅ What `B1b.2` turned up (2026-08-13) — three instruments were blind before the page was
+
+**The page draws now.** A camera of its own, `LOCAL_TILES` of ground meshed out of its own cache
+at the moment the authority moves, and a re-mesh on every write. `make probe-auth` is **33
+checks**, five of them about the picture.
+
+⛔ **NOTHING HAD BEEN ON SCREEN AT ALL, AND `draw_world` SAYS WHY IN ONE LINE** —
+`if !st.has_cam { return; }`. The camera is the SERVER's solve, arriving as `C:`, so the page
+`B1b.1b` shipped drew the sky, drew the panel over it, and stopped: **a second authority writing a
+world nobody could see**, with every number in the transcript correct. The panel is what made it
+look alive.
+
+⚠ **THE LOCAL CAMERA IS A STAND-IN AND IT IS WRITTEN AS ONE.** `CAMERA_INDOORS`'s five modes are a
+real solve over `shelter_at` and they are `C1`–`C4`'s job to move into `hex_cam`; re-implementing
+any of that here would be `W4` on the camera — two answers to *where is the eye*. This does the one
+thing a page needs to be an editor, a fixed boom behind the author, and `C3` replaces it whole.
+
+**Twelve sabotages, each red somewhere different:**
+
+| sabotage | red where | and nowhere else |
+|---|---|---|
+| `nocam` — local mode writes and never sets a camera | `D1` sky alone · `D3` | the page `B1b.1b` shipped: every number right, nothing on screen |
+| `nomesh` — a camera, and no ground meshed at boot | `D1` sky alone · `D4` | ⛔ its FIRST form was a NO-OP and passed all 33 — see below. `D4` moves because the first raise installs the whole neighbourhood, so the far ground arrives late |
+| `stale` — it writes and does not redraw | `D3` **alone** | the picture is a photograph of the world before the gesture |
+| `elsewhere` — the same six verbs, one world-unit over | `B10` **alone** | every count, every sentence AND the whole session unchanged |
+| `scratchsession` — pressed into a session nobody keeps | `B11` **alone** | the world **byte-identical** |
+| `sendlocal` — local is announced and it sends anyway | `B8`×5 · `B10` `B11` · `D3` | ⚠ **the panel is GREEN** — a status line alone would call this a pass |
+| `nolocaldirty` — it goes local and the panel is not told | `B7` **alone** | `nodirty`'s mirror, one authority over |
+| `nolocal` — it never gives up dialling | `B1` `B7` `B8`×5 `B9` `B10` `B11` `D3` | |
+| `eager` — one unanswered dial is enough to give up | `A2` `A3` **`A4`** · `B6` · `C2` `C3` `C4` **`C5`** | the starred pair is the hazard: a live server given up on, and silence read as absence |
+| `literal` — the status line as it was | `A1` · `B4` · `B7` | |
+| `nodirty` — the CONNECT fact moves and the panel is not told | `C4` **alone** | green in A and B, which is why C exists |
+| `assume` — authority off the send, not off its succeeding | `B3`–`B11` and every `D` | invisible to A: with a server there, assuming is right |
+
+⛔ **AND ONE SABOTAGE WAS A NO-OP WEARING A PASS'S CLOTHES.** `nomesh` was written as a `return;`
+appended after the LAST statement of `local_camera` — it changed the file, so the `cmp` guard that
+exists to catch a drifted pattern was satisfied, and the run came back **33 green**. *The guard
+proves a change was made, never that the change matters.* A sabotage that is red nowhere is either
+a blind instrument or a no-op, and only reading tells you which. ⏭ It could not be written as a
+line-delete because the call was inside a `println`'s format string — which is why both re-mesh
+calls are hoisted out of their strings now: **a side effect inside a format string is a step no
+reader expects and no patch can reach.**
+
+### Three instruments were wrong before the subject was
+
+⛔ **THE CANVAS PHOTOGRAPHED WHITE WHILE THE CLIENT RAN FLAWLESSLY.** 49 meshes uploaded, 300
+frames, not one exception — and `Page.captureScreenshot` returned a blank page with scrollbars.
+The driver was copied from `probe/b1a`, which passes `--use-gl=swiftshader` and never photographs
+anything; the tool in this tree that does (`html_render_check.mjs`) passes
+`--use-gl=angle --use-angle=swiftshader`. **What a driver inherits is whatever its parent needed** —
+the third time that sentence has been earned in this probe directory.
+
+⛔ **AND THE FIRST REGION REPORTED A BLANK WORLD WHILE THE PAGE DREW PERFECTLY.** One rectangle in
+the middle of the world half counted **1 colour** — and an unwritten world is a FLAT PLANE at one
+height under a constant ambient, so it genuinely is one colour. *A count cannot see a horizon
+unless the horizon is inside the frame you hand it.* The full-frame capture is what said so, and
+the region that answers *is anything drawn* spans the skyline now.
+
+⛔ **AND THE FIXED VERSION STILL PASSED WITH NO CAMERA AT ALL — the sabotage found it.**
+`AUTH_SABOTAGE=nocam` should be red on *is anything drawn*; it was green, because the region
+started at canvas y 20 and `lavition_ui`'s SUBJECT BAR is full-width and 24 px high. **An
+instrument that includes the UI cannot report on the world.**
+
+⚠ **AND THE CLICK THAT FOCUSES THE CANVAS HAD TO BE COMPUTED.** The canvas is 1200×660 in an
+1100×760 window, so the shell centres it and its own origin is at NEGATIVE viewport coordinates. A
+click typed as `1150,640` lands outside the viewport, the canvas never takes focus, and every key
+afterwards goes nowhere — six presses, not one gesture, and a transcript that reads exactly like a
+local mode that does not work.
+
+### A store, a lattice rule, and what the page still cannot show
+
+⛔ **A STRUCT STORED INTO A VECTOR-TYPED FIELD IS SILENTLY DROPPED —
+[loft#893](https://github.com/loft-lang/loft/issues/893).** `graphics::mat4_look_at` returns a
+`Mat4`, which wraps one `vector<float>`; `st.view` is that vector. `st.view = mat4_look_at(…)`
+**compiles clean, runs, and stores nothing** — measured on a ten-line repro, where the identical
+store to a LOCAL is a compile error. Writing `.m` is the fix and it is only reachable by noticing
+the return type: `--check` is quiet too.
+
+⚠ **AND `hex_mesh::mesh_tile_of` IS A LIBRARY RULE NOW, because `/` is the wrong division.** A hex
+at `-1` is in the tile covering `-8..-1`, and `-1 / 8` is `0` — so every tile west or north of the
+origin would be meshed one tile over, and **the origin is the one place the two spellings agree**,
+which is where every fixture in this tree stands. Four tests, two seen red on the naive form.
+⏭ `editor_server.loft` still spells it `q >> CHUNK_SHIFT` with its own `CHUNK_SHIFT = 3`.
+
+⏭ **WHAT IT DRAWS IS THE GROUND, AND THAT IS THE WHOLE OF IT.** A fence laid in local mode is
+written, keyed and **invisible**: walls, roofs, vegetation, frames and soffits are five more
+surfaces, and the recipe that composes all nine is `chunk_meshes_all` — a program-local function in
+`editor_server.loft` whose own comment says *"ONE PLACE, because it was spelled out TWICE and is
+about to be wanted a third time … a third copy is how a surface comes to be drawn in the world and
+missing from the catalogue"*. **The page is that third caller**, and that is `B1b.2c`.
+
+⛔ **AND THE RE-MESH IS THE WHOLE NEIGHBOURHOOD, WHICH IS A MEASURED COST RATHER THAN A DESIGN.**
+A gesture reports what it DID (`ak_n`) and not WHERE — a fence ring of radius 3 spans several
+tiles and `Ack` carries one anchor — so the page has no dirty set to consult. 49 tiles and 338,688
+floats per press, which a keystroke can afford and a frame could not. ⏭ The cheap version needs the
+neighbourhood to be a THING rather than a loop, which is `B1c`'s question.
+
+⚠ **AND `after-all` EQUALS `after-first`, FOR A GOOD REASON.** Two raises and a lower net to one
+raise, so the GROUND is back where the first press left it while the world key has moved on — the
+picture is a function of the heights, and the fence and wall that moved the key write EDGES, which
+this step does not draw.
+
 ## ✅ What `B1b.1b` turned up (2026-08-13) — the digest was made of the format it was digesting
 
 **The page is an editor now.** With nothing behind the wire it stops dialling after a bounded
@@ -240,7 +351,7 @@ author one world-unit over: every count is unchanged — **a ring of the same ra
 edges wherever it is laid** — every sentence is unchanged, and only the world key moves.
 **Neither instrument alone covers this step.**
 
-**Nine sabotages, each red somewhere different:**
+**Nine sabotages, each red somewhere different** (re-run as twelve at `B1b.2`, in the section above):
 
 | sabotage | red where | and nowhere else |
 |---|---|---|

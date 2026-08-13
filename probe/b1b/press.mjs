@@ -17,6 +17,7 @@
 // work, and this tree has an entry for a probe whose 120-second window turned into
 // a flake generator.
 import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 
 const [url, keysArg] = process.argv.slice(2);
 let waitMs = 45000, holdMs = 120, gapMs = 600, afterMs = 3000, awaitText = null;
@@ -52,9 +53,22 @@ for (const line of (spawnSync('pgrep', ['-af', `remote-debugging-port=${CDP}`],
   }
 }
 
+// ⚠ `--use-gl=angle --use-angle=swiftshader`, NOT `--use-gl=swiftshader`, AND THE
+// DIFFERENCE IS THE WHOLE PICTURE. `probe/b1a/drive.mjs` — which this driver was
+// copied from — passes the second spelling, and it is fine there because that probe
+// reads the SERVER's transcript and never looks at the canvas. Measured here: with
+// `--use-gl=swiftshader` the client boots, uploads 49 meshes, runs 300 frames
+// without one exception, and `Page.captureScreenshot` comes back a WHITE PAGE — the
+// canvas composites transparent. The flags below are `html_render_check.mjs`'s,
+// which is the tool in this tree known to photograph a WebGL canvas.
+//
+// ⚠ AND IT IS A COPIED INSTRUMENT NOBODY AIMED, one more time: `probe/b1a`'s filter
+// was blind to half its own step for the same reason. What a driver inherits is
+// whatever its parent needed.
 const proc = spawn(chrome, ['--headless=new', `--remote-debugging-port=${CDP}`,
-  '--no-sandbox', '--disable-gpu-sandbox', '--use-gl=swiftshader',
-  '--enable-unsafe-swiftshader', `--window-size=${WIN}`, 'about:blank'],
+  '--no-sandbox', '--enable-unsafe-swiftshader',
+  '--use-gl=angle', '--use-angle=swiftshader', '--mute-audio', '--hide-scrollbars',
+  `--window-size=${WIN}`, 'about:blank'],
   { stdio: 'ignore' });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -99,6 +113,114 @@ const bye = async (code, msg) => {
   process.exit(code);
 };
 
+// ── THE PICTURE, AND THE TWO REGIONS IT IS READ IN — plan 22 `B1b.2` ─────────
+//
+// ⚠ THE WHOLE CANVAS CANNOT ANSWER THIS. `html_render_check.mjs` counts distinct
+// colours over the entire canvas, and the PANEL is drawn into that same canvas —
+// six buttons, a list and two text strips — so a page whose world half is blank
+// still counts dozens of colours and passes. The claim here is about the WORLD
+// half, so the region is the instrument.
+//
+// ⚠ AND THE PANEL IS THE POSITIVE CONTROL. A capture that came back black, or a
+// decoder that returned 1 for everything, would "prove" a blank world; the panel
+// region must be busy in every shot, or the shot says nothing about the world.
+//
+// ⚠ THE PIXELS ARE THE COMPOSITOR'S, decoded by the browser. A WebGL canvas read
+// back with `readPixels` or `toDataURL` comes out BLACK without
+// `preserveDrawingBuffer` — this tree has that scar — so the capture is CDP's
+// screenshot (what a person would see) and the decode is an `Image` in the page,
+// which has nothing to do with the GL context at all.
+// ⚠ AND A FLAT GROUND IS ONE COLOUR, WHICH IS WHY THERE ARE THREE REGIONS. The
+// first version read a single rectangle in the middle of the world half and
+// counted 1 — and the page was drawing perfectly: an unwritten world is a FLAT
+// PLANE at one height, lit by a constant ambient, so every pixel of it is the same
+// green. `1 colour` there means *the ground is flat*, not *nothing is drawn*, and
+// the full-frame capture is what said so. A colour cannot see a horizon unless the
+// horizon is inside the frame you handed it.
+//
+//   world   spans the horizon: sky above, ground below → 2+ colours means DRAWN
+//   ground  entirely below it: its checksum is what a gesture has to move
+//   panel   the positive control, drawn by a path this step does not touch
+const REGIONS = {
+  // ⚠ `dy` CLEARS THE SUBJECT BAR, and the sabotage is what found that. The bar
+  // is full-canvas-width and 24 px high (`lavition_ui::SUBJECT_HEIGHT`), so a
+  // region starting at 20 caught four rows of it — and `AUTH_SABOTAGE=nocam`, a
+  // page with no camera at all, passed the *is anything drawn* check on the
+  // BAR's colours. An instrument that includes the UI cannot report on the world.
+  world:  { dx: 420, dy: 40,  w: 420, h: 200 },
+  ground: { dx: 420, dy: 300, w: 420, h: 220 },
+  panel:  { dx: 20,  dy: 40,  w: 200, h: 200 },
+};
+
+const shot = async (tag) => {
+  const rect = (await call('Runtime.evaluate', {
+    // ⚠ DOCUMENT COORDINATES, because that is what `captureScreenshot`'s clip is
+    // in — `getBoundingClientRect` is viewport-relative, and this canvas is 1200
+    // wide in an 1100 window, so the page is scrolled and the rect's x is
+    // NEGATIVE. Adding that straight into a clip slides every region left by the
+    // scroll, which is how the panel region came back holding half a panel.
+    expression: `(() => { const c = document.getElementById('c');
+      if (!c) return null; const r = c.getBoundingClientRect();
+      return {x: r.x + window.scrollX, y: r.y + window.scrollY,
+              w: r.width, h: r.height}; })()`,
+    returnByValue: true,
+  }))?.result?.value;
+  if (!rect) { console.log(`SHOT ${tag} — no canvas`); return; }
+  // ⚠ THE RECT IS PRINTED, because every clip below is relative to it. A canvas
+  // pushed down the page by the shell's own log element, or scaled by a device
+  // pixel ratio, moves every region — and a region that has slid off the viewport
+  // captures black, which reads exactly like a world that was never drawn.
+  const out = [`rect ${Math.round(rect.x)},${Math.round(rect.y)},` +
+               `${Math.round(rect.w)}x${Math.round(rect.h)}`];
+  for (const [name, r] of Object.entries(REGIONS)) {
+    // ⚠ CLAMPED TO THE DOCUMENT. This canvas's own origin is NEGATIVE — it is
+    // wider than the window and the shell centres it — so a region near its left
+    // edge starts off the page, and a clip that starts off the page is captured
+    // black. Clamping keeps the region on the canvas; it does not move which half
+    // of the picture is being read.
+    const cap = await call('Page.captureScreenshot', {
+      format: 'png',
+      clip: { x: Math.max(0, rect.x + r.dx), y: Math.max(0, rect.y + r.dy),
+              width: r.w, height: r.h, scale: 1 },
+    });
+    if (!cap?.data) { out.push(`${name} CAPTURE-FAILED`); continue; }
+    // Distinct RGB triples, and a checksum of every pixel. The count says
+    // *something is drawn*; the checksum says *it is not the same picture* —
+    // a raised patch of ground repaints in colours the frame already had.
+    const res = await call('Runtime.evaluate', {
+      expression: `new Promise((res) => { const im = new Image();
+        im.onerror = () => res('DECODE-FAILED');
+        im.onload = () => { const cv = document.createElement('canvas');
+          cv.width = im.width; cv.height = im.height;
+          const cx = cv.getContext('2d'); cx.drawImage(im, 0, 0);
+          const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+          const seen = new Set(); let sum = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+            sum = (sum * 31 + d[i] + d[i + 1] * 7 + d[i + 2] * 13) >>> 0;
+          }
+          res(seen.size + ':' + sum); };
+        im.src = 'data:image/png;base64,' + ${JSON.stringify(cap.data)}; })`,
+      awaitPromise: true, returnByValue: true,
+    });
+    out.push(`${name} ${res?.result?.value ?? 'NO-RESULT'}`);
+    if (process.env.B1B_SHOTS) {
+      // ⚠ AND THE WHOLE PAGE BESIDE THE CLIP. A region that captures the page's
+      // white background reads as one colour, exactly like a world that was never
+      // drawn — and no number in the clip can tell those apart. The full frame is
+      // what says WHICH.
+      const full = await call('Page.captureScreenshot', { format: 'png' });
+      if (full?.data) {
+        fs.writeFileSync(`${process.env.B1B_SHOTS}/${tag}-full.png`,
+                         Buffer.from(full.data, 'base64'));
+      }
+      fs.writeFileSync(`${process.env.B1B_SHOTS}/${tag}-${name}.png`,
+                       Buffer.from(cap.data, 'base64'));
+    }
+  }
+  console.log(`SHOT ${tag} ${out.join('  ')}`);
+};
+
 await call('Runtime.enable');
 await call('Page.enable');
 await call('Page.navigate', { url });
@@ -123,14 +245,41 @@ if (awaitText) {
   if (!seen) await bye(1, `B1b FAIL — the page never said '${awaitText}'; nothing was pressed`);
 }
 
+// ⚠ TWO SHOTS BEFORE A KEY IS TOUCHED, and the second one is the control. A
+// verdict of *the picture changed* means nothing until *the picture holds still*
+// has been measured on the same page, with the same capture path, seconds apart.
+await shot('before');
+await sleep(1200);
+await shot('steady');
+
 // loft's browser shell binds keydown to the CANVAS, not the window, so a page
 // nobody has clicked is deaf.
+//
+// ⚠ THE CLICK IS AT THE CANVAS'S FAR RIGHT, CLEAR OF THE PANEL. A press at
+// (550,400) lands in the world, which is fine for focus — but the drag handler
+// takes any button-down as the start of a look, and a stray pixel of motion would
+// move the camera between the shots above and the shots below. The world region
+// this probe reads would then change for a reason that is not a gesture.
+// ⚠ THE POINT IS COMPUTED FROM THE CANVAS RECT, NOT TYPED. The canvas is 1200x660
+// in a 1100x760 window, so the page is SCROLLED and the canvas's own origin is at
+// negative viewport coordinates — a click typed as `1150,640` lands outside the
+// viewport entirely, the canvas never takes focus, and every key press afterwards
+// goes nowhere. Measured: six keys, not one gesture, and a transcript that reads
+// exactly like a local mode that does not work.
+const crect = (await call('Runtime.evaluate', {
+  expression: `(() => { const c = document.getElementById('c'); if (!c) return null;
+    const r = c.getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width, h: r.height}; })()`,
+  returnByValue: true,
+}))?.result?.value ?? { x: 0, y: 0, w: 800, h: 600 };
+const clickX = Math.max(8, Math.min(crect.x + crect.w * 0.6, 1000));
+const clickY = Math.max(8, Math.min(crect.y + crect.h * 0.6, 700));
 await call('Input.dispatchMouseEvent',
-  { type: 'mousePressed', x: 550, y: 400, button: 'left', clickCount: 1, buttons: 1 });
+  { type: 'mousePressed', x: clickX, y: clickY, button: 'left', clickCount: 1, buttons: 1 });
 await call('Input.dispatchMouseEvent',
-  { type: 'mouseReleased', x: 550, y: 400, button: 'left', clickCount: 1, buttons: 0 });
+  { type: 'mouseReleased', x: clickX, y: clickY, button: 'left', clickCount: 1, buttons: 0 });
 await sleep(300);
 
+let first = true;
 for (const k of keysArg.split(',')) {
   const d = describe(k.trim());
   await call('Input.dispatchKeyEvent', { type: d.text ? 'keyDown' : 'rawKeyDown',
@@ -140,6 +289,11 @@ for (const k of keysArg.split(',')) {
   await call('Input.dispatchKeyEvent', { type: 'keyUp',
     key: d.key, code: d.code, windowsVirtualKeyCode: d.vk, nativeVirtualKeyCode: d.vk });
   await sleep(gapMs);
+  // ⚠ AFTER THE FIRST KEY, NOT ONLY AT THE END. The first press is a raise, which
+  // is the one gesture the ground mesh can show; reading the picture only after
+  // the whole sequence would credit any of six presses with the change.
+  if (first) { await shot('after-first'); first = false; }
 }
 await sleep(afterMs);
+await shot('after-all');
 await bye(0, `B1b pressed ${keysArg}`);

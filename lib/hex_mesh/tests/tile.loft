@@ -1,0 +1,60 @@
+// WHICH MESH TILE A HEX IS IN — and the half of the answer `/` gets wrong.
+//
+// plan 22 `B1b.2a`. A page that meshes its own neighbourhood has to turn the
+// author's hex into tile coordinates, and `chunk_mesh_mat(cx, cz, …)` defines a
+// tile as covering `q ∈ [cx * MESH_CHUNK, cx * MESH_CHUNK + MESH_CHUNK)`. That is
+// FLOOR division; loft's `/` truncates toward zero, so the two agree for every
+// non-negative hex and disagree for every negative one.
+//
+// ⚠ EVERY FIXTURE IN THIS TREE STANDS AT THE ORIGIN, which is the one place the
+// wrong spelling is right. So the test is written the other way round: it asserts
+// the WESTERN side first, and the eastern side is the control that the fixture is
+// not just always-negative.
+use hex_mesh;
+use hex_voxel;
+
+fn test_a_hex_west_of_the_origin_is_in_the_tile_that_covers_it() {
+  // The tile below zero covers −8..−1, and every one of those must name it.
+  for v in 0 - MESH_CHUNK..0 {
+    assert(mesh_tile_of(v) == 0 - 1,
+           "hex {v} says tile {mesh_tile_of(v)} — the tile covering it is -1, and "
+           + "truncating division answers 0 for all but one of these");
+  }
+  assert(mesh_tile_of(0 - MESH_CHUNK - 1) == 0 - 2,
+         "hex {0 - MESH_CHUNK - 1} is in tile {mesh_tile_of(0 - MESH_CHUNK - 1)}, not -2");
+}
+
+fn test_a_hex_east_of_the_origin_is_in_the_tile_that_covers_it() {
+  for v in 0..MESH_CHUNK {
+    assert(mesh_tile_of(v) == 0, "hex {v} says tile {mesh_tile_of(v)}, not 0");
+  }
+  assert(mesh_tile_of(MESH_CHUNK) == 1, "hex {MESH_CHUNK} is the first of tile 1");
+  assert(mesh_tile_of(MESH_CHUNK * 3 + 5) == 3, "hex {MESH_CHUNK * 3 + 5} is in tile 3");
+}
+
+fn test_the_answer_agrees_with_the_mesher_itself() {
+  // ⚠ THE ORACLE IS THE MESHER'S OWN ARITHMETIC, not a second copy of the rule.
+  // `chunk_mesh_mat_in` starts at `q0 = cx * MESH_CHUNK`, so a hex is in tile `t`
+  // exactly when `t * MESH_CHUNK <= v < (t + 1) * MESH_CHUNK` — asserted here for
+  // a run that crosses zero in both directions, because crossing zero is the whole
+  // question.
+  for v in 0 - 20..21 {
+    t = mesh_tile_of(v);
+    assert(t * MESH_CHUNK <= v && v < (t + 1) * MESH_CHUNK,
+           "hex {v} was put in tile {t}, which covers "
+           + "{t * MESH_CHUNK}..{(t + 1) * MESH_CHUNK - 1}");
+  }
+}
+
+fn test_the_tiles_it_names_are_the_tiles_that_mesh() {
+  // The claim one layer out: a tile named for a hex really does mesh, on a world
+  // nobody has written — `E1γ`, the outdoors is everywhere, and it is what lets a
+  // fresh page draw ground before its first gesture.
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  for v in [0 - 9, 0 - 1, 0, 7, 8] {
+    t = mesh_tile_of(v);
+    m = chunk_mesh_mat(t, 0, w, 1);
+    assert(len(m.vertices) > 0,
+           "tile {t} (from hex {v}) meshed nothing on an unwritten world");
+  }
+}

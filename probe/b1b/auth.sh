@@ -14,6 +14,9 @@
 #   AUTH_SABOTAGE=elsewhere …            local mode presses at another author
 #   AUTH_SABOTAGE=scratchsession …       it presses into a session nobody keeps
 #   AUTH_SABOTAGE=eager …                one unanswered dial is enough to give up
+#   AUTH_SABOTAGE=nocam …                local mode writes and never sets a camera
+#   AUTH_SABOTAGE=nomesh …               …and never meshes its own ground
+#   AUTH_SABOTAGE=stale …                it writes and does not redraw
 #
 # `src/editor_client.loft:1680` read `ps_status: "moros editor — connected"` — a
 # literal, set at panel construction, before any socket existed, with no other
@@ -143,6 +146,22 @@ if [ -n "$SAB" ]; then
     # so B10 stays green and only the session half can see it. It is the pair
     # `V1` measured, one driver out.
     scratchsession) sed -i 's/^  ack = hex_editor::press_verb(sess, st.cache, a, verb);$/  ack = hex_editor::press_verb(hex_editor::EditSession {}, st.cache, a, verb);/' "$SRC" ;;
+    # ── B1b.2 ───────────────────────────────────────────────────────────────
+    # No camera: `draw_world` returns on its first line and the world half is the
+    # clear colour. ⚠ This is the page as `B1b.1b` shipped it — every number right
+    # and nothing on screen.
+    nocam) sed -i '/^          local_camera(st, author);$/d' "$SRC" ;;
+    # A camera and no ground at boot: the same blank half, reached the other way,
+    # which is why D1 asks for a HORIZON rather than for a camera.
+    # ⛔ ITS FIRST FORM WAS A NO-OP AND THE RUN CAME BACK GREEN: it appended
+    # `return;` after the LAST statement of `local_camera`, which changes the file
+    # and nothing else — and the `cmp` guard below proves a change was made, never
+    # that the change matters. A sabotage that is red nowhere is either a blind
+    # instrument or a no-op, and only reading tells you which.
+    nomesh) sed -i 's/^          lg_boot = local_ground(st, author);$/          lg_boot = 0;/' "$SRC" ;;
+    # It writes and does not redraw — the picture is a photograph of the world
+    # before the gesture, with every count and both digests correct.
+    stale) sed -i 's/^  redrawn = local_ground(st, a);$/  redrawn = 0;/' "$SRC" ;;
     *) echo "auth: unknown AUTH_SABOTAGE '$SAB'"; exit 2 ;;
   esac
   if cmp -s "$SRC" src/editor_client.loft; then
@@ -279,6 +298,7 @@ static_run() {
       --wait-ms 25000 --tail 100000 > "$OUT/$sr_tag.raw" 2>&1 || true
   fi
   grep -E '^(client|moros editor client)' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.log" || true
+  grep -E '^SHOT ' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.shots" || true
   kill "$sr_pid" 2>/dev/null || true
   wait "$sr_pid" 2>/dev/null || true
   echo "   what the panel said:"
@@ -376,7 +396,11 @@ fi
 # last world the page keyed against the world `editor_run` built from the same six
 # verbs at the same author — one `hex_voxel::world_key` called by both, so a
 # difference is a difference in what they BUILT.
-got=$(grep '^client: local ' "$OUT/b.log" | sed -n 's/.*· world //p' | tail -1)
+# ⚠ THE FIELD, NOT THE TAIL OF THE LINE. `B1b.2` added ` · N floats redrawn` after
+# the key and this took the whole remainder, so a correct page reported
+# `32952:1545220309 · 338688 floats redrawn` against the runner's bare key. A
+# greedy extractor is a comparison that breaks whenever its subject grows a word.
+got=$(grep '^client: local ' "$OUT/b.log" | sed -n 's/.*· world \([^ ]*\).*/\1/p' | tail -1)
 echo "   the page: world ${got:-<none>}"
 echo "   the runner: world $want"
 if [ -n "$got" ] && [ "$got" = "$want" ]; then
@@ -401,6 +425,64 @@ if [ -s "$OUT/got.sess" ] && diff -q "$OUT/want.sess" "$OUT/got.sess" > /dev/nul
 else
   bad "B11 the sessions differ:"
   diff "$OUT/want.sess" "$OUT/got.sess" 2>&1 | sed 's/^/       /' || true
+fi
+
+# ── B1b.2 — and can any of it be SEEN ───────────────────────────────
+# ⚠ THE WORLD REGION, NOT THE CANVAS. The panel is drawn into the same canvas, so
+# a whole-canvas colour count reads hundreds of colours over a blank world — which
+# is exactly the page `B1b.1b` shipped. `press.mjs` reads three rectangles.
+#
+# ⚠ AND A FLAT GROUND IS ONE COLOUR. The first version of this read one rectangle
+# in the middle of the world half, counted **1**, and reported that the page saw
+# nothing — while the full-frame capture showed green ground under a blue sky. An
+# unwritten world is a flat plane at one height under a constant ambient, so it is
+# genuinely one colour; the horizon is the only thing in that half of the picture
+# that is not. So the region that answers *is anything drawn* SPANS the horizon.
+echo
+echo "── B1b.2  what the page could actually SEE ─────────────────────────"
+sed 's/^/     /' "$OUT/b.shots" 2>/dev/null || true
+field() { sed -n "s/^SHOT $1 .*$2 \([0-9]*\):\([0-9]*\).*/\\$3/p" "$OUT/b.shots" | head -1; }
+w_before=$(field before world 1);       w_sum_before=$(field before world 2)
+w_sum_steady=$(field steady world 2)
+w_sum_first=$(field after-first world 2)
+g_sum_before=$(field before ground 2);  g_sum_first=$(field after-first ground 2)
+p_before=$(field before panel 1)
+
+# ⚠ THE POSITIVE CONTROL FIRST. A capture that failed, or a decoder that answered
+# 1 for everything, would make every claim below "true" by breaking — and the panel
+# is drawn by a path this step does not touch at all. ⚠ It was worth having: with
+# `--use-gl=swiftshader` (this driver's inherited flag) the whole canvas
+# photographed WHITE while the client ran 300 frames without an exception.
+if [ -n "$p_before" ] && [ "$p_before" -gt 4 ]; then
+  ok "D0 the capture works — the panel region has $p_before colours"
+else
+  bad "D0 the panel region reads '$p_before' colours; the instrument is blind, not the world"
+fi
+if [ -n "$w_before" ] && [ "$w_before" -ge 2 ]; then
+  ok "D1 and the world half has a HORIZON in it — $w_before colours, ground under sky"
+else
+  bad "D1 the world half reads '$w_before' colour(s): sky alone, so the page drew no ground"
+fi
+# ⚠ *IT CHANGED* MEANS NOTHING UNTIL *IT HOLDS STILL* IS MEASURED. Same page, same
+# capture path, 1.2 s apart, nothing pressed.
+if [ -n "$w_sum_steady" ] && [ "$w_sum_steady" = "$w_sum_before" ]; then
+  ok "D2 and it holds still when nothing is pressed — $w_sum_steady twice"
+else
+  bad "D2 the picture moved with no key pressed ($w_sum_before then $w_sum_steady); 'it changed' cannot be read"
+fi
+if [ -n "$w_sum_first" ] && [ "$w_sum_first" != "$w_sum_before" ]; then
+  ok "D3 and the first raise REDREW it — $w_sum_before → $w_sum_first"
+else
+  bad "D3 the raise left the picture at $w_sum_before — the page wrote a world it does not draw"
+fi
+# ⚠ AND NOT EVERYWHERE, WHICH IS WHAT SEPARATES A GESTURE FROM A CAMERA. A raise
+# changes the ground in front of the author; a camera that drifted — a stray drag
+# from the focus click, say — would change the far ground too, and D3 alone would
+# call that a pass.
+if [ -n "$g_sum_first" ] && [ "$g_sum_first" = "$g_sum_before" ]; then
+  ok "D4 …and only where the gesture landed — the far ground is untouched"
+else
+  bad "D4 the far ground changed too ($g_sum_before → $g_sum_first): the camera moved, not the world"
 fi
 
 # ── run C ───────────────────────────────────────────────────────────

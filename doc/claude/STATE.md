@@ -386,8 +386,47 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
+| ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.2` — THE PAGE DRAWS WHAT IT WROTE, AND THREE INSTRUMENTS WERE BLIND FIRST, 2026-08-13
+
+**A camera of its own, its own ground meshed out of its own cache, and a re-mesh on every write.**
+`make probe-auth` is **33 checks** now, five about the picture.
+
+⛔ **NOTHING HAD BEEN ON SCREEN AT ALL, AND `draw_world` SAYS WHY IN ONE LINE** —
+`if !st.has_cam { return; }`. The camera is the SERVER's solve, so the page `B1b.1b` shipped had
+every number right and a blank world half, with the panel over it making it look alive. ⚠ The
+local camera is a **stand-in written as one**: `C1`–`C4` move the five-mode solve into `hex_cam`,
+and re-implementing it here would be `W4` on the camera.
+
+⛔ **THE CANVAS PHOTOGRAPHED WHITE WHILE THE CLIENT RAN FLAWLESSLY** — 49 meshes, 300 frames, no
+exception. `probe/b1a`'s driver passes `--use-gl=swiftshader` and never photographs anything; the
+tool that does passes `--use-gl=angle --use-angle=swiftshader`. **What a driver inherits is
+whatever its parent needed.**
+
+⛔ **AND THE FIRST REGION REPORTED A BLANK WORLD WHILE THE PAGE DREW PERFECTLY** — an unwritten
+world is a flat plane at one height under a constant ambient, so it really is ONE COLOUR. *A count
+cannot see a horizon unless the horizon is inside the frame you hand it.* ⛔ **And the fixed
+version still passed with no camera at all**, which `AUTH_SABOTAGE=nocam` found: the region caught
+four rows of `lavition_ui`'s full-width SUBJECT BAR. **An instrument that includes the UI cannot
+report on the world.**
+
+⛔ **A STRUCT STORED INTO A VECTOR-TYPED FIELD IS SILENTLY DROPPED —
+[loft#893](https://github.com/loft-lang/loft/issues/893).** `st.view = mat4_look_at(…)` compiles
+clean, runs, and stores nothing (`Mat4` wraps one `vector<float>`); the identical store to a LOCAL
+is a compile error. `--check` is quiet too. Writing `.m` is the fix, reachable only by noticing the
+return type.
+
+⚠ **`hex_mesh::mesh_tile_of` IS A LIBRARY RULE NOW**, because `/` truncates: hex `-1` is in the
+tile covering `-8..-1` and `-1 / 8` is `0`, so every tile west of the origin would be meshed one
+over — **and the origin is the one place the two agree**, which is where every fixture stands.
+
+⏭ **IT DRAWS THE GROUND AND NOTHING ELSE.** A fence in local mode is written, keyed and invisible:
+the nine-surface recipe is `chunk_meshes_all`, a program-local function in `editor_server.loft`
+whose own comment says a third copy is how a surface comes to be drawn in the world and missing
+from the catalogue. **The page is that third caller** — `B1b.2c`.
 
 ## ✅ `B1b.1b` — THE PAGE IS AN EDITOR, AND THE DIGEST WAS MADE OF THE FORMAT, 2026-08-13
 

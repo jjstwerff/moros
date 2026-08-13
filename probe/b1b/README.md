@@ -87,6 +87,52 @@ footprint has no mitred corners, which `B1a` found through the server. A refusal
 in both drivers is evidence; dropping it from the script would be choosing the fixture to suit
 the answer.
 
+### `B1b.2` — and can any of it be SEEN
+
+The page draws its own ground now, from a camera of its own, and re-meshes it when a gesture
+writes. Three regions of the canvas answer it:
+
+```
+SHOT before      world 6:1835191784    ground 1:2667548928  panel 303:…
+SHOT steady      world 6:1835191784    ground 1:2667548928  panel 303:…
+SHOT after-first world 196:2402343905  ground 1:2667548928  panel 307:…
+```
+
+⛔ **THE FIRST VERSION OF THIS INSTRUMENT REPORTED A BLANK WORLD, AND THE PAGE WAS DRAWING
+PERFECTLY.** One rectangle in the middle of the world half counted **1 colour** — and an unwritten
+world is a FLAT PLANE at one height under a constant ambient, so it genuinely is one colour. *A
+count cannot see a horizon unless the horizon is inside the frame you hand it.* The full-frame
+capture is what said so, and the region that answers *is anything drawn* now spans the skyline.
+
+⛔ **AND BEFORE THAT, THE CANVAS PHOTOGRAPHED WHITE WHILE THE CLIENT RAN FLAWLESSLY** — 49 meshes
+uploaded, 300 frames, not one exception, and `Page.captureScreenshot` returning a blank page with
+scrollbars. The driver was copied from `probe/b1a`, which passes `--use-gl=swiftshader` and never
+photographs anything; the tool in this tree that does — `html_render_check.mjs` — passes
+`--use-gl=angle --use-angle=swiftshader`. **What a driver inherits is whatever its parent needed**,
+which is the third time that sentence has been written in this probe directory.
+
+⚠ **AND THE CLICK THAT FOCUSES THE CANVAS HAS TO BE COMPUTED.** The canvas is 1200×660 in an
+1100×760 window, so the shell centres it and its own origin is at **negative** viewport
+coordinates. A click typed as `1150,640` lands outside the viewport, the canvas never takes focus,
+and every key afterwards goes nowhere — six presses, not one gesture, and a transcript that reads
+exactly like a local mode that does not work.
+
+| check | what it can see |
+|---|---|
+| `D0` panel colours | the POSITIVE CONTROL — a failed capture or a broken decoder would make every claim below true by breaking |
+| `D1` world colours ≥ 2 | a HORIZON: ground under sky, where a page with no camera has only the clear colour |
+| `D2` world checksum steady | *it changed* is unreadable until *it holds still* is measured — same page, same path, 1.2 s apart |
+| `D3` world checksum moves on the raise | the page draws what it wrote |
+| `D4` the FAR ground unchanged | …and only where the gesture landed. A camera that drifted would move both, and `D3` alone would call that a pass |
+
+⏭ **WHAT IT DRAWS IS THE GROUND, AND THAT IS THE WHOLE OF IT.** A fence laid in local mode is
+written, keyed and invisible: walls, roofs, vegetation and the rest are five more surfaces, and
+the recipe that composes all nine is `chunk_meshes_all` — a **program-local function in
+`editor_server.loft`** whose own comment says it was spelled out twice and must never be spelled a
+third time. The page is that third caller. ⚠ It is also why `after-all` equals `after-first` here:
+two raises and a lower net to one raise, so the GROUND is back where the first press left it,
+while the world key has moved on.
+
 ### `press.mjs` — wait for a sentence, not for a clock
 
 `probe/b1a/drive.mjs` presses as soon as the client has BOOTED, which is right when the subject is
@@ -95,19 +141,31 @@ polls the page's console for the client's own line before pressing, and **report
 miss**: pressing anyway would produce a transcript with no local lines in it, which is exactly
 what a broken local mode produces.
 
-### Nine sabotages, and where each one is red
+### Twelve sabotages, and where each one is red
+
+⛔ **AND ONE SABOTAGE WAS A NO-OP WEARING A PASS'S CLOTHES.** `nomesh` was written as a `return;`
+appended after the LAST statement of `local_camera` — it changed the file, so the `cmp` guard that
+exists to catch a drifted pattern was satisfied, and the run came back **33 green**. *The guard
+proves a change was made, never that the change matters.* A sabotage that is red nowhere is either
+a blind instrument or a no-op, and only reading tells you which. ⏭ It could not be written as a
+line-delete because the call was inside a `println`'s format string — which is why both re-mesh
+calls are hoisted out of their strings now: **a side effect inside a format string is a step no
+reader expects and no patch can reach.**
 
 | sabotage | red where | and nowhere else |
 |---|---|---|
-| `literal` — the status line as it was, a constant claiming the server | `A1` the panel's first word · `B4` · `B7` | |
-| `nodirty` — the CONNECT fact moves and the panel is not told | `C4` **alone** | green in A and B, which is why C exists |
-| `assume` — authority off the send, not off its succeeding | `B3`–`B11`, nine of them | invisible to A: with a server there, assuming is right |
-| `nolocal` — it never gives up dialling | `B7` `B8`×5 `B9` `B10` `B11` | |
-| `nolocaldirty` — it goes local and the panel is not told | `B7` **alone** | `nodirty`'s mirror, one authority over |
-| `sendlocal` — local is announced and it sends anyway | `B8`×5 · `B10` · `B11` | ⚠ **the panel is GREEN** — a status line alone would call this a pass |
+| `nocam` — local mode writes and never sets a camera | `D1` sky alone · `D3` | the page `B1b.1b` shipped: every number right, nothing on screen |
+| `nomesh` — a camera, and no ground meshed at boot | `D1` sky alone · `D4` | ⛔ its FIRST form was a NO-OP and passed all 33 — see below. `D4` moves because the first raise installs the whole neighbourhood, so the far ground arrives late |
+| `stale` — it writes and does not redraw | `D3` **alone** | the picture is a photograph of the world before the gesture |
 | `elsewhere` — the same six verbs, one world-unit over | `B10` **alone** | every count, every sentence AND the whole session unchanged |
 | `scratchsession` — pressed into a session nobody keeps | `B11` **alone** | the world **byte-identical** |
-| `eager` — one unanswered dial is enough to give up | `A2` `A3` **`A4`** · `B1` `B6` · `C2` `C4` **`C5`** | the two starred are the hazard: a live server given up on, and silence read as absence |
+| `sendlocal` — local is announced and it sends anyway | `B8`×5 · `B10` `B11` · `D3` | ⚠ **the panel is GREEN** — a status line alone would call this a pass |
+| `nolocaldirty` — it goes local and the panel is not told | `B7` **alone** | `nodirty`'s mirror, one authority over |
+| `nolocal` — it never gives up dialling | `B1` `B7` `B8`×5 `B9` `B10` `B11` `D3` | |
+| `eager` — one unanswered dial is enough to give up | `A2` `A3` **`A4`** · `B6` · `C2` `C3` `C4` **`C5`** | the starred pair is the hazard: a live server given up on, and silence read as absence |
+| `literal` — the status line as it was | `A1` · `B4` · `B7` | |
+| `nodirty` — the CONNECT fact moves and the panel is not told | `C4` **alone** | green in A and B, which is why C exists |
+| `assume` — authority off the send, not off its succeeding | `B3`–`B11` and every `D` | invisible to A: with a server there, assuming is right |
 
 
 ⏭ **WHAT THIS DOES NOT CHECK IS THE WIRE.** `make probe-b1a` owns that — the same key sequence

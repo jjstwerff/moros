@@ -144,6 +144,23 @@ split already put the voxel cache and the mesher in the browser and stopped the 
 ground meshes at all (`ground sent 174 held 20`). **The page is not a new renderer**; it is the
 existing renderer with its socket replaced by a function call.
 
+⛔ **AND THAT SENTENCE IS TRUE OF THE RENDERER AND FALSE OF THE PICTURE — measured at `B1b.2`,
+2026-08-13.** Two things the socket was also carrying had no local answer at all:
+
+- **THE CAMERA.** `draw_world`'s first line is `if !st.has_cam { return; }`, and `has_cam` is set
+  by the server's `C:` — so the page with no server drew the sky, drew the panel over it, and
+  stopped. A stand-in boom camera fills it; `C3` replaces that with `hex_cam`, and until then the
+  page has a camera the server does not.
+- **WHICH TILES EXIST.** The server streams a neighbourhood; a local page has to choose one. It
+  meshes `LOCAL_TILES` around the author, and re-meshes them all on a write, because a gesture
+  reports what it DID and not WHERE.
+
+⛔ **AND EIGHT OF THE NINE SURFACES ARE STILL THE SERVER'S.** `chunk_meshes_all` composes ground,
+road, field, floor, vegetation, roof, wall, frame and soffit; it is a **program-local function** in
+`editor_server.loft`, and its own comment says it was spelled out twice and must never be spelled a
+third time. **The page is that third caller**, so a fence laid in local mode is written, keyed and
+invisible until that recipe moves somewhere both consumers can call it.
+
 ---
 
 ## The re-assertion count, taken before any code
