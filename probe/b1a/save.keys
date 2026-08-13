@@ -1,0 +1,10 @@
+# B1a — the second client, and all it does is ask the server to save.
+#
+# ⚠ THE SAVE IS THE INSTRUMENT THE SENTENCES CANNOT BE. `K1` measured it: `do_fence`
+# reports `fenced 42 edges … radius 3` for a fence ring and a wall ring alike, so a
+# wrong material passes any comparison of what the server SAID. The world knows.
+#
+# The browser client has no save key — nothing in this plan gives it one — so this
+# attaches as a SECOND author on the same socket and asks. Multi-author is `#8`'s
+# `M1` and has been gated since July; this is a consumer of it.
+save b1a

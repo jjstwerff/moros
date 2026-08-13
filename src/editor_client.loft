@@ -1075,6 +1075,44 @@ fn send_aspect(h: web::WsHandler) {
 // nothing this file can do about it from inside: focus is the host's business and
 // `--html` exposes none of it. It is why `page_console.mjs --press` focuses the
 // canvas first, and it is the one behaviour difference a person will notice.
+// ── What a key MEANS, and what IMPLEMENTS it — plan 22 `B1a` ─────────────────
+//
+// Two levels, and keeping them apart is `W4`'s whole subject:
+//
+//   hex_editor::verb_of(key)   what a KEY means — declared once, shared by every
+//                              driver, and the only layer a person may remap
+//   act(h, verb)               which MESSAGE implements a verb on THIS socket —
+//                              a fact about the wire, and this file's own business
+//
+// ⚠ THIS FILE WAS `W4`'s FOURTH SITE, and its table answered both questions at
+// once: `KEY_FENCE -> "23:3,3"` says what `f` means AND how it travels. Four
+// tables saying the first half is why `H` built the house at two different
+// heights for months, and why omitting one was silent.
+//
+// ⚠ `act` IS NOT A FIFTH SITE, for `K1`'s reason about `tools/script.mjs`'s
+// `VERBMAP`: it holds no meaning a person could disagree with, only the id this
+// protocol happens to use. Remap `f` to another key and nothing here moves.
+fn act(h: web::WsHandler, verb: text) {
+  if verb == hex_editor::VB_RAISE { web::send(h, "5:1");     return; }
+  if verb == hex_editor::VB_LOWER { web::send(h, "5:-1");    return; }
+  if verb == hex_editor::VB_PLACE { web::send(h, "32:");     return; }
+  // ⚠ THE MATERIAL IS PART OF THE VERB TODAY AND THE PROFILE IS NOT, which looks
+  // inconsistent and is measured. `V1`: *"`fence`/`wall` are one `ring` verb
+  // waiting for a material selection, exactly as the opening family waited for
+  // `es_open_kind`"* — so until that selection exists they are two verbs, each
+  // implying its own material, and `23:3,3` / `23:1,3` are what implements them.
+  // The opening family already HAS its selection, which is why it is the one pair
+  // this step cannot convert. See below.
+  if verb == hex_editor::VB_FENCE { web::send(h, FENCE_CMD); return; }
+  if verb == hex_editor::VB_WALL  { web::send(h, WALL_CMD);  return; }
+  // ⚠ UNREACHABLE FROM THE FIVE SITES BELOW, AND KEPT ON PURPOSE. It becomes
+  // load-bearing the moment a key is wired to a verb this socket has no message
+  // for — and `VB_OPENING` is exactly that today. *Reason, offer, residual, never
+  // a blank no*, applied to a keystroke: silence reads to an author as the key
+  // being broken, which is what they would report instead of this.
+  println("client: the verb '{verb}' has no wire message here");
+}
+
 fn poll_input(h: web::WsHandler, st: Client) {
   bits = 0;
   if graphics::gl_key_pressed(KEY_FORWARD) { bits = bits | 1; }
@@ -1088,11 +1126,17 @@ fn poll_input(h: web::WsHandler, st: Client) {
 
   // Arrows shape the ground rather than move — one step per PRESS, so they are
   // edges where W/S/A/D are a held state.
+  //
+  // ⚠ THE KEY IS SPELLED TWICE HERE AND THE TWO SPELLINGS ARE DIFFERENT THINGS:
+  // `graphics::KEY_UP` is what the KEYBOARD sends, `"ArrowUp"` is the key's NAME
+  // in the definition every driver shares (`tools/scripts/*.keys` writes the same
+  // string). They are two spellings of one key and they sit on adjacent lines for
+  // that reason — a mismatch here is the last place this step could hide one.
   kup = graphics::gl_key_pressed(graphics::KEY_UP);
-  if kup && !st.was_up { web::send(h, "5:1"); }
+  if kup && !st.was_up { act(h, hex_editor::verb_of("ArrowUp")); }
   st.was_up = kup;
   kdown = graphics::gl_key_pressed(graphics::KEY_DOWN);
-  if kdown && !st.was_down { web::send(h, "5:-1"); }
+  if kdown && !st.was_down { act(h, hex_editor::verb_of("ArrowDown")); }
   st.was_down = kdown;
 
   klevel = graphics::gl_key_pressed(KEY_LEVEL);
@@ -1103,10 +1147,10 @@ fn poll_input(h: web::WsHandler, st: Client) {
   st.was_level = klevel;
 
   kfence = graphics::gl_key_pressed(KEY_FENCE);
-  if kfence && !st.was_fence { web::send(h, FENCE_CMD); }
+  if kfence && !st.was_fence { act(h, hex_editor::verb_of("F")); }
   st.was_fence = kfence;
   kwall = graphics::gl_key_pressed(KEY_WALL);
-  if kwall && !st.was_wall { web::send(h, WALL_CMD); }
+  if kwall && !st.was_wall { act(h, hex_editor::verb_of("G")); }
   st.was_wall = kwall;
 
   // The stair, also an edge and not a state: the gesture SETS the cell ahead to one
@@ -1135,12 +1179,30 @@ fn poll_input(h: web::WsHandler, st: Client) {
   khouse = graphics::gl_key_pressed(KEY_HOUSE);
   // ⚠ `32:` CARRIES NO PARAMETER, so it names a message without deciding a
   // meaning — which is why this one was always safe to send from a client. The
-  // house handler also files the ROOF PLAN, and `press` cannot own that until
+  // house handler also files the ROOF PLAN, and `press_verb` cannot own that until
   // `hex_editor` can reach `HEIGHT_SCALE`: that lives in `hex_proj`, `hex_proj`
   // pulls `graphics`, and putting a GL binding under the gesture library is the
   // cone `L3'` was reverted for twice.
-  if khouse && !st.was_house { web::send(h, "32:"); }
+  if khouse && !st.was_house { act(h, hex_editor::verb_of("H")); }
   st.was_house = khouse;
+
+  // ⚠ THE OPENING PAIR IS THE ONE `B1a` DOES NOT CONVERT, and that is the step's
+  // shape rather than laziness — the mirror image of `K2a`, which converted ONLY
+  // this family and left every other key alone.
+  //
+  // `verb_of` is one-to-one for the five keys above: each names a verb no other
+  // key names, so routing them through it cannot change what they do and the wire
+  // stays byte-identical — which is what makes this step comparable at all.
+  // `O` and `P` are not: they are two of the SIX keys that answer `opening`, and
+  // the profile they carry (`1` round, `2` pointed) is precisely what `verb_of`
+  // throws away. Converting them here has only two possible spellings and both are
+  // changes, not refactors: pin one kind and `p` stops cutting a pointed head, or
+  // send `49:<kind>` first and the standing SELECTION moves where it did not move
+  // before (`S2b` — a bare `36:` cuts what is chosen, `36:<kind>` does not
+  // re-choose).
+  //
+  // ⏭ So it waits for the selection to be reachable from this client — a catalogue
+  // press, or `B1b`, where local mode holds the session that owns the choice.
   kdoor = graphics::gl_key_pressed(KEY_DOOR);
   if kdoor && !st.was_door { web::send(h, "36:1"); }
   st.was_door = kdoor;

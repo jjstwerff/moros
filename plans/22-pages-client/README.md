@@ -25,7 +25,11 @@ base tree exactly as the interpreter reads a directory. ⛔ **`W5` is cancelled 
 it**; `P2`, which was run to make `W5` buildable, is spent. *Build a house, close the tab, reopen
 it* is now short exactly one thing: **a page with the gestures in it.**
 
-**Next:** **`B1`** — local mode in `editor_client.loft`. The full step decomposition is
+✅ **AND `B1a` IS BUILT — the client's five one-to-one keys name verbs, 2026-08-13.** `W4` is three
+of four sites, and `make probe-b1a` is the first check in this tree that has ever pressed a key in
+the client at all.
+
+**Next:** **`B1b`** — local mode in `editor_client.loft`. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -66,7 +70,7 @@ key press goes.
 | ✅ `W1` | `data/parts/` rebuilds **byte-identically**, and `world_to_bytes` equals the file the old writer produced **byte for byte** | **the bytes are the format; a file is a destination** — one encoder, not two | ⚠ **three, all run**: `bw_u16` big-endian must fail at a named byte (it did — byte 8349); a truncated buffer must be refused rather than decoded as zeroes; and a negative chunk coordinate must come back **negative** |
 | ◐ `W4` | pressing a key and calling the gesture by hand leave worlds with the **same `w_tau`** | **one key, one meaning, wherever it is pressed** | `grade_under` returning the origin's height — `editor_run`'s actual old behaviour — must fail (it does) |
 | `W2`/`W3` | a part loaded from bytes equals the same part loaded from a path | **a path is a wrapper, on every loader** | a `.glb` that fails to load must **say so**, not draw nothing — an absent mesh reads as a geometry bug |
-| `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth and last site | ⚠ the opening family is where the client's table and the verb layer **disagree**, `K2a`'s fork one driver out. Point `act`'s `opening` at a fixed kind: the saved world stays byte-identical (`open_ahead` writes `DOOR_MAT` whatever the profile) and only the **session** says so |
+| ✅ `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth site | ✅ **BOTH RUN.** `act`'s `fence` → the wall's message: **every sentence identical**, world `82d622b3` → `cdabc1dc`. `act`'s `place` → a raise: transcript, presence check and world all red. ⏭ The opening pair is **left out** rather than pinned — see the finding above; pinning would have made `p` stop cutting a pointed head, which is a change wearing a refactor's clothes |
 | `B1b` | the local page and the attached client build the **same world** from the same key sequence | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind.** A fence ring and a wall ring write the same edges of the same disc, so the clock reports one number for two worlds. The comparison is **`world_to_bytes` AND the session**; if they differ, `press_verb` has become a fifth site |
 | `B3` | the demo gate opens `_site/index.html` **with no server** and reads a house out of the picture | the quick start **stays** working | ⚠ the gate must fail on an empty page — `[].every(…)` is `true`, and this tree has shipped a row that reported `ok` on a picture with no panel at all |
 
@@ -85,7 +89,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 |---|---|---|---|
 | ✅ **`P4`** — can one `--html` program hold the renderer **and** the gestures? | XS | **RUN.** `--check` rc=0 and the real `--html` build rc=0, 2546 KB / 1856 KB WASM in 9.6 s | ✅ Done |
 | ✅ **`W1`** — `world_to_bytes` / `world_from_bytes`; save and load become wrappers | M | `make parts` byte-identical · `make lib-test` rc=0 both backends · hex_voxel 141 → 146 | ✅ Done |
-| ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ | ◐ **Two of four, and the rest now waits on `M1`** — see below |
+| ◐ **`W4`** — `hex_editor::press`, the key→gesture chokepoint | M | `editor_run` ✅ · server `MSG_HOUSE` ✅ · `editor_client` ✅ (`B1a`, five of seven keys) | ◐ **Three of four.** What is left: `tools/script.mjs`'s `KEYMAP`, and the OPENING pair in the client — both blocked on the same thing, a selection reachable from the driver |
 | ✅ **`R1a`** — the pose carries the ground under the feet | S | **DONE.** `make lib-test` rc=0 both backends (hex_editor 398→400) · `make parts` byte-identical · the house script still `τ 3909` · two sabotages seen red | ✅ Done |
 | ✅ **`R1b`** — reconcile the RING verb with `do_fence` (reference, yaw, the trunk) | S | **DONE.** 5 sabotages seen red · `make lib-test` rc=0 both backends (hex_editor 400→404) · `make parts` byte-identical · `make gate` 47 PASS / 0 FAIL | ✅ Done |
 | ✅ **`R3`** — `press` answers **`PR_SELECT`** for `O`/`P` until a selection exists | XS | **DONE.** Both tests seen red first · `house.keys` through the runner is **byte-identical**, τ 3909 · the wire path untouched | ✅ Done |
@@ -102,7 +106,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K2a`** — convert the presses that LOSE information: 18 opening keys in 8 scripts | S | **DONE.** Each script beside a committed baseline of itself, through a server: sentences, saved world **and** kinds · `make probe-convert` · ⚠ the first two are blind to a niche's depth — measured | ✅ Done |
 | **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Blocked on twelve keys having no verb** — `R E Q B C J K V Y T X Z` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
-| **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | the SERVER's own `println` stream over one key sequence, old client beside new, **plus the session read-back** | ⏭ **READY** — nothing blocks it |
+| ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | **`B1b`** — local mode: the same `act` calls `press_verb` against the client's own cache | M | both modes from one key sequence, compared as **whole-world bytes AND session** | Blocked on `B1a` |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
@@ -138,6 +142,47 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## What `B1a` turned up (2026-08-13) — and no gate had ever pressed a key in the client
+
+**`src/editor_client.loft`'s five one-to-one keys resolve through `hex_editor::verb_of` now**,
+with a local `act(h, verb)` holding which message implements a verb. `ArrowUp` `ArrowDown` `H`
+`F` `G` moved; `O`/`P` did not, for the reason written at the site. `make probe-b1a`: **7
+sentences identical and the saved world identical** (`82d622b3`), the converted client against a
+committed baseline of the client from before the change.
+
+⚠ **NOTHING IN THIS TREE HAD EVER PRESSED A KEY IN THE CLIENT.** `make gate` drives the **server**
+through `tools/script.mjs`; `make client-check` counts colours in a picture. So the client's key
+table could have said anything and all 48 gates would have stayed green — which is how it stayed a
+fourth site through `V1`, `V2a`, `V2b` and `V3`, every one of which was about exactly this.
+`probe/b1a` is the first check of it, and its existence is the finding.
+
+⚠ **THE FIRST FILTER WAS BLIND TO HALF THE STEP, AND IT WAS BLIND BY INHERITANCE.** It was copied
+from `probe/k1`, which drops `brush ` — and `brush (10,0) — 2 chunks, 10 dirty` is the **only**
+thing a raise says. Both arrows vanished and the capture read `3 sentences` as though they had
+never been pressed. **A filter inherited from a probe with a different subject is an instrument
+nobody aimed.** ⏭ And the fix is not a bigger number: the check is now a **presence test per
+gesture** — three brushes, one house, two rings — because a count of seven cannot say *which* key
+lost its trace, and sabotage 2 reports `brush 4 (want 3) · house 0 (want 1)` on sight.
+
+⚠ **`K1`'s FINDING REPRODUCED ONE DRIVER OUT, AND IT IS WHY THERE ARE TWO INSTRUMENTS.** Sabotage
+1 points `act`'s `fence` at the wall's message: **all seven sentences stay identical** — `do_fence`
+says `fenced 42 edges (21 stored outside) at (0,0) radius 3` for both — and only the world moves,
+`82d622b3` → `cdabc1dc`. Sabotage 2 points `place` at a raise: the transcript, the presence check
+**and** the world all go red. **Neither instrument alone would have covered the five keys.**
+
+⚠ **AND THE BASELINE WAS CHECKED AGAINST ITSELF BEFORE IT WAS TRUSTED.** The pre-change client was
+run twice — capture, then compare — and both the transcript and the md5 held. Without that, an
+equal result says only that two runs of anything agree, and this probe has a browser, a socket, a
+tick and a mesher between the key and the number.
+
+⚠ **THE PROBE DELIBERATELY DOES NOT WALK.** Holding `w` integrates movement on the server's tick,
+so how far the character gets is a wall clock, and two runs stopping in different places build
+different worlds for a reason that has nothing to do with what a key means. Every gesture happens
+where the fresh server put the character. ⏭ **Which surfaced a live fact worth a line: `h` at the
+spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
+person opening the editor and pressing the house key is told no. Not this step's to fix; the
+refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
 
 ## How `B1` is cut, and what each piece can be surprised by (2026-08-13)
 

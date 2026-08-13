@@ -108,6 +108,13 @@ probe/**/.chrome-*
 # against the program's SOURCE directory rather than the process's cwd.
 probe/p6/*.hxw
 
+# `probe/b1a` captures a transcript per run and builds throwaway clients beside
+# itself — the PRE-CHANGE source it compares against, and the sabotages. What is
+# committed is `baseline.said` / `baseline.md5`, which are the comparison.
+probe/b1a/.out/
+probe/b1a/.baseline.loft
+probe/b1a/.sab-*.loft
+
 # The gate suite copies the compiled server here — a loft binary roots its file I/O
 # at its own directory's parent, so it has to sit one level under the repository or
 # every snapshot and save lands in src/.loft/. Rebuilt every run; never committed.

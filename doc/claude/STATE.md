@@ -383,7 +383,35 @@ serves**, differing only in where a key press goes.
 | ✅ `K2a` | **the 18 opening presses are converted** — `select <kind>` + `verb opening` in 8 scripts, every other key untouched. `make probe-convert` |
 | ✅ `V2b` | **`editor_run` resolves through `verb_of`** — the **last production caller of `press(key)`**. No equality could see the step; `probe/k1` check `G` can |
 | ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
-| ⏭ next | **`B1a`** — the client's key table names a VERB. `B1` is **cut into three** now (`B1a` wire-identical, `B1b` local mode, `B1c` the walk, unsized on purpose); the plan has the reasoning. It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
+| ⏭ next | **`B1b`** — local mode. `B1` is **cut into three** (`B1a` ✅, `B1b` local mode, `B1c` the walk, unsized on purpose); the plan has the reasoning. It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1a` — AND NO GATE HAD EVER PRESSED A KEY IN THE CLIENT, 2026-08-13
+
+**`src/editor_client.loft`'s five one-to-one keys resolve through `hex_editor::verb_of`**, with a
+local `act(h, verb)` holding which message implements a verb. `make probe-b1a`: **7 sentences and
+the saved world identical** to a committed baseline of the client from before the change.
+
+⚠ **THE CLIENT'S KEY TABLE COULD HAVE SAID ANYTHING AND ALL 48 GATES WOULD HAVE STAYED GREEN.**
+`make gate` drives the **server** through `tools/script.mjs`; `make client-check` counts colours in
+a picture. Neither presses a key in the client. That is how it survived as `W4`'s fourth site
+through `V1`, `V2a`, `V2b` and `V3` — four steps whose whole subject it was.
+
+⚠ **THE FIRST FILTER WAS BLIND TO HALF THE STEP, BY INHERITANCE.** Copied from `probe/k1`, which
+drops `brush ` — and `brush (10,0) — 2 chunks, 10 dirty` is the **only** thing a raise says. Both
+arrows vanished and the capture read `3 sentences` as if they had never been pressed. **A filter
+inherited from a probe with a different subject is an instrument nobody aimed.** The check is a
+**presence test per gesture** now, not a count: a count of seven cannot say *which* key lost its
+trace.
+
+⚠ **`K1`'s FINDING, REPRODUCED ONE DRIVER OUT.** Sabotage `act`'s `fence` to the wall's message and
+**all seven sentences stay identical** — `do_fence` says the same line for both — while the world
+goes `82d622b3` → `cdabc1dc`. Sabotage `place` to a raise and transcript, presence check and world
+all go red. **Neither instrument alone covers the five keys.**
+
+⏭ **AND A LIVE FACT FELL OUT: `h` AT THE SPAWN POINT IS REFUSED** — *"a footprint at this facing
+has no mitred corners; turn one step"*. A person opening the editor and pressing the house key is
+told no. Not `B1a`'s to fix.
 
 ## ⛔ `P6` — A PAGE HAS A FILESYSTEM, AND A PHASE IS CANCELLED, 2026-08-13
 

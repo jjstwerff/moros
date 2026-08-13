@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -551,6 +551,17 @@ probe-p2:
 # the oracle. `P6_SABOTAGE=persist` is the control.
 probe-p6:
 	@sh probe/p6/run.sh
+
+# B1a (plan 22) — DOES THE CLIENT SEND WHAT IT ALWAYS SENT, now that its keys name
+# VERBS instead of wire messages? ⚠ NOTHING ELSE CHECKS THIS: `make gate` drives the
+# server through script.mjs and `make client-check` counts colours in a picture, so
+# neither presses a key in the client at all. The instrument is two things, because
+# each is blind on its own — the server's println stream cannot tell a fence from a
+# wall, and the saved world cannot tell one opening profile from another.
+# `B1A_BASELINE=1` rewrites the committed baseline; `B1A_SOURCE=<file>` builds a
+# different client, which is how the sabotages run.
+probe-b1a:
+	@sh probe/b1a/run.sh
 
 # L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
 # Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers
