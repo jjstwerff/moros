@@ -135,8 +135,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | **DONE 2026-08-13.** `make probe-auth` is 33 checks: a horizon where a page with no camera has only the clear colour, the picture holding still with nothing pressed, and the raise redrawing it — and the far ground unchanged, which is what separates a gesture from a camera. Meshing writes nothing: the digest is the same before and after (`hex_voxel` measured, 25 tiles) | ✅ Done |
 | ◐ **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | **L**, measured | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws. **Sized: 32 functions, 1342 lines, 9 constants, and nothing else of the server's** | ◐ **`c.1` done** |
 | ✅ **`B1b.2c.1`** — the five primitives the mesher needs, out of `moros_render` | S | **DONE 2026-08-13.** `make probe-emitters`: five `mesh_crc` pairs identical with a control, and the ambiguity error named all 10 server call sites so none could be missed | ✅ Done |
-| **`B1b.2c.2`** — `moros_render`'s five go; 14 tests move with them | S | ⚠ 3 more tests use them as FIXTURES for another subject and must build their own — `moros_render` may not depend on `hex_mesh` (it would hand `moros_sim` the whole `hex_editor` cone, which is why the mesher is its own package) | ⏭ next |
-| **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | M | ⚠ both copies live and compared per chunk per surface, the `W1` shape | Blocked on `c.2` |
+| ✅ **`B1b.2c.2`** — the five find their real home, and `moros_render`'s go | S | **DONE 2026-08-13.** ⛔ `c.1`'s home was WRONG: all five have internal `moros_render` users, so they could not leave — they are **`hex_proj`'s** now, the leaf both sides already depend on. 14 tests moved with them (moros_render 167 → 153, hex_proj 8 → 22, every row accounted for); 3 fixture-only tests build their own geometry | ✅ Done |
+| **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | ⚠ both copies live and compared per chunk per surface, the `W1` shape — **1342 lines, 32 functions, 9 constants** | ⏭ **next**, and its blocker is gone |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -212,6 +212,48 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ⛔ What `B1b.2c.2` turned up (2026-08-13) — the home was wrong, and a grep is why
+
+**The five primitives are `hex_proj`'s.** Not `hex_mesh`'s, which is where `c.1` put them one
+commit earlier — and the reason is a measurement that had a hole in it.
+
+⛔ **`c.1` CONCLUDED THE EDITOR WAS THEIR ONLY CONSUMER, FROM A GREP THAT EXCLUDED THE FILE THEY
+LIVE IN.** Looking for who else calls them, the sweep filtered out `moros_render`'s own source — so
+it could not see that **all five have internal users there**: `emit_marker`, `emit_to_material`,
+`emit_thick_flat_wall`, `emit_thick_curved_wall` and `emit_hex_item`. *A grep's exclusion is an
+assumption, and this one assumed the question it was asked to answer.*
+
+✅ **AND THE COMPILER REFUSED BOTH WAYS OUT, WHICH IS HOW THE RIGHT HOME WAS FOUND.** Deleting
+them broke `moros_render`; keeping a copy on each side is the duplication this tree exists not to
+have — and `moros_render` **depends on** `hex_proj`, so a duplicate declaration is not even
+expressible: `error: Cannot redefine 'emit_box' (already defined at …/hex_proj/…)`. ⚠ That is a
+*different* diagnostic from `c.1`'s `declared by more than one package`, and the difference is
+exactly the dependency arrow: siblings are ambiguous, a package and its dependency are a
+redefinition.
+
+✅ **SO THE HOME IS THE LEAF BOTH SIDES ALREADY DEPEND ON.** `hex_proj` is `hex_grid` + `graphics`
+and nothing else, which is precisely the cone the five need — `hex_to_world` and
+`proj_corner_offset` are its own. `moros_render` declares it, `hex_mesh` declares it, so **nothing
+gained a dependency and no arrow moved**.
+
+⚠ **THE EQUALITY IS A CHAIN, AND EACH LINK IS MEASURED.** `c.1` compared `moros_render`'s five
+against the copy, mesh checksum by mesh checksum with a control. `c.2`'s second hop is a **verbatim
+relocation** — five of five function bodies identical, modulo one `pub` — checked with a diff
+against the previous commit rather than asserted. And the **14 tests moved with the subject**:
+`moros_render` 167 → **153**, `hex_proj` 8 → **22**, every row accounted for, which is `V3`'s rule
+that a deletion's instrument is the test-name arithmetic and not a green suite.
+
+⚠ **THREE TESTS USED THEM AS FIXTURES FOR ANOTHER SUBJECT AND NOW BUILD THEIR OWN.**
+`flag_occluders` reads `mesh_aabb`, so what its fixture owes is an EXTENT and not a shape — two
+vertices where a box gave twenty-four, **and a `fx_extent_is` that asserts the bounding box**, so a
+fixture that stopped spanning what it claims cannot quietly change what the probe measures. The
+adversarial chain probe needs one vertex at the origin.
+
+⏭ **AND `EDITOR_PROBE=emitcmp` IS SPENT.** It existed because two copies were visible from the
+server; there is one copy now, and the dependency arrow makes a second one a compile error. **What
+the probe measured, the compiler enforces** — and what keeps the geometry honest is the fourteen
+tests that travelled with it.
 
 ## ◐ What sizing `B1b.2c` turned up (2026-08-13) — the blocker was an ARROW, and it is payable
 

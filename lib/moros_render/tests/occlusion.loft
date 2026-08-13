@@ -4,6 +4,32 @@ use graphics;
 
 // ── Aabb helpers ──────────────────────────────────────────────────
 
+// A mesh with a given EXTENT, and nothing else — plan 22 `B1b.2c.2`.
+//
+// ⚠ `flag_occluders` reads `mesh_aabb`, so what these fixtures owe is a bounding
+// box and not a shape. They used `emit_box`, which moved to `hex_mesh` with the
+// rest of the primitives the editor's props mesher needs; `moros_render` may not
+// depend on that package, because `moros_sim` depends on THIS one and would
+// inherit `hex_editor`'s whole cone (the experiment `hex_mesh`'s own loft.toml
+// records as tried and reverted).
+//
+// ⚠ AND THE FIXTURE IS CHECKED RATHER THAN ASSUMED: two vertices give the same
+// AABB as a box's twenty-four, and `fx_extent_is` asserts it, so a fixture that
+// stopped spanning what it claims cannot quietly change what the probe measures.
+fn fx_extent(m: Mesh, lo: Vec3, hi: Vec3) {
+  up = vec3(0.0, 1.0, 0.0);
+  m.vertices += [vertex(lo, up, vec2(0.0, 0.0))];
+  m.vertices += [vertex(hi, up, vec2(1.0, 1.0))];
+}
+
+fn fx_extent_is(m: Mesh, lo: Vec3, hi: Vec3) {
+  bb = mesh_aabb(m);
+  assert(bb.aabb_min.x == lo.x && bb.aabb_min.y == lo.y && bb.aabb_min.z == lo.z,
+         "the fixture's low corner is ({bb.aabb_min.x},{bb.aabb_min.y},{bb.aabb_min.z})");
+  assert(bb.aabb_max.x == hi.x && bb.aabb_max.y == hi.y && bb.aabb_max.z == hi.z,
+         "the fixture's high corner is ({bb.aabb_max.x},{bb.aabb_max.y},{bb.aabb_max.z})");
+}
+
 fn test_aabb_from_sphere() {
   b = aabb_from_sphere(vec3(1.0, 2.0, 3.0), 0.5);
   assert(b.aabb_min.x == 0.5, "min x");
@@ -127,7 +153,8 @@ fn test_cone_corner_hit() {
 fn test_flag_occluders_negative_mesh_idx() {
   nsc = scene("neg");
   nm1 = mesh("only");
-  emit_box(nm1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
+  fx_extent(nm1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
+  fx_extent_is(nm1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
   add_mesh(nsc, nm1);
   ndm = add_material(nsc, material("dm"));
   add_node(nsc, node("broken", -1, ndm));
@@ -141,10 +168,11 @@ fn test_flag_occluders_parallel_to_nodes() {
   sc = scene("t");
   // Two meshes: one at z=5 (on axis of cone pointing +Z), one at x=20 (far off).
   m1 = mesh("close");
-  emit_box(m1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
+  fx_extent(m1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
+  fx_extent_is(m1, vec3(-0.1, -0.1, 4.9), vec3(0.1, 0.1, 5.1));
   m1_i = add_mesh(sc, m1);
   m2 = mesh("far_offaxis");
-  emit_box(m2, vec3(19.9, -0.1, -0.1), vec3(20.1, 0.1, 0.1));
+  fx_extent(m2, vec3(19.9, -0.1, -0.1), vec3(20.1, 0.1, 0.1));
   m2_i = add_mesh(sc, m2);
   dm = add_material(sc, material("dm"));
   add_node(sc, node("close", m1_i, dm));

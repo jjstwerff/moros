@@ -386,10 +386,37 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
-| ◐ `B1b.2c` | **THE MESHER'S BLOCKER WAS AN ARROW, AND IT IS PAID.** Five primitives out of `moros_render` into `hex_mesh`, proved identical by `make probe-emitters`. The props mesher itself is 1342 lines and is next |
+| ◐ `B1b.2c` | **THE MESHER'S BLOCKER WAS AN ARROW, AND IT IS PAID** — the five primitives live in `hex_proj` now (`c.2` corrected `c.1`'s home; a grep had excluded the file they live in). Five primitives out of `moros_render` into `hex_mesh`, proved identical by `make probe-emitters`. The props mesher itself is 1342 lines and is next |
 | ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ⛔ `B1b.2c.2` — THE HOME WAS WRONG, AND A GREP'S EXCLUSION IS WHY, 2026-08-13
+
+**The five drawing primitives are `hex_proj`'s**, not `hex_mesh`'s where `c.1` put them one commit
+earlier.
+
+⛔ **`c.1` CONCLUDED THE EDITOR WAS THEIR ONLY CONSUMER FROM A GREP THAT EXCLUDED THE FILE THEY
+LIVE IN** — so it could not see that all five have internal `moros_render` users (`emit_marker`,
+`emit_to_material`, `emit_thick_flat_wall`, `emit_thick_curved_wall`, `emit_hex_item`). **A grep's
+exclusion is an assumption**, and this one assumed the question it was asked.
+
+✅ **THE COMPILER REFUSED BOTH WAYS OUT.** Deleting broke `moros_render`; a copy on each side is
+not expressible, because `moros_render` DEPENDS on `hex_proj` — `error: Cannot redefine 'emit_box'`
+rather than `c.1`'s `declared by more than one package`. ⚠ Two different diagnostics, and the
+difference is the dependency arrow: siblings are ambiguous, a package and its dependency are a
+redefinition.
+
+✅ **SO THE HOME IS THE LEAF BOTH SIDES ALREADY DEPEND ON** — `hex_proj`, which is `hex_grid` +
+`graphics` and nothing else. Nothing gained a dependency and no arrow moved.
+
+⚠ **THE EQUALITY IS A CHAIN**: `c.1` measured `moros_render` == the copy by mesh checksum with a
+control; `c.2`'s hop is a **verbatim relocation**, five of five bodies identical modulo one `pub`,
+diffed against the previous commit. And the 14 tests moved with the subject — `moros_render`
+167 → **153**, `hex_proj` 8 → **22**, every row accounted for (`V3`'s rule).
+
+⏭ **`EDITOR_PROBE=emitcmp` IS SPENT** — one copy left, and the arrow makes a second a compile
+error. **What the probe measured, the compiler enforces.**
 
 ## ◐ `B1b.2c` — THE PROPS MESHER IS 1342 LINES, AND ITS BLOCKER WAS AN ARROW, 2026-08-13
 

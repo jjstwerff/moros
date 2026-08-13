@@ -149,7 +149,13 @@ fn test_adv_match_returning_integer() {
 
 fn test_adv_deep_chain_vector_element() {
   m_adv6 = mesh("adv_chain");
-  emit_hex_surface(m_adv6, 0, 0, 0);
+  // ⚠ THE FIXTURE IS ONE VERTEX, NOT A HEX SURFACE — plan 22 `B1b.2c.2`. This
+  // probe is about loft's field chaining through a vector element, and the mesh
+  // it chains into is scenery: it used `emit_hex_surface`, which moved to
+  // `hex_mesh`, and `moros_render` may not depend on that package (it would hand
+  // `moros_sim` the whole `hex_editor` cone). A fixture built here says what the
+  // probe needs — a vertex at the origin — instead of borrowing a mesher.
+  m_adv6.vertices += [vertex(vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec2(0.5, 0.5))];
   // Read nested field: mesh.vertices[0].pos.x (two levels of deref
   // through a vector element).  P105 historically broke on this.
   x0 = m_adv6.vertices[0].pos.x;

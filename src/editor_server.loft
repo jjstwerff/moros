@@ -35,6 +35,7 @@ use glb_read;     // load_glb — the importer, ours because upstream cannot ver
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
 use moros_render;
 use hex_mesh;
+use hex_proj;   // the drawing primitives — plan 22 `B1b.2c.2`
 // ⚠ `hex_shape` IS NOT USED HERE, AND IT HAS TO BE NAMED ANYWAY. `hex_editor` is
 // found through `--lib lib/`, and a directory package's transitive registry
 // dependency is not resolved before the module that needs it is parsed: without
@@ -778,9 +779,9 @@ const PART_ARM_R = 4;
 // with the thumbnail to avoid.
 fn cart_mesh_lines() -> vector<text> {
   cbm = mesh("cart");
-  hex_mesh::emit_box(cbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+  hex_proj::emit_box(cbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
   cwm = mesh("wheel");
-  hex_mesh::emit_cylinder_post(cwm, vec3(0.0, 0.0, 0.0 - 0.06),
+  hex_proj::emit_cylinder_post(cwm, vec3(0.0, 0.0, 0.0 - 0.06),
                           vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
   ["M:{CART_BODY};0;{mesh_wire(cbm, 0.42, 0.28, 0.16)}",
    "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}",
@@ -927,7 +928,7 @@ fn mat4_rotate_z(rz: float) -> Mat4 {
 // lets a joint angle be one rotation with no compensating translation.
 fn limb_mesh(ln: text, llen: float, lw: float, ld: float) -> Mesh {
   lm = mesh(ln);
-  hex_mesh::emit_box(lm, vec3(0.0 - lw * 0.5, 0.0 - llen, 0.0 - ld * 0.5),
+  hex_proj::emit_box(lm, vec3(0.0 - lw * 0.5, 0.0 - llen, 0.0 - ld * 0.5),
                vec3(lw * 0.5, 0.0, ld * 0.5));
   lm
 }
@@ -942,11 +943,11 @@ fn body_mesh() -> Mesh {
   b_hip = hip_wu();
   b_chest = bh * 0.72;
   b_neck = bh * 0.855;
-  hex_mesh::emit_box(bm, vec3(0.0 - bhd * 0.36, b_hip - hip_overlap(), 0.0 - bsw * 0.40),
+  hex_proj::emit_box(bm, vec3(0.0 - bhd * 0.36, b_hip - hip_overlap(), 0.0 - bsw * 0.40),
                vec3(bhd * 0.36, b_chest, bsw * 0.40));
-  hex_mesh::emit_box(bm, vec3(0.0 - bhd * 0.40, b_chest, 0.0 - bsw * 0.50),
+  hex_proj::emit_box(bm, vec3(0.0 - bhd * 0.40, b_chest, 0.0 - bsw * 0.50),
                vec3(bhd * 0.40, b_neck, bsw * 0.50));
-  hex_mesh::emit_box(bm, vec3(0.0 - bhd * 0.43, b_neck, 0.0 - bhd * 0.39),
+  hex_proj::emit_box(bm, vec3(0.0 - bhd * 0.43, b_neck, 0.0 - bhd * 0.39),
                vec3(bhd * 0.43, bh, bhd * 0.39));
   bm
 }
@@ -2659,7 +2660,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
         if hex_voxel::hex_occupied(de) {
           dwp = hex_to_world(cq, cr, 0);
           dy = (de.h_height as float ?? 0.0) * HEIGHT_SCALE;
-          hex_mesh::emit_item_placeholder(vm, "PROP", vec3(dwp.x, dy, dwp.z), 0.35);
+          hex_proj::emit_item_placeholder(vm, "PROP", vec3(dwp.x, dy, dwp.z), 0.35);
         }
       }
       c = world_column(wld, cq, cr);
@@ -2747,7 +2748,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
             ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
             sc = 0.55;
             if e.h_item == SPECIES_BUSH { sc = 0.22; }
-            hex_mesh::emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
+            hex_proj::emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
           }
           // ⚠ A ROOF CELL DRAWS ITSELF ONLY WHERE NO PLAN COVERS IT (S6b). Under a
           // gable the cells are the roof's INDEX — which columns are beneath it,
@@ -2832,7 +2833,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
                 emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
               }
             } else {
-            hex_mesh::emit_hex_surface(fm, cq, cr, fh);
+            hex_proj::emit_hex_surface(fm, cq, cr, fh);
             emit_floor_slab(fm, wld, cq, cr, fh);
             // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
             // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
@@ -5420,79 +5421,17 @@ fn probe_view() {
   }
 }
 
-// ── ARE THE MOVED EMITTERS THE SAME EMITTERS? — plan 22 `B1b.2c` ─────────────
+// ⏭ `EDITOR_PROBE=emitcmp` WAS HERE, AND IT IS SPENT — plan 22 `B1b.2c.2`.
 //
-// Run:  EDITOR_PROBE=emitcmp loft --interpret --lib lib/ src/editor_server.loft
-//
-// Five primitives moved from `moros_render` into `hex_mesh` — the arrow the props
-// mesher needs before IT can move, because a lavition package cannot reach into a
-// Moros one. A move is only a move if the geometry is identical, and **this is the
-// one place both copies are visible at once**: the server imports both packages, a
-// library test cannot (that is the whole point of the arrow), and a probe program
-// would have to import Moros to ask the question.
-//
-// ⚠ IT COMPARES THE MESH, NOT THE CALL. `mesh_crc` is over every vertex and every
-// triangle, so a transcription that dropped a corner, flipped a winding or shifted
-// a UV is a different number — where "it compiled and the gate is green" is what a
-// silent geometry change looks like from outside.
-//
-// ⚠ AND EACH PRIMITIVE IS ASKED SEPARATELY, never summed into one mesh. A total
-// cannot say WHICH of five moved wrong, and the whole reason this exists is that a
-// mechanical copy fails one function at a time.
-fn emit_pair(name: text, a: Mesh, b: Mesh, bad: &integer) {
-  ca = hex_mesh::mesh_crc(a);
-  cb = hex_mesh::mesh_crc(b);
-  same = ca == cb;
-  if !same { bad = bad + 1; }
-  println("  {name}: moros_render {ca} · hex_mesh {cb} — "
-          + "{if same { "same" } else { "DIFFERENT" }} "
-          + "({len(a.vertices)}/{len(b.vertices)} vertices, "
-          + "{len(a.triangles)}/{len(b.triangles)} triangles)");
-}
-
-fn probe_emitcmp() {
-  bad = 0;
-  // ⚠ THE INPUTS ARE THE ONES THE SERVER ACTUALLY PASSES, not round numbers: a
-  // negative hex (the sign-extension half of the lattice), an off-origin box and a
-  // post that is not vertical. A fixture of zeros agrees with anything.
-  ea = mesh("a"); eb = mesh("b");
-  moros_render::emit_hex_surface(ea, 0 - 3, 5, 7);
-  hex_mesh::emit_hex_surface(eb, 0 - 3, 5, 7);
-  emit_pair("emit_hex_surface   ", ea, eb, bad);
-
-  ba = mesh("a"); bb = mesh("b");
-  moros_render::emit_box(ba, vec3(0.0 - 0.6, 0.2, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
-  hex_mesh::emit_box(bb, vec3(0.0 - 0.6, 0.2, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
-  emit_pair("emit_box           ", ba, bb, bad);
-
-  ca = mesh("a"); cb = mesh("b");
-  moros_render::emit_cylinder_post(ca, vec3(0.1, 0.0, 0.0 - 0.06), vec3(0.3, 1.7, 0.2), 0.05, 8);
-  hex_mesh::emit_cylinder_post(cb, vec3(0.1, 0.0, 0.0 - 0.06), vec3(0.3, 1.7, 0.2), 0.05, 8);
-  emit_pair("emit_cylinder_post ", ca, cb, bad);
-
-  // Both branches of the placeholder — the cylinder one and the box one — because
-  // it DISPATCHES on the kind, and a copy that lost a branch is still a copy.
-  pa = mesh("a"); pb = mesh("b");
-  moros_render::emit_item_placeholder(pa, "TREE", vec3(1.0, 2.0, 3.0), 0.35);
-  hex_mesh::emit_item_placeholder(pb, "TREE", vec3(1.0, 2.0, 3.0), 0.35);
-  emit_pair("placeholder TREE   ", pa, pb, bad);
-  qa = mesh("a"); qb = mesh("b");
-  moros_render::emit_item_placeholder(qa, "PROP", vec3(1.0, 2.0, 3.0), 0.35);
-  hex_mesh::emit_item_placeholder(qb, "PROP", vec3(1.0, 2.0, 3.0), 0.35);
-  emit_pair("placeholder PROP   ", qa, qb, bad);
-
-  // ⚠ AND A CONTROL, because five equalities prove nothing if `mesh_crc` answers
-  // the same number for everything. One deliberately different box must differ.
-  za = mesh("a"); zb = mesh("b");
-  moros_render::emit_box(za, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0));
-  hex_mesh::emit_box(zb, vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.1));
-  ctl = hex_mesh::mesh_crc(za) != hex_mesh::mesh_crc(zb);
-  println("  CONTROL a box 0.1 deeper: {if ctl { "different, as it must be" } else { "SAME — mesh_crc cannot see geometry" }}");
-  if !ctl { bad = bad + 1; }
-
-  if bad == 0 { println("emitcmp PASS — five primitives, identical geometry"); }
-  else { println("emitcmp FAIL — {bad}"); }
-}
+// It compared `moros_render`'s five drawing primitives against the copy made for
+// the editor, mesh checksum by mesh checksum, because a move is only a move if the
+// geometry is identical and this was the one place both copies were visible. They
+// are `hex_proj`'s now and `moros_render` calls those, so there is no second copy
+// to compare against — **and the compiler is what guarantees it**: `moros_render`
+// depends on `hex_proj`, so a duplicate declaration is `Cannot redefine` rather
+// than a drift nobody notices. What the probe measured, the dependency arrow now
+// enforces; what keeps the geometry honest is the fourteen tests that moved with
+// it into `lib/hex_proj/tests/emitters.loft`.
 
 // Run:  EDITOR_PROBE=fit loft --interpret --lib lib/ src/editor_server.loft
 fn probe_fit() {
@@ -5599,7 +5538,6 @@ fn probe_fit() {
 
 fn main() {
   // The probe runs the mesh code and nothing else — no socket, no client.
-  if env_variable("EDITOR_PROBE") == "emitcmp" { probe_emitcmp(); return; }
   if env_variable("EDITOR_PROBE") == "fit" { probe_fit(); return; }
   if env_variable("EDITOR_PROBE") == "view" { probe_view(); return; }
 
@@ -7338,7 +7276,7 @@ fn main() {
               }
             }
           } else {
-            hex_mesh::emit_box(xbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
+            hex_proj::emit_box(xbm, vec3(0.0 - 0.6, 0.0, 0.0 - 0.5), vec3(0.6, 0.45, 0.5));
           }
           // ⚠ AN EMPTY EXPORT IS REFUSED RATHER THAN WRITTEN. A part whose body is a
           // `.glb` has no cells to block out, and `save_glb` on an empty mesh leaves a
