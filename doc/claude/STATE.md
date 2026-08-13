@@ -386,7 +386,55 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
-| ⛔ then | **`B1b.1`** is **blocked on its boot switch** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). Three routes in the plan; route 3 (connect-or-local, **with the subject line saying which**) is the one to build if #891 does not land. `B1` is **cut into five** (`B1a` ✅, `B1b.0` ✅, `B1b.1`, `B1b.2` draw, `B1c` the walk, unsized on purpose). It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
+| ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.1b` — THE PAGE IS AN EDITOR, AND THE DIGEST WAS MADE OF THE FORMAT, 2026-08-13
+
+**With nothing behind the wire the page stops dialling, says so, and WRITES what it is pressed.**
+`hex_editor::press_verb` against the `VoxelWorld` the client has held since plan 16 `S3`;
+`make probe-auth` is **28 checks**, and the claim is the last two — the page and `editor_run` at
+`GROUND=0`, over the same six verbs at the same author, agree on the **world**
+(`32952:1545220309`) and on the **session**.
+
+⛔ **THE INSTRUMENT THE WHOLE CLAIM RESTS ON WAS BLIND ON ITS FIRST BUILD, BY CONSTRUCTION.**
+`hex_voxel::world_key` began as a CRC32 over `world_to_bytes` — and **this format writes each
+layer's cells followed by `layer_crc` OF THOSE CELLS**, so a CRC32 whose message carries its own
+CRC32 lands on one residue whatever the message held. Two worlds one edge byte apart keyed to the
+same string `8277:3255039172`, with byte sums **1143 against 1033** proving the vectors differed.
+Only a HEIGHT moved it, and only because a height moves `ck_base` in the *directory*, which no
+layer checksum covers. ⚠ **An instrument made of the same material as its subject can cancel
+against it** — and reaching for the checksum the format already trusts is exactly how you get
+there. It is `world_sections_key`'s `*31 + b` now.
+
+⚠ **AND THE TESTS CAUGHT IT, NOT THE STEP.** `lib/hex_voxel/tests/key.loft` was written before
+the function was believed, every case shaped as *a pair a weaker instrument calls equal* — three
+of five red on the first run. A test that only said *different worlds, different keys* would have
+passed a function that hashed the write count.
+
+⚠ **TWO INSTRUMENTS, BLIND IN OPPOSITE DIRECTIONS, MEASURED BY SABOTAGE.** `elsewhere` presses
+the same six verbs one world-unit over: every count, every sentence and the whole session are
+unchanged — **a ring of the same radius writes 42 edges wherever it is laid** — and it is red on
+**B10 alone**. `scratchsession` presses into a session nobody keeps: the world is
+**byte-identical** and it is red on **B11 alone**. That is why `hex_editor::session_digest` MOVED
+out of `editor_run` instead of being copied into the client.
+
+⚠ **THE SWITCH IS A BOUND, BECAUSE THERE IS NO EVENT.** `ws_handler` gives no `onopen` and loft's
+surface has no callback, so *the socket did not open* is only observable as *not yet*.
+`LOCAL_AFTER = 180` dials, measured against the real thing: **a live server lands on dial 4**. The
+decision is **one-way** and the loop stops dialling when it fires — a page that kept dialling
+would attach to a server that came up later while holding gestures nobody else has seen. ⏭ **Run
+C is the control it needed and already had**: a socket that OPENS and then says nothing must not
+be read as no socket at all.
+
+⚠ **AND THE RUNNER SEEDS GROUND WHERE THE SERVER LAYS NONE** — 61×61 of `SURFACE_MAT`, so a
+scripted scene has something to photograph. Same six verbs: **τ 4079** seeded, **τ 358** not. So
+`editor_run` grew `GROUND=<half>`, and it is *start where the editor starts* rather than a test
+hook — `E1γ`, absence IS the floor.
+
+⏭ **AND `place` IS REFUSED AT THE ORIGIN IN BOTH DRIVERS** (*"a footprint at this facing has no
+mitred corners"*, `B1a`'s live fact). The fixture KEEPS the refusal rather than posing around it.
+It also names what stands between this page and a house: **the walk, `B1c`.**
 
 ## ✅ `B1b.1a` — THE SABOTAGE PASSED, AND ITS PASSING IS THE FINDING, 2026-08-13
 

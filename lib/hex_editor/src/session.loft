@@ -362,6 +362,37 @@ pub fn session_dressing(w: VoxelWorld, q: integer, r: integer) -> vector<integer
   sd_out
 }
 
+// ── WHAT THE SESSION HOLDS, IN WORDS — plan 22 `K1`, moved here at `B1b.1b` ──
+//
+// The nine registries, every opening's GEOMETRY, and the standing choice. `K1`
+// built it inside `editor_run` because the world cannot see what a conversion
+// loses; `B1b.1b` moved it here because a page in local mode needs to be held
+// against that runner, and a second copy of this text in the client would be two
+// programs agreeing about a string rather than about a session.
+//
+// ⚠ IT IS THE OTHER HALF OF `hex_voxel::world_key`, AND NEITHER HALF IS OPTIONAL.
+// A ring records its TRUNK in the session and its edges in the store, so a caller
+// that rang with a scratch session builds a byte-identical world and a different
+// scene — `V1`'s finding, and `R1b`'s before it. The world says what was written;
+// this says what the editor remembers.
+//
+// ⚠ AND IT PRINTS EVERY OPENING'S SHAPE, NEVER ONLY `op_kind`. A digest of the
+// label agrees with itself for as long as the label is copied correctly, which is
+// exactly the mistake `K1` was built to catch.
+pub fn session_digest(sess: EditSession) -> text {
+  d = "session: runs {len(sess.es_runs.items)} roofs {len(sess.es_roofs.items)} "
+    + "leaves {len(sess.es_leaves.items)} openings {len(sess.es_open.items)} "
+    + "annex {len(sess.es_annex.items)} props {len(sess.es_props.items)} "
+    + "slabs {len(sess.es_slabs.items)} holes {len(sess.es_holes.items)} "
+    + "trunk {sess.es_trunk.tk_live}/{sess.es_trunk.tk_r}";
+  for op in sess.es_open.items {
+    d += "\n  opening kind {op.op_kind} at {op.op_x},{op.op_z} half {op.op_half} "
+       + "band {op.op_lo}..{op.op_hi} spring {op.op_spring} "
+       + "depth {op.op_near}..{op.op_depth}";
+  }
+  d + "\nchosen: opening {sess.es_open_kind}"
+}
+
 // ── the read-backs a gate asks for over the wire ─────────────────────────────
 //
 // `15:` `16:` `26:` `29:` — the four queries every socket gate uses to see what a

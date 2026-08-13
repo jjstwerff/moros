@@ -34,7 +34,14 @@ was a literal claiming `connected`, set before any socket existed; it is derived
 when the socket opens. `make probe-auth` — **three situations over one page build**, because the
 sabotage that mattered passed against the first two.
 
-**Next:** **`B1b.1b`** — the authority becomes two. The full step decomposition is
+✅ **AND `B1b.1b` IS BUILT — THE AUTHORITY IS TWO, 2026-08-13.** With nothing behind the wire the
+page stops dialling, says so on its status line, and **writes what it is pressed into its own
+world** — the same world and the same session `editor_run` builds from the same six verbs.
+`make probe-auth`, 28 checks. ⛔ **And the digest it is compared through had to be built twice**:
+a CRC32 over this format is structurally blind to every per-cell change, because each layer's
+cells are followed by their own CRC32.
+
+**Next:** **`B1b.2`** — local mode DRAWS what it wrote. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -77,7 +84,7 @@ key press goes.
 | `W2`/`W3` | a part loaded from bytes equals the same part loaded from a path | **a path is a wrapper, on every loader** | a `.glb` that fails to load must **say so**, not draw nothing — an absent mesh reads as a geometry bug |
 | ✅ `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth site | ✅ **BOTH RUN.** `act`'s `fence` → the wall's message: **every sentence identical**, world `82d622b3` → `cdabc1dc`. `act`'s `place` → a raise: transcript, presence check and world all red. ⏭ The opening pair is **left out** rather than pinned — see the finding above; pinning would have made `p` stop cutting a pointed head, which is a change wearing a refactor's clothes |
 | ✅ `B1b.1a` | the panel's status is **derived from the client's own socket**, and moves when it moves | a fact is asserted only where it can be **known** | ⚠ **THREE, AND ONE OF THEM PASSED FIRST TIME.** `literal` (the line as it was) → red on the panel's first word and red with no server. `assume` (authority off the send, not off its success) → red where the client's claim meets the WIRE's log. `nodirty` (the fact moves, the panel is not told) → **green in both runs**, because the real server's `N:`/`H:` rebuild the panel anyway — which is what added the third situation, a socket that opens and says nothing, where `panel_dirty` has exactly one possible writer |
-| `B1b` | the local page and the attached client build the **same world** from the same key sequence | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind.** A fence ring and a wall ring write the same edges of the same disc, so the clock reports one number for two worlds. The comparison is **`world_to_bytes` AND the session**; if they differ, `press_verb` has become a fifth site |
+| ✅ `B1b` | the local page and the runner build the **same world** from the same verbs | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind**, and the correction it made (**`world_to_bytes` AND the session**) is what the built version does. ✅ **NINE SABOTAGES.** The two that matter: `elsewhere` (the same gestures at an author one unit over) is invisible to every count and every sentence — a ring writes 42 edges wherever it is laid — and red on the world key alone; `scratchsession` (press into a session nobody keeps) leaves the world **byte-identical** and is red on the session alone |
 | `B3` | the demo gate opens `_site/index.html` **with no server** and reads a house out of the picture | the quick start **stays** working | ⚠ the gate must fail on an empty page — `[].every(…)` is `true`, and this tree has shipped a row that reported `ok` on a picture with no panel at all |
 
 ⚠ **`B2` (`build-pages.mjs`) has no exact-invariant surface** — it assembles files and decides
@@ -115,9 +122,9 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
 | ✅ **`B1b.1a`** — the client SAYS which authority it has | XS | **DONE 2026-08-13.** `make probe-auth`: 15 checks, **three** situations over one page build — a real server, a static server with no `/ws`, and a socket that opens and says nothing. Three sabotages, each red somewhere different; `make probe-b1a` unmoved | ✅ Done |
-| **`B1b.1b`** — the authority becomes TWO: no socket → local | S | ⚠ the page must build the same world `editor_run` builds from the same verbs — and `B1b.1a`'s line is what stops the swap being silent | ⏭ **next** |
-| **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | the page prints an `Ack` and a world digest; `editor_run` driving the same verbs at the same author prints the same | ⛔ **ITS BOOT SWITCH CANNOT BE ASKED FOR** — `host_input()` BLOCKS with no host, measured. [loft#891](https://github.com/loft-lang/loft/issues/891). Route 3 taken; `B1b.1a` is its first half and is built |
-| **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | a picture, and the world digest unchanged by drawing it | Blocked on `B1b.1` |
+| ✅ **`B1b.1b`** — the authority becomes TWO: no socket → local, and a key WRITES | S | **DONE 2026-08-13.** `make probe-auth`: 28 checks. The page and `editor_run` at `GROUND=0` agree on the **world** (`32952:1545220309`) and on the **session** — two instruments, because a ring's trunk is in one and its edges in the other. Nine sabotages | ✅ Done |
+| ✅ **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | **DONE as `B1b.1a` + `B1b.1b`.** ⛔ Its boot switch could not be asked for — `host_input()` BLOCKS with no host, measured ([loft#891](https://github.com/loft-lang/loft/issues/891)) — so route 3 replaced it: connect-or-local, with the panel saying which |
+| **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | a picture, and the world digest unchanged by drawing it | ⏭ **next** — `B1b.1b` left it the digest to be unchanged against |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -194,6 +201,99 @@ spawn point is REFUSED** — *"a footprint at this facing has no mitred corners;
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
 
+## ✅ What `B1b.1b` turned up (2026-08-13) — the digest was made of the format it was digesting
+
+**The page is an editor now.** With nothing behind the wire it stops dialling after a bounded
+number of attempts, says `moros editor — edits stay in this page`, and a key press runs
+`hex_editor::press_verb` against the `VoxelWorld` the client has held since plan 16 `S3`.
+`make probe-auth` — **28 checks**, and the claim is the last two: the page and `editor_run` at
+`GROUND=0`, driven through the same six verbs at the same author, agree on the **world**
+(`32952:1545220309`) and on the **session**.
+
+⛔ **AND THE INSTRUMENT THE CLAIM RESTS ON WAS BLIND ON ITS FIRST BUILD, BY CONSTRUCTION.**
+`hex_voxel::world_key` began as a CRC32 over `world_to_bytes`. **This format writes every layer's
+cells and then `layer_crc` OF THOSE CELLS** — and a CRC32 whose message contains its own CRC32
+lands on one residue whatever the message was. Two worlds one edge byte apart came back as the
+single string `8277:3255039172`, with a plain byte sum of **1143 against 1033** proving the
+vectors really differed. Only a HEIGHT moved the number, and only because a height moves
+`ck_base` in the *directory*, which no layer checksum covers.
+
+> ⚠ **AN INSTRUMENT MADE OF THE SAME MATERIAL AS ITS SUBJECT CAN CANCEL AGAINST IT**, and
+> reaching for the checksum the format already trusts is exactly how you walk into that. It is
+> `*31 + b` now — `world_sections_key`'s own mix, invertible mod 2^32, so one differing byte can
+> never cancel itself.
+
+⚠ **AND IT WAS CAUGHT BY THE TESTS, NOT BY THE STEP.** `lib/hex_voxel/tests/key.loft` was written
+before the function was believed, with every case shaped as *a pair a weaker instrument calls
+equal* — and three of its five were red on the first run. A test that only said "different
+worlds, different keys" would have passed a function that hashed the write count.
+
+⚠ **THE OTHER HALF OF THE COMPARISON IS THE SESSION, AND IT IS NOT OPTIONAL.** A ring writes its
+edges into the store and its **trunk** into the session, so `AUTH_SABOTAGE=scratchsession` —
+press into a session nobody keeps — leaves a **byte-identical world** and a different scene. That
+is `V1`'s pair one driver out, and it is why `hex_editor::session_digest` MOVED out of
+`editor_run` rather than being copied into the client: two programs each composing their own
+sentence would be comparing their agreement about a format.
+
+⚠ **AND THE MIRROR SABOTAGE IS BLIND THE OTHER WAY.** `elsewhere` presses the same six verbs at an
+author one world-unit over: every count is unchanged — **a ring of the same radius writes 42
+edges wherever it is laid** — every sentence is unchanged, and only the world key moves.
+**Neither instrument alone covers this step.**
+
+**Nine sabotages, each red somewhere different:**
+
+| sabotage | red where | and nowhere else |
+|---|---|---|
+| `literal` — the status line as it was, a constant claiming the server | `A1` the panel's first word · `B4` · `B7` | |
+| `nodirty` — the CONNECT fact moves and the panel is not told | `C4` **alone** | green in A and B, which is why C exists |
+| `assume` — authority off the send, not off its succeeding | `B3`–`B11`, nine of them | invisible to A: with a server there, assuming is right |
+| `nolocal` — it never gives up dialling | `B7` `B8`×5 `B9` `B10` `B11` | |
+| `nolocaldirty` — it goes local and the panel is not told | `B7` **alone** | `nodirty`'s mirror, one authority over |
+| `sendlocal` — local is announced and it sends anyway | `B8`×5 · `B10` · `B11` | ⚠ **the panel is GREEN** — a status line alone would call this a pass |
+| `elsewhere` — the same six verbs, one world-unit over | `B10` **alone** | every count, every sentence AND the whole session unchanged |
+| `scratchsession` — pressed into a session nobody keeps | `B11` **alone** | the world **byte-identical** |
+| `eager` — one unanswered dial is enough to give up | `A2` `A3` **`A4`** · `B1` `B6` · `C2` `C4` **`C5`** | the two starred are the hazard: a live server given up on, and silence read as absence |
+
+### The bound, and why it is a decision rather than an observation
+
+⚠ **`ws_handler` GIVES NO `onopen` AND loft's SURFACE HAS NO CALLBACK**, so *the socket did not
+open* is only ever observable as *it has not opened yet*. Something has to say when yet becomes
+never, and that is `LOCAL_AFTER = 180` unanswered dials. **Measured, not chosen**: with a real
+server there the send lands on **dial 4**, so the bound is 45× the observed cost of a working
+connection and still under three seconds at 60 Hz.
+
+- **A page that gives up too early takes an author's edits somewhere nobody will ever see them.**
+  `AUTH_SABOTAGE=eager` is one dial, and runs A and C are where it shows.
+- **Run C is the negative control the bound needed and already had**: a socket that opens and then
+  says nothing must not be read as no socket at all. A page that inferred its authority from
+  *silence* rather than from *a refused dial* swaps there, with a server on the other end.
+- **The decision is one-way**, and the loop stops dialling the moment it fires. A page that kept
+  dialling would attach to a server that came up later while its own world already held gestures
+  nobody else has seen — two authorities over one world, which this plan refuses everywhere else.
+
+### Two facts about the world local mode starts in
+
+⚠ **THE RUNNER SEEDS GROUND AND THE SERVER DOES NOT**, and until this step nothing had to care.
+`editor_run` lays a 61×61 patch of `SURFACE_MAT` so a scripted scene has something to photograph;
+`new_world()` in the server lays nothing, because an unwritten cell reads as absent and **absence
+IS the floor** ([`E1γ`](../../doc/claude/WORLD_MODEL.md)). Measured, the same six verbs leave
+**τ 4079** seeded and **τ 358** not. So the runner grew `GROUND=<half>` — and it is *start where
+the editor starts*, not a test hook: a comparison run against the default would report a
+divergence that is entirely that one line.
+
+⏭ **AND `place` IS REFUSED AT THE ORIGIN, IN BOTH DRIVERS** — *"a footprint at this facing has no
+mitred corners; turn one step"*. `B1a` found it through the server; it is the same in an empty
+world and in a seeded one. The fixture KEEPS the refusal rather than posing around it: a refusal
+that reproduces in two drivers is evidence, and choosing the fixture to suit the answer is how a
+green run stops meaning anything. ⚠ It also means the walk — `B1c` — is what stands between this
+page and a house.
+
+⚠ **THE TWELVE KEYS LOCAL MODE CANNOT ANSWER SAY SO, ONCE PER MESSAGE.** Walking, the stair, the
+storey, the wall run and the opening pair are wire messages with no local gesture yet, and a
+`send` into a socket that is not there returns false and drops it. *Reason, offer, residual, never
+a blank no*, applied to a keystroke — and once per message ID rather than per press, because the
+look drag sends one message per pump and a notice nobody can read is the silence it replaced.
+
 ## ✅ What `B1b.1a` turned up (2026-08-13) — the sabotage passed, and that is the finding
 
 **`src/editor_client.loft`'s status line is derived now**: `authority_line(st)` over `st.hello` —
@@ -247,8 +347,9 @@ once … when the contents start moving, rebuild on CHANGE — not on tick."* An
 change is contents that move. One write on the one frame the fact moves; `hud_dirty` is
 `panel_dirty`, because it now has a writer that is not a message at all.
 
-⏭ **WHAT `B1b.1b` NEEDS FROM HERE IS ONE STRING AND A DECISION.** The visible half is built and
-sabotage-checked, which is what earns the right to let the authority vary.
+✅ **AND WHAT `B1b.1b` NEEDED FROM HERE WAS ONE STRING AND A DECISION**, which is exactly what it
+took: `AUTH_LOCAL` beside the other two, and `LOCAL_AFTER` unanswered dials. The visible half
+being built and sabotage-checked first is what earned the right to let the authority vary.
 
 ## ⛔ What starting `B1b.1` turned up (2026-08-13) — the boot switch cannot be asked for
 
@@ -279,7 +380,7 @@ vary. Two steps:
 | | | |
 |---|---|---|
 | **`B1b.1a`** | **the client says which authority it has** — one authority exists so far, so this is not a no-op and not a stub: it can be *wrong today* | ✅ **DONE 2026-08-13** |
-| **`B1b.1b`** | the authority becomes two: no socket → local, and `B1b.1a`'s line is what stops that being silent | ⏭ next |
+| **`B1b.1b`** | the authority becomes two: no socket → local, and `B1b.1a`'s line is what stops that being silent | ✅ **DONE 2026-08-13** |
 
 ⛔ **AND `B1b.1a` HAD A LIVE DEFECT TO FIX, NOT A FEATURE TO ADD.**
 `src/editor_client.loft:1680` reads `ps_status: "moros editor — connected"` — **a literal, set at
@@ -414,20 +515,23 @@ of it, so local mode adds no store and no renderer. `P4` measured that this prog
 ✅ **`B1b.0` came out of asking which world it builds** — see the finding above; the tree had two
 answers and one of them was asserting it was the other. **Done.**
 
-⏭ **WHAT `B1b.1` STILL NEEDS, and none of it is guesswork now:**
+✅ **WHAT `B1b.1` NEEDED, AND WHAT EACH ITEM TURNED INTO:**
 
-1. **A boot switch.** *"The mode is a boot decision, not a build decision"* — and a `--html` page
-   cannot read its own URL (the client's source says so) or an env var. The mechanism is `P2`'s:
-   `host_output` a question, `host_input` the answer, which was **run and holds in both shells**.
-   ⚠ And the default falls out for free — `P2` measured an unanswered request returning **empty**,
-   so the server-served page gets `""` and stays attached without anyone deciding.
-2. **A session, an author and a world.** `hex_editor::EditSession {}`, `author_on(w, 0.0, 0.0,
-   0.0)`, and the cache — which `B1b.0` just made the right world. `src/editor_run.loft:240-247`
-   is the model, four lines.
-3. **A digest to compare.** `editor_run` already prints `session_digest` and saves; the page can
-   print the same and `P6` proved it can `world_save` too. ⚠ **The comparison must be against
-   `editor_run` at the SAME author**, because a pose is not a gesture: local mode teleports like
-   the runner does, and `B1c` is where a walk gets one.
+1. **A boot switch** — ⛔ **could not be asked for.** `host_input()` blocks with no host
+   ([loft#891](https://github.com/loft-lang/loft/issues/891)), and the design had generalised
+   `P2`'s *declining* host to an *absent* one. Route 3 replaced it: **connect-or-local**, decided
+   by `LOCAL_AFTER` unanswered dials, with the panel saying which. ⚠ There is no event to wait
+   for — `ws_handler` gives no `onopen` — so the switch is a BOUND, and `eager` is the sabotage
+   that says a too-short one is a live hazard rather than a taste.
+2. **A session, an author and a world** — ✅ four lines, exactly as predicted, and the world is
+   `st.cache` because `B1b.0` had already made it the right one. ⚠ The author is the origin and
+   **does not move**: the walk is the server's tick, so `B1c` is still where a pose comes from.
+3. **A digest to compare** — ✅ and it took two, blind in opposite directions.
+   `hex_voxel::world_key` for the store and `hex_editor::session_digest` for what the editor
+   remembers, both called by the page AND by the runner so neither can spell its own.
+   ⛔ **The first world digest was a CRC32 and it could not see a cell change at all** — see the
+   finding above. ⚠ And the comparison is at the SAME author over `GROUND=0`, because a pose is
+   not a gesture and the runner's seeded ground is not the editor's.
 
 ⚠ **THE GATE ROW SAID *"diff `w_tau`"* AND `V1` HAD ALREADY MEASURED THAT BLIND.** A fence ring and
 a wall ring write the same edges of the same disc, each write changing something, so the edit clock

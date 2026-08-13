@@ -1,5 +1,6 @@
 #!/bin/sh
-# B1b.1a (plan 22) — DOES THE PANEL SAY WHICH AUTHORITY IT HAS, AND CAN IT BE WRONG?
+# B1b.1a / B1b.1b (plan 22) — WHICH AUTHORITY DOES THE PAGE HAVE, DOES IT SAY SO,
+# AND DOES THE SECOND ONE BUILD THE SAME WORLD AS THE RUNNER?
 #
 #   probe/b1b/auth.sh                    (or `make probe-auth`)
 #   AUTH_SABOTAGE=literal probe/b1b/auth.sh   the client as it WAS, with the
@@ -7,14 +8,20 @@
 #   AUTH_SABOTAGE=nodirty …              the fact changes and the panel is not told
 #   AUTH_SABOTAGE=assume  …              the authority read off the SEND, not off
 #                                        the send SUCCEEDING
+#   AUTH_SABOTAGE=nolocal …              it never gives up dialling
+#   AUTH_SABOTAGE=nolocaldirty …         it goes local and the panel is not told
+#   AUTH_SABOTAGE=sendlocal …            local mode SENDS instead of pressing
+#   AUTH_SABOTAGE=elsewhere …            local mode presses at another author
+#   AUTH_SABOTAGE=scratchsession …       it presses into a session nobody keeps
+#   AUTH_SABOTAGE=eager …                one unanswered dial is enough to give up
 #
 # `src/editor_client.loft:1680` read `ps_status: "moros editor — connected"` — a
 # literal, set at panel construction, before any socket existed, with no other
 # writer anywhere in the file. **The panel claimed a connection it had never
-# checked**, and it went on claiming it with the server down. `B1b.1a` derives it
-# from the client's own evidence instead, because `B1b.1b` is about to let the
-# authority VARY and an authority that varies silently is the hazard route 2 was
-# rejected for.
+# checked**, and it went on claiming it with the server down. `B1b.1a` derived it
+# from the client's own evidence; `B1b.1b` then let the authority VARY — no socket
+# means the page edits its own world — which is the hazard route 2 was rejected
+# for, and the line is what turns it into a fact on screen.
 #
 # ⚠ THREE RUNS OVER THE SAME PAGE BYTES, and that is the comparison. One file is
 # built and served three times; the only difference is what answers the socket. So
@@ -23,19 +30,17 @@
 #
 #   run A — the real editor server   sees the TRANSITION: the panel is built
 #                                    before the socket opens, so it must say
-#                                    `connecting` first and `server` after
-#   run B — a static server, no /ws  sees the PRODUCT CLAIM: with nothing behind
-#                                    the wire the page must never claim a
-#                                    connection, for as long as it is left open.
-#                                    ⚠ Run A structurally cannot make this claim,
-#                                    because a server is there
-#   run C — /ws opens, says nothing  sees WHO TOLD THE PANEL. ⚠ THIS RUN WAS ADDED
-#                                    BECAUSE THE SABOTAGE PASSED: with the write at
-#                                    the connect site deleted, run A stayed green,
-#                                    because the real server's `N:` and `H:` mark
-#                                    the panel a frame later for their own reasons.
-#                                    A rebuild that happens anyway reads exactly
-#                                    like a rebuild that was asked for
+#                                    `connecting` first and `server` after — and
+#                                    it must NEVER give up on a server that is
+#                                    there
+#   run B — a static server, no /ws  sees the SECOND AUTHORITY. With nothing
+#                                    behind the wire the page must stop dialling,
+#                                    say so, and then WRITE what it is pressed —
+#                                    into a world `editor_run` can be held against
+#   run C — /ws opens, says nothing  sees WHO TOLD THE PANEL, and is the bound's
+#                                    negative control: a socket that opens and
+#                                    then says nothing must not be mistaken for
+#                                    no socket at all
 #
 # ⚠ AND AN ABSENCE IS ONLY WORTH READING BESIDE POSITIVE CONTROLS. A page that
 # never booted, or one that froze on frame 1, also "never claims a server". So B
@@ -56,9 +61,19 @@
 # for its strip arrives here carrying its own `..` rather than being discovered in
 # a screenshot later.
 #
+# ⚠ AND THE WORLD IS COMPARED AGAINST A RUNNER, NOT AGAINST ITSELF. `editor_run`
+# presses the same six verbs at the same author over `GROUND=0` — the world the
+# server starts from, which is the one local mode holds — and `hex_voxel::world_key`
+# is called by both, so neither side can spell its own digest.
+#
+# ⚠ IN TWO HALVES, BLIND IN OPPOSITE DIRECTIONS. The world says what was written to
+# the store; `hex_editor::session_digest` says what the editor REMEMBERS, and a ring
+# puts its trunk only in the second. `scratchsession` is that pair as a measurement:
+# byte-identical world, different scene.
+#
 # ⏭ WHAT THIS DOES NOT CHECK: the wire. `B1a` owns that, and `make probe-b1a` is
-# what says the same key sequence still sends what it always sent — this step adds
-# a line to a panel and must move nothing else.
+# what says the same key sequence still sends what it always sent when a server IS
+# there — this step must move nothing about attached mode at all.
 set -e
 cd "$(dirname "$0")/../.."
 LOFT="${LOFT:-loft}"
@@ -71,6 +86,14 @@ mkdir -p "$OUT"
 
 CONNECTING="moros editor — connecting to the server"
 SERVER="moros editor — edits go to the server"
+LOCAL="moros editor — edits stay in this page"
+
+# The keys run B presses, and the verbs they name. ⚠ `w` IS LAST AND IS NOT A
+# GESTURE: it is the walk, which local mode has no answer for (`B1c`), and it is
+# here so that *a key with nothing behind it says so* is measured rather than
+# assumed.
+KEYS="ArrowUp,ArrowUp,h,f,g,ArrowDown,w"
+LOCAL_AFTER=$(sed -n 's/^const LOCAL_AFTER = \([0-9]*\);.*/\1/p' src/editor_client.loft)
 
 pass=0; fail=0
 ok()  { pass=$((pass + 1)); echo "  ok   $1"; }
@@ -93,6 +116,33 @@ if [ -n "$SAB" ]; then
     # the trap the client's own comment at `ws_handler` warns about, one layer
     # in. ⚠ INVISIBLE TO RUN A: with a server there, assuming is right.
     assume)  sed -i 's/^      st.hello = web::send(h, "1:");$/      web::send(h, "1:"); st.hello = true;/' "$SRC" ;;
+    # ── B1b.1b ──────────────────────────────────────────────────────────────
+    # It dials for ever: the page with no server behind it stays `connecting`
+    # and a key press goes nowhere, which is exactly the state this step ends.
+    nolocal) sed -i '/^          st.local = true;$/d' "$SRC" ;;
+    # It goes local — the sentence is printed, the keys write — and the PANEL is
+    # never told. ⚠ The mirror of `nodirty` one authority over, and run B is
+    # where it has to be caught, because with no server nothing else can mark
+    # the panel at all.
+    nolocaldirty) sed -i '/^          st.panel_dirty = true;$/d' "$SRC" ;;
+    # Local mode is announced and then sends anyway, into a socket that is not
+    # there. ⚠ The panel is right, the transcript is right, and not one gesture
+    # happens — which is what a status line alone would call a pass.
+    sendlocal) sed -i '/^  if st.local { local_act(sess, st, a, verb); return; }$/d' "$SRC" ;;
+    # The gestures all happen, at an author one world-unit away. ⚠ EVERY COUNT
+    # IS UNCHANGED — a ring of the same radius writes 42 edges wherever it is
+    # laid — so only the world comparison can see this, which is the whole
+    # reason the runner is beside it.
+    elsewhere) sed -i 's/^  author = hex_editor::author_on(st.cache, 0.0, 0.0, 0.0);$/  author = hex_editor::author_on(st.cache, 1.0, 0.0, 0.0);/' "$SRC" ;;
+    # One unanswered dial and it gives up. ⚠ Runs A and C are where this is
+    # visible: a page that goes local while a server is coming up has taken an
+    # author's edits somewhere nobody else will ever see them.
+    eager) sed -i 's/^const LOCAL_AFTER = [0-9]*;$/const LOCAL_AFTER = 1;/' "$SRC" ;;
+    # The gesture is handed a session that is thrown away the moment it returns.
+    # ⚠ THE WORLD IS BYTE-IDENTICAL — a ring's edges go to the store either way —
+    # so B10 stays green and only the session half can see it. It is the pair
+    # `V1` measured, one driver out.
+    scratchsession) sed -i 's/^  ack = hex_editor::press_verb(sess, st.cache, a, verb);$/  ack = hex_editor::press_verb(hex_editor::EditSession {}, st.cache, a, verb);/' "$SRC" ;;
     *) echo "auth: unknown AUTH_SABOTAGE '$SAB'"; exit 2 ;;
   esac
   if cmp -s "$SRC" src/editor_client.loft; then
@@ -102,7 +152,7 @@ if [ -n "$SAB" ]; then
   echo "   sabotage: $SAB"
 fi
 
-echo "── B1b.1a  build the page ONCE; all three runs load these bytes ────"
+echo "── B1b  build the page ONCE; all three runs load these bytes ───────"
 $LOFT --html --lib lib/ "$SRC" > "$OUT/build.log" 2>&1 \
   || { echo "auth FAIL — the client did not build:"; tail -20 "$OUT/build.log"; exit 1; }
 built=$(sed -n 's/^wrote \(.*\.html\) .*/\1/p' "$OUT/build.log" | tail -1)
@@ -112,6 +162,25 @@ case "$built" in
   *) cp "$built" "$PAGE"; echo "   copied $(basename "$built") into $PAGE" ;;
 esac
 echo "   page: $PAGE ($(( $(wc -c < "$PAGE") / 1024 )) KB)"
+echo "   the page gives up dialling after $LOCAL_AFTER unanswered dials"
+
+# ── the oracle ──────────────────────────────────────────────────────────
+# ⚠ THE RUNNER IS RUN FIRST AND ON THE UNSABOTAGED TREE — it is `editor_run`, and
+# every sabotage above is in the client. If a sabotage could move this number the
+# comparison would be between two broken things agreeing.
+echo
+echo "── B1b.1b  what the RUNNER builds from the same six verbs ──────────"
+SCRIPT=probe/b1b/scripts/local.keys WORLD=b1blocal GROUND=0 \
+  $LOFT --lib lib/ src/editor_run.loft > "$OUT/run.log" 2>/dev/null || true
+want=$(sed -n 's/^editor_run: world //p' "$OUT/run.log" | tail -1)
+if [ -n "$want" ]; then
+  echo "   editor_run at GROUND=0: world $want"
+  sed -n 's/^  /     /p' "$OUT/run.log" | head -8
+else
+  echo "auth FAIL — the runner printed no world key; there is nothing to compare against"
+  tail -5 "$OUT/run.log"
+  exit 1
+fi
 
 # Every `client: status ←` line, in order, with the prefix stripped.
 statuses() { grep '^client: status ← ' "$1" | sed 's/^client: status ← //'; }
@@ -146,6 +215,7 @@ wait "$srv" 2>/dev/null || true
 
 echo "   what the panel said:"
 statuses "$OUT/a.log" | sort | uniq -c | sed 's/^/     /'
+echo "   $(grep '^client: connected' "$OUT/a.log" | head -1)"
 
 if grep -q '^moros editor client' "$OUT/a.log"; then
   ok "A0 the page booted, so what follows is about a running client"
@@ -160,7 +230,7 @@ else
 fi
 # ⚠ AFTER the client's own connect line, not merely present. A panel that showed
 # `server` before the send succeeded would satisfy a presence test.
-if [ -n "$(sed -n '/^client: connected — asked for the world$/,$p' "$OUT/a.log" \
+if [ -n "$(sed -n '/^client: connected — asked for the world/,$p' "$OUT/a.log" \
            | grep -F "client: status ← $SERVER")" ]; then
   ok "A2 and after the send landed it says '$SERVER'"
 else
@@ -171,11 +241,18 @@ if [ "$(statuses "$OUT/a.log" | tail -1)" = "$SERVER" ]; then
 else
   bad "A3 the panel ended on '$(statuses "$OUT/a.log" | tail -1)'"
 fi
+# ⚠ B1b.1b's claim about run A, and it is the one that costs an author their work
+# if it is false: a server that IS there must never be given up on.
+if grep -q '^client: no server answered' "$OUT/a.log"; then
+  bad "A4 the page gave up on a server that was answering: $(grep '^client: no server answered' "$OUT/a.log" | head -1)"
+else
+  ok "A4 and it never gave up dialling — a live server is never mistaken for none"
+fi
 
 # One page, one static server, one transcript. `$1` is the tag, `$2` the extra
-# flag — the ONLY difference between run B and run C.
+# flag to the static server, `$3` the keys to press (empty for none).
 static_run() {
-  sr_tag=$1; sr_flag=$2
+  sr_tag=$1; sr_flag=$2; sr_keys=$3
   : > "$OUT/$sr_tag.static"
   node probe/b1b/static.mjs src/.loft "$SPORT" $sr_flag > "$OUT/$sr_tag.static" 2>&1 &
   sr_pid=$!
@@ -189,8 +266,18 @@ static_run() {
     kill "$sr_pid" 2>/dev/null || true
     exit 1
   fi
-  node tools/page_console.mjs "http://127.0.0.1:$SPORT/editor_client.html" \
-    --wait-ms 25000 --tail 100000 > "$OUT/$sr_tag.raw" 2>&1 || true
+  if [ -n "$sr_keys" ]; then
+    # ⚠ IT WAITS FOR THE CLIENT'S OWN SENTENCE BEFORE PRESSING. The decision is
+    # `LOCAL_AFTER` frames after boot, and a key pressed before it lands in the
+    # other authority — which produces a transcript with no local lines in it,
+    # exactly what a broken local mode produces.
+    node probe/b1b/press.mjs "http://127.0.0.1:$SPORT/editor_client.html" \
+      "$sr_keys" --await 'no server answered' --wait-ms 45000 \
+      > "$OUT/$sr_tag.raw" 2>&1 || true
+  else
+    node tools/page_console.mjs "http://127.0.0.1:$SPORT/editor_client.html" \
+      --wait-ms 25000 --tail 100000 > "$OUT/$sr_tag.raw" 2>&1 || true
+  fi
   grep -E '^(client|moros editor client)' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.log" || true
   kill "$sr_pid" 2>/dev/null || true
   wait "$sr_pid" 2>/dev/null || true
@@ -201,8 +288,10 @@ static_run() {
 
 # ── run B ───────────────────────────────────────────────────────────
 echo
-echo "── B1b.1a  run B — the SAME page, nothing behind the wire ──────────"
-static_run b ""
+echo "── B1b  run B — the SAME page, nothing behind the wire ─────────────"
+static_run b "" "$KEYS"
+echo "   what local mode did:"
+grep '^client: local' "$OUT/b.log" | sed 's/^/     /' || true
 
 if grep -q '^moros editor client' "$OUT/b.log"; then
   ok "B0 the page booted with no server — the run has a subject"
@@ -212,9 +301,9 @@ fi
 # ⚠ THE FRAME COUNTER, because an absence measured over a page that froze is not
 # an absence. The client prints one every 300 frames.
 if grep -q '^client: 600 frames' "$OUT/b.log"; then
-  ok "B1 and it ran — past 600 frames, still not claiming anything"
+  ok "B1 and it ran — past 600 frames"
 else
-  bad "B1 the client never reached 600 frames; it did not run long enough to be silent"
+  bad "B1 the client never reached 600 frames; it did not run long enough to decide anything"
 fi
 # ⚠ THE CONTROL IS THE SERVER'S LOG, NOT THE CLIENT'S. The first version of this
 # read the client's own `connected` line as proof that no socket had opened — the
@@ -231,16 +320,92 @@ if grep -q '^client: connected — asked for the world' "$OUT/b.log"; then
 else
   ok "B3 and the client agrees with the wire — it never claimed a send had landed"
 fi
-b_all=$(statuses "$OUT/b.log" | sort -u)
-if [ "$b_all" = "$CONNECTING" ]; then
-  ok "B4 so every word the panel said was '$CONNECTING'"
+# ── B1b.1a's claim, now in its final shape: the panel must say `connecting`
+#    while it is dialling and never `server`.
+if [ "$(statuses "$OUT/b.log" | head -1)" = "$CONNECTING" ] \
+   && [ -z "$(statuses "$OUT/b.log" | grep -xF "$SERVER" || true)" ]; then
+  ok "B4 the panel said '$CONNECTING' first and never once claimed the server"
 else
-  bad "B4 the panel said: $(echo "$b_all" | tr '\n' '|') — with no server behind it"
+  bad "B4 the panel said: $(statuses "$OUT/b.log" | sort -u | tr '\n' '|') — with no server behind it"
+fi
+
+# ── B1b.1b — the second authority ───────────────────────────────────
+gave=$(sed -n 's/^client: no server answered in \([0-9]*\) dials.*/\1/p' "$OUT/b.log" | head -1)
+if [ -n "$gave" ]; then
+  ok "B5 it stopped dialling and said so, after $gave unanswered dials"
+else
+  bad "B5 the page never gave up — with nothing behind the wire it dialled for ever"
+fi
+# ⚠ NOT MERELY *IT WENT LOCAL* BUT *IT WAITED FIRST*. A page that gives up on the
+# first unanswered dial reaches this line too, and it is the one that would take a
+# slow server's author into a different authority — `AUTH_SABOTAGE=eager`.
+if [ "$gave" = "$LOCAL_AFTER" ]; then
+  ok "B6 and it waited the whole bound — $LOCAL_AFTER dials, not one"
+else
+  bad "B6 it gave up after '$gave' dials where the source says $LOCAL_AFTER"
+fi
+if [ "$(statuses "$OUT/b.log" | tail -1)" = "$LOCAL" ]; then
+  ok "B7 and the panel says '$LOCAL' — the swap is not silent"
+else
+  bad "B7 the panel ended on '$(statuses "$OUT/b.log" | tail -1)' after going local"
+fi
+
+# ⚠ NAMED ONE AT A TIME, NEVER COUNTED — `B1a`'s finding. A count of six cannot
+# say WHICH gesture lost its trace, and the first version of that probe read
+# `3 sentences` for a run where both arrows had been pressed.
+saw() {
+  if [ "$(grep -c "^client: local $1" "$OUT/b.log" || true)" -ge "$2" ]; then
+    ok "B8 $3"
+  else
+    bad "B8 $3 — the transcript has $(grep -c "^client: local $1" "$OUT/b.log" || true)"
+  fi
+}
+saw "raise — "  2 "the two raises wrote, in the page's own world"
+saw "fence — "  1 "the fence ring wrote"
+saw "wall — "   1 "the wall ring wrote"
+saw "lower — "  1 "the lower wrote"
+saw "place refused" 1 "and the house was REFUSED, in the same words the runner uses"
+# The walk key: local mode has no gesture for it, and says so exactly once.
+if [ "$(grep -c "^client: local — '4:' is a server message" "$OUT/b.log" || true)" -eq 1 ]; then
+  ok "B9 the walk key said it has no local gesture — once, not per frame"
+else
+  bad "B9 the walk key said '$(grep -c "^client: local — '4:'" "$OUT/b.log" || true)' times; it must say it exactly once"
+fi
+
+# ⚠ THE CLAIM, AND IT IS IN TWO HALVES BECAUSE ONE INSTRUMENT CANNOT ANSWER. The
+# last world the page keyed against the world `editor_run` built from the same six
+# verbs at the same author — one `hex_voxel::world_key` called by both, so a
+# difference is a difference in what they BUILT.
+got=$(grep '^client: local ' "$OUT/b.log" | sed -n 's/.*· world //p' | tail -1)
+echo "   the page: world ${got:-<none>}"
+echo "   the runner: world $want"
+if [ -n "$got" ] && [ "$got" = "$want" ]; then
+  ok "B10 the page and the runner built the SAME world — $got"
+else
+  bad "B10 the page built '${got:-nothing}' where the runner built '$want'"
+fi
+
+# ⚠ AND THE SESSION, WHICH THE WORLD CANNOT SEE. A ring writes its edges into the
+# store and its TRUNK into the session, so a page that pressed with a scratch
+# session builds a byte-identical world and holds a different scene — `V1`'s
+# finding, and `AUTH_SABOTAGE=scratchsession` is it, red HERE and green on B10.
+sed -n '/^session: /,$p' "$OUT/run.log" | grep -v '^editor_run:' | sed 's/^ *//' \
+  > "$OUT/want.sess"
+tac "$OUT/b.log" | sed -n '1,/^client: local session: /p' | tac \
+  | sed -n 's/^client: local //p' | grep -E '^(session:|opening |chosen:)' \
+  | sed 's/^ *//' > "$OUT/got.sess"
+echo "   the page's session:   $(head -1 "$OUT/got.sess" || true)"
+echo "   the runner's session: $(head -1 "$OUT/want.sess" || true)"
+if [ -s "$OUT/got.sess" ] && diff -q "$OUT/want.sess" "$OUT/got.sess" > /dev/null; then
+  ok "B11 and the same SESSION — every registry, the trunk and the standing choice"
+else
+  bad "B11 the sessions differ:"
+  diff "$OUT/want.sess" "$OUT/got.sess" 2>&1 | sed 's/^/       /' || true
 fi
 
 # ── run C ───────────────────────────────────────────────────────────
 echo
-echo "── B1b.1a  run C — the socket OPENS and says nothing ───────────────"
+echo "── B1b  run C — the socket OPENS and says nothing ──────────────────"
 # ⚠ THIS RUN EXISTS BECAUSE RUN A COULD NOT SEE HALF THE STEP, MEASURED. Deleting
 # the `panel_dirty` write at the connect site leaves run A entirely green: the real
 # server answers `1:` with `N:` and `H:` within a frame or two, each of which marks
@@ -251,8 +416,10 @@ echo "── B1b.1a  run C — the socket OPENS and says nothing ─────
 # Here the socket opens and not one byte comes back, so `panel_dirty` has exactly
 # one possible writer. It is also a real situation rather than a contrived one — a
 # server that accepts while its world is still loading is this, for as long as that
-# takes.
-static_run c "--ws-silent"
+# takes — which is what makes it `B1b.1b`'s bound control too: a page that decided
+# on SILENCE rather than on a refused dial would go local right here, with a server
+# on the other end of an open socket.
+static_run c "--ws-silent" ""
 
 if grep -q '^moros editor client' "$OUT/c.log"; then
   ok "C0 the page booted"
@@ -284,6 +451,11 @@ if [ "$(statuses "$OUT/c.log" | tail -1)" = "$SERVER" ]; then
 else
   bad "C4 the panel ended on '$(statuses "$OUT/c.log" | tail -1)' with the socket open"
 fi
+if grep -q '^client: no server answered' "$OUT/c.log"; then
+  bad "C5 a silent server was mistaken for none: $(grep '^client: no server answered' "$OUT/c.log" | head -1)"
+else
+  ok "C5 and silence is not absence — an open socket keeps the server's authority"
+fi
 
 # ── the strings themselves ──────────────────────────────────────────
 # ⚠ EXACT EQUALITY, WHICH IS ALSO THE TRUNCATION CHECK. `ss_text` is what
@@ -292,9 +464,10 @@ fi
 echo
 bad_str=$(cat "$OUT/a.log" "$OUT/b.log" "$OUT/c.log" 2>/dev/null \
           | grep '^client: status ← ' | sed 's/^client: status ← //' \
-          | sort -u | grep -vxF "$CONNECTING" | grep -vxF "$SERVER" || true)
+          | sort -u | grep -vxF "$CONNECTING" | grep -vxF "$SERVER" \
+          | grep -vxF "$LOCAL" || true)
 if [ -z "$bad_str" ]; then
-  ok "the panel only ever showed the two whole strings, neither of them fitted down"
+  ok "the panel only ever showed the three whole strings, none of them fitted down"
 else
   bad "the panel showed something else: $(echo "$bad_str" | tr '\n' '|')"
 fi

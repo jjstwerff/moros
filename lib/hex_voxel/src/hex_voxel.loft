@@ -2366,6 +2366,49 @@ pub fn world_to_bytes(w: VoxelWorld, palette: vector<integer>,
   wtb.b_data
 }
 
+// The whole world as ONE comparable string — plan 22 `B1b.1b`.
+//
+// Two programs that build a world by different routes have to be compared, and the
+// only honest comparison is the bytes: `w_tau` cannot tell a fence ring from a wall
+// ring (`V1` — the same edges of the same disc, each write changing something), a
+// chunk count cannot either, and a byte LENGTH is blind in exactly the same place,
+// because the two differ at byte 7590 and nowhere else.
+//
+// ⚠ IT LIVES HERE SO THE TWO SIDES CANNOT SPELL IT DIFFERENTLY. A page printing its
+// own checksum beside a runner printing its own is two encoders again — `W1`'s
+// finding, one layer out. One function over `world_to_bytes`, called by both.
+//
+// ⚠ A KEY, NOT AN IDENTITY, exactly as `world_sections_key` says of itself: equal
+// keys mean equal bytes for every practical purpose and a difference is a real
+// difference, but a checksum can collide. Use the bytes when the question is *are
+// these the same document*.
+//
+// The length is printed beside the checksum because the two fail differently — a
+// truncation is a length, a corruption is a checksum — and a single number would
+// report either as "not equal".
+//
+// ⛔ AND IT IS DELIBERATELY NOT A CRC32, WHICH IS WHAT IT WAS WRITTEN AS FIRST.
+// This format stores every layer's cells followed by `layer_crc` OF THOSE CELLS,
+// and a CRC32 whose message carries its own CRC32 lands on the same residue
+// whatever that message was — so a CRC32 over these bytes is **structurally blind
+// to every per-cell change in the world**. Measured rather than reasoned: two
+// worlds one edge byte apart (`V1`'s fence ring beside its wall ring) came back as
+// the single string `8277:3255039172`, with a plain byte sum of 1143 against 1033
+// proving the two vectors really did differ. Only a HEIGHT moved the number, and
+// only because a height moves `ck_base` in the directory, which no layer checksum
+// covers.
+//
+// ⚠ AN INSTRUMENT MADE OF THE SAME MATERIAL AS ITS SUBJECT IS THE TRAP, and
+// reaching for the checksum the format already trusts is exactly how you walk into
+// it. The mix below is `world_sections_key`'s — `*31 + b`, invertible mod 2^32, so
+// one differing byte can never cancel itself.
+pub fn world_key(w: VoxelWorld) -> text {
+  wk_b = world_to_bytes(w, []);
+  wk_acc = 0;
+  for wk_v in wk_b { wk_acc = (wk_acc * 31 + (wk_v as integer? ?? 0)) & U32_MASK; }
+  "{len(wk_b)}:{wk_acc}"
+}
+
 pub fn world_save_as(w: VoxelWorld, path: text, palette: vector<integer>,
                      owner: integer) -> integer {
   for b in palette {

@@ -113,6 +113,17 @@ agreement.
 twin finishes holding `2`. The probe **asserts they differ** — agreement there would mean a
 key had silently re-chosen.
 
+⚠ **AND THE READ-BACK IS `hex_editor::session_digest` NOW, NOT THIS RUNNER'S** (plan 22
+`B1b.1b`): the page in local mode has to be held against the runner, and two programs each
+composing their own sentence would be comparing their agreement about a format rather than two
+sessions. Its world counterpart is `hex_voxel::world_key`, called by both for the same reason.
+
+⚠ **`GROUND=<half>` IS THE OTHER HALF OF THAT COMPARISON, AND IT NAMES A REAL DIFFERENCE.** The
+runner seeds a 61×61 patch of `SURFACE_MAT` so a scripted scene has something to photograph;
+`new_world()` in the server lays none, because an unwritten cell reads as absent and **absence is
+the floor** ([`E1γ`](WORLD_MODEL.md)). Same six verbs: **τ 4079** seeded, **τ 358** not. `GROUND=0`
+is *start where the editor starts* — not a test hook, and the default is unchanged.
+
 ---
 
 ## 2. What is scriptable is what is a FUNCTION

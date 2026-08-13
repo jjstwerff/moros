@@ -73,47 +73,24 @@ fn said_ack(ack: Ack, what: text, said: &text) -> boolean {
   true
 }
 
-// ── THE SESSION, READ BACK — plan 22 `K1` ────────────────────────────────────
+// ── THE SESSION, READ BACK — plan 22 `K1`, and it lives in `hex_editor` now ──
 //
-// ⚠ **THE WORLD IS BLIND TO EVERYTHING THIS STEP IS ABOUT, AND THAT IS MEASURED
+// ⚠ **THE WORLD IS BLIND TO EVERYTHING `K1` WAS ABOUT, AND THAT IS MEASURED
 // RATHER THAN FEARED.** `open_ahead` writes `DOOR_MAT` whatever the profile, so a
 // round-headed door and a pointed one leave worlds that are equal **byte for
 // byte** (`V1`, and `probe/k1/run.sh` control `C`). The head lives in the
 // session's `Opening`, and none of the session is in the world format (`S1`). So a
 // script converted from `key P` to `select 1` + `verb opening` would build a
 // provably identical world with the wrong arch in it, and every instrument this
-// runner had would have said the conversion was lossless.
+// runner had would have said the conversion was lossless. The read-back is what
+// makes converting a script an assertion instead of a hope.
 //
-// [EDITING_MODES § phase 3](../doc/claude/EDITING_MODES.md) names the two ways out
-// — *either the script says `select 2` before `opening`, or the runner grows a
-// session read-back*. This is the second one, and `K2` needs it: it is what makes
-// converting a script an assertion instead of a hope.
-//
-// ⚠ **IT PRINTS THE GEOMETRY, NOT ONLY THE KIND.** `op_kind` is the number the
-// gesture was handed and stamped back; the springing, the depth and the datum are
-// what the renderer actually reads. A digest of the label alone would agree with
-// itself for as long as the label was copied correctly.
-// ⚠ **AND THE STANDING SELECTION IS ON ITS OWN LINE, BECAUSE A CONVERTED SCRIPT
-// MUST LEAVE A DIFFERENT ONE.** A key deliberately does not re-choose (`S3`), so a
-// run of `key O` `key P` ends with the selection it started with, while its verb
-// twin ends holding whatever it last said `select` about. That is not drift to be
-// tolerated: it is `es_author`'s category — *this driver's choice, never the
-// editor's* — and the two spellings agreeing on it would mean a key HAD re-chosen.
-// `probe/k1/run.sh` compares the scene without this line and asserts this line
-// differs.
-fn session_digest(sess: EditSession) -> text {
-  d = "session: runs {len(sess.es_runs.items)} roofs {len(sess.es_roofs.items)} "
-    + "leaves {len(sess.es_leaves.items)} openings {len(sess.es_open.items)} "
-    + "annex {len(sess.es_annex.items)} props {len(sess.es_props.items)} "
-    + "slabs {len(sess.es_slabs.items)} holes {len(sess.es_holes.items)} "
-    + "trunk {sess.es_trunk.tk_live}/{sess.es_trunk.tk_r}";
-  for op in sess.es_open.items {
-    d += "\n  opening kind {op.op_kind} at {op.op_x},{op.op_z} half {op.op_half} "
-       + "band {op.op_lo}..{op.op_hi} spring {op.op_spring} "
-       + "depth {op.op_near}..{op.op_depth}";
-  }
-  d + "\nchosen: opening {sess.es_open_kind}"
-}
+// ⏭ **AND AT `B1b.1b` IT ACQUIRED A SECOND CONSUMER, SO IT MOVED.**
+// `hex_editor::session_digest` is the same text, printed by this runner and by the
+// page in local mode — because the thing being compared is two SESSIONS, and two
+// programs each composing their own sentence would be comparing their agreement
+// about a format. The reasons it prints the geometry rather than the kind, and the
+// standing selection on its own line, are at the function.
 
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
@@ -244,7 +221,20 @@ fn main() {
 
   w = world_new(0.25, hex_editor::W_RESERVE,
                 hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
-  seed_ground(w, 30);
+  // ⚠ THE GROUND THIS RUNNER LAYS IS THE RUNNER'S, NOT THE EDITOR'S — plan 22
+  // `B1b.1b`. `new_world()` in the server seeds nothing, because an unwritten cell
+  // reads as absent and absence IS the floor (`E1γ`); this patch of `SURFACE_MAT`
+  // exists so a scripted scene has something with a material in it to photograph.
+  // That makes it a difference between two drivers of the same gestures, and the
+  // page in local mode is the third — so it is a knob rather than a constant.
+  //
+  // ⚠ `GROUND=0` IS THE COMPARISON, and it is not a test hook: it is *start where
+  // the editor starts*. Measured — the same six verbs at the same pose leave
+  // τ 4079 seeded and τ 358 not, and the world keys differ, so a comparison run
+  // against the default would report a divergence that is entirely this line.
+  gh = env_variable("GROUND");
+  half = if gh == "" { 30 } else { gh as integer ?? 30 };
+  if half > 0 { seed_ground(w, half); }
   a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
   // ⚠ AN `EditSession`, NOT A BARE `WallRuns` — plan 22 `W4`. A key press is a
   // gesture applied to a SESSION, and the server has held one since the headless
@@ -262,6 +252,13 @@ fn main() {
   }
 
   println(session_digest(sess));
+
+  // The world as one comparable string — plan 22 `B1b.1b`. It is `hex_voxel`'s
+  // function rather than this file's, because the other side of the comparison is
+  // a page in a browser: two programs each spelling their own digest is `W1`'s
+  // two-encoders finding one layer out, and this one exists precisely so that a
+  // difference between them means a difference in what they BUILT.
+  println("editor_run: world {world_key(w)}");
 
   path = "{source_dir()}/../worlds/{name}.hxw";
   code = world_save(w, path, []);

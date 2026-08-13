@@ -1,0 +1,137 @@
+// `world_key` — ONE STRING TWO PROGRAMS CAN COMPARE, AND WHAT IT HAS TO SEE.
+//
+// plan 22 `B1b.1b`. The page in local mode and `editor_run` build a world by two
+// different routes and have to be shown to have built the SAME one. Everything
+// cheaper than the bytes is blind somewhere this tree has already been bitten:
+//
+//   `w_tau`            a fence ring and a wall ring write the same edges of the
+//                      same disc, each write changing something — `V1`, measured
+//   `len(w_chunks)`    same disc, same chunks
+//   the byte LENGTH    those two differ at byte 7590 and nowhere else
+//
+// ⛔ AND SO IS A CRC32 OVER THE WHOLE FILE, WHICH IS WHAT THIS WAS FIRST. The
+// format writes each layer's cells and then `layer_crc` of those cells, and a
+// CRC32 whose message contains its own CRC32 lands on one residue whatever the
+// message held — so it saw NOTHING a layer's cells did. Every test below was
+// written against that first version and three of them were red; they are kept in
+// that shape on purpose, because the pairs a CRC could not separate are exactly
+// the pairs this key exists for.
+//
+// So each test is a pair of worlds a weaker instrument calls equal, asserted in two
+// halves: the weak instrument agrees, and the key does not. A test that only said
+// "different worlds, different keys" would pass for a function that hashed the
+// write count.
+use hex_voxel;
+
+// Two rings of the same radius on the same edges, in the same materials but one —
+// the shape `V1` measured. `mat` is the edge byte the ring writes.
+fn ringed(mat: integer) -> VoxelWorld {
+  rw = world_new(0.25, 0, 8, 3).wn_world;
+  for rq in 0 - 3..4 {
+    for rr in 0 - 3..4 {
+      world_set_cell(rw, rq, rr, 0, Hex { h_height: 4 as u16? ?? 0,
+                                          h_material: 2 as u8? ?? 0 });
+    }
+  }
+  // One edge, one byte — the whole difference between the two worlds.
+  world_set_cell(rw, 1, 1, 0, Hex { h_height: 4 as u16? ?? 0,
+                                    h_material: 2 as u8? ?? 0,
+                                    h_wall_ne: mat as u8? ?? 0 });
+  rw
+}
+
+fn test_two_worlds_the_edit_clock_cannot_tell_apart_have_different_keys() {
+  a = ringed(3);
+  b = ringed(1);
+
+  // ⚠ THE CONTROL COMES FIRST, AND IT IS WHAT MAKES THE ASSERTION MEAN ANYTHING.
+  // If these two ever stop agreeing, the pair has drifted and the key below is
+  // being credited with catching something a chunk count would have caught.
+  assert(a.w_tau == b.w_tau,
+         "the fixture drifted — τ {a.w_tau} vs {b.w_tau}, so this pair no longer "
+         + "shows what the edit clock misses");
+  assert(len(a.w_chunks) == len(b.w_chunks),
+         "the fixture drifted — {len(a.w_chunks)} chunks vs {len(b.w_chunks)}");
+
+  ka = world_key(a);
+  kb = world_key(b);
+  assert(ka != kb,
+         "one edge byte apart and the key is the same string ({ka}) — the two "
+         + "worlds `V1` measured are indistinguishable to it");
+}
+
+fn test_a_change_inside_a_layer_is_not_cancelled_by_that_layers_own_checksum() {
+  // ⛔ THE CRC32 TRAP, AS A TEST. A material moves one byte of one cell and
+  // NOTHING else: no height, so `ck_base` does not move, so the only bytes that
+  // differ are inside the layer and the layer's own trailing CRC32 that covers
+  // them. That is precisely the pair a whole-file CRC32 returns one answer for —
+  // measured at `8277:3255039172` for both, byte sums 1143 against 1033.
+  c = world_new(0.25, 0, 8, 3).wn_world;
+  world_set_cell(c, 1, 1, 0, Hex { h_height: 4 as u16? ?? 0,
+                                   h_material: 6 as u8? ?? 0 });
+  d = world_new(0.25, 0, 8, 3).wn_world;
+  world_set_cell(d, 1, 1, 0, Hex { h_height: 4 as u16? ?? 0,
+                                   h_material: 2 as u8? ?? 0 });
+
+  assert(c.w_tau == d.w_tau && len(c.w_chunks) == len(d.w_chunks),
+         "the fixture drifted — these two differ in more than one cell's material");
+  kc = world_key(c);
+  kd = world_key(d);
+  assert(kc[..kc.find(":") ?? 0] == kd[..kd.find(":") ?? 0],
+         "these differ in LENGTH ({kc} vs {kd}) — then the checksum half of the "
+         + "key is untested by this pair, which is the half that was blind");
+  assert(kc != kd,
+         "a material change inside a layer left the key at {kc} — the digest is "
+         + "made of the same material as the format and cancels against it");
+}
+
+fn test_the_key_is_over_the_bytes_and_the_bytes_carry_the_clock() {
+  // ⚠ THE LIMIT, STATED AS A TEST RATHER THAN AS A COMMENT. The same cell written
+  // twice leaves the same CONTENT and a different world: `w_tau` and the layer's
+  // `ly_ver` are in the format, so the bytes differ (measured: exactly two, at
+  // offsets 36 and 77). The key answers *did these two runs do the same thing*,
+  // which is what `B1b.1b` compares — NOT *do these two worlds hold the same
+  // cells*, which needs a reader that skips the clock.
+  once = world_new(0.25, 0, 8, 3).wn_world;
+  world_set_cell(once, 2, 2, 0, Hex { h_height: 7 as u16? ?? 0,
+                                      h_material: 5 as u8? ?? 0 });
+  twice = world_new(0.25, 0, 8, 3).wn_world;
+  world_set_cell(twice, 2, 2, 0, Hex { h_height: 9 as u16? ?? 0,
+                                       h_material: 5 as u8? ?? 0 });
+  world_set_cell(twice, 2, 2, 0, Hex { h_height: 7 as u16? ?? 0,
+                                       h_material: 5 as u8? ?? 0 });
+
+  assert(world_cell(once, 2, 2, 0).h_height == world_cell(twice, 2, 2, 0).h_height,
+         "the fixture drifted — the two worlds no longer hold the same cell");
+  assert(once.w_tau != twice.w_tau, "the fixture drifted — both are at τ {once.w_tau}");
+  assert(world_key(once) != world_key(twice),
+         "the same cells by two histories gave ONE key — then the clock has left "
+         + "the format, and a consumer comparing two runs is comparing less than "
+         + "it thinks");
+}
+
+fn test_an_empty_world_and_a_written_one_are_not_the_same_key() {
+  // The degenerate case, because it is the one the page starts from: a fresh world
+  // that nobody has written must not read as whatever was there before.
+  fresh = world_new(0.25, 0, 8, 3).wn_world;
+  used = ringed(3);
+  assert(world_key(fresh) != world_key(used),
+         "an empty world keys the same as a built one");
+  // ⚠ AND TWO EMPTY WORLDS AGREE — an instrument that separated everything would
+  // report a difference for the page and the runner however right they both were.
+  assert(world_key(fresh) == world_key(world_new(0.25, 0, 8, 3).wn_world),
+         "two identical empty worlds gave two keys");
+}
+
+fn test_the_worlds_own_constants_are_inside_the_key() {
+  // `B1b.0`: `ε`/`θ` differ in exactly two bytes of the header and every cell is
+  // equal, so a key over the cells alone would call two different worlds the same
+  // one — which is the divergence that step found, one instrument later.
+  at8  = world_new(0.25, 0, 8, 3).wn_world;
+  at10 = world_new(0.25, 0, 10, 4).wn_world;
+  assert(len(at8.w_chunks) == len(at10.w_chunks) && at8.w_tau == at10.w_tau,
+         "the fixture drifted — these two differ in more than their constants");
+  assert(world_key(at8) != world_key(at10),
+         "a world at ε 8 and a world at ε 10 have the same key — the header is "
+         + "outside the digest, and `B1b.0`'s divergence would be invisible");
+}

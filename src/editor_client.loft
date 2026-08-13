@@ -410,6 +410,21 @@ struct Client {
   sky_b: float,
   // Has the ready message actually gone out? See the loop in `main`.
   hello: boolean,
+  // ── The second authority (plan 22 `B1b.1b`) ────────────────────────────────
+  //
+  // `local` is *this page edits its own world*, and it is a DECISION rather than
+  // an observation — see `LOCAL_AFTER`. It is one-way on purpose: once a gesture
+  // has been written into `cache` there is nobody to hand those edits to, and an
+  // authority that changed back under an author's hands would be two authorities
+  // over one world, which is the thing this plan refuses everywhere else.
+  local: boolean,
+  // Dials that did not land. It is the evidence behind the decision, and it is
+  // printed with it, so *how long did it wait* is answerable from a transcript.
+  dials: integer,
+  // Wire messages an author has pressed in local mode that nothing here answers
+  // yet — one entry per message id, because saying it once is honest and saying it
+  // per frame (the mouse drag sends one per pump) is a flood.
+  said_local: vector<text>,
   // Input, as EDGES rather than states: the socket carries a change, not a poll.
   held: integer,
   was_up: boolean,
@@ -1096,7 +1111,79 @@ fn send_aspect(h: web::WsHandler) {
 // ⚠ `act` IS NOT A FIFTH SITE, for `K1`'s reason about `tools/script.mjs`'s
 // `VERBMAP`: it holds no meaning a person could disagree with, only the id this
 // protocol happens to use. Remap `f` to another key and nothing here moves.
-fn act(h: web::WsHandler, verb: text) {
+// ── AND WHERE A VERB GOES — plan 22 `B1b.1b` ─────────────────────────────────
+//
+// The same verb, two authorities. `act` is where they part, and it is one `if`
+// rather than two clients: *the page is the editor with the authority LOCAL
+// instead of REMOTE* is this plan's one invariant, and a second `poll_input` for
+// local mode would be the `html/editor.html` fork rebuilt.
+//
+// ⚠ THE GESTURE IS THE LIBRARY'S IN BOTH DIRECTIONS. Attached, `press_verb` runs
+// in the server; local, it runs here — the same function on the same kind of
+// world, which is what makes the two comparable at all (`W4`). Nothing about a
+// gesture is written twice; only the DELIVERY differs, and that is what `act` is.
+fn local_act(sess: hex_editor::EditSession, st: Client, a: hex_editor::Author,
+             verb: text) {
+  ack = hex_editor::press_verb(sess, st.cache, a, verb);
+  // ⚠ A REFUSAL IS A SENTENCE AND A SUCCESS IS A COUNT — `editor_run`'s `said_ack`
+  // rule, because a gesture that succeeds with an empty `ak_why` printed verbatim
+  // reads as "the key did nothing", the one thing a driver must never say when
+  // something happened.
+  if ack.ak_why == hex_editor::PR_NONE {
+    println("client: local — no gesture for '{verb}'");
+    return;
+  }
+  if !ack.ak_ok {
+    println("client: local {verb} refused — {ack.ak_why}");
+    return;
+  }
+  // ⚠ THE WORLD KEY IS THE ONLY THING LOCAL MODE CAN SHOW UNTIL IT DRAWS. `B1b.2`
+  // is the re-mesh; until then a press that writes and a press that does nothing
+  // look identical on screen, and this is what `editor_run` can be held against —
+  // one function in `hex_voxel`, called by both sides, so neither can spell its
+  // own digest (`W1`'s finding, one layer out).
+  //
+  // ⚠ IT ENCODES THE WHOLE WORLD PER PRESS, which is affordable for a gesture and
+  // would not be for a frame. It is a per-EDGE cost by construction — every caller
+  // below is edge-triggered — and it goes when the picture can answer instead.
+  println("client: local {verb} — {ack.ak_n} · world {world_key(st.cache)}");
+  // ⚠ AND THE SESSION BESIDE IT, BECAUSE ONE INSTRUMENT CANNOT ANSWER. A ring
+  // writes its edges into the store and its TRUNK into the session, so a page that
+  // rang with a scratch session would key a byte-identical world and hold a
+  // different scene — `V1`'s finding, and the reason `hex_editor::session_digest`
+  // moved out of `editor_run` at this step rather than being copied into this file.
+  //
+  // ⚠ PREFIXED LINE BY LINE. The digest is several lines (one per opening), and
+  // every reader of this console filters on `client:` — a block whose second line
+  // arrives bare is a block a filter silently halves, which is exactly how
+  // `probe/b1a`'s first capture lost both arrows.
+  for sd_line in hex_editor::session_digest(sess).split('\n') {
+    println("client: local {sd_line.trim()}");
+  }
+}
+
+// A message this page can only send. In local mode there is nowhere to send it, so
+// it is SAID rather than dropped — `reason, offer, residual, never a blank no`,
+// applied to a keystroke: silence reads to an author as the key being broken, and
+// that is what they would report instead of this.
+//
+// ⚠ ONCE PER MESSAGE ID. The walk bits change on an edge but the look drag sends
+// one message per pump, so a per-press notice would bury the console — and a notice
+// nobody can read is the silence it was meant to replace.
+fn wire(h: web::WsHandler, st: Client, msg: text) {
+  if !st.local { web::send(h, msg); return; }
+  id = msg[..msg.find(":") ?? len(msg)];
+  for said in st.said_local {
+    if said == id { return; }
+  }
+  st.said_local += [id];
+  println("client: local — '{id}:' is a server message and this page has no "
+          + "gesture for it yet");
+}
+
+fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
+       a: hex_editor::Author, verb: text) {
+  if st.local { local_act(sess, st, a, verb); return; }
   if verb == hex_editor::VB_RAISE { web::send(h, "5:1");     return; }
   if verb == hex_editor::VB_LOWER { web::send(h, "5:-1");    return; }
   if verb == hex_editor::VB_PLACE { web::send(h, "32:");     return; }
@@ -1117,7 +1204,8 @@ fn act(h: web::WsHandler, verb: text) {
   println("client: the verb '{verb}' has no wire message here");
 }
 
-fn poll_input(h: web::WsHandler, st: Client) {
+fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
+              a: hex_editor::Author) {
   bits = 0;
   if graphics::gl_key_pressed(KEY_FORWARD) { bits = bits | 1; }
   if graphics::gl_key_pressed(KEY_BACK) { bits = bits | 2; }
@@ -1125,7 +1213,7 @@ fn poll_input(h: web::WsHandler, st: Client) {
   if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | 8; }
   if bits != st.held {
     st.held = bits;
-    web::send(h, "4:{bits}");
+    wire(h, st, "4:{bits}");
   }
 
   // Arrows shape the ground rather than move — one step per PRESS, so they are
@@ -1137,44 +1225,44 @@ fn poll_input(h: web::WsHandler, st: Client) {
   // string). They are two spellings of one key and they sit on adjacent lines for
   // that reason — a mismatch here is the last place this step could hide one.
   kup = graphics::gl_key_pressed(graphics::KEY_UP);
-  if kup && !st.was_up { act(h, hex_editor::verb_of("ArrowUp")); }
+  if kup && !st.was_up { act(h, st, sess, a, hex_editor::verb_of("ArrowUp")); }
   st.was_up = kup;
   kdown = graphics::gl_key_pressed(graphics::KEY_DOWN);
-  if kdown && !st.was_down { act(h, hex_editor::verb_of("ArrowDown")); }
+  if kdown && !st.was_down { act(h, st, sess, a, hex_editor::verb_of("ArrowDown")); }
   st.was_down = kdown;
 
   klevel = graphics::gl_key_pressed(KEY_LEVEL);
   if klevel && !st.was_level {
     st.levelling = !st.levelling;
-    if st.levelling { web::send(h, "6:1"); } else { web::send(h, "6:0"); }
+    if st.levelling { wire(h, st, "6:1"); } else { wire(h, st, "6:0"); }
   }
   st.was_level = klevel;
 
   kfence = graphics::gl_key_pressed(KEY_FENCE);
-  if kfence && !st.was_fence { act(h, hex_editor::verb_of("F")); }
+  if kfence && !st.was_fence { act(h, st, sess, a, hex_editor::verb_of("F")); }
   st.was_fence = kfence;
   kwall = graphics::gl_key_pressed(KEY_WALL);
-  if kwall && !st.was_wall { act(h, hex_editor::verb_of("G")); }
+  if kwall && !st.was_wall { act(h, st, sess, a, hex_editor::verb_of("G")); }
   st.was_wall = kwall;
 
   // The stair, also an edge and not a state: the gesture SETS the cell ahead to one
   // stride above the surface under you, so a held key would send the same write
   // every frame and change nothing after the first. An edge says that out loud.
   kstepu = graphics::gl_key_pressed(KEY_STEP_UP);
-  if kstepu && !st.was_step_up { web::send(h, "30:1"); }
+  if kstepu && !st.was_step_up { wire(h, st, "30:1"); }
   st.was_step_up = kstepu;
   kstepd = graphics::gl_key_pressed(KEY_STEP_DOWN);
-  if kstepd && !st.was_step_down { web::send(h, "30:-1"); }
+  if kstepd && !st.was_step_down { wire(h, st, "30:-1"); }
   st.was_step_down = kstepd;
 
   kstoru = graphics::gl_key_pressed(KEY_STOREY_UP);
-  if kstoru && !st.was_storey_up { web::send(h, "12:1"); }
+  if kstoru && !st.was_storey_up { wire(h, st, "12:1"); }
   st.was_storey_up = kstoru;
   kstord = graphics::gl_key_pressed(KEY_STOREY_DOWN);
-  if kstord && !st.was_storey_down { web::send(h, "12:-1"); }
+  if kstord && !st.was_storey_down { wire(h, st, "12:-1"); }
   st.was_storey_down = kstord;
   krun = graphics::gl_key_pressed(KEY_WALL_RUN);
-  if krun && !st.was_wall_run { web::send(h, "25:1"); }
+  if krun && !st.was_wall_run { wire(h, st, "25:1"); }
   st.was_wall_run = krun;
 
   // ⚠ EDGES, NOT STATES — the same rule as the stair above. A held `h` would send
@@ -1187,7 +1275,7 @@ fn poll_input(h: web::WsHandler, st: Client) {
   // `hex_editor` can reach `HEIGHT_SCALE`: that lives in `hex_proj`, `hex_proj`
   // pulls `graphics`, and putting a GL binding under the gesture library is the
   // cone `L3'` was reverted for twice.
-  if khouse && !st.was_house { act(h, hex_editor::verb_of("H")); }
+  if khouse && !st.was_house { act(h, st, sess, a, hex_editor::verb_of("H")); }
   st.was_house = khouse;
 
   // ⚠ THE OPENING PAIR IS THE ONE `B1a` DOES NOT CONVERT, and that is the step's
@@ -1208,10 +1296,10 @@ fn poll_input(h: web::WsHandler, st: Client) {
   // ⏭ So it waits for the selection to be reachable from this client — a catalogue
   // press, or `B1b`, where local mode holds the session that owns the choice.
   kdoor = graphics::gl_key_pressed(KEY_DOOR);
-  if kdoor && !st.was_door { web::send(h, "36:1"); }
+  if kdoor && !st.was_door { wire(h, st, "36:1"); }
   st.was_door = kdoor;
   kwin = graphics::gl_key_pressed(KEY_WINDOW);
-  if kwin && !st.was_window { web::send(h, "36:2"); }
+  if kwin && !st.was_window { wire(h, st, "36:2"); }
   st.was_window = kwin;
 
   // Drag to look. A raw delta is an input event, not a model decision.
@@ -1222,7 +1310,7 @@ fn poll_input(h: web::WsHandler, st: Client) {
     if st.dragging {
       ddx = (mx - st.last_x) as integer;
       ddy = (my - st.last_y) as integer;
-      if ddx != 0 || ddy != 0 { web::send(h, "3:{ddx},{ddy}"); }
+      if ddx != 0 || ddy != 0 { wire(h, st, "3:{ddx},{ddy}"); }
     }
     st.dragging = true;
     st.last_x = mx;
@@ -1681,19 +1769,48 @@ fn draw_panel(p: Panel, painter: Painter2D) {
 // a server that is not there says nothing at all. So it lives on the STATUS line
 // beside the subject, never inside it.
 //
-// ⏭ `B1b.1b` ADDS THE THIRD STRING and nothing else here: when a socket that
-// never opens means the page edits its own world, this is what stops that being
-// silent — which is why the visible half is built first.
+// ✅ `B1b.1b` ADDED THE THIRD STRING, and that is the whole reason the visible
+// half was built first: from here a socket that never opens means the page edits
+// its own world, and the difference between the two authorities is a fact on
+// screen rather than a silent swap. Route 2 was rejected for exactly the hazard
+// this line removes.
 const AUTH_CONNECTING = "moros editor — connecting to the server";
 const AUTH_SERVER     = "moros editor — edits go to the server";
+const AUTH_LOCAL      = "moros editor — edits stay in this page";
+
+// How many frames of dialling before this page decides it is on its own — plan 22
+// `B1b.1b`.
+//
+// ⚠ A BOUND, BECAUSE THERE IS NO EVENT. `ws_handler` gives no `onopen` and loft's
+// surface has no callback, so *the socket did not open* is only ever observable as
+// *it has not opened yet*, and something has to say when yet becomes never. The
+// number is measured rather than chosen: with a real server behind it the send
+// lands on **dial 4** (`make probe-auth` prints which dial it landed on, every
+// run), so this is 45× the observed cost of a working connection and still under
+// three seconds at 60 Hz.
+//
+// ⚠ AND THE MARGIN IS THE PRODUCT DECISION, not the mechanism. Too short and a
+// slow server moves an author into a different authority mid-session; too long and
+// a page opened from `file://` — where there is no server by construction, which is
+// the quick start's whole premise — sits saying `connecting` at somebody who wants
+// to build a house. The line above is what makes either failure legible instead of
+// silent.
+const LOCAL_AFTER = 180;
 
 // The client's own evidence, and it has exactly one piece: a `send` that
 // SUCCEEDED. `ws_handler` hands back a usable handle before the socket is open
 // (see `main`), so the handle existing means nothing — which is why `st.hello`,
 // set by the retry loop that already had to discover this, is the fact and not
 // a second thing to keep honest.
+//
+// ⚠ THE ORDER OF THESE TWO IS NOT ARBITRARY. `hello` is a fact the wire proved;
+// `local` is a decision this page made when it ran out of patience. If they could
+// ever both be true the answer must be the proved one — and they cannot, because
+// the loop stops dialling the moment it goes local, which is the same rule stated
+// twice on purpose.
 fn authority_line(st: Client) -> text {
   if st.hello { return AUTH_SERVER; }
+  if st.local { return AUTH_LOCAL; }
   AUTH_CONNECTING
 }
 
@@ -1880,9 +1997,39 @@ fn main() {
     levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
+    local: false, dials: 0, said_local: [],
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
+
+  // ── What local mode edits with (plan 22 `B1b.1b`) ──────────────────────────
+  //
+  // Three things and no more: the session that holds what has been authored, the
+  // author's pose, and the world — which is `st.cache`, already there, because
+  // plan 16 `S3` put a real `VoxelWorld` in the browser. Local mode adds no store
+  // and no renderer; it changes where a press GOES.
+  //
+  // ⚠ BUILT WHATEVER THE AUTHORITY TURNS OUT TO BE, and not behind the `local`
+  // flag. The flag is decided in the loop below, several frames in — a session
+  // built at that moment would be built while a key is being handled, and the one
+  // thing worse than a second authority is one that is constructed halfway through
+  // a gesture.
+  //
+  // ⚠ THE POSE IS THE ORIGIN AND IT DOES NOT MOVE — `B1c`'s whole subject. The
+  // walk is integrated on the SERVER's tick, so in local mode nothing owns where
+  // the author is standing yet; `editor_run` has the same limit and says so
+  // ("local mode teleports like the runner does"). It is what makes the two
+  // comparable today, and it is the honest place this plan's invariant may still
+  // be false.
+  //
+  // ⏭ AND ONE LIVE FACT FALLS OUT OF IT: at yaw 0 on the origin, `place` is
+  // REFUSED — "a footprint at this facing has no mitred corners; turn one step".
+  // Measured on both sides, seeded ground and empty alike (`B1a` found it through
+  // the server). A person opening this page and pressing `h` is told no, and until
+  // there is a way to turn, that refusal is the honest answer rather than a bug in
+  // this step.
+  sess = hex_editor::EditSession {};
+  author = hex_editor::author_on(st.cache, 0.0, 0.0, 0.0);
 
   // ⚠ NOT `if prog == 0 { fail }`, which is what the API's own doc says to write
   // ("Returns the program ID (0 on failure)"). In the browser `gl_create_shader`
@@ -1987,10 +2134,29 @@ fn main() {
   reported = 0;
   while graphics::gl_poll_events() {
     frames = frames + 1;
-    if !st.hello {
+    // ⚠ AND IT STOPS DIALLING ONCE IT HAS GONE LOCAL — that `!st.local` is the
+    // one-way rule made of code rather than of a comment. A page that kept dialling
+    // would attach to a server that came up later while its own world already held
+    // gestures nobody else has seen, which is two authorities over one world.
+    if !st.hello && !st.local {
       st.hello = web::send(h, "1:");
+      if !st.hello {
+        st.dials = st.dials + 1;
+        if st.dials >= LOCAL_AFTER {
+          st.local = true;
+          // ⚠ THE COUNT IS IN THE SENTENCE, because "it went local" without it
+          // cannot be told from "it went local immediately", and those are a
+          // product decision and a bug respectively.
+          println("client: no server answered in {st.dials} dials — "
+                  + "this page edits its own world");
+          st.panel_dirty = true;
+        }
+      }
       if st.hello {
-        println("client: connected — asked for the world");
+        // ⚠ WHICH DIAL LANDED, and that number is what `LOCAL_AFTER` is set
+        // against: a bound picked without knowing how long a working connection
+        // takes is a guess wearing a constant's clothes.
+        println("client: connected — asked for the world (dial {st.dials + 1})");
         // ⚠ AND THE PANEL IS TOLD, because the authority is panel CONTENT now.
         // The build below this loop carries a comment saying the panel is built
         // once "until `H:` exists (plan 18 `B2`) … when the contents start
@@ -2046,7 +2212,7 @@ fn main() {
             + "with the world shader ({st.c_thumb} thumbnail meshes arrived, "
             + "{len(st.thumbs)} held, {len(st.tcams)} cameras)");
     }
-    poll_input(h, st);
+    poll_input(h, st, sess, author);
     draw_world(st);
     draw_panel(ui_panel, ui_painter);
     draw_swatches(ui_panel, ui_swatches, ui_painter);

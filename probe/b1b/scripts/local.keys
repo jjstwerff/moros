@@ -1,0 +1,15 @@
+# B1b.1b — the six verbs the page presses in local mode, in the same order.
+#
+# ⚠ NO `at` AND NO `face`. The page has no walk in local mode (`B1c`), so its
+# author is `author_on(w, 0.0, 0.0, 0.0)` and stays there — and this script has to
+# stand in exactly the same place or the comparison is measuring a pose.
+#
+# ⚠ `place` IS REFUSED HERE, ON BOTH SIDES, and it is kept for that reason: at yaw
+# 0 on the origin a footprint has no mitred corners. A refusal that reproduces is
+# evidence; leaving it out would be choosing the fixture to suit the answer.
+verb raise
+verb raise
+verb place
+verb fence
+verb wall
+verb lower

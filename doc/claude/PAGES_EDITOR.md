@@ -54,6 +54,15 @@ server's `subject_line`, which a server that is not there cannot compose. Built 
 `B1b.1a`, ahead of the second authority, because the instrument that makes a variation visible is
 what earns the right to let it vary.
 
+✅ **AND THE SECOND AUTHORITY IS BUILT — `B1b.1b`, 2026-08-13.** ⚠ **The inference is a BOUND and
+not an event**, which the design did not say and could not have: `ws_handler` gives no `onopen`
+and loft's surface has no callback, so *the socket did not open* is only ever observable as *it
+has not opened yet*. `LOCAL_AFTER = 180` unanswered dials, measured against a live server landing
+on **dial 4**, and the decision is **one-way** — a page that kept dialling would attach to a
+server that came up later while already holding gestures nobody else has seen. ⏭ And the honest
+control is a socket that OPENS AND SAYS NOTHING: a page inferring its authority from *silence*
+rather than from *a refused dial* swaps there, with a server on the other end.
+
 ---
 
 ## What was measured, 2026-08-11
