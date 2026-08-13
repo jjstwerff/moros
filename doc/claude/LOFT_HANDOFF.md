@@ -38,6 +38,8 @@ the installed binary, and the entry itself says which build.
 | H14 · H15 | a `while true` past ~32 KB of body · a mutated `&boolean` parameter | ✅ fixed |
 | H16–H19 | the wasm client's four | ✅ fixed — [#667](https://github.com/loft-lang/loft/issues/667), [#668](https://github.com/loft-lang/loft/issues/668), [#669](https://github.com/loft-lang/loft/issues/669), [#670](https://github.com/loft-lang/loft/issues/670) closed |
 | #708 · #709 | `File.size` reads 0 for a file the program wrote · a target-unservable builtin refuses the BUILD | filed 2026-07-31, not re-measured here — the section at the foot |
+| #851 | `--html` binds no filesystem while the wasm host binds no graphics | ✅ **fixed and VERIFIED HERE**, `28e85b42` — `make probe-p6`: 21 `fs_*` names against the 0-of-20 that raised it, and a world saved in a page survives a reload over http **and `file://`**. It cancelled a whole phase (plan 22 `W5`) |
+| #891 | `host_input()` **blocks** with no host, so a program cannot ask its environment anything optional | ⛔ **OPEN, filed 2026-08-13, and it blocks plan 22 `B1b.1`.** `probe/b1b/ask.loft`, `timeout 20` → rc **124**. ⚠ It is `P2`'s result read one case too far: `P2` measured a host that *declined* a message, not an *absent* one, and only the first terminates |
 
 **Two workarounds these bought are noted where they live rather than ripped out**:
 `hex_world`'s explicit `return` in `sp_world` (H9) and `editor_server`'s struct-wrapped

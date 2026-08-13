@@ -385,7 +385,36 @@ serves**, differing only in where a key press goes.
 | ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
-| ⏭ next | **`B1b.1`** — local mode holds a session, an author and its own world. `B1` is **cut into five** (`B1a` ✅, `B1b.0` ✅, `B1b.1`, `B1b.2` draw, `B1c` the walk, unsized on purpose); the plan has the reasoning and what `B1b.1` still needs. It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ⛔ next | **`B1b.1`** is **blocked on its boot switch** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). Three routes in the plan; route 3 (connect-or-local, **with the subject line saying which**) is the one to build if #891 does not land. `B1` is **cut into five** (`B1a` ✅, `B1b.0` ✅, `B1b.1`, `B1b.2` draw, `B1c` the walk, unsized on purpose). It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ⛔ `B1b.1` IS BLOCKED, AND THE PLAN NAMED THE MECHANISM WITH CONFIDENCE, 2026-08-13
+
+**Its first item was a boot switch**, and this tree wrote: *"the mechanism is `P2`'s — `host_output`
+a question, `host_input` the answer, run and holding in both shells. And the default falls out for
+free: an unanswered request returns empty, so the server-served page stays attached without anyone
+deciding."*
+
+⛔ **`probe/b1b/ask.loft` — five lines — prints `asking` and HANGS.** `timeout 20` → **rc 124**.
+[loft#891](https://github.com/loft-lang/loft/issues/891) (`enhancement` · `needs-design` ·
+`wa:partial` · `area:wasm` · `hit-by:moros`).
+
+⚠ **THE MISREADING IS A CLASS, NOT A SLIP.** `P2` really did measure an unanswered request coming
+back empty — **with JS present, declining one message**. *Absent-host and declining-host are
+different situations and only one of them terminates.* The design generalised from the case it had
+run to the case it had not, and the absence being reported was **the host itself** — exactly what
+`P2` never tested. *Check an instrument against something it should find before trusting it to
+report an absence.*
+
+⚠ `host_name` is no way round it: the symbol is in the binary, the function is not.
+
+⏭ **Three routes, in the plan.** Wait for #891; or infer the mode from whether the socket connects
+— which needs no toolchain and is what `_site/index.html` will really experience, but lets a
+transient network failure move an author into a different authority silently; or **do that and make
+the subject line SAY which authority is live**, which is the one to build if #891 does not land.
+
+⚠ **NOTHING WAS HALF-WIRED WHILE THIS WAS DECIDED.** A local mode that writes but cannot be
+compared is the swap-and-look the plan's gate refuses, and a boot switch that hangs the native
+build would have been found by `make play` rather than by a test.
 
 ## ✅ `B1b.0` — THE TREE HELD TWO ANSWERS TO *WHAT WORLD IS THIS*, 2026-08-13
 

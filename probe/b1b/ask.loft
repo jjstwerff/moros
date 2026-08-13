@@ -1,0 +1,9 @@
+// Does `host_output`/`host_input` answer — or BLOCK — when no host is listening?
+// `B1b.1`'s boot switch rests on it: the page asks its mode, and every other
+// target must get an empty answer immediately rather than hanging.
+fn main() {
+  println("asking");
+  host_output("MODE?");
+  m = host_input();
+  println("got [{m}] len {m.size()}");
+}

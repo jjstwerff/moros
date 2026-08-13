@@ -108,7 +108,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
-| **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | the page prints an `Ack` and a world digest; `editor_run` driving the same verbs at the same author prints the same | ⏭ **READY** — `B1b.0` was its prerequisite |
+| **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | the page prints an `Ack` and a world digest; `editor_run` driving the same verbs at the same author prints the same | ⛔ **BLOCKED ON ITS BOOT SWITCH** — `host_input()` BLOCKS with no host, measured. [loft#891](https://github.com/loft-lang/loft/issues/891); see below |
 | **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | a picture, and the world digest unchanged by drawing it | Blocked on `B1b.1` |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
@@ -185,6 +185,46 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ⛔ What starting `B1b.1` turned up (2026-08-13) — the boot switch cannot be asked for
+
+**`B1b.1`'s first item was a boot switch, and this plan named the mechanism with confidence**:
+*"the mechanism is `P2`'s — `host_output` a question, `host_input` the answer, which was run and
+holds in both shells. And the default falls out for free: `P2` measured an unanswered request
+returning empty, so the server-served page gets `""` and stays attached without anyone deciding."*
+
+⛔ **THAT IS FALSE, AND ONE FIVE-LINE PROGRAM SAYS SO.** `probe/b1b/ask.loft` — `host_output`
+then `host_input` — prints `asking` and **hangs**; `timeout 20` returns **124**. Filed as
+[loft#891](https://github.com/loft-lang/loft/issues/891).
+
+⚠ **THE MISREADING IS THE INSTRUCTIVE PART, AND IT IS A CLASS.** `P2` really did measure an
+unanswered request coming back **empty** — with JS *present* and declining that one message.
+**Absent-host and declining-host are different situations and only one of them terminates**, and
+the design generalised from the one it had tested to the one it had not. *An instrument gets
+checked against something it should find before it is trusted to report an absence* — here the
+absence being reported was **the host itself**, which is precisely the case `P2` never ran.
+
+⚠ **AND `host_name` IS NOT A WAY ROUND IT**: the symbol is in the binary, the function is not —
+`error: Unknown function host_name`. There is no target query either.
+
+⏭ **THREE ROUTES, and none is a coin toss:**
+
+1. **Wait for [#891](https://github.com/loft-lang/loft/issues/891)** — a `host_try_input`, a
+   readiness predicate or a timeout. This tree's rule is to wait for a toolchain rather than build
+   around it, and `#851` is the precedent where waiting cost nothing and saved a whole package.
+2. **Infer the mode from whether the socket connects.** It needs no toolchain and it is what
+   `_site/index.html` will actually experience — there is no server on a `file://` page. ⚠ **But a
+   transient network failure would silently move an author into a different authority**, their
+   edits landing somewhere else with nothing said. A mode change that nobody can see is the thing
+   [EDITING_MODES](../../doc/claude/EDITING_MODES.md) refuses on the *other* axis.
+3. **Make it visible instead of invisible** — connect-or-local, but the subject line SAYS which
+   authority is live, so route 2's hazard becomes a fact on screen rather than a silent swap. ⏭
+   This is the one to build if #891 does not land, and it needs [CATALOGUE](../../doc/claude/CATALOGUE.md)'s
+   subject line, which exists.
+
+⚠ **NOTHING WAS HALF-WIRED WHILE THIS WAS DECIDED**, deliberately. A local mode that writes but
+cannot be compared is the swap-and-look this plan's own gate exists to refuse, and a boot switch
+that hangs the native build would have been found by `make play` rather than by a test.
 
 ## What `B1b.0` turned up (2026-08-13) — the tree held TWO answers to *what world is this*
 
