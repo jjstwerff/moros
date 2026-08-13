@@ -46,9 +46,14 @@ own ground meshed out of its own cache, and a re-mesh on every write. ⛔ **Noth
 screen at all**, and `draw_world` says why in one line: `if !st.has_cam { return; }` — the camera
 is the SERVER's solve, so the page `B1b.1b` shipped had every number right and a blank world half.
 
-**Next:** **`B1b.2c.4b`** — the page draws the other ten surfaces. The recipe is
-`hex_mesh::chunk_meshes_all` now and the server holds no copy of it (`c.4a`), so what is left is
-the page becoming its third caller. The full step decomposition is
+✅ **AND `B1b.2c` IS CLOSED — THE PAGE DRAWS ALL ELEVEN SURFACES, 2026-08-13.** A fence rung in
+local mode is visible. The recipe is `hex_mesh::chunk_meshes_all`, the server holds no copy of it,
+and `make probe-auth` reads the page's own line: **`grass` at boot, `grass,wall` after the rings**.
+
+**Next:** **`B1c`** — the walk in local mode, which is what stands between this page and a house.
+`place` is refused at the origin in both drivers (*"a footprint at this facing has no mitred
+corners; turn one step"*) and local mode has no answer for `w` at all. The full step decomposition
+is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -138,7 +143,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | **DONE 2026-08-13.** `make probe-mesher`: 49 tiles × 11 surfaces, **99 with geometry in them**, every one the same mesh. Both bodies live — the server's is `chunk_meshes_all_srv` until `c.4` | ✅ Done |
 | ✅ **`B1b.2c.4a`** — the server drops its copy | S | **DONE 2026-08-13.** 41 declarations and 1,744 lines out of `src/editor_server.loft`; five call sites take `hex_mesh::chunk_meshes_all`. `make gate` **48 PASS / 0 FAIL**, `make parts` byte-identical, `make probe-b1a` world `82d622b37d1d` unmoved. ⚠ **`make gate` is SILENT when it passes** — rc=0 with an empty log reads exactly like a suite that never ran, so the count comes from `GATE_VERBOSE=1` | ✅ Done |
 | ✅ **`B1b.2c.4b`** — the ramp and the slot are the library's; the server's two send paths become one | S | **DONE 2026-08-13.** ⛔ **Found a shipped bug doing it**: the chunk STREAM wrote the ramp as a literal `0` where the dirty FLUSH asked `surface_ramp`, so **water drew flat when a tile came into view and depth-ramped after any edit near it**. `tools/gates/world/water.mjs` is the first water gate and goes red on it — `flush [2]` against `stream [0]` | ✅ Done |
-| **`B1b.2c.4c`** — the page draws all eleven surfaces | S | ⚠ a fence laid in local mode is VISIBLE — and `install_ground`'s `len < 6` guard returns **before** `drop_part`, which is the exact defect `add_mesh`'s own comment documents at length | ⏭ **next** |
+| ✅ **`B1b.2c.4c`** — the page draws all eleven surfaces | S | **DONE 2026-08-13.** `make probe-auth` is **36 checks**: `grass` at boot, **`grass,wall`** after the rings, and the world half changed again over them. `AUTH_SABOTAGE=groundonly` is red on those and **green on every other check in the file** — which is what *written, keyed and invisible* looks like from inside an instrument | ✅ Done |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -214,6 +219,41 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ✅ What `B1b.2c.4c` turned up (2026-08-13) — a total cannot say WHICH, and that is the phase
+
+**The page draws all eleven surfaces.** `local_ground` is `local_surfaces`: one
+`hex_mesh::chunk_meshes_all` per tile, the ground through the installer it always used and the
+other ten through `install_surface`, whose colour and ramp are `hex_mesh`'s — the same two calls
+`send_surfaces` makes before it puts them on the wire. **`B1b.2c` is closed**, and the picture is
+`shots/b1b-2c4c-eleven-surfaces.png`: a flat green plane before, a raised bowl inside a grey
+palisade after.
+
+⛔ **EVERY CHECK THAT ALREADY EXISTED WAS GREEN THROUGH ALL OF IT, AND THAT IS THE FINDING.**
+`AUTH_SABOTAGE=groundonly` — the page one commit back, meshing the ground and filing nothing else —
+leaves **B8** (the sentences), **B10** (the world key), **B11** (the session), **D3** (the raise
+redrew) and **D4** (the far ground held) all green. A fence rung in local mode was **written, keyed,
+byte-identical to the runner's, and invisible**, and not one instrument in a 33-check file was
+about whether a WALL reached the picture.
+
+⚠ **SO THE CLIENT NAMES THE SURFACES, BECAUSE A TOTAL RISES ON A PAGE THAT DRAWS ONE.**
+`client: local drew grass` at boot and `grass,wall` after the rings. The float count could not
+carry this claim: a raise moves the GROUND, so *floats redrawn* goes up on every gesture whether or
+not anything else is drawn — which is `probe-mesher`'s finding one step back (*"63 of them had
+geometry" cannot say WHICH*) arriving in the consumer that step existed for. ⚠ And the list is read
+off the **>= 6 floats that decide whether a buffer is installed at all**, so a surface that meshed
+to nothing cannot appear in it.
+
+⚠ **AND `E1` IS THE NEGATIVE CONTROL ON THE SAME RUN**: an unwritten world must draw `grass` and
+nothing else. Without it, a page that filed a wall mesh for every tile unconditionally would pass
+`E2` while drawing furniture nobody put there.
+
+⚠ **THE `add_mesh` DEFECT WAS WAITING IN `install_ground` AND IS NOT REPEATED.** Its `len < 6`
+guard returns **before** `drop_part` — the exact shape `add_mesh` twenty lines up documents at
+length, where an empty vertex list is a CLEAR and skipping it leaves the old buffer bound. It never
+mattered for the ground, which is never empty; it matters for these ten, which are empty most of
+the time and go empty again when what filled them is removed. `install_surface` drops first. **A
+defect that is harmless in its only caller is a defect waiting for its second.**
 
 ## ⛔ What `B1b.2c.4b` turned up (2026-08-13) — one world, two pictures, decided by delivery
 

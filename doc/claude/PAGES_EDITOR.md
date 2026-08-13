@@ -155,11 +155,19 @@ existing renderer with its socket replaced by a function call.
   meshes `LOCAL_TILES` around the author, and re-meshes them all on a write, because a gesture
   reports what it DID and not WHERE.
 
-⛔ **AND EIGHT OF THE NINE SURFACES ARE STILL THE SERVER'S.** `chunk_meshes_all` composes ground,
-road, field, floor, vegetation, roof, wall, frame and soffit; it is a **program-local function** in
-`editor_server.loft`, and its own comment says it was spelled out twice and must never be spelled a
-third time. **The page is that third caller**, so a fence laid in local mode is written, keyed and
-invisible until that recipe moves somewhere both consumers can call it.
+✅ **AND ALL ELEVEN SURFACES ARE THE PAGE'S NOW — `B1b.2c`, closed 2026-08-13.** This paragraph
+read *"eight of the nine surfaces are still the server's"*: `chunk_meshes_all` was a **program-local
+function** in `editor_server.loft` whose own comment said it must never be spelled a third time, so
+a fence laid in local mode was written, keyed, byte-identical to the runner's — **and invisible**.
+
+The recipe is `hex_mesh::chunk_meshes_all` and the page is its third *caller*. Four steps, because
+the move had a dependency arrow in front of it: `c.1`/`c.2` put the five drawing primitives in
+`hex_proj` (the leaf both sides already depend on — `c.1` had guessed `hex_mesh` from a grep that
+excluded the file they live in), `c.3` moved the 1342-line props mesher, and `c.4` deleted the
+server's copy and taught the page to install all eleven. `make probe-auth`'s `E` block is what says
+so: **`grass` at boot, `grass,wall` after the rings**, with `AUTH_SABOTAGE=groundonly` red on
+exactly those two checks and green on every other one in the file — which is what *written, keyed
+and invisible* looks like from inside an instrument.
 
 ---
 

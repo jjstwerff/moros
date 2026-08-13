@@ -235,6 +235,11 @@ to change. This is the refusal rule from §C2 applied to a list.
   worlds from its own cache, so "send the layers" looks right and is not: four of a chunk's nine
   surfaces come from `chunk_mesh_props`, which reads wall EDGES and the server's registries. A
   client meshing a part draws its ground and its floor and no walls.
+  ⚠ **THE DECISION STANDS AND HALF ITS REASON EXPIRED — plan 22 `B1b.2c`, 2026-08-13.**
+  `chunk_mesh_props` is `hex_mesh`'s now and the pages client composes all eleven surfaces from its
+  own cache, so *the client cannot reach the recipe* is no longer true. What is still true is the
+  other half: a **part** thumbnail needs the part EXPANDED, and the registries a chunk's props read
+  are the editing session's — which a client browsing the catalogue does not hold.
 - ⚠ **CANONICAL LIGHT IS NOT THE SWATCH'S RULE, AND THE CACHE IS WHY.** A swatch re-renders with
   the world's `uAmb`/`uLamp` so it dims when the world does. A thumbnail is cached by
   `(part, version)`, and a cache keyed on the part cannot hold an image that depends on the

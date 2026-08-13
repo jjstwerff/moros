@@ -17,6 +17,7 @@
 #   AUTH_SABOTAGE=nocam …                local mode writes and never sets a camera
 #   AUTH_SABOTAGE=nomesh …               …and never meshes its own ground
 #   AUTH_SABOTAGE=stale …                it writes and does not redraw
+#   AUTH_SABOTAGE=groundonly …          it meshes the GROUND and nothing else
 #
 # `src/editor_client.loft:1680` read `ps_status: "moros editor — connected"` — a
 # literal, set at panel construction, before any socket existed, with no other
@@ -158,10 +159,18 @@ if [ -n "$SAB" ]; then
     # and nothing else — and the `cmp` guard below proves a change was made, never
     # that the change matters. A sabotage that is red nowhere is either a blind
     # instrument or a no-op, and only reading tells you which.
-    nomesh) sed -i 's/^          lg_boot = local_ground(st, author);$/          lg_boot = 0;/' "$SRC" ;;
+    nomesh) sed -i 's/^          lg_boot = local_surfaces(st, sess, author);$/          lg_boot = 0;/' "$SRC" ;;
     # It writes and does not redraw — the picture is a photograph of the world
     # before the gesture, with every count and both digests correct.
-    stale) sed -i 's/^  redrawn = local_ground(st, a);$/  redrawn = 0;/' "$SRC" ;;
+    stale) sed -i 's/^  redrawn = local_surfaces(st, sess, a);$/  redrawn = 0;/' "$SRC" ;;
+    # ── B1b.2c.4c ───────────────────────────────────────────────────────────
+    # The page as it was one commit ago: it meshes the GROUND and files nothing
+    # else, so a fence is written, keyed, byte-identical to the runner's — and
+    # invisible. ⚠ EVERY CHECK ABOVE STAYS GREEN, which is why the `E` block
+    # exists: B8 counts the sentences, B10 keys the world, B11 diffs the session
+    # and D3 sees a raise move the ground, and not one of them is about whether a
+    # WALL reached the picture.
+    groundonly) sed -i 's/^      for lg_si in 1..SURFACES {$/      for lg_si in 1..1 {/' "$SRC" ;;
     *) echo "auth: unknown AUTH_SABOTAGE '$SAB'"; exit 2 ;;
   esac
   if cmp -s "$SRC" src/editor_client.loft; then
@@ -483,6 +492,53 @@ if [ -n "$g_sum_first" ] && [ "$g_sum_first" = "$g_sum_before" ]; then
   ok "D4 …and only where the gesture landed — the far ground is untouched"
 else
   bad "D4 the far ground changed too ($g_sum_before → $g_sum_first): the camera moved, not the world"
+fi
+
+# ── B1b.2c.4c — and is it the WHOLE picture, or the ground alone ─────
+#
+# ⚠ WHICH SURFACES, NOT HOW MANY FLOATS, AND THAT IS THE WHOLE OF THIS PHASE. Until
+# `c.4c` the page meshed the GROUND alone: a fence rung in local mode was written,
+# keyed, byte-identical to the runner's — and INVISIBLE, because the recipe that
+# composes walls, roofs and the rest was a program-local function in
+# `editor_server.loft`. Every check above stayed green through all of that, which is
+# what makes them the wrong instrument for it: a raise moves the ground, so a total
+# and a checksum both rise on a page that draws nothing else.
+#
+# ⚠ SO THE CLIENT NAMES THEM. `client: local drew <names>` is read off what was
+# UPLOADED — the same `>= 6` floats that decide whether a buffer is installed —
+# rather than off what was asked for, so a surface that meshed to nothing cannot
+# appear. `probe-mesher` learnt this one step back, where *"63 of them had geometry"*
+# could not say which and its first run passed over five surfaces of eleven.
+echo
+echo "── B1b.2c.4c  did the page draw more than the GROUND ───────────────"
+drew_first=$(grep -m1 '^client: local drew ' "$OUT/b.log" | sed 's/^client: local drew //')
+drew_last=$(grep '^client: local drew ' "$OUT/b.log" | tail -1 | sed 's/^client: local drew //')
+echo "   at boot:      ${drew_first:-<nothing>}"
+echo "   at the end:   ${drew_last:-<nothing>}"
+# ⚠ THE BOOT LINE IS THE NEGATIVE CONTROL AND IT IS NOT DECORATION. An unwritten
+# world really is grass and nothing else, so *the page draws walls* means nothing
+# until *it did not draw walls before anything was pressed* is on the same run: a
+# page that filed a wall mesh for every tile unconditionally would satisfy the check
+# below and be drawing furniture nobody put there.
+if [ "$drew_first" = "grass" ]; then
+  ok "E1 an unwritten world is grass and nothing else — '$drew_first'"
+else
+  bad "E1 the page drew '${drew_first:-nothing}' before a key was pressed, not 'grass' alone"
+fi
+# The fence and the wall are both drawn in the `wall` surface — `hex_mesh::wall_up`
+# gives a fence 4 and a wall 12, one surface, two heights.
+case "$drew_last" in
+  *wall*) ok "E2 …and after the fence and the wall it draws MASONRY too — '$drew_last'" ;;
+  *)      bad "E2 the page ends drawing '${drew_last:-nothing}': the rings wrote and nothing shows them" ;;
+esac
+# ⚠ AND THE PICTURE, BECAUSE A COUNTER IN THE PRODUCER IS NOT A PICTURE. The page
+# says it uploaded a wall mesh; the world region has to have CHANGED between the
+# first raise and the end, and the two rings are the only gestures between them.
+if [ -n "$w_sum_first" ] && [ -n "$(field after-all world 2)" ] \
+   && [ "$(field after-all world 2)" != "$w_sum_first" ]; then
+  ok "E3 and the world half changed again over the two rings — $w_sum_first → $(field after-all world 2)"
+else
+  bad "E3 the world half is unchanged since the raise ($w_sum_first): the rings reached no picture"
 fi
 
 # ── run C ───────────────────────────────────────────────────────────

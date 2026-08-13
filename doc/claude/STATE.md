@@ -386,10 +386,40 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
-| ◐ `B1b.2c` | **THE MESHER IS IN THE LIBRARY, AND THE SERVER HOLDS NO COPY** — `c.4a` took 41 declarations and 1,744 lines out of `editor_server.loft` and `probe-mesher` with them. Its blocker was an arrow and it is paid — the five primitives live in `hex_proj` (`c.2` corrected `c.1`'s home; a grep had excluded the file they live in). ⏭ `c.4b` is the page becoming the recipe's third caller |
+| ✅ `B1b.2c` | **THE PAGE DRAWS ALL ELEVEN SURFACES** — the mesher is `hex_mesh`'s, the server holds no copy (41 declarations and 1,744 lines gone), and `make probe-auth` says `grass` at boot and **`grass,wall`** after the rings. Four steps, because a dependency arrow stood in front of it: `c.1`/`c.2` the five primitives into `hex_proj`, `c.3` the 1342-line props mesher, `c.4a`–`c.4c` the deletion, the ramp and the page |
 | ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.2c.4c` — A TOTAL CANNOT SAY WHICH, AND THAT IS THE PHASE, 2026-08-13
+
+**The page draws all eleven surfaces, and `B1b.2c` is closed.** `local_ground` is
+`local_surfaces`: one `hex_mesh::chunk_meshes_all` per tile, the ground through the installer it
+always used and the other ten through `install_surface`, whose colour and ramp are `hex_mesh`'s —
+the same two calls `send_surfaces` makes before putting them on the wire.
+`shots/b1b-2c4c-eleven-surfaces.png`: a flat green plane before, a raised bowl inside a grey
+palisade after.
+
+⛔ **EVERY CHECK THAT ALREADY EXISTED WAS GREEN THROUGH ALL OF IT.** `AUTH_SABOTAGE=groundonly` —
+the page one commit back — leaves **B8** (sentences), **B10** (world key), **B11** (session), **D3**
+and **D4** green. A fence rung in local mode was **written, keyed, byte-identical to the runner's,
+and invisible**, and not one instrument in a 33-check file was about whether a WALL reached the
+picture.
+
+⚠ **SO THE CLIENT NAMES THE SURFACES: `client: local drew grass` at boot, `grass,wall` after the
+rings.** A float total could not carry the claim — a raise moves the GROUND, so *floats redrawn*
+rises on every gesture whether or not anything else is drawn. That is `probe-mesher`'s finding
+(*"63 of them had geometry" cannot say WHICH*) arriving in the consumer it was found for. ⚠ The
+list is read off the **`>= 6` floats that decide whether a buffer is installed**, so a surface that
+meshed to nothing cannot appear. ⚠ And `E1` is the negative control on the same run: an unwritten
+world draws `grass` and nothing else, without which a page filing a wall mesh unconditionally would
+pass.
+
+⚠ **THE `add_mesh` DEFECT WAS WAITING IN `install_ground`.** Its `len < 6` guard returns **before**
+`drop_part` — the exact shape `add_mesh` documents at length, where an empty vertex list is a CLEAR
+and skipping it leaves the old buffer bound. Harmless for the ground, which is never empty; not
+harmless for ten surfaces that are empty most of the time. `install_surface` drops first. **A defect
+that is harmless in its only caller is a defect waiting for its second.**
 
 ## ⛔ `B1b.2c.4b` — ONE WORLD, TWO PICTURES, DECIDED BY DELIVERY, 2026-08-13
 
@@ -562,6 +592,8 @@ over — **and the origin is the one place the two agree**, which is where every
 the nine-surface recipe is `chunk_meshes_all`, a program-local function in `editor_server.loft`
 whose own comment says a third copy is how a surface comes to be drawn in the world and missing
 from the catalogue. **The page is that third caller** — `B1b.2c`.
+✅ **CLOSED THE SAME DAY** — the recipe is `hex_mesh::chunk_meshes_all` and the page calls it; see
+`B1b.2c.4c` above. This paragraph is kept as the record of what the gap was.
 
 ## ✅ `B1b.1b` — THE PAGE IS AN EDITOR, AND THE DIGEST WAS MADE OF THE FORMAT, 2026-08-13
 
