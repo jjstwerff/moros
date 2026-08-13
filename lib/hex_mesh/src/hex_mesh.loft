@@ -1072,15 +1072,21 @@ pub fn tile_ready(w: VoxelWorld, cx: integer, cz: integer) -> boolean {
 // otherwise has to pay, and the reason this move is possible at all — a lavition
 // package cannot reach into a Moros one.
 
-// The drawing's own constants, private because nothing outside asks them — and
-// deliberately NOT published, because `src/editor_server.loft` declares the same
-// names while both copies live, and a program declaring a name a library publishes
-// SHADOWS it invisibly (`HOUSE_W`, measured).
-const WALL_UP      = 12;          // a storey of masonry
+// The drawing's own constants. Most are private because nothing outside asks them.
+//
+// ⚠ TWO ARE PUBLISHED, AND THE TIMING IS THE POINT — plan 22 `B1b.2c.4`. While
+// `src/editor_server.loft` held its own copy of this mesher it also held its own
+// `WALL_UP` and `SPECIES_BUSH`, and a program declaring a name a library publishes
+// SHADOWS it invisibly (`HOUSE_W`, measured) — so publishing them then would have
+// left the server reading its own 12 whatever this file said. The server's copies
+// are gone with the mesher, so the two the server still needs for its OWN work
+// (an opening's fit check, a scatter's species) are `hex_mesh::`'s now and there is
+// one storey height in the tree rather than two.
+pub const WALL_UP      = 12;      // a storey of masonry
 const FENCE_UP     = 4;           // waist-high
 const FRAME_W      = 0.14;        // how far the surround reaches past the opening
 const FRAME_PROUD  = 0.05;        // and how far it stands out of the wall's face
-const SPECIES_BUSH = 2;           // the item palette: 0 is absence, always
+pub const SPECIES_BUSH = 2;       // the item palette: 0 is absence, always
 const OPEN_SUB     = 8;           // pieces an opening's span is cut into
 const FLOOR_THICK  = hex_editor::SLAB_THICK;
 const SLAB_STEP    = 0.5;         // world units between a holed ceiling's ribs
@@ -1863,7 +1869,7 @@ fn panel_one(m: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
 // dependency cycle, so the section carries the word and this resolves it.
 // ⚠ −1 RATHER THAN A FALLBACK TO FLAT: a misspelt arch that silently drew square
 // is a document saying something the picture does not.
-fn opening_kind_index(name: text) -> integer {
+pub fn opening_kind_index(name: text) -> integer {
   if name == "" || name == "flat" { return hex_editor::OP_FLAT; }
   if name == "round" { return hex_editor::OP_ROUND; }
   if name == "pointed" { return hex_editor::OP_POINTED; }
@@ -2692,7 +2698,16 @@ pub fn chunk_meshes_all(cx: integer, cz: integer, wld: VoxelWorld, bounded: bool
   [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s, cma_x, cma_wt]
 }
 
-fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
+// WHERE THE GROUND IS UNDER A POINT — interpolated across the cell's corners, so a
+// walker on a slope stands on the surface the mesh drew rather than on the cell's
+// nominal height.
+//
+// ⚠ PUBLIC BECAUSE THE SAME QUESTION IS ASKED OFF THE MESH — plan 22 `B1b.2c.4`.
+// The camera's collision march, the cart sim's wheel contacts and the feet all want
+// the height the geometry has, which is this triangle interpolation and not
+// `terrain_h`. It was the server's until the mesher moved; keeping a copy there
+// would have been the one rule stated twice that this file exists to prevent.
+pub fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
   (addr_q, addr_r) = px_to_hex(wx, wz);
   ch3 = terrain_h(addr_q, addr_r, wld);
   cw3 = hex_to_world(addr_q, addr_r, ch3);

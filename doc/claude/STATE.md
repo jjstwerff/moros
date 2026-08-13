@@ -386,10 +386,39 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
-| ◐ `B1b.2c` | **THE MESHER IS IN THE LIBRARY** — 1342 lines, compared per tile per surface (`make probe-mesher`), `c.4` deletes the server's copy and lets the page draw. Its blocker was an arrow and it is paid — the five primitives live in `hex_proj` now (`c.2` corrected `c.1`'s home; a grep had excluded the file they live in). Five primitives out of `moros_render` into `hex_mesh`, proved identical by `make probe-emitters`. The props mesher itself is 1342 lines and is next |
+| ◐ `B1b.2c` | **THE MESHER IS IN THE LIBRARY, AND THE SERVER HOLDS NO COPY** — `c.4a` took 41 declarations and 1,744 lines out of `editor_server.loft` and `probe-mesher` with them. Its blocker was an arrow and it is paid — the five primitives live in `hex_proj` (`c.2` corrected `c.1`'s home; a grep had excluded the file they live in). ⏭ `c.4b` is the page becoming the recipe's third caller |
 | ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.2c.4a` — A GREEN SUITE THAT PRINTED NOTHING, 2026-08-13
+
+**The mesher has one body.** 41 declarations — 33 functions, 8 constants — and **1,744 lines** out
+of `src/editor_server.loft` (9,508 → 7,764); the five callers take `hex_mesh::chunk_meshes_all`, and
+`EDITOR_PROBE=meshcmp` goes with them. **What the probe measured, the compiler now enforces**: a
+second declaration in a program that imports the package is `Cannot redefine`.
+
+⛔ **AND THE INSTRUMENT ANSWERED WITH SILENCE — THE ONE ANSWER A DELETION MUST NOT TRUST.**
+`make gate` exited 0 with an **empty log**, because `run-gates.sh` is silent on PASS on purpose
+(loft's Goal F: a tool that reports its good health teaches you to skip the line where it reports
+the opposite). So *rc=0, no output* is exactly what a suite that never ran looks like — on the one
+change whose whole claim is *nothing moved*. `GATE_VERBOSE=1`: **48 PASS, 0 FAIL, 48 gate files on
+disk.** ⚠ This file's rule *match a line you know is there before believing a count of zero* has a
+mirror: **count the lines you know should be there before believing a silence.**
+
+⚠ **THE FOUR SURVIVORS ARE THE DECISION, AND `hex_mesh` HAD ALREADY WRITTEN IT DOWN.** `WALL_UP`,
+`SPECIES_BUSH`, `opening_kind_index` and `terrain_y` are the mesher's *and* the server's own. The
+library's comment said they were **deliberately not published** — *"a program declaring a name a
+library publishes SHADOWS it invisibly (`HOUSE_W`, measured)"* — and that condition ended with this
+step, not before: publishing at `c.3` would have left the server reading its own `12` whatever the
+library said. ⚠ **`terrain_y` is the one worth the trouble**: 26 lines of triangle interpolation in
+two files, differing only in `moros_render::world_to_hex` versus `px_to_hex` — a wrapper round the
+same call — so the camera march, the cart's wheels and the feet now read one function, and **three
+more `world_to_hex` sites** are retired (plan 19 `L6.3a`, through a side door again).
+
+⚠ **`probe-verbs` WENT RED ONCE AND THE OBSERVER WAS THE CAUSE** — launched while 48 gate servers
+were in flight, the verbed transcript arrived with one line of eight. Alone: green, 17 checks. **A
+probe that starts its own server is not parallel-safe with a suite that starts 48.**
 
 ## ✅ `B1b.2c.3` — THE PASS WAS OVER FIVE SURFACES OF ELEVEN, 2026-08-13
 

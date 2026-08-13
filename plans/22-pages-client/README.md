@@ -46,10 +46,9 @@ own ground meshed out of its own cache, and a re-mesh on every write. ⛔ **Noth
 screen at all**, and `draw_world` says why in one line: `if !st.has_cam { return; }` — the camera
 is the SERVER's solve, so the page `B1b.1b` shipped had every number right and a blank world half.
 
-**Next:** **`B1b.2c`** — the other eight surfaces. A fence laid in local mode is written, keyed
-and INVISIBLE: `chunk_meshes_all` composes all nine and is a program-local function in
-`editor_server.loft`, whose own comment says it was spelled out twice and must never be a third
-time. **The page is that third caller.** The full step decomposition is
+**Next:** **`B1b.2c.4b`** — the page draws the other ten surfaces. The recipe is
+`hex_mesh::chunk_meshes_all` now and the server holds no copy of it (`c.4a`), so what is left is
+the page becoming its third caller. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -137,7 +136,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.2c.1`** — the five primitives the mesher needs, out of `moros_render` | S | **DONE 2026-08-13.** `make probe-emitters`: five `mesh_crc` pairs identical with a control, and the ambiguity error named all 10 server call sites so none could be missed | ✅ Done |
 | ✅ **`B1b.2c.2`** — the five find their real home, and `moros_render`'s go | S | **DONE 2026-08-13.** ⛔ `c.1`'s home was WRONG: all five have internal `moros_render` users, so they could not leave — they are **`hex_proj`'s** now, the leaf both sides already depend on. 14 tests moved with them (moros_render 167 → 153, hex_proj 8 → 22, every row accounted for); 3 fixture-only tests build their own geometry | ✅ Done |
 | ✅ **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | **DONE 2026-08-13.** `make probe-mesher`: 49 tiles × 11 surfaces, **99 with geometry in them**, every one the same mesh. Both bodies live — the server's is `chunk_meshes_all_srv` until `c.4` | ✅ Done |
-| **`B1b.2c.4`** — the server drops its copy; the page draws all eleven surfaces | M | ⚠ the deletion's instrument is the gates and `probe-mesher` going with it; then a fence laid in local mode is VISIBLE | ⏭ **next** |
+| ✅ **`B1b.2c.4a`** — the server drops its copy | S | **DONE 2026-08-13.** 41 declarations and 1,744 lines out of `src/editor_server.loft`; five call sites take `hex_mesh::chunk_meshes_all`. `make gate` **48 PASS / 0 FAIL**, `make parts` byte-identical, `make probe-b1a` world `82d622b37d1d` unmoved. ⚠ **`make gate` is SILENT when it passes** — rc=0 with an empty log reads exactly like a suite that never ran, so the count comes from `GATE_VERBOSE=1` | ✅ Done |
+| **`B1b.2c.4b`** — the page draws all eleven surfaces | S | ⚠ a fence laid in local mode is VISIBLE — and `install_ground`'s `len < 6` guard returns **before** `drop_part`, which is the exact defect `add_mesh`'s own comment documents at length | ⏭ **next** |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -213,6 +213,43 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ✅ What `B1b.2c.4a` turned up (2026-08-13) — a green suite that printed NOTHING
+
+**The mesher has one body.** 41 declarations — 33 functions and 8 constants — and **1,744 lines**
+left `src/editor_server.loft` (9,508 → 7,764), the five callers take `hex_mesh::chunk_meshes_all`,
+and `EDITOR_PROBE=meshcmp` went with them: there is nothing left to compare against, and the
+dependency arrow makes a second declaration `Cannot redefine` rather than a drift nobody notices.
+
+⛔ **AND THE INSTRUMENT ANSWERED WITH SILENCE, WHICH IS THE ONE ANSWER A DELETION MUST NOT TRUST.**
+`make gate` exited 0 with an **empty log** — and `run-gates.sh` says why in its own comment: *a
+green gate says nothing, and a red one says everything*, which is loft's Goal F applied on purpose.
+So rc=0 and no output is exactly what a suite that never ran looks like, on the one change whose
+whole claim is *nothing moved*. `GATE_VERBOSE=1` is what turns it into a number: **48 PASS, 0 FAIL,
+against 48 gate files on disk**. ⚠ The rule this tree already has — *match a line you know is there
+before believing a count of zero* — has a mirror: **count the lines you know should be there before
+believing a silence.**
+
+⚠ **THE FOUR SURVIVORS ARE THE STEP'S REAL DECISION, AND THE FILE HAD ALREADY WRITTEN IT DOWN.**
+`WALL_UP`, `SPECIES_BUSH`, `opening_kind_index` and `terrain_y` are the mesher's *and* the
+server's — an opening's fit check, a scatter's species, a wire kind, and the camera march that
+samples the ground the mesh drew. `hex_mesh`'s own comment said they were **deliberately not
+published** *"because `src/editor_server.loft` declares the same names while both copies live, and
+a program declaring a name a library publishes SHADOWS it invisibly (`HOUSE_W`, measured)"*. That
+condition ended with this step and not before: publishing them at `c.3` would have left the server
+reading its own `12` whatever the library said. They are `pub` now and the server's copies are gone.
+
+⚠ **AND `terrain_y` WAS THE ONE WORTH THE TROUBLE — 26 LINES OF TRIANGLE INTERPOLATION IN TWO
+FILES.** Its two bodies differed in exactly one thing: the server called `moros_render::world_to_hex`
+where the library calls `px_to_hex`, and the first is a wrapper round the second returning a struct.
+So the swap retires **three more `world_to_hex` sites** — plan 19 `L6.3a`'s bill, again through a
+side door — and the camera, the cart's wheels and the feet now read the height off one function.
+
+⚠ **`probe-verbs` WENT RED ONCE AND THE CAUSE WAS THE OBSERVER.** It was launched while
+`GATE_VERBOSE=1 make gate` had 48 servers in flight; the verbed run's transcript arrived with one
+line of eight. Re-run alone: green, 17 checks. **A probe that starts its own server is not
+parallel-safe with a suite that starts 48**, and a truncated transcript is what contention looks
+like from inside.
 
 ## ✅ What `B1b.2c.3` turned up (2026-08-13) — the pass was over five surfaces of eleven
 
