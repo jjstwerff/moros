@@ -386,10 +386,29 @@ serves**, differing only in where a key press goes.
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
 | ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
-| ◐ `B1b.2c` | **THE MESHER'S BLOCKER WAS AN ARROW, AND IT IS PAID** — the five primitives live in `hex_proj` now (`c.2` corrected `c.1`'s home; a grep had excluded the file they live in). Five primitives out of `moros_render` into `hex_mesh`, proved identical by `make probe-emitters`. The props mesher itself is 1342 lines and is next |
+| ◐ `B1b.2c` | **THE MESHER IS IN THE LIBRARY** — 1342 lines, compared per tile per surface (`make probe-mesher`), `c.4` deletes the server's copy and lets the page draw. Its blocker was an arrow and it is paid — the five primitives live in `hex_proj` now (`c.2` corrected `c.1`'s home; a grep had excluded the file they live in). Five primitives out of `moros_render` into `hex_mesh`, proved identical by `make probe-emitters`. The props mesher itself is 1342 lines and is next |
 | ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.2c.3` — THE PASS WAS OVER FIVE SURFACES OF ELEVEN, 2026-08-13
+
+**The props mesher is `hex_mesh`'s** — 1342 lines, 32 functions, 9 constants. Both bodies are live
+(the server's is `chunk_meshes_all_srv` until `c.4`), and `make probe-mesher` compares them over
+**49 tiles × 11 surfaces**: every mesh the same.
+
+⛔ **THE FIRST RUN PASSED OVER FIVE OF ELEVEN.** House, fence and opening left **six surfaces never
+drawn** — road, field, tree, soffit, rock, water — and *an equality of two empty meshes is a pass
+that means nothing*. The per-surface counter is what caught it; a total ("63 had geometry") cannot
+say which.
+
+⚠ **THE SOFFIT NEEDED A CELLAR AND THE GROUND REFUSED IT** — *"floor at 4 leaves no room for a
+storey of 12"*. Seeded at 30 now, which lit the rock faces too: 99 tile-surfaces drawn.
+
+⚠ **THE COMPILER HAS NOW DECIDED THE SHAPE OF THIS MOVE THREE TIMES**: `declared by more than one
+package` (siblings, `c.1`), `Cannot redefine` (a package and its dependency, `c.2`), and here the
+same rule forcing the server's copy to take a `_srv` suffix — `W1`'s two-encoders period, made
+explicit by the language rather than by discipline.
 
 ## ⛔ `B1b.2c.2` — THE HOME WAS WRONG, AND A GREP'S EXCLUSION IS WHY, 2026-08-13
 

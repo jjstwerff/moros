@@ -3583,7 +3583,13 @@ fn chunk_mesh(cx: integer, cz: integer, wld: VoxelWorld) -> Mesh {
 // **28.6 x 24.5 world units**, four chunks of grass with a house in the middle,
 // with every count agreeing with itself the whole way. See
 // `hex_mesh::chunk_mesh_mat_bounded`.
-fn chunk_meshes_all(cx: integer, cz: integer, wld: VoxelWorld, bounded: boolean,
+// ⚠ `_srv` IS SCAFFOLDING, AND IT IS DELETED AT `c.4`. This body is `hex_mesh`'s
+// now; the copy is kept for exactly one purpose — `EDITOR_PROBE=meshcmp` compares
+// the two over a real scene, surface by surface, which is the only way to move
+// 1342 lines without a period where two recipes both exist and neither is known to
+// be the authority (`W1`'s shape). The suffix exists because the two CANNOT share a
+// name: this program imports that package, so a duplicate is `Cannot redefine`.
+fn chunk_meshes_all_srv(cx: integer, cz: integer, wld: VoxelWorld, bounded: boolean,
                     runs: WallRuns, roofs: hex_editor::RoofPlans,
                     leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings,
                     annexes: hex_editor::Annexes, awalls: WallRuns,
@@ -4542,7 +4548,7 @@ fn part_body_meshes(pbm_w: VoxelWorld) -> vector<PartSurf> {
   pbm_slabs = hex_editor::Slabs { items: [] };
   pbm_holes = hex_editor::Holes { items: [] };
   for pbm_ch in pbm_w.w_chunks {
-    pbm_ms = chunk_meshes_all(pbm_ch.ck_cx, pbm_ch.ck_cz, pbm_w, true,
+    pbm_ms = chunk_meshes_all_srv(pbm_ch.ck_cx, pbm_ch.ck_cz, pbm_w, true,
                pbm_runs, pbm_roofs, pbm_leaves, pbm_open, pbm_annex,
                pbm_awalls, pbm_props, pbm_slabs, pbm_holes);
     for pbm_si in 0..SURFACES {
@@ -5433,6 +5439,117 @@ fn probe_view() {
 // enforces; what keeps the geometry honest is the fourteen tests that moved with
 // it into `lib/hex_proj/tests/emitters.loft`.
 
+// ── IS THE MOVED MESHER THE SAME MESHER? — plan 22 `B1b.2c.3` ────────────────
+//
+// Run:  EDITOR_PROBE=meshcmp loft --interpret --lib lib/ src/editor_server.loft
+//
+// 1342 lines moved into `hex_mesh` so the page can draw the nine surfaces it
+// already writes. A move is only a move if every surface of every chunk comes out
+// the same, and **this is the one place both bodies are visible**: the server's own
+// copy and the library's, over one world, chunk by chunk.
+//
+// ⚠ EVERY SURFACE SEPARATELY, NEVER SUMMED. A total cannot say WHICH surface moved
+// wrong, and a mechanical copy of 32 functions fails one function at a time — which
+// is one surface at a time.
+//
+// ⛔ AND THE SCENE HAS TO CONTAIN EVERY ONE, OR AN EQUALITY IS A PAIR OF EMPTY
+// MESHES AGREEING — which is what the first run was. It placed a house, rang a
+// fence and cut an opening, and the per-surface counter below reported **six of
+// eleven never drawn**: road, field, tree, soffit, rock and water. The verdict said
+// PASS over five. The fixture paints a road, a field and a pool, plants a stand of
+// trees, and digs a CELLAR — whose ceiling is the soffit, and which is refused on
+// low ground ("floor at 4 leaves no room for a storey of 12"), so the ground is
+// seeded at 30 rather than 4. All eleven are drawn now, on 99 tile-surfaces.
+fn probe_meshcmp() {
+  wld = new_world();
+  for q in 0 - 24..25 {
+    // ⚠ HIGH GROUND, so a cellar has somewhere to go: at height 4 the storey
+    // gesture is refused — "floor at 4 leaves no room for a storey of 12" — and
+    // the SOFFIT (a ceiling's underside) is a surface nothing above ground draws.
+    for r in 0 - 24..25 { hex_editor::ground_set(wld, q, r, 30, SURFACE_MAT); }
+  }
+  // ⚠ AND THE MATERIAL SURFACES ARE PAINTED, because the per-surface counter below
+  // reported six of eleven NEVER DRAWN on the first run — a pass over a pair of
+  // empty meshes, which is the blindness this probe's own header warns about. A
+  // road, a field, water and a stand of trees light four more.
+  for rq in 0 - 6..7 { hex_editor::ground_set(wld, rq, 0 - 6, 30, hex_editor::ROAD_MAT); }
+  for fq in 0 - 6..7 { hex_editor::ground_set(wld, fq, 0 - 8, 30, hex_editor::FIELD_MAT); }
+  for wq in 0 - 6..7 { hex_editor::ground_set(wld, wq, 6, 29, hex_editor::WATER_MAT); }
+  for tq in 0 - 4..5 {
+    tc = world_ground_cell(wld, tq, 8);
+    hex_editor::ground_write(wld, tq, 8,
+      hex_voxel::Hex { h_height: tc.h_height, h_material: tc.h_material,
+                       h_item: SPECIES_TREE as u8? ?? 0,
+                       h_item_rotation: tc.h_item_rotation,
+                       h_wall_nw: tc.h_wall_nw, h_wall_ne: tc.h_wall_ne,
+                       h_wall_e: tc.h_wall_e });
+  }
+
+  sess = hex_editor::EditSession {};
+  ax = 0.0;
+  az = 0.0 - 4.0;
+  a = hex_editor::author_at(ax, az, PI * 0.5, py_of(wld, ax, az) as float * W_UNIT);
+  hp = hex_editor::press_verb(sess, wld, a, hex_editor::VB_PLACE);
+  hf = hex_editor::press_verb(sess, wld, a, hex_editor::VB_FENCE);
+  hw = hex_editor::press_verb(sess, wld, a, hex_editor::VB_WALL);
+  ho = hex_editor::session_open_kind(sess, wld, a, 1, STOREY_H);
+  // A cellar under the house: its ceiling is the SOFFIT surface, which nothing
+  // above ground draws.
+  swhy = "";
+  hex_editor::session_at(sess, wld, ax, az, PI * 0.5);
+  sst = hex_editor::session_storey(sess, wld, 0 - 1, swhy);
+  hc = hex_editor::press_verb(sess, wld, a, hex_editor::VB_PLACE);
+  println("  cellar: storey {sst} '{swhy}', house below {hc.ak_ok}");
+  println("  scene: house {hp.ak_why}, fence {hf.ak_n}, wall {hw.ak_n}, "
+          + "opening {ho.om_ok} — runs {len(sess.es_runs.items)}, "
+          + "roofs {len(sess.es_roofs.items)}, openings {len(sess.es_open.items)}");
+
+  bad = 0;
+  nonempty = 0;
+  tiles = 0;
+  // ⚠ PER SURFACE, because "63 of them had geometry" cannot say WHICH — and a
+  // surface no tile drew is a surface this comparison did not test at all.
+  drawn: vector<integer> = [];
+  for _ in 0..SURFACES { drawn += [0]; }
+  for cx in 0 - 3..4 {
+    for cz in 0 - 3..4 {
+      tiles = tiles + 1;
+      srv = chunk_meshes_all_srv(cx, cz, wld, false, sess.es_runs, sess.es_roofs,
+              sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
+              sess.es_props, sess.es_slabs, sess.es_holes);
+      lib = hex_mesh::chunk_meshes_all(cx, cz, wld, false, sess.es_runs, sess.es_roofs,
+              sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
+              sess.es_props, sess.es_slabs, sess.es_holes);
+      if len(srv) != len(lib) {
+        println("  ({cx},{cz}): {len(srv)} surfaces against {len(lib)}");
+        bad = bad + 1;
+        continue;
+      }
+      for si in 0..len(srv) {
+        ms = chunk_mesh_slot(srv, si);
+        ml = chunk_mesh_slot(lib, si);
+        if len(ms.vertices) > 0 {
+          nonempty = nonempty + 1;
+          drawn[si] = (drawn[si] ?? 0) + 1;
+        }
+        if hex_mesh::mesh_crc(ms) != hex_mesh::mesh_crc(ml) {
+          bad = bad + 1;
+          println("  ({cx},{cz}) surface {si}: "
+                  + "server {hex_mesh::mesh_crc(ms)} · library {hex_mesh::mesh_crc(ml)} "
+                  + "({len(ms.vertices)}/{len(ml.vertices)} vertices)");
+        }
+      }
+    }
+  }
+  println("  {tiles} tiles x {SURFACES} surfaces, {nonempty} of them with geometry in");
+  for si in 0..SURFACES {
+    println("    surface {si}: drawn on {drawn[si] ?? 0} tiles"
+            + "{if (drawn[si] ?? 0) == 0 { "  ⚠ NOT TESTED — no tile drew it" } else { "" }}");
+  }
+  if bad == 0 { println("meshcmp PASS — every surface of every tile is the same mesh"); }
+  else { println("meshcmp FAIL — {bad} surfaces differ"); }
+}
+
 // Run:  EDITOR_PROBE=fit loft --interpret --lib lib/ src/editor_server.loft
 fn probe_fit() {
   wld = new_world();
@@ -5538,6 +5655,7 @@ fn probe_fit() {
 
 fn main() {
   // The probe runs the mesh code and nothing else — no socket, no client.
+  if env_variable("EDITOR_PROBE") == "meshcmp" { probe_meshcmp(); return; }
   if env_variable("EDITOR_PROBE") == "fit" { probe_fit(); return; }
   if env_variable("EDITOR_PROBE") == "view" { probe_view(); return; }
 
@@ -9050,11 +9168,11 @@ fn main() {
             send_layers(srv, wld, dc2.cx, dc2.cz);
           }
           dms = if in_part {
-                  chunk_meshes_all(dc2.cx, dc2.cz, part_disp, false, sess.es_runs, sess.es_roofs,
+                  chunk_meshes_all_srv(dc2.cx, dc2.cz, part_disp, false, sess.es_runs, sess.es_roofs,
                     sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
                     sess.es_props, sess.es_slabs, sess.es_holes)
                 } else {
-                  chunk_meshes_all(dc2.cx, dc2.cz, wld, false, sess.es_runs, sess.es_roofs,
+                  chunk_meshes_all_srv(dc2.cx, dc2.cz, wld, false, sess.es_runs, sess.es_roofs,
                     sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
                     sess.es_props, sess.es_slabs, sess.es_holes)
                 };
@@ -9225,11 +9343,11 @@ fn main() {
                 send_layers(srv, wld, scx, scz);
               }
               cms = if in_part {
-                      chunk_meshes_all(scx, scz, part_disp, false, sess.es_runs, sess.es_roofs,
+                      chunk_meshes_all_srv(scx, scz, part_disp, false, sess.es_runs, sess.es_roofs,
                         sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
                         sess.es_props, sess.es_slabs, sess.es_holes)
                     } else {
-                      chunk_meshes_all(scx, scz, wld, false, sess.es_runs, sess.es_roofs,
+                      chunk_meshes_all_srv(scx, scz, wld, false, sess.es_runs, sess.es_roofs,
                         sess.es_leaves, sess.es_open, sess.es_annex, sess.es_awalls,
                         sess.es_props, sess.es_slabs, sess.es_holes)
                     };

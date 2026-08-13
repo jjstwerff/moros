@@ -29,3 +29,9 @@ hex_voxel    = { path = "../hex_voxel" }
 hex_editor   = { path = "../hex_editor" }
 hex_grid     = ">=0.1"
 graphics     = ">=0.1"
+# ⚠ ARRIVED WITH THE PROPS MESHER — plan 22 `B1b.2c.3`. A wall run is a `hex_way`
+# TRACK (the centreline the panels are built along) and an opening can be cut into a
+# PART's own wall, so the mesher needs both. Neither widens the cone in a direction
+# that matters: `hex_editor`, already here, depends on both.
+hex_way      = ">=0.1"
+hex_part     = { path = "../hex_part" }

@@ -1043,3 +1043,1678 @@ pub fn tile_ready(w: VoxelWorld, cx: integer, cz: integer) -> boolean {
   if !chunk_present(w, q1, r1) { return false; }
   true
 }
+
+// ── EVERY MESH ONE CHUNK DRAWS — plan 22 `B1b.2c.3` ──────────────────────────
+//
+// The nine surfaces, in `surfaces()` order, and everything that emits them. This
+// was 1342 lines inside `src/editor_server.loft`, whose own comment said it must
+// never be spelled a third time — *"a third copy is how a surface comes to be
+// drawn in the world and missing from the catalogue"*. **The page in local mode is
+// that third caller**: it writes a fence into its own world and cannot draw one,
+// because the recipe lived in a program.
+//
+// ⚠ FIVE OF THE NINE ARE NOT CELL MESHES. Ground, road, field and floor come out of
+// `chunk_mesh_mat` — the cells carrying that material — while vegetation, roof,
+// wall, frame and soffit are built by `chunk_mesh_props`, which reads wall EDGES,
+// roof cells, dressing and the session's registries. Handing it empty registries is
+// legitimate and is what a PART gets: no wall runs and no roof plans, so its walls
+// draw as per-edge panels and its roof from its own cells.
+//
+// ⚠ `bounded` CHANGES EXACTLY ONE OF THE NINE. `chunk_mesh_mat` treats an unwritten
+// cell as GROUND — the outdoors is everywhere — while a part is bounded and its
+// unwritten cells are outside it. Measured before it existed: a 38-cell cottage
+// meshed as a world came out 28.6 x 24.5 world units, four chunks of grass with a
+// house in the middle, every count agreeing with itself the whole way.
+//
+// ⚠ AND IT ARRIVED WITH ITS LATTICE CALLS PAID. `moros_render::world_to_hex` is a
+// Moros wrapper around `hex_grid::px_to_hex` that returns a struct; the two sites
+// here take the pair directly, which is two of the thirty sites plan 19 `L6.3a`
+// otherwise has to pay, and the reason this move is possible at all — a lavition
+// package cannot reach into a Moros one.
+
+// The drawing's own constants, private because nothing outside asks them — and
+// deliberately NOT published, because `src/editor_server.loft` declares the same
+// names while both copies live, and a program declaring a name a library publishes
+// SHADOWS it invisibly (`HOUSE_W`, measured).
+const WALL_UP      = 12;          // a storey of masonry
+const FENCE_UP     = 4;           // waist-high
+const FRAME_W      = 0.14;        // how far the surround reaches past the opening
+const FRAME_PROUD  = 0.05;        // and how far it stands out of the wall's face
+const SPECIES_BUSH = 2;           // the item palette: 0 is absence, always
+const OPEN_SUB     = 8;           // pieces an opening's span is cut into
+const FLOOR_THICK  = hex_editor::SLAB_THICK;
+const SLAB_STEP    = 0.5;         // world units between a holed ceiling's ribs
+
+// How tall a wall of this material stands. A DOOR draws nothing: the boundary is
+// still there in the storage, which is what `X70` is about, and what an opening
+// looks like is a hole you can see through.
+fn wall_up(mat: integer) -> integer {
+  if mat == FENCE_MAT { return FENCE_UP; }
+  if mat == DOOR_MAT { return 0; }
+  WALL_UP
+}
+
+// The same question with a part's own `WALL` section in hand — plan 17 `A8.8`,
+// §P9.13. `pup` is the part's stated height, or 0 for *unstated*.
+//
+// ⚠ IT REPLACES THE `WALL_MAT` ANSWER AND NOTHING ELSE, and that is the failure
+// path the § exists to state. `DOOR_MAT` is an ABSENCE, not a height: a profile
+// that overrode it would put a panel across the doorway and **fill the opening
+// in** — a part whose whole purpose is a hole, drawn solid, with the document
+// still saying `door`. `FENCE_MAT` keeps `FENCE_UP` because a fence is a
+// different kind of boundary; a part that wants a low panel says `up`.
+fn wall_up_part(mat: integer, pup: integer) -> integer {
+  if mat == FENCE_MAT { return FENCE_UP; }
+  if mat == DOOR_MAT { return 0; }
+  if pup > 0 { return pup; }
+  WALL_UP
+}
+
+// Vegetation and roofs in ONE traversal.
+//
+// ⚠ MEASURED, and it is why they share a function they would otherwise not.
+// Both need every LAYER of every column — a tree sits on whatever surface is
+// uppermost, a roof sits well above it — and `world_column` allocates a whole
+// column per call. Two separate passes is 128 of those per chunk over 48 chunks
+// at stream time, and it took the first client's service from a few seconds to
+// SEVENTY-ONE: the pump drains events before the tick, so a client connecting
+// during that first stream waits for all of it, and every gate timed out.
+//
+// One pass, two meshes. The rule to carry forward: a per-cell scan added to the
+// stream path costs the whole stream, so a sixth surface joins this loop rather
+// than bringing its own.
+// One wall panel: the shared edge of two cells, from the ground up.
+//
+// It spans `min` of the two ground heights to `max` plus the material's own
+// height, so a wall on a slope meets the ground on BOTH sides instead of floating
+// over the low one. Emitted twice with opposite normals — a wall is seen from
+// both sides, and the client draws with no face culling, so a single-sided panel
+// is simply unlit when you walk round it.
+fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
+                   up: integer, wld: VoxelWorld) {
+  (nq, nr) = hex_grid::hex_neighbor(cq, cr, dir);
+  hs = terrain_h(cq, cr, wld);
+  hn = terrain_h(nq, nr, wld);
+  lo = hs; if hn < lo { lo = hn; }
+  hi = hs; if hn > hi { hi = hn; }
+  ylo = (lo as float) * HEIGHT_SCALE;
+  yhi = ((hi + up) as float) * HEIGHT_SCALE;
+  // hex_grid pairs consecutive corners per edge; moros_render walks the ring the
+  // other way, so its index is `(6 - i) % 6` — the same map `emit_hex_sloped` uses.
+  (ea, eb) = hex_grid::hex_edge_corners(dir);
+  w1 = hex_corner_world(cq, cr, 0, (6 - ea) % 6 ?? 0);
+  w2 = hex_corner_world(cq, cr, 0, (6 - eb) % 6 ?? 0);
+  cs = hex_to_world(cq, cr, 0);
+  cn = hex_to_world(nq, nr, 0);
+  nrm = nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+  bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
+  a = vec3(w1.x, ylo, w1.z); b = vec3(w2.x, ylo, w2.z);
+  c = vec3(w2.x, yhi, w2.z); d = vec3(w1.x, yhi, w1.z);
+  emit_tri(m, a, nrm, b, nrm, c, nrm);
+  emit_tri(m, a, nrm, c, nrm, d, nrm);
+  emit_tri(m, a, bck, c, bck, b, bck);
+  emit_tri(m, a, bck, d, bck, c, bck);
+}
+
+// THE SAME PANEL WITH A HOLE IN IT — plan 17 `A8.9`, §P9.14.
+//
+// ⚠ A DOORWAY USED TO BE THE ABSENCE OF A PANEL, and an absence has no head by
+// construction: `wall_up(DOOR_MAT)` is 0, the emit site skipped the edge, and the
+// opening ran the full height of the wall with nothing over it. Here the edge
+// draws the wall ABOVE the head and BELOW the sill, and the hole is what is left
+// between them — §P9.2's own sentence, *the opening is the wall*, as geometry.
+//
+// ⚠ IT ASKS `opening_cuts`, THE SAME CALL `emit_run_wall` HAS ASKED SINCE `A8`.
+// Five head profiles, the springing and the striking radius are already in that
+// function; nothing about an arch is re-derived here. What this adds is the one
+// thing a part could not do — reach it, because a part has no wall RUNS.
+//
+// ⚠ AND IT SUBDIVIDES, for `emit_run_wall`'s reason and with its constant. A curve
+// sampled once per edge is two steps and a lie; `OPEN_SUB` pieces is local, cheap,
+// and the difference between an arch and a staircase. A FLAT head needs none of
+// it and gets it anyway, because a second code path for the easy case is how the
+// two come to disagree.
+//
+// ⚠ THE SKIRT IS NEVER CUT. A panel stands from the LOWER of the two ground
+// heights to `up` above the HIGHER, so the piece below the higher ground is what
+// fills a step in the terrain — retaining, not wall. Bands are measured from that
+// datum, so a sill of 0 sits on the wall's foot and not in the middle of a slope.
+fn emit_wall_panel_cut(m: Mesh, cq: integer, cr: integer, dir: integer,
+                       up: integer, o: hex_editor::Opening, wld: VoxelWorld) {
+  (nq, nr) = hex_grid::hex_neighbor(cq, cr, dir);
+  hs = terrain_h(cq, cr, wld);
+  hn = terrain_h(nq, nr, wld);
+  lo = hs; if hn < lo { lo = hn; }
+  hi = hs; if hn > hi { hi = hn; }
+  yfoot = (lo as float) * HEIGHT_SCALE;
+  (ea, eb) = hex_grid::hex_edge_corners(dir);
+  w1 = hex_corner_world(cq, cr, 0, (6 - ea) % 6 ?? 0);
+  w2 = hex_corner_world(cq, cr, 0, (6 - eb) % 6 ?? 0);
+  cs = hex_to_world(cq, cr, 0);
+  cn = hex_to_world(nq, nr, 0);
+  nrm = nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+  bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
+  for j in 0..OPEN_SUB {
+    t0 = (j as float) / (OPEN_SUB as float) ?? 0.0;
+    t1 = ((j + 1) as float) / (OPEN_SUB as float) ?? 0.0;
+    ax = w1.x + (w2.x - w1.x) * t0;
+    az = w1.z + (w2.z - w1.z) * t0;
+    bx = w1.x + (w2.x - w1.x) * t1;
+    bz = w1.z + (w2.z - w1.z) * t1;
+    mx = (ax + bx) * 0.5;
+    mz = (az + bz) * 0.5;
+    colo = 0;
+    cohi = 0;
+    if !hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
+      // Outside the opening: this slice is solid, foot to head.
+      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + up) as float) * HEIGHT_SCALE, nrm, bck);
+      continue;
+    }
+    if colo > 0 {
+      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + colo) as float) * HEIGHT_SCALE, nrm, bck);
+    } else {
+      // ⚠ THE SKIRT SURVIVES A SILL OF ZERO. `yfoot` is below the datum wherever the
+      // ground steps, so "no wall under the opening" still means "down to the datum".
+      emit_slice(m, ax, az, bx, bz, yfoot, (hi as float) * HEIGHT_SCALE, nrm, bck);
+    }
+    if cohi < up {
+      emit_slice(m, ax, az, bx, bz, ((hi + cohi) as float) * HEIGHT_SCALE,
+                 ((hi + up) as float) * HEIGHT_SCALE, nrm, bck);
+    }
+  }
+}
+
+// One rectangle of wall, front and back — the four triangles `emit_wall_panel`
+// writes, taken out so the cut version does not restate them per band.
+// ⚠ A ZERO-HEIGHT BAND EMITS NOTHING rather than a degenerate quad: a head at the
+// wall's own top and a sill at its foot are both ordinary, and two coincident
+// triangles are a z-fighting artefact no count would show.
+fn emit_slice(m: Mesh, ax: float, az: float, bx: float, bz: float,
+              ylo: float, yhi: float, nrm: Vec3, bck: Vec3) {
+  if yhi - ylo <= 0.0001 { return; }
+  a = vec3(ax, ylo, az); b = vec3(bx, ylo, bz);
+  c = vec3(bx, yhi, bz); d = vec3(ax, yhi, az);
+  emit_tri(m, a, nrm, b, nrm, c, nrm);
+  emit_tri(m, a, nrm, c, nrm, d, nrm);
+  emit_tri(m, a, bck, c, bck, b, bck);
+  emit_tri(m, a, bck, d, bck, c, bck);
+}
+
+fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, r0: integer,
+                 openings: hex_editor::Openings) {
+  // ⚠ A RUN CAN START OFF THE GROUND. `wr_base`/`wr_up` are 0 for every wall ever
+  // laid, which is "from the terrain, by the material" — but a balcony's rail begins
+  // at its deck and a bedstee's side at its floor. The base is folded into the
+  // GROUND height rather than into every band, so the whole run — faces, reveals,
+  // mouldings and all — lifts together and no arithmetic below this line changes.
+  up = wall_up(run.wr_mat);
+  if run.wr_up > 0 { up = run.wr_up; }
+  if up <= 0 { return; }
+  bsy = (run.wr_base as float) * HEIGHT_SCALE;
+  t = hex_way::track_new();
+  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+  ln = hex_way::seg_len(t, 0);
+  if ln <= 0.0 { return; }
+  steps = (ln / 0.5 ?? 0.0) as integer + 1;
+  (tx, tz) = hex_way::seg_tangent(t, 0, 0.0);
+  nrm = nrm3(0.0 - tz, 0.0, tx);
+  bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
+  half = 0.0;
+  if run.wr_mat == hex_editor::WALL_MAT {
+    rw = hex_editor::run_wall(run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+    if rw.rw_ok { half = rw.rw_half; }
+  }
+  ox = nrm.x * half;
+  oz = nrm.z * half;
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  // ⚠ THE REVEAL IS WHAT MAKES A HOLE READ AS A HOLE — `F-READ`'s first cue: *the
+  // hole has depth, so light and shadow differ inside it.* A cut with no reveal is
+  // paper: two faces with a gap between them and nothing joining them, so the wall
+  // looks like a sheet with a rectangle removed rather than masonry with a way
+  // through. These carry the previous slice's cut so the jamb can be closed where
+  // it CHANGES, which for an arch is every slice — the stepped curve of the reveal
+  // is the head's underside seen from below.
+  had = false;
+  plo = 0;
+  phi = 0;
+  // The surrounds, struck once: every profile offset outward by one whole height
+  // unit's worth of margin. The renderer never asks what SHAPE a frame is — it asks
+  // the same `opening_cuts` twice and draws the difference.
+  frames: vector<Opening> = [];
+  for of0 in openings.items {
+    frames += [hex_editor::opening_frame(of0, FRAME_W, HEIGHT_SCALE)];
+  }
+  fpx = nrm.x * (half + FRAME_PROUD);
+  fpz = nrm.z * (half + FRAME_PROUD);
+  // The surround's own outline, carried slice to slice for the same reason the void
+  // is: a moulding that is not closed along its edge is a plate with daylight under
+  // it, which the picture showed as a bright hairline the length of every jamb.
+  fhad = false;
+  pflo = 0;
+  pfhi = 0;
+  bhad = false;
+  pbl = 0;
+  pbh = 0;
+
+  for i in 0..steps {
+    sa = ln * (i as float) / (steps as float) ?? 0.0;
+    sb = ln * ((i + 1) as float) / (steps as float) ?? 0.0;
+    (max0, maz0) = hex_way::seg_point(t, 0, (sa + sb) * 0.5);
+    // This chunk's span only — the midpoint decides, so a span belongs to exactly
+    // one chunk and no seam draws twice.
+    (mh_q, mh_r) = px_to_hex(max0, maz0);
+    if mh_q >= q0 && mh_q < q0 + MESH_CHUNK && mh_r >= r0 && mh_r < r0 + MESH_CHUNK {
+      // Finer steps only where an opening is, so a curve reads as a curve and a
+      // plain wall costs what it always did.
+      sub = 1;
+      for o0 in openings.items {
+        dxo = max0 - o0.op_x;
+        dzo = maz0 - o0.op_z;
+        if dxo * dxo + dzo * dzo < (o0.op_half + 0.6) * (o0.op_half + 0.6) { sub = OPEN_SUB; }
+      }
+      for j in 0..sub {
+        ja = sa + (sb - sa) * (j as float) / (sub as float) ?? 0.0;
+        jb = sa + (sb - sa) * ((j + 1) as float) / (sub as float) ?? 0.0;
+        (ax, az) = hex_way::seg_point(t, 0, ja);
+        (bx, bz) = hex_way::seg_point(t, 0, jb);
+        mx = (ax + bx) * 0.5;
+        mz = (az + bz) * 0.5;
+
+        // What this slice of wall is cut to. A wall with no opening over it is one
+        // band from the ground to its head; an opening replaces that with the two
+        // bands its profile leaves — below the sill and above the head — either of
+        // which may be empty.
+        // ⚠ TWO VOIDS NOW, NOT ONE — because an opening carries a DATUM. Every hole
+        // used to be cut from the wall's front face, which is the assumption that
+        // makes a castle embrasure unstatable: the window at the back of a window
+        // seat is cut from the NICHE's back plane, and that plane is most of the way
+        // through the wall. So the slice asks twice: what breaks the near face, and
+        // what breaks the far one. A doorway answers both with the same band.
+        lo_u = 0;
+        hi_u = up;
+        cut = false;
+        thru = true;
+        reach = 2.0 * half;
+        blo_u = 0;
+        bhi_u = 0;
+        bcut = false;
+        for o in openings.items {
+          colo = 0;
+          cohi = 0;
+          if hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
+            if hex_editor::opening_at_front(o) {
+              cut = true;
+              lo_u = colo;
+              hi_u = cohi;
+              thru = hex_editor::opening_at_back(o);
+              reach = hex_editor::opening_reach(o, 2.0 * half);
+            } else if hex_editor::opening_at_back(o) {
+              bcut = true;
+              blo_u = colo;
+              bhi_u = cohi;
+            }
+          }
+        }
+        // ⚠ THE VOID'S INNER PLANE, and it is not the wall's far face. `op_depth`
+        // reached the library and its tests and stopped there: the emitter cut every
+        // opening clean THROUGH, so an alcove — the one thing the depth field exists
+        // for — read as a hole in the cottage wall with the garden visible past the
+        // bed. A niche's void stops `reach` in from the front and the wall carries on
+        // behind it, which is one plane and the whole difference.
+        ikx = 0.0 - ox;
+        ikz = 0.0 - oz;
+        if cut && !thru && half > 0.0 {
+          nk = (half - reach) / half ?? 0.0 - 1.0;
+          ikx = ox * nk;
+          ikz = oz * nk;
+        }
+        bands: vector<integer> = [0, up];
+        if cut { bands = [0, lo_u, hi_u, up]; }
+        // The far face has its own bands. A doorway cuts it with the front void; an
+        // embrasure cuts it with the window in the niche's back; a plain niche does
+        // not cut it at all.
+        fars: vector<integer> = [0, up];
+        if thru && cut { fars = [0, lo_u, hi_u, up]; }
+        else if bcut { fars = [0, blo_u, bhi_u, up]; }
+
+        // ⚠ THE JAMB, wherever the VOID changes — and the void is what has to be
+        // compared, not the bands. At the ends of an opening the jamb is its side,
+        // the face you brush passing through; along an arch it is the head's
+        // underside, because each slice's crown sits a little lower than the last.
+        // Without it the curve is a silhouette with nothing behind it and the wall
+        // reads as a stencil rather than as masonry with a way through.
+        //
+        // ⚠ AN EMPTY VOID IS NOT `[0,0]`. Writing it that way makes the step from
+        // "solid" to "opening" come out as `[0, sill]` — the band BELOW the hole,
+        // which is solid on both sides — so the reveal would be painted inside the
+        // masonry where nothing can ever see it, and the actual jamb left open.
+        // The three cases are written out because collapsing them is what got it
+        // wrong.
+        if half > 0.0 && (cut || had) && (cut != had || lo_u != plo || hi_u != phi) {
+          (jx, jz) = hex_way::seg_point(t, 0, ja);
+          jgy = terrain_y(jx, jz, wld) + bsy;
+          // The face belongs to whichever side still has stone there.
+          jn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+          if cut && !had { jn = vec3(tx, 0.0, tz); }
+          if cut && had && hi_u - lo_u > phi - plo { jn = vec3(tx, 0.0, tz); }
+          if !had {
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, lo_u, hi_u);
+          } else if !cut {
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, plo, phi);
+          } else {
+            // Both cut: the void moved, so the jamb is the sill's step and the
+            // head's step — the two intervals one slice has and its neighbour
+            // does not.
+            slo = lo_u; shi = plo;
+            if plo < lo_u { slo = plo; shi = lo_u; }
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, slo, shi);
+            hlo = hi_u; hhi = phi;
+            if phi < hi_u { hlo = phi; hhi = hi_u; }
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, hlo, hhi);
+          }
+        }
+        had = cut;
+        plo = lo_u;
+        phi = hi_u;
+
+        gy0 = terrain_y(ax, az, wld) + bsy;
+        gy1 = terrain_y(bx, bz, wld) + bsy;
+
+        // ⚠ THE RING IS A DIFFERENCE OF TWO PROFILES — frame minus opening — which
+        // is why one piece of code frames a square door, a pointed arch and a round
+        // window without knowing which it is looking at. Where the opening is cut
+        // the ring is the two strips beside it; where only the frame reaches, the
+        // whole of it is ring.
+        if half > 0.0 {
+          fcut = false;
+          flo = 0;
+          fhi = 0;
+          // ⚠ THE RING'S DEPTH IS THE OPENING'S, NOT THE SLICE'S. Beside a niche the
+          // wall is not cut at all, so a `thru` read from the slice says "through" —
+          // and the moulding was drawn on BOTH faces, standing proud of solid stone
+          // on the far side. In the picture that was a bright stripe the height of
+          // every jamb, on the wall's blind side, which is where it was found.
+          fr_front = true;
+          fr_back = true;
+          for gf in frames {
+            gflo = 0;
+            gfhi = 0;
+            if hex_editor::opening_cuts(gf, mx, mz, HEIGHT_SCALE, gflo, gfhi) {
+              fcut = true;
+              flo = gflo;
+              fhi = gfhi;
+              fr_front = hex_editor::opening_at_front(gf);
+              fr_back = hex_editor::opening_at_back(gf);
+            }
+          }
+          if fcut {
+            if flo < 0 { flo = 0; }
+            if fhi > up { fhi = up; }
+          }
+          // ⚠ CLOSE THE MOULDING'S EDGE where it changes, exactly as the reveal
+          // closes the void's. The frame is `FRAME_PROUD` off the wall, so its
+          // outline is a 5 cm step — small enough to skip on paper and, measured,
+          // a bright line the full height of every jamb in the picture.
+          if fcut != fhad || flo != pflo || fhi != pfhi {
+            (rx, rz) = hex_way::seg_point(t, 0, ja);
+            rgy = terrain_y(rx, rz, wld) + bsy;
+            rn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+            if fcut && !fhad { rn = vec3(tx, 0.0, tz); }
+            if !fhad {
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, flo, fhi);
+              if fr_back { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                                  0.0 - ox, 0.0 - oz, rn, flo, fhi); }
+            } else if !fcut {
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, pflo, pfhi);
+              if fr_back { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                                  0.0 - ox, 0.0 - oz, rn, pflo, pfhi); }
+            } else {
+              rlo = flo; rhi = pflo;
+              if pflo < flo { rlo = pflo; rhi = flo; }
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, rlo, rhi);
+              slo = fhi; shi2 = pfhi;
+              if pfhi < fhi { slo = pfhi; shi2 = fhi; }
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, slo, shi2);
+              if fr_back {
+                emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                          0.0 - ox, 0.0 - oz, rn, rlo, rhi);
+                emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
+                          0.0 - ox, 0.0 - oz, rn, slo, shi2);
+              }
+            }
+          }
+          fhad = fcut;
+          pflo = flo;
+          pfhi = fhi;
+          if fcut {
+            if cut {
+              emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
+                              nrm, bck, fr_front, fr_back, flo, lo_u);
+              emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
+                              nrm, bck, fr_front, fr_back, hi_u, fhi);
+            } else {
+              emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
+                              nrm, bck, fr_front, fr_back, flo, fhi);
+            }
+          }
+        }
+        for bi in 0..len(bands) / 2 ?? 0 {
+          blo = bands[bi * 2] ?? 0;
+          bhi = bands[bi * 2 + 1] ?? 0;
+          if bhi > blo {
+            ya = gy0 + (blo as float) * HEIGHT_SCALE;
+            yb = gy1 + (blo as float) * HEIGHT_SCALE;
+            ta = gy0 + (bhi as float) * HEIGHT_SCALE;
+            tb = gy1 + (bhi as float) * HEIGHT_SCALE;
+            f0 = vec3(ax + ox, ya, az + oz); f1 = vec3(bx + ox, yb, bz + oz);
+            f2 = vec3(bx + ox, tb, bz + oz); f3 = vec3(ax + ox, ta, az + oz);
+            b0 = vec3(ax + ikx, ya, az + ikz); b1 = vec3(bx + ikx, yb, bz + ikz);
+            b2 = vec3(bx + ikx, tb, bz + ikz); b3 = vec3(ax + ikx, ta, az + ikz);
+            emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+            emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+            if half > 0.0 {
+              // The cap: a band's top face. For the band below an opening this is
+              // the SILL, which is why a window ledge exists without being a
+              // separate thing.
+              emit_tri(m, f3, upn, f2, upn, b2, upn);
+              emit_tri(m, f3, upn, b2, upn, b3, upn);
+              // ⚠ AND THE SOFFIT — the band's UNDERSIDE, which nothing emitted. It
+              // is the head's inner face: the surface you look up at standing in a
+              // doorway, and the one that catches no light, which is exactly the
+              // shading difference that says "through" rather than "painted on".
+              if blo > 0 {
+                emit_tri(m, f0, dwn, b0, dwn, b1, dwn);
+                emit_tri(m, f0, dwn, b1, dwn, f1, dwn);
+              }
+              if i == 0 && j == 0 {
+                sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+                emit_tri(m, f0, sn, f3, sn, b3, sn);
+                emit_tri(m, f0, sn, b3, sn, b0, sn);
+              }
+              if i == steps - 1 && j == sub - 1 {
+                en = vec3(tx, 0.0, tz);
+                emit_tri(m, f1, en, b1, en, b2, en);
+                emit_tri(m, f1, en, b2, en, f2, en);
+              }
+            }
+          }
+        }
+        // ⚠ THE FAR FACE IS ITS OWN SURFACE, with its own bands. It used to be the
+        // front face's mirror, drawn in the same loop from the same list — which is
+        // exactly why a window could not be cut into it independently. Now a doorway
+        // cuts both faces with one band, an embrasure cuts each with a different one,
+        // and a plain niche leaves this one whole.
+        if half > 0.0 {
+          for fi in 0..len(fars) / 2 ?? 0 {
+            klo = fars[fi * 2] ?? 0;
+            khi = fars[fi * 2 + 1] ?? 0;
+            if khi > klo {
+              ya2 = gy0 + (klo as float) * HEIGHT_SCALE;
+              yb2 = gy1 + (klo as float) * HEIGHT_SCALE;
+              ta2 = gy0 + (khi as float) * HEIGHT_SCALE;
+              tb2 = gy1 + (khi as float) * HEIGHT_SCALE;
+              y0 = vec3(ax - ox, ya2, az - oz); y1 = vec3(bx - ox, yb2, bz - oz);
+              y2 = vec3(bx - ox, tb2, bz - oz); y3 = vec3(ax - ox, ta2, az - oz);
+              emit_tri(m, y0, bck, y2, bck, y1, bck);
+              emit_tri(m, y0, bck, y3, bck, y2, bck);
+            }
+          }
+        }
+        // ⚠ THE NICHE'S BACK IS A WALL FACE TOO — which is the whole of the datum in
+        // one line. It carries bands like either of the others, so the embrasure's
+        // window is cut OUT of it by the same arithmetic, and what is left is the
+        // stone either side of the window with the seat below.
+        if cut && !thru && half > 0.0 && hi_u > lo_u {
+          backs: vector<integer> = [lo_u, hi_u];
+          if bcut { backs = [lo_u, blo_u, bhi_u, hi_u]; }
+          for ni in 0..len(backs) / 2 ?? 0 {
+            nlo = backs[ni * 2] ?? 0;
+            nhi = backs[ni * 2 + 1] ?? 0;
+            if nhi > nlo {
+              na = gy0 + (nlo as float) * HEIGHT_SCALE;
+              nb = gy1 + (nlo as float) * HEIGHT_SCALE;
+              nc = gy1 + (nhi as float) * HEIGHT_SCALE;
+              nd = gy0 + (nhi as float) * HEIGHT_SCALE;
+              n0 = vec3(ax + ikx, na, az + ikz); n1 = vec3(bx + ikx, nb, bz + ikz);
+              n2 = vec3(bx + ikx, nc, bz + ikz); n3 = vec3(ax + ikx, nd, az + ikz);
+              emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
+              emit_tri(m, n0, nrm, n2, nrm, n3, nrm);
+              // ⚠ AND THE WINDOW'S OWN SPLAY. An embrasure's window is not a hole in
+              // a thin sheet — it sits at the end of the remaining half a metre of
+              // wall, so it has a sill you can put a candle on and a soffit above it,
+              // both running from the niche's back to the far face. Skipping these
+              // leaves the window reading as a picture pinned to the niche's back.
+              if bcut {
+                wq0 = vec3(ax + ikx, nc, az + ikz); wq1 = vec3(bx + ikx, nc, bz + ikz);
+                wq2 = vec3(bx - ox, nc, bz - oz);   wq3 = vec3(ax - ox, nc, az - oz);
+                if nhi < hi_u {
+                  emit_tri(m, wq0, upn, wq1, upn, wq2, upn);
+                  emit_tri(m, wq0, upn, wq2, upn, wq3, upn);
+                }
+                if nlo > lo_u {
+                  wr0 = vec3(ax + ikx, na, az + ikz); wr1 = vec3(bx + ikx, na, bz + ikz);
+                  wr2 = vec3(bx - ox, na, bz - oz);   wr3 = vec3(ax - ox, na, az - oz);
+                  emit_tri(m, wr0, dwn, wr2, dwn, wr1, dwn);
+                  emit_tri(m, wr0, dwn, wr3, dwn, wr2, dwn);
+                }
+              }
+            }
+          }
+          // The splay's jambs, where the window's own outline changes — the same
+          // stepped reveal the front gets, at the other end of the wall.
+          if bcut != bhad || blo_u != pbl || bhi_u != pbh {
+            (sx, sz) = hex_way::seg_point(t, 0, ja);
+            sgy = terrain_y(sx, sz, wld) + bsy;
+            sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
+            if bcut && !bhad { sn = vec3(tx, 0.0, tz); }
+            if !bhad {
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, blo_u, bhi_u);
+            } else if !bcut {
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, pbl, pbh);
+            } else {
+              ulo = blo_u; uhi = pbl;
+              if pbl < blo_u { ulo = pbl; uhi = blo_u; }
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, ulo, uhi);
+              vlo = bhi_u; vhi = pbh;
+              if pbh < bhi_u { vlo = pbh; vhi = bhi_u; }
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, vlo, vhi);
+            }
+          }
+        }
+        bhad = bcut;
+        pbl = blo_u;
+        pbh = bhi_u;
+      }
+    }
+  }
+}
+
+// The slab under a floor cell — one face per edge the floor does not share with
+// more of itself.
+//
+// ⚠ THE NORMAL IS DERIVED FROM THE NEIGHBOUR, not from the corner order, which is
+// `emit_wall_panel`'s rule and it is here for its reason: the two libraries walk the
+// corner ring in opposite senses (`(6 - i) % 6` below), so a normal taken from the
+// winding faces inward for half the directions and the slab is lit as a hole.
+// ⚠ AND "EXPOSED" IS ASKED BY HEIGHT NOW, NOT BY LABEL. This used to fetch the
+// neighbour's cell in the same LABELLED layer, which is `I1` used by a reader — and
+// a reader that leans on `I1` inherits every way a writer can break it. One did:
+// while a gesture across a chunk seam made two labels, this drew a rim down the
+// middle of a floor that had no edge there, 96 vertices of it on the cellar alone.
+// `floor_continues` asks §5's question instead — is there an occupied cell within
+// ε/2 of my height — which `F1` makes unique and no writer can misreport.
+//
+// ⚠ IT ALSO DRAWS THE STAIR'S RISERS NOW, and that is a gain rather than a side
+// effect. A tread is one stride above the cell beside it and shares its layer, so
+// the label version saw "the floor continues" and left the step as an open slot
+// between the tread's underside and the fan below.
+fn emit_floor_slab(fm: Mesh, wld: VoxelWorld, cq: integer, cr: integer, h: integer) {
+  ytop = (h as float) * HEIGHT_SCALE;
+  ybot = ytop - (FLOOR_THICK as float) * HEIGHT_SCALE;
+  cs = hex_to_world(cq, cr, 0);
+  for sd in 0..6 {
+    (snq, snr) = hex_grid::hex_neighbor(cq, cr, sd);
+    if !hex_editor::solid_at(wld, snq, snr, h) {
+      // The two corners this edge is made of — the same pairing `corner_heights`
+      // uses to attribute a neighbour's height to the corners it touches, through
+      // the same ring-order map `emit_wall_panel` and `emit_hex_sloped` use.
+      (ska, skb) = hex_grid::hex_edge_corners(sd);
+      sw1 = hex_corner_world(cq, cr, 0, (6 - ska) % 6 ?? 0);
+      sw2 = hex_corner_world(cq, cr, 0, (6 - skb) % 6 ?? 0);
+      cn = hex_to_world(snq, snr, 0);
+      snrm = nrm3(cn.x - cs.x, 0.0, cn.z - cs.z);
+      sa = vec3(sw1.x, ybot, sw1.z); sb = vec3(sw2.x, ybot, sw2.z);
+      sc = vec3(sw2.x, ytop, sw2.z); sdd = vec3(sw1.x, ytop, sw1.z);
+      emit_tri(fm, sa, snrm, sb, snrm, sc, snrm);
+      emit_tri(fm, sa, snrm, sc, snrm, sdd, snrm);
+    }
+  }
+}
+// ── WHERE AN UNDERGROUND ROOM ENDS — the cut face through the earth ─────────
+//
+// The same edge test `emit_floor_slab` uses and the opposite claim about it. A deck's
+// exposed edge is the SLAB seen from outside, so its face hangs `FLOOR_THICK` below
+// the floor and its normal points away. A cellar's exposed edge is where the ROOM
+// stops: the face runs from the floor up to the ceiling, and it is only ever seen
+// from inside, so the normal points back into the room.
+//
+// ⚠ INWARD, AND IT IS NOT A DETAIL. `emit_floor_slab` derives its normal from the
+// neighbour precisely because the winding cannot be trusted across the two libraries'
+// opposite corner orders — and then points it OUTWARD, which is right for a slab and
+// exactly backwards here. A wall lit from the earth side is a wall that reads as a
+// hole from the only place anyone can stand.
+//
+// ⚠ IT GOES IN THE WALL SURFACE rather than earning a tenth. `SURFACES` is a stride
+// carried by eleven files, and what this face IS — a vertical plane you cannot pass —
+// is what that surface already means. A cellar in a built world is masonry anyway.
+// If the colour ever reads wrong that is one constant, not a protocol change.
+fn emit_room_wall(m: Mesh, wld: VoxelWorld, cq: integer, cr: integer, floor_h: integer,
+                  ceil_h: integer) {
+  if ceil_h <= floor_h { return; }
+  ybot = (floor_h as float) * HEIGHT_SCALE;
+  ytop = (ceil_h as float) * HEIGHT_SCALE;
+  cs = hex_to_world(cq, cr, 0);
+  for wd in 0..6 {
+    (wnq, wnr) = hex_grid::hex_neighbor(cq, cr, wd);
+    // ⚠ NOT `cell_in_layer` — NOT BY LABEL. That is what `emit_floor_slab` does and
+    // it is wrong across a chunk seam TODAY: one cellar dug over a boundary carries
+    // two different labels (measured: 2 and 3), so a by-label reader sees the room
+    // end in the middle and walls it off. `room_continues` asks the question
+    // `WORLD_MODEL.md` §5 actually defines — do the two voids overlap in height —
+    // and cannot be misled by a label the writer got wrong.
+    if !hex_editor::room_continues(wld, wnq, wnr, floor_h, ceil_h) {
+      // ⚠ A MOUTH IS NOT A WALL — plan 20 `A9`. A road cut into a cliff is a void
+      // with a floor and a ceiling, so every rule above calls it a room and walls
+      // it in — including the side the road comes OUT of. Without this the store
+      // holds a gallery and the picture is a sealed pocket, which is the same
+      // failure `emit_face_wall` has from outside.
+      //
+      // ⚠ AND THE TEST IS *IS THE NEIGHBOUR SOLID JUST ABOVE MY FLOOR*, which is
+      // deliberately narrower than *is my ceiling above its ground*. A cellar under
+      // a hillside is buried — the earth beside it reaches well past its floor — so
+      // every cellar keeps the wall it has, and only a void whose floor runs out
+      // into the open loses one. The wider reading opens a slit around the top of
+      // every cellar wall and moves four gated pictures; nothing has asked for it.
+      if !hex_editor::solid_at(wld, wnq, wnr, floor_h + 1) { continue; }
+      (wka, wkb) = hex_grid::hex_edge_corners(wd);
+      ww1 = hex_corner_world(cq, cr, 0, (6 - wka) % 6 ?? 0);
+      ww2 = hex_corner_world(cq, cr, 0, (6 - wkb) % 6 ?? 0);
+      wcn = hex_to_world(wnq, wnr, 0);
+      wnm = nrm3(cs.x - wcn.x, 0.0, cs.z - wcn.z);
+      wa = vec3(ww1.x, ybot, ww1.z); wb = vec3(ww2.x, ybot, ww2.z);
+      wc = vec3(ww2.x, ytop, ww2.z); wdd = vec3(ww1.x, ytop, ww1.z);
+      emit_tri(m, wa, wnm, wb, wnm, wc, wnm);
+      emit_tri(m, wa, wnm, wc, wnm, wdd, wnm);
+    }
+  }
+}
+
+// ── A DECK'S UNDERSIDE — the roof's soffit, one axis over ───────────────────
+//
+// ⚠ THE SAME DEFECT THE ROOF HAD, AND IT SURVIVED THE ROOF'S FIX. `emit_floor_slab`
+// already draws a RIM from the deck's top down to `FLOOR_THICK` below it, so a deck
+// has looked like it had a thickness from the side since the layers were first
+// drawn — and there was no face across the bottom of it. Standing under an upper
+// storey you looked straight through the floor.
+//
+// It hid behind the roof: a roof's soffit and a floor's soffit are one colour and
+// one surface, so an interior photograph reads `soffit 0.997` either way. What
+// separates them is the COUNT — after building a storey the soffit surface held 18
+// vertices, which is six triangles, which is the roof's tent exactly. The deck had
+// added nothing.
+//
+// It goes in the SOFFIT mesh because that is what the surface MEANS: the underside
+// of whatever is over you. A mode that keeps a ceiling keeps both kinds, and one
+// that hides them hides both — which is the same argument that split the roof.
+// ⚠ ONE FUNCTION FOR BOTH KINDS OF UNDERSIDE, and the reason is the winding. The
+// reversal and the downward normal below are the two things `soffit.loft` asserts,
+// and they are six lines — which is exactly the size of thing that gets copied for
+// the second caller and then drifts. `FLOOR_THICK` is a constant in this file for
+// the same reason, three screens up.
+//
+// `cy` is the centre's world y and `hy` the six corners', in `corner_heights`'
+// indexing — so a DECK, which is flat, passes one height seven times, and a CELLAR
+// CEILING passes the ground's own smoothed corners dropped by a thickness.
+fn emit_hex_under(m: Mesh, cq: integer, cr: integer, cy: float, hy: vector<float>) {
+  ucs = hex_to_world(cq, cr, 0);
+  udn = vec3(0.0, 0.0 - 1.0, 0.0);
+  ua = vec3(ucs.x, cy, ucs.z);
+  for uk in 0..6 {
+    uk2 = (uk + 1) % 6 ?? 0;
+    uw1 = hex_corner_world(cq, cr, 0, (6 - uk) % 6 ?? 0);
+    uw2 = hex_corner_world(cq, cr, 0, (6 - uk2) % 6 ?? 0);
+    ub = vec3(uw1.x, hy[uk] ?? cy, uw1.z);
+    uc = vec3(uw2.x, hy[uk2] ?? cy, uw2.z);
+    // Reversed against the top fan, and the normal points DOWN — neither matters
+    // to a renderer with no backface culling, and both are what make it right the
+    // day one arrives. The roof's soffit is asserted on exactly these two.
+    emit_tri(m, ua, udn, uc, udn, ub, udn);
+  }
+}
+
+// A flat underside at one stored height — a deck's, and every built floor's.
+fn emit_hex_under_flat(m: Mesh, cq: integer, cr: integer, h: integer) {
+  uy = (h as float) * HEIGHT_SCALE;
+  emit_hex_under(m, cq, cr, uy, [uy, uy, uy, uy, uy, uy]);
+}
+
+// ── A CELLAR'S CEILING IS THE GROUND, SO IT IS THE GROUND'S OWN SURFACE ──────
+//
+// ⚠ "FLAT, UNDER A SLOPED GROUND" WAS WRITTEN HERE AND THE CONTROL REFUTED IT ON
+// THE FIRST FRAME. The argument read well — every other underside in this file is a
+// flat fan at its layer's stored height, and a cellar is BUILT, so a flat ceiling is
+// what its floor is square to. What it missed is that the ground is drawn SMOOTHED:
+// a corner is the mean of the three cells touching it and the centre the mean of the
+// six corners, so the drawn surface sits well below the stored height wherever the
+// ground falls away — which is everywhere around a plateau. A flat ceiling two units
+// under the stored height then stands PROUD of the drawn ground, and the picture was
+// a ring of dark wedges lying on the hillside: `soffit 0.0187` of a frame that must
+// hold none.
+//
+// The construction that cannot do that is the ground's own surface, dropped. Not
+// approximately parallel to it — the identical corner heights minus one constant, so
+// "the ceiling is under the ground" holds by subtraction rather than by tolerance.
+// What it costs is that the clear height under a slope varies, and that is honest:
+// the cellar floor is flat and the hill above it is not.
+//
+// ⚠ AND IT READS THE WORLD PER CELL, where the ground pass reads a prepared grid.
+// That is affordable for exactly the reason the emission is conditional at all —
+// this runs on cells with something dug beneath them, not on every cell of every
+// chunk. `chunk_mesh_mat`'s halo exists because ITS loop is the whole world.
+fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: VoxelWorld) {
+  ghs = corner_heights(cq, cr, wld);
+  drop = FLOOR_THICK as float;
+  uy: vector<float> = [];
+  csum = 0.0;
+  for gi3 in 0..6 {
+    csum = csum + (ghs[gi3] ?? 0.0);
+    uy += [((ghs[gi3] ?? 0.0) - drop) * HEIGHT_SCALE];
+  }
+  // The centre is the mean of the six corners, which is `emit_hex_sloped`'s own
+  // rule — take the stored height instead and the ceiling is a little pyramid under
+  // a smooth ground, the summit pip that comment was written about.
+  emit_hex_under(m, cq, cr, ((csum / 6.0 ?? 0.0) - drop) * HEIGHT_SCALE, uy);
+}
+
+// WHICH SURFACE A PART'S PANELS ARE DRAWN IN — plan 17 `A8.8`, §P9.13.
+//
+// ⚠ EVERY CANDIDATE IS A PARAMETER, AND THAT IS NOT A STYLE CHOICE. Measured
+// (`probe/a83/leaf_visible/meshalias.loft`): a `Mesh` **copies** through a local
+// AND through a vector read — `la = a; emit(la)` leaves `a` empty, and so does
+// `v[0]`. Only a parameter aliases. The obvious selection —
+// `pwm = all[i]; emit_wall_panel(pwm, …)` — therefore drops every triangle it is
+// handed, with no diagnostic, every count agreeing and a blank wall in the
+// picture. ⚠ It is also NOT what loft#774 records for a plain struct (*copies on
+// `b = a`, aliases on `c = v[0]`*): a Mesh copies both ways, so that note cannot
+// be relied on for one.
+//
+// ⚠ AND THE SIX ARE THE SIX THIS FUNCTION IS HANDED. Grass, road and field are
+// terrain surfaces the props mesher never receives, and a vertical panel is not
+// made of grass. An index outside the six — including the −1 an unknown name
+// resolves to — draws as `wall`, which is the only honest thing an unrouted name
+// can become; the NAME is refused where the list is visible, on save and at
+// `make parts`.
+fn emit_panel_into(pwi: integer, vm: Mesh, km: Mesh, wm: Mesh, fm: Mesh, am: Mesh,
+                   sm: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
+                   ocut: boolean, o: hex_editor::Opening, wld: VoxelWorld) {
+  if pwi == 3 { panel_one(vm, cq, cr, dir, up, ocut, o, wld); return; }   // tree
+  if pwi == 4 { panel_one(km, cq, cr, dir, up, ocut, o, wld); return; }   // roof
+  if pwi == 6 { panel_one(fm, cq, cr, dir, up, ocut, o, wld); return; }   // floor
+  if pwi == 7 { panel_one(am, cq, cr, dir, up, ocut, o, wld); return; }   // frame
+  if pwi == 8 { panel_one(sm, cq, cr, dir, up, ocut, o, wld); return; }   // soffit
+  panel_one(wm, cq, cr, dir, up, ocut, o, wld);                           // wall, the default
+}
+
+// ⚠ THE UNCUT PATH IS THE OLD FUNCTION, UNTOUCHED — plan 17 `A8.9`. The cut one
+// subdivides `OPEN_SUB` ways and emits per band, so a plain wall routed through it
+// would draw the same surface out of eight times the triangles: every picture
+// identical, every vertex COUNT changed, and the gates that count panels rewritten
+// for no reason. One `if`, and a wall with no opening over it is byte for byte what
+// it was.
+fn panel_one(m: Mesh, cq: integer, cr: integer, dir: integer, up: integer,
+             ocut: boolean, o: hex_editor::Opening, wld: VoxelWorld) {
+  if ocut { emit_wall_panel_cut(m, cq, cr, dir, up, o, wld); return; }
+  emit_wall_panel(m, cq, cr, dir, up, wld);
+}
+
+// The five head profiles by NAME — §P9.14, and §P9.13's reason for a name rather
+// than an index: `hex_part` cannot see `hex_editor`'s constants without closing a
+// dependency cycle, so the section carries the word and this resolves it.
+// ⚠ −1 RATHER THAN A FALLBACK TO FLAT: a misspelt arch that silently drew square
+// is a document saying something the picture does not.
+fn opening_kind_index(name: text) -> integer {
+  if name == "" || name == "flat" { return hex_editor::OP_FLAT; }
+  if name == "round" { return hex_editor::OP_ROUND; }
+  if name == "pointed" { return hex_editor::OP_POINTED; }
+  if name == "segment" { return hex_editor::OP_SEGMENT; }
+  if name == "circle" { return hex_editor::OP_CIRCLE; }
+  0 - 1
+}
+
+fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mesh, wm: Mesh,
+                    fm: Mesh, am: Mesh, sm: Mesh, pwi: integer, pwup: integer,
+                    pohead: integer, posill: integer, pokind: integer,
+                    pospring: integer, poradius: float, runs: WallRuns, roofs: hex_editor::RoofPlans, leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings, annexes: hex_editor::Annexes, awalls: WallRuns, props: hex_editor::Props, slabs: hex_editor::Slabs, holes: hex_editor::Holes) {
+  q0 = cx * MESH_CHUNK;
+  r0 = cz * MESH_CHUNK;
+  slot_dir: vector<integer> = [4, 5, 0];       // SLOT_NW, SLOT_NE, SLOT_E
+  // ⚠ THE DOORWAY EDGES ARE GATHERED FIRST, BECAUSE AN OPENING IS A RUN — plan 17
+  // `A8.9a`, §P9.14. The first build gave every edge its own opening and a two-edge
+  // gateway came out as two small arches with a pier between them; an arch's rise
+  // IS its half-width, so halving the span quarters the rise and each one read as a
+  // flat head with a notch at either jamb. `open_run_for` groups edges that share a
+  // corner, so the pass has to know every doorway edge before it draws any of them.
+  // ⚠ ONLY WHEN A PROFILE IS STATED. Without one this is an empty vector and the
+  // whole mechanism costs a comparison per chunk.
+  dsegs: vector<hex_editor::OpenSeg> = [];
+  dq: vector<integer> = [];
+  dr: vector<integer> = [];
+  ddir: vector<integer> = [];
+  if pohead > 0 {
+    for gq in q0..q0 + MESH_CHUNK {
+      for gr in r0..r0 + MESH_CHUNK {
+        for ge in world_column(wld, gq, gr).co_cells {
+          gws: vector<integer> = [ge.h_wall_nw as integer ?? 0,
+                                  ge.h_wall_ne as integer ?? 0,
+                                  ge.h_wall_e as integer ?? 0];
+          for gi in 0..3 {
+            if gws[gi] != DOOR_MAT { continue; }
+            (gea, geb) = hex_grid::hex_edge_corners(slot_dir[gi] ?? 0);
+            gc1 = hex_corner_world(gq, gr, 0, (6 - gea) % 6 ?? 0);
+            gc2 = hex_corner_world(gq, gr, 0, (6 - geb) % 6 ?? 0);
+            dsegs += [hex_editor::OpenSeg { og_ax: gc1.x, og_az: gc1.z,
+                                            og_bx: gc2.x, og_bz: gc2.z }];
+            dq += [gq];
+            dr += [gr];
+            ddir += [slot_dir[gi] ?? 0];
+          }
+        }
+      }
+    }
+  }
+  for run in runs.items { emit_run_wall(wm, am, run, wld, q0, r0, openings); }
+  for arun in awalls.items { emit_run_wall(wm, am, arun, wld, q0, r0, openings); }
+  for slb in slabs.items {
+    (sq, sr) = px_to_hex(slb.sl_x, slb.sl_z);
+    if sq >= q0 && sq < q0 + MESH_CHUNK && sr >= r0 && sr < r0 + MESH_CHUNK {
+      emit_slab(fm, slb, holes);
+    }
+  }
+  for anx in annexes.items {
+    (aq, ar) = px_to_hex(anx.an_x, anx.an_z);
+    if aq >= q0 && aq < q0 + MESH_CHUNK && ar >= r0 && ar < r0 + MESH_CHUNK {
+      emit_annex_deck(fm, anx, wld);
+    }
+  }
+  // ⚠ EACH PROP LANDS IN THE MESH WHOSE MATERIAL IT IS — a bed in the joinery the
+  // deck is drawn in, a statue in the dressed stone the mouldings are. That is not a
+  // shortcut around a ninth surface: it is what the material means, and a prop
+  // system with a colour of its own would have to answer why a wooden bed is not
+  // the same wood as the floor it stands on.
+  for prp in props.items {
+    (pq, pr2) = px_to_hex(prp.pr_x, prp.pr_z);
+    if pq >= q0 && pq < q0 + MESH_CHUNK && pr2 >= r0 && pr2 < r0 + MESH_CHUNK {
+      if hex_editor::prop_material(prp.pr_kind) == hex_editor::PROP_STONE {
+        emit_prop(am, prp, wld);
+      } else {
+        emit_prop(fm, prp, wld);
+      }
+    }
+  }
+  for lf in leaves.items {
+    if lf.dl_q >= q0 && lf.dl_q < q0 + MESH_CHUNK && lf.dl_r >= r0 && lf.dl_r < r0 + MESH_CHUNK {
+      emit_leaf(wm, lf, wld);
+    }
+  }
+  // The roofs whose ridge passes through this chunk. Drawn from the PLAN, so the
+  // eave is a line rather than the hex staircase the cells would give.
+  for rp in roofs.items {
+    (rq, rr) = px_to_hex(hex_editor::roof_point_x(rp, 4), hex_editor::roof_point_z(rp, 4));
+    if rq >= q0 - MESH_CHUNK && rq < q0 + 2 * MESH_CHUNK && rr >= r0 - MESH_CHUNK && rr < r0 + 2 * MESH_CHUNK {
+      if rq >= q0 && rq < q0 + MESH_CHUNK && rr >= r0 && rr < r0 + MESH_CHUNK {
+        emit_roof_plan(km, rp);
+        // ⚠ EMITTED BESIDE THE ROOF, NEVER INSTEAD OF IT. Two surfaces over one
+        // shape, so a mode can take either — and a roof that drew only its soffit
+        // would be a house with no roof from the road.
+        emit_roof_soffit(sm, rp);
+      }
+    }
+  }
+  rt = runs_track(runs);
+  have_runs = len(runs.items) > 0;
+  for cr in r0..r0 + MESH_CHUNK {
+    for cq in q0..q0 + MESH_CHUNK {
+      // ⚠ DRESSING IS INVISIBLE TO A TERRAIN READ, by `D1` — so a props mesh
+      // built from `world_column` alone draws no props at all. It needs the
+      // other view, and this is the loop that already visits every column.
+      dcol = world_dressing(wld, cq, cr);
+      for de in dcol.co_cells {
+        if hex_voxel::hex_occupied(de) {
+          dwp = hex_to_world(cq, cr, 0);
+          dy = (de.h_height as float ?? 0.0) * HEIGHT_SCALE;
+          hex_proj::emit_item_placeholder(vm, "PROP", vec3(dwp.x, dy, dwp.z), 0.35);
+        }
+      }
+      c = world_column(wld, cq, cr);
+      for e in c.co_cells {
+        // ⚠ WALLS ARE READ OUTSIDE THE OCCUPANCY GUARD, and that is the whole
+        // point of `E1e`: the cell storing a boundary edge need hold no ground.
+        // Put this line inside the `if` below and every rim wall whose owner is
+        // an empty cell stops being drawn — the 17-stamped-as-8 loss, in the
+        // renderer this time.
+        ews: vector<integer> = [e.h_wall_nw as integer ?? 0,
+                                e.h_wall_ne as integer ?? 0,
+                                e.h_wall_e as integer ?? 0];
+        // ⚠ THE PER-EDGE PANEL IS NOW A FALLBACK, for edges nobody has a line
+        // for: the stencil's house walls, a single edge placed by hand. Where a
+        // run carries the edge the run is drawn instead, once, straight — drawing
+        // both would put a staircase inside a wall.
+        // ⚠ AND THE PART'S OWN PROFILE IS APPLIED HERE, AT THE ONE PLACE A
+        // PANEL'S HEIGHT AND DESTINATION ARE DECIDED — `A8.8`, §P9.13. `pwm` is
+        // the mesh the part asked its panels to be drawn in (`wm` when it asked
+        // for nothing) and `pwup` its stated height. A wall RUN is untouched:
+        // `emit_run_wall` above draws those, and a part carries no runs at all,
+        // which is why the profile lands exactly on the fallback a part uses.
+        for si in 0..3 {
+          // ⚠ A DOORWAY IS NOW A CASE, NOT A SKIP — plan 17 `A8.9`, §P9.14. It used
+          // to fall out here because `wall_up(DOOR_MAT)` is 0, which is what made a
+          // head impossible: an absence cannot carry a lintel. With a profile the
+          // edge draws the wall around its hole; with none it is skipped exactly as
+          // before, which is every part in the library that states nothing.
+          sidoor = ews[si] == DOOR_MAT && pohead > 0;
+          if ews[si] != 0 && (sidoor || wall_up_part(ews[si], pwup) > 0) {
+            (fq, fr) = hex_grid::hex_neighbor(cq, cr, slot_dir[si]);
+            aw = hex_to_world(cq, cr, 0);
+            bw = hex_to_world(fq, fr, 0);
+            carried = false;
+            if have_runs {
+              carried = hex_way::track_distance(rt, (aw.x + bw.x) * 0.5,
+                                                    (aw.z + bw.z) * 0.5) < 0.9;
+            }
+            if !carried {
+              siup = wall_up_part(ews[si], pwup);
+              siop = hex_editor::Opening {};
+              if sidoor {
+                // ⚠ THE OPENING IS BUILT AT THE EDGE'S OWN MIDPOINT, AND ITS WIDTH
+                // IS THAT EDGE — §P9.14. The `DOOR_MAT` byte already says WHERE, so
+                // nothing about the position comes out of the section and the two
+                // cannot drift. The half-width is measured off the two corners
+                // rather than taken from a lattice constant, because a constant
+                // here would be `hex_proj`'s a second time.
+                // ⚠ THE RUN'S OPENING, NOT THIS EDGE'S — `A8.9a`. Every doorway
+                // edge in the chunk was gathered above; this finds the one that is
+                // here and asks for the whole run it belongs to, so a gateway of
+                // two or three edges is ONE arch across the lot.
+                dfound = 0 - 1;
+                for dk in 0..len(dsegs) {
+                  if (dq[dk] ?? 0) == cq && (dr[dk] ?? 0) == cr
+                     && (ddir[dk] ?? 0) == slot_dir[si] { dfound = dk; }
+                }
+                drun = hex_editor::OpenRun {};
+                if dfound >= 0 {
+                  drun = hex_editor::open_run_for(dsegs, 0.001, dfound);
+                }
+                dhalf = drun.ou_half;
+                // ⚠ A DOORWAY EDGE HAS NO WALL HEIGHT OF ITS OWN — `wall_up_part`
+                // answers 0 for `DOOR_MAT` and must keep doing so (§P9.13's failure
+                // path). The wall it is cut OUT of is the part's, so the head is
+                // measured against that.
+                siup = pwup;
+                if siup <= 0 { siup = WALL_UP; }
+                sispring = 0 - 1;
+                if pospring > 0 { sispring = pospring; }
+                siop = hex_editor::Opening {
+                  op_x: drun.ou_cx, op_z: drun.ou_cz,
+                  op_half: dhalf, op_lo: posill, op_hi: pohead,
+                  op_depth: 1.0, op_near: 0.0, op_spring: sispring,
+                  op_kind: pokind, op_radius: poradius };
+              }
+              emit_panel_into(pwi, vm, km, wm, fm, am, sm, cq, cr, slot_dir[si],
+                              siup, sidoor, siop, wld);
+            }
+          }
+        }
+        if hex_voxel::hex_occupied(e) {
+          if e.h_item != 0 {
+            wp = hex_to_world(cq, cr, 0);
+            ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
+            sc = 0.55;
+            if e.h_item == SPECIES_BUSH { sc = 0.22; }
+            hex_proj::emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
+          }
+          // ⚠ A ROOF CELL DRAWS ITSELF ONLY WHERE NO PLAN COVERS IT (S6b). Under a
+          // gable the cells are the roof's INDEX — which columns are beneath it,
+          // what the walk and the camera read — and drawing them too puts the hex
+          // staircase back under the straight eave. The S6 picture was a red slab
+          // with a sawtooth edge, the roof's version of the zigzag wall.
+          //
+          // ⚠ But NOT every roof has a plan: the stencil lays a cone over a DISC and
+          // has no rectangle to draw from, so its cells must still draw themselves.
+          // Switching the cell path off entirely broke exactly that, and
+          // `stencil.mjs` failed on the next run — which is the gate earning its
+          // place, since no loft test can see a roof that stopped being drawn.
+          planned = false;
+          for rp3 in roofs.items {
+            if hex_editor::roof_plan_covers(rp3, cq, cr) { planned = true; }
+          }
+          // ⚠ AND A PLANNED ROOF CELL DRAWS *NOTHING*, WHICH IS NOT WHAT THIS SAID.
+          // The test used to be `ROOF_MAT && !planned`, so a cell under a gable
+          // failed the first branch and fell into the `else` below — and was drawn
+          // as a FLOOR DECK at its own roof height. The hex staircase this check
+          // exists to suppress was being emitted the whole time, one surface over.
+          //
+          // It survived because the floor was the wall's own pale grey: a sawtooth
+          // of grey inside a grey roof is nothing to look at. Giving the floor a
+          // timber of its own and the roof an underside put it on screen at once —
+          // orange wedges punching up through the new ceiling. **Two invisible
+          // defects hid each other**, and separating one surface exposed the other.
+          if e.h_material == ROOF_MAT {
+            if !planned {
+            // ⚠ SLOPED, LIKE THE GROUND — a flat fan per cell is a TERRACE OF
+            // PLATES. Measured in S6's first picture: two thin slabs floating over
+            // the walls with daylight between them, because each column holds one
+            // roof cell at one height and a flat fan draws exactly that.
+            //
+            // A corner is the mean of the roof cells touching it, so both sides of
+            // every edge agree by construction and the surface is continuous — the
+            // same rule that makes the ground a slope you could walk up rather than
+            // a staircase. A corner with no roof beyond it keeps this cell's own
+            // height, which gives the eave a clean edge instead of a slope into
+            // nothing.
+            emit_roof_sloped(km, cq, cr, hex_editor::roof_corners(wld, cq, cr));
+            }
+          } else if (c.co_ids[e#index] ?? 0) != hex_voxel::LABEL_GROUND {
+            // ⚠ THE GROUND IS TOLD BY ITS LABEL, WHICH THE COLUMN ALREADY CARRIES.
+            // Not by index — a cellar inserts beneath and renumbers — and not by
+            // material, because a road or a stair cut into a deck keeps its own.
+            // `co_ids` was added so a WRITE could keep a layer's identity; this is
+            // the first reader to want the same fact, and it needs no second query.
+            fh = e.h_height as integer ?? 0;
+            // ⚠ A SHELF IS A ROAD, NOT A DECK — plan 20 `A9`, and it is drawn by
+            // `chunk_mesh_mat`'s ROAD pass rather than here. This clause is *the
+            // layer is not the ground*, and until `A9` the only thing that could be
+            // was a built floor — so a road cut into a cliff came out drawn in the
+            // JOINERY, a timber platform under a mountain, with a slab rim and an
+            // underside it can never be seen from.
+            //
+            // ⚠ AND DRAWING IT HERE AS A FLAT FAN WAS TRIED, PHOTOGRAPHED AND BACKED
+            // OUT. Every other non-ground layer is a DECK, which is flat because the
+            // feet are flat on it; a road is a heightfield and its neighbours are
+            // smoothed. The two do not meet — the seam photographed as a zigzag of
+            // SKY the length of the run. `face_grid_for` gives the road pass its own
+            // heightfield instead, so the shelf is smoothed by the rule the road
+            // beside it already uses.
+            // ⚠ ONLY FABRIC IS A DECK — plan 20 `A10`, and the riverbed is what said
+            // so. This clause is *the layer is not the ground*, and before water there
+            // was nothing under one but a cellar floor, so every such cell was drawn as
+            // JOINERY. A river's bed is a non-ground terrain layer too: photographed,
+            // it came out as orange planking under the water. What decides is
+            // `tr_fabric` — the same line `A1` draws between what moves rigidly and
+            // what takes the falloff — and everything else belongs to the terrain pass,
+            // which meshes it in its own material.
+            //
+            // ⚠ A SPAN IS THE ONE NON-FABRIC CELL THAT STILL OWES A DECK'S EDGES. Its
+            // top is the terrain pass's either way, but a bridge has AIR under it while
+            // a shelf and a bed have solid ground — so only the one ABOVE the ground
+            // gets a rim and an underside. Without them the deck is a fan alone, which
+            // is a hairline: photographed, the bridge was a plank with daylight through
+            // its own edge.
+            if !hex_editor::ground_kind_of(e.h_material as integer ?? 0).tr_fabric {
+              if !hex_editor::col_underground(c, e#index) {
+                emit_floor_slab(fm, wld, cq, cr, fh);
+                emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+              }
+            } else {
+            hex_proj::emit_hex_surface(fm, cq, cr, fh);
+            emit_floor_slab(fm, wld, cq, cr, fh);
+            // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
+            // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
+            // or the two part company and the deck shows a slot from below.
+            emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+            }
+            // ⚠ AND A ROOM ENDS IN A WALL, WHICH NOTHING DREW. Measured from the
+            // cellar floor, looking level: `sky 0.2360` and `grass 0.1033` — a
+            // QUARTER of the frame was daylight, from inside a room twelve units
+            // underground, and `mesh wall` read 0. The model draws a layer's top, its
+            // rim and its underside, and nothing at all between two layers.
+            //
+            // ⚠ THE RULE IS ABOUT ROOMS, NOT CELLARS, and the distinction is the
+            // whole of it: a void with a floor and a ceiling is a room, and its edge
+            // is a cut face — but two stacked DECKS in the open have the identical
+            // shape and their edge is a rim you can see the garden past. No count and
+            // no edge test can separate them. `col_underground` can, and that is why
+            // the predicate is worth its name.
+            if hex_editor::col_underground(c, e#index) {
+              ra = hex_editor::col_next_above(c, e#index);
+              if ra >= 0 {
+                emit_room_wall(wm, wld, cq, cr, fh,
+                  ((c.co_cells[ra] ?? hex_voxel::Hex {}).h_height as integer ?? 0)
+                    - FLOOR_THICK);
+              }
+            }
+          } else if hex_editor::col_has_below(c, e#index) {
+            // ⚠ A CELLAR HAS NO CEILING — the THIRD time for this shape, and the one
+            // the branch above cannot reach by construction. The roof had no
+            // underside; the deck had the same defect one axis over and survived the
+            // roof's fix; and here it is a third time, because a cellar's ceiling is
+            // the GROUND — the one layer this clause excludes, drawn by
+            // `chunk_mesh_mat`, which answers *the outdoors* by definition and never
+            // had a reason to ask what was under it.
+            //
+            // Measured before this line existed: digging a cellar put 342 vertices
+            // into `soffit` — and every one of them was 3.0 wu BELOW the ground.
+            // That is the cellar FLOOR's own underside, emitted by the clause above,
+            // and it is exactly why the count alone could not see this. `mesh soffit`
+            // reads 342 either way; only `meshy` — the same count inside a band of y
+            // — can tell a ceiling at the ground from a floor's underside a storey
+            // down. A count cannot see a colour, a colour cannot see a count, and
+            // NEITHER can see a height.
+            //
+            // ⚠ CONDITIONAL, WHERE THE DECK'S IS NOT, AND THAT ASYMMETRY IS THE
+            // POINT. A deck is something you can walk under wherever it is, so its
+            // underside is owed unconditionally. The ground is walked ON; its
+            // underside is owed only where something is dug beneath it, or every
+            // cell in the world carries a second fan for a face nothing can see.
+            // The question is asked of the column's own stack — `col_has_below` —
+            // and not of "is this a cellar", because the renderer must not know the
+            // gesture that made the hole.
+            //
+            // ⚠ THE GROUND'S OWN SURFACE, DROPPED — not a flat fan at its stored
+            // height, which is what this said first and what the control refuted on
+            // its first frame. See `emit_ground_ceiling`: the ground is drawn
+            // smoothed, so a flat ceiling stands proud of it all round a plateau.
+            emit_ground_ceiling(sm, cq, cr, wld);
+          }
+        }
+      }
+    }
+  }
+}
+
+// One roof cell as a sloped fan, from the six corner heights its neighbours agree
+// on. The centre is the MEAN of its own corners rather than the stored height —
+// the same correction the ground needed, and for the same reason: mixing a
+// smoothed rim with an unsmoothed centre draws every cell as a little pyramid, and
+// a row of them along a ridge is a serrated line against the sky.
+// A door leaf: one quad from the hinge to the free end, standing `dl_up` tall.
+//
+// ⚠ IT IS DRAWN AJAR, and that is the point of `S8` rather than a default. A leaf
+// flush in its opening is a panel over a hole — a person reads it as a patch. At 35
+// degrees it casts a line, and a line is what says "door" before anything else does.
+fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: VoxelWorld) {
+  hx = hex_editor::leaf_x(l, 0);
+  hz = hex_editor::leaf_z(l, 0);
+  fx = hex_editor::leaf_x(l, 1);
+  fz = hex_editor::leaf_z(l, 1);
+  gy = terrain_y(hx, hz, wld);
+  ty = gy + (l.dl_up as float) * HEIGHT_SCALE;
+  a = vec3(hx, gy, hz);
+  b = vec3(fx, gy, fz);
+  c = vec3(fx, ty, fz);
+  d = vec3(hx, ty, hz);
+  nx2 = 0.0 - (fz - hz);
+  nz2 = fx - hx;
+  n = nrm3(nx2, 0.0, nz2);
+  bk = vec3(0.0 - n.x, 0.0, 0.0 - n.z);
+  emit_tri(m, a, n, b, n, c, n);
+  emit_tri(m, a, n, c, n, d, n);
+  emit_tri(m, a, bk, c, bk, b, bk);
+  emit_tri(m, a, bk, d, bk, c, bk);
+}
+
+// A gable, drawn from its PLAN: two slopes meeting on the ridge, and a triangle
+// closing each end. Six points, all from `plan_to_world`, so the eave is a line at
+// any rotation and there is no tolerance anywhere in it.
+// ⚠ NOT A CLOSURE. The first version of the roof built `px`/`py`/`pz` and read
+// them through `pt = fn(i) { vec3(px[i], py[i], pz[i]) }`, which SEGFAULTED the
+// interpreter — `loft crash SIGSEGV caught`, op 165. A closure capturing several
+// locals is the shape loft's own DESIGN_DECISIONS calls out (#314); an ordinary
+// function taking the plan is not that shape.
+fn roof_pt(rp: hex_editor::RoofPlan, i: integer) -> Vec3 {
+  vec3(hex_editor::roof_point_x(rp, i), hex_editor::roof_point_y(rp, i),
+       hex_editor::roof_point_z(rp, i))
+}
+
+fn soffit_pt(rp: hex_editor::RoofPlan, f: integer, k: integer) -> Vec3 {
+  vec3(hex_editor::roof_soffit_x(rp, f, k), hex_editor::roof_soffit_y(rp, f, k),
+       hex_editor::roof_soffit_z(rp, f, k))
+}
+
+// ⚠ THE FACES COME FROM THE LIBRARY'S TABLE NOW, AND THAT FIXES A GABLE END. This
+// used to spell the four faces out here and hand them to `emit_tri_n`, which takes
+// the cross product and flips any normal with `n.y < 0` upward. The flip corrected
+// both SLOPES silently — and a gable end is VERTICAL, so `n.y` is exactly 0 and the
+// flip had nothing to test. Both gables were wound the same way, "outward" is
+// opposite for them, and one of the two has been lit from inside since S6.
+//
+// `roof_face_pt` states the winding once, `roof_face_normal` derives the outward
+// normal from it, and `lib/hex_editor/tests/soffit.loft` asserts the two ends face
+// opposite ways. A lighting sign is not a shape, which is why no gate caught it —
+// so the claim went where claims go.
+fn emit_roof_plan(m: Mesh, rp: hex_editor::RoofPlan) {
+  for f in 0..hex_editor::ROOF_FACES {
+    (fx, fy, fz) = hex_editor::roof_face_normal(rp, f);
+    fn3 = vec3(fx, fy, fz);
+    nk = hex_editor::roof_face_len(f);
+    a = roof_pt(rp, hex_editor::roof_face_pt(f, 0));
+    for j in 1..nk - 1 {
+      b = roof_pt(rp, hex_editor::roof_face_pt(f, j));
+      c = roof_pt(rp, hex_editor::roof_face_pt(f, j + 1));
+      emit_tri(m, a, fn3, b, fn3, c, fn3);
+    }
+  }
+}
+
+// ── THE SOFFIT — the same tent, one thickness in, facing the room ───────────
+//
+// ⚠ ITS OWN SURFACE, WHICH IS THE POINT AND NOT AN IMPLEMENTATION DETAIL. CUTAWAY
+// has to hide the roof while SNUG keeps its underside, and two behaviours that
+// disagree about one mesh cannot both be served. The geometry is the library's; all
+// that is decided here is which mesh it lands in and what colour it is.
+//
+// The normal is the face's, NEGATED — not `emit_tri_n`'s derived-and-flipped-up
+// one, which would light a ceiling as though it were the outside of a roof. A
+// ceiling that shades like a roof is not a ceiling, and with no backface culling
+// anywhere that is exactly what the interior has been looking at.
+fn emit_roof_soffit(m: Mesh, rp: hex_editor::RoofPlan) {
+  for f in 0..hex_editor::ROOF_FACES {
+    (fx, fy, fz) = hex_editor::roof_face_normal(rp, f);
+    dn = vec3(0.0 - fx, 0.0 - fy, 0.0 - fz);
+    nk = hex_editor::roof_face_len(f);
+    a = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, 0));
+    for j in 1..nk - 1 {
+      b = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, j));
+      c = soffit_pt(rp, f, hex_editor::roof_soffit_k(f, j + 1));
+      emit_tri(m, a, dn, b, dn, c, dn);
+    }
+  }
+}
+
+// A quad from four points, with the normal taken from the face rather than
+// assumed upward — a roof slope that claimed a vertical normal would light as if
+// it were flat, which is exactly how a slab reads.
+fn emit_quad_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3, d: Vec3) {
+  emit_tri_n(m, a, b, c);
+  emit_tri_n(m, a, c, d);
+}
+
+fn emit_tri_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
+  n = nrm3((b.y - a.y) * (c.z - a.z) - (b.z - a.z) * (c.y - a.y),
+           (b.z - a.z) * (c.x - a.x) - (b.x - a.x) * (c.z - a.z),
+           (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  if n.y < 0.0 { n = vec3(0.0 - n.x, 0.0 - n.y, 0.0 - n.z); }
+  emit_tri(m, a, n, b, n, c, n);
+}
+
+fn emit_roof_sloped(m: Mesh, cq: integer, cr: integer, hs: vector<float>) {
+  csum = 0.0;
+  for i in 0..6 { csum = csum + (hs[i] ?? 0.0); }
+  cy = (csum / 6.0 ?? 0.0) * HEIGHT_SCALE;
+  cw = hex_to_world(cq, cr, 0);
+  base = len(m.vertices);
+  up = vec3(0.0, 1.0, 0.0);
+  m.vertices += [vertex(vec3(cw.x, cy, cw.z), up, vec2(0.5, 0.5))];
+  for ci in 0..6 {
+    wc = hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
+    m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * HEIGHT_SCALE, wc.z),
+                          up, vec2(1.0, 0.0))];
+  }
+  for fi in 0..6 {
+    fj = (fi + 1) % 6 ?? 0;
+    m.triangles += [Triangle { a: base, b: base + 1 + fi, c: base + 1 + fj }];
+  }
+}
+
+fn slab_pt(sl: Slab, u: float, v: float, y: float) -> Vec3 {
+  c = cos(sl.sl_yaw);
+  n = sin(sl.sl_yaw);
+  vec3(sl.sl_x + u * c - v * n, y, sl.sl_z + u * n + v * c)
+}
+
+fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  hw = sl.sl_w * 0.5;
+  hd = sl.sl_d * 0.5;
+  ylo = (sl.sl_lo as float) * HEIGHT_SCALE;
+  yhi = (sl.sl_hi as float) * HEIGHT_SCALE;
+
+  // The rim: four faces around the slab's own edge, which is what gives a building
+  // a floor line instead of a crease.
+  r0 = slab_pt(sl, 0.0 - hw, 0.0 - hd, ylo);
+  r1 = slab_pt(sl, hw, 0.0 - hd, ylo);
+  r2 = slab_pt(sl, hw, hd, ylo);
+  r3 = slab_pt(sl, 0.0 - hw, hd, ylo);
+  t0 = slab_pt(sl, 0.0 - hw, 0.0 - hd, yhi);
+  t1 = slab_pt(sl, hw, 0.0 - hd, yhi);
+  t2 = slab_pt(sl, hw, hd, yhi);
+  t3 = slab_pt(sl, 0.0 - hw, hd, yhi);
+  emit_quad_n(m, r0, r1, t1, t0);
+  emit_quad_n(m, r1, r2, t2, t1);
+  emit_quad_n(m, r2, r3, t3, t2);
+  emit_quad_n(m, r3, r0, t0, t3);
+
+  // Does any hole reach this slab at all?
+  any = false;
+  for h0 in holes.items {
+    if hex_editor::slab_covers(sl, h0.ho_x, h0.ho_z) { any = true; }
+  }
+  if !any {
+    emit_tri(m, t0, upn, t1, upn, t2, upn);
+    emit_tri(m, t0, upn, t2, upn, t3, upn);
+    emit_tri(m, r0, dwn, r2, dwn, r1, dwn);
+    emit_tri(m, r0, dwn, r3, dwn, r2, dwn);
+    return;
+  }
+
+  nu = (sl.sl_w / SLAB_STEP ?? 0.0) as integer + 1;
+  nv = (sl.sl_d / SLAB_STEP ?? 0.0) as integer + 1;
+  for iu in 0..nu {
+    ua = 0.0 - hw + sl.sl_w * (iu as float) / (nu as float) ?? 0.0;
+    ub = 0.0 - hw + sl.sl_w * ((iu + 1) as float) / (nu as float) ?? 0.0;
+    for iv in 0..nv {
+      va = 0.0 - hd + sl.sl_d * (iv as float) / (nv as float) ?? 0.0;
+      vb = 0.0 - hd + sl.sl_d * ((iv + 1) as float) / (nv as float) ?? 0.0;
+      mp = slab_pt(sl, (ua + ub) * 0.5, (va + vb) * 0.5, 0.0);
+      clo = sl.sl_lo;
+      chi = sl.sl_lo;
+      cut = false;
+      for h in holes.items {
+        glo = 0;
+        ghi = 0;
+        if hex_editor::hole_cuts(sl, h, mp.x, mp.z, glo, ghi) {
+          cut = true;
+          clo = glo;
+          chi = ghi;
+        }
+      }
+      // What is left of the slab here: the top face is at the crown of whatever
+      // stone remains, the underside at the foot of it.
+      ftop = sl.sl_hi;
+      fbot = sl.sl_lo;
+      solid = true;
+      if cut {
+        if chi >= sl.sl_hi && clo <= sl.sl_lo { solid = false; }
+        else if chi >= sl.sl_hi { ftop = clo; }
+        else { fbot = chi; }
+      }
+      if solid {
+        yt = (ftop as float) * HEIGHT_SCALE;
+        yb = (fbot as float) * HEIGHT_SCALE;
+        p0 = slab_pt(sl, ua, va, yt); p1 = slab_pt(sl, ub, va, yt);
+        p2 = slab_pt(sl, ub, vb, yt); p3 = slab_pt(sl, ua, vb, yt);
+        emit_tri(m, p0, upn, p1, upn, p2, upn);
+        emit_tri(m, p0, upn, p2, upn, p3, upn);
+        q0 = slab_pt(sl, ua, va, yb); q1 = slab_pt(sl, ub, va, yb);
+        q2 = slab_pt(sl, ub, vb, yb); q3 = slab_pt(sl, ua, vb, yb);
+        emit_tri(m, q0, dwn, q2, dwn, q1, dwn);
+        emit_tri(m, q0, dwn, q3, dwn, q2, dwn);
+      }
+      // ⚠ THE REVEAL, and it is the reason the thickness had to exist. Where a cut
+      // sample meets an uncut one, the uncut side shows a face across the cut's own
+      // interval — the side of a stairwell, the return of a coffer. In a sheet that
+      // interval is zero and there is nothing to draw, which is what made a hole in
+      // a floor read as a hole in nothing.
+      if cut {
+        yc0 = (clo as float) * HEIGHT_SCALE;
+        yc1 = (chi as float) * HEIGHT_SCALE;
+        um = (ua + ub) * 0.5;
+        vm = (va + vb) * 0.5;
+        emit_slab_reveal(m, sl, holes, ua - SLAB_STEP, vm, ua, va, ua, vb, yc0, yc1);
+        emit_slab_reveal(m, sl, holes, ub + SLAB_STEP, vm, ub, va, ub, vb, yc0, yc1);
+        emit_slab_reveal(m, sl, holes, um, va - SLAB_STEP, ua, va, ub, va, yc0, yc1);
+        emit_slab_reveal(m, sl, holes, um, vb + SLAB_STEP, ua, vb, ub, vb, yc0, yc1);
+      }
+    }
+  }
+}
+
+// One side of a reveal, emitted only where the neighbour is NOT cut — so an interior
+// boundary between two cut samples draws nothing and the hole is bounded exactly once.
+fn emit_slab_reveal(m: Mesh, sl: Slab, holes: hex_editor::Holes,
+                    nu2: float, nv2: float,
+                    ea: float, eb: float, ec: float, ed: float,
+                    y0: float, y1: float) {
+  np = slab_pt(sl, nu2, nv2, 0.0);
+  ncut = false;
+  for h in holes.items {
+    nlo = 0;
+    nhi = 0;
+    if hex_editor::hole_cuts(sl, h, np.x, np.z, nlo, nhi) { ncut = true; }
+  }
+  if ncut { return; }
+  a0 = slab_pt(sl, ea, eb, y0);
+  a1 = slab_pt(sl, ec, ed, y0);
+  a2 = slab_pt(sl, ec, ed, y1);
+  a3 = slab_pt(sl, ea, eb, y1);
+  emit_quad_n(m, a0, a1, a2, a3);
+  emit_quad_n(m, a3, a2, a1, a0);
+}
+
+// ⚠ A PROP IS A LIST OF BOXES AND THE RENDERER ASKS NO QUESTIONS. Where a pillow
+// goes, how tall a plinth is, whether a bed lies along the wall — all of that is
+// `hex_editor`'s and tested there. What crosses the seam is six faces at a time,
+// which is the only reason a bed and a statue share one emitter.
+fn emit_prop(m: Mesh, p: Prop, wld: VoxelWorld) {
+  gy = terrain_y(p.pr_x, p.pr_z, wld);
+  tx = 0.0 - p.pr_nz;
+  tz = p.pr_nx;
+  for i in 0..hex_editor::prop_parts(p) {
+    cx = 0.0;
+    cz = 0.0;
+    hu = 0.0;
+    ht = 0.0;
+    lo = 0;
+    hi = 0;
+    hex_editor::prop_part(p, i, cx, cz, hu, ht, lo, hi);
+    ylo = gy + (lo as float) * HEIGHT_SCALE;
+    yhi = gy + (hi as float) * HEIGHT_SCALE;
+    ux = p.pr_nx * hu;
+    uz = p.pr_nz * hu;
+    vx = tx * ht;
+    vz = tz * ht;
+    a0 = vec3(cx - ux - vx, ylo, cz - uz - vz);
+    a1 = vec3(cx + ux - vx, ylo, cz + uz - vz);
+    a2 = vec3(cx + ux + vx, ylo, cz + uz + vz);
+    a3 = vec3(cx - ux + vx, ylo, cz - uz + vz);
+    b0 = vec3(a0.x, yhi, a0.z);
+    b1 = vec3(a1.x, yhi, a1.z);
+    b2 = vec3(a2.x, yhi, a2.z);
+    b3 = vec3(a3.x, yhi, a3.z);
+    emit_quad_n(m, b0, b1, b2, b3);
+    emit_quad_n(m, a3, a2, a1, a0);
+    emit_quad_n(m, a0, a1, b1, b0);
+    emit_quad_n(m, a1, a2, b2, b1);
+    emit_quad_n(m, a2, a3, b3, b2);
+    emit_quad_n(m, a3, a0, b0, b3);
+  }
+}
+
+// ⚠ THE ANNEX'S OWN FLOOR — the one surface its wall runs cannot give it. Its walls
+// are three ordinary runs, so faces, openings, reveals and mouldings all arrive for
+// free; what a run has never had is a horizontal slab between its ends. A balcony
+// without one is a rail around nothing, and a bedstee without a lid is a stall.
+fn emit_annex_deck(m: Mesh, a: Annex, wld: VoxelWorld) {
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  gy = terrain_y(a.an_x, a.an_z, wld);
+  fy = gy + (a.an_floor as float) * HEIGHT_SCALE;
+  c0 = vec3(hex_editor::annex_corner_x(a, 0), fy, hex_editor::annex_corner_z(a, 0));
+  c1 = vec3(hex_editor::annex_corner_x(a, 1), fy, hex_editor::annex_corner_z(a, 1));
+  c2 = vec3(hex_editor::annex_corner_x(a, 2), fy, hex_editor::annex_corner_z(a, 2));
+  c3 = vec3(hex_editor::annex_corner_x(a, 3), fy, hex_editor::annex_corner_z(a, 3));
+  emit_tri(m, c0, upn, c1, upn, c2, upn);
+  emit_tri(m, c0, upn, c2, upn, c3, upn);
+  // Its underside, which on a balcony is the face everyone standing below looks at.
+  emit_tri(m, c0, dwn, c2, dwn, c1, dwn);
+  emit_tri(m, c0, dwn, c3, dwn, c2, dwn);
+  if a.an_kind == hex_editor::AN_BOX {
+    hy = gy + (a.an_head as float) * HEIGHT_SCALE;
+    d0 = vec3(c0.x, hy, c0.z); d1 = vec3(c1.x, hy, c1.z);
+    d2 = vec3(c2.x, hy, c2.z); d3 = vec3(c3.x, hy, c3.z);
+    emit_tri(m, d0, upn, d1, upn, d2, upn);
+    emit_tri(m, d0, upn, d2, upn, d3, upn);
+    emit_tri(m, d0, dwn, d2, dwn, d1, dwn);
+    emit_tri(m, d0, dwn, d3, dwn, d2, dwn);
+  }
+}
+
+// One slice of the SURROUND: the wall's face pushed out by `FRAME_PROUD` over the
+// height the ring covers, with the ledges that return it to the wall at top and
+// bottom. Both sides get one — a frame visible only from the street is scenery.
+fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
+                   gy0: float, gy1: float, ox: float, oz: float,
+                   px: float, pz: float, nrm: Vec3, bck: Vec3,
+                   front: boolean, back: boolean, a: integer, b: integer) {
+  if b <= a { return; }
+  ya = gy0 + (a as float) * HEIGHT_SCALE;
+  yb = gy1 + (a as float) * HEIGHT_SCALE;
+  ta = gy0 + (b as float) * HEIGHT_SCALE;
+  tb = gy1 + (b as float) * HEIGHT_SCALE;
+  upn = vec3(0.0, 1.0, 0.0);
+  dwn = vec3(0.0, 0.0 - 1.0, 0.0);
+  f0 = vec3(ax + px, ya, az + pz); f1 = vec3(bx + px, yb, bz + pz);
+  f2 = vec3(bx + px, tb, bz + pz); f3 = vec3(ax + px, ta, az + pz);
+  if front {
+    emit_tri(m, f0, nrm, f1, nrm, f2, nrm);
+    emit_tri(m, f0, nrm, f2, nrm, f3, nrm);
+    w3f = vec3(ax + ox, ta, az + oz); w2f = vec3(bx + ox, tb, bz + oz);
+    emit_tri(m, f3, upn, f2, upn, w2f, upn);
+    emit_tri(m, f3, upn, w2f, upn, w3f, upn);
+    w0f = vec3(ax + ox, ya, az + oz); w1f = vec3(bx + ox, yb, bz + oz);
+    emit_tri(m, f0, dwn, w1f, dwn, f1, dwn);
+    emit_tri(m, f0, dwn, w0f, dwn, w1f, dwn);
+  }
+  // ⚠ THE SIDE IS THE OPENING'S DATUM, not a guess. A niche is a hole in the front
+  // of a wall that is still whole behind, so a surround on its back face stands
+  // PROUD of solid stone — a moulding around nothing, in the neighbour's room. An
+  // embrasure's window is the mirror of that: it never touches the front face, so
+  // its frame belongs on the far one and nowhere else.
+  if !back { return; }
+  k0 = vec3(ax - px, ya, az - pz); k1 = vec3(bx - px, yb, bz - pz);
+  k2 = vec3(bx - px, tb, bz - pz); k3 = vec3(ax - px, ta, az - pz);
+  emit_tri(m, k0, bck, k2, bck, k1, bck);
+  emit_tri(m, k0, bck, k3, bck, k2, bck);
+  v3 = vec3(ax - ox, ta, az - oz); v2 = vec3(bx - ox, tb, bz - oz);
+  emit_tri(m, k3, upn, v2, upn, k2, upn);
+  emit_tri(m, k3, upn, v3, upn, v2, upn);
+  v0 = vec3(ax - ox, ya, az - oz); v1 = vec3(bx - ox, yb, bz - oz);
+  emit_tri(m, k0, dwn, k1, dwn, v1, dwn);
+  emit_tri(m, k0, dwn, v1, dwn, v0, dwn);
+}
+
+fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
+             ix: float, iz: float, jn: Vec3, a: integer, b: integer) {
+  if b <= a { return; }
+  ya = jgy + (a as float) * HEIGHT_SCALE;
+  yb = jgy + (b as float) * HEIGHT_SCALE;
+  p0 = vec3(jx + ox, ya, jz + oz);
+  p1 = vec3(jx + ix, ya, jz + iz);
+  p2 = vec3(jx + ix, yb, jz + iz);
+  p3 = vec3(jx + ox, yb, jz + oz);
+  emit_tri(m, p0, jn, p1, jn, p2, jn);
+  emit_tri(m, p0, jn, p2, jn, p3, jn);
+}
+
+// EVERY MESH ONE MESH_CHUNK DRAWS, IN `surfaces()` ORDER.
+//
+// ⚠ ONE PLACE, because it was spelled out TWICE and is about to be wanted a
+// third time. The dirty flush and the streamer each named the nine surfaces, in
+// two different orders, with the same nine colour constants beside them — and a
+// part thumbnail needs the identical recipe over a part's own world. A third
+// copy is how a surface comes to be drawn in the world and missing from the
+// catalogue, which is the same drift `B3.1` took the stride out of.
+//
+// ⚠ THE ORDER IS THE ID-SPACE ORDER, and the two agree by construction rather
+// than by luck: a chunk's mesh ids are `cid * SURFACES + MESH_FIGURE_MAX + 1 + i`
+// and `surfaces()[i]` is the surface that id draws, so a caller can loop over
+// both with one index. `surfaces.loft` already says re-ordering that list
+// renumbers every mesh on the wire; this is the reader that makes it true.
+//
+// ⚠ FIVE OF THE NINE ARE NOT CELL MESHES. Ground, road, field and floor come out
+// of `chunk_mesh_mat` — the cells carrying that material — while vegetation,
+// roof, wall, frame and soffit are built by `chunk_mesh_props`, which reads wall
+// EDGES, roof cells, dressing and the server's own registries. Handing it empty
+// registries is legitimate and is what a part gets: a part has no wall runs and
+// no roof plans, so its walls draw as per-edge panels and its roof from its own
+// cells — the fallback paths `chunk_mesh_props` already keeps for the stencil.
+// ⚠ `bounded` IS THE ONE THING A PART CHANGES ABOUT THE RECIPE, and it changes
+// exactly one of the nine passes. `chunk_mesh_mat` treats an unwritten cell as
+// GROUND — the outdoors is everywhere — while a part is bounded and its unwritten
+// cells are outside it. Measured before it existed: a 38-cell cottage meshed to
+// **28.6 x 24.5 world units**, four chunks of grass with a house in the middle,
+// with every count agreeing with itself the whole way. See
+// `chunk_mesh_mat_bounded`.
+pub fn chunk_meshes_all(cx: integer, cz: integer, wld: VoxelWorld, bounded: boolean,
+                    runs: WallRuns, roofs: hex_editor::RoofPlans,
+                    leaves: hex_editor::DoorLeaves, openings: hex_editor::Openings,
+                    annexes: hex_editor::Annexes, awalls: WallRuns,
+                    props: hex_editor::Props, slabs: hex_editor::Slabs,
+                    holes: hex_editor::Holes) -> vector<Mesh> {
+  cma_g = if bounded {
+            chunk_mesh_mat_bounded(cx, cz, wld, SURFACE_MAT)
+          } else {
+            chunk_mesh_mat(cx, cz, wld, SURFACE_MAT)
+          };
+  cma_r = chunk_mesh_mat(cx, cz, wld, ROAD_MAT);
+  cma_f = chunk_mesh_mat(cx, cz, wld, FIELD_MAT);
+  cma_v = mesh("veg");
+  cma_k = mesh("roof");
+  cma_w = mesh("wall");
+  // ⚠ THE GROUND'S OWN FLOOR CELLS SEED IT. `place_house` writes its floor into
+  // the ground layer as `FLOOR_MAT`, and nothing asked for that material until
+  // this line existed: 21% of the frame classified as SKY from inside a house.
+  cma_l = chunk_mesh_mat(cx, cz, wld, FLOOR_MAT);
+  cma_a = mesh("frame");
+  cma_s = mesh("soffit");
+  // ⚠ THE PART'S OWN WALL PROFILE, READ ONCE PER MESH_CHUNK FROM THE WORLD ALREADY IN
+  // HAND — plan 17 `A8.8`, §P9.13. Every one of this function's five callers
+  // already passes the world the panels are being built out of (`part_disp`, a
+  // part's own load, or the game world), so the profile needs no new argument
+  // anywhere and no caller changed. A game world carries no `WALL` section, so
+  // `MR_ABSENT` gives the unstated profile and the mesher behaves as it always
+  // did. ⚠ Read HERE and not in the per-edge loop: a section decode per panel per
+  // rebuild is the cost `part_expand` refuses a glb parse for.
+  cma_pw = hex_part::part_wall(wld).wr_wall;
+  cma_pwi = 5;                                       // `wall`, the default
+  if cma_pw.wa_surface != "" {
+    cma_pwi = surface_index(cma_pw.wa_surface);
+  }
+  // ⚠ AND THE OPENING PROFILE BESIDE IT — `A8.9`, §P9.14. Read once per chunk from
+  // the same world, for the same reason: a section decode per EDGE per rebuild is
+  // the cost `part_expand` refuses a glb parse for. A world with no `OPEN` section
+  // reads `MR_ABSENT`, `head` stays 0, and every doorway is the full-height gap it
+  // has always been.
+  cma_po = hex_part::part_open(wld).or_open;
+  cma_pok = opening_kind_index(cma_po.po_kind);
+  if cma_pok < 0 { cma_pok = hex_editor::OP_FLAT; }
+  chunk_mesh_props(cx, cz, wld, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s,
+                   cma_pwi, cma_pw.wa_up,
+                   cma_po.po_head, cma_po.po_sill, cma_pok,
+                   cma_po.po_spring, cma_po.po_radius,
+                   runs, roofs, leaves, openings, annexes, awalls, props, slabs, holes);
+  // ⚠ THE TENTH TAKES NO REGISTRY AND NO MATERIAL — plan 20 `A5`. Where a column
+  // stands higher than the ground beneath it can hold, the side of it is rock, and
+  // `hex_editor::face_at` reads that off the heights alone. So this is the only
+  // surface nothing has to remember to write: move the ground and the rock follows.
+  //
+  // ⚠ AND `bounded` REACHES IT TOO, for the same reason it reaches the ground. A
+  // part's unwritten cells are OUTSIDE it, not ground at zero — without this every
+  // part would come back ringed in cliff.
+  cma_x = chunk_mesh_faces(cx, cz, wld, bounded);
+  // ⚠ THE ELEVENTH, AND IT IS APPENDED — plan 20 `A10`. A surface's index IS its id on
+  // the wire, so water goes on the end and nothing already numbered moves. ⚠ And the
+  // pass asks for the STILL material while `chunk_mesh_mat` accepts the whole family:
+  // a flow direction is a terrain fact and not a colour, so six rivers and a pool are
+  // one mesh.
+  cma_wt = chunk_mesh_mat(cx, cz, wld, hex_editor::WATER_MAT);
+  [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s, cma_x, cma_wt]
+}
+
+fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
+  (addr_q, addr_r) = px_to_hex(wx, wz);
+  ch3 = terrain_h(addr_q, addr_r, wld);
+  cw3 = hex_to_world(addr_q, addr_r, ch3);
+  hs3 = corner_heights(addr_q, addr_r, wld);
+  for ti in 0..6 {
+    tj = (ti + 1) % 6 ?? 0;
+    v1 = hex_corner_world(addr_q, addr_r, 0, (6 - ti) % 6 ?? 0);
+    v2 = hex_corner_world(addr_q, addr_r, 0, (6 - tj) % 6 ?? 0);
+    y1 = (hs3[ti] ?? 0.0) * HEIGHT_SCALE;
+    y2 = (hs3[tj] ?? 0.0) * HEIGHT_SCALE;
+    // Barycentric weights in the xz plane for triangle (centre, v1, v2).
+    den = (v1.z - v2.z) * (cw3.x - v2.x) + (v2.x - v1.x) * (cw3.z - v2.z);
+    if den != 0.0 {
+      b1 = ((v1.z - v2.z) * (wx - v2.x) + (v2.x - v1.x) * (wz - v2.z)) / den ?? 0.0;
+      b2 = ((v2.z - cw3.z) * (wx - v2.x) + (cw3.x - v2.x) * (wz - v2.z)) / den ?? 0.0;
+      b3 = 1.0 - b1 - b2;
+      // A hair of tolerance so a point exactly on a shared edge belongs to one
+      // of the two triangles rather than to neither.
+      if b1 >= -0.0001 && b2 >= -0.0001 && b3 >= -0.0001 {
+        return b1 * cw3.y + b2 * y1 + b3 * y2;
+      }
+    }
+  }
+  cw3.y
+}

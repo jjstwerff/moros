@@ -136,7 +136,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ◐ **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | **L**, measured | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws. **Sized: 32 functions, 1342 lines, 9 constants, and nothing else of the server's** | ◐ **`c.1` done** |
 | ✅ **`B1b.2c.1`** — the five primitives the mesher needs, out of `moros_render` | S | **DONE 2026-08-13.** `make probe-emitters`: five `mesh_crc` pairs identical with a control, and the ambiguity error named all 10 server call sites so none could be missed | ✅ Done |
 | ✅ **`B1b.2c.2`** — the five find their real home, and `moros_render`'s go | S | **DONE 2026-08-13.** ⛔ `c.1`'s home was WRONG: all five have internal `moros_render` users, so they could not leave — they are **`hex_proj`'s** now, the leaf both sides already depend on. 14 tests moved with them (moros_render 167 → 153, hex_proj 8 → 22, every row accounted for); 3 fixture-only tests build their own geometry | ✅ Done |
-| **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | ⚠ both copies live and compared per chunk per surface, the `W1` shape — **1342 lines, 32 functions, 9 constants** | ⏭ **next**, and its blocker is gone |
+| ✅ **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | **DONE 2026-08-13.** `make probe-mesher`: 49 tiles × 11 surfaces, **99 with geometry in them**, every one the same mesh. Both bodies live — the server's is `chunk_meshes_all_srv` until `c.4` | ✅ Done |
+| **`B1b.2c.4`** — the server drops its copy; the page draws all eleven surfaces | M | ⚠ the deletion's instrument is the gates and `probe-mesher` going with it; then a fence laid in local mode is VISIBLE | ⏭ **next** |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -212,6 +213,36 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ✅ What `B1b.2c.3` turned up (2026-08-13) — the pass was over five surfaces of eleven
+
+**The props mesher is `hex_mesh`'s** — 1342 lines, 32 functions, 9 constants — and both bodies are
+live: the server's is `chunk_meshes_all_srv`, scaffolding until `c.4`. `make probe-mesher` compares
+them over one scene, **49 tiles × 11 surfaces**, and every mesh is the same.
+
+⛔ **AND THE FIRST RUN PASSED OVER FIVE SURFACES OF ELEVEN.** The fixture placed a house, rang a
+fence and cut an opening — and the per-surface counter reported **six never drawn**: road, field,
+tree, soffit, rock and water. *An equality of two empty meshes is a pass that means nothing*, which
+is the trap the probe's own header had been written to warn about, sprung on its first run. **The
+counter is the instrument that caught it**, and it exists because "63 of them had geometry" cannot
+say WHICH.
+
+⚠ **AND THE SOFFIT NEEDED A CELLAR, WHICH THE GROUND REFUSED.** A ceiling's underside is a surface
+nothing above ground draws, so the fixture digs one — and the storey gesture said *"floor at 4
+leaves no room for a storey of 12"*. The seeded ground is at **30** now rather than 4, which lit
+the rock faces too. All eleven are drawn, on 99 tile-surfaces.
+
+⚠ **THE TWO COPIES CANNOT SHARE A NAME, AND THAT IS THE THIRD TIME THE COMPILER HAS DECIDED THE
+SHAPE OF THIS MOVE.** `c.1` got *declared by more than one package* (siblings), `c.2` got *Cannot
+redefine* (a package and its dependency), and here the same rule forced the server's copy to take
+a `_srv` suffix for the duration — which is `W1`'s two-encoders period, made explicit by the
+language instead of by discipline.
+
+⚠ **IT ARRIVED WITH ITS LATTICE CALLS PAID.** `moros_render::world_to_hex` is a Moros wrapper round
+`hex_grid::px_to_hex` that returns a struct; the two sites in the mesher take the pair directly —
+two of the thirty sites plan 19 `L6.3a` otherwise has to pay, and the reason the move is possible
+at all. `hex_way` and `hex_part` joined `hex_mesh`'s dependencies; neither widens the cone in a
+direction that matters, because `hex_editor` — already there — depends on both.
 
 ## ⛔ What `B1b.2c.2` turned up (2026-08-13) — the home was wrong, and a grep is why
 

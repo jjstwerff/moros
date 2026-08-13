@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth plan-check play play-fast browser port-free
+.PHONY: probe-mesher client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -572,6 +572,17 @@ probe-b1a:
 # `AUTH_SABOTAGE=literal|nodirty|assume` runs the three controls.
 probe-auth:
 	@sh probe/b1b/auth.sh
+
+# B1b.2c.3 (plan 22) — IS THE MOVED MESHER THE SAME MESHER?
+#
+# 1342 lines moved into `hex_mesh` so a page can draw the nine surfaces it already
+# writes. Both bodies are live — the server's copy is `chunk_meshes_all_srv`,
+# scaffolding until `c.4` — and this compares them over one scene, tile by tile,
+# surface by surface, with a per-surface counter so an equality over empty meshes
+# cannot read as a pass.
+probe-mesher:
+	@EDITOR_PROBE=meshcmp $(LOFT) --interpret --lib lib/ src/editor_server.loft 2>/dev/null \
+	  | grep -E '^  (scene|cellar|[0-9]+ tiles)|^    surface|^meshcmp'
 
 # L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
 # Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers
