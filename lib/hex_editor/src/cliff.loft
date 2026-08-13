@@ -37,10 +37,29 @@
 // ⚠ The cost of that choice, named rather than discovered: a character PLACED on
 // a plateau is fenced in by its own cliffs.
 //
-// **Target home.** This belongs with `hex_edge` in the shared layer, beside the
-// other edge queries — see `doc/claude/HEX_STACK.md` §12. It is built here under
-// that document's "build beside, do not migrate" rule, because the shared tree is
-// another agent's and moving it is an ask rather than a task.
+// **Target home, still.** This belongs with `hex_edge` in the shared layer, beside
+// the other edge queries — see `doc/claude/HEX_STACK.md` §12 — and that has not
+// changed. `hex_editor` is a WAYPOINT, not the destination: the shared tree is
+// another agent's and moving it there is an ask rather than a task.
+//
+// ⚠ **WHY IT LEFT `moros_sim` — plan 22 `B1c.2a`.** The walker is arriving in this
+// package (`pose.loft`, and `walk_step` after it), and a walk that consults cliffs
+// cannot reach a Moros package: `hex_editor` is a lavition one, so the arrow would
+// point backwards. **The debt was already written down twice** — this file's own
+// target-home note, and `gesture.loft`'s `stair_cut`, which takes its step height
+// as a parameter under the comment *"it came from `moros_sim::stair_height` — a
+// MOROS package — and this is a lavition one, so taking the dependency would point
+// the arrow backwards."* Both of its dependencies were already this package's, and
+// **nothing in `moros_sim/src` ever called it** (measured: its only callers were
+// that package's own tests and `src/editor_server.loft`).
+//
+// ⚠ **AND ONE OF ITS DEFERRALS HAS SINCE TRIGGERED, RESOLVED SOMEWHERE ELSE.** The
+// symmetry note below says the asymmetry becomes observable *"the day a walker can
+// descend faster than it climbs, which needs a FALL. There is none yet."* There is
+// now — `moros_sim::fall_step`, in the editor's tick — and the direction was
+// resolved by the CALLER instead: `walk_to` compares the two surfaces at the
+// walker's own reference and lets a descent through. So this function still cannot
+// say which side is high, and no longer needs to.
 use hex_field;
 use hex_edge;
 

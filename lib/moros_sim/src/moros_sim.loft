@@ -15,5 +15,12 @@ use tether;
 use shape;
 use skin;
 use bend;
-use cliff;
+// ⚠ `cliff` LEFT — plan 22 `B1c.2a`. Its own header named `hex_edge`'s shared
+// layer as its target home and said it sat here only because moving to another
+// agent's tree is an ask; `hex_editor` is the waypoint, because that is where the
+// WALKER is going and *the rule about what a walker can climb belongs with the
+// walker*. `stair_cut` in `hex_editor` carried the mirror of that note — "it came
+// from `moros_sim::stair_height`, a MOROS package, and this is a lavition one, so
+// taking the dependency would point the arrow backwards" — and this is that debt
+// paid rather than routed around. Nothing in this package's `src/` ever called it.
 use fall;

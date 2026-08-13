@@ -3,7 +3,7 @@
 //
 // Cliffs, tested where they live: no world, no socket, no clock — just a height
 // function and the edges it produces.
-use moros_sim;
+use hex_editor;
 use hex_field;
 use hex_edge;
 
@@ -25,14 +25,14 @@ fn set() -> hex_field::EdgeSet { hex_field::edgeset_new(0 - 3, 0 - 3, 7, 7) }
 fn stair(step: integer) -> fn(integer, integer) -> integer {
   fn(q: integer, r: integer) -> integer {
     sh = 0;
-    for si in 0..q { sh = moros_sim::stair_height(sh, 1, step); }
+    for si in 0..q { sh = hex_editor::stair_height(sh, 1, step); }
     sh
   }
 }
 
 fn test_flat_ground_has_no_cliffs() {
   e = set();
-  n = moros_sim::cliff_edges(e, flat(), 0 - 2, 0 - 2, 5, 5);
+  n = hex_editor::cliff_edges(e, flat(), 0 - 2, 0 - 2, 5, 5);
   assert(n == 0, "flat ground blocks nothing, got {n}");
 }
 
@@ -40,16 +40,16 @@ fn test_a_small_step_is_walkable_and_a_big_one_is_not() {
   // The threshold is the whole rule, so it is asserted from BOTH sides at the
   // boundary rather than only well away from it.
   small = set();
-  assert(moros_sim::cliff_edges(small, ledge(6), 0 - 2, 0 - 2, 5, 5, 6) == 0,
+  assert(hex_editor::cliff_edges(small, ledge(6), 0 - 2, 0 - 2, 5, 5, 6) == 0,
          "a step exactly at the limit is still walkable");
   big = set();
-  assert(moros_sim::cliff_edges(big, ledge(7), 0 - 2, 0 - 2, 5, 5, 6) > 0,
+  assert(hex_editor::cliff_edges(big, ledge(7), 0 - 2, 0 - 2, 5, 5, 6) > 0,
          "one unit past the limit is a cliff");
 }
 
 fn test_the_cliff_lands_on_the_edges_that_span_the_step() {
   e = set();
-  moros_sim::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
+  hex_editor::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
   // (0,0) is low and (1,0) is high, so that edge must be blocked …
   assert(!hex_edge::passable(e, 0, 0, 1, 0), "the edge across the step is blocked");
   // … while two cells on the SAME side of it are not.
@@ -62,7 +62,7 @@ fn test_a_cliff_blocks_both_ways_and_that_is_the_deferral() {
   // It is asserted rather than assumed, because the day a fall exists this test
   // is what will fail and say so.
   e = set();
-  moros_sim::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
+  hex_editor::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
   assert(!hex_edge::passable(e, 0, 0, 1, 0), "blocked climbing up");
   assert(!hex_edge::passable(e, 1, 0, 0, 0), "and blocked stepping down — symmetric");
 }
@@ -73,16 +73,16 @@ fn test_it_does_not_overwrite_a_wall_already_on_the_edge() {
   e = set();
   hex_edge::edge_block_surf(e, 0, 0, 1, 0, 42);
   before = hex_edge::edge_surf(e, 0, 0, 1, 0);
-  n = moros_sim::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
+  n = hex_editor::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
   after = hex_edge::edge_surf(e, 0, 0, 1, 0);
   assert(before == 42 && after == 42, "the wall's surface survives, {before} → {after}");
   assert(n > 0, "and other edges of the step are still blocked");
 }
 
 fn test_the_step_test_is_the_same_question_the_sweep_will_ask() {
-  assert(moros_sim::cliff_step_ok(0, 6, 6), "exactly the limit is ok");
-  assert(!moros_sim::cliff_step_ok(0, 7, 6), "one past is not");
-  assert(!moros_sim::cliff_step_ok(7, 0, 6), "and it does not care which is higher");
+  assert(hex_editor::cliff_step_ok(0, 6, 6), "exactly the limit is ok");
+  assert(!hex_editor::cliff_step_ok(0, 7, 6), "one past is not");
+  assert(!hex_editor::cliff_step_ok(7, 0, 6), "and it does not care which is higher");
 }
 
 // ── THE STAIR ───────────────────────────────────────────────────────────────
@@ -93,13 +93,13 @@ fn test_a_step_this_creature_builds_is_a_step_it_can_climb() {
   // threshold, so a single off-by-one anywhere in either function shows here.
   for sh_step in 3..9 {
     for sh_here in 0..40 {
-      up = moros_sim::stair_height(sh_here, 1, sh_step);
-      down = moros_sim::stair_height(sh_here, 0 - 1, sh_step);
+      up = hex_editor::stair_height(sh_here, 1, sh_step);
+      down = hex_editor::stair_height(sh_here, 0 - 1, sh_step);
       assert(up == sh_here + sh_step, "a step up is one stride: {up} from {sh_here}");
       assert(down == sh_here - sh_step, "a step down is one stride: {down}");
-      assert(moros_sim::cliff_step_ok(sh_here, up, sh_step),
+      assert(hex_editor::cliff_step_ok(sh_here, up, sh_step),
              "and the climb onto it is admitted ({sh_here} → {up}, stride {sh_step})");
-      assert(moros_sim::cliff_step_ok(sh_here, down, sh_step),
+      assert(hex_editor::cliff_step_ok(sh_here, down, sh_step),
              "and so is the descent onto it");
     }
   }
@@ -110,7 +110,7 @@ fn test_a_staircase_of_its_own_steps_blocks_no_edge() {
   // it is `cliff_edges` — the function the walker actually meets — that has to
   // let every one of them through.
   e = set();
-  n = moros_sim::cliff_edges(e, stair(4), 0 - 2, 0 - 2, 5, 5, 4);
+  n = hex_editor::cliff_edges(e, stair(4), 0 - 2, 0 - 2, 5, 5, 4);
   assert(n == 0, "a staircase of its own steps is walkable end to end, {n} blocked");
   assert(hex_edge::passable(e, 0, 0, 1, 0), "including the edge onto the first step");
   assert(hex_edge::passable(e, 1, 0, 2, 0), "and the edge between two steps");
@@ -122,9 +122,9 @@ fn test_a_stair_belongs_to_the_creature_that_built_it() {
   // child. A version that clamped to some universal "walkable" number would pass
   // the test above and fail this one.
   tall = set();
-  assert(moros_sim::cliff_edges(tall, stair(6), 0 - 2, 0 - 2, 5, 5, 6) == 0,
+  assert(hex_editor::cliff_edges(tall, stair(6), 0 - 2, 0 - 2, 5, 5, 6) == 0,
          "the creature that built it walks up it");
   short = set();
-  n = moros_sim::cliff_edges(short, stair(6), 0 - 2, 0 - 2, 5, 5, 4);
+  n = hex_editor::cliff_edges(short, stair(6), 0 - 2, 0 - 2, 5, 5, 4);
   assert(n > 0, "a shorter one is refused by the same stair, {n} edges blocked");
 }

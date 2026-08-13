@@ -16,8 +16,6 @@ entry = "src/moros_sim.loft"
 # A3 composes joint values in hex_body's own unit (TURNS) and A4 embeds one of
 # its rigs at a body, so the conversion is READ from there rather than copied.
 hex_body     = ">=0.1"
-# Cliffs are EDGES — the collision query and the block are the library's, not ours.
-hex_edge     = ">=0.1"
 moros_map    = { path = "../moros_map" }
 moros_editor = { path = "../moros_editor" }
 moros_render = { path = "../moros_render" }

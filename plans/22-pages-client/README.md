@@ -155,7 +155,10 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.2c.4b`** — the ramp and the slot are the library's; the server's two send paths become one | S | **DONE 2026-08-13.** ⛔ **Found a shipped bug doing it**: the chunk STREAM wrote the ramp as a literal `0` where the dirty FLUSH asked `surface_ramp`, so **water drew flat when a tile came into view and depth-ramped after any edit near it**. `tools/gates/world/water.mjs` is the first water gate and goes red on it — `flush [2]` against `stream [0]` | ✅ Done |
 | ✅ **`B1b.2c.4c`** — the page draws all eleven surfaces | S | **DONE 2026-08-13.** `make probe-auth` is **36 checks**: `grass` at boot, **`grass,wall`** after the rings, and the world half changed again over them. `AUTH_SABOTAGE=groundonly` is red on those and **green on every other check in the file** — which is what *written, keyed and invisible* looks like from inside an instrument | ✅ Done |
 | ✅ **`B1c.1`** — the TURN: `hex_editor` owns the held-key table, the rate and the step | S | **DONE 2026-08-13.** `make probe-demo`'s F block: `place` **refused at boot** (`rot 9 of 12, offer 8`), then turned, then **`place — 27 · world 41145:1306471549`** — the same key, the same page, refused and accepted in one run. 9 library tests, 3 sabotages red in different places; `DEMO_SABOTAGE=noturn` red on `F2b` alone | ✅ Done |
-| **`B1c.2`** — the WALK: position, collision, cliff and fall | **M**, sized | ⚠ **two blockers, both real and both payable** — see the sizing below. `ground_under` → `hex_mesh::terrain_y` is a **cycle**, and `cliff_edges`/`fall_step` are `moros_sim`'s | Next |
+| ✅ **`B1c.2a`** — pay the arrow: `cliff` leaves `moros_sim` for `hex_editor` | S | **DONE 2026-08-13.** A debt written down in TWO places before it was paid — the file's own *target home* note and `stair_cut`'s *"taking the dependency would point the arrow backwards"*. Test-name diff exact: hex_editor **436/42 → 446/43**, moros_sim **313/26 → 303/25**, and `hex_edge` dropped from its manifest because nothing else in the package used it | ✅ Done |
+| ✅ **`B1c.2b`** — the walk itself: `hex_editor::walk`, and the server drops its copy | M | **DONE 2026-08-13.** 8 functions and `SKIN` moved verbatim; the server is **7743 → 7400 lines**. ⛔ **The blocker did not apply** — `walk_to` never calls `ground_under`; only the FALL does. Diffed body by body against the previous commit: **17 changed code lines, all three deltas named**. `make gate-character` 8/8 with every number identical (`climbed 0.492`, `peakReached 0.497`, `fenceAt 6.062`) | ✅ Done |
+| **`B1c.2c`** — the page walks | S | ⚠ the page builds its own collision set and calls the same `walk_to` — the proxy CACHE stays the driver's, because its validity is a fact about a tick rather than about walking | Next |
+| **`B1c.3`** — the FALL | ? | ⚠ **deliberately after the walk**: `fall_step` imports `player::GRAVITY` under a comment saying *a package with two gravities is a package where a jump and a fall disagree* — so where gravity lives is its design question. ⏭ And **without a fall the walker is coherent, not crippled**: cliff edges BLOCK, so a page walker cannot leave a plateau in the first place | Blocked on `B1c.2b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
 | ✅ **`B2`** = **`B3`** — `tools/build-pages.mjs`, `_site/`, and the check that opens it | S | **DONE 2026-08-13.** `make probe-demo`: `_site/index.html` over `file://` with no listener at either end — boots, goes local in 180 dials, draws (world **5 colours** over the horizon against a 303-colour panel control), holds still, and `ArrowUp` **writes** (`local raise — 1 · world 16502:374721773`). Two sabotages, red in different places | ✅ Done |
@@ -286,6 +289,111 @@ rather than the raw yaw.
 (`offer 8`) and does not take it. Whether `place` should snap to its own offer is an
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
+
+## ✅ What `B1c.2b` turned up (2026-08-13) — the blocker did not apply, and the sizing said it would
+
+**`hex_editor::walk` is the walk.** `wall_stops_walk`, `wall_stops_view`, `walk_h`, `edges_walk`,
+`edges_around`, `SKIN`, `stand_clear` and `walk_to` left `src/editor_server.loft`, which is
+**7,743 → 7,400 lines**.
+
+⛔ **THE BLOCKER THIS STEP WAS SIZED AROUND DOES NOT EXIST.** Both the plan and STATE recorded
+*"`ground_under` → `hex_mesh::terrain_y` is a cycle, so the driver supplies a height sampler"*, and
+the design work went into how to pass that sampler. **`walk_to` never calls `ground_under`.** Only
+the FALL does, and the fall is `B1c.3`. The walk's own surface question is `walk_h`, which asks
+`hex_voxel::world_surface` and falls back to **`hex_editor::terrain_h` — already this package's**.
+
+> ⚠ **A cone measured from the wrong seeds sizes the wrong step.** `ground_under` was in the
+> sizing because it is in the TICK beside the walk, not because the walk calls it. The fix is
+> cheap and worth naming: **seed a cone from the function you are moving, never from the block it
+> sits in.**
+
+⚠ **AND THE OTHER THREE NAMES WERE ALREADY HERE**: `edge_layer`, `WALL_MAT` and `FENCE_MAT` are
+`gesture.loft`'s. What is left is `hex_edge`, `hex_field`, `hex_way`, `hex_grid` and `hex_voxel` —
+every one already a dependency.
+
+### The move is verbatim, and the diff says exactly how verbatim
+
+Body by body against the previous commit, comparing **code lines only** (the comments moved with
+their functions): `wall_stops_walk`, `wall_stops_view`, `walk_h`, `SKIN`, `stand_clear` and
+**`walk_to` (45 code lines) — IDENTICAL**. Seventeen lines changed, in two functions, for three
+reasons and no others:
+
+| what changed | why |
+|---|---|
+| `edges_walk` gains `step_max` | ⚠ **the library's own seam, not a change of mind.** It called the server's `cliff_step()`, and `cliff_edges` has said at its signature since it was written that *how tall a step a creature can take is a property of the CREATURE, not of the world*. The figure's proportions stay with the driver that knows which figure walks |
+| `HEIGHT_SCALE` → `wld.w_unit` | the global is **wrong on a part world** (`door/slat` is authored at 0.125) and taking it would have added a dependency on a number that is only sometimes right. `W_UNIT` is 0.25 and so is `HEIGHT_SCALE`, so it is the same arithmetic in every landscape the editor makes — which is what lets the gates confirm it moved nothing |
+| `hex_to_world(q,r,0)` → `hex_to_px` | it *is* `hex_to_px` wrapped in a `Vec3` with `y = 0 * HEIGHT_SCALE`, and only `.x`/`.z` were read. Taking the wrapper would have made **`graphics` a dependency of the walk**. `B1b.2c.1`'s `world_to_hex` retirement, through another door |
+
+⚠ **AND THE GATES ARE THE OTHER HALF, because a diff cannot see a threading mistake.**
+`make gate-character` is 8/8 with the numbers unmoved to three decimals — `climbed 0.492`,
+`tickOvershoot 0.109`, `peakReached 0.497`, `steepestWalkedDegrees 30`, `fenceAt 6.062`. Those
+gates drive `4:` and measure where a body ends up, which is precisely what a mis-passed `ref_units`
+or a swapped `step_max` would move.
+
+### ⛔ And a published `SKIN` broke the package — the grep that was right at `B1c.2a` was wrong here
+
+`walk.loft` published `SKIN` (0.01, the skin a walker keeps off a wall) and
+**`tests/boom.loft` already declares its own `SKIN`** (0.20, the camera boom's clearance). Two
+different quantities, one generic name, and `hex_editor` would not build.
+
+⛔ **THE NAME CHECK RAN AND EXCLUDED THE DIRECTORY THE COLLISION WAS IN.** It searched
+`lib/*/src/*.loft`, `src/` and the registry — **not `lib/*/tests/`.** That is `B1b.2c.2`'s finding
+*(a grep's exclusion is an assumption)* repeated one directory over, by the same hand, in the same
+session that wrote it down at `B1c.2a`. ⚠ **A test file declares names into the same package
+namespace**, and this tree had no reason to know that until something published a name generic
+enough to hit one.
+
+⚠ **AND THE COUNT LIED IN THE INFORMATIVE DIRECTION.** The suite reported **436**, not 446 — the
+ten `boom.loft` tests were *missing rather than failing*, because a parse error takes the whole
+file out. **A test count that DROPS is a file that did not run**, and it reads as a smaller suite
+rather than a broken one.
+
+✅ **THE FIX IS THE NAME**: `WALK_SKIN`. A bare `SKIN` leaving a library claims a word in every
+consumer's namespace, and the camera site that borrows the value now says it is borrowing a
+walker's. The re-check covers all **22** published names of `pose`, `cliff` and `walk` against
+`lib/` **including tests**, `src/`, `../loft-libs-world/` and the registry: no second declaration
+anywhere.
+
+⛔ **AND ONE `sed` TOOK OUT THINGS THAT MERELY CONTAINED THE NAME.** Qualifying every `SKIN` as
+`hex_editor::SKIN` also rewrote `CAM_SKIN`, `CAM_SHOULDER` and six comments — `A-hex_editor::SKIN
+at the hip`. It failed loudly (the compiler refused `hex_editor::CAM_hex_editor::SKIN`), which is
+the lucky half; the comments would have shipped. **A bulk rename over a whole file is a
+substring match, and a constant whose name is a prefix of another is where it bites.**
+
+## ✅ What `B1c.2a` turned up (2026-08-13) — a debt written down twice, and the grep that was right this time
+
+**`cliff.loft` is `hex_editor`'s.** 130 lines, 3 public functions, its 10 test fns with it.
+
+⚠ **THE MOVE WAS ALREADY ARGUED FOR, IN TWO FILES, BY WHOEVER HIT THE WALL EACH WAY.**
+`cliff.loft`'s header said its target home is `hex_edge`'s shared layer and that it sat in
+`moros_sim` only because *"the shared tree is another agent's and moving it is an ask rather than a
+task"*. `gesture.loft`'s `stair_cut` said the mirror image — *"it came from
+`moros_sim::stair_height` — a MOROS package — and this is a lavition one, so taking the dependency
+would point the arrow backwards"* — and worked around it by taking the step height as a parameter.
+**Neither note could pay the debt on its own; the walker arriving in `hex_editor` is what did.**
+
+⚠ **AND THE GREP WAS THE RIGHT ONE THIS TIME, WHICH IS `B1b.2c.2`'s LESSON APPLIED RATHER THAN
+RE-LEARNED.** That step concluded five primitives had one consumer *from a grep that excluded the
+file they lived in*. So this one searched the whole tree, `moros_sim` included, for every one of
+the five public names — and the answer was clean: `cliff_edges` and `fall_step` are called by
+`moros_sim`'s **own tests** and by `src/editor_server.loft`, and by nothing in `moros_sim/src` at
+all. `cliff_step_ok` and `stair_height` are used only inside `cliff.loft` itself.
+
+⚠ **`hex_edge` LEFT THE MANIFEST WITH IT.** `cliff.loft` was the only file in the package using it
+— so a dependency that was real became a dependency that was stale in the same commit, and a
+manifest nobody re-derives is exactly where that would have sat.
+
+⚠ **THE TEST-NAME DIFF WAS OFF BY ONE AND THE ONE IS THE FINDING.** Predicted `-9`, measured
+`-10`: the file has 9 `test_*` functions and a zero-argument helper `flat()`, **which the runner
+counts and runs as a test**. hex_editor **436/42 → 446/43**, moros_sim **313/26 → 303/25**, every
+row accounted for. *A count of what you meant is not a count of what the tool sees.*
+
+⏭ **AND ONE OF ITS DEFERRALS HAS TRIGGERED, RESOLVED SOMEWHERE ELSE.** The file says its symmetric
+block is survivable *"only because under a symmetric block a walker can never REACH the high side
+on foot — the asymmetry becomes observable the day a walker can descend faster than it climbs,
+which needs a FALL. There is none yet."* **There is now**, and the direction was resolved by the
+CALLER: `walk_to` compares both surfaces at the walker's own reference and lets a descent through.
+The note is corrected in place rather than left to be discovered.
 
 ### ⏭ And the WALK is sized now — two blockers, both real, both payable
 

@@ -40,6 +40,14 @@ use say;
 // `src/editor_server.loft` alone, which is why a page with the same keyboard and
 // the same author could not move at all.
 use pose;
+// Cliffs, as EDGES — plan 22 `B1c.2a`, moved from `moros_sim`. A cliff is a
+// hex-lattice fact rather than a Moros one, both of its dependencies (`hex_field`,
+// `hex_edge`) were already ours, and the walker that consults it is arriving here.
+use cliff;
+// ⚠ AFTER `cliff`, which it consults, and after `gesture` for `edge_layer` and the
+// wall materials. Where a walker ENDS UP — plan 22 `B1c.2b`, moved verbatim out of
+// `src/editor_server.loft` so one walk answers both drivers.
+use walk;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the

@@ -1,0 +1,431 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE WALK — plan 22 `B1c.2b`.
+//
+// Where a walker ENDS UP, given where it is and where it asked to go. `pose.loft`
+// answers what the held keys mean; this answers what the world does about it.
+//
+// ⚠ IT IS A VERBATIM RELOCATION OUT OF `src/editor_server.loft`, and that is the
+// safety of the step rather than a note about its history: every body below is the
+// server's, moved unchanged, so the comparison is a DIFF and not an argument. Two
+// things did change and both are named at their own function — `edges_walk` takes
+// the cliff threshold as a parameter instead of calling the server's `cliff_step()`,
+// and the bodies are `pub`.
+//
+// ⚠ WHY IT COULD MOVE AT ALL, WHICH WAS NOT OBVIOUS AND WAS MEASURED. The walk was
+// sized as blocked on two things: `ground_under` needs `hex_mesh::terrain_y` and
+// `hex_mesh` depends on THIS package (a cycle), and `cliff_edges` was `moros_sim`'s.
+// `B1c.2a` paid the second. The first turned out not to apply: **`walk_to` never
+// calls `ground_under`.** Only the FALL does, and the fall is `B1c.3`. Everything
+// else the walk reaches for — `edge_layer`, `WALL_MAT`, `FENCE_MAT`, `terrain_h` —
+// was already this package's, and the rest is `hex_edge`, `hex_field`, `hex_way`,
+// `hex_grid` and `hex_voxel`, every one already a dependency.
+//
+// ⚠ AND THE HEIGHT SCALE IS NOT HERE, DELIBERATELY. The server measures its
+// reference in HEIGHT UNITS and passes integers across this seam; `hex_proj`'s
+// `HEIGHT_SCALE` is a global that is **wrong on a part world** (`door/slat` is
+// authored at 0.125), and `w.w_unit` is the world's own answer. Nothing below needs
+// either, because a reference in units is what the surface rule takes.
+use gesture;
+use cliff;
+
+use hex_field;
+use hex_edge;
+use hex_way;
+use hex_grid;
+use hex_voxel;
+
+// ── COLLISION (rung W2, moros#10) — what the walk cannot cross ─────────────
+//
+// **The query is `hex_edge`'s; the ANSWER is ours.** `sweep_path` walks a SEGMENT
+// across the lattice one edge at a time and stops at the first blocked one, so the
+// result is a function of where you are and where you are going — never of how
+// many ticks the motion was cut into. A dropped frame cannot tunnel through a
+// fence, and there is no step size anywhere to tune.
+//
+// What belongs here is the PREDICATE, and there are two of them:
+//
+//   material   stops a walker   stops the camera
+//   WALL       yes              yes
+//   DOOR       no               no
+//   FENCE      yes              **no**
+//
+// That last row is the whole reason they are two functions rather than one. The
+// camera's discriminator is NOT "does it block movement" — a fence stops a
+// character and is visually almost nothing, so avoiding it would make the camera
+// lurch every time you walked beside a paddock. It is whether the camera can be
+// INSIDE the thing, because a volume you are inside fills the entire screen while
+// a thing you see past costs a fraction of the frame (`EDITOR_SUBSTRATE.md`).
+//
+// The library owns the traversal and knows nothing about materials; the consumer
+// supplies the answer. Same seam as the opaque palette in the world contract.
+pub fn wall_stops_walk(mat: integer) -> boolean { mat == WALL_MAT || mat == FENCE_MAT }
+pub fn wall_stops_view(mat: integer) -> boolean { mat == WALL_MAT }
+
+// ── WHAT A WALKER MEASURES ITS STEP AGAINST ─────────────────────────────────
+//
+// The surface rule, from the walker's own height — `world_surface`, not
+// `terrain_h`. The distinction is the whole of `WORLD_MODEL.md` § "Which layer is
+// the surface" and it is invisible until a column has more than one: the outdoors
+// is ONE layer per column, and a walker on a first floor is measuring its next
+// step against a floor three metres under its feet.
+//
+// ⚠ IT MADE THE UPPER STOREY UNREACHABLE, which is the shape the defect took.
+// The cell beside a deck reads as the ground below it, so a stair built level with
+// the deck reported a twelve-unit rise and the walker was refused at the top step.
+// The deck half of the camera's and the road's surface rules could not be tested
+// for exactly this reason — nothing could stand on a deck to test them from.
+//
+// ⚠ AND THE FALLBACK IS NOT A TIDY-UP. `world_surface` answers −1 where no terrain
+// is occupied at all — a missing chunk, an unauthored cell — while `terrain_h`
+// answers the outdoors' own 0 there. Mapping −1 to 0 would put a false cliff
+// around every chunk the streamer has not reached; deferring to `terrain_h` keeps
+// today's answer wherever the new rule has nothing to say.
+//
+// ⚠⚠ **THE REFERENCE IS THE SURFACE THE WALKER STANDS ON, NEVER ITS FEET**, and
+// the difference cost this rung a working stair. `py` rides the INTERPOLATED
+// heightfield — every corner is the mean of the three cells touching it — so
+// approaching a 12-unit drop the feet sink toward `(12 + 0 + 8)/3`, more than five
+// units below the cell's own stored height. `world_surface`'s tolerance is `ε/2`,
+// four units, and it is documented as absorbing exactly this difference: it does
+// not, because the dip is a property of the NEIGHBOURS and nothing bounds it. Fed
+// the sagging feet, the rule stopped seeing a deck 12 above them and the last step
+// onto it read as a cliff — intermittently, depending on where in the cell the
+// proxy happened to be built.
+//
+// The two cases turn out to be complementary, which is what makes the stored
+// height a safe reference rather than a lucky one:
+//
+//   * where the feet are smoothed, the column has ONE occupied layer (`sf_smooth`)
+//     — and then every reference gives the same answer, so it cannot matter;
+//   * where the reference matters, the column has SEVERAL — and then the surface is
+//     a deck, taken flat, so the feet are exactly its stored height.
+//
+// So the caller resolves its own cell once (`py` is a fine reference *there*, by
+// the first bullet) and passes that integer in for every other cell in the window.
+pub fn walk_h(q: integer, r: integer, wld: VoxelWorld, ref_units: float) -> integer {
+  u = hex_voxel::world_surface(wld, q, r, ref_units).sf_units;
+  if u < 0 { return terrain_h(q, r, wld); }
+  u
+}
+
+// The walk's collision set, with the ground's own cliffs blocked into it.
+//
+// ⚠ MOVE ONLY, NEVER VIEW. A cliff stops a walker and does not stop a camera — the
+// editor already keeps those two sets apart (`wall_stops_walk` against
+// `wall_stops_view`), and putting cliffs in the view set would make the camera
+// shove itself away from every ledge.
+//
+// ⚠ IT TAKES THE WALKER'S OWN SURFACE, so this set is no longer a function of the
+// world alone — it is a function of the world AND the level the walker is on.
+// Whatever caches it has to say so: see the proxy's key, which gained the surface
+// height for this reason and would otherwise hand a walker who just fell off a deck
+// the edges of the deck it fell from.
+//
+// ⚠ THE CLIFF THRESHOLD IS A PARAMETER — plan 22 `B1c.2b`, and it is the library's
+// own seam rather than a change of mind. This called the server's `cliff_step()`,
+// which is `hip_wu()` over the height scale: *how tall a step a creature can take
+// is a property of the CREATURE, not of the world*, and `cliff_edges` has said so
+// at its own signature since it was written. The figure's proportions stay with
+// the driver that knows which figure is walking.
+pub fn edges_walk(wld: VoxelWorld, cq: integer, cr: integer, reach: integer,
+              runs: WallRuns, sf: Surfaces, ref_units: float,
+              step_max: integer) -> EdgeSet {
+  e = edges_around(wld, cq, cr, reach, false, runs, sf, ref_units);
+  n = 2 * reach + 1;
+  // The terrain goes in as a FUNCTION, which is what makes the derivation pure and
+  // testable without a world — the same shape `ground_axle` takes its terrain by.
+  hex_editor::cliff_edges(e, fn(sq: integer, sr: integer) -> integer {
+                         walk_h(sq, sr, wld, ref_units) },
+                    cq - reach, cr - reach, n, n, step_max);
+  e
+}
+
+// ⚠ IT READS THE WALLS OF THE LEVEL THE OBSERVER IS ON. Wall bytes live on a
+// `Hex`, and a `Hex` is per-layer, so a fence rung on a deck is the DECK's fence —
+// it must stop a walker up there and must not stop one crossing the yard below.
+// This read `world_ground_cell`, so it did the opposite of both.
+pub fn edges_around(wld: VoxelWorld, cq: integer, cr: integer, reach: integer,
+                view: boolean, runs: WallRuns, sf: Surfaces,
+                ref_units: float) -> EdgeSet {
+  n = 2 * reach + 1;
+  e = edgeset_new(cq - reach, cr - reach, n, n);
+  slot_dir: vector<integer> = [4, 5, 0];        // SLOT_NW, SLOT_NE, SLOT_E
+  // ⚠ EACH BLOCKED EDGE CARRIES THE SURFACE OF THE RUN THAT PUT IT THERE. That is
+  // the whole reason `hex_edge` stores a surface rather than a boolean: a hex has
+  // six normals, and against a wall crossing the lattice diagonally its own edge
+  // normal is wrong by up to 90° — measured by the library, not assumed here. A
+  // slide along that normal would send a walker sideways or backwards.
+  //
+  // `nearest_seg` is the library's own arbitration — nearest wins, ties to the
+  // lower index — the same rule `way_stamp` cuts boundaries with.
+  rt = runs_track(runs);
+  first = 0;
+  if len(runs.items) > 0 { first = hex_way::way_surfaces(rt, sf); }
+  for r in (cr - reach - 1)..(cr + reach + 2) {
+    for q in (cq - reach - 1)..(cq + reach + 2) {
+      // ⚠ `w_unit`, NOT `HEIGHT_SCALE`, AND IT IS THE ONE LINE OF THIS FILE THAT
+      // IS NOT VERBATIM. The server multiplied by `hex_proj`'s global; a world
+      // carries its own unit, and the global is **wrong on a part world** —
+      // `door/slat` is authored at 0.125. They are the same 0.25 in every
+      // landscape the editor makes, which is why the gates can confirm this moved
+      // nothing, and taking the global here would have meant a new dependency on a
+      // number that is only sometimes right.
+      c = hex_voxel::world_cell(wld, q, r,
+            edge_layer(wld, q, r, ref_units * wld.w_unit));
+      mats: vector<integer> = [c.h_wall_nw as integer ?? 0,
+                               c.h_wall_ne as integer ?? 0,
+                               c.h_wall_e as integer ?? 0];
+      for si in 0..3 {
+        stops = wall_stops_walk(mats[si]);
+        if view { stops = wall_stops_view(mats[si]); }
+        if stops {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, slot_dir[si]);
+          sid = 0;
+          if first > 0 {
+            // ⚠ `hex_to_px`, NOT `hex_proj::hex_to_world` — plan 22 `B1c.2b`. The
+            // server called the latter with a height of 0 and read only `.x` and
+            // `.z`, so it was `hex_grid`'s own function wrapped in a `Vec3` and a
+            // multiply by a height scale that was always zero. Taking the wrapper
+            // would have made `graphics` a dependency of the walk. Same retirement
+            // `B1b.2c.1` made of `world_to_hex`, through a different door.
+            (awx, awz) = hex_to_px(q, r);
+            (bwx, bwz) = hex_to_px(nq, nr);
+            mx = (awx + bwx) * 0.5;
+            mz = (awz + bwz) * 0.5;
+            if hex_way::track_distance(rt, mx, mz) < 0.9 {
+              seg = hex_way::nearest_seg(rt, mx, mz);
+              if seg >= 0 { sid = first + seg; }
+            }
+          }
+          if sid > 0 { hex_edge::edge_block_surf(e, q, r, nq, nr, sid); }
+          else { hex_edge::edge_block(e, q, r, nq, nr); }
+        }
+      }
+    }
+  }
+  e
+}
+
+// Move toward a point, stopping at the first wall in the way.
+//
+// Stopping DEAD rather than sliding is this rung's answer, and it is deliberate:
+// a slide needs the wall's true normal, and a hex edge carries only six of them —
+// measured by `hex_edge` as wrong by up to 90° against a wall crossing the lattice
+// diagonally. A slide along the wrong normal is worse than a stop, so the surface
+// that carries the exact geometry comes first, and the slide after it.
+//
+// ⚠ IT STOPS A SKIN SHORT OF THE WALL, and that is not a fudge — it is what makes
+// the stop hold. `sweep_path` reports the exact fraction at which the segment
+// meets the bisector, and standing exactly THERE is standing exactly between two
+// cells: `hex_at` has to round, and when it rounds to the far one the next tick
+// begins on the other side of the wall with the wall behind it. Measured — the
+// character stopped dead on the fence for one tick and walked through on the next,
+// which reads as "collision does not work" and is really "collision worked once".
+//
+// A cell test cannot be made exact at its own boundary, so the position is kept
+// unambiguously on the walkable side instead. `WALK_SKIN` is 1 cm at this scale.
+//
+// ⚠ NAMED `WALK_SKIN` RATHER THAN `SKIN` — plan 22 `B1c.2b`, and a test found it.
+// Published as a bare `SKIN` it collided with `tests/boom.loft`'s own `SKIN` (0.20,
+// the camera boom's clearance): two different quantities, one generic name, and the
+// package would not build. **A public name is the whole consumer's namespace**, so
+// what leaves a library says which thing it is.
+pub const WALK_SKIN = 0.01;
+
+// Hold the walker a skin clear of every wall's LINE, whichever path the move took.
+//
+// ⚠ THIS IS THE FIX THE TRACE ASKED FOR, and the reason it is here rather than
+// inside the slide: the tick that crossed the fence logged as FREE. The slide had
+// already left the walker on the line a tick earlier, and the move that carried
+// them over it met no edge at all — so a standoff applied only where a wall was
+// hit is applied everywhere except where it was needed.
+//
+// The distance is to the SEGMENT (`track_distance`), never to the infinite line: a
+// walker past the end of a wall must not be pushed off geometry that stops short
+// of them. The side is the side they were on before the move — a standoff may not
+// decide which side of a wall someone is on, only how far clear they stand.
+pub fn stand_clear(rt: Track, x0: float, z0: float, fx: float, fz: float) -> (float, float) {
+  seg = hex_way::nearest_seg(rt, fx, fz);
+  if seg < 0 { return (fx, fz); }
+  // Only a wall the move actually runs BESIDE can hold it: past a wall's end the
+  // nearest point is its endpoint, and an infinite line there is geometry that is
+  // not present. Distance-to-segment and distance-to-line agree exactly where the
+  // nearest point is interior — the same test the fence's own end-clip uses.
+  dseg = hex_way::seg_distance(rt, seg, fx, fz);
+  (tx2, tz2) = hex_way::seg_tangent(rt, seg, 0.0);
+  nx2 = 0.0 - tz2;
+  nz2 = tx2;
+  (ax2, az2) = hex_way::seg_point(rt, seg, 0.0);
+  d1 = nx2 * (fx - ax2) + nz2 * (fz - az2);
+  dline = d1; if dline < 0.0 { dline = 0.0 - dline; }
+  over = dseg - dline; if over < 0.0 { over = 0.0 - over; }
+  if over > 0.000001 { return (fx, fz); }
+  // ⚠ A SIDE TEST, NOT A DISTANCE ONE. A skin is 1 cm and a stride is 13, so a
+  // walker steps clean over any band a distance test could guard — measured, that
+  // is exactly what build 180232 did. What must not change is the SIDE: the wall
+  // decides which side you are on, and a move that flips it is a crossing however
+  // far from the line it lands.
+  d0 = nx2 * (x0 - ax2) + nz2 * (z0 - az2);
+  want = WALK_SKIN;
+  if d0 < 0.0 { want = 0.0 - WALK_SKIN; }
+  if (d0 >= 0.0 && d1 >= want) || (d0 < 0.0 && d1 <= want) { return (fx, fz); }
+  push = want - d1;
+  (fx + nx2 * push, fz + nz2 * push)
+}
+
+pub fn walk_to(coll: EdgeSet, sf: Surfaces, rt: Track, wld: VoxelWorld,
+           x0: float, z0: float, x1: float, z1: float,
+           ref_units: float) -> (float, float) {
+  (t, hq, hr, hd) = hex_edge::sweep_path(coll, x0, z0, x1, z1);
+  if hd < 0 { return stand_clear(rt, x0, z0, x1, z1); }
+  // ── ⚠ A CLIFF STOPS A CLIMB, NOT A DESCENT ───────────────────────────────
+  //
+  // `hex_edge` blocks the CANONICAL edge, so a cliff cannot say which side is high;
+  // the asymmetry is resolved here, where the walker's side is known. A cliff is
+  // told from a wall by its surface — `cliff_edges` blocks with `SURF_NONE` while a
+  // wall carries its run's real one — so a wall standing ON a cliff edge keeps its
+  // surface and still stops you.
+  //
+  // ⚠ AND IT ASKS THE SAME QUESTION THE BLOCK DID. This read `terrain_h` while the
+  // block was derived from `walk_h`, which is one rule stated twice — and off a
+  // deck the two disagree by a whole storey, so a step down from a first floor
+  // would have read as a climb and been refused. Both sides ask the surface at the
+  // walker's own feet.
+  cf_nq = nb_q(hq, hr, hd);
+  cf_nr = nb_r(hq, hr, hd);
+  if edge_surf(coll, hq, hr, cf_nq, cf_nr) == hex_edge::SURF_NONE {
+    if walk_h(cf_nq, cf_nr, wld, ref_units) < walk_h(hq, hr, wld, ref_units) {
+      return stand_clear(rt, x0, z0, x1, z1);
+    }
+  }
+  seg = sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0)) ?? 0.0;
+  back = t;
+  if seg > 0.0 { back = t - (WALK_SKIN / seg ?? 0.0); }
+  if back < 0.0 { back = 0.0; }
+  sx = x0 + (x1 - x0) * back;
+  sz = z0 + (z1 - z0) * back;
+
+  // ── SLIDE ────────────────────────────────────────────────────────────────
+  //
+  // Stopping dead is what rung 6b shipped, and only because the normal was not
+  // available: a hex edge carries six of them and the true wall's is not among
+  // them. Now the edge carries its RUN's surface, so `collide` returns the exact
+  // one and the leftover motion can be projected onto the wall.
+  //
+  // A degenerate normal is the honest stop: `edge_block` records SURF_NONE for an
+  // edge no run claims — the stencil's house, an edge placed by hand — and sliding
+  // along a normal that is not recoverable is worse than not sliding.
+  (blocked, nx, nz) = hex_edge::collide(coll, sf, hq, hr,
+                                        nb_q(hq, hr, hd), nb_r(hq, hr, hd));
+  if !blocked { return stand_clear(rt, x0, z0, sx, sz); }
+  // A degenerate normal is the honest stop: `edge_block` records SURF_NONE for an
+  // edge no run claims — the stencil's house, an edge placed by hand — and sliding
+  // along a normal that is not recoverable is worse than not sliding.
+  if nx * nx + nz * nz < 0.5 { return stand_clear(rt, x0, z0, sx, sz); }
+  rx = (x1 - x0) * (1.0 - back);
+  rz = (z1 - z0) * (1.0 - back);
+  dot = rx * nx + rz * nz;
+  tx = rx - nx * dot;
+  tz = rz - nz * dot;
+  if tx * tx + tz * tz < 0.0000001 { return stand_clear(rt, x0, z0, sx, sz); }
+  // One more sweep, so the slide cannot pass through a SECOND wall — a corner
+  // stops the walker rather than squeezing them round it.
+  (t2, q2, r2, d2) = hex_edge::sweep_path(coll, sx, sz, sx + tx, sz + tz);
+  if d2 < 0 { return stand_clear(rt, x0, z0, sx + tx, sz + tz); }
+
+  // ⚠ THE WALL YOU ARE SLIDING ALONG CANNOT STOP YOU SLIDING ALONG IT, and this
+  // is the whole difficulty of the slide rather than a detail of it. The geometry
+  // is a straight line; the PROXY is the staircase of edges that line crosses. A
+  // walker pressed against the wall and moving parallel to it meets the steps of
+  // its own staircase within a millimetre, so every slide stopped dead — which
+  // looked exactly like no slide at all.
+  //
+  // The surface is what tells them apart. If the blocking edge belongs to the same
+  // wall — its normal parallel to the one we are sliding on — it is a step, not an
+  // obstacle, and the tangential move stands. A different wall is a corner and
+  // stops us. Nothing here compares positions or invents a tolerance in the
+  // lattice: it is one dot product between two exact normals.
+  // ⚠ HERE IS WHERE THE SLIDE STOPS, AND WHY IT IS NOT FINISHED.
+  //
+  // COUNTED, since the last attempt guessed: for a 27.71 wu road the halfplane cut
+  // marks 214 edges over the padded window, 128 reach the world, and a radius-8
+  // proxy round the walker holds 36-42 of those. Nothing is lost — the window runs
+  // ~45 wu along the line against a 27.71 wu run, and 214 x 27.71/45 = 132 against
+  // 128 observed. The fence in the world is COMPLETE and dense: 4.6 edges per world
+  // unit, one every 0.217 wu, which no walker steps over.
+  //
+  // So the earlier suspicion — that the world holds fewer edges than the cut does —
+  // is REFUTED, and with it the explanation for the 40° crossing. That crossing
+  // needs re-measuring against a build that is certainly the one under test; the
+  // two runs it was seen in returned identical trails to the pixel, which is not
+  // what two different builds of a float simulation do.
+  //
+  // What IS established, by probe rather than by reading: the proxy carries the
+  // runs' surfaces (158 edges on a fenced road), and `collide` returns the exact
+  // normal at the hit — `(0,1)` against an east-west road, which is the run's own
+  // and not one of a hex's six. The tangent is therefore right, and the slide code
+  // below runs. So the earlier note in this file, that the degenerate-normal bail
+  // was being taken, was simply wrong.
+  //
+  // What defeats it is the PROXY, not the geometry. The wall is a line; the thing
+  // swept against is the staircase of edges that line crosses. A walker pressed
+  // against the wall and moving parallel to it meets the steps of its OWN
+  // staircase within a millimetre, so the second sweep blocks at t ≈ 0 and the
+  // slide is a dead stop.
+  //
+  // Waving those steps through — "the blocking edge belongs to the wall I am
+  // sliding along, so it is a step and not an obstacle" — was tried and is WRONG:
+  // measured, a walker at 40° then crossed the fence outright, and adding a
+  // which-side-of-the-line guard did not stop it, because the crossing happens on
+  // a tick where the sweep does not block at all. That last part is unexplained
+  // and is the thread to pull next: a cut is supposed to separate in all 24
+  // headings BY CONSTRUCTION, so either the world holds fewer edges than the cut
+  // does — the end-clip in `road_stamp` is the suspect — or the proxy drops some
+  // when it copies them.
+  //
+  // ── WHY THE SWEEP "MISSES" THAT TICK — traced, and it does not miss ────────
+  //
+  // Tick by tick, with a build id on the wire to prove which code answered:
+  //
+  //   free          (2.697, 2.263) -> (2.779, 2.332)
+  //   slide-through (2.779, 2.332) -> (2.861, 2.363)   n = (0,1)
+  //   free          (2.861, 2.363) -> (3.024, 2.5003)  <- the wall is at 2.500
+  //
+  // The last segment ENDS 0.0003 past the wall, and `sweep_path` returns free for
+  // a crossing at t > 1 BY DESIGN. So nothing is missed and no edge is absent: the
+  // walker was left ON the line, and the tick after starts on its far side — the
+  // same rounding ambiguity `WALK_SKIN` exists to prevent.
+  //
+  // The cause is the WALK_SKIN's FRAME OF REFERENCE. It stands the walker off the
+  // STAIRCASE EDGE that was hit; a slide then runs along the wall to where the
+  // staircase and the analytic line are half a cell apart, and the standoff stops
+  // meaning anything. A standoff has to be measured from the SURFACE.
+  //
+  // ⚠ That remedy was attempted — push the slid position back to a skin from the
+  // line, via `edge_point` and the normal — and it did NOT hold: build 178773
+  // crossed on the same trail. So the DIAGNOSIS is measured and the REMEDY is not,
+  // and after three wrong causes in this rung the difference is stated rather than
+  // blurred. hexbody's rule (`ROUNDTRIP.md`): a fact without a gate is a proposal.
+  //
+  // Until the remedy is gated the walker stops. A stop is honest; a wall you can
+  // walk through at 40° is not.
+  // The wall you are sliding along cannot stop you sliding along it: its own
+  // staircase steps sit a millimetre away and blocked every slide dead. The
+  // surface tells a step from an obstacle — one dot product between two exact
+  // normals — and `stand_clear` is what makes waving it through safe, since the
+  // walker can no longer end up on the line whatever this branch returns.
+  (b2ok, n2x, n2z) = hex_edge::collide(coll, sf, q2, r2,
+                                       nb_q(q2, r2, d2), nb_r(q2, r2, d2));
+  if b2ok {
+    par = n2x * nx + n2z * nz;
+    if par < 0.0 { par = 0.0 - par; }
+    if par > 0.9 { return stand_clear(rt, x0, z0, sx + tx, sz + tz); }
+  }
+  seg2 = sqrt(tx * tx + tz * tz) ?? 0.0;
+  b2 = t2;
+  if seg2 > 0.0 { b2 = t2 - (WALK_SKIN / seg2 ?? 0.0); }
+  if b2 < 0.0 { b2 = 0.0; }
+  stand_clear(rt, x0, z0, sx + tx * b2, sz + tz * b2)
+}

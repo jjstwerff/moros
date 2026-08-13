@@ -393,6 +393,89 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `B1c.2b` — THE WALK IS THE LIBRARY'S, AND THE BLOCKER DID NOT EXIST, 2026-08-13
+
+**`hex_editor::walk`**: `wall_stops_walk`, `wall_stops_view`, `walk_h`, `edges_walk`,
+`edges_around`, `SKIN`, `stand_clear` and `walk_to` left `src/editor_server.loft` —
+**7,743 → 7,400 lines**.
+
+⛔ **THE BLOCKER THIS STEP WAS SIZED AROUND DOES NOT APPLY.** Both this file and the plan recorded
+*"`ground_under` → `hex_mesh::terrain_y` is a cycle, so the driver supplies a height sampler"*.
+**`walk_to` never calls `ground_under`** — only the FALL does. The walk's own surface question is
+`walk_h`, which asks `world_surface` and falls back to `hex_editor::terrain_h`, already this
+package's; `edge_layer`, `WALL_MAT` and `FENCE_MAT` were already here too.
+
+> ⚠ **A cone measured from the wrong seeds sizes the wrong step.** `ground_under` was in the sizing
+> because it sits in the TICK beside the walk, not because the walk calls it. **Seed a cone from
+> the function you are moving, never from the block it sits in.**
+
+✅ **THE MOVE IS VERBATIM AND THE DIFF SAYS HOW VERBATIM.** Code lines only, body by body against
+the previous commit: `walk_to` (45 lines), `stand_clear`, `walk_h`, `SKIN` and both `wall_stops_*`
+**IDENTICAL**. Seventeen lines changed, in two functions, for three reasons: `edges_walk` takes
+`step_max` (the library's own seam — *how tall a step a creature can take is a property of the
+CREATURE*), `HEIGHT_SCALE` → `wld.w_unit` (the global is wrong on a part world; both are 0.25 in
+every landscape the editor makes), and `hex_to_world(q,r,0)` → `hex_to_px` (it *is* that, wrapped
+in a `Vec3` — taking the wrapper would make **`graphics` a dependency of the walk**).
+
+⚠ **AND THE GATES ARE THE OTHER HALF, because a diff cannot see a threading mistake.**
+`make gate-character` 8/8, numbers unmoved to three decimals: `climbed 0.492`, `peakReached 0.497`,
+`steepestWalkedDegrees 30`, `fenceAt 6.062`.
+
+⛔ **AND A PUBLISHED `SKIN` BROKE THE PACKAGE — the name check excluded the directory the collision
+was in.** `walk.loft` published `SKIN` (0.01, a walker's clearance off a wall) and
+`tests/boom.loft` already declares its own (0.20, the camera boom's). The grep searched
+`lib/*/src/`, `src/` and the registry — **not `lib/*/tests/`** — which is `B1b.2c.2`'s *a grep's
+exclusion is an assumption* repeated one directory over, in the same session that wrote it down at
+`B1c.2a`. ⚠ **A test file declares into the package's namespace.** ⚠ **And the count lied in the
+informative direction**: the suite reported **436**, not 446, because a parse error takes the whole
+file out — **a test count that DROPS is a file that did not run**, and it reads as a smaller suite
+rather than a broken one. Renamed `WALK_SKIN`; all 22 published names re-checked against `lib/`
+including tests, `src/`, `../loft-libs-world/` and the registry.
+
+⛔ **A `sed` TOOK OUT THINGS THAT MERELY CONTAINED THE NAME.** Qualifying every `SKIN` also rewrote
+`CAM_SKIN`, `CAM_SHOULDER` and six comments (*`A-hex_editor::SKIN` at the hip*). The compiler
+refused the code, which is the lucky half — **the comments would have shipped**. A bulk rename over
+a whole file is a substring match, and a constant whose name is a prefix of another is where it
+bites.
+
+## ✅ `B1c.2a` — A DEBT WRITTEN DOWN TWICE, AND THE WALKER IS WHAT PAID IT, 2026-08-13
+
+**`cliff.loft` is `hex_editor`'s** — 130 lines, 3 public functions, its 10 test fns with it. The
+walk is arriving in that package, and a walk that consults cliffs cannot reach a Moros one.
+
+⚠ **BOTH SIDES HAD ALREADY WRITTEN THE NOTE.** `cliff.loft`'s header named `hex_edge`'s shared
+layer as its target home and said it sat in `moros_sim` only because *"the shared tree is another
+agent's and moving it is an ask rather than a task"*; `gesture.loft`'s `stair_cut` said the mirror
+— *"it came from `moros_sim::stair_height` — a MOROS package — and this is a lavition one, so
+taking the dependency would point the arrow backwards"* — and worked around it by taking the step
+height as a parameter. **Neither could pay it alone.** ⚠ `hex_editor` is a WAYPOINT: the stated
+target home is unchanged.
+
+⚠ **AND THE GREP WAS THE RIGHT ONE, WHICH IS `B1b.2c.2` APPLIED RATHER THAN RE-LEARNED.** That step
+concluded five primitives had one consumer *from a grep that excluded the file they lived in*. This
+one searched the whole tree including `moros_sim` for all five public names: `cliff_edges` and
+`fall_step` are called by that package's **own tests** and by the server, and by nothing in its
+`src/` at all. ⚠ **`hex_edge` left the manifest with it** — `cliff.loft` was the package's only
+user, so a real dependency became a stale one in the same commit.
+
+⚠ **THE TEST-NAME DIFF WAS OFF BY ONE, AND THE ONE IS THE FINDING.** Predicted `-9`, measured
+`-10`: the file has 9 `test_*` functions and a zero-argument helper `flat()`, **which the runner
+counts and runs as a test**. hex_editor **436/42 → 446/43**, moros_sim **313/26 → 303/25**. *A
+count of what you meant is not a count of what the tool sees.*
+
+⏭ **AND ONE OF ITS DEFERRALS HAS TRIGGERED, RESOLVED SOMEWHERE ELSE.** Its symmetric block was
+survivable *"only because … the asymmetry becomes observable the day a walker can descend faster
+than it climbs, which needs a FALL. There is none yet."* There is now — and `walk_to` resolved the
+direction at the CALLER, comparing both surfaces at the walker's own reference. Corrected in place.
+
+⏭ **WHAT IS LEFT OF THE WALK: `B1c.2b`, 262 lines and ONE blocker.** `ground_under` needs
+`hex_mesh::terrain_y` and `hex_mesh` depends on `hex_editor` — a cycle — so the driver supplies a
+height sampler, which is the shape `edges_walk` already takes its terrain by. ⏭ **`B1c.3` is the
+FALL and it is deliberately last**: `fall_step` imports `player::GRAVITY` under *"a package with
+two gravities is a package where a jump and a fall disagree"*, so where gravity lives is its own
+design question — and **without a fall the page's walker is coherent rather than crippled**, because
+cliff edges block, so it cannot leave a plateau in the first place.
+
 ## ✅ `B1c.1` — THE DEMO BUILDS A HOUSE: A CONTINUOUS TURN, A QUANTISED GESTURE, 2026-08-13
 
 **`make probe-demo`'s F block presses `h` before anything has turned, gets the refusal that has
