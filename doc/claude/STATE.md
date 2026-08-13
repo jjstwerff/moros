@@ -384,7 +384,38 @@ serves**, differing only in where a key press goes.
 | ✅ `V2b` | **`editor_run` resolves through `verb_of`** — the **last production caller of `press(key)`**. No equality could see the step; `probe/k1` check `G` can |
 | ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
-| ⏭ next | **`B1b`** — local mode. `B1` is **cut into three** (`B1a` ✅, `B1b` local mode, `B1c` the walk, unsized on purpose); the plan has the reasoning. It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
+| ⏭ next | **`B1b.1`** — local mode holds a session, an author and its own world. `B1` is **cut into five** (`B1a` ✅, `B1b.0` ✅, `B1b.1`, `B1b.2` draw, `B1c` the walk, unsized on purpose); the plan has the reasoning and what `B1b.1` still needs. It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.0` — THE TREE HELD TWO ANSWERS TO *WHAT WORLD IS THIS*, 2026-08-13
+
+**Starting `B1b` asked one question first: which world does local mode build?** `ε` and `θ` are
+`world_new`'s last two arguments, and `ε` is the **fold rule `F1` enforces** — a world at 8 accepts
+a storey stack a world at 10 refuses. `src/editor_server.loft` said **10/4**; `src/editor_run.loft`
+said **8/3**, directly under its own sentence *"the same world the server makes — a scene built at
+a different epsilon is a different world however identical the script."*
+
+✅ **`hex_editor::WORLD_EPS` / `WORLD_THETA`** now, beside `W_RESERVE`, which was already there for
+the same reason. The client's cache stops spelling the triple as four bare literals.
+
+⚠ **MEASURED FIRST AND THE PREDICTION PRE-REGISTERED.** The house scene at each differs in
+**exactly two bytes, offsets 21 and 25** — every cell equal, `τ 3911` both. After the fix
+`worlds/headless.hxw` came out at **exactly the md5 the 10/4 experiment produced**. `make parts`
+byte-identical, `make headless-same` rc=0, `make lib-test` 1600 on both backends.
+
+⚠ **NO FIXTURE COULD SEE IT — the `W4` grade divergence one constant over.** Nothing in
+`house.keys` stacks layers between 8 and 10 apart. ⚠ **And it is not harmless in general**: the
+sabotage moved a *sentence* too, so `ε` changes what a gesture writes.
+
+⚠ **NAMED `WORLD_*` NOT `W_*`.** `part_build`/`prop_build` declare their own `W_EPS = 8` for PART
+worlds and are right to; a published `W_EPS` would be **shadowed by theirs invisibly** — the
+`HOUSE_W` trap, which `tools/names.sh` cannot see.
+
+⚠ **AND IT CAUGHT A ONE-DAY-OLD FLAKY FIELD IN `probe/b1a`.** Restoring the constant left the world
+byte-identical while the transcript still read `12 dirty` against a baseline of `10 dirty`. **A
+number that moves while the world does not is not a fact about the gesture** — it is the dirty set's
+drain state. The brush line is truncated to its CELL now; dropping it whole is what made the first
+filter blind to both arrows.
 
 ## ✅ `B1a` — AND NO GATE HAD EVER PRESSED A KEY IN THE CLIENT, 2026-08-13
 

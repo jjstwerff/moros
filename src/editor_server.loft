@@ -548,8 +548,13 @@ const W_UNIT_MICRO = 250000;      // 0.25, as world_new takes a float
 // figure of about 1.8, which is a doorway to duck through. 10 is 2.5 wu. And `F1`
 // still has room — a storey is `STOREY_H` 12, so consecutive floors clear ε by 2.
 const W_UNIT       = 0.25;        // A8.7 — the unit a part is exported AGAINST
-const W_EPS        = 10;
-const W_THETA      = 4;
+// ⚠ ε AND θ MOVED TO `hex_editor` — plan 22 `B1b.0`. They were declared here AND in
+// `src/editor_run.loft`, at 10/4 here and 8/3 there, under a comment there asserting
+// the two built the same world. What world this editor makes is a property of the
+// gestures, not of the program driving them; `constants_fit` below still checks the
+// pair against this program's own walker, which is the half that IS local.
+const W_EPS        = hex_editor::WORLD_EPS;
+const W_THETA      = hex_editor::WORLD_THETA;
 // ⚠ THERE IS NO `SURFACE` LAYER INDEX ANY MORE, and its absence is the point.
 // It was `0` — "the editor authors one terrain layer" — which stopped being true
 // the day a cellar could be dug, and every one of the twelve sites that named it

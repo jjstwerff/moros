@@ -107,7 +107,9 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Blocked on twelve keys having no verb** — `R E Q B C J K V Y T X Z` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
-| **`B1b`** — local mode: the same `act` calls `press_verb` against the client's own cache | M | both modes from one key sequence, compared as **whole-world bytes AND session** | Blocked on `B1a` |
+| ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
+| **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | the page prints an `Ack` and a world digest; `editor_run` driving the same verbs at the same author prints the same | ⏭ **READY** — `B1b.0` was its prerequisite |
+| **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | a picture, and the world digest unchanged by drawing it | Blocked on `B1b.1` |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -184,6 +186,58 @@ spawn point is REFUSED** — *"a footprint at this facing has no mitred corners;
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
 
+## What `B1b.0` turned up (2026-08-13) — the tree held TWO answers to *what world is this*
+
+**Starting `B1b` asked one question first: which world does local mode build?** In local mode the
+client's cache stops being a copy of somebody else's world and becomes the authored one, so it has
+to be the same world the server makes. **The tree had two answers.**
+
+| | `ε` | `θ` |
+|---|---|---|
+| `src/editor_server.loft` | **10** | **4** |
+| `src/editor_client.loft`'s cache | 10 | 4 — as four bare literals under a comment saying *"the same constants the server opens with"* |
+| `src/editor_run.loft` | **8** | **3** — under its own comment: *"the same world the server makes — a scene built at a different epsilon is a different world however identical the script"* |
+
+⚠ **`ε` IS THE FOLD RULE `F1` ENFORCES**, not a header field: *"layer 2 is 7 above layer 0, needs
+8"*. A world at 8 accepts a storey stack a world at 10 refuses. The sentence in `editor_run` states
+the rule correctly and the two lines under it break it.
+
+✅ **MEASURED BEFORE ANYTHING MOVED, AND THE PREDICTION WAS PRE-REGISTERED.** The house scene
+through the runner at 8/3 and at 10/4 differs in **exactly two bytes, at offsets 21 and 25** —
+`w_eps` and `w_theta` in the header. Every cell equal, `τ 3911` both. After the fix
+`worlds/headless.hxw` came out at **exactly the md5 the 10/4 experiment had produced**
+(`68cda099…`, against `9aae9ba9…` before), which is the difference between a change that was
+predicted and one that was observed.
+
+⚠ **SO NO FIXTURE COULD SEE IT — THE `W4` GRADE DIVERGENCE, ONE CONSTANT OVER.** Nothing in
+`house.keys` stacks layers between 8 and 10 apart, so `F1` never fired differently and both
+drivers were green for months. ⚠ **And it is not harmless in general**: the sabotage below moved a
+*sentence* as well as the header, so `ε` changes what a gesture writes, not only what the file
+records.
+
+✅ **ONE HOME: `hex_editor::WORLD_EPS` / `WORLD_THETA`**, beside `W_RESERVE`, which was already
+there for the same reason — *what world this editor makes is a property of the gestures, not of
+the program driving them.*
+
+⚠ **NAMED `WORLD_*` AND NOT `W_*` DELIBERATELY.** `src/part_build.loft` and `src/prop_build.loft`
+declare their own `W_EPS = 8` for PART worlds — a different kind of world at a different unit, and
+they are right to. A published `W_EPS` would have been **shadowed by theirs invisibly**, which is
+exactly what `HOUSE_W`/`HOUSE_D` did to the server for months and what `tools/names.sh` is
+structurally unable to see. A distinct name makes a leftover local an unused constant rather than a
+silent winner.
+
+⚠ **THE CONTROL COVERS BOTH REMAINING SITES AT ONCE.** Set the library constant to `9`: the
+runner's world moves to a third md5 **and** `probe/b1a`'s SERVER-saved world moves
+`82d622b3` → `3c1f2073`, with a sentence moving too. Restored, both return. That is *all three
+programs read the library now*, measured rather than declared.
+
+⚠ **AND IT CAUGHT A FLAKY FIELD IN `probe/b1a`, ONE DAY OLD.** Restoring the constant left the
+world byte-identical while the transcript still read `brush (10,0) — 4 chunks, 12 dirty` against a
+baseline of `10 dirty`. **A number that moves while the world does not is not a fact about the
+gesture** — it is how much of the dirty set the rebuild had drained, a wall clock wearing a count's
+clothes. The brush line is truncated to its CELL now, which is what the gesture decided. ⏭ Not
+dropped: dropping it whole is what made the first filter blind to both arrows.
+
 ## How `B1` is cut, and what each piece can be surprised by (2026-08-13)
 
 **`B1` was one `M` row and it is three now**, cut against the two bounds in
@@ -211,12 +265,30 @@ the script runner sleeps 250 ms and reads *the last status line*, so which broad
 `K1`'s session read-back beside it**, because the world is blind to which profile was cut
 (`open_ahead` writes `DOOR_MAT` whatever the kind — measured twice, at `V1` and again at `K1`).
 
-### `B1b` — local mode
+### `B1b` — local mode, and it split again when it was started
 
 `act` calls `press_verb(sess, st.cache, a, verb)` instead of sending. ⚠ **The authority is the cache
 the client ALREADY has** — plan 16 `S3` put a real `VoxelWorld` in the browser and meshes tiles out
 of it, so local mode adds no store and no renderer. `P4` measured that this program builds with an
 `EditSession` and a real gesture call in it: `--html` rc=0, 2546 KB.
+
+✅ **`B1b.0` came out of asking which world it builds** — see the finding above; the tree had two
+answers and one of them was asserting it was the other. **Done.**
+
+⏭ **WHAT `B1b.1` STILL NEEDS, and none of it is guesswork now:**
+
+1. **A boot switch.** *"The mode is a boot decision, not a build decision"* — and a `--html` page
+   cannot read its own URL (the client's source says so) or an env var. The mechanism is `P2`'s:
+   `host_output` a question, `host_input` the answer, which was **run and holds in both shells**.
+   ⚠ And the default falls out for free — `P2` measured an unanswered request returning **empty**,
+   so the server-served page gets `""` and stays attached without anyone deciding.
+2. **A session, an author and a world.** `hex_editor::EditSession {}`, `author_on(w, 0.0, 0.0,
+   0.0)`, and the cache — which `B1b.0` just made the right world. `src/editor_run.loft:240-247`
+   is the model, four lines.
+3. **A digest to compare.** `editor_run` already prints `session_digest` and saves; the page can
+   print the same and `P6` proved it can `world_save` too. ⚠ **The comparison must be against
+   `editor_run` at the SAME author**, because a pose is not a gesture: local mode teleports like
+   the runner does, and `B1c` is where a walk gets one.
 
 ⚠ **THE GATE ROW SAID *"diff `w_tau`"* AND `V1` HAD ALREADY MEASURED THAT BLIND.** A fence ring and
 a wall ring write the same edges of the same disc, each write changing something, so the edit clock

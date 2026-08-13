@@ -193,6 +193,36 @@ pub const SURFACE_MAT = 1;     // any non-zero index: 0 is absence (`E1`)
 pub const W_RESERVE   = 0;     // the floor a height may not go below
 pub const H_CEILING   = 65535; // and the ceiling, which is the u16 the voxel holds
 
+// ── WHAT WORLD THIS EDITOR MAKES — plan 22 `B1b.0` ───────────────────────────
+//
+// `ε` and `θ` are `world_new`'s last two arguments and they are not decoration:
+// `w_eps` is the FOLD RULE `F1` enforces — *"layer 2 is 7 above layer 0, needs
+// 8"* — and `w_theta` is the match tolerance. A world built at a different `ε`
+// **refuses different scenes**.
+//
+// ⚠ AND THE TREE HELD TWO ANSWERS, WITH A COMMENT ASSERTING THEY WERE ONE.
+// `src/editor_server.loft` built at **10/4** and `src/editor_run.loft` at **8/3**,
+// directly under its own sentence *"the same world the server makes — a scene
+// built at a different epsilon is a different world however identical the
+// script."* Measured 2026-08-13: the house scene through the runner at each
+// differs in **exactly two bytes, at offsets 21 and 25** — which are `w_eps` and
+// `w_theta` in the header. Every cell agrees, `τ 3911` both.
+//
+// ⚠ **SO NO FIXTURE COULD SEE IT**, and that is the `W4` grade divergence again:
+// nothing in `house.keys` stacks layers between 8 and 10 apart, so `F1` never
+// fired differently. A scene that put a storey 9 units above another was legal in
+// one driver and refused in the other, and both were green.
+//
+// ⚠ NAMED `WORLD_*` AND NOT `W_*` ON PURPOSE. `src/part_build.loft` and
+// `src/prop_build.loft` declare their own `W_EPS = 8` for PART worlds — a
+// different kind of world, authored at a different unit — and they are right to.
+// A published `W_EPS` would be **shadowed by theirs invisibly**, which is exactly
+// what `HOUSE_W`/`HOUSE_D` did to the server for months and what `tools/names.sh`
+// is structurally unable to see. A distinct name makes a leftover local an unused
+// constant instead of a silent winner.
+pub const WORLD_EPS   = 10;    // `ε` — the landscape's minimum layer separation
+pub const WORLD_THETA = 4;     // `θ` — and its match tolerance; `ε > 2θ` holds
+
 // The ground height at a cell — the OUTDOORS, by label, never layer 0. Layer 0 is
 // the outdoors right up until a cellar is dug beneath it and then it silently
 // becomes the cellar floor; three cellars under a hill once sank the drawn ground

@@ -120,8 +120,24 @@ wait "$srv" 2>/dev/null || true
 # What is dropped, and why each: `rebuilt … in NNNN ms` is a wall clock, `hex (q,r)
 # — +N −M chunks` is the streaming set, and `client …` is per-connection
 # bookkeeping whose counters move with how many frames went by.
+#
+# ⚠ AND THE BRUSH LINE IS TRUNCATED TO ITS CELL, because its tail is a QUEUE
+# LENGTH. `brush (10,0) — 4 chunks, 10 dirty` became `… 12 dirty` on a busier box
+# **with the saved world byte-identical** — which is the proof, not a suspicion: a
+# number that moves while the world does not is not a fact about the gesture. It is
+# how much of the dirty set the rebuild had drained by then, and that is a wall
+# clock wearing a count's clothes.
+#
+# ⚠ THE CELL IS KEPT AND THAT IS THE WHOLE POINT. `(10,0)` is what the gesture
+# DECIDED; dropping the line entirely is what made the first version blind to both
+# arrows. Truncate to the decision, not to nothing.
+#
+# ⏭ And it costs the transcript its view of raise-versus-lower — both spell
+# `brush (10,0)`. That half is the world's: the sequence is two UPs and one DOWN so
+# the ground does not return to where it started, and a swapped pair moves the md5.
 sed -n '/listening on port/,$p' "$OUT/server.log" | grep '^editor: ' \
-  | grep -vE '^editor: (rebuilt|hex \(|client )' > "$OUT/said" || true
+  | grep -vE '^editor: (rebuilt|hex \(|client )' \
+  | sed 's/^\(editor: brush ([-0-9]*,[-0-9]*)\) .*$/\1/' > "$OUT/said" || true
 
 echo "── B1a  what the server heard ──────────────────────────────────────"
 sed 's/^/   /' "$OUT/said"

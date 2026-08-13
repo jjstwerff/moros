@@ -1816,10 +1816,14 @@ fn main() {
     // default of 0 ambient would open every session pitch black until the first
     // frame arrived, which reads as a broken client.
     hide: 0, amb: 0.45, lamp: 0.0,
-    // ⚠ THE SAME CONSTANTS THE SERVER OPENS WITH. `world_new` refuses `eps <= 2*theta`
-    // at creation, and a cache built with different ones would be a different model
-    // wearing the same name.
-    cache: world_new(0.25, 0, 10, 4).wn_world,
+    // ⚠ THE SAME CONSTANTS THE SERVER OPENS WITH — said in a comment for months and
+    // spelled as four bare literals, which is how a claim about agreement gets made
+    // by two files that never look at each other. They are `hex_editor`'s now (plan
+    // 22 `B1b.0`), because in LOCAL mode this cache stops being a copy of somebody
+    // else's world and becomes the authored one: a page that built at a different
+    // `ε` would refuse different scenes from the server it is meant to be.
+    cache: world_new(0.25, hex_editor::W_RESERVE,
+                     hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world,
     c_layers: 0, c_agree: 0, c_bad: 0,
     g_agree: 0, g_bad: 0, g_wait: 0, g_derive: false, q_cx: [], q_cz: [], q_crc: [],
     fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,

@@ -33,12 +33,17 @@ use hex_grid;
 // This file and `src/editor_server.loft` each carried a copy; they agreed at 5×4
 // and nothing made them. A parameter of what a key MEANS belongs beside the key.
 
-// The same world the server makes — a scene built at a different epsilon is a
-// different world however identical the script. `W_RESERVE` is `hex_editor`'s
-// already, which is the point: the reserve is a property of the world the gestures
-// write, not of the program that happens to drive them.
-const W_EPS   = 8;
-const W_THETA = 3;
+// ⚠ THE SAME WORLD THE SERVER MAKES — AND FOR MONTHS THIS SAID SO WHILE BUILDING A
+// DIFFERENT ONE. The sentence was right: *a scene built at a different epsilon is a
+// different world however identical the script*. The two constants under it were
+// `8` and `3` where the server used `10` and `4`. Measured 2026-08-13: the house
+// scene at each differs in exactly two bytes, offsets 21 and 25 — `w_eps` and
+// `w_theta` in the header, every cell equal — because nothing in `house.keys`
+// stacks layers between 8 and 10 apart, so `F1` never fired differently.
+//
+// They are `hex_editor::WORLD_EPS` / `WORLD_THETA` now, for the reason `W_RESERVE`
+// already was: what world this editor makes is a property of the gestures that
+// write it, not of the program that happens to drive them.
 
 fn seed_ground(w: VoxelWorld, half: integer) {
   for q in 0 - half..half + 1 {
@@ -237,7 +242,8 @@ fn main() {
   }
   text = src.content();
 
-  w = world_new(0.25, hex_editor::W_RESERVE, W_EPS, W_THETA).wn_world;
+  w = world_new(0.25, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
   seed_ground(w, 30);
   a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
   // ⚠ AN `EditSession`, NOT A BARE `WallRuns` — plan 22 `W4`. A key press is a
