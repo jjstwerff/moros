@@ -66,7 +66,8 @@ key press goes.
 | ✅ `W1` | `data/parts/` rebuilds **byte-identically**, and `world_to_bytes` equals the file the old writer produced **byte for byte** | **the bytes are the format; a file is a destination** — one encoder, not two | ⚠ **three, all run**: `bw_u16` big-endian must fail at a named byte (it did — byte 8349); a truncated buffer must be refused rather than decoded as zeroes; and a negative chunk coordinate must come back **negative** |
 | ◐ `W4` | pressing a key and calling the gesture by hand leave worlds with the **same `w_tau`** | **one key, one meaning, wherever it is pressed** | `grade_under` returning the origin's height — `editor_run`'s actual old behaviour — must fail (it does) |
 | `W2`/`W3` | a part loaded from bytes equals the same part loaded from a path | **a path is a wrapper, on every loader** | a `.glb` that fails to load must **say so**, not draw nothing — an absent mesh reads as a geometry bug |
-| `B1` | the local page and the attached client build the **same world** from the same key sequence | the two authority modes are **one editor** | drive both with `tools/scripts/house.keys` and diff `w_tau`; if they differ, `press` has become a fifth site |
+| `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth and last site | ⚠ the opening family is where the client's table and the verb layer **disagree**, `K2a`'s fork one driver out. Point `act`'s `opening` at a fixed kind: the saved world stays byte-identical (`open_ahead` writes `DOOR_MAT` whatever the profile) and only the **session** says so |
+| `B1b` | the local page and the attached client build the **same world** from the same key sequence | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind.** A fence ring and a wall ring write the same edges of the same disc, so the clock reports one number for two worlds. The comparison is **`world_to_bytes` AND the session**; if they differ, `press_verb` has become a fifth site |
 | `B3` | the demo gate opens `_site/index.html` **with no server** and reads a house out of the picture | the quick start **stays** working | ⚠ the gate must fail on an empty page — `[].every(…)` is `true`, and this tree has shipped a row that reported `ok` on a picture with no panel at all |
 
 ⚠ **`B2` (`build-pages.mjs`) has no exact-invariant surface** — it assembles files and decides
@@ -101,7 +102,9 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K2a`** — convert the presses that LOSE information: 18 opening keys in 8 scripts | S | **DONE.** Each script beside a committed baseline of itself, through a server: sentences, saved world **and** kinds · `make probe-convert` · ⚠ the first two are blind to a niche's depth — measured | ✅ Done |
 | **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Blocked on twelve keys having no verb** — `R E Q B C J K V Y T X Z` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
-| **`B1`** — local mode in `editor_client.loft`: hold an `EditSession`, route presses to `press` | M | both modes build the same world from one script | Blocked on `W4` |
+| **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | the SERVER's own `println` stream over one key sequence, old client beside new, **plus the session read-back** | ⏭ **READY** — nothing blocks it |
+| **`B1b`** — local mode: the same `act` calls `press_verb` against the client's own cache | M | both modes from one key sequence, compared as **whole-world bytes AND session** | Blocked on `B1a` |
+| **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
 | **`B2`** — `tools/build-pages.mjs`, and `_site/` | S | `_site/index.html` opens from `file://` | Blocked on `B1`. ⚠ **`P5` is no longer a blocker** — the inlined route is measured to work from `file://`, so `P5` decides only whether the page could be SMALLER |
@@ -135,6 +138,58 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## How `B1` is cut, and what each piece can be surprised by (2026-08-13)
+
+**`B1` was one `M` row and it is three now**, cut against the two bounds in
+[plans/README.md](../README.md): *upper* — both paths run at once and are compared exactly;
+*lower* — the step can go red on its own, for a real reason.
+
+### `B1a` — the client's key table names a VERB
+
+⚠ **`poll_input` IS `W4`'s FOURTH SITE AND IT IS STILL LIVE.** `src/editor_client.loft:1078–1150`
+re-states what a key means as **key → wire message**: `5:1`, `23:3,3`, `30:1`, `36:1`. That is the
+table `W4` counted and the one nothing has moved. It becomes `verb_of(key)` plus an `act(h, st,
+verb)` that maps **verb → message id** — which is not a fifth site for the same reason
+`script.mjs`'s `VERBMAP` is not: *a key's meaning is `W4`'s subject, a message id is a fact about
+the wire, and the file drives a socket.*
+
+⚠ **THE OPENING FAMILY IS WHERE THE TWO DISAGREE — `K2a`'s FORK, ONE DRIVER OUT.** The client sends
+`36:1` for `o` and `36:2` for `p`, where the verb layer says an opening's profile comes from the
+**selection**. Converting them moves the standing selection where it did not move before, so the
+step is *not* wire-identical unless the kind is pinned. **Pin it, and let `B1b` do the selection**
+— or the step stops being comparable, which is the bound it exists to satisfy.
+
+⚠ **AND ITS INSTRUMENT IS THE SERVER'S OWN `println` STREAM, NOT `script.mjs`.** `S2a` measured why:
+the script runner sleeps 250 ms and reads *the last status line*, so which broadcast it catches is a
+**race** — the server's print stream was 240 lines over eight scripts, identical. ⚠ **And it needs
+`K1`'s session read-back beside it**, because the world is blind to which profile was cut
+(`open_ahead` writes `DOOR_MAT` whatever the kind — measured twice, at `V1` and again at `K1`).
+
+### `B1b` — local mode
+
+`act` calls `press_verb(sess, st.cache, a, verb)` instead of sending. ⚠ **The authority is the cache
+the client ALREADY has** — plan 16 `S3` put a real `VoxelWorld` in the browser and meshes tiles out
+of it, so local mode adds no store and no renderer. `P4` measured that this program builds with an
+`EditSession` and a real gesture call in it: `--html` rc=0, 2546 KB.
+
+⚠ **THE GATE ROW SAID *"diff `w_tau`"* AND `V1` HAD ALREADY MEASURED THAT BLIND.** A fence ring and
+a wall ring write the same edges of the same disc, each write changing something, so the edit clock
+reports one number for two different worlds. Corrected in the table above: **whole-world bytes and
+the session**, which is `V1`'s own pair and for `V1`'s own reason — one instrument could not answer.
+
+### `B1c` — the walk, and it is deliberately unsized
+
+⚠ **THIS IS THE HONEST PLACE THE INVARIANT MAY BE FALSE, and the design says so itself.** *"The
+page is the same editor with different I/O"* — but the server has a **tick and a walker**,
+`editor_run` teleports and says so, and `press_verb` never touches the pose. In attached mode the
+character's position is the server's; in local mode **something has to own it**, and a second
+authority on where the author is standing is a thing this tree has named and refused once.
+
+**It is unsized because the answer is a design question, not an effort estimate**, and pretending
+otherwise is how an `M` row becomes a revert. ⚠ **Nothing above it needs the answer**: `B1a` sends
+the same wire it always did, and `B1b` can be driven by a key sequence that never walks. Take it
+when the first two are green and the question has a shape.
 
 ## What `P6` turned up (2026-08-13) — a phase cancelled, two open numbers closed
 

@@ -383,7 +383,7 @@ serves**, differing only in where a key press goes.
 | ✅ `K2a` | **the 18 opening presses are converted** — `select <kind>` + `verb opening` in 8 scripts, every other key untouched. `make probe-convert` |
 | ✅ `V2b` | **`editor_run` resolves through `verb_of`** — the **last production caller of `press(key)`**. No equality could see the step; `probe/k1` check `G` can |
 | ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
-| ⏭ next | **`B1`** — local mode in `editor_client.loft`. It is the ONLY thing between here and the milestone now: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ⏭ next | **`B1a`** — the client's key table names a VERB. `B1` is **cut into three** now (`B1a` wire-identical, `B1b` local mode, `B1c` the walk, unsized on purpose); the plan has the reasoning. It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
 ## ⛔ `P6` — A PAGE HAS A FILESYSTEM, AND A PHASE IS CANCELLED, 2026-08-13
 
