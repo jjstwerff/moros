@@ -393,6 +393,55 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `B1c.2c` — THE PAGE WALKS, AND THE VERDICT IS A WORLD, 2026-08-13
+
+**`make probe-demo`'s G block**: six `w` presses put the author at **(2.454, 0)**, and the house it
+then places is **`32920:1885399240`** where the same house standing still is `41145:1306471549`.
+
+⚠ **THE DISTANCE IS NOT THE CLAIM.** A page whose walker updated a pose nothing consulted would
+report a distance and a position exactly like this one, with every picture right — the
+built-and-never-called defect wearing a walker's clothes. `G2` reads a **world**, against a
+baseline the same run measures at `F4`; `DEMO_SABOTAGE=nowalk` lands on `41145:1306471549` exactly.
+
+⛔ **AND THE G RUN ITSELF WENT RED ONCE, ON JITTER `B1c.1` HAD ALREADY MEASURED.** Its single `d`
+press was **3** fixed steps rather than 4, so the facing stayed at rot 9, the place was refused and
+there was no world to compare. `F` already retried; `G` does now. ✅ **`G2`'s third outcome is what
+made it legible** — it said *"no house was placed … the turn may have landed short"* rather than
+blaming the walk. **The instrument diagnosed its own harness.** ⚠ And my own reading filter nearly
+hid it: the grep matched `^   [DFGE][0-9]` while a failure prints as `   ✗ G2 …`, so **the one line
+that mattered was the one the filter dropped** — the exit code said so anyway. *A summary filter
+shaped around the passing case cannot report the failing one.*
+
+⛔ **AND THE FIRST `nowalk` WENT RED FOR THE WRONG REASON** — one `d` press left the turn short of an
+admissible facing, so **no house was placed** and `G2` said *"the same world"* about a run with no
+world in it. It retries now, and `G2` has **three outcomes**: no house is *"this run cannot say"*.
+**An instrument must not describe a failure it did not measure.**
+
+✅ **AND THE WALK QUANTISES AS THE TURN DOES, over three runs**: the distance is browser-dependent
+(**2.2406, 2.3473, 2.4540** units for the same six presses) and the world is `32920:1885399240`
+every time. A footprint takes the cell.
+
+⚠ **A SEEMINGLY IDENTICAL WORLD WAS THE FIRST RESULT AND IT WAS CORRECT**: two `w` presses is ~0.75
+units and the author had not left the hex, so the footprint landed on the same cells. **A footprint
+is placed on the LATTICE** — the same quantisation `B1c.1` found in the turn.
+
+⚠ **THE PAGE OWNS THE CACHE, NOT THE WALK.** `walk_to` and `edges_walk` are `hex_editor`'s; what the
+page keeps is the proxy cache, keyed on the server's own three terms (cell, edit clock, walker
+LEVEL — the third because stepping off a deck changes the level without changing the cell), and
+`LOCAL_COLL_R` is the server's 8 because **a walker seeing a smaller window could cross an edge the
+server blocks**.
+
+⚠ **AND THE SPEED HAD TO MOVE, ALL THREE.** `WALK_MS`, `WU_PER_M` and `FIGURE_M` were the server's;
+the third is the one that would have been missed, because the collision set needs *how tall a step
+this walker can climb* and a page reaching for `CLIFF_STEP_DEFAULT` (6) instead of this walker's own
+(**4**) would climb ledges the server refuses — **which no world digest could see**, since nothing
+is written differently until somebody walks. `tests/pose.loft` asserts the 4 and asserts it is not
+the default.
+
+⏭ **WHAT IS LEFT: `B1c.3`, THE FALL.** The page's feet take the cell's stored height (`author_on`)
+where the server integrates a fall. Coherent rather than crippled — cliff edges block, so a page
+walker cannot leave a plateau — and where gravity lives is the open design question.
+
 ## ✅ `B1c.2b` — THE WALK IS THE LIBRARY'S, AND THE BLOCKER DID NOT EXIST, 2026-08-13
 
 **`hex_editor::walk`**: `wall_stops_walk`, `wall_stops_view`, `walk_h`, `edges_walk`,

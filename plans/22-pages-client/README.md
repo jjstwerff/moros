@@ -157,7 +157,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1c.1`** — the TURN: `hex_editor` owns the held-key table, the rate and the step | S | **DONE 2026-08-13.** `make probe-demo`'s F block: `place` **refused at boot** (`rot 9 of 12, offer 8`), then turned, then **`place — 27 · world 41145:1306471549`** — the same key, the same page, refused and accepted in one run. 9 library tests, 3 sabotages red in different places; `DEMO_SABOTAGE=noturn` red on `F2b` alone | ✅ Done |
 | ✅ **`B1c.2a`** — pay the arrow: `cliff` leaves `moros_sim` for `hex_editor` | S | **DONE 2026-08-13.** A debt written down in TWO places before it was paid — the file's own *target home* note and `stair_cut`'s *"taking the dependency would point the arrow backwards"*. Test-name diff exact: hex_editor **436/42 → 446/43**, moros_sim **313/26 → 303/25**, and `hex_edge` dropped from its manifest because nothing else in the package used it | ✅ Done |
 | ✅ **`B1c.2b`** — the walk itself: `hex_editor::walk`, and the server drops its copy | M | **DONE 2026-08-13.** 8 functions and `SKIN` moved verbatim; the server is **7743 → 7400 lines**. ⛔ **The blocker did not apply** — `walk_to` never calls `ground_under`; only the FALL does. Diffed body by body against the previous commit: **17 changed code lines, all three deltas named**. `make gate-character` 8/8 with every number identical (`climbed 0.492`, `peakReached 0.497`, `fenceAt 6.062`) | ✅ Done |
-| **`B1c.2c`** — the page walks | S | ⚠ the page builds its own collision set and calls the same `walk_to` — the proxy CACHE stays the driver's, because its validity is a fact about a tick rather than about walking | Next |
+| ✅ **`B1c.2c`** — the page walks | S | **DONE 2026-08-13.** `make probe-demo`'s G block: **walked 2.454 units to (2.454, 0)**, and the house it then places is **`32920:1885399240`** where the same house standing still is `41145:1306471549`. ⚠ The verdict is the WORLD, not the distance — a pose nothing reads would report a distance too. `DEMO_SABOTAGE=nowalk` lands exactly F4's world | ✅ Done |
 | **`B1c.3`** — the FALL | ? | ⚠ **deliberately after the walk**: `fall_step` imports `player::GRAVITY` under a comment saying *a package with two gravities is a package where a jump and a fall disagree* — so where gravity lives is its design question. ⏭ And **without a fall the walker is coherent, not crippled**: cliff edges BLOCK, so a page walker cannot leave a plateau in the first place | Blocked on `B1c.2b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -289,6 +289,73 @@ rather than the raw yaw.
 (`offer 8`) and does not take it. Whether `place` should snap to its own offer is an
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
+
+## ✅ What `B1c.2c` turned up (2026-08-13) — the verdict is a WORLD, not a distance
+
+**The page walks.** `make probe-demo`'s G block presses `w` six times, turns, and places: the
+author is at **(2.454, 0)** having walked 2.454 world units, and the house lands at
+**`32920:1885399240`** — where the *same house placed standing still* is `41145:1306471549`.
+
+⚠ **THE DISTANCE IS NOT THE CLAIM AND MUST NOT BE.** A page whose walker updated a pose nothing
+consulted would report a distance and a position exactly like this one, and every picture would
+look right — this tree's commonest defect wearing a walker's clothes. So `G2` reads a **world**,
+against a baseline the same run measures at `F4`. `DEMO_SABOTAGE=nowalk` lands on
+`41145:1306471549` exactly.
+
+### ⛔ And the G run itself went red once, on the jitter `B1c.1` had already measured
+
+`w x6, d, h` failed: that run's single `d` press was **3 fixed steps** (0.2178 rad) rather than 4,
+so the facing stayed at **rot 9** and the place was refused — nothing was built, and there was no
+world to compare. It is the *same* 3-or-4 browser jitter `B1c.1` wrote down, and the `F` block
+already handles it by retrying. `G` retries now.
+
+✅ **AND `G2`'s THIRD OUTCOME IS WHAT MADE IT LEGIBLE.** It reported *"no house was placed in this
+run, so it cannot say whether the walk reached the gesture — the turn may have landed short of an
+admissible facing"* rather than *the walk did not reach the gesture*. **The instrument diagnosed
+its own harness**, which is exactly the reason the third outcome was added an hour earlier.
+
+⚠ **AND MY OWN READING FILTER NEARLY HID IT.** The grep pulling the verdict out of the transcript
+matched `^   [DFGE][0-9]` — and a failed check is printed as `   ✗ G2 …`, so **the one line that
+mattered was the one line the filter dropped**. The run's `demo FAIL` and its exit code said so
+anyway. *A summary filter shaped around the passing case cannot report the failing one.*
+
+⛔ **AND THE FIRST `nowalk` SABOTAGE WENT RED FOR THE WRONG REASON.** Pressing `d,h` once left the
+turn one step short of an admissible facing on that run, so **no house was placed at all** — and
+`G2` reported *"the same world F4 builds standing still"* about a run with no world in it. The
+sabotage retries now, and `G2` has **three outcomes rather than two**: no house is *"this run
+cannot say"*, not a failure of the walk. **An instrument must not describe a failure it did not
+measure** — `F2`'s split, one block over.
+
+✅ **AND THE WALK QUANTISES EXACTLY AS THE TURN DOES, measured over three runs.** The distance is
+browser-dependent — **2.2406, 2.3473 and 2.4540** world units for the same six presses — and the
+world the house lands in is **`32920:1885399240` every time**. A footprint takes the cell, so the
+demo's walk is as assertable byte for byte as its turn, for the same reason.
+
+⚠ **A SEEMINGLY IDENTICAL WORLD WAS THE FIRST RESULT, AND IT WAS CORRECT.** Two `w` presses before
+placing gave byte-for-byte `41145:1306471549` — because two presses is ~0.75 units and the author
+had not left the hex. **A footprint is placed on the LATTICE**, so a walk shorter than a cell moves
+nothing, and that is the same quantisation `B1c.1` found in the turn. Six presses clear the cell
+and the world moves.
+
+### What the page owns, and what it does not
+
+| | |
+|---|---|
+| the walk | ⚠ **`hex_editor::walk_to` and `hex_editor::edges_walk` — the server's own.** Nothing about walking is written twice |
+| the CACHE | the page's, keyed on the same three terms as the server's: the cell, the world's edit clock, and the walker's LEVEL. ⚠ The third is not belt and braces — stepping off a deck changes the level without changing the cell |
+| the reach | `LOCAL_COLL_R` is the server's 8, and for the sharpest reason available: **a walker seeing a smaller window than the server's could cross an edge the server blocks**, and the two authorities would disagree about the shape of the world with nothing written differently to show it |
+| the feet | `author_on` — the cell's stored height. ⚠ The server integrates a FALL instead, which is `B1c.3` |
+
+⚠ **AND THE SPEED HAD TO MOVE TOO, ALL THREE OF THEM.** `WALK_MS`, `WU_PER_M` and `FIGURE_M` were
+the server's. The third is the one that would have been missed: the collision set needs *how tall a
+step this walker can climb*, and a page reaching for `cliff.loft`'s `CLIFF_STEP_DEFAULT` (6) instead
+of this walker's own (**4**) would have climbed ledges the server refuses. ⚠ **No world digest could
+have seen it** — nothing is written differently until somebody walks. `tests/pose.loft` asserts the
+4 *and* asserts it is not the default.
+
+⚠ **AND ONE APOLOGY WAS DELETED, WHICH IS AS LOAD-BEARING AS WRITING IT WAS.** `B1c.1` added *"walking
+is not built yet"* for a person holding W. It was true for exactly one step. A page that went on
+saying it would be the `ps_status` literal a third time.
 
 ## ✅ What `B1c.2b` turned up (2026-08-13) — the blocker did not apply, and the sizing said it would
 

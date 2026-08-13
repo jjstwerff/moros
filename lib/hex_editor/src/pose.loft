@@ -50,6 +50,40 @@ pub const HELD_RIGHT = 8;
 // page could not see it.
 pub const TURN_RATE = 2.20;
 
+// ── AND HOW FAST W/S WALK — plan 22 `B1c.2c` ────────────────────────────────
+//
+// Metres per second, and the world units a metre is. `WU_PER_M` is sqrt(3)/2 — the
+// LATTICE's own scale, not a taste — so a walker's speed in metres is a fact about
+// the person and the conversion is a fact about the grid.
+//
+// ⚠ THE SAME ARGUMENT AS `TURN_RATE`, one key over: these were the server's, so a
+// page with the same keyboard would have had to invent its own and the two
+// authorities would have walked at different speeds with every test green.
+pub const WALK_MS  = 2.8;
+pub const WU_PER_M = 0.8660254037844386;
+
+// How tall the figure is, in metres. It is here rather than with the server's mesh
+// proportions because ONE thing derived from it crosses the seam: how tall a step
+// the walker can climb, which the collision set needs and which both drivers must
+// answer identically.
+pub const FIGURE_M = 1.75;
+
+// The cliff threshold for THIS walker, in the height units of a world at `unit`.
+//
+// ⚠ IT TAKES THE WORLD'S UNIT RATHER THAN A GLOBAL, for the reason `author_on`
+// already gives: `hex_proj::HEIGHT_SCALE` is 0.25 and a part world may be authored
+// at 0.125, so the world's own unit is the only answer that survives leaving the
+// landscape.
+//
+// ⚠ AND IT IS NOT `CLIFF_STEP_DEFAULT`. `cliff.loft` offers 6 to a caller with no
+// opinion; this editor's walker has one, and it works out at 4. A page reaching for
+// the default would have climbed ledges the server refuses — the two authorities
+// disagreeing about the world's shape, which no world digest could see, because
+// nothing would have been written differently until somebody walked.
+pub fn walker_step(unit: float) -> integer {
+  ((FIGURE_M / WU_PER_M ?? 0.0) * 0.53 / unit ?? 0.0) as integer
+}
+
 // ── ONE STEP, AND WHY IT IS A CONSTANT RATHER THAN A FRAME TIME ─────────────
 //
 // 33 ms. The server paces itself by the wall clock and the page by frames, and
@@ -86,6 +120,22 @@ pub fn turn_dir(keys: integer) -> float {
   if keys & HELD_LEFT != 0 { d = d - 1.0; }
   d
 }
+
+// Which way the held keys walk: +1 forward, -1 back, 0 for neither or both. The
+// same cancellation `turn_dir` makes, for the same reason.
+pub fn walk_dir(keys: integer) -> float {
+  d = 0.0;
+  if keys & HELD_FWD != 0 { d = d + 1.0; }
+  if keys & HELD_BACK != 0 { d = d - 1.0; }
+  d
+}
+
+// How far one step carries, in world units.
+//
+// ⚠ ONE AXIS, SO THERE IS NO DIAGONAL TO NORMALISE — turning replaced the strafe
+// that would have made that necessary, which is the same decision `HELD_LEFT`
+// records at the top of this file.
+pub fn walk_step_len(dt: float) -> float { (WALK_MS / WU_PER_M ?? 0.0) * dt }
 
 // The yaw after one step of turning. Pure arithmetic, deliberately: it is the one
 // line that must be identical in the server and in the page, and a function is how

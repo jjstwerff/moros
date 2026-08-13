@@ -131,3 +131,66 @@ fn test_an_untouched_pose_comes_back_unchanged() {
          "a pose with nothing held came back as ({b.au_x},{b.au_z}) yaw {b.au_yaw} "
          + "y {b.au_y} — a driver cannot call this unconditionally");
 }
+
+// ── HOW FAR ONE STEP WALKS — plan 22 `B1c.2c` ───────────────────────────────
+
+fn test_forward_and_back_are_opposite_and_cancel() {
+  assert(about(walk_dir(HELD_FWD), 1.0),
+         "W asked for {walk_dir(HELD_FWD)} instead of +1");
+  assert(about(walk_dir(HELD_BACK), 0.0 - 1.0),
+         "S asked for {walk_dir(HELD_BACK)} instead of -1");
+  assert(about(walk_dir(HELD_FWD | HELD_BACK), 0.0),
+         "W+S asked for {walk_dir(HELD_FWD | HELD_BACK)} — two opposite keys are "
+         + "owed no step, not whichever was tested first");
+  assert(about(walk_dir(0), 0.0),
+         "an empty keymask asked for a step of {walk_dir(0)}");
+}
+
+// ⚠ THE MIRROR OF `test_the_walking_keys_do_not_turn`, and it is the assertion that
+// catches a crossed mask from the other side: A and D must move nobody.
+fn test_the_turning_keys_do_not_walk() {
+  assert(about(walk_dir(HELD_LEFT), 0.0),
+         "A asked for a step of {walk_dir(HELD_LEFT)} — the bit masks are crossed");
+  assert(about(walk_dir(HELD_RIGHT), 0.0),
+         "D asked for a step of {walk_dir(HELD_RIGHT)} — the bit masks are crossed");
+}
+
+// ⚠ AS A DISTANCE, NOT AS THE CONSTANTS. `WALK_MS / WU_PER_M * dt` re-derives the
+// body and cannot be surprised. This is what a tape measure would read: one 33 ms
+// step carries about 10.7 cm of world.
+fn test_one_step_walks_a_known_distance() {
+  assert(about(walk_step_len(tick_dt()), 0.1066943),
+         "one 33 ms step carried {walk_step_len(tick_dt())} world units instead of "
+         + "0.1066943 — the page and the server would walk at different speeds");
+}
+
+fn test_walking_scales_with_dt() {
+  assert(about(walk_step_len(tick_dt() * 2.0), walk_step_len(tick_dt()) * 2.0),
+         "two steps of dt carried {walk_step_len(tick_dt() * 2.0)} but one step of "
+         + "2*dt carried {walk_step_len(tick_dt()) * 2.0} — the walk is not a rate");
+  assert(about(walk_step_len(0.0), 0.0),
+         "no elapsed time carried {walk_step_len(0.0)}");
+}
+
+// ⚠ THE THRESHOLD BOTH DRIVERS MUST ANSWER IDENTICALLY, asserted as the NUMBER.
+// The server derived it as `hip_wu() / HEIGHT_SCALE`; a page reaching for
+// `CLIFF_STEP_DEFAULT` instead would get 6 and climb ledges the server refuses —
+// and **no world digest could see it**, because nothing is written differently
+// until somebody walks.
+fn test_the_walkers_cliff_step_is_four_units_at_the_editors_scale() {
+  assert(walker_step(0.25) == 4,
+         "this walker's step is {walker_step(0.25)} height units at 0.25, not 4 — "
+         + "the two authorities would disagree about which ledges are climbable");
+  assert(walker_step(0.25) != CLIFF_STEP_DEFAULT,
+         "the walker's own step has become the library's DEFAULT ({CLIFF_STEP_DEFAULT}) "
+         + "— this test exists because a driver reaching for the default is the "
+         + "mistake, and it can no longer tell the two apart");
+}
+
+// ⚠ A FINER WORLD UNIT MEANS MORE UNITS TO THE SAME PHYSICAL STEP — the reason this
+// takes the world's unit rather than a global. A part authored at 0.125 must not
+// inherit the landscape's number.
+fn test_a_finer_world_unit_gives_a_taller_step_in_units() {
+  assert(walker_step(0.125) == 8,
+         "at a 0.125 unit the same hip height is {walker_step(0.125)} units, not 8");
+}

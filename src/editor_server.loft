@@ -184,8 +184,11 @@ const CHUNK_R = 4;             // chunk radius to consider: (25 >> 3) + 1
 // ⚠ DUPLICATION, recorded not hidden: crawler owns the original and we cannot
 // consume it (a program module, not a published library). The right home is a
 // shared one; raised in the plan rather than silently forked.
-const FIGURE_M = 1.75;
-const WU_PER_M = 0.8660254037844386;
+// ⚠ `FIGURE_M`, `WU_PER_M` and `WALK_MS` ARE `hex_editor::pose`'s — plan 22
+// `B1c.2c`. How fast this walker moves and how tall a step it can climb are facts
+// about the WALKER, and the page has the same one; declaring them here kept a
+// second copy the page could not see. ⚠ The declarations had to GO, not just the
+// uses: a program declaring a name a library publishes shadows it invisibly.
 
 // Gait. 2.8 m/s at a ~0.75 m stride — twice an ordinary walk, which reads as a
 // brisk jog and covers ground at a rate that suits editing rather than
@@ -197,7 +200,6 @@ const WU_PER_M = 0.8660254037844386;
 // doubling the speed doubles the step rate automatically. Had the phase come
 // from elapsed time, this change would have left the legs ambling while the
 // body sped up — feet skating over the ground.
-const WALK_MS = 2.8;
 const STRIDE_M = 0.75;
 const LEG_SWING = 0.42;        // radians at the hip, peak
 const ARM_SWING = 0.30;
@@ -878,7 +880,7 @@ struct Client {
   derives: boolean
 }
 
-fn figure_wu() -> float { FIGURE_M / WU_PER_M ?? 0.0 }
+fn figure_wu() -> float { hex_editor::FIGURE_M / hex_editor::WU_PER_M ?? 0.0 }
 fn head_wu() -> float { figure_wu() / 7.5 ?? 0.0 }
 fn hip_wu() -> float { figure_wu() * 0.53 }
 fn shoulder_wu() -> float { figure_wu() * 0.855 - head_wu() * 0.10 }
@@ -1158,7 +1160,11 @@ const COLL_R = 8;      // hexes: the walk needs one, the camera's boom needs fou
 // library takes the threshold as a parameter precisely because it is a property of
 // the creature and not of the world, so this is the configuration seam and not a
 // constant hidden in the library. A shorter creature supplies a smaller number.
-fn cliff_step() -> integer { (hip_wu() / HEIGHT_SCALE ?? 0.0) as integer }
+// ⚠ THE LIBRARY'S, so the page answers the same number — plan 22 `B1c.2c`. It
+// takes the WORLD's unit rather than the global for the reason `author_on` gives:
+// a part world may be authored at 0.125. `W_UNIT` is this world's, and it is the
+// same 0.25 `HEIGHT_SCALE` was.
+fn cliff_step() -> integer { hex_editor::walker_step(W_UNIT) }
 
 // ⚠ AND THE WORLD'S θ IS THAT STEP. The two are derived from different places on
 // purpose — a stride comes off the figure's hip, θ is a world constant — and they
@@ -6739,11 +6745,9 @@ fn main() {
 
       // W/S walk along the facing. One axis, so there is no diagonal to
       // normalise — turning replaced the strafe that made that necessary.
-      fwd = 0.0;
-      if keys & 1 != 0 { fwd = fwd + 1.0; }
-      if keys & 2 != 0 { fwd = fwd - 1.0; }
+      fwd = hex_editor::walk_dir(keys);
       if fwd != 0.0 {
-        step = (WALK_MS / WU_PER_M ?? 0.0) * dt;
+        step = hex_editor::walk_step_len(dt);
         ky = cos(yaw); sy = sin(yaw);
         // WALLS STOP THE WALK (rung W2). The intended position goes through
         // `walk_to`, which asks `hex_edge` about the whole SEGMENT — so the step

@@ -54,6 +54,9 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            would pass. ⚠ SEEN RED on `F2b` alone while `F2a`
 #                            stayed green at 213 steps — which is why `F2` is two
 #                            checks and not one.
+#   DEMO_SABOTAGE=nowalk     the same G run with the walk keys removed. If `G2`
+#                            were really about *placing a house at all* rather than
+#                            about the WALK, this would pass.
 #   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
 #                            which is what a missing time bridge looks like from
 #                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
@@ -271,6 +274,73 @@ if grep -q 'local drew .*wall' "$OUT/house.log"; then
   say "F5 drawn: $(grep -m1 'local drew .*wall' "$OUT/house.log" | sed 's/^client: local //')"
 else
   no "F5 a house was placed and no wall was ever drawn"
+fi
+
+# ── G  the demo can WALK, and it moves where a house lands — `B1c.2c` ──────
+#
+# ⚠ THE CLAIM IS NOT *the numbers moved*, IT IS *the walk reaches the gesture*.
+# A page whose walker updated a pose nothing consulted would report a distance and
+# a position exactly like this one, and every picture would look right — the
+# "built and never called" defect wearing a walker's clothes. So the verdict is a
+# WORLD: the same house, placed after walking, must land somewhere else.
+#
+# ⚠ AND THE BASELINE IS `F4`'s, MEASURED IN THIS SAME RUN. `41145:1306471549` is
+# what the F block builds by turning and placing WITHOUT walking, so the two
+# differ in exactly one thing.
+#
+# ⚠ IT RETRIES THE TURN LIKE `F` DOES, AND THE FIRST VERSION DID NOT — which cost a
+# red run. One key press is 3 OR 4 fixed steps depending on when the browser
+# delivers it (`B1c.1` measured exactly that), and `w x6, d, h` landed on 3: the
+# facing stayed at rot 9, the place was refused, and nothing was built. ⚠ `G2`'s
+# three-outcome split is what made it legible — it reported *"no house was placed …
+# the turn may have landed short of an admissible facing"* rather than blaming the
+# walk. **The instrument diagnosed its own harness**, which is the whole reason the
+# third outcome exists.
+#
+# ⚠ WHAT THIS DOES NOT CHECK, said so nobody reads it as covered: whether the walk
+# is CORRECT — that a wall stops it, that a cliff does, that a slide works. Those
+# are `hex_editor::walk_to`'s own, and `make gate-character`'s `collide`, `cliff`
+# and `climb` drive them against the server. The page calls the same function; the
+# point of the move was that there is only one to be right.
+echo
+echo "── G   walk, and place a house somewhere else ──────────────────────"
+G_KEYS="w,w,w,w,w,w,d,h,d,h,d,h"
+# ⚠ IT RETRIES LIKE `F` DOES, and the first version did not — `d,h` alone left the
+# turn one step short of an admissible facing on some runs, so the house was never
+# placed and `G2` went red saying *the same world*, about a run with no world in it.
+# A sabotage has to fail for ITS OWN reason.
+case ",$SAB," in *,nowalk,*) G_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nowalk — the same run with the walk keys removed" ;; esac
+timeout 300 node probe/b1b/press.mjs "file://$SITE" "$G_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/walk.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/walk.raw" > "$OUT/walk.log" || true
+grep -E '^client: local (walker|place)' "$OUT/walk.log" | sed 's/^/   /'
+
+g_walker=$(grep 'local walker' "$OUT/walk.log" | tail -1 || true)
+g_dist=$(printf '%s' "$g_walker" | sed -n 's/.*walked \([0-9.]*\) at.*/\1/p')
+g_at=$(printf '%s' "$g_walker" | sed -n 's/.*at (\([-0-9.,]*\)).*/\1/p')
+g_placed=$(grep -m1 'local place — 27' "$OUT/walk.log" || true)
+g_key=$(printf '%s' "$g_placed" | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
+
+# G1 — the author moved, and it is the WALK keys that did it.
+if [ -n "$g_dist" ] && [ "$g_dist" != "0" ] && [ "$g_at" != "0,0" ]; then
+  say "G1 walked $g_dist world units, to ($g_at)"
+else
+  no "G1 the author never left the origin — walked '$g_dist', at '($g_at)'"
+fi
+
+# G2 — and the world knows. This is the whole step: a pose nothing reads is a pose
+# that was not built.
+#
+# ⚠ THREE OUTCOMES, NOT TWO, and the third is why. A run that placed NO house says
+# nothing about the walk at all — the turn can land one step short of an admissible
+# facing — and reporting that as *the same world* is an instrument describing a
+# failure it did not measure. `F2` needed the same split.
+if [ -z "$g_key" ]; then
+  no "G2 no house was placed in this run, so it cannot say whether the walk reached the gesture (the turn may have landed short of an admissible facing)"
+elif [ "$g_key" != "41145:1306471549" ]; then
+  say "G2 the house landed elsewhere: $g_key against F4's 41145:1306471549"
+else
+  no "G2 the house landed at $g_key — exactly the world F4 builds standing still, so the walk did not reach the gesture"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────
