@@ -385,7 +385,55 @@ serves**, differing only in where a key press goes.
 | ✅ `V3` | **`press(key)` is deleted.** What a key means is `verb_of` + `press_verb` and nothing else. ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is |
 | ✅ `B1a` | **the client's five one-to-one keys name VERBS** — `W4`'s fourth site, and `make probe-b1a` is the first check here that ever pressed a key in the client. 7 sentences and the saved world identical to a committed baseline; two sabotages red, each on a different instrument |
 | ✅ `B1b.0` | **ONE world model** — `ε`/`θ` were declared in the server (10/4) AND the runner (8/3), under the runner's own comment saying they were the same. `hex_editor::WORLD_EPS`/`WORLD_THETA` now; `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted** |
-| ⛔ next | **`B1b.1`** is **blocked on its boot switch** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). Three routes in the plan; route 3 (connect-or-local, **with the subject line saying which**) is the one to build if #891 does not land. `B1` is **cut into five** (`B1a` ✅, `B1b.0` ✅, `B1b.1`, `B1b.2` draw, `B1c` the walk, unsized on purpose). It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+| ✅ `B1b.1a` | **the panel says which authority it has** — `ps_status` was a literal reading `connected`, set at panel construction before any socket existed, and it went on saying so with the server down. `authority_line(st)` over the client's one piece of evidence now, and the panel is told when it moves. `make probe-auth`: 15 checks over **three** situations, three sabotages each red somewhere different |
+| ⛔ then | **`B1b.1`** is **blocked on its boot switch** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). Three routes in the plan; route 3 (connect-or-local, **with the subject line saying which**) is the one to build if #891 does not land. `B1` is **cut into five** (`B1a` ✅, `B1b.0` ✅, `B1b.1`, `B1b.2` draw, `B1c` the walk, unsized on purpose). It is the ONLY thing between here and the milestone: `P6` did the storage half, so *build a house, close the tab, reopen it* is short a page with the gestures in it. (`D1`, the derived mode, is unblocked too.) ⚠ `K3` is blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B1b.1a` — THE SABOTAGE PASSED, AND ITS PASSING IS THE FINDING, 2026-08-13
+
+**The client's status line is derived instead of asserted.** It read
+`ps_status: "moros editor — connected"` — a literal, set at panel construction, before any socket
+existed, with **no other writer in the file** — so the panel claimed a connection it had never
+checked and went on claiming it with the server down. It is the `W4` shape one more time: a fact
+asserted in a place that cannot know it. `authority_line(st)` reads `st.hello`, the client's one
+piece of evidence, which is a `send` that SUCCEEDED. `make probe-auth`, and `make probe-b1a`
+unmoved — the same 7 sentences, world `82d622b37d1d`.
+
+⚠ **THE ONE SABOTAGE THAT MATTERED PASSED.** Delete the single write this step adds —
+`panel_dirty = true` where the send lands — and the run against the real server stays **entirely
+green**: the server answers `1:` with `N:` and `H:` a frame or two later, and each of those marks
+the panel for its own reasons. **A rebuild that happens anyway reads exactly like a rebuild that
+was asked for**, and a server, a browser and a transcript cannot tell them apart at all.
+
+✅ **SO THE INSTRUMENT IS A THIRD SITUATION: A SOCKET THAT OPENS AND SAYS NOTHING** — twenty lines
+of node that complete the handshake and never send a frame. There `panel_dirty` has exactly one
+possible writer, and the proof prints beside the verdict: the client's own counters still read
+`meshes 0, placements 0, drops 0, cameras 0, status 0, parts 0` after 1200 frames. ⏭ **A real
+situation, not a contrived one** — a server accepting while its world loads is this.
+
+⚠ **AND THE CONTROL FOR *WAS THERE A SOCKET* WAS CIRCULAR, WHICH A SECOND SABOTAGE FOUND.** It
+proved *nothing connected* by reading the client's own `connected` line — the claim under test —
+so `assume` (the authority read off **having sent** rather than off the send **succeeding**, the
+trap the client's own `ws_handler` comment warns about) made the control agree with the lie it
+existed to catch, and its message said *"this run is not the no-server case at all"* about a run
+that was exactly that. **The evidence is the other side's log now:** dials refused against dials
+completed.
+
+| | red where | and nowhere else |
+|---|---|---|
+| `literal` — the line as it was | `A1` the panel's first word · `B4` with no server behind it | |
+| `nodirty` — the fact moves, the panel is not told | `C4` **alone** | green in A and B — the reason C exists |
+| `assume` — authority off the send, not off its success | `B3` client against wire · `B4` | invisible to A: with a server there, assuming is right |
+
+⚠ **THE INSTRUMENT READS THE BUILT PANEL** (`p_status.ss_text`), never `authority_line` a second
+time — `K1`'s shape. It is post-`fit_text`, so a status too long for its strip arrives carrying its
+own `..`, and the check is **exact equality against the two whole strings**: a substring test would
+call a truncation a pass. ⚠ **And `metrics_drift` held a second copy of the literal** under a
+comment saying it *"compares the strings the panel actually shows"*. It takes the constants now.
+
+⏭ **THIS IS THE DAY PLAN 18 `B2`'s NOTE COMES DUE**, and the note said so itself: *"the panel is
+built once … when the contents start moving, rebuild on CHANGE — not on tick."* An authority that
+can change is contents that move. `hud_dirty` is `panel_dirty`, because it now has a writer that is
+not a message at all.
 
 ## ⛔ `B1b.1` IS BLOCKED, AND THE PLAN NAMED THE MECHANISM WITH CONFIDENCE, 2026-08-13
 

@@ -43,6 +43,17 @@ call the same function in `hex_editor`**, not because someone remembered to add 
 word.** LAVITION_SPLIT's own plan once said *"one chokepoint that 18 sites route through"* and
 shipped as 18 bypasses. So the count is taken **before** any code, below, and it is not 1 today.
 
+⚠ **AND THE ONE DIFFERENCE THE INVARIANT ALLOWS IS THE ONE THAT MUST BE VISIBLE.** *Where bytes go*
+is exactly what an author needs told, because the page cannot ask which mode it is —
+[loft#891](https://github.com/loft-lang/loft/issues/891): `host_input()` **blocks** with no host,
+so the boot switch this design named cannot be written. The mode is inferred from whether the
+socket connects, and inference is silent: a transient network failure would move an author into a
+different authority with their edits landing somewhere else and nothing said. **So the panel's
+STATUS line names the live authority** — the client's own fact about its socket, never the
+server's `subject_line`, which a server that is not there cannot compose. Built as plan 22
+`B1b.1a`, ahead of the second authority, because the instrument that makes a variation visible is
+what earns the right to let it vary.
+
 ---
 
 ## What was measured, 2026-08-11

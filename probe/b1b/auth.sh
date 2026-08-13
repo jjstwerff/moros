@@ -1,0 +1,304 @@
+#!/bin/sh
+# B1b.1a (plan 22) — DOES THE PANEL SAY WHICH AUTHORITY IT HAS, AND CAN IT BE WRONG?
+#
+#   probe/b1b/auth.sh                    (or `make probe-auth`)
+#   AUTH_SABOTAGE=literal probe/b1b/auth.sh   the client as it WAS, with the
+#                                             instrument that can see it
+#   AUTH_SABOTAGE=nodirty …              the fact changes and the panel is not told
+#   AUTH_SABOTAGE=assume  …              the authority read off the SEND, not off
+#                                        the send SUCCEEDING
+#
+# `src/editor_client.loft:1680` read `ps_status: "moros editor — connected"` — a
+# literal, set at panel construction, before any socket existed, with no other
+# writer anywhere in the file. **The panel claimed a connection it had never
+# checked**, and it went on claiming it with the server down. `B1b.1a` derives it
+# from the client's own evidence instead, because `B1b.1b` is about to let the
+# authority VARY and an authority that varies silently is the hazard route 2 was
+# rejected for.
+#
+# ⚠ THREE RUNS OVER THE SAME PAGE BYTES, and that is the comparison. One file is
+# built and served three times; the only difference is what answers the socket. So
+# a difference in what the panel says is a difference the client derived, not a
+# difference between two builds.
+#
+#   run A — the real editor server   sees the TRANSITION: the panel is built
+#                                    before the socket opens, so it must say
+#                                    `connecting` first and `server` after
+#   run B — a static server, no /ws  sees the PRODUCT CLAIM: with nothing behind
+#                                    the wire the page must never claim a
+#                                    connection, for as long as it is left open.
+#                                    ⚠ Run A structurally cannot make this claim,
+#                                    because a server is there
+#   run C — /ws opens, says nothing  sees WHO TOLD THE PANEL. ⚠ THIS RUN WAS ADDED
+#                                    BECAUSE THE SABOTAGE PASSED: with the write at
+#                                    the connect site deleted, run A stayed green,
+#                                    because the real server's `N:` and `H:` mark
+#                                    the panel a frame later for their own reasons.
+#                                    A rebuild that happens anyway reads exactly
+#                                    like a rebuild that was asked for
+#
+# ⚠ AND AN ABSENCE IS ONLY WORTH READING BESIDE POSITIVE CONTROLS. A page that
+# never booted, or one that froze on frame 1, also "never claims a server". So B
+# asserts the boot line and asserts the frame counter got past 600 — and C asserts
+# that every message counter is still ZERO, which is what turns "the panel was
+# told by the socket" from a story into the only remaining explanation.
+#
+# ⚠ THE CONTROL FOR *WAS THERE A SOCKET* IS THE OTHER SIDE'S LOG, NOT THE CLIENT'S.
+# B's first version read the client's own `connected` line as proof that nothing
+# had opened — the very claim under test — so `AUTH_SABOTAGE=assume` made the
+# control agree with the lie it existed to catch. The static server counts the
+# dials it refused and the ones it completed, and that is the evidence.
+#
+# ⚠ THE STATUS IS READ OUT OF THE BUILT PANEL (`p_status.ss_text`), never
+# re-composed. A println calling `authority_line(st)` a second time agrees with
+# itself for as long as it is copied correctly and says nothing about what the
+# panel holds — `K1`'s finding. `ss_text` is post-`fit_text`, so a status too long
+# for its strip arrives here carrying its own `..` rather than being discovered in
+# a screenshot later.
+#
+# ⏭ WHAT THIS DOES NOT CHECK: the wire. `B1a` owns that, and `make probe-b1a` is
+# what says the same key sequence still sends what it always sent — this step adds
+# a line to a panel and must move nothing else.
+set -e
+cd "$(dirname "$0")/../.."
+LOFT="${LOFT:-loft}"
+OUT="probe/b1b/.out"
+PAGE="src/.loft/editor_client.html"
+PORT="${EDITOR_PORT:-18090}"
+SPORT="${AUTH_STATIC_PORT:-18099}"
+SAB="${AUTH_SABOTAGE:-}"
+mkdir -p "$OUT"
+
+CONNECTING="moros editor — connecting to the server"
+SERVER="moros editor — edits go to the server"
+
+pass=0; fail=0
+ok()  { pass=$((pass + 1)); echo "  ok   $1"; }
+bad() { fail=$((fail + 1)); echo "  FAIL $1"; }
+
+SRC=src/editor_client.loft
+if [ -n "$SAB" ]; then
+  SRC="$OUT/sab_client.loft"
+  cp src/editor_client.loft "$SRC"
+  case "$SAB" in
+    # The client exactly as it was before this step: a literal, and a true one
+    # only by luck. ⚠ Caught by run A as well as run B — a panel that claims a
+    # connection at boot is wrong before the socket has had a chance to open.
+    literal) sed -i 's/^    ps_status: authority_line(st),$/    ps_status: "moros editor — edits go to the server",/' "$SRC" ;;
+    # The fact moves and nothing tells the panel. ⚠ INVISIBLE TO A AND B BOTH,
+    # measured — A's server marks the panel a frame later with `N:`/`H:` for its
+    # own reasons, and B has no change to miss. Run C exists because of this one.
+    nodirty) sed -i '/^        st.panel_dirty = true;$/d' "$SRC" ;;
+    # The authority read off HAVING SENT rather than off the send SUCCEEDING —
+    # the trap the client's own comment at `ws_handler` warns about, one layer
+    # in. ⚠ INVISIBLE TO RUN A: with a server there, assuming is right.
+    assume)  sed -i 's/^      st.hello = web::send(h, "1:");$/      web::send(h, "1:"); st.hello = true;/' "$SRC" ;;
+    *) echo "auth: unknown AUTH_SABOTAGE '$SAB'"; exit 2 ;;
+  esac
+  if cmp -s "$SRC" src/editor_client.loft; then
+    echo "auth FAIL — sabotage '$SAB' changed NOTHING; its pattern has drifted"
+    exit 1
+  fi
+  echo "   sabotage: $SAB"
+fi
+
+echo "── B1b.1a  build the page ONCE; all three runs load these bytes ────"
+$LOFT --html --lib lib/ "$SRC" > "$OUT/build.log" 2>&1 \
+  || { echo "auth FAIL — the client did not build:"; tail -20 "$OUT/build.log"; exit 1; }
+built=$(sed -n 's/^wrote \(.*\.html\) .*/\1/p' "$OUT/build.log" | tail -1)
+[ -n "$built" ] || { echo "auth FAIL — the build named no page"; tail -5 "$OUT/build.log"; exit 1; }
+case "$built" in
+  */src/.loft/editor_client.html) ;;
+  *) cp "$built" "$PAGE"; echo "   copied $(basename "$built") into $PAGE" ;;
+esac
+echo "   page: $PAGE ($(( $(wc -c < "$PAGE") / 1024 )) KB)"
+
+# Every `client: status ←` line, in order, with the prefix stripped.
+statuses() { grep '^client: status ← ' "$1" | sed 's/^client: status ← //'; }
+
+# ── run A ───────────────────────────────────────────────────────────
+echo
+echo "── B1b.1a  run A — the real server, and the panel must MOVE ────────"
+make -s port-free > /dev/null 2>&1 || true
+: > "$OUT/server.log"
+nohup $LOFT --interpret --lib lib/ src/editor_server.loft > "$OUT/server.log" 2>&1 &
+srv=$!
+# 240 s: these servers are interpreted from source, so the first after a library
+# edit recompiles — `V3` measured a 120 s window giving up mid-compile.
+for _ in $(seq 1 240); do
+  grep -q 'listening on port' "$OUT/server.log" && break
+  kill -0 "$srv" 2>/dev/null || break
+  sleep 1
+done
+if ! grep -q 'listening on port' "$OUT/server.log"; then
+  if kill -0 "$srv" 2>/dev/null; then
+    echo "auth FAIL — the server is STILL BUILDING after 240 s"; kill "$srv" 2>/dev/null
+  else
+    echo "auth FAIL — the server DIED before it listened:"; tail -20 "$OUT/server.log"
+  fi
+  exit 1
+fi
+node tools/page_console.mjs "http://127.0.0.1:$PORT/client" \
+  --wait-ms 25000 --tail 100000 > "$OUT/a.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/a.raw" > "$OUT/a.log" || true
+make -s stop-editor > /dev/null 2>&1 || true
+wait "$srv" 2>/dev/null || true
+
+echo "   what the panel said:"
+statuses "$OUT/a.log" | sort | uniq -c | sed 's/^/     /'
+
+if grep -q '^moros editor client' "$OUT/a.log"; then
+  ok "A0 the page booted, so what follows is about a running client"
+else
+  bad "A0 the page never booted — every check below is vacuous"
+fi
+a_first=$(statuses "$OUT/a.log" | head -1)
+if [ "$a_first" = "$CONNECTING" ]; then
+  ok "A1 the FIRST thing the panel said is '$CONNECTING'"
+else
+  bad "A1 the panel's first word was '$a_first' — it claimed something before the socket"
+fi
+# ⚠ AFTER the client's own connect line, not merely present. A panel that showed
+# `server` before the send succeeded would satisfy a presence test.
+if [ -n "$(sed -n '/^client: connected — asked for the world$/,$p' "$OUT/a.log" \
+           | grep -F "client: status ← $SERVER")" ]; then
+  ok "A2 and after the send landed it says '$SERVER'"
+else
+  bad "A2 the socket opened and the panel never said so — nothing rebuilt it"
+fi
+if [ "$(statuses "$OUT/a.log" | tail -1)" = "$SERVER" ]; then
+  ok "A3 and it stayed there — the authority does not flicker"
+else
+  bad "A3 the panel ended on '$(statuses "$OUT/a.log" | tail -1)'"
+fi
+
+# One page, one static server, one transcript. `$1` is the tag, `$2` the extra
+# flag — the ONLY difference between run B and run C.
+static_run() {
+  sr_tag=$1; sr_flag=$2
+  : > "$OUT/$sr_tag.static"
+  node probe/b1b/static.mjs src/.loft "$SPORT" $sr_flag > "$OUT/$sr_tag.static" 2>&1 &
+  sr_pid=$!
+  for _ in $(seq 1 40); do
+    grep -q '^static: /' "$OUT/$sr_tag.static" && break
+    sleep 0.25
+  done
+  if ! grep -q '^static: /' "$OUT/$sr_tag.static"; then
+    echo "auth FAIL — the static server never listened on $SPORT:"
+    cat "$OUT/$sr_tag.static"
+    kill "$sr_pid" 2>/dev/null || true
+    exit 1
+  fi
+  node tools/page_console.mjs "http://127.0.0.1:$SPORT/editor_client.html" \
+    --wait-ms 25000 --tail 100000 > "$OUT/$sr_tag.raw" 2>&1 || true
+  grep -E '^(client|moros editor client)' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.log" || true
+  kill "$sr_pid" 2>/dev/null || true
+  wait "$sr_pid" 2>/dev/null || true
+  echo "   what the panel said:"
+  statuses "$OUT/$sr_tag.log" | sort | uniq -c | sed 's/^/     /'
+  echo "   what the wire did:  $(grep -c 'UPGRADE REFUSED' "$OUT/$sr_tag.static" || true) refused, $(grep -c 'UPGRADE COMPLETED' "$OUT/$sr_tag.static" || true) completed"
+}
+
+# ── run B ───────────────────────────────────────────────────────────
+echo
+echo "── B1b.1a  run B — the SAME page, nothing behind the wire ──────────"
+static_run b ""
+
+if grep -q '^moros editor client' "$OUT/b.log"; then
+  ok "B0 the page booted with no server — the run has a subject"
+else
+  bad "B0 the page never booted; 'it never claimed a server' would be vacuous"
+fi
+# ⚠ THE FRAME COUNTER, because an absence measured over a page that froze is not
+# an absence. The client prints one every 300 frames.
+if grep -q '^client: 600 frames' "$OUT/b.log"; then
+  ok "B1 and it ran — past 600 frames, still not claiming anything"
+else
+  bad "B1 the client never reached 600 frames; it did not run long enough to be silent"
+fi
+# ⚠ THE CONTROL IS THE SERVER'S LOG, NOT THE CLIENT'S. The first version of this
+# read the client's own `connected` line as proof that no socket had opened — the
+# very claim under test, so the `assume` sabotage made the control agree with the
+# lie it was there to catch. What happened on the wire is the other side's fact.
+if [ "$(grep -c 'UPGRADE REFUSED' "$OUT/b.static" || true)" -ge 1 ] \
+   && [ "$(grep -c 'UPGRADE COMPLETED' "$OUT/b.static" || true)" -eq 0 ]; then
+  ok "B2 the wire says the client dialled and was refused — no socket ever opened"
+else
+  bad "B2 the wire does not show a refused dial; this run is not the no-server case"
+fi
+if grep -q '^client: connected — asked for the world' "$OUT/b.log"; then
+  bad "B3 the client says it CONNECTED, and the wire above says nothing opened"
+else
+  ok "B3 and the client agrees with the wire — it never claimed a send had landed"
+fi
+b_all=$(statuses "$OUT/b.log" | sort -u)
+if [ "$b_all" = "$CONNECTING" ]; then
+  ok "B4 so every word the panel said was '$CONNECTING'"
+else
+  bad "B4 the panel said: $(echo "$b_all" | tr '\n' '|') — with no server behind it"
+fi
+
+# ── run C ───────────────────────────────────────────────────────────
+echo
+echo "── B1b.1a  run C — the socket OPENS and says nothing ───────────────"
+# ⚠ THIS RUN EXISTS BECAUSE RUN A COULD NOT SEE HALF THE STEP, MEASURED. Deleting
+# the `panel_dirty` write at the connect site leaves run A entirely green: the real
+# server answers `1:` with `N:` and `H:` within a frame or two, each of which marks
+# the panel anyway, so the status reached the screen for a reason that had nothing
+# to do with the authority changing. **A rebuild that happens for another reason
+# reads exactly like a rebuild that was asked for.**
+#
+# Here the socket opens and not one byte comes back, so `panel_dirty` has exactly
+# one possible writer. It is also a real situation rather than a contrived one — a
+# server that accepts while its world is still loading is this, for as long as that
+# takes.
+static_run c "--ws-silent"
+
+if grep -q '^moros editor client' "$OUT/c.log"; then
+  ok "C0 the page booted"
+else
+  bad "C0 the page never booted"
+fi
+if [ "$(grep -c 'UPGRADE COMPLETED' "$OUT/c.static" || true)" -ge 1 ]; then
+  ok "C1 the wire says the socket OPENED — the other side's fact, not the client's"
+else
+  bad "C1 the socket never opened, so there is no authority change to observe"
+fi
+if grep -q '^client: connected — asked for the world' "$OUT/c.log"; then
+  ok "C2 and the client's send landed"
+else
+  bad "C2 the client never got a send away, though the wire opened"
+fi
+# ⚠ THE PROOF THAT NOTHING ELSE COULD HAVE DONE IT. Every counter on this line is
+# a message the client received; all zero means `drain` set nothing, so the only
+# hand that can have marked the panel is the one at the connect site.
+c_last=$(grep '^client: [0-9]* frames' "$OUT/c.log" | tail -1)
+echo "   what arrived:  ${c_last:-<the client never reported a frame count>}"
+case "$c_last" in
+  *"meshes 0, placements 0, drops 0, cameras 0, status 0, parts 0")
+    ok "C3 and not one message arrived — nothing else can have marked the panel" ;;
+  *) bad "C3 a message got through: ${c_last:-no frame line at all}" ;;
+esac
+if [ "$(statuses "$OUT/c.log" | tail -1)" = "$SERVER" ]; then
+  ok "C4 the panel says '$SERVER' — told by the socket, by elimination"
+else
+  bad "C4 the panel ended on '$(statuses "$OUT/c.log" | tail -1)' with the socket open"
+fi
+
+# ── the strings themselves ──────────────────────────────────────────
+# ⚠ EXACT EQUALITY, WHICH IS ALSO THE TRUNCATION CHECK. `ss_text` is what
+# `fit_text` returned, so a status too long for its strip comes back cut and
+# marked `..` — and a substring test would call that a pass.
+echo
+bad_str=$(cat "$OUT/a.log" "$OUT/b.log" "$OUT/c.log" 2>/dev/null \
+          | grep '^client: status ← ' | sed 's/^client: status ← //' \
+          | sort -u | grep -vxF "$CONNECTING" | grep -vxF "$SERVER" || true)
+if [ -z "$bad_str" ]; then
+  ok "the panel only ever showed the two whole strings, neither of them fitted down"
+else
+  bad "the panel showed something else: $(echo "$bad_str" | tr '\n' '|')"
+fi
+
+echo
+if [ "$fail" -eq 0 ]; then echo "auth PASS — $pass checks"; else echo "auth FAIL — $fail of $((pass + fail))"; fi
+[ "$fail" -eq 0 ]

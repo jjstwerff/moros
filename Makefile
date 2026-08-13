@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -562,6 +562,16 @@ probe-p6:
 # different client, which is how the sabotages run.
 probe-b1a:
 	@sh probe/b1a/run.sh
+
+# B1b.1a (plan 22) — DOES THE PANEL SAY WHICH AUTHORITY IT HAS? The status line was
+# a literal reading `connected`, set at panel construction before any socket existed,
+# and it went on saying so with the server down. Two runs over the SAME page bytes:
+# one against the real server, which sees the panel MOVE when the socket opens, and
+# one against a static server with no `/ws`, which sees a client that never claims a
+# connection it does not have. ⚠ Neither run can make the other's claim.
+# `AUTH_SABOTAGE=literal|nodirty|assume` runs the three controls.
+probe-auth:
+	@sh probe/b1b/auth.sh
 
 # L6.3 (plan 19) — HOW MUCH OF THE SPLIT IS LEFT, as a compile rather than an opinion.
 # Stages a lavition-only `lib/` and `--check`s all five programs against it. Answers

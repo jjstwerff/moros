@@ -332,7 +332,11 @@ struct Client {
   // verbatim and has no way to phrase one of its own.
   hud: text,
   mats: text,
-  hud_dirty: boolean,
+  // ⚠ `panel_dirty`, NOT `hud_dirty`, AND THE NAME MOVED WITH THE MEANING. It
+  // marks the whole panel for a rebuild, and `B1b.1a` gave it a writer that is
+  // not a message at all — the socket opening. A field named for one of its
+  // sources reads as though the others were a misuse.
+  panel_dirty: boolean,
   parts: vector<Part>,
   // The catalogue's part thumbnails as the server sent them — geometry and the
   // canonical camera it was fitted with (plan 18 B5.2). ⚠ NOT the rendered
@@ -906,7 +910,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // the server from the mesher's own surface list. Kept as the server sent
         // it, for §C1's reason: a list the client composed would be a list of
         // what it believes the renderer can draw.
-        if body != st.mats { st.mats = body; st.hud_dirty = true; }
+        if body != st.mats { st.mats = body; st.panel_dirty = true; }
       }
       else if tag == "Y" {
         // `Y:` — one surface of one part's thumbnail (plan 18 B5.2). It arrives
@@ -914,7 +918,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // FIFO and that is the whole of the ordering guarantee.
         st.c_thumb = st.c_thumb + 1;
         add_thumb_mesh(st, body);
-        st.hud_dirty = true;
+        st.panel_dirty = true;
       }
       else if tag == "W" {
         // `W:` — that part's canonical three-quarter camera, fitted to its own
@@ -922,14 +926,14 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
         // projection path is a second thing to keep honest, and the look-at that
         // aims the world's camera already exists on the other side.
         add_thumb_cam(st, body);
-        st.hud_dirty = true;
+        st.panel_dirty = true;
       }
       else if tag == "H" {
         // `H:<line>` — the subject line, plan 18 B2. Stored verbatim and marked
         // for a rebuild; the panel is NOT rebuilt here, because `drain` runs
         // inside the message loop and a burst of `H:` would rasterise a set of
         // textures per message for a line only the last one decides.
-        if body != st.hud { st.hud = body; st.hud_dirty = true; }
+        if body != st.hud { st.hud = body; st.panel_dirty = true; }
       }
       else if tag == "L" {
         // `L:<cx>,<cz>,<li>,<id>,<kind>,<ver>,<base>;<cells>` — one terrain layer.
@@ -1660,6 +1664,39 @@ fn draw_panel(p: Panel, painter: Painter2D) {
   }
 }
 
+// ── The authority: where a key press goes (plan 22 `B1b.1a`) ───────────────
+//
+// ⚠ THIS LINE WAS A LITERAL, AND THE LITERAL SAID `connected`. It was set at
+// panel construction — before any socket existed — and `grep` found no other
+// writer, so the panel claimed a connection it had never checked and went on
+// claiming it with the server down. Measured: the page served statically with
+// no `/ws` behind it runs happily, never prints its own `connected` line, and
+// draws the word `connected` for as long as you leave it open. It is `W4`'s
+// shape one more time — a fact asserted in a place that cannot know it.
+//
+// ⚠ AND IT IS NOT THE SUBJECT LINE'S BUSINESS. `ps_subject` is the SERVER's
+// sentence, composed there on purpose (§C1: "the client never composes one — a
+// second list would be a second authority on what you are working on"). Where a
+// key press GOES is the one thing the server structurally cannot report, because
+// a server that is not there says nothing at all. So it lives on the STATUS line
+// beside the subject, never inside it.
+//
+// ⏭ `B1b.1b` ADDS THE THIRD STRING and nothing else here: when a socket that
+// never opens means the page edits its own world, this is what stops that being
+// silent — which is why the visible half is built first.
+const AUTH_CONNECTING = "moros editor — connecting to the server";
+const AUTH_SERVER     = "moros editor — edits go to the server";
+
+// The client's own evidence, and it has exactly one piece: a `send` that
+// SUCCEEDED. `ws_handler` hands back a usable handle before the socket is open
+// (see `main`), so the handle existing means nothing — which is why `st.hello`,
+// set by the retry loop that already had to discover this, is the fact and not
+// a second thing to keep honest.
+fn authority_line(st: Client) -> text {
+  if st.hello { return AUTH_SERVER; }
+  AUTH_CONNECTING
+}
+
 fn client_panel_spec(st: Client) -> PanelSpec {
   PanelSpec {
     ps_buttons: [
@@ -1677,7 +1714,7 @@ fn client_panel_spec(st: Client) -> PanelSpec {
     ps_selected_button: -1,          // the SERVER owns this; nothing to claim yet
     ps_items: parse_entries(st.mats),
     ps_selected_item: -1,          // the SERVER owns this too
-    ps_status: "moros editor — connected",
+    ps_status: authority_line(st),
     ps_subject: subject_line(st.hud),
   }
 }
@@ -1704,9 +1741,15 @@ fn client_panel_spec(st: Client) -> PanelSpec {
 // drift that only appears on long lines is exactly the one a three-letter probe
 // would miss.
 fn metrics_drift(font: integer, m: Metrics, worst_s: &text) -> integer {
+  // ⚠ BOTH STATUS STRINGS, NOT A COPY OF ONE. This list held the literal
+  // `"moros editor — connected"` — a second spelling of the panel's own text,
+  // which is what a "compares the strings the panel actually shows" comment is
+  // supposed to rule out. The constants are the panel's, so the day one grows
+  // this measures the longer one without anybody remembering to.
   probe: vector<text> = [
     "Look", "Level", "Field", "Stencil", "Wall", "Cart",
-    "moros editor — connected",
+    AUTH_CONNECTING,
+    AUTH_SERVER,
     "world — · mode — · toggles — (awaiting the server)",
   ];
   worst = 0;
@@ -1799,7 +1842,7 @@ fn main() {
   st = Client {
     hud: "",
     mats: "",
-    hud_dirty: false,
+    panel_dirty: false,
     parts: [],
     thumbs: [],
     tcams: [],
@@ -1875,10 +1918,17 @@ fn main() {
   // between frames — so the swap is what lets `onmessage` fill the queue that the
   // next `try_recv` drains. On native it blocks for the frame instead, which is
   // what lets the same source run under `--interpret` while it is being written.
-  // ⚠ THE PANEL IS BUILT ONCE HERE, AND THAT IS DELIBERATE FOR NOW. Its contents
-  // do not change until `H:` exists (plan 18 `B2`), and rebuilding an unchanged
-  // panel every frame is the churn `C5` warns about. When the contents start
-  // moving, rebuild on CHANGE — not on tick.
+  // ⚠ BUILT HERE, REBUILT ON CHANGE — which is what this comment used to say was
+  // owed. It read "the panel is built once here, and that is deliberate for now:
+  // its contents do not change until `H:` exists (plan 18 `B2`) … when the
+  // contents start moving, rebuild on CHANGE — not on tick." They move now, from
+  // two directions: the server's `H:`/`N:`, and the client's own authority
+  // (`B1b.1a`). The rule it named is the one below the loop, and rebuilding an
+  // unchanged panel every frame is still the churn `C5` warns about.
+  //
+  // ⚠ AND THIS BUILD HAPPENS BEFORE THE SOCKET, which is not an accident of
+  // ordering: it is what makes a client that claims a connection at boot say so
+  // out loud on the `status ←` line under it.
   // ⚠ THE FONT IS CHOSEN BY MEASUREMENT, NOT BY TARGET. Ask for the file; if what
   // came back is not fixed-pitch, ask for the generic and keep it only if it is
   // better. On the desktop the file loads and the fallback never runs; in the
@@ -1917,6 +1967,14 @@ fn main() {
   println("client: metrics drift {drift}px (worst '{drift_s}'), control {bad}px");
   ui_lr = ui_panel.p_list.lb_rect;
   println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {metrics_advance(ui_m)}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
+  // ⚠ READ OUT OF THE BUILT PANEL, NEVER RE-COMPOSED. `authority_line(st)` here
+  // would agree with itself for as long as it was copied correctly and say
+  // nothing about what the panel holds — the `K1` shape. `ss_text` is what
+  // `panel_build` laid out, `fit_text` and all, so a status too long for its
+  // strip arrives here carrying its own `..` instead of being discovered in a
+  // screenshot. And this is the FIRST one: the panel is built before the loop,
+  // so a client that claims a connection at boot says so on this line.
+  println("client: status ← {ui_panel.p_status.ss_text}");
   if !ui_m.m_mono {
     // ⚠ SAID OUT LOUD RATHER THAN ABSORBED. `len * advance` is only exact for a
     // fixed-pitch font, and the browser silently resolving a path to a
@@ -1931,20 +1989,30 @@ fn main() {
     frames = frames + 1;
     if !st.hello {
       st.hello = web::send(h, "1:");
-      if st.hello { println("client: connected — asked for the world"); }
+      if st.hello {
+        println("client: connected — asked for the world");
+        // ⚠ AND THE PANEL IS TOLD, because the authority is panel CONTENT now.
+        // The build below this loop carries a comment saying the panel is built
+        // once "until `H:` exists (plan 18 `B2`) … when the contents start
+        // moving, rebuild on CHANGE — not on tick". An authority that can change
+        // IS contents that move, so this is that day — and it is one write on
+        // the one frame the fact moves, not a rebuild per frame.
+        st.panel_dirty = true;
+      }
     }
     drain(h, st);
     // ⚠ REBUILT ON CHANGE, WHICH IS WHERE C5's CACHE BECOMES REAL. B1.4 could
     // build the textures once because the text never moved; now the server can
     // move it, so the rule is the one C5 states — one texture per block, rebuilt
-    // only when that block's text changes. `hud_dirty` is set by `drain` and
-    // cleared here, so a burst of `H:` costs ONE rebuild rather than one each.
+    // only when that block's text changes. `panel_dirty` is set by `drain` — and,
+    // since `B1b.1a`, by the socket opening — and cleared here, so a burst of `H:`
+    // costs ONE rebuild rather than one each.
     //
     // ⚠ AND THE OLD TEXTURES ARE DELETED. `create_text_texture` says the caller
     // owns what it returns; dropping the vector and re-filling it would leak a
     // GL texture per label per toggle, which is invisible in the picture and
     // unbounded over a session.
-    if st.hud_dirty {
+    if st.panel_dirty {
       for old in ui_texts { graphics::gl_delete_texture(old.ut_tex); }
       for olds in ui_swatches { graphics::gl_delete_texture(olds.sw_tex); }
       ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
@@ -1953,8 +2021,9 @@ fn main() {
       // asks for the swatch to be the material, not for it to be re-rendered
       // every frame. The list arrives once, so in practice this runs once.
       ui_swatches = render_row_images(st, ui_panel.p_list.lb_items);
-      st.hud_dirty = false;
+      st.panel_dirty = false;
       println("client: subject line ← {st.hud}");
+      println("client: status ← {ui_panel.p_status.ss_text}");
       // ⚠ THE TWO FAMILIES ARE COUNTED APART, because one number cannot say which
       // of them failed. Nine swatches and no thumbnail reads identically to ten
       // images in a total, and a part with no picture is exactly the failure

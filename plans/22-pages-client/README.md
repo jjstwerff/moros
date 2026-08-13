@@ -29,7 +29,12 @@ it* is now short exactly one thing: **a page with the gestures in it.**
 of four sites, and `make probe-b1a` is the first check in this tree that has ever pressed a key in
 the client at all.
 
-**Next:** **`B1b`** — local mode in `editor_client.loft`. The full step decomposition is
+✅ **AND `B1b.1a` IS BUILT — the panel says which authority it has, 2026-08-13.** The status line
+was a literal claiming `connected`, set before any socket existed; it is derived now, and it moves
+when the socket opens. `make probe-auth` — **three situations over one page build**, because the
+sabotage that mattered passed against the first two.
+
+**Next:** **`B1b.1b`** — the authority becomes two. The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
 where every step names what runs beside it and what would surprise its test.
 
@@ -71,6 +76,7 @@ key press goes.
 | ◐ `W4` | pressing a key and calling the gesture by hand leave worlds with the **same `w_tau`** | **one key, one meaning, wherever it is pressed** | `grade_under` returning the origin's height — `editor_run`'s actual old behaviour — must fail (it does) |
 | `W2`/`W3` | a part loaded from bytes equals the same part loaded from a path | **a path is a wrapper, on every loader** | a `.glb` that fails to load must **say so**, not draw nothing — an absent mesh reads as a geometry bug |
 | ✅ `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth site | ✅ **BOTH RUN.** `act`'s `fence` → the wall's message: **every sentence identical**, world `82d622b3` → `cdabc1dc`. `act`'s `place` → a raise: transcript, presence check and world all red. ⏭ The opening pair is **left out** rather than pinned — see the finding above; pinning would have made `p` stop cutting a pointed head, which is a change wearing a refactor's clothes |
+| ✅ `B1b.1a` | the panel's status is **derived from the client's own socket**, and moves when it moves | a fact is asserted only where it can be **known** | ⚠ **THREE, AND ONE OF THEM PASSED FIRST TIME.** `literal` (the line as it was) → red on the panel's first word and red with no server. `assume` (authority off the send, not off its success) → red where the client's claim meets the WIRE's log. `nodirty` (the fact moves, the panel is not told) → **green in both runs**, because the real server's `N:`/`H:` rebuild the panel anyway — which is what added the third situation, a socket that opens and says nothing, where `panel_dirty` has exactly one possible writer |
 | `B1b` | the local page and the attached client build the **same world** from the same key sequence | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind.** A fence ring and a wall ring write the same edges of the same disc, so the clock reports one number for two worlds. The comparison is **`world_to_bytes` AND the session**; if they differ, `press_verb` has become a fifth site |
 | `B3` | the demo gate opens `_site/index.html` **with no server** and reads a house out of the picture | the quick start **stays** working | ⚠ the gate must fail on an empty page — `[].every(…)` is `true`, and this tree has shipped a row that reported `ok` on a picture with no panel at all |
 
@@ -108,7 +114,9 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
-| **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | the page prints an `Ack` and a world digest; `editor_run` driving the same verbs at the same author prints the same | ⛔ **BLOCKED ON ITS BOOT SWITCH** — `host_input()` BLOCKS with no host, measured. [loft#891](https://github.com/loft-lang/loft/issues/891); see below |
+| ✅ **`B1b.1a`** — the client SAYS which authority it has | XS | **DONE 2026-08-13.** `make probe-auth`: 15 checks, **three** situations over one page build — a real server, a static server with no `/ws`, and a socket that opens and says nothing. Three sabotages, each red somewhere different; `make probe-b1a` unmoved | ✅ Done |
+| **`B1b.1b`** — the authority becomes TWO: no socket → local | S | ⚠ the page must build the same world `editor_run` builds from the same verbs — and `B1b.1a`'s line is what stops the swap being silent | ⏭ **next** |
+| **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | the page prints an `Ack` and a world digest; `editor_run` driving the same verbs at the same author prints the same | ⛔ **ITS BOOT SWITCH CANNOT BE ASKED FOR** — `host_input()` BLOCKS with no host, measured. [loft#891](https://github.com/loft-lang/loft/issues/891). Route 3 taken; `B1b.1a` is its first half and is built |
 | **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | a picture, and the world digest unchanged by drawing it | Blocked on `B1b.1` |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
@@ -186,6 +194,62 @@ spawn point is REFUSED** — *"a footprint at this facing has no mitred corners;
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
 
+## ✅ What `B1b.1a` turned up (2026-08-13) — the sabotage passed, and that is the finding
+
+**`src/editor_client.loft`'s status line is derived now**: `authority_line(st)` over `st.hello` —
+the client's one piece of evidence, a `send` that SUCCEEDED — and the panel is told when it moves.
+`make probe-auth`: **15 checks, three runs over the same page bytes**, three sabotages each red
+somewhere different. `make probe-b1a` unmoved — the same 7 sentences, world `82d622b37d1d`.
+
+⚠ **THE SABOTAGE THAT MATTERED PASSED, AND ITS PASSING IS WHY THERE IS A THIRD RUN.** Deleting the
+one write this step adds — `st.panel_dirty = true` where the send lands — left the run against the
+real server **entirely green**. The server answers `1:` with `N:` and `H:` a frame or two later,
+and each of those marks the panel for its own reasons, so the status reached the screen for a
+reason that had nothing to do with the authority changing. **A rebuild that happens anyway reads
+exactly like a rebuild that was asked for**, and the obvious instrument — a server, a browser, a
+transcript — cannot tell them apart at all.
+
+✅ **SO THE THIRD SITUATION IS A SOCKET THAT OPENS AND SAYS NOTHING**, twenty lines of node that
+complete the handshake and then never send a frame. There `panel_dirty` has exactly one possible
+writer, and the proof is printed beside the verdict: the client's own message counters still read
+`meshes 0, placements 0, drops 0, cameras 0, status 0, parts 0` after 1200 frames. ⏭ **And it is a
+real situation, not a contrived one** — a server that accepts while its world is still loading is
+this, for as long as that takes.
+
+⚠ **AND THE CONTROL FOR *WAS THERE A SOCKET* WAS CIRCULAR — a second sabotage found it.** Run B
+proved *nothing connected* by reading the client's own `connected` line, which is the very claim
+under test. `AUTH_SABOTAGE=assume` — the authority read off **having sent** rather than off the
+send **succeeding**, the trap the client's own `ws_handler` comment warns about one layer in —
+made the control agree with the lie it existed to catch, and its failure message said *"this run
+is not the no-server case at all"* about a run that was exactly that. **The evidence is the other
+side's log now**: the static server counts dials refused and dials completed, and the client's
+claim is checked *against* it rather than trusted as it.
+
+| | red where | and nowhere else |
+|---|---|---|
+| `literal` — the line as it was, a constant claiming the server | `A1` the panel's first word · `B4` with no server behind it | |
+| `nodirty` — the fact moves, the panel is not told | `C4` alone | ⚠ **green in A and B**, which is the whole reason C exists |
+| `assume` — authority off the send, not off its success | `B3` client against wire · `B4` | invisible to A: with a server there, assuming is right |
+
+⚠ **THE INSTRUMENT READS THE BUILT PANEL, NEVER `authority_line` A SECOND TIME.** `K1`'s shape: a
+println that re-composes the string agrees with itself for as long as it is copied correctly and
+says nothing about what the panel holds. It prints `ui_panel.p_status.ss_text`, which is
+post-`fit_text` — so a status too long for its strip arrives carrying its own `..`, and the check
+is **exact equality against the two whole strings**, because a substring test would call a
+truncation a pass.
+
+⚠ **AND `metrics_drift` HELD A SECOND COPY OF THE LITERAL**, under its own comment saying it
+*"compares the strings the panel actually shows, not a synthetic sample"*. It takes the two
+constants now, so the day one grows it measures the longer one without anybody remembering to.
+
+⏭ **THIS IS THE DAY PLAN 18 `B2`'s NOTE COMES DUE**, and it said so itself: *"the panel is built
+once … when the contents start moving, rebuild on CHANGE — not on tick."* An authority that can
+change is contents that move. One write on the one frame the fact moves; `hud_dirty` is
+`panel_dirty`, because it now has a writer that is not a message at all.
+
+⏭ **WHAT `B1b.1b` NEEDS FROM HERE IS ONE STRING AND A DECISION.** The visible half is built and
+sabotage-checked, which is what earns the right to let the authority vary.
+
 ## ⛔ What starting `B1b.1` turned up (2026-08-13) — the boot switch cannot be asked for
 
 **`B1b.1`'s first item was a boot switch, and this plan named the mechanism with confidence**:
@@ -207,7 +271,42 @@ absence being reported was **the host itself**, which is precisely the case `P2`
 ⚠ **AND `host_name` IS NOT A WAY ROUND IT**: the symbol is in the binary, the function is not —
 `error: Unknown function host_name`. There is no target query either.
 
-⏭ **THREE ROUTES, and none is a coin toss:**
+✅ **ROUTE 3 IS CHOSEN — the user's call, 2026-08-13.** Connect-or-local, **with the subject line
+saying which authority is live**. So the visible half comes FIRST: an authority that can vary
+silently is the hazard, and the instrument that makes it visible is what earns the right to let it
+vary. Two steps:
+
+| | | |
+|---|---|---|
+| **`B1b.1a`** | **the client says which authority it has** — one authority exists so far, so this is not a no-op and not a stub: it can be *wrong today* | ✅ **DONE 2026-08-13** |
+| **`B1b.1b`** | the authority becomes two: no socket → local, and `B1b.1a`'s line is what stops that being silent | ⏭ next |
+
+⛔ **AND `B1b.1a` HAD A LIVE DEFECT TO FIX, NOT A FEATURE TO ADD.**
+`src/editor_client.loft:1680` reads `ps_status: "moros editor — connected"` — **a literal, set at
+panel construction, before any socket exists**, and `grep` finds no other write to it. **The panel
+claims a connection it has never checked**, and it will go on claiming it with the server down. It
+is the `W4` shape one more time: a fact asserted in a place that cannot know it.
+
+⏭ **THE THREE SITES, LOCATED:**
+
+1. **What is true** — `src/editor_client.loft:1856` takes `web::ws_handler(WS_URL)`, which *"returns
+   a usable handle immediately — it does not wait for the socket to open"*. The open is discovered
+   by **a `send` SUCCEEDING**, which the retry loop below it already does and already knows. That
+   boolean is the authority; nothing new has to be measured.
+2. **Where it shows** — `ps_status`, above.
+3. ⚠ **THE COST, AND IT IS THE ONLY REAL ONE: THE PANEL IS BUILT ONCE.** Its own comment says so —
+   *"deliberate for now: its contents do not change until `H:` exists (plan 18 `B2`), and
+   rebuilding an unchanged panel every frame is the churn `C5` warns about. When the contents start
+   moving, rebuild on CHANGE — not on tick."* **An authority that can change IS contents that
+   move**, so `B1b.1a` is the step that makes plan 18 `B2`'s rebuild-on-change due. Build it that
+   way, not on a tick.
+
+⚠ **AND THE SUBJECT LINE IS NOT THE PLACE FOR IT.** `subject_line` is the SERVER's sentence,
+composed there on purpose — *"the client never composes one: a second list would be a second
+authority on what you are working on"* (`C1`). The authority is the client's own fact about its
+socket, so it belongs on the STATUS line beside it, never inside the server's.
+
+⏭ **The three routes as they stood, kept because the choice was between them:**
 
 1. **Wait for [#891](https://github.com/loft-lang/loft/issues/891)** — a `host_try_input`, a
    readiness predicate or a timeout. This tree's rule is to wait for a toolchain rather than build

@@ -115,6 +115,11 @@ probe/b1a/.out/
 probe/b1a/.baseline.loft
 probe/b1a/.sab-*.loft
 
+# `probe/b1b/auth.sh` the same way: two transcripts per run, and a sabotaged client
+# built beside itself. Nothing here is a baseline — its comparison is between the
+# two RUNS, which are captured together.
+probe/b1b/.out/
+
 # The gate suite copies the compiled server here — a loft binary roots its file I/O
 # at its own directory's parent, so it has to sit one level under the repository or
 # every snapshot and save lands in src/.loft/. Rebuilt every run; never committed.
