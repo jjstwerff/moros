@@ -303,6 +303,37 @@ lavition/
 `P6`: the same page loaded twice from `file://`, with no `--allow-file-access-from-files`, saves a
 world and finds it again. **A person opening `index.html` off their own disk gets the storage.**
 
+## ✅ BUILT — `B2`/`B3`/`B2b`, 2026-08-13, and the first measurement cancelled most of it
+
+`make pages` writes `_site/index.html`; `make probe-demo` opens it from `file://` with no listener
+at either end and reads an edit out of the picture.
+
+⛔ **THE PAGE ALREADY RAN FROM A DISK BEFORE ANY BUILD SCRIPT EXISTED.** The section above is a
+design for making that work; it was true and untested. So `build-pages.mjs` is a **copy plus a
+staleness refusal**, and the substance of the step is the check. The base tree is still not
+inlined for `data/parts/` — nothing in the client reads those yet, and inlining ahead of a reader
+is this tree's commonest defect.
+
+### ✅ And the page can be told about servers it was not served by — `B2b`
+
+**`WS_URL` answers *the server that served me*, which is no answer for a page opened off a disk.**
+The client dials a **list**: `/ws` first — the only candidate it has evidence for — then whatever
+`servers.txt` in its base tree names. `tools/build-pages.mjs --servers <url>` writes that file as a
+`globalThis.loftBaseFS` prelude, which is **`P6`'s mechanism finding its first live consumer**:
+nothing in `editor_client.loft` read a file until now.
+
+⚠ **A HOST IS NEVER COMPILED IN, AND THAT IS THE SAFETY RATHER THAN THE STYLE.** A client carrying
+`ws://127.0.0.1:18090/ws` would have every page on this box silently adopt whatever is on that
+port — including somebody's live session, which is § *the authority is one* restated as a
+constant. The person who wants an attachment asks the build for one; a plain `make pages` behaves
+exactly as the page did before this existed, and a check runs with a server on the port to prove
+it.
+
+⚠ **AND IT COST TWO GREEN INSTRUMENTS, WHICH IS THE COST OF READING SENTENCES.** `connected —
+asked for the world` names its candidate now, and `probe-auth` matched the old wording in two
+places. **2 of 36 red on a client that was working perfectly** — and that is the mechanism working:
+the wording changed and something said so within the hour.
+
 ⚠ **`_site/index.html` IS THE SAME ARTIFACT THE SERVER SERVES.** `read_client()` already hands
 `{source_dir()}/.loft/editor_client.html` to a browser at `/`. If the standalone page is a
 different file, there are two pages to keep in step; if it is the same file booted differently,

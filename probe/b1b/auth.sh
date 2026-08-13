@@ -258,7 +258,14 @@ else
 fi
 # ⚠ AFTER the client's own connect line, not merely present. A panel that showed
 # `server` before the send succeeded would satisfy a presence test.
-if [ -n "$(sed -n '/^client: connected — asked for the world/,$p' "$OUT/a.log" \
+# ⚠ THE SENTENCE GREW A CANDIDATE — plan 22 `B2b`, and this is one of the two
+# places that read it as a literal. It was `connected — asked for the world`; the
+# client dials a LIST now, so it names which one landed. Both sites moved together
+# and both are STRICTER than before, because a line naming no candidate no longer
+# matches at all. ⚠ This is what went red when `B2b` landed, and it is the whole
+# argument for a probe reading a sentence: the sentence changed, and something said
+# so on the same afternoon.
+if [ -n "$(sed -n "/^client: connected to '.*' — asked for the world/,\$p" "$OUT/a.log" \
            | grep -F "client: status ← $SERVER")" ]; then
   ok "A2 and after the send landed it says '$SERVER'"
 else
@@ -569,7 +576,8 @@ if [ "$(grep -c 'UPGRADE COMPLETED' "$OUT/c.static" || true)" -ge 1 ]; then
 else
   bad "C1 the socket never opened, so there is no authority change to observe"
 fi
-if grep -q '^client: connected — asked for the world' "$OUT/c.log"; then
+# ⚠ THE SECOND READER OF THAT SENTENCE — see A2 above for why it names a candidate.
+if grep -qE "^client: connected to '.*' — asked for the world" "$OUT/c.log"; then
   ok "C2 and the client's send landed"
 else
   bad "C2 the client never got a send away, though the wire opened"

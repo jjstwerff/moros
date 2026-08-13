@@ -95,6 +95,55 @@ use lavition_ui;
 // the browser answers the question the client cannot ask.
 const WS_URL = "/ws";
 
+// ── AND THE SERVERS THIS PAGE MIGHT NOT BE SERVED BY — plan 22 `B2b` ────────
+//
+// `WS_URL` answers *the server that served me*, which is the whole answer while one
+// process serves the page and the socket. The quick-start demo breaks that: it is
+// opened off a DISK, so `/ws` resolves against `file://` and reaches nothing — which
+// is correct, and is why local mode exists. What it cannot do is attach to an editor
+// that IS running on the same box.
+//
+// ⚠ IT IS MEASURED THAT A `file://` PAGE MAY: `probe/b1c/origin.mjs` dials a live
+// port and a dead one from a null origin and gets `OPEN` and `ERROR` — with the
+// listener's own `UPGRADE COMPLETED` as the other side's evidence. Browser policy is
+// not the obstacle; knowing WHERE is.
+//
+// ⚠ AND THE HOST IS NOT COMPILED IN, WHICH IS THE POINT OF THE FILE. A client
+// carrying `ws://127.0.0.1:18090/ws` in its binary would have every page on this box
+// silently adopt whatever is on 18090 — including `probe/b1b/auth.sh`'s run B, whose
+// whole subject is a page that finds NO server, and including a demo that would take
+// over somebody's live session. That is `B1b.1b`'s two-authorities hazard with the
+// decision moved from the author to a constant. So the candidates are DATA the page
+// is given: `tools/build-pages.mjs --servers` writes them, and a page nobody handed
+// one behaves exactly as it did before this existed.
+//
+// ⚠ THE MECHANISM IS `P6`'s, NOT A NEW ONE. A `--html` page reads its base tree
+// exactly as the interpreter reads a directory (measured, http and `file://` alike),
+// so this is one `file()` call against a tree the build inlines ahead of loft's own
+// script. It is also the FIRST thing in this client to read a file at all, which is
+// what makes the base tree a live mechanism here rather than a proven one.
+const SERVERS_FILE = "servers.txt";
+
+// The page's own origin first, always, and then whatever it was told.
+//
+// ⚠ THE ORDER IS NOT A PREFERENCE, IT IS THE ONE NON-GUESS. `/ws` is the only
+// candidate the page has EVIDENCE for — it is where the bytes came from — and every
+// other entry is somebody's earlier assumption about this box. A list that dialled a
+// written-down host first would let a stale `servers.txt` outrank the server that is
+// actually serving the page.
+fn ws_candidates() -> vector<text> {
+  cands: vector<text> = [WS_URL];
+  sf = file(SERVERS_FILE);
+  if sf.format == Format.NotExists { return cands; }
+  for line in sf.content()?.split('\n') {
+    t = line.trim();
+    // `#` so a demo's server list can say what it is for. An empty line is not an
+    // error either: a file ending in a newline is the normal case, not a typo.
+    if t != "" && t[..1] != "#" { cands += [t]; }
+  }
+  cands
+}
+
 // The keys, as the ASCII codes `gl_key_pressed` takes. `graphics` exports names for
 // most of them, but its `KEY_F` is documented as "lower-layer" — a meaning from a
 // different editor. Naming them by what they do HERE keeps that confusion out.
@@ -418,9 +467,15 @@ struct Client {
   // authority that changed back under an author's hands would be two authorities
   // over one world, which is the thing this plan refuses everywhere else.
   local: boolean,
-  // Dials that did not land. It is the evidence behind the decision, and it is
-  // printed with it, so *how long did it wait* is answerable from a transcript.
+  // Dials that did not land AT THE CURRENT CANDIDATE. It is the evidence behind the
+  // decision, and it is printed with it, so *how long did it wait* is answerable
+  // from a transcript.
   dials: integer,
+  // Which of `ws_candidates()` this page is dialling — plan 22 `B2b`. ⚠ IT ONLY
+  // EVER RISES, and that is `local`'s one-way rule one level down: a page that
+  // wandered back to an earlier candidate could attach to a server it had already
+  // given up on, after frames in which an author was told it was on its own.
+  cand: integer,
   // Wire messages an author has pressed in local mode that nothing here answers
   // yet — one entry per message id, because saying it once is honest and saying it
   // per frame (the mouse drag sends one per pump) is a flood.
@@ -2186,7 +2241,7 @@ fn main() {
     levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
-    local: false, dials: 0, said_local: [],
+    local: false, dials: 0, cand: 0, said_local: [],
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
@@ -2232,7 +2287,25 @@ fn main() {
   // the failure is caught, one layer out, by something that can actually see it.
   st.prog = graphics::gl_create_shader(WORLD_VERT, WORLD_FRAG);
 
-  h = web::ws_handler(WS_URL);
+  // ── WHERE THIS PAGE MIGHT FIND A SERVER — plan 22 `B2b` ────────────────────
+  //
+  // Read ONCE, before the loop, because it is a fact about the page rather than
+  // about a frame: re-reading it per dial would let a file written mid-session
+  // change which server an author is attached to, with nothing on screen saying so.
+  cands = ws_candidates();
+  // ⚠ SAID OUT LOUD WHENEVER THERE IS MORE THAN THE ORIGIN. A page that spends
+  // several seconds dialling somewhere the reader cannot see is the silence this
+  // tree keeps paying for — and with one candidate it says nothing, so the served
+  // page's transcript is unchanged.
+  if len(cands) > 1 {
+    joined = "";
+    for cd in cands {
+      if joined != "" { joined = joined + ", "; }
+      joined = joined + cd;
+    }
+    println("client: {len(cands)} places to look for a server — {joined}");
+  }
+  h = web::ws_handler(cands[0]);
 
   // ⚠ THE READY MESSAGE IS A RETRY, NOT A CALL. `ws_handler` returns a usable
   // handle immediately — it does not wait for the socket to open — and a browser
@@ -2331,7 +2404,26 @@ fn main() {
       st.hello = web::send(h, "1:");
       if !st.hello {
         st.dials = st.dials + 1;
-        if st.dials >= LOCAL_AFTER {
+        if st.dials >= LOCAL_AFTER && st.cand + 1 < len(cands) {
+          // ── ON TO THE NEXT CANDIDATE — plan 22 `B2b` ────────────────────────
+          //
+          // ⚠ THE OLD HANDLE IS CLOSED, AND THAT IS THE HAZARD RATHER THAN
+          // TIDINESS. `ws_handler` hands back a usable handle before the socket is
+          // open, so a candidate this page has given up on can still open AFTER it
+          // has moved on — and then a server is holding a connection to a client
+          // that will never speak to it again. Nothing here would notice: the loop
+          // only ever sends on the current handle.
+          web::close(h);
+          st.cand = st.cand + 1;
+          h = web::ws_handler(cands[st.cand]);
+          println("client: no answer at '{cands[st.cand - 1]}' in {st.dials} dials"
+                  + " — trying '{cands[st.cand]}'");
+          // ⚠ PER CANDIDATE, NOT CUMULATIVE. `LOCAL_AFTER` is measured against what
+          // ONE working connection costs (dial 4), so a shared counter would give
+          // the last candidate whatever the earlier ones left of it — and the last
+          // candidate is the one a person wrote down on purpose.
+          st.dials = 0;
+        } else if st.dials >= LOCAL_AFTER {
           st.local = true;
           // ⚠ THE COUNT IS IN THE SENTENCE, because "it went local" without it
           // cannot be told from "it went local immediately", and those are a
@@ -2353,7 +2445,12 @@ fn main() {
         // ⚠ WHICH DIAL LANDED, and that number is what `LOCAL_AFTER` is set
         // against: a bound picked without knowing how long a working connection
         // takes is a guess wearing a constant's clothes.
-        println("client: connected — asked for the world (dial {st.dials + 1})");
+        // ⚠ AND WHICH CANDIDATE — plan 22 `B2b`. With a list, *connected* is no
+        // longer one fact: a demo opened off a disk that attaches to an editor is
+        // a different situation from the same page served by that editor, and the
+        // panel's three strings deliberately cannot tell them apart.
+        println("client: connected to '{cands[st.cand]}' — asked for the world "
+                + "(dial {st.dials + 1})");
         // ⚠ AND THE PANEL IS TOLD, because the authority is panel CONTENT now.
         // The build below this loop carries a comment saying the panel is built
         // once "until `H:` exists (plan 18 `B2`) … when the contents start

@@ -389,7 +389,68 @@ serves**, differing only in where a key press goes.
 | ✅ `B1b.2c` | **THE PAGE DRAWS ALL ELEVEN SURFACES** — the mesher is `hex_mesh`'s, the server holds no copy (41 declarations and 1,744 lines gone), and `make probe-auth` says `grass` at boot and **`grass,wall`** after the rings. Four steps, because a dependency arrow stood in front of it: `c.1`/`c.2` the five primitives into `hex_proj`, `c.3` the 1342-line props mesher, `c.4a`–`c.4c` the deletion, the ramp and the page |
 | ✅ `B1b.2` | **THE PAGE DRAWS.** A camera of its own, its own ground, and a re-mesh on write — 5 picture checks over 3 canvas regions. ⛔ Three instruments were blind before the page was, and one of them was found by a sabotage |
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
+| ✅ `B2`=`B3` | **THE DEMO EXISTS** — `make pages` writes `_site/index.html` (the engine build, verbatim) and `make probe-demo` opens it from `file://` with no listener at either end. ⛔ Most of the step was cancelled by its first measurement: the engine already ran from a disk |
+| ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B2`/`B3`/`B2b` — THE DEMO EXISTS, AND MOST OF IT WAS ALREADY TRUE, 2026-08-13
+
+**`make pages` writes `_site/index.html`; `make probe-demo` opens it from `file://` with no
+listener at either end.** It boots, goes local in 180 dials, draws its own world, and `ArrowUp`
+writes into it — 7 checks, plus 3 more about servers.
+
+⛔ **THE FIRST MEASUREMENT CANCELLED MOST OF THE STEP.** Before a line of `build-pages.mjs`
+existed, the engine build was opened from a disk and **already worked**. So `B2` is not *make the
+page work without a server* — that was true and untested. It is **packaging plus a check**, and
+the page is a `cp`: [PAGES_EDITOR](PAGES_EDITOR.md)'s rule is that the demo and the page the
+server serves are ONE artifact.
+
+⚠ **WHICH IS WHY `B2` AND `B3` ARE ONE COMMIT.** A copy decides nothing, so it cannot go red on
+its own — the lower bound of a safe step. The one thing the build *does* decide is **staleness**,
+and it REFUSES rather than skips: an engine older than its sources is named and rejected. ⚠ That
+is the opposite of `run-gates.sh`'s *never skip on a guess*, and the difference is what the answer
+is used for — a timestamp that SKIPS runs old code silently, one that REFUSES costs one
+`make client`.
+
+✅ **AND `B2b` — A DEMO OPENED FROM A DISK ATTACHES TO AN EDITOR IT IS TOLD ABOUT.** The socket URL
+is a LIST: `/ws` first, then whatever `servers.txt` in the page's base tree names, written by
+`build-pages.mjs --servers`. ⚠ **`P6`'s base tree has its first live consumer** — nothing in
+`editor_client.loft` read a file until now.
+
+- ⚠ **THE HOST IS NOT COMPILED IN, AND THAT IS THE SAFETY.** A client carrying
+  `ws://127.0.0.1:18090/ws` would have every page on this box silently adopt whatever is on that
+  port — somebody's live session, and `probe/b1b/auth.sh`'s **run B, whose whole subject is a page
+  that finds NO server**. `E3` checks it: a page nobody told never dials the port *with a server
+  sitting on it*.
+- ⚠ **THE ORDER IS THE ONE NON-GUESS**: `/ws` is the only candidate the page has evidence for. A
+  stale `servers.txt` must not outrank the server actually serving the page.
+- ⚠ **`LOCAL_AFTER` IS PER CANDIDATE** — the bound is measured against what one working connection
+  costs (dial 4), so a shared budget would hand the last candidate the leftovers.
+- ⚠ **A `file://` PAGE MAY REACH A SERVER — MEASURED FIRST.** `probe/b1c/origin.mjs`: `live OPEN`,
+  `dead ERROR`, with the listener's own `UPGRADE COMPLETED` as the non-circular half. ⚠ The first
+  run had **both** dials erroring, because the listener never started — a probe whose live case
+  fails like its dead case has measured the harness.
+- ⛔ **AND THE WRITE PATH MANGLED ITS OWN PRELUDE.** Splicing a string into a 4.7 MB binary needs
+  one encoding for both, and `latin1` truncates every code point above `0xFF`: an em dash became
+  two spaces. **The byte-count assertion caught it; `grep loftBaseFS` said 4 and would have
+  shipped.** `Buffer.concat` now, so the engine's bytes are never decoded.
+
+⚠ **AND IT MOVED A SENTENCE TWO INSTRUMENTS READ AS A LITERAL.** `client: connected — asked for
+the world` says which candidate landed now, and `probe-auth`'s `A2` and `C2` both grep that line —
+**2 of 36 red**, on a client that was working perfectly. Both patterns are stricter than before (a
+line naming no candidate no longer matches). ⏭ **That is the argument for a probe reading a
+sentence rather than a count**: the wording changed and something said so the same afternoon.
+
+⚠ **`wait` ON THE PROBE'S OWN LISTENER HUNG IT FOR 800 SECONDS WITH `E1` ALREADY GREEN.** The
+browser still holds the socket the listener accepted, so the shell sat on a signalled job that had
+not finished dying. It waits for the **port** now, bounded. **A probe that hangs after its subject
+succeeded reads as a broken subject.**
+
+⏭ **AND A `--html` PAGE HAS A CLOCK**, which is `B1c`'s enabler:
+`loft_host_time_ticks_us() { return performance.now() * 1000; }`. ⛔ **But the emitted page shims
+unbound names to a constant and only `console.warn`s** — that name's fallback is **`0`**, so a
+missing bridge makes every `ticks()` return one instant and an integrator never move. *The name in
+the page is not the measurement; the clock advancing is.*
 
 ## ✅ `B1b.2c.4c` — A TOTAL CANNOT SAY WHICH, AND THAT IS THE PHASE, 2026-08-13
 

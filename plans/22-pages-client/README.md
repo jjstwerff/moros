@@ -158,6 +158,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
 | ✅ **`B2`** = **`B3`** — `tools/build-pages.mjs`, `_site/`, and the check that opens it | S | **DONE 2026-08-13.** `make probe-demo`: `_site/index.html` over `file://` with no listener at either end — boots, goes local in 180 dials, draws (world **5 colours** over the horizon against a 303-colour panel control), holds still, and `ArrowUp` **writes** (`local raise — 1 · world 16502:374721773`). Two sabotages, red in different places | ✅ Done |
+| ✅ **`B2b`** — connections to potential servers: the socket URL is a LIST, and the extra candidates are DATA | S | **DONE 2026-08-13.** `make probe-demo`'s E block, **3 runs of which 2 are controls**: a demo opened from a DISK attaches to an editor it was told about (`connected to 'ws://127.0.0.1:19555/ws'`, with the listener's own `UPGRADE COMPLETED` as the non-circular half); with nothing listening the same page reaches that candidate and goes local; and a page nobody told never dials the port **with a server sitting on it** | ✅ Done |
 | — | | ⏭ **THE CLIENT IS TESTABLE HERE. Nothing below starts before this line.** | |
 | **`C1`** — the sampler probe: `surface_h_at` as a `fn(…)` parameter, camera pixel-identical | XS | `camera_indoors` still `subject 0.0188` | Deferred |
 | **`C2a`** — `lib/hex_cam/` holds a COPY of the routines, with its OWN tests | S | ⚠ passes the lower bound because those tests are real geometry that can be surprised — unlike a declaration checked against itself | Deferred |
@@ -233,6 +234,51 @@ policy from attaching to it; what is missing is a way to TELL it where.
 was never started (its arguments were in the wrong order), and a probe whose *live* case fails the
 same way as its *dead* case has measured the harness. The `dead ERROR` row is what separates *the
 browser refused* from *nothing was there*.
+
+### ✅ `B2b` — the demo attaches to a server it is TOLD about, and being told is the whole design
+
+**`WS_URL` answers *the server that served me***, which is the entire answer while one process
+serves the page and the socket — and it is no answer at all for a page opened off a disk. The
+client dials a **list** now: `/ws` first, then whatever `servers.txt` in its base tree names.
+`tools/build-pages.mjs --servers <url>` writes that file as a `globalThis.loftBaseFS` prelude —
+**`P6`'s mechanism, and this is its first live consumer**: nothing in `editor_client.loft` read a
+file until now.
+
+⚠ **THE HOST IS NOT COMPILED IN, AND THAT IS THE SAFETY RATHER THAN THE STYLE.** A client
+carrying `ws://127.0.0.1:18090/ws` in its binary would have every page on this box silently adopt
+whatever is on that port — somebody's live session, and `probe/b1b/auth.sh`'s **run B, whose whole
+subject is a page that finds NO server**. That is `B1b.1b`'s two-authorities hazard with the
+decision moved from the author to a constant. `E3` is the check that says it did not happen: a
+page nobody told never dials the port **while a server is sitting on it**.
+
+⚠ **THE ORDER IS THE ONE NON-GUESS.** `/ws` is the only candidate the page has evidence for — it
+is where the bytes came from — and every written-down host is somebody's earlier assumption about
+this box. A list that dialled the file first would let a stale `servers.txt` outrank the server
+actually serving the page.
+
+⚠ **`LOCAL_AFTER` IS PER CANDIDATE, NOT CUMULATIVE**, and the counter resets on the hop. The bound
+is measured against what ONE working connection costs (dial 4), so a shared budget would hand the
+last candidate whatever the earlier ones left of it — and the last candidate is the one a person
+wrote down on purpose. The cost is paid only on the no-server path: `E2` walks both and lands
+local in the same wall-clock the D run takes.
+
+⚠ **THE ABANDONED HANDLE IS CLOSED, AND THAT IS A HAZARD RATHER THAN TIDINESS.** `ws_handler`
+returns a usable handle before the socket opens, so a candidate the page has given up on can open
+*after* it moved on — leaving a server holding a connection to a client that will never speak to
+it again, with nothing here able to notice.
+
+⛔ **AND THE WRITE PATH MANGLED ITS OWN PRELUDE, CAUGHT BY THE BYTE COUNT.** Splicing a string
+into a 4.7 MB binary needs one encoding for both, and `latin1` — the only lossless one for the
+engine's bytes — truncates every code point above `0xFF`: an em dash in a comment line came out as
+two spaces. The assertion that the page is *the engine build plus exactly this prelude* is what
+saw it; `grep loftBaseFS` said 4 and would have shipped. **The splice is `Buffer.concat` now, so
+the engine's bytes are never decoded at all.**
+
+⚠ **AND `wait` ON THE PROBE'S OWN LISTENER HUNG THE SCRIPT FOR 800 SECONDS WITH `E1` ALREADY GREEN
+IN ITS LOG.** The browser still holds the socket the listener accepted, so the shell sat on a job
+that had been signalled and had not finished dying. The next run needs one thing — the **port**
+back — so that is what is waited for, bounded. ⚠ A probe that hangs after its subject succeeded
+reads as a broken subject.
 
 ### ⚠ And a `--html` page HAS a clock — measured, and with a trap beside it
 

@@ -142,10 +142,110 @@ else no "D6 no gesture reached the world — the page drew but did not edit"; fi
 if [ -n "$drew" ]; then say "D7 surfaces: ${drew#client: }"
 else no "D7 the page never named a surface it drew"; fi
 
+
+# ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────
+#
+# ⚠ THREE RUNS, AND TWO OF THEM ARE CONTROLS. *The page connected* means nothing
+# on its own: a client that reported a connection it had not made is the exact
+# defect `B1b.1a` was written for, and it went unnoticed for months. So `E2` takes
+# the listener away and `E3` takes the FILE away, and each must fail differently.
+#
+# ⚠ THE OTHER SIDE'S LOG IS THE NON-CIRCULAR EVIDENCE. `E1` is believed because
+# `static.mjs` printed `UPGRADE COMPLETED` — a fact this side holds — and not
+# because the client said so about itself.
+E_PORT=19555
+if ss -ltn "sport = :$E_PORT" 2>/dev/null | grep -q ":$E_PORT"; then
+  echo
+  echo "── E   SKIPPED — port $E_PORT is busy; this box runs other agents' work ──"
+else
+  echo
+  echo "── E   told where a server is: 3 runs, 2 of them controls ──────────"
+  E_URL="ws://127.0.0.1:$E_PORT/ws"
+
+  # $1 tag · $2 --await text · $3 build args · $4 'up' to run the listener
+  e_run() {
+    node tools/build-pages.mjs $3 > "$OUT/$1.build" 2>&1 || fail "build-pages refused: $(cat "$OUT/$1.build")"
+    : > "$OUT/$1.listener"
+    e_pid=""
+    if [ "$4" = "up" ]; then
+      node probe/b1b/static.mjs probe/b2 "$E_PORT" --ws-silent > "$OUT/$1.listener" 2>&1 &
+      e_pid=$!
+      # ⚠ POLL FOR `listening`, NEVER SLEEP. A run whose listener had not bound yet
+      # would report *the page found no server* about a race in this script.
+      i=0
+      while [ "$i" -lt 100 ] && ! grep -q '^static: ' "$OUT/$1.listener"; do i=$((i + 1)); sleep 0.1; done
+      grep -q '^static: ' "$OUT/$1.listener" || { kill "$e_pid" 2>/dev/null; fail "the E listener never bound"; }
+    fi
+    timeout 300 node probe/b1b/press.mjs "file://$SITE" ArrowUp \
+      --await "$2" --wait-ms 90000 > "$OUT/$1.raw" 2>&1 || true
+    grep -E '^(client|moros editor client)' "$OUT/$1.raw" > "$OUT/$1.log" || true
+    # ⚠ KILL BY THE PID WE RECORDED, AND THEN WAIT FOR THE PORT — NOT FOR THE
+    # PROCESS. `wait "$e_pid"` hung this script for the whole of an 800-second
+    # timeout with `E1` already green in its log: the browser still holds the
+    # socket the listener accepted, so the shell sat on a job that had been
+    # signalled and had not finished dying. The next run needs one thing only —
+    # the port back — so that is what is waited for, with a bound.
+    if [ -n "$e_pid" ]; then
+      kill "$e_pid" 2>/dev/null || true
+      i=0
+      while [ "$i" -lt 100 ] && ss -ltn "sport = :$E_PORT" 2>/dev/null | grep -q ":$E_PORT"; do
+        i=$((i + 1)); sleep 0.1
+      done
+    fi
+    return 0
+  }
+
+  e_says() { grep -q "$2" "$OUT/$1.log"; }
+
+  e_run e1 "connected to" "--servers $E_URL" up
+  e_run e2 "no server answered" "--servers $E_URL" down
+  e_run e3 "no server answered" "" up
+
+  echo "   E1 (told, listener up):   $(grep -m1 -e 'connected to' -e 'no server answered' "$OUT/e1.log" | sed 's/^client: //')"
+  echo "      the wire's own words:  $(grep -c 'UPGRADE COMPLETED' "$OUT/e1.listener" || true) upgrade(s) completed"
+  echo "   E2 (told, listener down): $(grep -m1 -e 'connected to' -e 'no server answered' "$OUT/e2.log" | sed 's/^client: //')"
+  echo "   E3 (not told, up):        $(grep -m1 -e 'connected to' -e 'no server answered' "$OUT/e3.log" | sed 's/^client: //')"
+
+  # E1 — it attached, and the far side agrees.
+  if e_says e1 "connected to '$E_URL'" && ! e_says e1 'no server answered' \
+     && grep -q 'UPGRADE COMPLETED' "$OUT/e1.listener"; then
+    say "E1 a demo opened from a DISK attached to an editor it was told about"
+  else
+    no "E1 the page did not attach to $E_URL, or the far side never saw it"
+  fi
+
+  # E2 — the control for E1. Same page, nothing listening.
+  #
+  # ⚠ IT MUST HAVE REACHED THE SECOND CANDIDATE, and that is not implied by going
+  # local: a page that gave up after `/ws` would also print `no server answered`,
+  # and would then be a control for nothing — E1's connection would be the only
+  # evidence that the second candidate is ever dialled at all. The `trying` line is
+  # what says it was.
+  if e_says e2 'no server answered' && ! e_says e2 "connected to" \
+     && e_says e2 "trying '$E_URL'"; then
+    say "E2 control: it dialled the same candidate and, with nothing there, went local"
+  else
+    no "E2 the page claimed a connection with nothing behind the wire, or never reached $E_URL"
+  fi
+
+  # E3 — the control for the MECHANISM. The candidate is data, not a constant: a
+  # page nobody told must not find a server that is sitting right there.
+  if e_says e3 'no server answered' && ! e_says e3 "$E_PORT"; then
+    say "E3 control: a page nobody told never dials $E_PORT, with a server on it"
+  else
+    no "E3 an untold page reached $E_PORT — the candidate is compiled in, not given"
+  fi
+
+  # ⚠ THE TREE IS LEFT HOLDING THE PLAIN DEMO. `make pages` means *the quick start*,
+  # and a `_site/` carrying a probe's port would attach somebody's demo to a listener
+  # that stopped existing when this script exited.
+  node tools/build-pages.mjs > /dev/null || fail "could not restore the plain demo"
+fi
+
 echo
 if [ "$ok" -eq 1 ]; then
   echo "demo PASS — _site/index.html opens from file://, edits its own world and draws it."
-  echo "            No server, no toolchain, no port."
+  echo "            No server, no toolchain, no port — and it attaches to one it is told about."
 else
-  fail "the quick-start demo did not hold (see $OUT/demo.raw)"
+  fail "the quick-start demo did not hold (see $OUT/)"
 fi

@@ -13,13 +13,28 @@
 // output and asserts it arrived verbatim. It composes nothing, and the day it
 // starts composing is the day there are two pages again.
 //
-// ⚠ AND THERE IS NOTHING TO INLINE YET, WHICH IS SAID HERE SO THE THINNESS DOES
+// ⚠ AND THERE IS ALMOST NOTHING TO INLINE, WHICH IS SAID HERE SO THE THINNESS DOES
 // NOT READ AS AN OVERSIGHT. loft's `--html` shell already emits ONE self-contained
 // file — the wasm and every piece of glue are inside it — so routing's
-// `build-site.mjs` bundling step has no counterpart here. The base tree
-// (`data/parts/`, as a `globalThis.loftBaseFS` prelude, measured by `P6`) arrives
-// when something in the client READS a file; adding it before that would be this
-// tree's commonest defect, a thing built and never called.
+// `build-site.mjs` bundling step has no counterpart here. The rest of the base tree
+// (`data/parts/`) arrives when something in the client READS it; adding it before
+// that would be this tree's commonest defect, a thing built and never called.
+//
+// ── `--servers <url>[,<url>]` — plan 22 `B2b` ───────────────────────────────
+//
+// The one thing that IS inlined, and only when asked for. A demo opened off a disk
+// dials `/ws` against `file://` and reaches nothing, which is correct; this is how
+// it can be told that an editor is running somewhere else. It is written as a
+// `globalThis.loftBaseFS` prelude ahead of loft's own script — `P6`'s measured
+// mechanism, where a page reads its base tree exactly as the interpreter reads a
+// directory.
+//
+// ⚠ IT IS A FLAG RATHER THAN A DEFAULT, and that is the whole safety of it. A
+// candidate baked into every demo would have any page on this box silently adopt
+// whatever is on that port — somebody's live session, or `probe/b1b/auth.sh`'s run
+// B, whose entire subject is a page that finds NO server. The person who wants an
+// attachment asks for one; a plain `make pages` produces a page that behaves
+// exactly as it did before this existed.
 //
 // ⚠ THE STALENESS CHECK IS THE ONE THING THIS SCRIPT DECIDES. A demo assembled
 // from an engine older than its own sources is the failure mode the design named:
@@ -72,17 +87,68 @@ if (newer.length) {
     + (newer.length > 5 ? `\n              … and ${newer.length - 5} more` : ''));
 }
 
+// ── The servers this demo may be told about ─────────────────────────────────
+const flag = process.argv.indexOf('--servers');
+const servers = flag < 0 ? [] : (process.argv[flag + 1] ?? '')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+if (flag >= 0 && !servers.length) die('--servers was given no url');
+for (const u of servers) {
+  // ⚠ REFUSED HERE RATHER THAN DISCOVERED IN A BROWSER. A relative path in this
+  // list is not a second origin — it is `/ws` again, spelled by somebody who meant
+  // a host — and it would spend `LOCAL_AFTER` frames re-dialling the candidate the
+  // page already tried first.
+  if (!/^wss?:\/\//.test(u)) die(`--servers takes ws:// or wss:// urls; got '${u}'`);
+}
+
+// ⚠ AHEAD OF LOFT'S OWN SCRIPT, WHICH IS THE ONLY PLACE IT WORKS. `loftBaseFS` is
+// read when the filesystem is constructed at boot, so a prelude appended after that
+// script is a tree nobody ever looks at — and it would fail SILENTLY, as an absent
+// file rather than as an error.
+//
+// ⚠ ASCII ONLY, AND IT IS THE WRITE PATH THAT SAYS SO RATHER THAN TASTE. The first
+// version put an em dash in this comment line and the byte-count assertion below
+// caught it MANGLED in the page: splicing a string into a 4.7 MB binary means one
+// encoding for both, and latin1 — the only lossless one for the engine's bytes —
+// truncates every code point above 0xFF. The splice is Buffers now, which removes
+// the trap; the ASCII stays because a file the page PARSES should not depend on
+// having got that right.
+const prelude = servers.length
+  ? Buffer.from(`<script>globalThis.loftBaseFS = ${JSON.stringify({
+      '/servers.txt': `# plan 22 B2b: where this demo may look for an editor.\n`
+                    + `# The page's own origin is always tried first.\n`
+                    + servers.map((s) => s + '\n').join(''),
+    })};</script>\n`, 'utf8')
+  : null;
+
 // ── The copy, and the assertion that it is one ──────────────────────────────
 mkdirSync(SITE, { recursive: true });
 const bytes = readFileSync(ENGINE);
-writeFileSync(INDEX, bytes);
+let out = bytes;
+if (prelude) {
+  // ⚠ THE SEARCH IS ON THE BUFFER, so the engine's bytes are never decoded at all.
+  const at = bytes.indexOf(Buffer.from('<script>', 'utf8'));
+  if (at < 0) die('no <script> in the engine build — the prelude has nowhere to go');
+  out = Buffer.concat([bytes.subarray(0, at), prelude, bytes.subarray(at)]);
+}
+writeFileSync(INDEX, out);
 
 // ⚠ READ BACK AND COMPARE, because the claim of this script is *the demo is the
 // same artifact* and a write is not a proof of one. It costs one read of a 4.7 MB
-// file and it is the only invariant here that could ever be false.
+// file and it is the only invariant here that could ever be false. With a prelude
+// the claim weakens by exactly one thing — the engine bytes are still all there, in
+// order, and something was put in front of them.
 const back = readFileSync(INDEX);
-if (!back.equals(bytes)) die('the written page is not byte-identical to the engine build');
+if (!prelude && !back.equals(bytes)) die('the written page is not byte-identical to the engine build');
+if (prelude && !back.includes(prelude)) die('the servers prelude did not reach the page');
+if (prelude && back.length !== bytes.length + prelude.length) {
+  die('the page is not the engine build plus a prelude — something else changed');
+}
 
 const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
-console.log(`build-pages: _site/index.html  ${kb(bytes.length)}  (the client engine build, verbatim)`);
-console.log(`build-pages: open it from file:// — no server, no toolchain, no port.`);
+console.log(`build-pages: _site/index.html  ${kb(out.length)}  (the client engine build, verbatim)`);
+if (servers.length) {
+  console.log(`build-pages: and ${servers.length} server candidate(s) after its own origin:`);
+  for (const s of servers) console.log(`             ${s}`);
+} else {
+  console.log(`build-pages: open it from file:// — no server, no toolchain, no port.`);
+}
