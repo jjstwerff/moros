@@ -162,6 +162,29 @@ pub fn surface_at(i: integer) -> Surface {
   surfaces()[i] ?? Surface { sf_name: "?", sf_r: 0.0, sf_g: 0.0, sf_b: 0.0, sf_bucket: "?" }
 }
 
+// WHICH RAMP A SURFACE IS DRAWN WITH — 0 flat, 1 by HEIGHT, 2 by DEPTH.
+//
+// ⚠ ONLY THE GROUND AND THE WATER RAMP AT ALL. A road is a surface rather than a
+// reading of the terrain, which is why every other slot is flat; water is the
+// second thing in this world whose colour says something about the shape it is on.
+//
+// ⚠ IT IS HERE BECAUSE THERE ARE TWO RENDERERS NOW — plan 22 `B1b.2c.4b`. It was
+// `editor_server.loft`'s, which was fine while the server was the only thing that
+// composed a chunk's surfaces; the page composes its own out of
+// `chunk_meshes_all`, and a second copy of this is a page whose water is flat
+// while the server's is not — invisible in every count and only in the picture.
+//
+// ⚠ AND THE GROUND'S ROW WAS MISSING, WHICH IS HOW A TABLE HIDES A SPECIAL CASE.
+// The server's `M:` for surface 0 carried a literal `1` beside a `surface_ramp`
+// call for the other ten, so *the ground is height-ramped* lived at the send site
+// and not in the table that answers exactly that question. Grass answers 1 here
+// and the send site asks; the wire is unchanged, which is what the gates say.
+pub fn surface_ramp(name: text) -> integer {
+  if name == "grass" { return 1; }
+  if name == "water" { return 2; }
+  0
+}
+
 // The index a NAME sits at, or −1. ⚠ Plan 17 `A8.8` (§P9.13): a part's `WALL`
 // section names its surface in words — `surface=floor` — because a stored INDEX
 // would be a second copy of this list's order, and the header three lines up says

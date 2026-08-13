@@ -137,7 +137,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.2c.2`** — the five find their real home, and `moros_render`'s go | S | **DONE 2026-08-13.** ⛔ `c.1`'s home was WRONG: all five have internal `moros_render` users, so they could not leave — they are **`hex_proj`'s** now, the leaf both sides already depend on. 14 tests moved with them (moros_render 167 → 153, hex_proj 8 → 22, every row accounted for); 3 fixture-only tests build their own geometry | ✅ Done |
 | ✅ **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | **DONE 2026-08-13.** `make probe-mesher`: 49 tiles × 11 surfaces, **99 with geometry in them**, every one the same mesh. Both bodies live — the server's is `chunk_meshes_all_srv` until `c.4` | ✅ Done |
 | ✅ **`B1b.2c.4a`** — the server drops its copy | S | **DONE 2026-08-13.** 41 declarations and 1,744 lines out of `src/editor_server.loft`; five call sites take `hex_mesh::chunk_meshes_all`. `make gate` **48 PASS / 0 FAIL**, `make parts` byte-identical, `make probe-b1a` world `82d622b37d1d` unmoved. ⚠ **`make gate` is SILENT when it passes** — rc=0 with an empty log reads exactly like a suite that never ran, so the count comes from `GATE_VERBOSE=1` | ✅ Done |
-| **`B1b.2c.4b`** — the page draws all eleven surfaces | S | ⚠ a fence laid in local mode is VISIBLE — and `install_ground`'s `len < 6` guard returns **before** `drop_part`, which is the exact defect `add_mesh`'s own comment documents at length | ⏭ **next** |
+| ✅ **`B1b.2c.4b`** — the ramp and the slot are the library's; the server's two send paths become one | S | **DONE 2026-08-13.** ⛔ **Found a shipped bug doing it**: the chunk STREAM wrote the ramp as a literal `0` where the dirty FLUSH asked `surface_ramp`, so **water drew flat when a tile came into view and depth-ramped after any edit near it**. `tools/gates/world/water.mjs` is the first water gate and goes red on it — `flush [2]` against `stream [0]` | ✅ Done |
+| **`B1b.2c.4c`** — the page draws all eleven surfaces | S | ⚠ a fence laid in local mode is VISIBLE — and `install_ground`'s `len < 6` guard returns **before** `drop_part`, which is the exact defect `add_mesh`'s own comment documents at length | ⏭ **next** |
 | **`B1c`** — the walk in local mode | ? | ⚠ **unsized on purpose** — see below | Blocked on `B1b` |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
@@ -213,6 +214,43 @@ where the fresh server put the character. ⏭ **Which surfaced a live fact worth
 spawn point is REFUSED** — *"a footprint at this facing has no mitred corners; turn one step"*. A
 person opening the editor and pressing the house key is told no. Not this step's to fix; the
 refusal is a perfectly good sentence to compare, and `K-FIT` names the offer.
+
+## ⛔ What `B1b.2c.4b` turned up (2026-08-13) — one world, two pictures, decided by delivery
+
+**Getting the page a ramp to draw with found a shipped bug in the server.** A chunk's surfaces
+reach a client two ways — the dirty **FLUSH** after an edit, and the chunk **STREAM** when a tile
+comes into view — and they were two copies of one loop. The flush asked `hex_mesh::surface_ramp`;
+the stream wrote a literal `0`, **under a comment claiming *"the same loop as the flush, over the
+same list, in the same order"***. The ramp slot is a MODE (0 flat, 1 by height, 2 by DEPTH), so
+**water drew flat when a tile came into view and depth-ramped the moment anything near it was
+edited.** One world, two pictures, decided by which path delivered the tile.
+
+⚠ **`chunk_meshes_all` UNIFIED THE MESHES AND LEFT THE SEND SPELLED TWICE** — which is exactly the
+half a reader assumes went with it, and the comment above the copy says so out loud. **The lesson
+is not "check the copies": it is that a helper which removes one duplication puts a comment over
+the one it did not remove.**
+
+⚠ **AND THERE WAS NO WATER GATE AT ALL, WHICH IS WHY IT SURVIVED.** Water is the eleventh surface
+(plan 20 `A10`) and the **only one besides the ground whose ramp is not flat** — so it is the one
+surface on which the two paths could disagree, and the only surface nothing drove.
+`tools/gates/world/water.mjs` drives it now and goes red on the bug it was written for:
+`rampFromTheFlush [2]` against `rampFromTheStream [0]`.
+
+✅ **THE FIX IS STRUCTURAL, NOT A LITERAL CORRECTED.** `send_surfaces` is one function with two
+callers, so the second spelling is not expressible — cheaper than the instrument that would have
+caught it, which is this tree's chokepoint rule one wire down. The ground's own `1` went the same
+way: `ground_ramp()` **asks** `surface_ramp` by the surface's own name at both of its two sites.
+
+⚠ **THE FIXTURE IS THE HALF THAT TOOK THE WORK, AND IT WAS MEASURED TWICE.** Water refuses on the
+world the server starts with — *"water at -2 leaves no room for a bed 12 deep above the reserve"* —
+because a river digs its bed DOWN from the terrain, so the gate raises a band first. ⚠ And the
+first raise probe read a height that never moved: **the brush is ten hexes AHEAD of the character**,
+which the editor's own help line says and no gate had ever needed to know.
+
+⚠ **AND THE GATE'S OWN WAIT WAS A 20-SECOND SILENT TIMEOUT.** It waited on `S:rebuilt`, which the
+last placement's flush has usually already closed — `road.mjs` warns about that race one toggle
+over. Waiting for **the water surface to arrive** is the condition it actually wanted, cannot be
+missed by being early, and took the gate from 44.7 s to **26.6 s**.
 
 ## ✅ What `B1b.2c.4a` turned up (2026-08-13) — a green suite that printed NOTHING
 

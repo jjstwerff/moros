@@ -121,3 +121,67 @@ fn test_the_six_a_panel_can_be_routed_into_all_resolve() {
   }
   assert(surface_index("tree") >= 0, "the vegetation surface is not called 'tree'");
 }
+
+// ── THE RAMP SLOT — plan 22 `B1b.2c.4b` ─────────────────────────────────────
+//
+// ⛔ THIS EXISTS BECAUSE THE ANSWER WAS STATED IN THREE PLACES AND ONE OF THEM WAS
+// WRONG. `editor_server.loft` asked `surface_ramp` on the dirty-flush path and wrote
+// a literal `0` on the chunk-stream path, under a comment claiming the two were the
+// same loop — so **water drew flat when a tile came into view and depth-ramped the
+// moment anything near it was edited**. One world, two pictures, decided by which
+// path delivered the tile. There is one send loop now, and the rule is here.
+
+fn test_every_surface_has_a_ramp_and_it_is_one_of_three() {
+  // ⚠ TOTAL OVER THE LIST, which is the half a spot-check cannot cover. A ramp is
+  // a MODE the client switches on — `> 1.5` is the depth branch — so a fourth value
+  // is not a new look, it is a surface that falls through every branch and draws
+  // flat while its author believes otherwise.
+  for i in 0..len(surfaces()) {
+    r = surface_ramp(surface_at(i).sf_name);
+    assert(r == 0 || r == 1 || r == 2,
+           "'{surface_at(i).sf_name}' ramps {r}, which is no mode at all");
+  }
+}
+
+fn test_exactly_one_surface_ramps_by_height_and_one_by_depth() {
+  // ⚠ COUNTED, NOT SPOT-CHECKED. `surface_ramp` keys on a NAME, so a rename in
+  // `surfaces()` silently turns its answer into the default — and the default is
+  // the flat one, which looks like a surface nobody has got round to rather than a
+  // surface that lost its ramp. A count over the whole list is what sees that: it
+  // goes red on the rename, where an assertion about "grass" would keep passing
+  // against a name no surface has.
+  by_height = 0;
+  by_depth = 0;
+  for i in 0..len(surfaces()) {
+    r = surface_ramp(surface_at(i).sf_name);
+    if r == 1 { by_height = by_height + 1; }
+    if r == 2 { by_depth = by_depth + 1; }
+  }
+  assert(by_height == 1, "{by_height} surfaces ramp by height, want exactly the ground");
+  assert(by_depth == 1, "{by_depth} surfaces ramp by depth, want exactly the water");
+  // …and WHICH, because "one of each" is satisfied by the wrong pair.
+  assert(surface_ramp("grass") == 1, "the ground does not ramp by height");
+  assert(surface_ramp("water") == 2, "the water does not ramp by depth");
+}
+
+fn test_a_surface_that_is_not_in_the_list_ramps_flat() {
+  // The default is reachable and is FLAT, which is what makes the count above the
+  // instrument rather than the spelling. ⚠ It is deliberately not a refusal: unlike
+  // `surface_index`, this answers a drawing site that already holds a real surface,
+  // and there is no picture in which "no ramp" is the wrong thing to do.
+  assert(surface_ramp("dressed-stone") == 0, "an unknown surface claimed a ramp");
+  assert(surface_ramp("") == 0, "the empty name claimed a ramp");
+}
+
+// ── THE SLOT — one surface out of `chunk_meshes_all`'s vector ────────────────
+
+fn test_a_slot_past_the_end_is_an_empty_mesh_and_not_a_crash() {
+  // ⚠ AND ITS CONSUMERS READ EMPTY AS A CLEAR. A surface that had geometry and now
+  // has none is a mesh to DROP: skipping it leaves the old buffer bound and the
+  // picture keeps a fence that was removed — `editor_client.loft`'s `add_mesh`
+  // finding, which cost two silently broken mechanisms before anyone photographed
+  // it. So an out-of-range slot must be empty rather than absent.
+  ms: vector<Mesh> = [mesh("a")];
+  assert(len(chunk_mesh_slot(ms, 5).vertices) == 0, "a slot past the end had geometry");
+  assert(len(chunk_mesh_slot(ms, 0 - 1).vertices) == 0, "a negative slot had geometry");
+}

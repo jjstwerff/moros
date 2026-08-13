@@ -200,6 +200,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PALETTE = {
   figure: [0.80, 0.60, 0.45],   // the SUBJECT — the row every gate here asks about
   grass:  [0.42, 0.50, 0.30],
+  // ⚠ THIS ROW IS NOT `hex_mesh::surfaces()`'s ROCK, AND THE NAME SAYS OTHERWISE.
+  // It is `editor_server.loft`'s `ROCK_R/G/B` — the TOP of the ground's height ramp,
+  // a shader lerp on the grass mesh — while the rock SURFACE is `0.68,0.65,0.59`.
+  // One outcrop, two colours, and `OPEN_ISSUES` § *two rocks that disagree* has the
+  // photograph: the mountain top is this brown and the cliff falling away from it is
+  // the grey. So a rock FACE in a frame lands in whatever bucket is nearest — `wall`,
+  // which `surfaces()` declares alike anyway — and never here.
+  //
+  // ⚠ IT WAS READ AS A PHANTOM FIRST, ON A GREP THAT COULD NOT FIND IT: the value
+  // lives in this table as one triple and in the server as three `const` lines, so
+  // `0.46, 0.38, 0.26` matched nothing and the row looked like a colour nothing draws.
+  // *A grep's exclusion is an assumption* — plan 22 `B1b.2c.2`'s finding, one week and
+  // one file over.
   rock:   [0.46, 0.38, 0.26],
   field:  [0.55, 0.62, 0.24],
   road:   [0.30, 0.18, 0.15],   // ⚠ see hex_mesh::surfaces() — a RED EARTH now

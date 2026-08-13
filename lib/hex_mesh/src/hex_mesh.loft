@@ -2698,6 +2698,26 @@ pub fn chunk_meshes_all(cx: integer, cz: integer, wld: VoxelWorld, bounded: bool
   [cma_g, cma_r, cma_f, cma_v, cma_k, cma_w, cma_l, cma_a, cma_s, cma_x, cma_wt]
 }
 
+// ONE SURFACE OUT OF `chunk_meshes_all`'s vector, by index.
+//
+// ⚠ A MISS IS AN EMPTY MESH, NOT A REFUSAL. Every caller loops over a vector this
+// function's neighbour built to exactly `surface_count()` entries, so an index that
+// misses is a caller's bug and not a datum — and the honest thing at a drawing site
+// is to draw nothing.
+//
+// ⚠ AND ITS CONSUMERS MUST READ AN EMPTY MESH AS A CLEAR. A surface that had
+// geometry and now has none is a mesh to DROP, not a message to skip: skipping it
+// leaves the old buffer bound and the picture keeps a fence that was removed. That
+// is `add_mesh`'s finding in `editor_client.loft`, and it cost two silently broken
+// mechanisms before anyone photographed it.
+//
+// ⚠ PUBLIC BECAUSE THERE ARE THREE CALLERS NOW — plan 22 `B1b.2c.4b`: the server's
+// stream, its part thumbnails, and the page. It was three lines in the server, which
+// is exactly the size at which a fourth copy gets written instead of imported.
+pub fn chunk_mesh_slot(ms: vector<Mesh>, i: integer) -> Mesh {
+  ms[i] ?? mesh("empty")
+}
+
 // WHERE THE GROUND IS UNDER A POINT — interpolated across the cell's corners, so a
 // walker on a slope stands on the surface the mesh drew rather than on the cell's
 // nominal height.

@@ -391,6 +391,40 @@ serves**, differing only in where a key press goes.
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ⛔ `B1b.2c.4b` — ONE WORLD, TWO PICTURES, DECIDED BY DELIVERY, 2026-08-13
+
+**Getting the page a ramp to draw with found a shipped bug in the server.** A chunk's surfaces
+reach a client two ways — the dirty **FLUSH** after an edit and the chunk **STREAM** when a tile
+comes into view — and they were two copies of one loop. The flush asked `hex_mesh::surface_ramp`;
+the stream wrote a literal `0`, **under a comment claiming *"the same loop as the flush, over the
+same list, in the same order"***. The ramp slot is a MODE (0 flat, 1 by height, 2 by DEPTH), so
+**water drew flat when a tile came into view and depth-ramped the moment anything near it was
+edited.**
+
+⚠ **`chunk_meshes_all` UNIFIED THE MESHES AND LEFT THE SEND SPELLED TWICE.** The lesson is not
+*check the copies* — it is that **a helper which removes one duplication puts a comment over the
+one it did not remove**, and that comment is what a reader trusts.
+
+⚠ **AND NOTHING COULD SEE IT: THERE WAS NO WATER GATE.** Water is the eleventh surface (plan 20
+`A10`) and the **only one besides the ground whose ramp is not flat**, so it is the one surface on
+which the two paths could disagree — and the only surface nothing drove.
+`tools/gates/world/water.mjs` is that gate, and it is red on the bug it was written for:
+`rampFromTheFlush [2]` against `rampFromTheStream [0]`.
+
+✅ **THE FIX IS STRUCTURAL.** `send_surfaces` is one function with two callers, so the second
+spelling is not expressible; `ground_ramp()` asks `surface_ramp` by the surface's own name at both
+ground sites instead of writing `1`. `hex_mesh::surface_ramp` and `chunk_mesh_slot` are published,
+with four library tests — ⚠ and the one that sees a **rename** is the COUNT (*exactly one surface
+ramps by height, exactly one by depth*), because `surface_ramp` keys on a name and a renamed
+surface silently falls through to the flat default. Both sabotages measured.
+
+⚠ **THE FIXTURE TOOK THE WORK AND WAS MEASURED TWICE.** Water refuses on the world the server
+starts with — *"water at -2 leaves no room for a bed 12 deep above the reserve"* — so the gate
+raises a band first; and the first raise probe read a height that never moved, because **the brush
+is ten hexes AHEAD of the character**, which the editor's own help line says and no gate had needed
+to know. ⚠ Its wait was a 20 s silent timeout on `S:rebuilt` (the race `road.mjs` warns about);
+waiting for the water surface to **arrive** took it from 44.7 s to **26.6 s**.
+
 ## ✅ `B1b.2c.4a` — A GREEN SUITE THAT PRINTED NOTHING, 2026-08-13
 
 **The mesher has one body.** 41 declarations — 33 functions, 8 constants — and **1,744 lines** out
