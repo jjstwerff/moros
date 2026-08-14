@@ -67,7 +67,18 @@ cd "$(dirname "$0")/../.." || exit 1
 
 LOFT=${LOFT:-loft}
 OUT=probe/k2/out
-ALL="annex door embrasure furnish house niche opening profiles"
+# ⚠ **`determinism` JOINED THE LIST AT `K3` · `E`, AND IT HAD TO** — plan 22. It is the
+# only script in the tree that presses `E`, so without it that conversion would have had
+# **no both-spellings comparison at all**: `R` was in seven of the eight, `Y`/`T` and
+# `J`/`K`/`V` in two, and `E` in none. ⚠ Its baseline is the script as it stood before
+# `R` was converted, not before `E` was — a baseline that is half converted would make
+# check 6 report a lost press.
+#
+# ⚠ AND IT IS THE FIRST SCRIPT HERE WITH NO OPENING IN IT, which is what turned checks
+# 3, 4 and 5 conditional. They were unconditional and `continue`d on failure, so adding
+# a script with nothing to open would have skipped its whole run — reported as one loud
+# failure rather than silently, but skipped.
+ALL="annex determinism door embrasure furnish house niche opening profiles"
 list=${*:-$ALL}
 rm -rf "$OUT" && mkdir -p "$OUT"
 fails=0
@@ -153,17 +164,27 @@ for s in $list; do
 
   # 3 — the baseline has to still be the OLD spelling, or check 1 compares a file
   # with itself and passes for the worst possible reason.
-  if grep -qE '^key [OPIUNM]$' "probe/k2/orig/$s.keys"; then
-    ok "the baseline still presses $(grep -cE '^key [OPIUNM]$' "probe/k2/orig/$s.keys") opening key(s)"
-  else
+  #
+  # ⚠ CONDITIONAL SINCE `K3` · `E`, in the shape checks 6, 7 and 9 already had: a
+  # script with no opening in EITHER spelling has nothing to say here, and demanding
+  # one of every script would fail `determinism` for having nothing to do with
+  # openings. What it must never become is *silent* — the `no opening` row below is
+  # what says this script's checks 1 and 2 are not covering a profile.
+  obase=$(grep -cE '^key [OPIUNM]$' "probe/k2/orig/$s.keys")
+  oconv=$(grep -c '^verb opening$' "tools/scripts/$s.keys")
+  if [ "$obase" -eq 0 ] && [ "$oconv" -eq 0 ]; then
+    ok "no opening in this script — checks 1, 2 and 5 say nothing about a profile here"
+  elif [ "$obase" -eq 0 ]; then
     bad "probe/k2/orig/$s.keys has no opening key — it is not the old spelling"
     continue
+  else
+    ok "the baseline still presses $obase opening key(s)"
   fi
   # 4 — …and the live one has to have none left.
   if grep -qE '^key [OPIUNM]$' "tools/scripts/$s.keys"; then
     bad "tools/scripts/$s.keys still presses an opening key — the conversion is half done"
   else
-    ok "the converted script cuts $(grep -c '^verb opening$' "tools/scripts/$s.keys") opening(s) by verb"
+    ok "the converted script cuts $oconv opening(s) by verb"
   fi
 
   # 6 — the SAME PAIR OF CONTROLS FOR `R`, plan 22 `K3`. The run key converts
@@ -227,6 +248,35 @@ for s in $list; do
     ok "and it hangs $aconv volume(s) by verb, where the baseline pressed \`J\`/\`K\`/\`V\`"
   fi
 
+  # 10 — the STAIR pair, plan 22 `K3` · `E`, and it is the check whose shape is
+  # deliberately UNLIKE 7, 8 and 9. `E` and `Q` differ by a DIRECTION, so they stay two
+  # verbs and there is no `select` to compare kinds against — the direction has to be
+  # in the verb NAME. So this counts each key against its own verb, and the red it
+  # exists for is a conversion that collapsed the pair: `verb stair` twice, or
+  # `stair_up` where the baseline pressed `Q`.
+  #
+  # ⚠ AND IT COUNTS THE TWO SEPARATELY RATHER THAN SUMMING THEM. A transcription that
+  # swapped an up for a down would leave the total right, which is the order-blindness
+  # check 9 was written against, one gesture over.
+  ubase=$(grep -cE '^key E$' "probe/k2/orig/$s.keys")
+  uconv=$(grep -c '^verb stair_up$' "tools/scripts/$s.keys")
+  dbase=$(grep -cE '^key Q$' "probe/k2/orig/$s.keys")
+  dconv=$(grep -c '^verb stair_down$' "tools/scripts/$s.keys")
+  if [ "$ubase" -eq 0 ] && [ "$uconv" -eq 0 ] && [ "$dbase" -eq 0 ] && [ "$dconv" -eq 0 ]; then
+    ok "no stair in this script"
+  elif grep -qE '^key [EQ]$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses a stair key — the conversion is half done"
+  elif [ "$ubase" != "$uconv" ] || [ "$dbase" != "$dconv" ]; then
+    bad "the baseline presses \`E\` $ubase and \`Q\` $dbase time(s) and the script says \
+\`verb stair_up\` $uconv and \`verb stair_down\` $dconv — a tread changed direction"
+  elif grep -q '^verb stair$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys says \`verb stair\` — the direction has been flattened \
+out of the verb and into nothing"
+  else
+    ok "and it cuts $uconv tread(s) up and $dconv down, by two verbs where the \
+baseline pressed two keys"
+  fi
+
   sed -n "s/^ *\([A-Z]\): '37:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/annexmap.txt"
   awk 'NR==FNR { map[$1] = $2; next }
        /^key [JKV]$/ { print map[$2] }' \
@@ -278,7 +328,9 @@ selects [$(tr '\n' ' ' < "$OUT/$s.seats-b")]"
       "$OUT/keymap.txt" "probe/k2/orig/$s.keys" > "$OUT/$s.kinds-a"
   awk '/^select /  { sel = $2 }
        /^verb opening$/ { print sel }' "tools/scripts/$s.keys" > "$OUT/$s.kinds-b"
-  if [ ! -s "$OUT/keymap.txt" ]; then
+  if [ "$obase" -eq 0 ]; then
+    :
+  elif [ ! -s "$OUT/keymap.txt" ]; then
     bad "no KEYMAP could be read out of tools/script.mjs — check 5 is vacuous"
   elif [ ! -s "$OUT/$s.kinds-a" ]; then
     bad "the baseline's keys mapped to no kinds at all"
@@ -308,7 +360,15 @@ selects [$(tr '\n' ' ' < "$OUT/$s.kinds-b")]"
   # about the one thing this conversion changes.
   cut=$(grep -c 'opened profile' "$OUT/$s-a.said")
   want=$(grep -cE '^key [OPIUNM]$' "probe/k2/orig/$s.keys")
-  if [ "$cut" = "$want" ]; then
+  # ⚠ THE EMPTY CASE IS SAID OUT LOUD RATHER THAN PASSING AS A CLEAN RESULT — plan 22
+  # `K3` · `E`, and it was `determinism` joining the list that exposed it. `0 == 0` is
+  # true, so this row printed *"and they name every profile:"* with nothing after the
+  # colon — an instrument reporting success for having been asked nothing, which is
+  # the shape CLAUDE.md warns about at *a grep over a log is an instrument, and its
+  # default answer is absent*.
+  if [ "$want" -eq 0 ]; then
+    ok "no profile to name here"
+  elif [ "$cut" = "$want" ]; then
     ok "and they name every profile: $(grep 'opened profile' "$OUT/$s-a.said" \
         | sed 's/^editor: //' | tr '\n' ';' | cut -c1-72)"
   else

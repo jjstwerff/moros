@@ -364,6 +364,144 @@ fn test_the_three_annex_keys_name_one_verb_and_the_selection_decides() {
          "a refused cupboard filed {len(cs.es_annex.items)} annex(es)");
 }
 
+// ── `E` AND `Q` ARE *TWO* VERBS — plan 22 `K3`, and the rule under test ─────
+//
+// ⚠ **THIS IS THE ROW THAT STOPS THE PATTERN.** Three slices in a row collapsed a
+// key family onto one verb, and `E`/`Q` have exactly that shape from the outside:
+// two keys, one message, a payload that differs (`30:1`, `30:-1`). They stay apart
+// because the payload is a DIRECTION, which `press_verb`'s own note calls part of
+// the action — *every editor has zoom in and zoom out*. If somebody ever collapses
+// them behind a selection, this goes red on the first line.
+fn stairable() -> VoxelWorld {
+  sw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  ground(sw, 12);
+  sw
+}
+
+fn test_the_two_stair_keys_are_two_verbs_because_a_direction_is_part_of_the_action() {
+  assert(verb_of("E") != verb_of("Q"),
+         "`E` and `Q` both name '{verb_of(\"E\")}' — a direction has been "
+       + "flattened into a selection");
+  assert(verb_of("E") == VB_STAIR_UP && verb_of("Q") == VB_STAIR_DOWN,
+         "the stair keys name '{verb_of(\"E\")}' and '{verb_of(\"Q\")}'");
+
+  // …and the two verbs have to actually build different worlds, or the names differ
+  // and the gesture does not. ⚠ THE ANCHOR IS ASSERTED FIRST: both must have cut
+  // the same cell, or they differ for a reason that is not the direction.
+  uw = stairable();
+  dw = stairable();
+  us = EditSession {};
+  ds = EditSession {};
+  ua = press_verb(us, uw, author_on(uw, 0.0, 0.0, 0.0), verb_of("E"));
+  da = press_verb(ds, dw, author_on(dw, 0.0, 0.0, 0.0), verb_of("Q"));
+  assert(ua.ak_ok && da.ak_ok, "the fixture refused a tread: {ua.ak_why} / {da.ak_why}");
+  assert(ua.ak_q == da.ak_q && ua.ak_r == da.ak_r,
+         "the two treads landed at ({ua.ak_q},{ua.ak_r}) and ({da.ak_q},{da.ak_r})");
+  assert(!same_world(uw, dw),
+         "a tread up and a tread down left byte-identical worlds — the direction "
+       + "reaches the gesture from nowhere");
+}
+
+// ⚠ **THE CELL AHEAD, NOT THE ONE UNDERFOOT** — and that is the half of this gesture
+// with somewhere to go wrong, because both are one `px_to_hex` call apart in the
+// source. `cell_ahead` refuses rather than falling back on the author's own cell for
+// the reason its own comment gives (that fallback is what buried the camera), so an
+// assembly that read the wrong one would succeed and cut the floor the author stands
+// on.
+fn test_the_stair_verb_cuts_the_cell_ahead_and_not_the_one_underfoot() {
+  w = stairable();
+  s = EditSession {};
+  a = author_on(w, 0.0, 0.0, 0.0);
+  (hq, hr) = px_to_hex(a.au_x, a.au_z);
+  ack = press_verb(s, w, a, verb_of("E"));
+  assert(ack.ak_ok, "the fixture refused a tread: {ack.ak_why}");
+  assert(ack.ak_q != hq || ack.ak_r != hr,
+         "the tread was cut at ({ack.ak_q},{ack.ak_r}), which is the author's own cell");
+  assert(terrain_h(hq, hr, w) == 8,
+         "the author's own cell moved to {terrain_h(hq, hr, w)} from 8");
+  assert(terrain_h(ack.ak_q, ack.ak_r, w) > 8,
+         "the cell ahead is still at {terrain_h(ack.ak_q, ack.ak_r, w)}");
+}
+
+// ⚠ **THE ASSEMBLY IS WHAT MOVED, SO THE ASSEMBLY IS WHAT IS COMPARED** — whole-world
+// bytes against the four calls the socket used to make in a row. `stair_cut` was
+// already the library's and already tested; *which cell, at what reference, with what
+// stride, and what it says* was `editor_server.loft`'s and had no test at all.
+fn test_the_stair_verb_writes_what_the_socket_wrote_by_hand() {
+  by_verb = stairable();
+  by_hand = stairable();
+  vs = EditSession {};
+  va = author_on(by_verb, 0.0, 0.0, 0.0);
+  ha = author_on(by_hand, 0.0, 0.0, 0.0);
+
+  vack = press_verb(vs, by_verb, va, verb_of("E"));
+
+  (hfound, hq, hr) = cell_ahead(ha.au_x, ha.au_z, ha.au_yaw);
+  assert(hfound, "the fixture found no cell along the facing — nothing to compare");
+  (hoq, hor) = px_to_hex(ha.au_x, ha.au_z);
+  hhere = walk_h(hoq, hor, by_hand, ha.au_y / by_hand.w_unit ?? 0.0);
+  hwhy = "";
+  hnew = stair_cut(by_hand, hq, hr, ha.au_y, hhere, 1,
+                   walker_step(by_hand.w_unit), hwhy);
+  assert(hnew >= 0, "the hand-written tread was refused ({hnew}) {hwhy}");
+
+  assert(vack.ak_ok, "the verb refused a tread the hand path cut: {vack.ak_why}");
+  assert(vack.ak_q == hq && vack.ak_r == hr,
+         "the verb cut ({vack.ak_q},{vack.ak_r}) and the hand path ({hq},{hr})");
+  assert(same_world(by_verb, by_hand),
+         "the two paths first differ at byte {first_difference(by_verb, by_hand)}");
+  // ⚠ AND THE SENTENCE, BECAUSE THE WORLD CANNOT SEE IT. `say_stair` travels in the
+  // ack now instead of being composed at the socket, which is the `session_run` rule
+  // — a driver that spelled its own would be the fourth site rebuilt one gesture over.
+  assert(vack.ak_why == say_stair(1, hq, hr, hnew, hhere),
+         "the verb said '{vack.ak_why}' where the gesture's own sentence is "
+       + "'{say_stair(1, hq, hr, hnew, hhere)}'");
+}
+
+// ⚠ **A TREAD IS THE SAME HEIGHT IN A WORLD AUTHORED AT ANOTHER UNIT** — plan 22
+// `K3`, and it is a fix rather than a translation. The handler took its stride from
+// the server's `cliff_step()`, which is `walker_step(W_UNIT)` with `W_UNIT` a program
+// constant of 0.25; a part world authored at 0.125 got a tread of **half the height a
+// walker can climb**, which is the one promise this gesture makes. Same substitution
+// as `J`'s `HEIGHT_SCALE`, one gesture over.
+//
+// ⚠ **THE RATIO, NOT THE NUMBER** — `door/slat`'s test's rule: a height would need
+// rewriting by anyone who touched `FIGURE_M`, and the claim is about the two worlds
+// agreeing rather than about 4.
+//
+// ⚠ **AND THE FIXTURE SEES ONLY THE STRIDE HALF OF THE FIX.** The other half — the
+// walk reference, `py / HEIGHT_SCALE` where `au_y / w.w_unit` belongs — lands on the
+// same single ground layer at either reference here, so this fixture is blind to it.
+// Said out loud rather than left to be assumed covered.
+fn flat_at(unit: float) -> VoxelWorld {
+  fw = world_new(unit, W_RESERVE, 8, 3).wn_world;
+  ground(fw, 12);
+  fw
+}
+
+fn test_a_tread_is_the_same_height_in_a_world_authored_at_another_unit() {
+  coarse = flat_at(0.25);
+  fine   = flat_at(0.125);
+  cs = EditSession {};
+  fs = EditSession {};
+  ca = press_verb(cs, coarse, author_on(coarse, 0.0, 0.0, 0.0), verb_of("E"));
+  fa = press_verb(fs, fine,   author_on(fine,   0.0, 0.0, 0.0), verb_of("E"));
+  assert(ca.ak_ok && fa.ak_ok, "a fixture refused a tread: {ca.ak_why} / {fa.ak_why}");
+
+  crise = terrain_h(ca.ak_q, ca.ak_r, coarse) - 8;
+  frise = terrain_h(fa.ak_q, fa.ak_r, fine) - 8;
+  // The control: a rise of nothing in both worlds would satisfy the equality below
+  // for the worst possible reason.
+  assert(crise > 0 && frise > 0,
+         "the treads rose {crise} and {frise} units — there is nothing here to compare");
+  assert(frise == crise * 2,
+         "a world at half the unit took a tread of {frise} units where the editor's "
+       + "took {crise} — half the unit wants twice the units for the same height");
+  assert((crise as float) * coarse.w_unit == (frise as float) * fine.w_unit,
+         "the same tread rises {(crise as float) * coarse.w_unit} in one world and "
+       + "{(frise as float) * fine.w_unit} in the other");
+}
+
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
 // ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
 // would run a gesture on every step of a walk.
@@ -405,8 +543,12 @@ fn test_an_unbound_verb_is_named_rather_than_refused() {
 fn test_every_verb_the_definition_produces_is_bound() {
   w = flat();
   s = EditSession {};
+  // ⚠ `J`, `K` AND `V` WERE MISSING FROM THIS LIST, and it is the check whose whole
+  // job is to notice that. They were bound at the slice before this one and the row
+  // was not extended, so `annex` sat here unasserted — the same shape as *built and
+  // never called*, one layer up. `E` and `Q` are added with them.
   for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
-             "R", "Y", "T"] {
+             "R", "Y", "T", "J", "K", "V", "E", "Q"] {
     v = verb_of(bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);

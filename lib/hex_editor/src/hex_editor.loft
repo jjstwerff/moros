@@ -908,6 +908,55 @@ pub fn grade_under(w: VoxelWorld, a: Author) -> integer {
   ground_h(w, gu_q, gu_r)
 }
 
+// ── ONE TREAD INTO THE CELL AHEAD — `30:`, plan 22 `K3` ─────────────────────
+//
+// ⚠ **THE FIRST `K3` SLICE THAT IS NOT A FAMILY, AND THE RULE IS THIS FILE'S
+// OWN.** `R`, then `Y`+`T`, then `J`+`K`+`V` each collapsed onto one verb because
+// what separated the keys was the THING made, and which thing is the catalogue's
+// business. `E` and `Q` are two keys on one message too (`30:1` and `30:-1`) and
+// they do **not** collapse: what separates them is a DIRECTION, and `press_verb`'s
+// note at `VB_RAISE` says a direction is part of the action — *every editor has
+// zoom in and zoom out*. A selection holding `+1`/`-1` would be the flattening
+// [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) calls a shipped mistake,
+// arrived at by pattern-matching on the three steps before this one.
+//
+// ⚠ **THE TREAD IS MEASURED FROM THE STORED SURFACE, NOT FROM THE FEET.** The feet
+// ride the *interpolated* surface, which sits below the cell's own height
+// everywhere but the centre — so a step built from `au_y` would be short by however
+// far off-centre the author was standing, and the amount would vary with where they
+// happened to stop.
+//
+// ⚠ **AND BOTH SCALES ARE THE WORLD'S OWN NOW, WHICH IS A FIX RATHER THAN A
+// TRANSLATION.** The handler this replaces divided by `hex_proj::HEIGHT_SCALE` and
+// took its stride from the server's `cliff_step()` — `walker_step(W_UNIT)`, a
+// program constant. Both are 0.25 on the landscape, so nothing could have gone red;
+// both are **wrong on a part world**, which is the substitution `J` found at
+// `author_on` one gesture over and `hex_mesh` carried at 72 sites. A gesture that
+// asks the world it is writing to cannot be wrong about which world it is in.
+//
+// ⚠ **AND THE ARGUMENT AGAINST THAT HAD EXPIRED.** The handler's comment said the
+// stride is the caller's because *"`cliff_step` is `moros_sim`'s rule … and
+// `hex_editor` must not depend on a moros package"*. It is not: `cliff_step()` **is**
+// `hex_editor::walker_step`, and has been since `B1c.2b` made the threshold a
+// parameter. `stair_cut` still takes it one layer down, where the seam is real.
+pub fn stair_ahead(w: VoxelWorld, a: Author, dir: integer) -> Ack {
+  if dir == 0 { return ack_no(say_refused("stair", "a tread of nothing")); }
+  (sa_found, sa_q, sa_r) = cell_ahead(a.au_x, a.au_z, a.au_yaw);
+  if !sa_found { return ack_no(say_refused("stair", "no cell along the facing")); }
+  (sa_hq, sa_hr) = px_to_hex(a.au_x, a.au_z);
+  sa_here = walk_h(sa_hq, sa_hr, w, a.au_y / w.w_unit ?? 0.0);
+  sa_why = "";
+  sa_new = stair_cut(w, sa_q, sa_r, a.au_y, sa_here, dir,
+                     walker_step(w.w_unit), sa_why);
+  if sa_new < 0 { return ack_no(say_refused_code("stair", sa_new, sa_why)); }
+  ack_at(ack_about(1, say_stair(dir, sa_q, sa_r, sa_new, sa_here), 0), sa_q, sa_r)
+}
+
+// How far around a cut tread the picture is stale. One cell is written and its
+// neighbours' walls change with it — the server's own number, kept beside the
+// gesture so a second driver cannot pick a different one.
+pub const STAIR_PAD = 3;
+
 // What one key press does. `PR_NONE` in `ak_why` means *this key is not a gesture*
 // — a walk key, a camera key, or nothing at all — and is NOT a refusal: the caller
 // decides whether that is worth saying.
@@ -1016,6 +1065,14 @@ pub const VB_SEAT    = "seat";
 // That does not make it a second verb: *hang a volume on what I am standing at* is one
 // action, and which volume is the catalogue's business. See `ANX_CUPBOARD`.
 pub const VB_ANNEX   = "annex";
+// ⚠ **TWO VERBS, AND THIS IS THE PAIR THAT PROVES THE RULE HAS TEETH.** `E` and `Q`
+// are two keys on ONE message (`30:1`, `30:-1`) — the shape that collapsed three
+// times in a row above — and they stay apart, because what separates them is a
+// DIRECTION and not a thing. See `stair_ahead`. ⚠ **And `verb_of` IS injective
+// here**, unlike `opening`, `seat` and `annex`: nothing has to be selected first, so
+// a converted script says the verb and nothing else.
+pub const VB_STAIR_UP   = "stair_up";
+pub const VB_STAIR_DOWN = "stair_down";
 
 // The DEFINITION — what key means what, and the only layer a person may remap.
 //
@@ -1040,6 +1097,8 @@ pub fn verb_of(key: text) -> text {
   if key == "R" { return VB_RUN; }
   if key == "Y" || key == "T" { return VB_SEAT; }
   if key == "J" || key == "K" || key == "V" { return VB_ANNEX; }
+  if key == "E" { return VB_STAIR_UP; }
+  if key == "Q" { return VB_STAIR_DOWN; }
   VB_NONE
 }
 
@@ -1112,6 +1171,13 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
                   root: text = "") -> Ack {
   if verb == VB_RAISE { return raise_ahead(w, a, 1); }
   if verb == VB_LOWER { return raise_ahead(w, a, 0 - 1); }
+  // ⚠ **THE SAME SHAPE AS THE TWO LINES ABOVE, AND THAT IS THE ARGUMENT.** A
+  // direction reaches the gesture as a signed argument from a verb that named it;
+  // it does not reach it from a selection. `raise`/`lower` have looked like this
+  // since `V1` and `stair_up`/`stair_down` join them rather than joining the
+  // families below.
+  if verb == VB_STAIR_UP   { return stair_ahead(w, a, 1); }
+  if verb == VB_STAIR_DOWN { return stair_ahead(w, a, 0 - 1); }
   // ⚠ THE SELECTION DECIDES WHAT `place` PRODUCES — plan 22 `B2e`, and it is `S3`'s
   // collapse one family over. Nothing chosen builds the procedural house it always
   // did, so every existing driver and every baseline is untouched; a chosen part is

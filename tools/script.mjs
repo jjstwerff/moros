@@ -195,6 +195,12 @@ const VERBMAP = {
   // a converted script says `select seat <kind>` first so it names its own choice.
   seat: '38:',            // a bed in the box, or a figure in the niche — the SELECTION says
   annex: '37:',           // a bedstee, a balcony, or a cupboard beside the last box
+  // ⚠ TWO ROWS, NOT ONE BARE `30:` — plan 22 `K3`, and it is the row above's opposite
+  // for a stated reason. `seat` and `annex` are bare because what they choose is a
+  // THING and a selection holds it; `E` and `Q` differ by a DIRECTION, which
+  // `hex_editor::stair_ahead` keeps in the verb exactly as `raise`/`lower` do.
+  stair_up: '30:1',       // one tread up, into the cell ahead
+  stair_down: '30:-1',    // …and one down
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 

@@ -4751,36 +4751,26 @@ fn main() {
             mark_dirty(dirty, shx.ha_q, shx.ha_r, 3);
           }
         } else if ev.msg_id == MSG_STAIR {
+          // ⚠ **WHAT IS LEFT HERE IS THE SOCKET AND NOTHING ELSE** — plan 22 `K3`,
+          // and the same shape `do_wall` took at the slice for `R`. The gesture is
+          // `hex_editor::stair_ahead`: which cell, at what reference, with what
+          // stride, and the sentence. This sends it, prints it, and rebuilds a disc.
+          //
+          // ⚠ **AND TWO NUMBERS WENT WITH IT, WHICH IS A FIX RATHER THAN A MOVE.**
+          // The reference was `py / HEIGHT_SCALE` and the stride `cliff_step()` —
+          // `walker_step(W_UNIT)` — a global and a program constant, both 0.25 on
+          // the landscape and both wrong on a part world. `E` in part mode cut a
+          // tread of half the height a walker can climb, and no fixture could have
+          // seen it. `stair_ahead` asks the world it is writing to.
           st_dir = ev.payload as integer ?? 1;
-          st_hx = world_to_hex(px, pz);
-          (st_found, st_q, st_r) = cell_ahead(px, pz, yaw);
-          if !st_found {
-            srv.send_to(ev.cid, "S:stair refused — no cell along the facing");
+          stack = hex_editor::stair_ahead(wld,
+                    hex_editor::author_at(px, pz, yaw, py), st_dir);
+          srv.send_to(ev.cid, "S:{stack.ak_why}");
+          if !stack.ak_ok {
+            println("editor: {stack.ak_why}");
           } else {
-            st_why = "";
-            // The step is measured from the STORED surface under the walker, not
-            // from `py`. The feet ride the interpolated surface, which sits below
-            // the cell's own height everywhere but the centre — so a step built
-            // from `py` would be short by however far off-centre the author was
-            // standing, and the amount would vary with where they stopped.
-            st_here = hex_editor::walk_h(st_hx.ha_q, st_hx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
-            // ⚠ THE STEP HEIGHT IS SUPPLIED HERE, not looked up inside the
-            // gesture. `cliff_step` is what a WALKER can climb — `moros_sim`'s
-            // rule, read from the consumer that owns the walker — and
-            // `hex_editor` is a lavition package that must not depend on a moros
-            // one. The library writes the step; this decides how tall it is.
-            st_new = stair_cut(wld, st_q, st_r, py, st_here, st_dir,
-                               cliff_step(), st_why);
-            if st_new < 0 {
-              srv.send_to(ev.cid, "S:{say_refused_code(\"stair\", st_new, st_why)}");
-              println("editor: stair refused ({st_new}) at ({st_q},{st_r}) — {st_why}");
-            } else {
-              mark_dirty(dirty, st_q, st_r, 3);
-              srv.send_to(ev.cid,
-                "S:{say_stair(st_dir, st_q, st_r, st_new, st_here)}");
-              println("editor: stair {st_dir:+} at ({st_q},{st_r}) "
-                    + "{st_here} -> {st_new}");
-            }
+            mark_dirty(dirty, stack.ak_q, stack.ak_r, hex_editor::STAIR_PAD);
+            println("editor: {stack.ak_why}");
           }
         } else if ev.msg_id == MSG_SNAP {
           // ⚠ THE PICTURE AND THE NUMBERS ARE ONE INSTANT. The payload arrived from

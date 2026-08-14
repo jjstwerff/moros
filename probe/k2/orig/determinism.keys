@@ -14,13 +14,11 @@ key ArrowUp
 step 20
 
 echo --- cut a stair, which exercises the walk's surface rule
-# ⚠ `stair_up`, NOT a bare `stair` with a sign — plan 22 `K3`. `E` and `Q` differ by a
-# DIRECTION, which stays in the verb; `Q` is pressed by no script in this tree.
 at 0 0 0
-verb stair_up
+key E
 step 10
 at 1.73 0 0
-verb stair_up
+key E
 step 10
 
 # ⚠ THE WALK IS WHAT MAKES THIS TEST DISCRIMINATE. Every edit above is
@@ -36,9 +34,9 @@ step 5
 
 echo --- a wall run
 at -3 -3 0
-verb run
+key R
 at 3 -3 0
-verb run
+key R
 step 40
 
 save clockcheck

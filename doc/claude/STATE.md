@@ -393,6 +393,78 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3` · `E` — THE SLICE THAT STOPS THE PATTERN, and a second global standing in for the world, 2026-08-14
+
+**`E` and `Q` are TWO verbs — `stair_up` and `stair_down` — and `30:` keeps its sign.** From the
+outside they have the exact shape of the three families that collapsed before them: two keys, one
+message, a payload that differs (`30:1`, `30:-1`). They do not collapse, and this tree's own rule
+is what decides it: **a DIRECTION is part of the action** (*every editor has zoom in and zoom
+out*), **a THING is not**. There is no `SELECT_STAIR` id and there will not be one.
+
+⚠ **THE THIRD SLICE IN A ROW WOULD HAVE ARGUED FOR ONE.** `R` was hardcodable, `Y`+`T` collapsed,
+`J`+`K`+`V` collapsed — and the pull by the fourth is to read *two keys on one message* as the
+signal. It is not: the signal is what the payload MEANS. `raise`/`lower` have been two verbs since
+`V1` for this reason, and `press_verb` now has the stair pair on the two lines below them so the
+shape is visible rather than remembered.
+
+⛔ **AND TWO GLOBALS WERE STANDING IN FOR THE WORLD IN ONE HANDLER — `J`'s FINDING, TWICE OVER.**
+The walk reference was `py / HEIGHT_SCALE` and the stride was `cliff_step()` = `walker_step(W_UNIT)`,
+a program constant. Both are 0.25 on the landscape, so **nothing could have gone red**; both are
+wrong on a **part world**, where a tread came out at half the height a walker can climb — which is
+the one promise this gesture makes. `stair_ahead` asks `w.w_unit`. ⚠ **The test asserts the RATIO**
+(`door/slat`'s rule): the same tread rises the same distance in a world at 0.25 and one at 0.125,
+where a number would need rewriting by anyone who touched `FIGURE_M`.
+
+⚠ **AND THE COMMENT DEFENDING THE STRIDE HAD EXPIRED.** It said the step height is the caller's
+because *"`cliff_step` is `moros_sim`'s rule … and `hex_editor` must not depend on a moros
+package"* — but `cliff_step()` **is** `hex_editor::walker_step` and has been for a while. The
+argument was true when written, the code beside it still worked, and nothing was red. Same shape
+as the thumbnail mesher's expired reason two days ago. ⏭ **`12:`'s cellar stair still passes
+`cliff_step()`** and carries the same latent part-world bug — it belongs to `B`/`C`'s slice, which
+moves that handler the same way. **Recorded, not fixed here.**
+
+⛔ **AND `E` HAD NO BOTH-SPELLINGS COMPARISON UNTIL ONE WAS BUILT.** `probe/k2` drove eight
+scripts; `R` was in seven of them, the seats and annexes in two, and **`E` in none** —
+`determinism.keys` is the only script in the tree that presses it. It is the ninth script now,
+with its baseline taken from before `R` was converted. ⚠ **Adding it turned checks 3, 4 and 5
+conditional**: they were unconditional and `continue`d, so the first script with no opening in it
+would have had its whole run skipped. ⚠ **And it exposed a vacuous row** — *"and they name every
+profile:"* printed with nothing after the colon, `0 == 0` reporting a clean result for having been
+asked nothing.
+
+✅ **AND LOCAL MODE CUTS A STAIR NOW** — the client's `E`/`Q` went from `wire()` to `act()`, so the
+page answers with the gesture instead of *"'30:1' is a server message and this page has no gesture
+for it yet"*. `R`'s capability gain, one key over.
+
+⛔ **AND THE SABOTAGE SWEEP DESTROYED ITS OWN SUBJECT THE FIRST TIME IT RAN.** Its
+`restore()` was `git checkout -- <src> <keys>` — correct only for a committed subject, and the
+subject of a sweep is *by definition* the step just built. It deleted the whole gesture, and the
+sweep then reported **five clean catches as five misses**: *NOTHING went red*, four times, which
+reads as *these tests are useless* rather than *the feature is gone*. ⚠ **The control row was
+blind too** — with the tests reverted alongside the code the suite still compiled and still
+printed a result. The fix is three things, and the third is the one worth keeping: restore from a
+**copy**, **commit before sweeping**, and assert the **subject is present** before row 0. Now in
+CLAUDE.md.
+
+⚠ **AND THE SCORER'S PATTERN WAS MATCHED AGAINST A KNOWN-RED RUN BEFORE IT WAS TRUSTED.** loft
+prints `FAIL  tests/verb.loft::<name>  —  assertion failed: …` per test **and** `FAIL
+tests/verb.loft  (1 failed, 14 passed)` per file, so the `::` is what separates them; a count
+written from memory would have double-counted every failure.
+
+⚠ **AND `make probe-demo` FAILED ONCE, UNDER LOAD, THEN PASSED FOUR TIMES.** The failing run was
+concurrent with `make gate`'s eight parallel jobs. Its walk checks are clock-driven — `G1` measured
+**2.56** wu on that run and **2.35** on a quiet box — so it is `H2`'s shape again: a threshold over
+a number the machine moves. **Not investigated further and not silently forgotten** — recorded
+here because *ran it again and it passed* is the sentence that hides a flake.
+
+✅ 486 green both backends (14 packages, identical counts on each) · 49/49 gates, and the `deck`
+gate is the positive control — it cuts through `30:` and still says `stair +1 at 1,0 height 4 from
+0` · `make parts` byte-identical · `probe/k2` **9 scripts**, determinism `key E` against `verb
+stair_up`: 14 identical sentences, world `23d3f79779eb` 24727 bytes both ways · `make probe-demo`
+PASS · seven sabotages red on their own test, with two controls.
+
+⏭ **Four keys left**: `Z X C B` (`Q` is bound and pressed by no script).
+
 ## ✅ `K3` · `J` — THE THIRD FAMILY, and a global that was wrong on a part world, 2026-08-14
 
 **`J`, `K` and `V` are one `annex` verb, and `53:<kind>` holds the choice.** Three keys on ONE

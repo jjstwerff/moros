@@ -30,6 +30,15 @@ work is routinely sitting in the tree. Put the *finding* in the commit message, 
 the change. What still warrants a word first: **a PR, a published package, a registry
 entry.** Don't offer a PR unprompted — a pushed branch is already the deliverable.
 
+⚠ **AND A SABOTAGE SWEEP MUST NOT RESTORE WITH `git checkout` — COMMIT FIRST.** The
+subject of a sweep is the step you have just built, so it is *uncommitted by
+definition*; `git checkout -- <file>` between rows deletes it, and the sweep then
+reports **every row as a miss** — five clean catches read as *these tests cannot fail*.
+⚠ **The control row cannot see it either**, because the tests were reverted with the
+code. Copy the files aside and restore from the copies, **and assert the subject is
+present before row 0** — a sweep over an absent feature answers *nothing went red* to
+every question, which is the same sentence a useless test suite produces.
+
 **Other people's trees.** `../crawler` is **read-only** — another agent works there, and an
 edit it did not make destroys its ability to tell its own work from yours; raise findings
 instead. ⚠ **`../loft` is READ plus FILE TICKETS, and nothing else** — no PRs, no closing or
