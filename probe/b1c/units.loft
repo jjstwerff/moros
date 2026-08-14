@@ -1,0 +1,15 @@
+// What unit is each part world ACTUALLY authored at? The tree says `door/slat` is
+// 0.125 in a comment; this reads the files.
+use hex_voxel;
+fn main() {
+  names: vector<text> = ["door/slat", "door/leaf", "door/frame", "door/oak",
+                         "door/doorway", "door/plank", "prop/statue", "prop/shrine",
+                         "prop/plinth", "prop/seated"];
+  for n in names {
+    p = "{source_dir()}/../../data/parts/{n}.hxw";
+    f = file(p);
+    if f.format == Format.NotExists { println("PARTUNIT {n} MISSING"); continue; }
+    w = world_load(p);
+    println("PARTUNIT {n} unit {w.wl_world.w_unit}");
+  }
+}

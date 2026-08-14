@@ -228,3 +228,47 @@ fn test_on_the_ground_is_true_for_terrain_and_false_for_a_built_floor() {
          "the built floor under the terrain is reported as the GROUND layer — every "
        + "floor would be interpolated as a heightfield");
 }
+
+// ── AND THE MESH ITSELF IS AT THE WORLD'S UNIT ──────────────────────────────
+//
+// ⛔ IT WAS NOT, AND THAT IS WHY THIS IS HERE. Every height in this package was
+// multiplied by `hex_fit::HEIGHT_SCALE`, a global 0.25 — so a world authored at any
+// other unit was **drawn at the wrong size**, and exactly one exists: `door/slat` is
+// 0.125 (measured across every part file, `probe/b1c/units.loft`). Meshed, it came
+// out spanning 0.1667 of world height where its own unit says 0.0833.
+//
+// ⚠ NOTHING IN THE TREE COULD SEE IT. Every landscape is 0.25 and so was the
+// constant, so `make parts`, every gate and both suites agreed either way — the
+// same blindness `ground_under`'s own scale bug had, one package wide.
+//
+// ⚠ THE ASSERTION IS A RATIO, NOT A HEIGHT. Which vertices a chunk emits, and how
+// `corner_heights` averages them, is the mesher's business and may change; that the
+// same cells at half the unit are drawn at half the height is the invariant. A test
+// naming 0.0833 would have to be rewritten by anyone who touched the geometry.
+fn mesh_span(unit: float) -> float {
+  w = world_new(unit, 0, 10, 4).wn_world;
+  for q in 0..3 {
+    for r in 0..3 { hex_editor::ground_set(w, q, r, 12 + q * 4, hex_editor::SURFACE_MAT); }
+  }
+  m = chunk_mesh_mat_bounded(0, 0, w, hex_editor::SURFACE_MAT);
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  for v in m.vertices {
+    if v.pos.y < lo { lo = v.pos.y; }
+    if v.pos.y > hi { hi = v.pos.y; }
+  }
+  assert(len(m.vertices) > 0, "the fixture meshed nothing at unit {unit}");
+  hi - lo
+}
+
+fn test_the_same_cells_at_half_the_unit_are_drawn_at_half_the_height() {
+  coarse = mesh_span(U);
+  fine = mesh_span(PART_U);
+  assert(coarse > 0.0, "the coarse fixture is flat ({coarse}) — a span of zero "
+       + "cannot show a ratio");
+  assert(about(fine * 2.0, coarse),
+         "the same cells span {coarse} at unit {U} and {fine} at {PART_U} — those "
+       + "are not a 2:1 ratio, so this mesher is measuring height with something "
+       + "other than the world's own unit, and a part authored at 0.125 is drawn "
+       + "as if it were a landscape");
+}

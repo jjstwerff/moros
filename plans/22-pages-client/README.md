@@ -290,6 +290,56 @@ rather than the raw yaw.
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
 
+## ✅ What fixing the mesher's height scale turned up (2026-08-14) — one part, and a compiler that named every site
+
+**Every height in `hex_mesh` is `w_unit` now.** A world authored at any unit is drawn at its own
+size; before, all 72 sites multiplied by `hex_fit::HEIGHT_SCALE`, a global 0.25.
+
+⚠ **THE CLAIM WAS INHERITED FROM A COMMENT AND IT CHECKED OUT — barely.** `gesture.loft` had said
+for months that *"`door/slat` is authored at 0.125"*. Reading every part file rather than the
+comment: **`door/slat` is 0.125 and all nine others are 0.25.** One part, and it is real.
+
+⚠ **AND THE BUG IS NARROWER THAN THE COMMENT IMPLIES, WHICH MATTERS FOR WHAT THIS BUYS.**
+`hex_part` **already refuses** a cross-unit composition — `BK_UNIT` at the bake, `EX_UNIT` at the
+expand, under *"a part at a different unit is a LIMB, posed at the ratio, or it is nothing"*. So a
+0.125 part can never be flattened into a 0.25 world; the global bit only where a part world is
+**meshed directly**, which is the thumbnail and part-mode path. Measured before any edit:
+`door/slat` spanned **0.1667** of world height where its own unit says 0.0833.
+
+### The instrument and the prediction came first
+
+`probe/b1c/slat.loft` meshed the part and printed its vertical extent, and the prediction was
+written down before the change: **slat halves to 0.0833–0.1667, `door/leaf` at 0.25 does not move.**
+Both exactly. ⚠ Without that, "the mesher looks right" is the only available verdict on a change
+that touches every vertex.
+
+### It had to be all-or-nothing, and the first attempt proved why
+
+⛔ **`ground_under` alone on `w_unit` was strictly worse than the global**, which is what its own
+correction records: its terrain branch defers to `terrain_y`, so converting one and not the other
+put a floor and the ground beside it on two scales. **A half-converted mesher is worse than an
+unconverted one** — so this is 72 sites in one change, not a staged one.
+
+### What made 72 sites safe
+
+| | |
+|---|---|
+| every function with a world binds it `wld` | measured first — 15 functions, 50 sites, one spelling |
+| the seven helpers without one are **private** | 0 callers outside the file, so a `unit: float` parameter changes no public API and no consumer |
+| the compiler named every remaining site | ⚠ including **two parameters my insertion dropped into a function BODY instead of its signature** — `hex_to_world(cq, cr, 0, unit: float)`. A sweep over a 3,000-line file is a substring match, and this is the third time today it bit |
+
+### The test asserts a RATIO, not a height
+
+*The same cells at half the unit are drawn at half the height.* A test naming 0.0833 would have to
+be rewritten by anyone who touched the geometry; the ratio is the invariant. ⚠ **Seen red against
+the saved pre-change mesher — 3.6667 at BOTH units** — and green after, with the other seven cases
+in the file unmoved either way, so the change is as narrow as it claims.
+
+⚠ **AND NOTHING ELSE COULD HAVE SEEN THIS, WHICH IS THE POINT.** Every landscape is 0.25 and so was
+the constant: `make parts` is byte-identical, all 48 gates pass, and both suites agree either way.
+**A constant that is right for every fixture anyone has built is a constant no fixture can test** —
+the same blindness `ground_under`'s own scale bug had, one package wide.
+
 ## ✅ What `B1c.3` turned up (2026-08-14) — two gravities became honest by becoming two packages
 
 **The page falls.** `hex_mesh::ground_under` answers what is under the feet for both drivers, and

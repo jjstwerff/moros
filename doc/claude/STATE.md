@@ -393,6 +393,41 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ THE MESHER MEASURES IN THE WORLD'S OWN UNIT NOW — 2026-08-14
+
+**Every height in `hex_mesh` is `w_unit`**; all 72 sites multiplied by the global `HEIGHT_SCALE`
+(0.25) before, so a world authored at any other unit was drawn at the wrong size.
+
+⚠ **ONE PART IS AFFECTED AND IT IS REAL.** Read from the files rather than the comment that claimed
+it: **`door/slat` is 0.125, all nine others are 0.25.** ⚠ And the bug is narrower than it sounds —
+`hex_part` already REFUSES a cross-unit composition (`BK_UNIT`/`EX_UNIT`: *a part at a different
+unit is a LIMB, posed at the ratio, or it is nothing*), so the global bit only where a part world is
+**meshed directly**: thumbnails and part mode. Measured before any edit, `door/slat` spanned
+**0.1667** of world height where its own unit says 0.0833.
+
+✅ **THE PREDICTION WAS WRITTEN FIRST AND MATCHED EXACTLY**: slat halves to 0.0833–0.1667, `door/leaf`
+at 0.25 does not move. `probe/b1c/slat.loft`.
+
+⛔ **IT HAD TO BE ALL-OR-NOTHING, AND THE FIRST ATTEMPT PROVED IT.** `ground_under` alone on `w_unit`
+was strictly WORSE than the global — its terrain branch defers to `terrain_y`, so converting one and
+not the other put a floor and the ground beside it on two scales. **A half-converted mesher is worse
+than an unconverted one.**
+
+⚠ **WHAT MADE 72 SITES SAFE**: every function with a world binds it `wld` (measured — 15 functions,
+50 sites, one spelling), and the seven helpers without one are **private to the file** (0 callers
+outside), so a `unit: float` parameter changed no public API. **The compiler named every remaining
+site** — including two parameters my insertion dropped into a function BODY instead of its
+signature. A sweep over a 3,000-line file is a substring match, and that is the third time in two
+days it bit.
+
+⚠ **THE TEST ASSERTS A RATIO, NOT A HEIGHT** — *the same cells at half the unit are drawn at half the
+height* — because a number would need rewriting by anyone who touched the geometry. Seen red against
+the saved pre-change mesher (**3.6667 at both units**), green after.
+
+⚠ **AND NOTHING ELSE COULD HAVE SEEN IT**: `make parts` byte-identical, 48/48 gates, both suites
+green either way. **A constant right for every fixture anyone has built is a constant no fixture can
+test.**
+
 ## ✅ `B1c.3` — THE PAGE FALLS: TWO GRAVITIES BECAME HONEST BY BECOMING TWO PACKAGES, 2026-08-14
 
 **`hex_mesh::ground_under`** answers what is under the feet for both drivers, and

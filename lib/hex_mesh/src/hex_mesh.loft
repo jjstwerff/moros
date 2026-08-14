@@ -384,9 +384,9 @@ fn faced_between(gh: vector<integer>, gl: vector<integer>,
 
 pub fn cell_normal_from(gh: vector<integer>, gl: vector<integer>,
                     gq0: integer, gr0: integer, gw: integer,
-                    cq: integer, cr: integer) -> Vec3 {
+                    cq: integer, cr: integer, unit: float) -> Vec3 {
   c0 = hex_to_world(cq, cr, 0);
-  h0 = (gh_at(gh, gq0, gr0, gw, cq, cr) as float) * HEIGHT_SCALE;
+  h0 = (gh_at(gh, gq0, gr0, gw, cq, cr) as float) * unit;
   sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
   for nd in 0..6 {
     (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
@@ -398,7 +398,7 @@ pub fn cell_normal_from(gh: vector<integer>, gl: vector<integer>,
     nw = hex_to_world(nnq, nnr, 0);
     dx = nw.x - c0.x;
     dz = nw.z - c0.z;
-    dy = (gh_at(gh, gq0, gr0, gw, nnq, nnr) as float) * HEIGHT_SCALE - h0;
+    dy = (gh_at(gh, gq0, gr0, gw, nnq, nnr) as float) * unit - h0;
     sxx = sxx + dx * dx;
     szz = szz + dz * dz;
     sxy = sxy + dx * dy;
@@ -491,7 +491,7 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: VoxelWorld,
   // triangles, so the ground walked on follows the ground drawn, as before.
   csum = 0.0;
   for hi2 in 0..6 { csum = csum + (hs[hi2] ?? 0.0); }
-  cy = (csum / 6.0 ?? 0.0) * HEIGHT_SCALE;
+  cy = (csum / 6.0 ?? 0.0) * wld.w_unit;
 
   ci0 = (cr - r0 + 1) * (MESH_CHUNK + 2) + (cq - q0 + 1);
   n0x = nx[ci0] ?? 0.0; n0y = ny[ci0] ?? 1.0; n0z = nz[ci0] ?? 0.0;
@@ -543,7 +543,7 @@ pub fn emit_hex_sloped(m: Mesh, cq: integer, cr: integer, wld: VoxelWorld,
       pz2 = cw.z + al * iaz + (oz - al * iaz) * inset;
     }
     cn = nrm3(cnx[ci] ?? 0.0, cny[ci] ?? 1.0, cnz[ci] ?? 0.0);
-    m.vertices += [vertex(vec3(px2, (hs[ci] ?? 0.0) * HEIGHT_SCALE, pz2),
+    m.vertices += [vertex(vec3(px2, (hs[ci] ?? 0.0) * wld.w_unit, pz2),
                           vec3(cn.x * nscale, cn.y * nscale, cn.z * nscale),
                           vec2(1.0, 0.0))];
   }
@@ -672,7 +672,7 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: VoxelWorld, want_mat: intege
   nz: vector<float> = [];
   for hr in r0 - 1..r0 + MESH_CHUNK + 1 {
     for hq in q0 - 1..q0 + MESH_CHUNK + 1 {
-      hn = cell_normal_from(gh, gl, gq0, gr0, gw, hq, hr);
+      hn = cell_normal_from(gh, gl, gq0, gr0, gw, hq, hr, wld.w_unit);
       nx += [hn.x];
       ny += [hn.y];
       nz += [hn.z];
@@ -764,9 +764,9 @@ fn chunk_mesh_mat_in(cx: integer, cz: integer, wld: VoxelWorld, want_mat: intege
         // water's — the annulus is earth, not river. Only where the water is inset: at
         // full width there is no annulus and the skirt would be zero-area.
         if want_mat == SURFACE_MAT && wins < 1.0 && wdep > 0 {
-          wbed = (grid_h(gh, gq0, gr0, gw, cq, cr, wld) as float) * HEIGHT_SCALE;
+          wbed = (grid_h(gh, gq0, gr0, gw, cq, cr, wld) as float) * wld.w_unit;
           emit_hex_bank(cm, cq, cr, wbed,
-                        wbed + ((wdep + hex_editor::WATER_FREE) as float) * HEIGHT_SCALE,
+                        wbed + ((wdep + hex_editor::WATER_FREE) as float) * wld.w_unit,
                         wins, wax, waz);
         }
         // ⚠ AND A FAN ALONE IS A HAIRLINE AT AN OPENING, which is the deck's lesson
@@ -818,7 +818,7 @@ pub fn chunk_mesh_faces(cx: integer, cz: integer, wld: VoxelWorld,
         nh = gh_at(gh, gq0, gr0, gw, fnq, fnr);
         if hh <= nh { continue; }
         if !faced_between(gh, gl, gq0, gr0, gw, fq, fr, fnq, fnr) { continue; }
-        emit_face_wall(fm, gh, gl, gu, gq0, gr0, gw, fq, fr, fd, fnq, fnr);
+        emit_face_wall(fm, gh, gl, gu, gq0, gr0, gw, fq, fr, fd, fnq, fnr, wld.w_unit);
       }
     }
   }
@@ -841,17 +841,17 @@ fn emit_face_wall(m: Mesh, gh: vector<integer>, gl: vector<integer>,
                   gu: vector<integer>,
                   gq0: integer, gr0: integer, gw: integer,
                   cq: integer, cr: integer, d: integer,
-                  nq: integer, nr: integer) {
+                  nq: integer, nr: integer, unit: float) {
   (ka, kb) = hex_grid::hex_edge_corners(d);
   (kc, kd) = hex_grid::hex_edge_corners((d + 3) % 6 ?? 0);
   tops = corner_heights_from(gh, gl, gq0, gr0, gw, cq, cr);
   bots = corner_heights_from(gh, gl, gq0, gr0, gw, nq, nr);
   w1 = hex_corner_world(cq, cr, 0, (6 - ka) % 6 ?? 0);
   w2 = hex_corner_world(cq, cr, 0, (6 - kb) % 6 ?? 0);
-  t1 = (tops[ka] ?? 0.0) * HEIGHT_SCALE;
-  t2 = (tops[kb] ?? 0.0) * HEIGHT_SCALE;
-  b1 = (bots[kd] ?? 0.0) * HEIGHT_SCALE;
-  b2 = (bots[kc] ?? 0.0) * HEIGHT_SCALE;
+  t1 = (tops[ka] ?? 0.0) * unit;
+  t2 = (tops[kb] ?? 0.0) * unit;
+  b1 = (bots[kd] ?? 0.0) * unit;
+  b2 = (bots[kc] ?? 0.0) * unit;
   // ⚠ A LID IS EXPOSED ONLY WHERE IT IS SOLID — plan 20 `A9`. Where this column is a
   // road shelf the rock over it starts at the underside the ceiling is drawn at, and
   // running the quad down to the neighbour's ground would wall the shelf's mouth in.
@@ -859,7 +859,7 @@ fn emit_face_wall(m: Mesh, gh: vector<integer>, gl: vector<integer>,
   // the quad inside out.
   uu = gh_at(gu, gq0, gr0, gw, cq, cr);
   if uu > FACE_SOLID {
-    uy = (uu as float) * HEIGHT_SCALE;
+    uy = (uu as float) * unit;
     if b1 < uy { b1 = uy; }
     if b2 < uy { b2 = uy; }
     if b1 > t1 { b1 = t1; }
@@ -893,10 +893,10 @@ pub fn emit_ground_reveal(m: Mesh, wld: VoxelWorld, cq: integer, cr: integer) {
       (rka, rkb) = hex_grid::hex_edge_corners(rd);
       rw1 = hex_corner_world(cq, cr, 0, (6 - rka) % 6 ?? 0);
       rw2 = hex_corner_world(cq, cr, 0, (6 - rkb) % 6 ?? 0);
-      y1 = (rhs[rka] ?? 0.0) * HEIGHT_SCALE;
-      y2 = (rhs[rkb] ?? 0.0) * HEIGHT_SCALE;
-      b1 = ((rhs[rka] ?? 0.0) - drop) * HEIGHT_SCALE;
-      b2 = ((rhs[rkb] ?? 0.0) - drop) * HEIGHT_SCALE;
+      y1 = (rhs[rka] ?? 0.0) * wld.w_unit;
+      y2 = (rhs[rkb] ?? 0.0) * wld.w_unit;
+      b1 = ((rhs[rka] ?? 0.0) - drop) * wld.w_unit;
+      b2 = ((rhs[rkb] ?? 0.0) - drop) * wld.w_unit;
       // The normal points INTO the stairwell, taken from the neighbour rather than
       // from the winding — `emit_wall_panel`'s rule, and it is here for its reason:
       // the two libraries walk the corner ring in opposite senses, so a normal read
@@ -928,7 +928,7 @@ pub fn emit_ground_reveal(m: Mesh, wld: VoxelWorld, cq: integer, cr: integer) {
 // different backends — native on the server, wasm in the page — and demanding
 // identical bits would be asserting something about IEEE rounding across compilers
 // rather than about the mesh. A micrometre is far below anything the geometry means:
-// `HEIGHT_SCALE` is 0.25 world-units for a whole height step.
+// a whole height step is `w_unit` world units, 0.25 in a landscape.
 pub const MESH_CRC_SCALE = 1000000.0;
 
 fn mesh_crc_f(acc: integer, v: float) -> integer {
@@ -1143,8 +1143,8 @@ fn emit_wall_panel(m: Mesh, cq: integer, cr: integer, dir: integer,
   hn = terrain_h(nq, nr, wld);
   lo = hs; if hn < lo { lo = hn; }
   hi = hs; if hn > hi { hi = hn; }
-  ylo = (lo as float) * HEIGHT_SCALE;
-  yhi = ((hi + up) as float) * HEIGHT_SCALE;
+  ylo = (lo as float) * wld.w_unit;
+  yhi = ((hi + up) as float) * wld.w_unit;
   // hex_grid pairs consecutive corners per edge; moros_render walks the ring the
   // other way, so its index is `(6 - i) % 6` — the same map `emit_hex_sloped` uses.
   (ea, eb) = hex_grid::hex_edge_corners(dir);
@@ -1192,7 +1192,7 @@ fn emit_wall_panel_cut(m: Mesh, cq: integer, cr: integer, dir: integer,
   hn = terrain_h(nq, nr, wld);
   lo = hs; if hn < lo { lo = hn; }
   hi = hs; if hn > hi { hi = hn; }
-  yfoot = (lo as float) * HEIGHT_SCALE;
+  yfoot = (lo as float) * wld.w_unit;
   (ea, eb) = hex_grid::hex_edge_corners(dir);
   w1 = hex_corner_world(cq, cr, 0, (6 - ea) % 6 ?? 0);
   w2 = hex_corner_world(cq, cr, 0, (6 - eb) % 6 ?? 0);
@@ -1211,21 +1211,21 @@ fn emit_wall_panel_cut(m: Mesh, cq: integer, cr: integer, dir: integer,
     mz = (az + bz) * 0.5;
     colo = 0;
     cohi = 0;
-    if !hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
+    if !hex_editor::opening_cuts(o, mx, mz, wld.w_unit, colo, cohi) {
       // Outside the opening: this slice is solid, foot to head.
-      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + up) as float) * HEIGHT_SCALE, nrm, bck);
+      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + up) as float) * wld.w_unit, nrm, bck);
       continue;
     }
     if colo > 0 {
-      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + colo) as float) * HEIGHT_SCALE, nrm, bck);
+      emit_slice(m, ax, az, bx, bz, yfoot, ((hi + colo) as float) * wld.w_unit, nrm, bck);
     } else {
       // ⚠ THE SKIRT SURVIVES A SILL OF ZERO. `yfoot` is below the datum wherever the
       // ground steps, so "no wall under the opening" still means "down to the datum".
-      emit_slice(m, ax, az, bx, bz, yfoot, (hi as float) * HEIGHT_SCALE, nrm, bck);
+      emit_slice(m, ax, az, bx, bz, yfoot, (hi as float) * wld.w_unit, nrm, bck);
     }
     if cohi < up {
-      emit_slice(m, ax, az, bx, bz, ((hi + cohi) as float) * HEIGHT_SCALE,
-                 ((hi + up) as float) * HEIGHT_SCALE, nrm, bck);
+      emit_slice(m, ax, az, bx, bz, ((hi + cohi) as float) * wld.w_unit,
+                 ((hi + up) as float) * wld.w_unit, nrm, bck);
     }
   }
 }
@@ -1256,7 +1256,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
   up = wall_up(run.wr_mat);
   if run.wr_up > 0 { up = run.wr_up; }
   if up <= 0 { return; }
-  bsy = (run.wr_base as float) * HEIGHT_SCALE;
+  bsy = (run.wr_base as float) * wld.w_unit;
   t = hex_way::track_new();
   hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
   ln = hex_way::seg_len(t, 0);
@@ -1289,7 +1289,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
   // the same `opening_cuts` twice and draws the difference.
   frames: vector<Opening> = [];
   for of0 in openings.items {
-    frames += [hex_editor::opening_frame(of0, FRAME_W, HEIGHT_SCALE)];
+    frames += [hex_editor::opening_frame(of0, FRAME_W, wld.w_unit)];
   }
   fpx = nrm.x * (half + FRAME_PROUD);
   fpz = nrm.z * (half + FRAME_PROUD);
@@ -1348,7 +1348,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
         for o in openings.items {
           colo = 0;
           cohi = 0;
-          if hex_editor::opening_cuts(o, mx, mz, HEIGHT_SCALE, colo, cohi) {
+          if hex_editor::opening_cuts(o, mx, mz, wld.w_unit, colo, cohi) {
             if hex_editor::opening_at_front(o) {
               cut = true;
               lo_u = colo;
@@ -1405,19 +1405,19 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
           if cut && !had { jn = vec3(tx, 0.0, tz); }
           if cut && had && hi_u - lo_u > phi - plo { jn = vec3(tx, 0.0, tz); }
           if !had {
-            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, lo_u, hi_u);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, lo_u, hi_u, wld.w_unit);
           } else if !cut {
-            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, plo, phi);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, plo, phi, wld.w_unit);
           } else {
             // Both cut: the void moved, so the jamb is the sill's step and the
             // head's step — the two intervals one slice has and its neighbour
             // does not.
             slo = lo_u; shi = plo;
             if plo < lo_u { slo = plo; shi = lo_u; }
-            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, slo, shi);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, slo, shi, wld.w_unit);
             hlo = hi_u; hhi = phi;
             if phi < hi_u { hlo = phi; hhi = hi_u; }
-            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, hlo, hhi);
+            emit_jamb(m, jx, jz, jgy, ox, oz, ikx, ikz, jn, hlo, hhi, wld.w_unit);
           }
         }
         had = cut;
@@ -1446,7 +1446,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
           for gf in frames {
             gflo = 0;
             gfhi = 0;
-            if hex_editor::opening_cuts(gf, mx, mz, HEIGHT_SCALE, gflo, gfhi) {
+            if hex_editor::opening_cuts(gf, mx, mz, wld.w_unit, gflo, gfhi) {
               fcut = true;
               flo = gflo;
               fhi = gfhi;
@@ -1468,25 +1468,25 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
             rn = vec3(0.0 - tx, 0.0, 0.0 - tz);
             if fcut && !fhad { rn = vec3(tx, 0.0, tz); }
             if !fhad {
-              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, flo, fhi);
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, flo, fhi, wld.w_unit);
               if fr_back { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
-                                  0.0 - ox, 0.0 - oz, rn, flo, fhi); }
+                                  0.0 - ox, 0.0 - oz, rn, flo, fhi, wld.w_unit); }
             } else if !fcut {
-              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, pflo, pfhi);
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, pflo, pfhi, wld.w_unit);
               if fr_back { emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
-                                  0.0 - ox, 0.0 - oz, rn, pflo, pfhi); }
+                                  0.0 - ox, 0.0 - oz, rn, pflo, pfhi, wld.w_unit); }
             } else {
               rlo = flo; rhi = pflo;
               if pflo < flo { rlo = pflo; rhi = flo; }
-              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, rlo, rhi);
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, rlo, rhi, wld.w_unit);
               slo = fhi; shi2 = pfhi;
               if pfhi < fhi { slo = pfhi; shi2 = fhi; }
-              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, slo, shi2);
+              emit_jamb(am, rx, rz, rgy, fpx, fpz, ox, oz, rn, slo, shi2, wld.w_unit);
               if fr_back {
                 emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
-                          0.0 - ox, 0.0 - oz, rn, rlo, rhi);
+                          0.0 - ox, 0.0 - oz, rn, rlo, rhi, wld.w_unit);
                 emit_jamb(am, rx, rz, rgy, 0.0 - fpx, 0.0 - fpz,
-                          0.0 - ox, 0.0 - oz, rn, slo, shi2);
+                          0.0 - ox, 0.0 - oz, rn, slo, shi2, wld.w_unit);
               }
             }
           }
@@ -1496,12 +1496,12 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
           if fcut {
             if cut {
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, fr_front, fr_back, flo, lo_u);
+                              nrm, bck, fr_front, fr_back, flo, lo_u, wld.w_unit);
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, fr_front, fr_back, hi_u, fhi);
+                              nrm, bck, fr_front, fr_back, hi_u, fhi, wld.w_unit);
             } else {
               emit_frame_band(am, ax, az, bx, bz, gy0, gy1, ox, oz, fpx, fpz,
-                              nrm, bck, fr_front, fr_back, flo, fhi);
+                              nrm, bck, fr_front, fr_back, flo, fhi, wld.w_unit);
             }
           }
         }
@@ -1509,10 +1509,10 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
           blo = bands[bi * 2] ?? 0;
           bhi = bands[bi * 2 + 1] ?? 0;
           if bhi > blo {
-            ya = gy0 + (blo as float) * HEIGHT_SCALE;
-            yb = gy1 + (blo as float) * HEIGHT_SCALE;
-            ta = gy0 + (bhi as float) * HEIGHT_SCALE;
-            tb = gy1 + (bhi as float) * HEIGHT_SCALE;
+            ya = gy0 + (blo as float) * wld.w_unit;
+            yb = gy1 + (blo as float) * wld.w_unit;
+            ta = gy0 + (bhi as float) * wld.w_unit;
+            tb = gy1 + (bhi as float) * wld.w_unit;
             f0 = vec3(ax + ox, ya, az + oz); f1 = vec3(bx + ox, yb, bz + oz);
             f2 = vec3(bx + ox, tb, bz + oz); f3 = vec3(ax + ox, ta, az + oz);
             b0 = vec3(ax + ikx, ya, az + ikz); b1 = vec3(bx + ikx, yb, bz + ikz);
@@ -1556,10 +1556,10 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
             klo = fars[fi * 2] ?? 0;
             khi = fars[fi * 2 + 1] ?? 0;
             if khi > klo {
-              ya2 = gy0 + (klo as float) * HEIGHT_SCALE;
-              yb2 = gy1 + (klo as float) * HEIGHT_SCALE;
-              ta2 = gy0 + (khi as float) * HEIGHT_SCALE;
-              tb2 = gy1 + (khi as float) * HEIGHT_SCALE;
+              ya2 = gy0 + (klo as float) * wld.w_unit;
+              yb2 = gy1 + (klo as float) * wld.w_unit;
+              ta2 = gy0 + (khi as float) * wld.w_unit;
+              tb2 = gy1 + (khi as float) * wld.w_unit;
               y0 = vec3(ax - ox, ya2, az - oz); y1 = vec3(bx - ox, yb2, bz - oz);
               y2 = vec3(bx - ox, tb2, bz - oz); y3 = vec3(ax - ox, ta2, az - oz);
               emit_tri(m, y0, bck, y2, bck, y1, bck);
@@ -1578,10 +1578,10 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
             nlo = backs[ni * 2] ?? 0;
             nhi = backs[ni * 2 + 1] ?? 0;
             if nhi > nlo {
-              na = gy0 + (nlo as float) * HEIGHT_SCALE;
-              nb = gy1 + (nlo as float) * HEIGHT_SCALE;
-              nc = gy1 + (nhi as float) * HEIGHT_SCALE;
-              nd = gy0 + (nhi as float) * HEIGHT_SCALE;
+              na = gy0 + (nlo as float) * wld.w_unit;
+              nb = gy1 + (nlo as float) * wld.w_unit;
+              nc = gy1 + (nhi as float) * wld.w_unit;
+              nd = gy0 + (nhi as float) * wld.w_unit;
               n0 = vec3(ax + ikx, na, az + ikz); n1 = vec3(bx + ikx, nb, bz + ikz);
               n2 = vec3(bx + ikx, nc, bz + ikz); n3 = vec3(ax + ikx, nd, az + ikz);
               emit_tri(m, n0, nrm, n1, nrm, n2, nrm);
@@ -1615,16 +1615,16 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
             sn = vec3(0.0 - tx, 0.0, 0.0 - tz);
             if bcut && !bhad { sn = vec3(tx, 0.0, tz); }
             if !bhad {
-              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, blo_u, bhi_u);
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, blo_u, bhi_u, wld.w_unit);
             } else if !bcut {
-              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, pbl, pbh);
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, pbl, pbh, wld.w_unit);
             } else {
               ulo = blo_u; uhi = pbl;
               if pbl < blo_u { ulo = pbl; uhi = blo_u; }
-              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, ulo, uhi);
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, ulo, uhi, wld.w_unit);
               vlo = bhi_u; vhi = pbh;
               if pbh < bhi_u { vlo = pbh; vhi = bhi_u; }
-              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, vlo, vhi);
+              emit_jamb(m, sx, sz, sgy, ikx, ikz, 0.0 - ox, 0.0 - oz, sn, vlo, vhi, wld.w_unit);
             }
           }
         }
@@ -1656,8 +1656,8 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
 // the label version saw "the floor continues" and left the step as an open slot
 // between the tread's underside and the fan below.
 fn emit_floor_slab(fm: Mesh, wld: VoxelWorld, cq: integer, cr: integer, h: integer) {
-  ytop = (h as float) * HEIGHT_SCALE;
-  ybot = ytop - (FLOOR_THICK as float) * HEIGHT_SCALE;
+  ytop = (h as float) * wld.w_unit;
+  ybot = ytop - (FLOOR_THICK as float) * wld.w_unit;
   cs = hex_to_world(cq, cr, 0);
   for sd in 0..6 {
     (snq, snr) = hex_grid::hex_neighbor(cq, cr, sd);
@@ -1698,8 +1698,8 @@ fn emit_floor_slab(fm: Mesh, wld: VoxelWorld, cq: integer, cr: integer, h: integ
 fn emit_room_wall(m: Mesh, wld: VoxelWorld, cq: integer, cr: integer, floor_h: integer,
                   ceil_h: integer) {
   if ceil_h <= floor_h { return; }
-  ybot = (floor_h as float) * HEIGHT_SCALE;
-  ytop = (ceil_h as float) * HEIGHT_SCALE;
+  ybot = (floor_h as float) * wld.w_unit;
+  ytop = (ceil_h as float) * wld.w_unit;
   cs = hex_to_world(cq, cr, 0);
   for wd in 0..6 {
     (wnq, wnr) = hex_grid::hex_neighbor(cq, cr, wd);
@@ -1780,8 +1780,8 @@ fn emit_hex_under(m: Mesh, cq: integer, cr: integer, cy: float, hy: vector<float
 }
 
 // A flat underside at one stored height — a deck's, and every built floor's.
-fn emit_hex_under_flat(m: Mesh, cq: integer, cr: integer, h: integer) {
-  uy = (h as float) * HEIGHT_SCALE;
+fn emit_hex_under_flat(m: Mesh, cq: integer, cr: integer, h: integer, unit: float) {
+  uy = (h as float) * unit;
   emit_hex_under(m, cq, cr, uy, [uy, uy, uy, uy, uy, uy]);
 }
 
@@ -1815,12 +1815,12 @@ fn emit_ground_ceiling(m: Mesh, cq: integer, cr: integer, wld: VoxelWorld) {
   csum = 0.0;
   for gi3 in 0..6 {
     csum = csum + (ghs[gi3] ?? 0.0);
-    uy += [((ghs[gi3] ?? 0.0) - drop) * HEIGHT_SCALE];
+    uy += [((ghs[gi3] ?? 0.0) - drop) * wld.w_unit];
   }
   // The centre is the mean of the six corners, which is `emit_hex_sloped`'s own
   // rule — take the stored height instead and the ceiling is a little pyramid under
   // a smooth ground, the summit pip that comment was written about.
-  emit_hex_under(m, cq, cr, ((csum / 6.0 ?? 0.0) - drop) * HEIGHT_SCALE, uy);
+  emit_hex_under(m, cq, cr, ((csum / 6.0 ?? 0.0) - drop) * wld.w_unit, uy);
 }
 
 // WHICH SURFACE A PART'S PANELS ARE DRAWN IN — plan 17 `A8.8`, §P9.13.
@@ -1924,7 +1924,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
   for slb in slabs.items {
     (sq, sr) = px_to_hex(slb.sl_x, slb.sl_z);
     if sq >= q0 && sq < q0 + MESH_CHUNK && sr >= r0 && sr < r0 + MESH_CHUNK {
-      emit_slab(fm, slb, holes);
+      emit_slab(fm, slb, holes, wld.w_unit);
     }
   }
   for anx in annexes.items {
@@ -1978,7 +1978,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
       for de in dcol.co_cells {
         if hex_voxel::hex_occupied(de) {
           dwp = hex_to_world(cq, cr, 0);
-          dy = (de.h_height as float ?? 0.0) * HEIGHT_SCALE;
+          dy = (de.h_height as float ?? 0.0) * wld.w_unit;
           hex_proj::emit_item_placeholder(vm, "PROP", vec3(dwp.x, dy, dwp.z), 0.35);
         }
       }
@@ -2064,7 +2064,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
         if hex_voxel::hex_occupied(e) {
           if e.h_item != 0 {
             wp = hex_to_world(cq, cr, 0);
-            ey = (e.h_height as float ?? 0.0) * HEIGHT_SCALE;
+            ey = (e.h_height as float ?? 0.0) * wld.w_unit;
             sc = 0.55;
             if e.h_item == SPECIES_BUSH { sc = 0.22; }
             hex_proj::emit_item_placeholder(vm, "TREE", vec3(wp.x, ey, wp.z), sc);
@@ -2108,7 +2108,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
             // a staircase. A corner with no roof beyond it keeps this cell's own
             // height, which gives the eave a clean edge instead of a slope into
             // nothing.
-            emit_roof_sloped(km, cq, cr, hex_editor::roof_corners(wld, cq, cr));
+            emit_roof_sloped(km, cq, cr, hex_editor::roof_corners(wld, cq, cr), wld.w_unit);
             }
           } else if (c.co_ids[e#index] ?? 0) != hex_voxel::LABEL_GROUND {
             // ⚠ THE GROUND IS TOLD BY ITS LABEL, WHICH THE COLUMN ALREADY CARRIES.
@@ -2149,7 +2149,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
             if !hex_editor::ground_kind_of(e.h_material as integer ?? 0).tr_fabric {
               if !hex_editor::col_underground(c, e#index) {
                 emit_floor_slab(fm, wld, cq, cr, fh);
-                emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+                emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK, wld.w_unit);
               }
             } else {
             hex_proj::emit_hex_surface(fm, cq, cr, fh);
@@ -2157,7 +2157,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
             // ⚠ AT THE RIM'S OWN BOTTOM EDGE, not at a second constant. The rim
             // spans `fh` down to `fh - FLOOR_THICK`; the underside closes it there
             // or the two part company and the deck shows a slot from below.
-            emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK);
+            emit_hex_under_flat(sm, cq, cr, fh - FLOOR_THICK, wld.w_unit);
             }
             // ⚠ AND A ROOM ENDS IN A WALL, WHICH NOTHING DREW. Measured from the
             // cellar floor, looking level: `sky 0.2360` and `grass 0.1033` — a
@@ -2234,7 +2234,7 @@ fn emit_leaf(m: Mesh, l: hex_editor::DoorLeaf, wld: VoxelWorld) {
   fx = hex_editor::leaf_x(l, 1);
   fz = hex_editor::leaf_z(l, 1);
   gy = terrain_y(hx, hz, wld);
-  ty = gy + (l.dl_up as float) * HEIGHT_SCALE;
+  ty = gy + (l.dl_up as float) * wld.w_unit;
   a = vec3(hx, gy, hz);
   b = vec3(fx, gy, fz);
   c = vec3(fx, ty, fz);
@@ -2333,17 +2333,17 @@ fn emit_tri_n(m: Mesh, a: Vec3, b: Vec3, c: Vec3) {
   emit_tri(m, a, n, b, n, c, n);
 }
 
-fn emit_roof_sloped(m: Mesh, cq: integer, cr: integer, hs: vector<float>) {
+fn emit_roof_sloped(m: Mesh, cq: integer, cr: integer, hs: vector<float>, unit: float) {
   csum = 0.0;
   for i in 0..6 { csum = csum + (hs[i] ?? 0.0); }
-  cy = (csum / 6.0 ?? 0.0) * HEIGHT_SCALE;
+  cy = (csum / 6.0 ?? 0.0) * unit;
   cw = hex_to_world(cq, cr, 0);
   base = len(m.vertices);
   up = vec3(0.0, 1.0, 0.0);
   m.vertices += [vertex(vec3(cw.x, cy, cw.z), up, vec2(0.5, 0.5))];
   for ci in 0..6 {
     wc = hex_corner_world(cq, cr, 0, (6 - ci) % 6 ?? 0);
-    m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * HEIGHT_SCALE, wc.z),
+    m.vertices += [vertex(vec3(wc.x, (hs[ci] ?? 0.0) * unit, wc.z),
                           up, vec2(1.0, 0.0))];
   }
   for fi in 0..6 {
@@ -2358,13 +2358,13 @@ fn slab_pt(sl: Slab, u: float, v: float, y: float) -> Vec3 {
   vec3(sl.sl_x + u * c - v * n, y, sl.sl_z + u * n + v * c)
 }
 
-fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
+fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes, unit: float) {
   upn = vec3(0.0, 1.0, 0.0);
   dwn = vec3(0.0, 0.0 - 1.0, 0.0);
   hw = sl.sl_w * 0.5;
   hd = sl.sl_d * 0.5;
-  ylo = (sl.sl_lo as float) * HEIGHT_SCALE;
-  yhi = (sl.sl_hi as float) * HEIGHT_SCALE;
+  ylo = (sl.sl_lo as float) * unit;
+  yhi = (sl.sl_hi as float) * unit;
 
   // The rim: four faces around the slab's own edge, which is what gives a building
   // a floor line instead of a crease.
@@ -2426,8 +2426,8 @@ fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
         else { fbot = chi; }
       }
       if solid {
-        yt = (ftop as float) * HEIGHT_SCALE;
-        yb = (fbot as float) * HEIGHT_SCALE;
+        yt = (ftop as float) * unit;
+        yb = (fbot as float) * unit;
         p0 = slab_pt(sl, ua, va, yt); p1 = slab_pt(sl, ub, va, yt);
         p2 = slab_pt(sl, ub, vb, yt); p3 = slab_pt(sl, ua, vb, yt);
         emit_tri(m, p0, upn, p1, upn, p2, upn);
@@ -2443,8 +2443,8 @@ fn emit_slab(m: Mesh, sl: Slab, holes: hex_editor::Holes) {
       // interval is zero and there is nothing to draw, which is what made a hole in
       // a floor read as a hole in nothing.
       if cut {
-        yc0 = (clo as float) * HEIGHT_SCALE;
-        yc1 = (chi as float) * HEIGHT_SCALE;
+        yc0 = (clo as float) * unit;
+        yc1 = (chi as float) * unit;
         um = (ua + ub) * 0.5;
         vm = (va + vb) * 0.5;
         emit_slab_reveal(m, sl, holes, ua - SLAB_STEP, vm, ua, va, ua, vb, yc0, yc1);
@@ -2494,8 +2494,8 @@ fn emit_prop(m: Mesh, p: Prop, wld: VoxelWorld) {
     lo = 0;
     hi = 0;
     hex_editor::prop_part(p, i, cx, cz, hu, ht, lo, hi);
-    ylo = gy + (lo as float) * HEIGHT_SCALE;
-    yhi = gy + (hi as float) * HEIGHT_SCALE;
+    ylo = gy + (lo as float) * wld.w_unit;
+    yhi = gy + (hi as float) * wld.w_unit;
     ux = p.pr_nx * hu;
     uz = p.pr_nz * hu;
     vx = tx * ht;
@@ -2525,7 +2525,7 @@ fn emit_annex_deck(m: Mesh, a: Annex, wld: VoxelWorld) {
   upn = vec3(0.0, 1.0, 0.0);
   dwn = vec3(0.0, 0.0 - 1.0, 0.0);
   gy = terrain_y(a.an_x, a.an_z, wld);
-  fy = gy + (a.an_floor as float) * HEIGHT_SCALE;
+  fy = gy + (a.an_floor as float) * wld.w_unit;
   c0 = vec3(hex_editor::annex_corner_x(a, 0), fy, hex_editor::annex_corner_z(a, 0));
   c1 = vec3(hex_editor::annex_corner_x(a, 1), fy, hex_editor::annex_corner_z(a, 1));
   c2 = vec3(hex_editor::annex_corner_x(a, 2), fy, hex_editor::annex_corner_z(a, 2));
@@ -2536,7 +2536,7 @@ fn emit_annex_deck(m: Mesh, a: Annex, wld: VoxelWorld) {
   emit_tri(m, c0, dwn, c2, dwn, c1, dwn);
   emit_tri(m, c0, dwn, c3, dwn, c2, dwn);
   if a.an_kind == hex_editor::AN_BOX {
-    hy = gy + (a.an_head as float) * HEIGHT_SCALE;
+    hy = gy + (a.an_head as float) * wld.w_unit;
     d0 = vec3(c0.x, hy, c0.z); d1 = vec3(c1.x, hy, c1.z);
     d2 = vec3(c2.x, hy, c2.z); d3 = vec3(c3.x, hy, c3.z);
     emit_tri(m, d0, upn, d1, upn, d2, upn);
@@ -2552,12 +2552,12 @@ fn emit_annex_deck(m: Mesh, a: Annex, wld: VoxelWorld) {
 fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
                    gy0: float, gy1: float, ox: float, oz: float,
                    px: float, pz: float, nrm: Vec3, bck: Vec3,
-                   front: boolean, back: boolean, a: integer, b: integer) {
+                   front: boolean, back: boolean, a: integer, b: integer, unit: float) {
   if b <= a { return; }
-  ya = gy0 + (a as float) * HEIGHT_SCALE;
-  yb = gy1 + (a as float) * HEIGHT_SCALE;
-  ta = gy0 + (b as float) * HEIGHT_SCALE;
-  tb = gy1 + (b as float) * HEIGHT_SCALE;
+  ya = gy0 + (a as float) * unit;
+  yb = gy1 + (a as float) * unit;
+  ta = gy0 + (b as float) * unit;
+  tb = gy1 + (b as float) * unit;
   upn = vec3(0.0, 1.0, 0.0);
   dwn = vec3(0.0, 0.0 - 1.0, 0.0);
   f0 = vec3(ax + px, ya, az + pz); f1 = vec3(bx + px, yb, bz + pz);
@@ -2591,10 +2591,10 @@ fn emit_frame_band(m: Mesh, ax: float, az: float, bx: float, bz: float,
 }
 
 fn emit_jamb(m: Mesh, jx: float, jz: float, jgy: float, ox: float, oz: float,
-             ix: float, iz: float, jn: Vec3, a: integer, b: integer) {
+             ix: float, iz: float, jn: Vec3, a: integer, b: integer, unit: float) {
   if b <= a { return; }
-  ya = jgy + (a as float) * HEIGHT_SCALE;
-  yb = jgy + (b as float) * HEIGHT_SCALE;
+  ya = jgy + (a as float) * unit;
+  yb = jgy + (b as float) * unit;
   p0 = vec3(jx + ox, ya, jz + oz);
   p1 = vec3(jx + ix, ya, jz + iz);
   p2 = vec3(jx + ix, yb, jz + iz);
@@ -2742,23 +2742,17 @@ pub fn chunk_mesh_slot(ms: vector<Mesh>, i: integer) -> Mesh {
 // what a foot is standing on, which is the whole point — the page re-implementing
 // these eleven lines is exactly the divergence this plan exists to remove.
 //
-// ⛔ AND THE HEIGHT SCALE IS THE GLOBAL, NOT `w_unit` — WHICH IS A CORRECTION.
-// The move first rewrote this to `wld.w_unit`, on the walk's argument that a part
-// world is authored at 0.125 while `hex_proj::HEIGHT_SCALE` is 0.25. **That was
-// wrong here, and `tests/ground_under.loft` caught it before it shipped.** This
-// function has TWO branches: a built surface uses the stored height, and terrain
-// defers to `terrain_y` — and `terrain_y`, like the whole of this mesher
-// (`corner_heights`, `hex_to_world`, every vertex it emits), is on the GLOBAL. So
-// `w_unit` here put the two branches on two scales: on a part world a deck would
-// have read 1.5 where the ground under it read 3.0, **a 2x discontinuity between a
-// floor and the ground beneath it in one world**. Consistent-and-global beats
-// half-corrected.
+// ⚠ THE HEIGHT SCALE IS THE WORLD'S OWN, AND IT TOOK TWO GOES TO GET THERE. When
+// this moved it was rewritten to `wld.w_unit` while `terrain_y` — which this defers
+// to — was still on the global `HEIGHT_SCALE`, so the two branches measured on two
+// scales and a part world's floor read half the ground beside it.
+// `tests/ground_under.loft` caught that before it shipped, and it was put back on
+// the global as the *consistent* answer.
 //
-// ⏭ THE REAL FINDING IS ONE LEVEL UP AND IT IS NOT THIS STEP'S: `hex_mesh` measures
-// every height with a global constant, so a part world authored at 0.125 is meshed
-// as if it were a landscape. That is a package-wide question with its own blast
-// radius — every vertex, every thumbnail — and it is recorded rather than started
-// here.
+// ✅ AND THEN THE PACKAGE FOLLOWED: every height in this file is `w_unit` now, so
+// the two branches agree AND a world authored at another unit is drawn at its own
+// size. Both halves were needed — a half-converted mesher is strictly worse than an
+// unconverted one, which is exactly what that first attempt was.
 
 // The ground under the feet.
 //
@@ -2807,11 +2801,11 @@ pub fn on_the_ground(wld: VoxelWorld, q: integer, r: integer, sf: hex_voxel::Sur
 
 pub fn ground_under(wld: VoxelWorld, wx: float, wz: float, ref: float) -> float {
   (gu_q, gu_r) = hex_grid::px_to_hex(wx, wz);
-  sf = hex_voxel::world_surface(wld, gu_q, gu_r, ref / HEIGHT_SCALE ?? 0.0);
+  sf = hex_voxel::world_surface(wld, gu_q, gu_r, ref / wld.w_unit ?? 0.0);
   if sf.sf_units < 0 || on_the_ground(wld, gu_q, gu_r, sf) {
     return terrain_y(wx, wz, wld);
   }
-  (sf.sf_units as float) * HEIGHT_SCALE
+  (sf.sf_units as float) * wld.w_unit
 }
 
 pub fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
@@ -2823,8 +2817,8 @@ pub fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
     tj = (ti + 1) % 6 ?? 0;
     v1 = hex_corner_world(addr_q, addr_r, 0, (6 - ti) % 6 ?? 0);
     v2 = hex_corner_world(addr_q, addr_r, 0, (6 - tj) % 6 ?? 0);
-    y1 = (hs3[ti] ?? 0.0) * HEIGHT_SCALE;
-    y2 = (hs3[tj] ?? 0.0) * HEIGHT_SCALE;
+    y1 = (hs3[ti] ?? 0.0) * wld.w_unit;
+    y2 = (hs3[tj] ?? 0.0) * wld.w_unit;
     // Barycentric weights in the xz plane for triangle (centre, v1, v2).
     den = (v1.z - v2.z) * (cw3.x - v2.x) + (v2.x - v1.x) * (cw3.z - v2.z);
     if den != 0.0 {

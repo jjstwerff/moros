@@ -1,0 +1,39 @@
+// DOES A PART WORLD'S OWN UNIT REACH ITS MESH?
+//
+// `door/slat` is authored at 0.125 and every other part at 0.25 (measured,
+// `probe/b1c/units.loft`). `hex_mesh` multiplies every height by the GLOBAL
+// `HEIGHT_SCALE` of 0.25 — so if a part world is meshed directly, the slat is drawn
+// twice as tall as it was authored. This prints the vertical extent of the mesh, so
+// the claim has a number before anything is changed.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+
+fn extent(name: text) {
+  p = "{source_dir()}/../../data/parts/{name}.hxw";
+  ld = world_load(p);
+  if ld.wl_code != 0 { println("SLAT {name} does not load ({ld.wl_code})"); return; }
+  w = ld.wl_world;
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  nv = 0;
+  for tq in 0 - 1..2 {
+    for tr in 0 - 1..2 {
+      for mat in 1..9 {
+        m = hex_mesh::chunk_mesh_mat_bounded(tq, tr, w, mat);
+        for v in m.vertices {
+          if v.pos.y < lo { lo = v.pos.y; }
+          if v.pos.y > hi { hi = v.pos.y; }
+          nv = nv + 1;
+        }
+      }
+    }
+  }
+  if nv == 0 { println("SLAT {name} unit {w.w_unit}: NO GEOMETRY"); return; }
+  println("SLAT {name} unit {w.w_unit}: {nv} verts, y from {lo} to {hi}, span {hi - lo}");
+}
+
+fn main() {
+  extent("door/slat");
+  extent("door/leaf");
+}
