@@ -375,7 +375,14 @@ echo "── Q   choose a part, and place THAT instead of a house ────�
 # ⚠ IT RETRIES THE PLACE, for the reason `F` and `G` both had to: one key press is
 # 3 OR 4 fixed steps, and a footprint fits only the six EVEN rotations — so a single
 # `h` lands on an inadmissible facing about half the time and NOTHING is built.
-Q_KEYS="d,k,h,d,h,d,h"
+# ⚠ `Tab` AND NOT `k` — plan 22 `K3`. `k` is BALCONY in `tools/script.mjs`'s KEYMAP,
+# and the client briefly bound it to part-cycling too: one letter, two meanings,
+# which is the four-sites defect rebuilt in the file that documents it. ⚠ There was
+# no free LETTER to move to — all 26 are taken — and `.` turned out to be
+# unrepresentable: the page's `mapKey` handles `Key*`, `Digit*` and eight named keys,
+# and returns 0 for everything else, so a punctuation press cannot be told from no
+# press. `Tab` is in that table and already means cycle.
+Q_KEYS="d,Tab,h,d,h,d,h"
 case ",$SAB," in *,nochoose,*) Q_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nochoose — the same run without the choosing key" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$Q_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/part.raw" 2>&1 || true

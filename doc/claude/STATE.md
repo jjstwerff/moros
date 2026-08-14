@@ -393,6 +393,27 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ⛔ `K3` IS SIZED, NOT DONE — and a key meant two things, 2026-08-14
+
+**`K3` is *drop the `key` spelling from scripts*, blocked on keys with no verb — and the scripts use
+ELEVEN** (`R Y T J E Z X V K C B`; `Q` by none). Each is a `do_*` handler of ~35 lines of logic plus
+~14 of plumbing, and ⚠ **every underlying gesture is already in `hex_editor`** — the work is the
+ASSEMBLY, eleven times. ⏭ **`R` first: 22 of the 40 non-arrow presses**, and its state
+(`sess.es_draft`) already lives in the session.
+
+⛔ **AND STARTING IT FOUND A COLLISION `B2e` HAD SHIPPED.** The client's part-cycling was bound to
+`k`, which is **BALCONY** in `script.mjs`'s KEYMAP — a script saying `key K` and a person pressing
+`k` would have done different things: **the four-sites defect rebuilt by hand.**
+
+⚠ **THERE IS NO FREE LETTER**: 21 in the script's table, 5 in the client's movement and mode keys,
+**all 26 taken**. The strongest argument yet for EDITING_MODES's rule that bindings are DATA.
+
+⛔ **AND `.` IS UNREPRESENTABLE TO THE PAGE.** `mapKey` handles `Key*`, `Digit*` and eight named
+keys and **returns 0 for everything else** — punctuation is unreachable, and a press cannot be told
+from no press. It showed up as the demo **placing a house**, which is what *nothing was chosen*
+looks like. It is `Tab` now. ⚠ `probe/b1b/press.mjs` needed a row too: its CDP spelling is a LETTER
+heuristic (`'Key' + upper`), so there is no `KeyTAB`.
+
 ## ✅ ATTACHED MODE PLACES A PART — and the client was sending the wrong message, 2026-08-14
 
 **`51:<name>` chooses, `32:` places what was chosen.** Against a live server: `part 'door/doorway'

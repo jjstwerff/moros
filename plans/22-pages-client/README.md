@@ -290,6 +290,43 @@ rather than the raw yaw.
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
 
+## ⛔ What starting `K3` turned up (2026-08-14) — a key meant two things, and the alphabet is FULL
+
+**`K3` is not one step, and the measurement says why.** It is *drop the `key` spelling from
+scripts*, blocked on keys with no verb — and the scripts use **eleven** such keys
+(`R Y T J E Z X V K C B`; `Q` is used by none). Each is a `do_*` handler of roughly **35 lines of
+real logic plus 14 of server plumbing**, and ⚠ **all the underlying gestures are already in
+`hex_editor`** (`stair_cut`, `storey_add`, `wall_step`, `annex_at`, `prop_at`, `slab_over`) — so
+the work is the ASSEMBLY, eleven times, not the gestures.
+
+⏭ **`R` IS THE SLICE TO TAKE FIRST: 22 of the 40 non-arrow presses in the whole script corpus.**
+And it is the stateful one, which is the interesting half — except that `sess.es_draft` **already
+exists**, so the state is where it belongs and `MSG_WALL`'s handler is one line.
+
+### ⛔ And starting it found a collision `B2e` had already shipped
+
+**`k` meant two things.** The client's part-cycling was bound to `k` — and `k` is **BALCONY** in
+`tools/script.mjs`'s `KEYMAP` (`37:1`). A script saying `key K` and a person pressing `k` would
+have done different things: **the four-sites defect `W4` exists to close, rebuilt by hand in the
+plan that documents it.**
+
+⚠ **AND THERE WAS NO FREE LETTER TO MOVE TO.** Counted: 21 in the script's table, 5 more in the
+client's movement and mode keys — **all 26 are taken**. That is the strongest argument yet for
+[EDITING_MODES](../../doc/claude/EDITING_MODES.md)'s rule that a key names a VERB and the binding
+is **data**: a table that cannot grow is one where every new gesture takes something else's letter.
+
+⛔ **AND `.` IS UNREPRESENTABLE TO THE PAGE, WHICH COST A SECOND ATTEMPT.** The browser bridge's
+`mapKey` handles `Key*`, `Digit*` and eight named keys and **returns 0 for everything else** — so
+punctuation is not unbound, it is unreachable, and a press of it cannot be told from no press at
+all. ⚠ It showed up as the demo **placing a house**, which is exactly what *nothing was chosen*
+looks like. `Tab` is in that table, already means cycle, and the page's `preventDefault` stops it
+moving focus.
+
+⚠ **THE DRIVER NEEDED A ROW TOO.** `probe/b1b/press.mjs` builds a key's CDP spelling as
+`'Key' + k.toUpperCase()`, a LETTER heuristic — there is no `KeyTAB` and no `Key.`. Both named keys
+now have explicit rows beside the arrows, and `Tab` deliberately carries no `text`, which would
+otherwise insert a character.
+
 ## ✅ What attached-mode placing turned up (2026-08-14) — the wrong message, and both were "about a part"
 
 **`51:<name>` chooses, `32:` places what was chosen.** Driven against a live server: the client

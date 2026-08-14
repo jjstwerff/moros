@@ -35,6 +35,16 @@ if (!url || !keysArg) {
 const KEYS = {
   ArrowUp:   { key: 'ArrowUp',   code: 'ArrowUp',   vk: 38 },
   ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', vk: 40 },
+  // ⚠ `.` NEEDS ITS OWN ROW BECAUSE THE FALLBACK BELOW IS A LETTER HEURISTIC.
+  // `'Key' + k.toUpperCase()` yields `Key.`, which is not a code any keyboard
+  // sends, and `charCodeAt` gives 46 where the virtual key is 190. Measured: the
+  // press was delivered and the client never saw it — the demo placed a HOUSE,
+  // which is exactly what "nothing was chosen" looks like, so the miss reads as
+  // the feature not working rather than as the driver not pressing.
+  // ⚠ `Tab` NEEDS ITS OWN ROW like the arrows: the fallback below is a LETTER
+  // heuristic (`'Key' + k.toUpperCase()`), and there is no `KeyTAB`. ⚠ And it takes
+  // no `text` — a printable character would make the page insert one.
+  Tab:       { key: 'Tab',       code: 'Tab',       vk: 9 },
 };
 const describe = (k) => KEYS[k] ?? {
   key: k, code: 'Key' + k.toUpperCase(), vk: k.toUpperCase().charCodeAt(0), text: k,
