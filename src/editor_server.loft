@@ -2156,13 +2156,6 @@ fn mode_name(m: integer) -> text {
   "mode {m}"
 }
 
-fn surface_block(name: text) -> text {
-  if name == "soffit" { return "derived"; }
-  if name == "frame"  { return "derived"; }
-  if name == "tree"   { return "scattered"; }
-  if name == "rock"   { return "too steep"; }
-  ""
-}
 
 // `N:<kind>|<name>|<0|1>|<reason>;…` — ⚠ `;` between entries and `|` within,
 // because a reason is a SENTENCE and a sentence has commas in it. The first draft
@@ -2181,13 +2174,14 @@ fn surface_block(name: text) -> text {
 // composes the rows and that end dispatches on them, and `lavition_ui` owns
 // neither: the kind crosses as text precisely so a layout library need not know
 // what families exist.
-const KIND_MATERIAL = "material";
-const KIND_PART     = "part";
+// ⚠ `KIND_MATERIAL`/`KIND_PART` ARE `hex_mesh::choices`'s — plan 22 `B2c`. They
+// were declared HERE and in `src/editor_client.loft`: one composed the catalogue
+// string with its pair and the other parsed it with its own, and nothing made them
+// equal. ⚠ The declarations had to go, not just the uses.
 
 // A part and why it cannot be used, if it cannot. ⚠ COMPUTED ONCE AT STARTUP,
 // beside the thumbnails and for the same reason: `part_cycle` opens every part a
 // part names, and doing that per connecting tab would pay a library walk for each.
-struct PartAvail { av_name: text, av_why: text }
 
 // ⚠ §P8's CHECK, WHERE THE AUTHOR CAN SEE IT. A part that contains itself is
 // checked *on save* by the design, and there is no save gesture yet (plan 17
@@ -2199,42 +2193,7 @@ struct PartAvail { av_name: text, av_why: text }
 // ⚠ AND THE REASON IS THE CHAIN, NOT THE VERDICT. A row 212px wide truncates it
 // and the full sentence stays on the entry (plan 18 `B6`); *"h/a → h/b → h/a"* is
 // what tells the author which reference to cut, and *"cycle"* is not.
-fn part_availability() -> vector<PartAvail> {
-  pav_out: vector<PartAvail> = [];
-  for pav_n in hex_part::part_list(parts_root()) {
-    pav_c = hex_part::part_cycle(parts_root(), pav_n);
-    pav_why = "";
-    if pav_c.cc_code == hex_part::CY_CYCLE { pav_why = "contains itself: {pav_c.cc_why}"; }
-    if pav_c.cc_code == hex_part::CY_MISSING { pav_why = "missing part: {pav_c.cc_why}"; }
-    if pav_c.cc_code == hex_part::CY_BROKEN { pav_why = "damaged: {pav_c.cc_why}"; }
-    if pav_why != "" { println("editor: part '{pav_n}' is unusable — {pav_why}"); }
-    pav_out += [PartAvail { av_name: pav_n, av_why: pav_why }];
-  }
-  pav_out
-}
 
-fn catalogue_wire(avail: vector<PartAvail>) -> text {
-  out = "N:";
-  n = hex_mesh::surface_count();
-  for i in 0..n {
-    if i > 0 { out = out + ";"; }
-    nm = hex_mesh::surface_at(i).sf_name;
-    why = surface_block(nm);
-    av = "1";
-    if why != "" { av = "0"; }
-    out = out + KIND_MATERIAL + "|" + nm + "|" + av + "|" + why;
-  }
-  // ⚠ NO REFUSAL AND NO PLACEHOLDER WHEN THERE ARE NONE. A first run has no
-  // `data/parts/`, and `part_list` answers with nothing — so the catalogue is
-  // simply the materials. An "(no parts yet)" row would be an entry the author
-  // could select that is not a thing.
-  for p in avail {
-    pav = "1";
-    if p.av_why != "" { pav = "0"; }
-    out = out + ";" + KIND_PART + "|" + p.av_name + "|" + pav + "|" + p.av_why;
-  }
-  out
-}
 
 // ── PART THUMBNAILS — the catalogue's other image (plan 18 `B5.2`) ───────────
 //
@@ -2786,7 +2745,7 @@ fn thumbs_refresh(srv: Server, ts: &vector<PartThumb>) -> integer {
 // names is a set comparison AND an order comparison in one — and the order is what
 // the row indices are made of, so a rename that reorders the list has to count as a
 // change even when the set has not moved.
-fn library_moved(avail: vector<PartAvail>) -> boolean {
+fn library_moved(avail: vector<hex_mesh::PartAvail>) -> boolean {
   lm_was = "";
   for lm_a in avail { lm_was = lm_was + lm_a.av_name + "\n"; }
   lm_now = "";
@@ -3566,7 +3525,7 @@ fn main() {
   // chunks of geometry per part, paid once, not once per tab.
   // ⚠ §P8 SWEPT ONCE, AT STARTUP. A cycle is a property of the LIBRARY, so it is
   // checked over the library rather than per part per connection.
-  part_avail = part_availability();
+  part_avail = hex_mesh::part_availability(parts_root());
   part_thumbs = part_thumbs_all();
   println("editor: {len(part_thumbs)} part thumbnails, "
         + "{len(thumbs_wire(part_thumbs))} messages, from {parts_root()}");
@@ -4017,7 +3976,7 @@ fn main() {
         // loop below already polled the same library twice a second for CONTENT,
         // and only the LIST was assumed frozen. A part saved while the editor ran
         // got no row and no picture, which is a wall in front of `A7.3`.
-        srv.send_to(ev.cid, catalogue_wire(part_avail));
+        srv.send_to(ev.cid, hex_mesh::catalogue_wire(part_avail));
         // ⚠ AND ITS IMAGES AFTER IT, NEVER BEFORE. A `Y:` addresses a catalogue
         // ROW by index, so a thumbnail that overtook `N:` would name a row the
         // client does not have yet — and the client, correctly, drops a picture
@@ -6806,10 +6765,10 @@ fn main() {
         // is about to be renumbered.
         if library_moved(part_avail) {
           lib_t0 = ticks();
-          part_avail = part_availability();
+          part_avail = hex_mesh::part_availability(parts_root());
           part_thumbs = part_thumbs_all();
           lib_w = thumbs_wire(part_thumbs);
-          srv.broadcast(catalogue_wire(part_avail));
+          srv.broadcast(hex_mesh::catalogue_wire(part_avail));
           for lib_msg in lib_w { srv.broadcast(lib_msg); }
           lib_ms = ticks() - lib_t0;
           srv.broadcast("S:the library changed — {part_avail.len()} parts, catalogue "

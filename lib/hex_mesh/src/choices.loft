@@ -1,0 +1,117 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE CATALOGUE — what an author can choose, composed once.
+//
+// It is the JOIN of two lists: the surfaces this mesher can draw, and the parts on
+// disk. That is why it lives here and not in `lavition_ui` — the panel's package
+// declares an EMPTY dependency list as its claim (*"a rect is a rect"*), and asking
+// it to know what a part is would end that.
+//
+// ⚠ IT IS HERE BECAUSE OF AN ARROW, LIKE `ground_under` BEFORE IT. `hex_editor`
+// owns the gestures and could not compose this: the material half is
+// `surface_at`'s, and **`hex_mesh` depends on `hex_editor`**, so a catalogue there
+// would be a cycle. This package already has both halves — the surfaces are its
+// own and `hex_part` is a dependency — so nothing moved to make room for it.
+//
+// ── ⚠ WHY IT IS SHARED AT ALL, WHICH IS THE WHOLE POINT ─────────────────────
+//
+// `src/editor_client.loft` says of the catalogue it receives: *"Kept as the server
+// sent it … a list the client composed would be a list of what it believes the
+// renderer can draw."* That is right, and local mode breaks it: with no server
+// there is nobody to send an `N:`, so the page must produce one.
+//
+// The resolution is not to let the page believe something — it is that **neither
+// program composes anything**. Both call this, so the page's catalogue is not the
+// page's opinion; it is the same join, run in a different process. Same shape as
+// `press_verb`, `walk_to` and `fall_step` this plan already took.
+// ⚠ NAMED `choices`, NOT `catalogue`, AND THE COMPILER TAUGHT ME THAT. `hex_part`
+// already has a `catalogue.loft` and its entry says `use catalogue;` — so a module
+// of the same name here made `part_list` unresolvable from inside this file, with a
+// diagnostic naming the FUNCTION and never the collision. **A module file name is a
+// namespace too**, shared across a consumer's whole dependency graph exactly as
+// CLAUDE.md records for struct names. `choices` is what this list is: the things an
+// author can pick.
+use hex_part;
+use surfaces;
+
+// ── The wire's own vocabulary ───────────────────────────────────────────────
+//
+// ⚠ THESE WERE DECLARED IN BOTH PROGRAMS — `src/editor_server.loft` composed the
+// string with its pair and `src/editor_client.loft` parsed it with its own, and
+// nothing made them equal. One `material` spelled `materials` on one side is a
+// catalogue with every row of one kind silently unrecognised. `WIRE_PROTOCOL.md`
+// owns the format; this owns the words.
+pub const KIND_MATERIAL = "material";
+pub const KIND_PART     = "part";
+
+// A part, and why it cannot be used if it cannot.
+pub struct PartAvail { av_name: text, av_why: text }
+
+// Why a surface is not something you can CHOOSE, or "" when it is.
+//
+// ⚠ AVAILABILITY IS NOT DRAWABILITY, and the four entries are the difference. Every
+// name here meshes perfectly; what they are not is *a thing an author picks and
+// paints with*. A soffit and a frame are DERIVED — they appear because something
+// else was built — and a tree is scattered while rock is what a slope becomes. A
+// catalogue that offered them would offer a verb that cannot be pressed.
+pub fn surface_block(name: text) -> text {
+  if name == "soffit" { return "derived"; }
+  if name == "frame"  { return "derived"; }
+  if name == "tree"   { return "scattered"; }
+  if name == "rock"   { return "too steep"; }
+  ""
+}
+
+// The parts under `root`, each with the reason it is unusable, or "" when it is.
+//
+// ⚠ §P8's CHECK, WHERE THE AUTHOR CAN SEE IT. A part that contains itself is
+// checked on save by the design and there is no save gesture yet, so a library with
+// a cycle in it would sit there being wrong until something tried to expand it.
+// Asking here means the catalogue can show the row greyed with its reason.
+//
+// ⚠ AND IT RETURNS THE REASON RATHER THAN PRINTING IT. The server logged each
+// unusable part as it built the list; a library that printed would put the same
+// four lines in a browser console, where nobody asked for them. The caller decides
+// whether a reason is worth saying out loud.
+pub fn part_availability(root: text) -> vector<PartAvail> {
+  pav_out: vector<PartAvail> = [];
+  for pav_n in hex_part::part_list(root) {
+    pav_c = hex_part::part_cycle(root, pav_n);
+    pav_why = "";
+    if pav_c.cc_code == hex_part::CY_CYCLE { pav_why = "contains itself: {pav_c.cc_why}"; }
+    if pav_c.cc_code == hex_part::CY_MISSING { pav_why = "missing part: {pav_c.cc_why}"; }
+    if pav_c.cc_code == hex_part::CY_BROKEN { pav_why = "damaged: {pav_c.cc_why}"; }
+    pav_out += [PartAvail { av_name: pav_n, av_why: pav_why }];
+  }
+  pav_out
+}
+
+// `N:<kind>|<name>|<0|1>|<reason>;…` — the catalogue as it travels.
+//
+// ⚠ NO REFUSAL AND NO PLACEHOLDER WHEN THERE ARE NO PARTS. A first run has no
+// `data/parts/`, and `part_list` answers with nothing — so the catalogue is simply
+// the materials. An "(no parts yet)" row would be an entry the author could select
+// that is not a thing.
+pub fn catalogue_wire(avail: vector<PartAvail>) -> text {
+  out = "N:";
+  n = surfaces::surface_count();
+  for i in 0..n {
+    if i > 0 { out = out + ";"; }
+    nm = surfaces::surface_at(i).sf_name;
+    why = surface_block(nm);
+    av = "1";
+    if why != "" { av = "0"; }
+    out = out + KIND_MATERIAL + "|" + nm + "|" + av + "|" + why;
+  }
+  for p in avail {
+    pav = "1";
+    if p.av_why != "" { pav = "0"; }
+    out = out + ";" + KIND_PART + "|" + p.av_name + "|" + pav + "|" + p.av_why;
+  }
+  out
+}
+
+// The whole catalogue for a library at `root`, which is what a driver actually
+// wants — the two halves are never useful apart.
+pub fn catalogue_for(root: text) -> text { catalogue_wire(part_availability(root)) }

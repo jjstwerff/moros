@@ -393,6 +393,47 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ THE DEMO CARRIES ITS PART LIBRARY — and a MODULE name is a namespace, 2026-08-14
+
+**`build-pages.mjs` bakes `data/parts/` to `/data/parts`** as a `globalThis.loftBaseFS` prelude — 23
+files, 326 KB raw, 437 KB encoded on a 5.8 MB page — and the page **reads 20 parts back out**,
+matching the interpreter's own answer for the real directory. `make probe-demo` is 22 checks.
+
+✅ **PLAN 22's OPEN QUESTION 2 IS ANSWERED WITH A NUMBER**: ship the WHOLE library — 326 KB against a
+5.4 MB engine is 6 %, and a starter set would be a second list to keep in step for nothing.
+
+⚠ **THE MEASUREMENT CAME FIRST: CAN A PAGE LIST A DIRECTORY IT WAS GIVEN?** `P6` proved `list_dir`;
+**`part_list` also needs `is_dir`**, which nothing had asked — and it returns nothing at all without
+it, so a demo whose library is present but unreadable looks exactly like one with no library.
+`probe/b1c/parts.mjs`: **20 and 20** against the interpreter.
+
+⛔ **A MODULE FILE NAME IS A NAMESPACE TOO, AND THE DIAGNOSTIC NEVER SAYS SO.** The new module was
+`catalogue.loft` and **`hex_part` already has one** — the result was `part_list` unresolvable *from
+inside my own file*, with an error naming the FUNCTION and never the collision. It is
+`choices.loft`. **CLAUDE.md records this for STRUCT names; it is true of modules, and this is the
+first time the tree has hit it.**
+
+⚠ **THE CATALOGUE IS SHARED RATHER THAN COMPOSED TWICE.** The client keeps the catalogue *as the
+server sent it* because *"a list the client composed would be a list of what it believes the
+renderer can draw"* — and local mode has no server. The answer is that **neither program composes
+anything**: `KIND_MATERIAL`, `KIND_PART`, `surface_block`, `part_availability` and `catalogue_wire`
+are `hex_mesh::choices`'s. ⚠ The two KIND constants had been declared in BOTH programs, one
+composing the string and one parsing it. ⚠ It landed in `hex_mesh` because of an arrow, like
+`ground_under`: `hex_mesh` depends on `hex_editor` so a catalogue there is a cycle, and
+`lavition_ui` declares an **empty dependency list as its claim**.
+
+⛔ **AND THE SABOTAGE CAUGHT MY OWN CHECK OVERCLAIMING.** `DEMO_SABOTAGE=noparts` left `P1` red and
+**`P2` GREEN** — its 11 swatches are the MATERIAL rows, which exist whether or not a part was baked.
+It now says *"the panel took it: 11 material swatches (⚠ blind to the parts)"*.
+
+⏭ **THE PAGE LISTS PARTS IT CANNOT DRAW A PICTURE OF** — thumbnails are next. ⚠ And the server's
+stated reason for meshing them (*"four of a chunk's nine surfaces come out of `chunk_mesh_props`,
+which lives in THIS file"*) **expired at `B1b.2c.3`** when that mesher moved to `hex_mesh`.
+
+⚠ **AND `D0`'s CLAIM WAS RESTATED RATHER THAN LOOSENED**: the demo cannot be `cmp`-equal to the
+served page now, so the check asserts **every engine byte present, in order, with one contiguous
+prelude in front**.
+
 ## ✅ THE MESHER MEASURES IN THE WORLD'S OWN UNIT NOW — 2026-08-14
 
 **Every height in `hex_mesh` is `w_unit`**; all 72 sites multiplied by the global `HEIGHT_SCALE`

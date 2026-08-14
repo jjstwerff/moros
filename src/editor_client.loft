@@ -363,8 +363,11 @@ const SURFACES   = 11;   // ⚠ 10 → 11 for water, plan 20 `A10`
 // the wire are what must agree. It is named on both sides rather than spelled
 // inline, so a typo is a compile error at one end instead of a row that silently
 // renders as the other family.
-const KIND_MATERIAL = "material";
-const KIND_PART     = "part";
+// ⚠ `KIND_MATERIAL`/`KIND_PART` ARE `hex_mesh::choices`'s — plan 22 `B2c`. This
+// file declared its own pair to PARSE the catalogue while the server declared
+// another to COMPOSE it, with nothing making them equal: one side spelling
+// `material` where the other wrote `materials` is a catalogue whose every row of
+// that kind is silently unrecognised, and both halves would look fine in isolation.
 
 struct Part {
   pid: integer,
@@ -905,6 +908,13 @@ const LOCAL_TICK_MAX = 8;
 // edge the server blocks**, and the two authorities would disagree about the shape
 // of the world with nothing written differently to show it.
 const LOCAL_COLL_R = 8;
+
+// Where this page's part library lives — plan 22 `B2c`. An ABSOLUTE path, because a
+// page has no working directory and `source_dir()` is whatever the host says: the
+// build bakes `data/parts/` to exactly this root, and `probe/b1c/parts.mjs`
+// measured a page listing 20 parts from it — the interpreter's own answer for the
+// real directory.
+const LOCAL_PARTS = "/data/parts";
 
 fn local_camera(st: Client, a: hex_editor::Author) {
   lc_fx = cos(a.au_yaw);
@@ -2166,7 +2176,7 @@ fn render_row_images(st: Client, items: vector<Entry>) -> vector<Swatch> {
   graphics::gl_framebuffer_texture(fbo_tb, 1, depth);
   mat_n = 0;
   for it in items {
-    if it.en_kind == KIND_PART {
+    if it.en_kind == hex_mesh::KIND_PART {
       out += [Swatch { sw_tex: render_thumb(st, it#index, fbo_tb) }];
     } else {
       out += [Swatch { sw_tex: render_swatch(st, mat_n, vao, fbo_sw) }];
@@ -2505,6 +2515,26 @@ fn main() {
   sess = hex_editor::EditSession {};
   author = hex_editor::author_on(st.cache, 0.0, 0.0, 0.0);
 
+  // ── THE CATALOGUE LOCAL MODE SHOWS — plan 22 `B2c` ─────────────────────────
+  //
+  // Attached, the catalogue arrives as `N:` and this file's own comment says why it
+  // is kept verbatim: *"a list the client composed would be a list of what it
+  // believes the renderer can draw."* That is right, and with no server there is
+  // nobody to send one.
+  //
+  // ⚠ SO IT IS NOT COMPOSED HERE EITHER. `hex_mesh::catalogue_for` is the same
+  // function the server calls; this page runs it against its OWN part library
+  // instead of the server's disk. The page's catalogue is therefore not the page's
+  // opinion — it is the same join, in a different process.
+  //
+  // ⚠ AND THE LIBRARY IS THE PAGE'S BASE TREE, which `P6` measured and
+  // `probe/b1c/parts.mjs` measured again for this: `part_list` needs `is_dir` as
+  // well as `list_dir`, and a page whose library is present but unreadable lists
+  // NOTHING — indistinguishable from a demo shipped without one.
+  local_cat = hex_mesh::catalogue_for(LOCAL_PARTS);
+  println("client: local library — {len(hex_mesh::part_availability(LOCAL_PARTS))} "
+          + "parts under '{LOCAL_PARTS}'");
+
   // ⚠ NOT `if prog == 0 { fail }`, which is what the API's own doc says to write
   // ("Returns the program ID (0 on failure)"). In the browser `gl_create_shader`
   // returns an INDEX into a program table that starts at zero, so the first shader
@@ -2666,6 +2696,10 @@ fn main() {
           // camera and every mesh arrive from the server; local, this is the
           // moment the page becomes the thing that answers both.
           local_camera(st, author);
+          // ⚠ THE SAME FIELD THE `N:` HANDLER WRITES, so the panel cannot tell
+          // which authority filled it — that is what makes one catalogue rather
+          // than a local imitation of one.
+          if local_cat != st.mats { st.mats = local_cat; st.panel_dirty = true; }
           lg_boot = local_surfaces(st, sess, author);
           println("client: local — {lg_boot} ground floats in {len(st.parts)} "
                   + "drawables · world {world_key(st.cache)}");
@@ -2723,7 +2757,7 @@ fn main() {
       for ci in 0..len(ui_swatches) {
         cit = ui_panel.p_list.lb_items[ci] ?? entry("");
         if (ui_swatches[ci] ?? Swatch { sw_tex: 0 }).sw_tex == 0 { continue; }
-        if cit.en_kind == KIND_PART { n_thumb = n_thumb + 1; }
+        if cit.en_kind == hex_mesh::KIND_PART { n_thumb = n_thumb + 1; }
         else { n_swatch = n_swatch + 1; }
       }
       // ⚠ ARRIVED AND HELD ARE DIFFERENT NUMBERS, and printing only the first

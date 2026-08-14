@@ -87,6 +87,39 @@ if (newer.length) {
     + (newer.length > 5 ? `\n              … and ${newer.length - 5} more` : ''));
 }
 
+// ── THE PART LIBRARY, BAKED IN — plan 22 `B2c` ──────────────────────────────
+//
+// `data/parts/` becomes the page's base tree at `/data/parts`, which is where
+// `editor_client.loft`'s `LOCAL_PARTS` looks. ⚠ It is an ABSOLUTE root because a
+// page has no working directory; `probe/b1c/parts.mjs` measured a page listing 20
+// parts from exactly this path, against the interpreter's own 20 for the real
+// directory.
+//
+// ⚠ INLINED RATHER THAN FETCHED, and that is `file://`'s doing: a `fetch()` of a
+// sibling file is blocked by CORS off a disk, which is the constraint
+// [PAGES_EDITOR § quick start](../doc/claude/PAGES_EDITOR.md) derives from the word
+// "no install". So the bytes ride in the HTML.
+//
+// ⚠ AND THEY ARE BASE64, BECAUSE A PART IS BINARY. `loftBaseFS` takes
+// `string | Uint8Array`; a `.hxw` put in as a JS string would be mangled by exactly
+// the encoding trap that cost this file an em dash — so the prelude decodes to
+// bytes and nothing is decoded twice.
+const partsRoot = join(root, 'data', 'parts');
+const parts = {};
+const walkParts = (dir, at) => {
+  for (const e of readdirSync(dir).sort()) {
+    const q = join(dir, e);
+    if (statSync(q).isDirectory()) walkParts(q, `${at}/${e}`);
+    else parts[`${at}/${e}`] = readFileSync(q).toString('base64');
+  }
+};
+// ⚠ `--no-parts` IS THE CONTROL, NOT AN OPTION ANYBODY NEEDS. `probe/b2` uses it to
+// show that the catalogue's rows come from the baked library rather than from the
+// page being a page — a demo built without it must find nothing.
+const noParts = process.argv.includes('--no-parts');
+if (existsSync(partsRoot) && !noParts) walkParts(partsRoot, '/data/parts');
+const partBytes = Object.values(parts).reduce((n, b) => n + Math.floor(b.length * 3 / 4), 0);
+
 // ── The servers this demo may be told about ─────────────────────────────────
 const flag = process.argv.indexOf('--servers');
 const servers = flag < 0 ? [] : (process.argv[flag + 1] ?? '')
@@ -112,12 +145,22 @@ for (const u of servers) {
 // truncates every code point above 0xFF. The splice is Buffers now, which removes
 // the trap; the ASCII stays because a file the page PARSES should not depend on
 // having got that right.
-const prelude = servers.length
-  ? Buffer.from(`<script>globalThis.loftBaseFS = ${JSON.stringify({
-      '/servers.txt': `# plan 22 B2b: where this demo may look for an editor.\n`
-                    + `# The page's own origin is always tried first.\n`
-                    + servers.map((s) => s + '\n').join(''),
-    })};</script>\n`, 'utf8')
+// ⚠ ONE PRELUDE, ONE `loftBaseFS`. Two script tags each assigning it would leave
+// whichever ran last, silently — the page would boot with a library and no servers,
+// or the reverse, and both look like a working demo.
+const baseText = {};
+if (servers.length) {
+  baseText['/servers.txt'] = `# plan 22 B2b: where this demo may look for an editor.\n`
+                           + `# The page's own origin is always tried first.\n`
+                           + servers.map((s) => s + '\n').join('');
+}
+const prelude = (Object.keys(parts).length || Object.keys(baseText).length)
+  ? Buffer.from(`<script>globalThis.loftBaseFS = (() => {
+  const t = ${JSON.stringify(baseText)}, b = ${JSON.stringify(parts)}, o = {};
+  for (const k in t) o[k] = t[k];
+  for (const k in b) { const s = atob(b[k]); const u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); o[k] = u; }
+  return o; })();</script>\n`, 'utf8')
   : null;
 
 // ── The copy, and the assertion that it is one ──────────────────────────────
@@ -139,13 +182,17 @@ writeFileSync(INDEX, out);
 // order, and something was put in front of them.
 const back = readFileSync(INDEX);
 if (!prelude && !back.equals(bytes)) die('the written page is not byte-identical to the engine build');
-if (prelude && !back.includes(prelude)) die('the servers prelude did not reach the page');
+if (prelude && !back.includes(prelude)) die('the base-tree prelude did not reach the page');
 if (prelude && back.length !== bytes.length + prelude.length) {
   die('the page is not the engine build plus a prelude — something else changed');
 }
 
 const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
 console.log(`build-pages: _site/index.html  ${kb(out.length)}  (the client engine build, verbatim)`);
+if (Object.keys(parts).length) {
+  console.log(`build-pages: and the part library — ${Object.keys(parts).length} files, `
+            + `${kb(partBytes)} raw, baked at /data/parts`);
+}
 if (servers.length) {
   console.log(`build-pages: and ${servers.length} server candidate(s) after its own origin:`);
   for (const s of servers) console.log(`             ${s}`);

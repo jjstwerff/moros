@@ -290,6 +290,69 @@ rather than the raw yaw.
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
 
+## ✅ What inlining `data/parts` turned up (2026-08-14) — a module name is a namespace
+
+**The demo carries its part library.** `build-pages.mjs` bakes `data/parts/` to `/data/parts` as a
+`globalThis.loftBaseFS` prelude — 23 files, 326 KB raw, 437 KB encoded on a 5.8 MB page — and the
+page **reads 20 parts back out of it**, which is the interpreter's own answer for the real
+directory. `make probe-demo` is 22 checks.
+
+⚠ **PLAN 22's OPEN QUESTION 2 IS ANSWERED WITH A NUMBER, WHICH IS WHAT IT ASKED FOR.** *"Does the
+demo ship the whole part library, or a starter set?"* — **the whole of it**: 326 KB against a 5.4 MB
+engine is 6 %, and a starter set would be a second list to keep in step for nothing.
+
+### The measurement that had to come first: can a page LIST a directory it was given?
+
+`P6` proved a page reads its base tree and `list_dir`s it. **`part_list` also needs `is_dir`**, which
+nothing had ever asked — and it returns *nothing at all* without it, so a demo whose library is
+present but unreadable is indistinguishable from one shipped without a library.
+`probe/b1c/parts.mjs` settled it against the interpreter as oracle: **20 and 20.**
+
+### ⛔ A MODULE FILE NAME IS A NAMESPACE TOO, AND THE DIAGNOSTIC NEVER SAYS SO
+
+The new module was `catalogue.loft` — and **`hex_part` already has one**, with `use catalogue;` in
+its entry. The result was `part_list` unresolvable *from inside my own file*, with a diagnostic
+naming the FUNCTION and never the collision. It is `choices.loft`.
+
+> CLAUDE.md records this for **struct** names — *a loft struct name is global across a consumer's
+> whole dependency graph*. It is true of **modules** as well, and this is the first time the tree
+> has hit it.
+
+### Why the catalogue had to be SHARED rather than composed twice
+
+`editor_client.loft` says of the catalogue it receives: *"Kept as the server sent it … a list the
+client composed would be a list of what it believes the renderer can draw."* Local mode breaks that
+— with no server there is no `N:` — and the resolution is **not** to let the page believe
+something. `KIND_MATERIAL`, `KIND_PART`, `surface_block`, `part_availability` and `catalogue_wire`
+are `hex_mesh::choices`'s, and both drivers call them: the page's catalogue is the same join, in a
+different process. ⚠ The two KIND constants had been declared in **both programs** — one composing
+the string, one parsing it, with nothing making them equal.
+
+⚠ **AND IT LANDED IN `hex_mesh` BECAUSE OF AN ARROW, LIKE `ground_under`.** The material half is
+`surface_at`'s; `hex_mesh` depends on `hex_editor`, so a catalogue there is a cycle; and
+`lavition_ui` declares an **empty dependency list as its claim** (*"a rect is a rect"*), which
+knowing what a part is would end.
+
+### ⛔ And the sabotage caught my own check overclaiming
+
+`DEMO_SABOTAGE=noparts` builds the demo without its library. `P1` went red — and **`P2` stayed
+green**, because the 11 swatches it counts are the MATERIAL rows, which exist whether or not a part
+was ever baked. It said *"11 swatches rendered from it"*; it now says *"the panel took it: 11
+material swatches (⚠ blind to the parts)"* and names what would actually see a part row.
+
+⏭ **THE PAGE LISTS PARTS IT CANNOT DRAW A PICTURE OF**, which is the honest state: thumbnails are
+the next step. ⚠ And the reason the server meshes them — *"four of a chunk's nine surfaces come out
+of `chunk_mesh_props`, which lives in THIS file"* — **expired at `B1b.2c.3`** when the props mesher
+moved to `hex_mesh`. The client can mesh a part now; that comment is stale.
+
+### ⚠ And `D0`'s claim was restated rather than loosened
+
+The demo can no longer be `cmp`-equal to the page the server serves, because it carries a base tree.
+The check asserts the exact thing instead: **every engine byte present, in order, with one
+contiguous prelude in front** — `the engine build is present verbatim, plus 446768 bytes of
+prelude`. A recompiled, patched or truncated page fails it exactly as before; what it no longer
+does is fail for carrying a library.
+
 ## ✅ What fixing the mesher's height scale turned up (2026-08-14) — one part, and a compiler that named every site
 
 **Every height in `hex_mesh` is `w_unit` now.** A world authored at any unit is drawn at its own

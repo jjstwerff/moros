@@ -1,0 +1,24 @@
+// CAN A PAGE LIST ITS PART LIBRARY OFF ITS OWN BASE TREE?
+//
+// `hex_part::part_list` walks a directory with `list_dir` AND `is_dir`. `P6`
+// measured `list_dir` against a page's base tree and found it answers exactly what
+// the interpreter answers for a real directory; `is_dir` was never asked — and
+// `part_list` returns NOTHING without it, so a page whose library is present and
+// unreadable looks identical to one with no library at all.
+//
+// ⚠ IT ALSO ASKS WHICH PATH A PAGE NEEDS. A page has no environment and its
+// `source_dir()` is whatever the host says, so the root the build must bake to is
+// itself a measurement rather than a choice.
+use hex_part;
+
+fn probe_root(label: text, root: text) {
+  names = part_list(root);
+  println("PARTS {label} '{root}' -> {len(names)}");
+  for n in names { println("PARTS {label} name {n}"); }
+}
+
+fn main() {
+  probe_root("relative", "{source_dir()}/../../data/parts");
+  probe_root("absolute", "/data/parts");
+  println("PARTS DONE");
+}

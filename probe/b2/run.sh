@@ -15,8 +15,9 @@
 # if that gate does not exist, the demo is broken the first week nobody opens
 # it."*
 #
-# ⚠ AND THE DEMO IS THE CLIENT ENGINE BUILD, so this checks that too — `_site/`
-# must be byte-identical to what the server serves at `/`. The moment those differ
+# ⚠ AND THE DEMO IS THE CLIENT ENGINE BUILD, so this checks that too — every byte
+# the server serves at `/` must be present in `_site/index.html`, in order, with
+# only the base-tree prelude in front of it. The moment the ENGINE halves differ
 # there are two pages to keep in step, which is the one thing the design refuses.
 #
 # ── ⚠ WHAT THE VERDICT READS, so nobody thins it by symmetry ────────────────
@@ -60,6 +61,9 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #   DEMO_SABOTAGE=noraise    the same H walk with nothing raised to fall off. If
 #                            `H1`/`H2` were about walking rather than about the
 #                            GROUND, this would pass.
+#   DEMO_SABOTAGE=noparts    the demo built with `--no-parts`. If the catalogue's
+#                            rows came from the page rather than from the baked
+#                            library, this would pass.
 #   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
 #                            which is what a missing time bridge looks like from
 #                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
@@ -92,6 +96,10 @@ case ",$SAB," in
     mkdir -p _site && cp probe/b2/.loft/.deadclock.html "$SITE" \
       || fail "the sabotaged page was not emitted where expected"
     ;;
+  *,noparts,*)
+    node tools/build-pages.mjs --no-parts || fail "build-pages refused"
+    echo "   SABOTAGE noparts — the demo is built without its part library"
+    ;;
   *) node tools/build-pages.mjs || fail "build-pages refused" ;;
 esac
 case ",$SAB," in
@@ -106,10 +114,26 @@ case ",$SAB," in
     echo "   (the engine-identity check is skipped: this page is deliberately not it)"
     ;;
   *)
-    if ! cmp -s "$SITE" "$ENGINE"; then
-      fail "_site/index.html is not the engine build — there are two pages to keep in step"
-    fi
-    echo "   _site/index.html is byte-identical to what the server serves at /"
+    # ⚠ THE CLAIM IS "THE ENGINE BUILD PLUS A PRELUDE", NOT "BYTE-IDENTICAL" — plan
+    # 22 `B2c`, and the difference is exact rather than a loosening. The demo now
+    # carries its part library as a `globalThis.loftBaseFS` prelude, so it cannot be
+    # `cmp`-equal to the page the server serves; what must still hold is that **every
+    # engine byte is present, in order, untouched**, with one contiguous run inserted
+    # in front of them. A page that had been recompiled, patched or truncated fails
+    # this exactly as it failed the old one — what it no longer does is fail merely
+    # for carrying a base tree.
+    node -e '
+      const fs = require("fs");
+      const site = fs.readFileSync(process.argv[1]), eng = fs.readFileSync(process.argv[2]);
+      const plen = site.length - eng.length;
+      if (plen < 0) { console.log("SHORTER than the engine build"); process.exit(1); }
+      const at = eng.indexOf(Buffer.from("<script>"));
+      if (at < 0) { console.log("no <script> in the engine build"); process.exit(1); }
+      const head = site.subarray(0, at).equals(eng.subarray(0, at));
+      const tail = site.subarray(at + plen).equals(eng.subarray(at));
+      if (!head || !tail) { console.log("the engine bytes are NOT intact (head " + head + ", tail " + tail + ")"); process.exit(1); }
+      console.log("   the engine build is present verbatim, plus " + plen + " bytes of prelude");
+    ' "$SITE" "$ENGINE" || fail "_site/index.html is not the engine build plus a prelude — there are two pages to keep in step"
     ;;
 esac
 echo "   $(wc -c < "$SITE") bytes"
@@ -184,6 +208,41 @@ else no "D6 no gesture reached the world — the page drew but did not edit"; fi
 if [ -n "$drew" ]; then say "D7 surfaces: ${drew#client: }"
 else no "D7 the page never named a surface it drew"; fi
 
+
+# ── P  the demo carries its PART LIBRARY — plan 22 `B2c` ───────────────────
+#
+# ⚠ READ OFF THE `D` RUN, which already booted this page — no extra browser pass.
+#
+# ⚠ AND THE CLAIM IS THE PAGE'S OWN READ, NOT THE BUILD'S REPORT. `build-pages`
+# printing "23 files baked" says what it put in; only the page saying `local library
+# — N parts` says the bytes are reachable through `list_dir`/`is_dir` at the root
+# the client actually looks at. Those are two different facts and the build cannot
+# have the second.
+p_lib=$(grep -m1 'client: local library' "$OUT/demo.log" || true)
+p_n=$(printf '%s' "$p_lib" | sed -n 's/.*library — \([0-9]*\) parts.*/\1/p')
+p_sw=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/^client: \([0-9]*\) swatches.*/\1/p')
+
+if [ -n "$p_n" ] && [ "$p_n" -gt 0 ] 2>/dev/null; then
+  say "P1 library: ${p_lib#client: local }"
+else
+  no "P1 the page found no parts in its own base tree (read '$p_n') — the library is not baked, or not at the root the client looks at"
+fi
+
+# ⚠ P2 IS ABOUT THE CATALOGUE REACHING THE PANEL, AND IT IS BLIND TO THE PARTS —
+# which the `noparts` sabotage proved by staying GREEN. The swatches are the
+# MATERIAL rows, and a page with no part library still has all eleven of them. It is
+# kept because it is the only thing that says the composed string was accepted by
+# the panel at all — a page that read 20 parts and rendered an empty catalogue would
+# pass `P1` and fail here — but it must not be read as *the parts are on screen*.
+#
+# ⏭ WHAT WOULD SEE A PART ROW IS ITS THUMBNAIL, and there are none yet: the page
+# lists parts it cannot draw a picture of. That is the next step, and the reason
+# this check says `materials` in its own verdict rather than `catalogue`.
+if [ -n "$p_sw" ] && [ "$p_sw" -gt 0 ] 2>/dev/null; then
+  say "P2 the panel took it: $p_sw material swatches rendered (⚠ blind to the parts — see noparts)"
+else
+  no "P2 the panel rendered $p_sw material swatches — the composed catalogue never reached it"
+fi
 
 # ── F  the demo can BUILD A HOUSE — plan 22 `B1c.1`, the turn ───────────────
 #
