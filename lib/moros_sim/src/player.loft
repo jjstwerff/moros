@@ -12,6 +12,15 @@ use collide;
 // All velocities are world-units / second.  Gravity is world-units / s².
 pub WALK_SPEED        = 6.0;
 pub JUMP_RISE_SPEED   = 10.0;
+// ⚠ AND THE EDITOR HAS ITS OWN NOW — `hex_editor::FALL_GRAVITY`, plan 22 `B1c.3`.
+// `fall.loft` used to import this one, under *"a package with two gravities is a
+// package where a jump and a fall disagree"*. It moved to `hex_editor` because the
+// editor's walker lives there and a lavition package may not depend on a Moros one.
+// The two are for two world models — `player_step` falls in a `Map`, that one in a
+// `VoxelWorld` — and the old note already named the end of it: *when the two world
+// models converge, one of these goes.* ⚠ **Nothing keeps them equal**: each side
+// pins its own value with a test (`tests/skeleton.loft` here,
+// `hex_editor/tests/fall.loft` there), so a drift is loud rather than prevented.
 pub GRAVITY           = 12.0;
 pub TERMINAL_VELOCITY = 60.0;
 pub AVATAR_RADIUS     = 0.3;

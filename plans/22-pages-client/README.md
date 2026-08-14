@@ -158,7 +158,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1c.2a`** — pay the arrow: `cliff` leaves `moros_sim` for `hex_editor` | S | **DONE 2026-08-13.** A debt written down in TWO places before it was paid — the file's own *target home* note and `stair_cut`'s *"taking the dependency would point the arrow backwards"*. Test-name diff exact: hex_editor **436/42 → 446/43**, moros_sim **313/26 → 303/25**, and `hex_edge` dropped from its manifest because nothing else in the package used it | ✅ Done |
 | ✅ **`B1c.2b`** — the walk itself: `hex_editor::walk`, and the server drops its copy | M | **DONE 2026-08-13.** 8 functions and `SKIN` moved verbatim; the server is **7743 → 7400 lines**. ⛔ **The blocker did not apply** — `walk_to` never calls `ground_under`; only the FALL does. Diffed body by body against the previous commit: **17 changed code lines, all three deltas named**. `make gate-character` 8/8 with every number identical (`climbed 0.492`, `peakReached 0.497`, `fenceAt 6.062`) | ✅ Done |
 | ✅ **`B1c.2c`** — the page walks | S | **DONE 2026-08-13.** `make probe-demo`'s G block: **walked 2.454 units to (2.454, 0)**, and the house it then places is **`32920:1885399240`** where the same house standing still is `41145:1306471549`. ⚠ The verdict is the WORLD, not the distance — a pose nothing reads would report a distance too. `DEMO_SABOTAGE=nowalk` lands exactly F4's world | ✅ Done |
-| **`B1c.3`** — the FALL | ? | ⚠ **deliberately after the walk**: `fall_step` imports `player::GRAVITY` under a comment saying *a package with two gravities is a package where a jump and a fall disagree* — so where gravity lives is its design question. ⏭ And **without a fall the walker is coherent, not crippled**: cliff edges BLOCK, so a page walker cannot leave a plateau in the first place | Blocked on `B1c.2b` |
+| ✅ **`B1c.3`** — the FALL | M | **DONE 2026-08-14.** `ground_under` → `hex_mesh` (the cycle, paid on the side that owns the interpolation), `fall.loft` → `hex_editor` as `FALL_GRAVITY`/`FALL_TERMINAL`. `make probe-demo`'s H block: the feet leave the ground plane and **a fall COMPLETES**, with the flat-ground G run as the control at `feet 0 landed 0` | ✅ Done |
 | ✅ **`P6`** — does a `--html` page have a FILESYSTEM, and does a world saved in it survive a reload? | XS | **RUN 2026-08-13 — it holds**, `make probe-p6`. 21 `fs_*` names against the design's 0 of 20; `pass2 ok` over http AND `file://`; the base tree reads as the interpreter's directory; `P6_SABOTAGE=persist` seen red | ✅ Done |
 | ⛔ **`W5`** — `lavition_host`, the interim storage shim | S | — | ⛔ **CANCELLED by `P6`** — its own escape clause fired |
 | ✅ **`B2`** = **`B3`** — `tools/build-pages.mjs`, `_site/`, and the check that opens it | S | **DONE 2026-08-13.** `make probe-demo`: `_site/index.html` over `file://` with no listener at either end — boots, goes local in 180 dials, draws (world **5 colours** over the horizon against a 303-colour panel control), holds still, and `ArrowUp` **writes** (`local raise — 1 · world 16502:374721773`). Two sabotages, red in different places | ✅ Done |
@@ -289,6 +289,70 @@ rather than the raw yaw.
 (`offer 8`) and does not take it. Whether `place` should snap to its own offer is an
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
+
+## ✅ What `B1c.3` turned up (2026-08-14) — two gravities became honest by becoming two packages
+
+**The page falls.** `hex_mesh::ground_under` answers what is under the feet for both drivers, and
+`hex_editor::fall_step` evolves them.
+
+### The cycle, paid on the side that owns the interpolation
+
+⛔ **THIS IS THE BLOCKER THE WALK TURNED OUT NOT TO HAVE.** `walk_to` never asks for the ground; the
+fall asks on every tick. And `ground_under` needs `terrain_y` — the INTERPOLATED heightfield, which
+is `hex_mesh`'s — while **`hex_mesh` depends on `hex_editor`**, so a `ground_under` in the library
+where the walker lives is a dependency cycle.
+
+✅ **SO IT WENT THE OTHER WAY: into `hex_mesh`, beside the `terrain_y` it defers to.** Both drivers
+already depend on it, neither re-derives what a foot is standing on, and no arrow moved. ⚠ The
+alternative — the page re-implementing eleven lines — is exactly the divergence this plan removes,
+and it would have been invisible until somebody stood on a stairwell.
+
+### The gravity, and why the old note was right and still let it move
+
+`fall.loft` imported `player::GRAVITY` under *"a package with two gravities is a package where a
+jump and a fall disagree"*, caught the honest way: it was first written with an invented 11.0
+beside a shipped 12.0.
+
+⚠ **WHAT CHANGED IS THAT THEY ARE NOW TWO PACKAGES FOR TWO WORLD MODELS.** `player_step` falls in a
+`Map` (`moros_map`'s, still live — `editor.loft` drives it); this one falls in a `VoxelWorld`. The
+old note named its own end: *"when the two world models converge, one of these goes."* **A second
+declaration for a second world model is honest; a second declaration for the same one never was.**
+
+⚠ **AND THE PIN IS A TEST, NOT AN IMPORT — SAID PLAINLY RATHER THAN DRESSED UP.** Nothing makes the
+two equal, because the arrow forbids either importing the other. Each side types out its own number
+with a test that goes red on drift, and each file names the other. **A drift is loud rather than
+prevented**, which is the honest description of what this buys.
+
+⚠ **AND THEY ARE `FALL_*`, NOT `GRAVITY` — the `WALK_SKIN` lesson applied BEFORE it bit.**
+`src/editor_server.loft` imports this package and `moros_sim`, so a bare `GRAVITY` published here
+is one name declared by two packages in one program.
+
+⛔ **AND THE NAME CHECK MISSED THEM ANYWAY, on its third blind spot in two days.** The grep matched
+`^\\s*(pub )?(fn|const|struct) NAME` — and `player.loft` writes **`pub GRAVITY = 12.0`, with no
+`const`**. It reported `GRAVITY` FREE. *A declaration-form the pattern does not know is a
+declaration the pattern says is absent* — after `lib/*/tests/` at `B1c.2b`, and the excluded file
+at `B1b.2c.2`.
+
+### And a test file collided again, from the other direction
+
+`tests/fall.loft` declared its own `fabs`, and moving it into `hex_editor` made that a redefinition
+of **`hex_form::fabs`** — a name a *dependency* publishes. `WALK_SKIN` was a library name hitting a
+test's; this is a test's hitting a dependency's. **A test file declares into its package's
+namespace**, and that is now written down twice.
+
+### What the fixture cost, and what it proved about the walker
+
+⚠ **`landed` IS THE CLAIM, NOT THE HEIGHT.** Feet that track the terrain are the CLIMB —
+`fall_step`'s `y <= gnd` branch, which a plain height lookup would also produce. `fl_landed` is
+reachable only by being airborne and then touching down.
+
+⛔ **AND THE FIRST TWO FIXTURES MEASURED THE WRONG THING, BOTH INSTRUCTIVELY.** Walking 3.3 units
+after a raise found flat ground, because **the brush lands ten hexes ahead** — the editor's own help
+line says so, and `B1b.2c.4b`'s water gate had already paid for it. Then *three* raises made a step
+of ~11 height units against a cliff threshold of **4**, and the walker climbed on and **stopped
+dead at 12.98 units** — fenced on the plateau by its own cliffs, which is `cliff.loft`'s recorded
+cost reproduced exactly. **One** raise is a walkable slope, and over it the feet rise 0.10 → 0.54 →
+1.13 → 1.40 and land three times.
 
 ## ✅ What `B1c.2c` turned up (2026-08-13) — the verdict is a WORLD, not a distance
 

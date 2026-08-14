@@ -1725,59 +1725,6 @@ fn surface_units(wld: VoxelWorld, q: integer, r: integer, feet_units: float) -> 
   hex_voxel::world_surface(wld, q, r, feet_units).sf_units
 }
 
-// The ground under the feet.
-//
-// ⚠ SMOOTH FOR TERRAIN, FLAT FOR WHAT IS BUILT ON IT. A terrain layer is a
-// heightfield and `terrain_y` interpolates it across a cell's corners, which is
-// what makes a slope a slope rather than a staircase. A deck is not a heightfield.
-// One occupied layer — or none — is the ordinary case, and the store reports it as
-// `sf_smooth` rather than the caller counting layers again.
-//
-// ⚠ It used to read a whole `Column` — a `Hex` allocated per layer — and then call
-// `surface_units`, which read ANOTHER one. Two allocations per query was fine
-// while only the feet asked, once a tick. The camera asks about five times per
-// boom sample and fifteen booms a tick, so the rule moved into the store where it
-// costs one chunk lookup and no allocation at all.
-//
-// ⚠ `ref` IS A REFERENCE HEIGHT, NOT NECESSARILY THE FEET, and the parameter is
-// named for that on purpose. Three callers with three different answers to *which
-// level is being asked about*: the camera passes its own EYE, so a boom does not
-// swing through a deck; a teleport passes `py`, because a teleport is
-// authoritative about where it is putting you; and the tick's fall passes the
-// surface the walker was standing on when the tick began — NEVER `py`, for the
-// reason spelled out on `walk_h`. A walker at the rim of a stair's top step has
-// feet a full storey below that step's own height, and asking with them selects
-// the ground under the deck instead of the deck.
-// ⚠ SMOOTH MEANS "THE SURFACE FOUND *IS* THE GROUND", NOT "THIS COLUMN HOLDS ONE
-// LAYER" — and the difference was invisible until a stairwell existed.
-//
-// `sf_smooth` is `occ <= 1`: one occupied terrain layer, therefore the outdoors,
-// therefore the interpolated heightfield. That inference holds for every column
-// anyone had built until now, and it is wrong for exactly one: a column whose ground
-// has been OPENED still holds one layer — the stair tread — so it reports smooth,
-// and the caller then interpolates `terrain_h`, which reads the ground cell's stored
-// height WITHOUT testing occupancy and answers as if the floor were still there.
-//
-// Measured: a walker teleported onto the top tread stood at 17.16 units instead of
-// 14 — on the floor it had just been given a hole through. The stair worked in the
-// store and the walker climbed the ceiling.
-//
-// The honest question is the one the file already states three screens up — *smooth
-// for terrain, flat for what is built on it* — so ask it directly: is the layer the
-// surface came from the ground layer? Same answer as before wherever the old test
-// was right, and right in the case that exposed it.
-fn on_the_ground(wld: VoxelWorld, q: integer, r: integer, sf: hex_voxel::SurfaceAt) -> boolean {
-  sf.sf_layer >= 0 && sf.sf_layer == hex_voxel::world_ground_layer(wld, q, r)
-}
-
-fn ground_under(wld: VoxelWorld, wx: float, wz: float, ref: float) -> float {
-  addr = world_to_hex(wx, wz);
-  sf = hex_voxel::world_surface(wld, addr.ha_q, addr.ha_r, ref / HEIGHT_SCALE ?? 0.0);
-  if sf.sf_units < 0 || on_the_ground(wld, addr.ha_q, addr.ha_r, sf) {
-    return hex_mesh::terrain_y(wx, wz, wld);
-  }
-  (sf.sf_units as float) * HEIGHT_SCALE
-}
 
 // Is any cell of this chunk within the draw distance of (hq, hr)? All-or-nothing
 // is what keeps the visible set stable; the cost is a rim slightly wider than
@@ -3023,7 +2970,7 @@ fn surface_h_at(q: integer, r: integer, ref: float, wld: VoxelWorld) -> float {
   // The same correction as `ground_under`'s, and it must be the same one: the camera
   // sampling a different surface from the feet is the disagreement this file's
   // ground sampler exists to avoid.
-  if sf.sf_units < 0 || on_the_ground(wld, q, r, sf) {
+  if sf.sf_units < 0 || hex_mesh::on_the_ground(wld, q, r, sf) {
     return (terrain_h(q, r, wld) as float) * HEIGHT_SCALE;
   }
   (sf.sf_units as float) * HEIGHT_SCALE
@@ -3062,7 +3009,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       // layer at or below the height you are at. The reference is this sample's
       // own eye height, which is exactly what "is the eye below the surface" asks.
       ey_s = oy + t * sp;
-      if ey_s < ground_under(wld, sx, sz, ey_s) + cam_clear_at(sx, sz, ey_s, wld) {
+      if ey_s < hex_mesh::ground_under(wld, sx, sz, ey_s) + cam_clear_at(sx, sz, ey_s, wld) {
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
@@ -3267,7 +3214,7 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // another heuristic: **the eye is never below the surface.** Obstruction is
   // outright bad and a raised eye is merely an unusual angle, so when the two
   // conflict the angle loses.
-  floor_at_eye = ground_under(wld, ex, ez, ey) + cam_clear_at(ex, ez, ey, wld);
+  floor_at_eye = hex_mesh::ground_under(wld, ex, ez, ey) + cam_clear_at(ex, ez, ey, wld);
   if ey < floor_at_eye { ey = floor_at_eye; }
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
@@ -4733,7 +4680,7 @@ fn main() {
               sess = held_sess;
               px = held_px;
               pz = held_pz;
-              py = ground_under(wld, px, pz, held_py);
+              py = hex_mesh::ground_under(wld, px, pz, held_py);
               in_part = false;
               part_name = "";
               // ⚠ FORCE A REBUILD RATHER THAN TRUST A CLOCK COMPARISON. `w_tau` is
@@ -4824,7 +4771,7 @@ fn main() {
               // the author empty ground with the subject line insisting otherwise.
               px = 0.0;
               pz = 0.0;
-              py = ground_under(wld, px, pz, 0.0);
+              py = hex_mesh::ground_under(wld, px, pz, 0.0);
               vy = 0.0;
               for pod in loaded { mark_dirty_id(dirty, pod); }
               // ⚠ AND THE CART GOES WITH THE WORLD — plan 17 `A8.9b`. The eight
@@ -4895,7 +4842,7 @@ fn main() {
             println("editor: load marked {len(dirty.items)} of {len(loaded)} chunks dirty");
             // The FEET, so the feet's rule — a load must not drop someone
             // standing on a deck through to the ground under it.
-            py = ground_under(wld, px, pz, py);
+            py = hex_mesh::ground_under(wld, px, pz, py);
             moved = true;
             srv.send_to(ev.cid, "S:loaded {len(wld.w_chunks)} chunks from {ev.payload}");
             println("editor: loaded {len(wld.w_chunks)} chunks <- {ev.payload}");
@@ -5045,7 +4992,7 @@ fn main() {
               if levelling {
                 py = (level_h as float) * HEIGHT_SCALE;
               } else {
-                py = ground_under(wld, px, pz, py);
+                py = hex_mesh::ground_under(wld, px, pz, py);
               }
               // A teleport is authoritative, so it also clears the fall.
               vy = 0.0;
@@ -5718,7 +5665,7 @@ fn main() {
                 // person would be standing rather than above the sea.
                 eye_x = eyx;
                 eye_z = eyz;
-                eye_y = ground_under(wld, eyx, eyz, 0.0) + eyh;
+                eye_y = hex_mesh::ground_under(wld, eyx, eyz, 0.0) + eyh;
                 eye_on = true;
                 srv.send_to(ev.cid, "S:eye at {eye_x},{eye_y},{eye_z} looking at "
                                   + "the character {eyd} away");
@@ -6277,7 +6224,7 @@ fn main() {
             // until you moved. Measured: it also made the levelling gate
             // unfalsifiable, since the released height was the frozen one in
             // both the real run and its control.
-            py = ground_under(wld, px, pz, py);
+            py = hex_mesh::ground_under(wld, px, pz, py);
             moved = true;
             println("editor: levelling off — feet back on the ground at {py}");
           }
@@ -6799,8 +6746,8 @@ fn main() {
       // at 12 and a ground at 0. This is `fall.loft`'s own lesson one level up —
       // it made the FEET a state, and the level is a state for the same reason.
       if !levelling {
-        fs_st = msim::fall_step(py, vy,
-                                ground_under(wld, px, pz, ref_u * HEIGHT_SCALE), dt);
+        fs_st = hex_editor::fall_step(py, vy,
+                                hex_mesh::ground_under(wld, px, pz, ref_u * HEIGHT_SCALE), dt);
         py = fs_st.fl_y;
         vy = fs_st.fl_vy;
         if fs_st.fl_airborne || fs_st.fl_landed { moved = true; }

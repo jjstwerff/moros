@@ -48,6 +48,10 @@ use cliff;
 // wall materials. Where a walker ENDS UP — plan 22 `B1c.2b`, moved verbatim out of
 // `src/editor_server.loft` so one walk answers both drivers.
 use walk;
+// The feet, between ticks — plan 22 `B1c.3`, moved from `moros_sim`. ⚠ AFTER `walk`
+// only for reading order: a fall takes floats and a ground height and knows nothing
+// about edges.
+use fall;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the

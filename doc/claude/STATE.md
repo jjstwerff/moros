@@ -393,6 +393,46 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `B1c.3` — THE PAGE FALLS: TWO GRAVITIES BECAME HONEST BY BECOMING TWO PACKAGES, 2026-08-14
+
+**`hex_mesh::ground_under`** answers what is under the feet for both drivers, and
+**`hex_editor::fall_step`** evolves them. `B1c` is closed.
+
+⛔ **THE CYCLE THE WALK DID NOT HAVE, THE FALL DOES.** `walk_to` never asks for the ground; the fall
+asks every tick — and `ground_under` needs `terrain_y`, which is `hex_mesh`'s, while **`hex_mesh`
+depends on `hex_editor`**. ✅ **So it went the other way**: into `hex_mesh`, beside the `terrain_y`
+it defers to. Both drivers already depend on it, no arrow moved, and neither re-derives what a foot
+stands on.
+
+⚠ **THE GRAVITY WAS THE REAL QUESTION, AND THE OLD NOTE WAS RIGHT.** `fall.loft` imported
+`player::GRAVITY` under *"a package with two gravities is a package where a jump and a fall
+disagree"* — caught once with an invented 11.0 beside a shipped 12.0. **What changed is that they
+are now two packages for two world models**: `player_step` falls in a `Map` (still live), this one
+in a `VoxelWorld`, and the old note named its own end — *when the two world models converge, one of
+these goes*. A second declaration for a second world model is honest; for the same one it never was.
+
+⚠ **AND THE PIN IS A TEST, NOT AN IMPORT.** Nothing makes them equal — the arrow forbids either
+importing the other — so each side types out its number with a test that reddens on drift and names
+the other. **Loud rather than prevented**, which is the honest description.
+
+⛔ **THE NAME CHECK MISSED THEM: ITS THIRD BLIND SPOT IN TWO DAYS.** The grep matched
+`(pub )?(fn|const|struct) NAME` and `player.loft` writes **`pub GRAVITY = 12.0`, with no `const`** —
+so it reported FREE. *A declaration form the pattern does not know is a declaration the pattern
+says is absent.* After `lib/*/tests/` (`B1c.2b`) and the excluded file (`B1b.2c.2`). ✅ The names are
+`FALL_GRAVITY`/`FALL_TERMINAL` anyway — `WALK_SKIN`'s lesson applied *before* it bit.
+
+⚠ **AND A TEST FILE COLLIDED AGAIN, FROM THE OTHER DIRECTION**: `tests/fall.loft`'s own `fabs`
+against **`hex_form::fabs`**, a name a *dependency* publishes. `WALK_SKIN` was a library name hitting
+a test's; this is a test's hitting a dependency's.
+
+⛔ **AND THE FIRST TWO FIXTURES MEASURED THE WRONG THING.** Walking 3.3 units after a raise found
+flat ground, because **the brush lands ten hexes ahead**. Then *three* raises made a step of ~11
+height units against a cliff threshold of **4**, and the walker climbed on and **stopped dead** —
+fenced on the plateau by its own cliffs, `cliff.loft`'s recorded cost reproduced. **One** raise is a
+walkable slope: the feet rise 0.10 → 0.54 → 1.13 → 1.40 and land three times. ⚠ `landed` is the
+claim, not the height — a height that tracks the terrain is the CLIMB, which a plain lookup would
+also produce.
+
 ## ✅ `B1c.2c` — THE PAGE WALKS, AND THE VERDICT IS A WORLD, 2026-08-13
 
 **`make probe-demo`'s G block**: six `w` presses put the author at **(2.454, 0)**, and the house it

@@ -2727,6 +2727,80 @@ pub fn chunk_mesh_slot(ms: vector<Mesh>, i: integer) -> Mesh {
 // the height the geometry has, which is this triangle interpolation and not
 // `terrain_h`. It was the server's until the mesher moved; keeping a copy there
 // would have been the one rule stated twice that this file exists to prevent.
+
+// ── THE GROUND UNDER THE FEET — plan 22 `B1c.3`, moved from the server ──────
+//
+// ⚠ IT IS HERE BECAUSE OF AN ARROW, AND THE ARROW IS WHY THE FALL WAITED. The feet
+// need the INTERPOLATED heightfield — `terrain_y`, twenty lines below — and that is
+// `hex_mesh`'s. `hex_editor` cannot reach it: **`hex_mesh` depends on `hex_editor`**,
+// so a `ground_under` there would be a dependency CYCLE, which `Author` has recorded
+// since `R1a` and which the WALK turned out not to need (`walk_to` never asks for
+// the ground). The fall does, on every tick.
+//
+// So it lands on the side that already owns the interpolation, and **both drivers
+// call it**: the server on its tick, the page on its own clock. Neither re-derives
+// what a foot is standing on, which is the whole point — the page re-implementing
+// these eleven lines is exactly the divergence this plan exists to remove.
+//
+// ⚠ AND THE HEIGHT SCALE IS THE WORLD'S OWN. The server multiplied by `HEIGHT_SCALE`;
+// a part world is authored at 0.125 and the global is 0.25, so `w_unit` is the only
+// answer that survives leaving the landscape. Same substitution the walk made, for
+// the same reason, and the same arithmetic in every landscape the editor builds.
+
+// The ground under the feet.
+//
+// ⚠ SMOOTH FOR TERRAIN, FLAT FOR WHAT IS BUILT ON IT. A terrain layer is a
+// heightfield and `terrain_y` interpolates it across a cell's corners, which is
+// what makes a slope a slope rather than a staircase. A deck is not a heightfield.
+// One occupied layer — or none — is the ordinary case, and the store reports it as
+// `sf_smooth` rather than the caller counting layers again.
+//
+// ⚠ It used to read a whole `Column` — a `Hex` allocated per layer — and then call
+// `surface_units`, which read ANOTHER one. Two allocations per query was fine
+// while only the feet asked, once a tick. The camera asks about five times per
+// boom sample and fifteen booms a tick, so the rule moved into the store where it
+// costs one chunk lookup and no allocation at all.
+//
+// ⚠ `ref` IS A REFERENCE HEIGHT, NOT NECESSARILY THE FEET, and the parameter is
+// named for that on purpose. Three callers with three different answers to *which
+// level is being asked about*: the camera passes its own EYE, so a boom does not
+// swing through a deck; a teleport passes `py`, because a teleport is
+// authoritative about where it is putting you; and the tick's fall passes the
+// surface the walker was standing on when the tick began — NEVER `py`, for the
+// reason spelled out on `walk_h`. A walker at the rim of a stair's top step has
+// feet a full storey below that step's own height, and asking with them selects
+// the ground under the deck instead of the deck.
+// ⚠ SMOOTH MEANS "THE SURFACE FOUND *IS* THE GROUND", NOT "THIS COLUMN HOLDS ONE
+// LAYER" — and the difference was invisible until a stairwell existed.
+//
+// `sf_smooth` is `occ <= 1`: one occupied terrain layer, therefore the outdoors,
+// therefore the interpolated heightfield. That inference holds for every column
+// anyone had built until now, and it is wrong for exactly one: a column whose ground
+// has been OPENED still holds one layer — the stair tread — so it reports smooth,
+// and the caller then interpolates `terrain_h`, which reads the ground cell's stored
+// height WITHOUT testing occupancy and answers as if the floor were still there.
+//
+// Measured: a walker teleported onto the top tread stood at 17.16 units instead of
+// 14 — on the floor it had just been given a hole through. The stair worked in the
+// store and the walker climbed the ceiling.
+//
+// The honest question is the one the file already states three screens up — *smooth
+// for terrain, flat for what is built on it* — so ask it directly: is the layer the
+// surface came from the ground layer? Same answer as before wherever the old test
+// was right, and right in the case that exposed it.
+pub fn on_the_ground(wld: VoxelWorld, q: integer, r: integer, sf: hex_voxel::SurfaceAt) -> boolean {
+  sf.sf_layer >= 0 && sf.sf_layer == hex_voxel::world_ground_layer(wld, q, r)
+}
+
+pub fn ground_under(wld: VoxelWorld, wx: float, wz: float, ref: float) -> float {
+  (gu_q, gu_r) = hex_grid::px_to_hex(wx, wz);
+  sf = hex_voxel::world_surface(wld, gu_q, gu_r, ref / wld.w_unit ?? 0.0);
+  if sf.sf_units < 0 || on_the_ground(wld, gu_q, gu_r, sf) {
+    return terrain_y(wx, wz, wld);
+  }
+  (sf.sf_units as float) * wld.w_unit
+}
+
 pub fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
   (addr_q, addr_r) = px_to_hex(wx, wz);
   ch3 = terrain_h(addr_q, addr_r, wld);

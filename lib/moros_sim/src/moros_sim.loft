@@ -23,4 +23,10 @@ use bend;
 // from `moros_sim::stair_height`, a MOROS package, and this is a lavition one, so
 // taking the dependency would point the arrow backwards" — and this is that debt
 // paid rather than routed around. Nothing in this package's `src/` ever called it.
-use fall;
+// ⚠ `fall` LEFT FOR `hex_editor` — plan 22 `B1c.3`. The editor's walker lives there
+// now and a walker that cannot fall is half of one; this package could not be
+// depended on from a lavition one. ⚠ Its constants were IMPORTED from `player` under
+// *"a package with two gravities is a package where a jump and a fall disagree"* —
+// still true, and no longer the same package: `player_step` falls in a `Map`, that
+// one falls in a `VoxelWorld`, and each pins its own value with a test naming the
+// other. Nothing in this package's `src/` ever called it.

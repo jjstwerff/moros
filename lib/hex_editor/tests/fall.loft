@@ -4,14 +4,24 @@
 // The fall, tested against the closed form rather than against itself. Free fall
 // has an exact answer — y = y₀ − ½gt² — so the integrator can be checked for what
 // it IS rather than for merely decreasing.
-use moros_sim;
+use hex_editor;
+use hex_form;   // fabs
 
-// the package's ONE gravity, not a second copy of it
+// ⚠ THE NUMBER, TYPED OUT, AND THAT IS THE PIN. This package declares
+// `FALL_GRAVITY` and `moros_sim::player` declares its own `GRAVITY`; nothing makes
+// them equal, because the arrow forbids one importing the other (see `fall.loft`'s
+// header). Asserting `G == FALL_GRAVITY` would be a table checked against itself.
+// `moros_sim/tests/skeleton.loft` types out the same 12.0 for the same reason.
 const G = 12.0;
-fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// ⚠ NO LOCAL `fabs` — plan 22 `B1c.3`. This file declared one, and moving here made
+// it a redefinition of `hex_form::fabs`, which this package depends on. **A test
+// file declares into its package's namespace**, which is `WALK_SKIN`'s lesson
+// arriving from the other direction: there a library name hit a test's, here a
+// test's hit a dependency's.
 
 fn test_standing_on_the_ground_does_not_move() {
-  f = moros_sim::fall_step(4.0, 0.0, 4.0, 0.016, G);
+  f = hex_editor::fall_step(4.0, 0.0, 4.0, 0.016, G);
   assert(f.fl_y == 4.0, "the feet stay put");
   assert(f.fl_vy == 0.0, "and gather no speed");
   assert(!f.fl_airborne, "standing is not airborne");
@@ -21,7 +31,7 @@ fn test_standing_on_the_ground_does_not_move() {
 fn test_the_ground_rising_past_the_feet_is_the_climb() {
   // Walking up a ramp: the surface came up past the feet. The same clause that
   // stops a fall resolves it, which is why there is no separate climb branch.
-  f = moros_sim::fall_step(4.0, 0.0, 4.6, 0.016, G);
+  f = hex_editor::fall_step(4.0, 0.0, 4.6, 0.016, G);
   assert(f.fl_y == 4.6, "the feet are put on the ground, not left inside it");
   assert(!f.fl_airborne, "and that is not a fall");
 }
@@ -30,10 +40,10 @@ fn test_the_feet_are_never_below_the_ground() {
   // The invariant, swept rather than sampled: from well under to well over.
   for k in 0..40 {
     y = 3.0 + (k as float) * 0.1;
-    f = moros_sim::fall_step(y, 0.0 - 2.0, 5.0, 0.016, G);
+    f = hex_editor::fall_step(y, 0.0 - 2.0, 5.0, 0.016, G);
     assert(f.fl_y >= 5.0 - 0.000000001,
            "at y={y} the feet ended at {f.fl_y}, under a ground of 5.0");
-    assert(moros_sim::fall_clearance(f.fl_y, 5.0) >= 0.0, "clearance is never negative");
+    assert(hex_editor::fall_clearance(f.fl_y, 5.0) >= 0.0, "clearance is never negative");
   }
 }
 
@@ -47,22 +57,22 @@ fn test_free_fall_matches_one_half_g_t_squared() {
   y = 100.0;
   vy = 0.0;
   for k in 0..n {
-    f = moros_sim::fall_step(y, vy, 0.0, dt, G);
+    f = hex_editor::fall_step(y, vy, 0.0, dt, G);
     y = f.fl_y;
     vy = f.fl_vy;
   }
   t = (n as float) * dt;
   exact = 100.0 - 0.5 * G * t * t;
   bound = 0.5 * G * dt * t + 0.000001;
-  assert(fabs(y - exact) < bound,
+  assert(hex_form::fabs(y - exact) < bound,
          "after {t}s the feet are {y}, the closed form says {exact}, bound {bound}");
   // and the velocity is exact for this integrator, to float noise
-  assert(fabs(vy - (0.0 - G * t)) < 0.000001, "velocity is exact: {vy}");
+  assert(hex_form::fabs(vy - (0.0 - G * t)) < 0.000001, "velocity is exact: {vy}");
 }
 
 fn test_landing_clamps_to_the_ground_and_says_so() {
   // A step that would cross the surface lands ON it — no overshoot, no bounce.
-  f = moros_sim::fall_step(0.05, 0.0 - 9.0, 0.0, 0.05, G);
+  f = hex_editor::fall_step(0.05, 0.0 - 9.0, 0.0, 0.05, G);
   assert(f.fl_y == 0.0, "landed exactly on the ground, not through it: {f.fl_y}");
   assert(f.fl_vy == 0.0, "and stopped");
   assert(f.fl_landed, "and the landing is REPORTED, so a caller can react to it");
@@ -72,9 +82,9 @@ fn test_landing_clamps_to_the_ground_and_says_so() {
 fn test_a_landing_is_reported_once_not_every_tick() {
   // The tick after touching down must not claim to have landed again — otherwise a
   // caller making a sound plays it for as long as the walker stands there.
-  f1 = moros_sim::fall_step(0.05, 0.0 - 9.0, 0.0, 0.05, G);
+  f1 = hex_editor::fall_step(0.05, 0.0 - 9.0, 0.0, 0.05, G);
   assert(f1.fl_landed, "the touching-down step reports it");
-  f2 = moros_sim::fall_step(f1.fl_y, f1.fl_vy, 0.0, 0.05, G);
+  f2 = hex_editor::fall_step(f1.fl_y, f1.fl_vy, 0.0, 0.05, G);
   assert(!f2.fl_landed, "the next one does not");
 }
 
@@ -85,7 +95,7 @@ fn test_terminal_velocity_is_the_shared_clamp_not_a_new_one() {
   y = 10000.0;
   vy = 0.0;
   for k in 0..4000 {
-    f = moros_sim::fall_step(y, vy, 0.0, 0.01, G);
+    f = hex_editor::fall_step(y, vy, 0.0, 0.01, G);
     y = f.fl_y; vy = f.fl_vy;
   }
   assert(vy >= 0.0 - 60.0 - 0.000001, "clamped at terminal velocity, got {vy}");
@@ -99,7 +109,7 @@ fn drop_seconds(h: float) -> float {
   vy = 0.0;
   steps = 0;
   while steps < 100000 {
-    f = moros_sim::fall_step(y, vy, 0.0, 0.001, G);
+    f = hex_editor::fall_step(y, vy, 0.0, 0.001, G);
     y = f.fl_y;
     vy = f.fl_vy;
     steps = steps + 1;
@@ -115,5 +125,25 @@ fn test_a_deeper_drop_takes_longer_and_arrives_faster() {
   assert(t_high > t_low, "nine units takes longer than one: {t_high} vs {t_low}");
   // t = √(2h/g), so tripling the height should take about √3 ≈ 1.732 times as long
   r = t_high / t_low ?? 0.0;
-  assert(fabs(r - 3.0) < 0.05, "and by the square-root law: ratio {r}, expected 3");
+  assert(hex_form::fabs(r - 3.0) < 0.05, "and by the square-root law: ratio {r}, expected 3");
+}
+
+// ── THE PIN — plan 22 `B1c.3` ───────────────────────────────────────────────
+//
+// ⚠ THIS IS THE WEAK HALF OF THE MOVE AND IT SAYS SO. `moros_sim::player` declares
+// its own `GRAVITY` (12.0) and `TERMINAL_VELOCITY` (60.0) for the `Map` world it
+// simulates; this package declares `FALL_GRAVITY`/`FALL_TERMINAL` for the
+// `VoxelWorld` one. **Nothing makes them equal** — the arrow forbids either
+// importing the other — so what is available is a test on each side that goes red
+// when its own value drifts, and a comment at each site naming the other.
+//
+// A drift is then LOUD rather than prevented, which is the honest description.
+// `moros_sim/tests/skeleton.loft` is the mirror of this.
+fn test_the_editors_gravity_is_the_number_the_other_world_falls_at() {
+  assert(FALL_GRAVITY == 12.0,
+         "the editor's gravity is {FALL_GRAVITY}, not 12.0 — `moros_sim::player` "
+         + "still falls at 12.0 in its own world, and a jump and a fall in one "
+         + "campaign would now disagree");
+  assert(FALL_TERMINAL == 60.0,
+         "terminal velocity is {FALL_TERMINAL}, not 60.0 — see `player.loft`");
 }

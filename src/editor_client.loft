@@ -509,6 +509,20 @@ struct Client {
   coll_tau: integer,
   coll_surf: integer,
   walked: float,
+  // ── The feet, between ticks (plan 22 `B1c.3`) ──────────────────────────────
+  //
+  // ⚠ A STATE, NOT A LOOKUP, and the server learned that the expensive way: its
+  // feet were `terrain_y` every tick, "which is why stepping off a ledge
+  // teleported you down — and why every reading taken while standing still was
+  // STALE." `py` is the height and `vy` its only evolution.
+  //
+  // ⚠ AND `au_y` CANNOT BE IT. The pose carries the ground under the feet for the
+  // GESTURES — which layer a ring lands on (`R1a`) — and a falling walker is
+  // between layers by definition. So the fall owns `py`, and the pose is built
+  // from it.
+  py: float,
+  vy: float,
+  fell: integer,
   // Which of `ws_candidates()` this page is dialling — plan 22 `B2b`. ⚠ IT ONLY
   // EVER RISES, and that is `local`'s one-way rule one level down: a page that
   // wandered back to an earlier candidate could attach to a server it had already
@@ -1496,10 +1510,31 @@ fn local_walk(st: Client, sess: hex_editor::EditSession,
                                  surf as float);
   gone = sqrt((nx - a.au_x) * (nx - a.au_x) + (nz - a.au_z) * (nz - a.au_z)) ?? 0.0;
   st.walked = st.walked + gone;
-  // ⚠ `author_on`, SO THE FEET FOLLOW THE GROUND. A pose that kept `au_y` would put
-  // every ring and every footprint on the storey the author started on — `R1a`'s
-  // whole finding, and it would be silent.
-  hex_editor::author_on(st.cache, nx, nz, a.au_yaw)
+  // ⚠ THE POSE IS BUILT FROM THE FALLING FEET — plan 22 `B1c.3`, and it was
+  // `author_on` here until the fall existed. `author_on` reads the CELL's stored
+  // height, so a walker who had just stepped off a ledge was teleported down by
+  // the next gesture's pose — the server's own recorded defect, one driver over.
+  hex_editor::author_at(nx, nz, a.au_yaw, st.py)
+}
+
+// ── THE FALL — plan 22 `B1c.3` ──────────────────────────────────────────────
+//
+// Once per fixed step, and the ONLY thing that evolves the feet. It runs whether
+// or not the walker moved: ground taken out from under someone standing still has
+// to drop them, and a fall that ran only inside the walk would leave them hanging
+// — the server's rule, in the server's words, because it is the same function.
+//
+// ⚠ THE REFERENCE IS THE SURFACE THE WALKER STOOD ON, NEVER THE FEET. `ground_under`
+// takes a reference to decide WHICH level it is being asked about, and feet that
+// are mid-fall are between levels. The server passes the surface the tick began on;
+// so does this.
+fn local_fall(st: Client, a: hex_editor::Author) -> hex_editor::Author {
+  gnd = hex_mesh::ground_under(st.cache, a.au_x, a.au_z, st.py);
+  fs = hex_editor::fall_step(st.py, st.vy, gnd, hex_editor::tick_dt());
+  st.py = fs.fl_y;
+  st.vy = fs.fl_vy;
+  if fs.fl_landed { st.fell = st.fell + 1; }
+  hex_editor::author_at(a.au_x, a.au_z, a.au_yaw, st.py)
 }
 
 // ── THE PAGE'S WALKER — plan 22 `B1c.1` ─────────────────────────────────────
@@ -1546,6 +1581,7 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
     st.tick_at = st.tick_at + hex_editor::TICK_US;
     turned = hex_editor::author_turn(turned, st.held, hex_editor::tick_dt());
     turned = local_walk(st, sess, turned);
+    turned = local_fall(st, turned);
     steps = steps + 1;
     // A guard on the BACKLOG, not on the walk: a tab restored after ten minutes in
     // the background would otherwise work off eighteen thousand steps in one frame.
@@ -2435,7 +2471,7 @@ fn main() {
     coll: hex_field::edgeset_new(0, 0, 1, 1), coll_sf: hex_edge::surfaces_new(),
     coll_rt: hex_way::track_new(),
     tick_begun: false, coll_have: false, coll_q: 0, coll_r: 0, coll_tau: 0 - 1,
-    coll_surf: 0, walked: 0.0,
+    coll_surf: 0, walked: 0.0, py: 0.0, vy: 0.0, fell: 0,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
@@ -2753,7 +2789,7 @@ fn main() {
         // one a wall makes zero while everything else keeps moving.
         println("client: local walker — {st.ticked} steps, yaw {author.au_yaw} "
                 + "(turned {st.turned_by}), walked {st.walked} at "
-                + "({author.au_x},{author.au_z})");
+                + "({author.au_x},{author.au_z}) feet {st.py} landed {st.fell}");
       }
     }
   }

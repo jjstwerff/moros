@@ -23,25 +23,49 @@
 // that situation. So the rule is: a *teleport* may set the feet authoritatively; a
 // *tick* may only ever call this.
 //
-// ── ⚠ THIS IS NOT THE PACKAGE'S FIRST FALL, AND IT MUST NOT BE A SECOND ────────
+// ── ⚠ IT MOVED HERE, AND THE GRAVITY IS THE REASON IT WAITED ──────────────────
 //
-// `player.loft` already falls: `player_step` applies `GRAVITY`, clamps to
-// `TERMINAL_VELOCITY`, and lands through `collide::resolve_move`. It cannot simply
-// be called here, because it moves a body against a **`Map`** — `moros_map`'s world
-// model — while the editor holds a **`VoxelWorld`**, `hex_voxel`'s column store. That is
-// the representation split `doc/claude/HEX_STACK.md` §4 exists to close, and until
-// it closes the two colliders are genuinely different.
+// **Plan 22 `B1c.3`.** This was `moros_sim`'s, and the editor's page could not reach
+// it: `hex_editor` is a lavition package, so depending on a Moros one points
+// [LAVITION_SPLIT](../../../doc/claude/LAVITION_SPLIT.md)'s arrow backwards. The walk
+// arrived here at `B1c.2b`; a walker that cannot fall is only half of one.
 //
-// What must NOT be different is the physics. So this file **imports the constants
-// rather than choosing its own** — a package with two gravities is a package where
-// a jump and a fall disagree — and it is the SCALAR form of the same step:
-// `player_step` resolves against a full 3D collider, this resolves against a ground
-// height. When the two world models converge, one of these goes.
+// ⚠ **AND IT DID NOT MOVE SOONER BECAUSE OF ITS CONSTANTS**, which is worth stating
+// exactly, because the note it replaces was right. `moros_sim::player` falls too —
+// `player_step` applies its own `GRAVITY`, clamps to its own `TERMINAL_VELOCITY`,
+// and lands through `collide::resolve_move` — and this file used to IMPORT those,
+// under the sentence *"a package with two gravities is a package where a jump and a
+// fall disagree"*. It was caught the honest way: this file was first written with a
+// `GRAVITY_DEFAULT` of 11.0 invented from a figure's height, beside a `GRAVITY` of
+// 12.0 that already shipped three modules away.
 //
-// (Caught the honest way: this file was first written with a `GRAVITY_DEFAULT` of
-// 11.0 invented from a figure's height, beside a `GRAVITY` of 12.0 that already
-// shipped three modules away.)
-use player;
+// ⚠ **WHAT CHANGED IS THAT THEY ARE NOW TWO PACKAGES, NOT ONE.** `player_step` moves
+// a body against a **`Map`** (`moros_map`'s world model, still live — `editor.loft`
+// drives it); this resolves against a ground height in a **`VoxelWorld`**. That
+// representation split is `HEX_STACK.md` §4's, and the old note already named its
+// own end: *"when the two world models converge, one of these goes."* Until then a
+// second declaration for a second world model is honest; a second declaration for
+// the SAME one never was.
+//
+// ⚠ **SO THE NUMBERS ARE PINNED AT BOTH ENDS AND THE PIN IS A TEST, NOT AN IMPORT.**
+// `tests/fall.loft` asserts 12.0 and 60.0 here; `moros_sim/tests/skeleton.loft`
+// asserts 12.0 there; and each file names the other. ⚠ That is weaker than sharing a
+// constant and it is said so rather than dressed up: **nothing makes them equal — a
+// test on each side makes a drift LOUD.**
+//
+// ⚠ **AND THEY ARE `FALL_*`, NOT `GRAVITY`.** `src/editor_server.loft` imports this
+// package AND `moros_sim`, so a bare `GRAVITY` published here is a name declared by
+// two packages in one program. A public name claims a word in every consumer's
+// namespace — `WALK_SKIN` was that lesson one step ago, learned from a collision
+// rather than before one.
+
+// The editor's gravity, in world units per second squared, and the speed past which
+// a longer drop stops arriving faster.
+//
+// ⚠ THE CLAMP IS NOT A REFINEMENT: without it a deep enough fall steps THROUGH thin
+// ground between two ticks.
+pub const FALL_GRAVITY = 12.0;
+pub const FALL_TERMINAL = 60.0;
 
 pub struct Fall {
   fl_y: float,             // the feet, after the step
@@ -57,7 +81,7 @@ pub struct Fall {
 // than approximately right: the position used for the ground test is the one the
 // new velocity produced.
 pub fn fall_step(y: float, vy: float, gnd: float, dt: float,
-                 g: float = GRAVITY) -> Fall {
+                 g: float = FALL_GRAVITY) -> Fall {
   // Already at or under the surface: stand on it. This is also the CLIMB case —
   // the ground rose past the feet while walking up a ramp — and it needs no
   // separate branch, which is the whole point of stating the invariant this way.
@@ -65,10 +89,9 @@ pub fn fall_step(y: float, vy: float, gnd: float, dt: float,
     return Fall { fl_y: gnd, fl_vy: 0.0, fl_landed: false, fl_airborne: false };
   }
   nvy = vy - g * dt;
-  // The same clamp `player_step` applies, from the same constant: past terminal
-  // velocity a longer drop stops arriving faster, and without it a deep enough
-  // fall steps through thin ground between two ticks.
-  if nvy < 0.0 - TERMINAL_VELOCITY { nvy = 0.0 - TERMINAL_VELOCITY; }
+  // The same clamp `moros_sim::player_step` applies, at the same value — see the
+  // header for why that is now two constants rather than one import.
+  if nvy < 0.0 - FALL_TERMINAL { nvy = 0.0 - FALL_TERMINAL; }
   ny = y + nvy * dt;
   if ny <= gnd {
     // Crossed the surface within this step: land on it exactly. The overshoot is

@@ -57,6 +57,9 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #   DEMO_SABOTAGE=nowalk     the same G run with the walk keys removed. If `G2`
 #                            were really about *placing a house at all* rather than
 #                            about the WALK, this would pass.
+#   DEMO_SABOTAGE=noraise    the same H walk with nothing raised to fall off. If
+#                            `H1`/`H2` were about walking rather than about the
+#                            GROUND, this would pass.
 #   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
 #                            which is what a missing time bridge looks like from
 #                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
@@ -341,6 +344,59 @@ elif [ "$g_key" != "41145:1306471549" ]; then
   say "G2 the house landed elsewhere: $g_key against F4's 41145:1306471549"
 else
   no "G2 the house landed at $g_key — exactly the world F4 builds standing still, so the walk did not reach the gesture"
+fi
+
+# ── H  the demo's feet FALL — plan 22 `B1c.3` ──────────────────────────────
+#
+# ⚠ THE CONTROL IS THE `G` RUN, WHICH ALREADY HAPPENED. G walks the same distance
+# over FLAT ground and reports `feet 0 landed 0`; this raises the ground first and
+# walks over it. Same page, same keys but one, opposite outcomes — so *the feet
+# moved* cannot be an artefact of walking, of time passing, or of the report.
+#
+# ⚠ AND `landed` IS THE CLAIM, NOT `feet`. A height that tracks the terrain is the
+# CLIMB — `fall_step`'s `y <= gnd` branch, which a plain lookup would also produce.
+# `fl_landed` is only reachable by being AIRBORNE and then touching down, which is
+# the fall itself.
+#
+# ⚠ THE RAISE LANDS TEN HEXES AHEAD (the editor's own help line says so), so the
+# walk has to cover that before anything is under the feet — 44 presses, measured,
+# not guessed. ⚠ And it is ONE raise: three make a step of ~11 height units against
+# a cliff threshold of 4, and the walker is then fenced ON the plateau by its own
+# cliffs — `cliff.loft`'s recorded cost, reproduced here the first time this was
+# driven.
+echo
+echo "── H   raise the ground, walk over it, and fall ────────────────────"
+H_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*44))")
+case ",$SAB," in *,noraise,*) H_KEYS=$(python3 -c "print(','.join(['w']*44))"); echo "   SABOTAGE noraise — the same walk with nothing raised to fall off" ;; esac
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$H_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/fall.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/fall.raw" > "$OUT/fall.log" || true
+grep -E '^client: local walker' "$OUT/fall.log" | tail -3 | sed 's/^/   /'
+
+h_line=$(grep 'local walker' "$OUT/fall.log" | tail -1 || true)
+h_feet=$(printf '%s' "$h_line" | sed -n 's/.*feet \([0-9.]*\) .*/\1/p')
+h_landed=$(printf '%s' "$h_line" | sed -n 's/.*landed \([0-9]*\).*/\1/p')
+# The flat-ground control, out of the G run captured above.
+g_line=$(grep 'local walker' "$OUT/walk.log" | tail -1 || true)
+g_feet=$(printf '%s' "$g_line" | sed -n 's/.*feet \([0-9.]*\) .*/\1/p')
+g_landed=$(printf '%s' "$g_line" | sed -n 's/.*landed \([0-9]*\).*/\1/p')
+
+if [ -n "$h_feet" ] && [ "$h_feet" != "0" ]; then
+  say "H1 the feet left the ground plane: $h_feet world units up"
+else
+  no "H1 the feet never left 0 (feet '$h_feet') — nothing was under them to climb"
+fi
+
+if [ -n "$h_landed" ] && [ "$h_landed" -gt 0 ] 2>/dev/null; then
+  say "H2 a fall COMPLETED $h_landed time(s) — airborne, then touched down"
+else
+  no "H2 the feet never landed (landed '$h_landed'). A height that merely tracks the terrain is the CLIMB; only a landing is the fall"
+fi
+
+if [ "$g_feet" = "0" ] && [ "$g_landed" = "0" ]; then
+  say "H3 control: the same walk over FLAT ground kept feet 0 and landed 0"
+else
+  no "H3 the flat-ground walk reported feet '$g_feet' landed '$g_landed' — it should have neither, so H1/H2 prove nothing"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────
