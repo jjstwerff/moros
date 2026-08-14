@@ -1,0 +1,21 @@
+// What does a storey actually leave in the column?
+use hex_mesh;
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+fn main() {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  for q in 0 - 6..7 { for r in 0 - 6..7 {
+    hex_editor::ground_set(w, q, r, 20 + q * 4, hex_editor::SURFACE_MAT); } }
+  println("ground layer at (0,0): {hex_voxel::world_ground_layer(w, 0, 0)}");
+  sf0 = hex_voxel::world_surface(w, 0, 0, 0.0);
+  println("surface at ref 0:    layer {sf0.sf_layer} units {sf0.sf_units}");
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 0, 2, why);
+  println("storey_add -> {n}  why '{why}'");
+  println("ground layer now:    {hex_voxel::world_ground_layer(w, 0, 0)}");
+  for rf in [0.0, 3.0, 6.0, 1000.0] {
+    sf = hex_voxel::world_surface(w, 0, 0, rf);
+    println("  ref {rf}: layer {sf.sf_layer} units {sf.sf_units}");
+  }
+}

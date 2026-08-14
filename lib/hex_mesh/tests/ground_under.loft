@@ -1,0 +1,230 @@
+// WHAT IS UNDER THE FEET — plan 22 `B1c.3`.
+//
+// `ground_under` arrived in this package with no tests of its own: it was moved out
+// of `src/editor_server.loft`, where the only things exercising it were the server's
+// gates and, later, the page. That is a rule owned by one package and checked in
+// another, so a change to it goes red somewhere far from where it was made. This
+// file is that gap closed.
+//
+// ⚠ EVERY CASE BELOW IS A PAIR A WEAKER IMPLEMENTATION WOULD CALL EQUAL. The
+// function is eleven lines and three of them are a decision; a test that only said
+// *it returns a height* would pass a cell lookup, a version that ignored `ref`, and
+// one that used a global height scale. Those are exactly the three ways it can be
+// wrong, and each has a case here.
+use hex_mesh;
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U = 0.25;          // the landscape's unit — `world_new`'s first argument
+const PART_U = 0.125;    // and a part's, which is why the scale is not a global
+
+fn about(a: float, b: float) -> boolean { a - b < 0.0001 && b - a < 0.0001 }
+
+fn flat_world(h: integer) -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 6..7 {
+    for r in 0 - 6..7 { hex_editor::ground_set(w, q, r, h, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// A ramp in `q` only. ⚠ Affine in ONE axis, which is what every slope in this tree
+// happens to be — see GROUND_DEFAULT's note that a sloped fixture is a stack of
+// strips — so the height along `r` is constant and a difference across `r` would
+// mean the interpolation is reading something it should not.
+fn ramp_world(unit: float) -> VoxelWorld {
+  w = world_new(unit, 0, 10, 4).wn_world;
+  for q in 0 - 6..7 {
+    for r in 0 - 6..7 {
+      hex_editor::ground_set(w, q, r, 20 + q * 4, hex_editor::SURFACE_MAT);
+    }
+  }
+  w
+}
+
+// ── THE FALLBACK BRANCH: nothing stored ─────────────────────────────────────
+//
+// `sf_units < 0` is *no terrain is occupied at all here*, and the answer is the
+// heightfield's. ⚠ It must be `terrain_y`'s ANSWER, not a zero: a world is an
+// infinite plane of its ground (`E1γ`), so an unwritten cell has a height and it is
+// not automatically the origin's.
+fn test_an_unwritten_world_answers_the_heightfield() {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for gx in 0..4 {
+    x = (gx as float) * 1.5;
+    assert(about(ground_under(w, x, 0.0, 0.0), terrain_y(x, 0.0, w)),
+           "on an unwritten world ground_under said {ground_under(w, x, 0.0, 0.0)} "
+         + "at x={x} where the heightfield says {terrain_y(x, 0.0, w)} — the "
+         + "absent-terrain branch is not deferring to it");
+  }
+}
+
+// ── SMOOTH FOR TERRAIN: it INTERPOLATES ─────────────────────────────────────
+//
+// ⚠ THE PAIR IS TWO POINTS INSIDE ONE CELL, and that is the whole design of this
+// test. A cell LOOKUP answers the same height everywhere in a cell; a heightfield
+// does not. Asking either side of a cell centre on a ramp is the smallest question
+// that separates them, and it needs no knowledge of what the interpolation weights
+// are.
+fn test_on_a_slope_two_points_in_one_cell_differ() {
+  w = ramp_world(U);
+  (cx, cz) = hex_grid::hex_to_px(0, 0);
+  west = ground_under(w, cx - 0.3, cz, 0.0);
+  east = ground_under(w, cx + 0.3, cz, 0.0);
+  assert(!about(west, east),
+         "both sides of one cell answered {west} on a ramp — that is a cell "
+       + "LOOKUP, not the interpolated heightfield, and every slope would be a "
+       + "staircase under the feet");
+  assert(east > west,
+         "the ramp rises with q, so the eastern point ({east}) must be higher "
+       + "than the western ({west})");
+}
+
+// The control for it, and it is the same two points: on FLAT ground the two must
+// agree exactly. Without this, *they differ* could be noise from any source.
+fn test_on_flat_ground_the_same_two_points_agree() {
+  w = flat_world(20);
+  (cx, cz) = hex_grid::hex_to_px(0, 0);
+  west = ground_under(w, cx - 0.3, cz, 0.0);
+  east = ground_under(w, cx + 0.3, cz, 0.0);
+  assert(about(west, east),
+         "on flat ground the two points answered {west} and {east} — the "
+       + "interpolation is reading a gradient that is not there");
+  assert(about(west, 20.0 * U),
+         "flat ground at 20 units answered {west}, not {20.0 * U}");
+}
+
+// ── ONE SCALE, WHICHEVER BRANCH ANSWERS ─────────────────────────────────────
+//
+// ⛔ THIS TEST WAS WRITTEN TO ASSERT THE OPPOSITE AND THAT IS WHY IT EXISTS. When
+// `ground_under` moved here its height scale was rewritten from the global
+// `HEIGHT_SCALE` to `wld.w_unit`, on the walk's argument that a part world is
+// authored at 0.125. **It is wrong here**: the terrain branch defers to
+// `terrain_y`, and `terrain_y` — like every vertex this mesher emits — is on the
+// GLOBAL. So `w_unit` put the two branches on two scales, and on a part world a
+// deck would have read half what the ground beneath it read.
+//
+// What is asserted is therefore the INVARIANT that survives either choice: **the
+// terrain branch is exactly `terrain_y`.** It is checked on two worlds of different
+// units, because that is the only place the two scales can be told apart.
+//
+// ⏭ The finding this leaves open is a package-wide one, recorded at the function:
+// `hex_mesh` measures every height with a global constant, so a part world authored
+// at 0.125 is meshed as if it were a landscape.
+fn test_the_terrain_branch_is_exactly_the_heightfield_at_any_world_unit() {
+  for wu in [U, PART_U] {
+    w = ramp_world(wu);
+    (cx, cz) = hex_grid::hex_to_px(2, 0);
+    for off in [0.0 - 0.3, 0.0, 0.3] {
+      g = ground_under(w, cx + off, cz, 0.0);
+      t = terrain_y(cx + off, cz, w);
+      assert(about(g, t),
+             "on a world of unit {wu} the terrain branch answered {g} where the "
+           + "heightfield says {t} — the two are on different height scales, and a "
+           + "floor and the ground beneath it would disagree by that ratio");
+    }
+  }
+}
+
+// ── FLAT FOR WHAT IS BUILT ON IT, AND THE REFERENCE PICKS THE LEVEL ─────────
+//
+// A built surface is not a heightfield, so its height is the stored one exactly, at
+// every point of the cell.
+//
+// ⚠ AND THE SAME (x, z) MUST ANSWER TWO DIFFERENT THINGS depending on `ref`, which
+// is the entire reason that parameter exists — *the camera passes its own eye, a
+// teleport passes `py`, the fall passes the surface the tick began on*. A version
+// that ignored `ref` would pass every case above this one.
+//
+// ⚠ A STOREY GOES UNDERNEATH, WHICH THE FIRST VERSION OF THIS TEST GOT BACKWARDS.
+// Measured with `probe/b1c/gu.loft`: after `storey_add` the column's GROUND LAYER
+// index moves 0 → 1 — the terrain stays the ground and the new layer is a floor
+// **below** it. So the built surface is reached at a LOW reference and the terrain
+// at a high one, which is the opposite of what "add a storey" sounds like.
+fn test_a_built_floor_is_flat_and_the_reference_chooses_it() {
+  w = ramp_world(U);
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 0, 2, why);
+  assert(n > 0, "the fixture built no storey ({why}) — there is no floor to ask about");
+
+  (cx, cz) = hex_grid::hex_to_px(0, 0);
+  // Both levels are read from the STORE rather than computed here: a test that
+  // worked out `STOREY_H * scale` would be re-deriving the gesture it stands on.
+  low = hex_voxel::world_surface(w, 0, 0, 0.0);
+  high = hex_voxel::world_surface(w, 0, 0, 1000.0);
+  assert(low.sf_layer != high.sf_layer,
+         "both references found layer {low.sf_layer} — the fixture has only one "
+       + "level and can prove nothing about choosing between two");
+  assert(!on_the_ground(w, 0, 0, low) && on_the_ground(w, 0, 0, high),
+         "the fixture's levels are not a built floor under terrain: low is "
+       + "on_the_ground={on_the_ground(w, 0, 0, low)}, high is "
+       + "{on_the_ground(w, 0, 0, high)}");
+
+  floor_y = (low.sf_units as float) * HEIGHT_SCALE;
+  at_floor = ground_under(w, cx, cz, 0.0);
+  at_terrain = ground_under(w, cx, cz, 1000.0);
+
+  assert(about(at_floor, floor_y),
+         "asked at the built floor the answer was {at_floor}, not its stored height "
+       + "({floor_y}) — a built surface is being interpolated, or `ref` is ignored");
+  assert(about(at_terrain, terrain_y(cx, cz, w)),
+         "asked above, the answer was {at_terrain}, not the heightfield's "
+       + "{terrain_y(cx, cz, w)} — the terrain branch is not being taken");
+  assert(!about(at_floor, at_terrain),
+         "both references answered {at_floor} — this function cannot tell a built "
+       + "floor from the terrain over it, and `ref` exists for exactly that");
+}
+
+// ⚠ AND A DECK DOES NOT SLOPE, which is the other half of *smooth for terrain, flat
+// for what is built on it*. The ground beneath this deck is a ramp, so a version
+// that interpolated the surface it found would give two different answers across one
+// cell — exactly what the terrain test above demands, and exactly what must NOT
+// happen here.
+fn test_a_built_floor_does_not_slope_although_the_terrain_over_it_does() {
+  w = ramp_world(U);
+  why = "";
+  assert(hex_editor::storey_add(w, 0, 0, 0, 2, why) > 0,
+         "the fixture built no storey ({why})");
+  (cx, cz) = hex_grid::hex_to_px(0, 0);
+
+  west = ground_under(w, cx - 0.3, cz, 0.0);
+  east = ground_under(w, cx + 0.3, cz, 0.0);
+  assert(about(west, east),
+         "the built floor answered {west} and {east} across one cell — it is being "
+       + "interpolated like terrain, and a floor would tilt under whoever stands "
+       + "on it");
+  // …and the terrain in the SAME world still slopes across the same two points, so
+  // the equality above is a property of the FLOOR and not of a flat fixture.
+  tw = ground_under(w, cx - 0.3, cz, 1000.0);
+  te = ground_under(w, cx + 0.3, cz, 1000.0);
+  assert(!about(tw, te),
+         "the terrain answered {tw} on both sides — this fixture is flat, so the "
+       + "floor being flat proves nothing");
+}
+
+// ── `on_the_ground`, THE PREDICATE THE STAIR PAID FOR ───────────────────────
+//
+// ⚠ IT IS NOT `sf_smooth`, AND THE DIFFERENCE COST A WORKING STAIR. The old test
+// was *does this column hold one occupied layer* — true of a column whose ground has
+// been OPENED and which now holds only a tread, so the caller interpolated a floor
+// that was no longer there and a walker stood at 17.16 units instead of 14.
+// The honest question is *is the layer the surface came from the ground layer*.
+fn test_on_the_ground_is_true_for_terrain_and_false_for_a_built_floor() {
+  w = ramp_world(U);
+  sf_g = hex_voxel::world_surface(w, 0, 0, 0.0);
+  assert(on_the_ground(w, 0, 0, sf_g),
+         "on a bare ramp the surface is not reported as the ground layer");
+  why = "";
+  assert(hex_editor::storey_add(w, 0, 0, 0, 2, why) > 0,
+         "the fixture built no storey ({why})");
+  // ⚠ THE GROUND LAYER MOVED. The terrain is still the ground; the new floor
+  // underneath it is not, and that is what the predicate has to say.
+  sf_low = hex_voxel::world_surface(w, 0, 0, 0.0);
+  sf_high = hex_voxel::world_surface(w, 0, 0, 1000.0);
+  assert(on_the_ground(w, 0, 0, sf_high),
+         "the terrain stopped being the ground layer when a storey was added under it");
+  assert(!on_the_ground(w, 0, 0, sf_low),
+         "the built floor under the terrain is reported as the GROUND layer — every "
+       + "floor would be interpolated as a heightfield");
+}

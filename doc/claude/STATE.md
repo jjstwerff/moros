@@ -401,9 +401,26 @@ serves**, differing only in where a key press goes.
 ✅ **VERIFIED**: `make lib-test` 22 suites on both backends, `make probe-demo` 20 checks, and
 `DEMO_SABOTAGE=noraise` red on **`H1`/`H2` alone** (17.28 units on flat ground, `feet 0 landed 0`).
 Test-name diff: **moros_sim 303/25 → 295/24**, **hex_editor 452/43 → 461/44** — the extra one is the
-gravity PIN. ⚠ **hex_mesh is 65/9, unchanged**: `ground_under` arrived with no tests of its own, which
-is this step's honest weak spot — its rule is exercised by the gates and the page, not by the package
-that owns it.
+gravity PIN. ✅ **hex_mesh is 72/10**: `ground_under` arrived with no tests of its own and now has seven.
+
+⛔ **AND WRITING THEM FOUND THE MOVE'S OWN MISTAKE.** `ground_under`'s height scale was rewritten to
+`wld.w_unit` when it moved — the walk's argument, sound where the walk applied it. **Wrong here**:
+this function has two branches, and the terrain one defers to `terrain_y`, which like every vertex
+this mesher emits is on the **global**. `w_unit` put the branches on two scales, so on a part world a
+floor would read **half** what the ground beside it read — a 2× discontinuity inside one world. ⚠
+**Nothing where it shipped could see it**: every editor world is 0.25 and so is the global, so both
+suites, the gates and the demo agree either way. The test that sees it asks on **two worlds of
+different units**, and asserts *the terrain branch equals `terrain_y`* — the invariant that survives
+whichever scale is eventually right. ⏭ The real finding is package-wide and not this step's:
+**`hex_mesh` measures every height with a global constant, so a part world authored at 0.125 is
+meshed as if it were a landscape.**
+
+⚠ **AND A STOREY GOES UNDERNEATH, WHICH THE FIRST FIXTURE GOT BACKWARDS.** Measured
+(`probe/b1c/gu.loft`): after `storey_add` the column's ground-layer index moves **0 → 1** — the
+terrain stays the ground and the new layer is a floor **below** it. Two tests asserted the opposite
+and went red saying *"a storey's surface is reported as the GROUND layer"*, which was the fixture,
+not the predicate. **A test that fails is not yet a defect; the probe is what says which side
+moved.**
 
 ⛔ **THE CYCLE THE WALK DID NOT HAVE, THE FALL DOES.** `walk_to` never asks for the ground; the fall
 asks every tick — and `ground_under` needs `terrain_y`, which is `hex_mesh`'s, while **`hex_mesh`

@@ -2742,10 +2742,23 @@ pub fn chunk_mesh_slot(ms: vector<Mesh>, i: integer) -> Mesh {
 // what a foot is standing on, which is the whole point — the page re-implementing
 // these eleven lines is exactly the divergence this plan exists to remove.
 //
-// ⚠ AND THE HEIGHT SCALE IS THE WORLD'S OWN. The server multiplied by `HEIGHT_SCALE`;
-// a part world is authored at 0.125 and the global is 0.25, so `w_unit` is the only
-// answer that survives leaving the landscape. Same substitution the walk made, for
-// the same reason, and the same arithmetic in every landscape the editor builds.
+// ⛔ AND THE HEIGHT SCALE IS THE GLOBAL, NOT `w_unit` — WHICH IS A CORRECTION.
+// The move first rewrote this to `wld.w_unit`, on the walk's argument that a part
+// world is authored at 0.125 while `hex_proj::HEIGHT_SCALE` is 0.25. **That was
+// wrong here, and `tests/ground_under.loft` caught it before it shipped.** This
+// function has TWO branches: a built surface uses the stored height, and terrain
+// defers to `terrain_y` — and `terrain_y`, like the whole of this mesher
+// (`corner_heights`, `hex_to_world`, every vertex it emits), is on the GLOBAL. So
+// `w_unit` here put the two branches on two scales: on a part world a deck would
+// have read 1.5 where the ground under it read 3.0, **a 2x discontinuity between a
+// floor and the ground beneath it in one world**. Consistent-and-global beats
+// half-corrected.
+//
+// ⏭ THE REAL FINDING IS ONE LEVEL UP AND IT IS NOT THIS STEP'S: `hex_mesh` measures
+// every height with a global constant, so a part world authored at 0.125 is meshed
+// as if it were a landscape. That is a package-wide question with its own blast
+// radius — every vertex, every thumbnail — and it is recorded rather than started
+// here.
 
 // The ground under the feet.
 //
@@ -2794,11 +2807,11 @@ pub fn on_the_ground(wld: VoxelWorld, q: integer, r: integer, sf: hex_voxel::Sur
 
 pub fn ground_under(wld: VoxelWorld, wx: float, wz: float, ref: float) -> float {
   (gu_q, gu_r) = hex_grid::px_to_hex(wx, wz);
-  sf = hex_voxel::world_surface(wld, gu_q, gu_r, ref / wld.w_unit ?? 0.0);
+  sf = hex_voxel::world_surface(wld, gu_q, gu_r, ref / HEIGHT_SCALE ?? 0.0);
   if sf.sf_units < 0 || on_the_ground(wld, gu_q, gu_r, sf) {
     return terrain_y(wx, wz, wld);
   }
-  (sf.sf_units as float) * wld.w_unit
+  (sf.sf_units as float) * HEIGHT_SCALE
 }
 
 pub fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {

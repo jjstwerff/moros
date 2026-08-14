@@ -304,9 +304,39 @@ question, and changing it here would have moved `probe-b1a`'s baseline under a s
 Test-name diff, every row accounted for: **moros_sim 303/25 → 295/24** (−8) and **hex_editor
 452/43 → 461/44** (+9). ⚠ The extra one is the PIN — `moros_sim`'s file had 8 runnable tests plus
 two helpers the runner cannot call, and the ninth here is
-`test_the_editors_gravity_is_the_number_the_other_world_falls_at`. **hex_mesh is 65/9, unchanged**:
-`ground_under` arrived with no tests of its own, and that is the honest weak spot of this step —
-its rule is exercised by the server's gates and by the page, not by the package that now owns it.
+`test_the_editors_gravity_is_the_number_the_other_world_falls_at`. ✅ **hex_mesh is 72/10** —
+`ground_under` arrived with no tests of its own and now has seven, which is where the scale mistake
+below was caught.
+
+### ⛔ And writing them found the move's own mistake, before it reached anything
+
+**`ground_under`'s height scale was rewritten to `wld.w_unit` when it moved, and that is wrong
+HERE.** The walk's argument was sound where the walk applied it: a part world is authored at 0.125
+and `hex_proj::HEIGHT_SCALE` is 0.25. But this function has **two branches** — a built surface uses
+the stored height, and terrain defers to `terrain_y` — and `terrain_y`, like every vertex this
+mesher emits, is on the **global**. So `w_unit` put the two branches on two scales: on a part world
+a floor would have read **half** what the ground beside it read, **a 2× discontinuity inside one
+world**.
+
+⚠ **NOTHING COULD HAVE SEEN IT WHERE IT SHIPPED.** Every world the editor builds is `W_UNIT` 0.25
+and so is the global, so the gates, the demo and both suites agree either way. The test that sees
+it is the one asking on **two worlds of different units**, which is the only place the two scales
+are distinguishable — and it is asserted as *the terrain branch equals `terrain_y`*, the invariant
+that survives whichever scale is eventually right.
+
+⏭ **THE REAL FINDING IS ONE LEVEL UP AND IS NOT THIS STEP'S**: `hex_mesh` measures every height
+with a global constant, so **a part world authored at 0.125 is meshed as if it were a landscape**.
+That is a package-wide question — every vertex, every thumbnail — recorded at the function rather
+than started here.
+
+### ⚠ And a storey goes UNDERNEATH, which the first fixture got backwards
+
+`storey_add` reads like *add a floor above*. Measured with `probe/b1c/gu.loft`: after it, the
+column's **ground-layer index moves 0 → 1** — the terrain stays the ground and the new layer is a
+floor **below** it. So a built surface is reached at a LOW reference and the terrain at a high one.
+Two of the seven tests asserted the opposite and went red saying *"a storey's surface is reported
+as the GROUND layer"* — which was the fixture being wrong, not the predicate. ⚠ **A test that fails
+is not yet a defect; the probe is what tells you which side moved.**
 
 ### The cycle, paid on the side that owns the interpolation
 
