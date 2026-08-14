@@ -73,6 +73,19 @@ the registry's `hex_world`, reported as `Too many parameters for t_5World_world_
 is *rename one struct and the right function is chosen*. It never miscompiles — the two types
 never merge — so it costs diagnosis time, not correctness.
 
+⚠ **AND EVERY LINE ABOVE SAYS "NAME" WHEN A FILENAME IS ENOUGH.** A module's **basename** is
+global across the whole dependency graph, so adding `src/<x>.loft` to a package silently
+shadows a *dependency's* `src/<x>.loft` — and the dependency's own internal calls stop
+resolving, reported against **the dependency's source**, a file you did not edit. Ours was
+`hex_mesh/src/catalogue.loft` against `hex_part`'s, reported as *"Unknown function
+`part_list`"* — a function that is `pub`, in a package green on its own. Measured: **the
+filename alone is the trigger** — the consumer need not `use` the module, and the two files
+need not share one declared name; renaming to `choices.loft` fixes it with nothing else
+changed. [loft#912](https://github.com/loft-lang/loft/issues/912). **So grep `lib/*/src/*.loft`
+for the BASENAME too, not just for the names inside it** — and note that the same-name
+diagnostic for *declarations* is excellent (both sites and the fix in one line), which is
+exactly why the silence here reads as something else entirely.
+
 ⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS DISABLED BY A NAME.** `tools/layering.sh` skipped
 every `moros_*` package, so a universal package wearing a Moros prefix was exempt from the one
 check written to catch exactly that — `moros_ui` for months, then `moros_terrain`. Both are

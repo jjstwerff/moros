@@ -15,9 +15,9 @@ wait rebuilt
 
 echo --- one straight run
 at -9 0 0
-key R
+verb run
 at 9 0 0
-key R
+verb run
 
 echo --- a doorway, then two niches beside it
 at -5 -0.9 90

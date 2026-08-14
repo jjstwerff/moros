@@ -220,6 +220,55 @@ fn test_the_five_direct_verbs_do_five_different_things() {
   }
 }
 
+// ── `R` — THE ONE VERB WHOSE FIRST PRESS BUILDS NOTHING — plan 22 `K3` ──────
+//
+// ⚠ **WHICH IS WHY IT IS NOT IN THE FIVE ABOVE.** That test presses each verb once
+// and demands a world different from `raise`'s; a run's first press records the near
+// end and writes nothing at all, so it would go red for behaving correctly. The
+// discriminator it needs is two presses, and it is worth having: `press_verb` wired
+// to `ring_set` — the verb `run` is easiest to confuse with — would build a ring here
+// on the FIRST press and pass anything that only looked at the second.
+fn test_the_run_verb_takes_two_presses_and_the_first_writes_nothing() {
+  w = flat();
+  s = EditSession {};
+  quiet = w.w_tau;
+  first = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), verb_of("R"));
+  assert(first.ak_ok, "the first press of a run was refused: {first.ak_why}");
+  assert(first.ak_n == 0, "the first press of a run reported {first.ak_n} written");
+  assert(w.w_tau == quiet,
+         "the first press of a run did {w.w_tau - quiet} writes — it is building "
+       + "something, and a run has no far end yet");
+  second = press_verb(s, w, author_on(w, 4.0, 0.0, 0.0), verb_of("R"));
+  assert(second.ak_ok, "the closing press of a run was refused: {second.ak_why}");
+  assert(second.ak_n > 0, "the closing press laid {second.ak_n}");
+  assert(w.w_tau > quiet, "the closing press of a run wrote nothing");
+}
+
+// ⚠ AND IT IS NOT THE RING. `run` and `wall` share a material and nothing else — one
+// walks a line between two presses, the other closes a cylinder around the author.
+//
+// ⚠ **THE SAME POSES ON BOTH SIDES, AND THAT IS THE WHOLE TEST.** The first version
+// pressed `R` twice against `G` once, and it stayed GREEN with `press_verb`'s `run`
+// branch wired to `ring_set` — because two rings differ from one ring for a reason
+// that has nothing to do with the verb. Measured: the sabotage was caught by
+// `…_the_first_writes_nothing` and not by the test whose comment claimed it. Two
+// presses against two presses is what makes a ring-wired `run` build the byte-
+// identical world this compares against.
+fn test_the_run_verb_is_not_the_ring_verb() {
+  rw = flat();
+  rs = EditSession {};
+  press_verb(rs, rw, author_on(rw, 0.0, 0.0, 0.0), verb_of("R"));
+  press_verb(rs, rw, author_on(rw, 4.0, 0.0, 0.0), verb_of("R"));
+
+  gw = flat();
+  gs = EditSession {};
+  press_verb(gs, gw, author_on(gw, 0.0, 0.0, 0.0), verb_of("G"));
+  press_verb(gs, gw, author_on(gw, 4.0, 0.0, 0.0), verb_of("G"));
+
+  assert(!same_world(rw, gw), "verb 'run' and verb 'wall' build the same world");
+  assert(verb_of("R") != verb_of("G"), "the run key and the ring key name one verb");
+}
+
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
 // ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
 // would run a gesture on every step of a walk.
@@ -257,7 +306,8 @@ fn test_an_unbound_verb_is_named_rather_than_refused() {
 fn test_every_verb_the_definition_produces_is_bound() {
   w = flat();
   s = EditSession {};
-  for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G"] {
+  for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
+             "R"] {
     v = verb_of(bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);

@@ -11,9 +11,9 @@ wait rebuilt
 
 echo --- one long wall to cut them into
 at -12 0 0
-key R
+verb run
 at 12 0 0
-key R
+verb run
 
 echo --- round, pointed, segmental, oculus
 at -7 -0.9 90

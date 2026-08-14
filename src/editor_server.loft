@@ -1275,65 +1275,49 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // projected onto it — so the wall is straight by construction rather than by a
 // steady hand. The snap is an approximation and says so: `K-FIT`'s third state is
 // "applied, with its residual on the wire", and the residual here is an angle.
+// ⚠ **WHAT IS LEFT HERE IS THE SOCKET AND NOTHING ELSE** — plan 22 `K3`. The
+// gesture is `hex_editor::session_run`: the material guard, the two-press machine,
+// the grade, which stamp a material chooses, and the sentence. This says it to a
+// client, prints it, and rebuilds two discs — and those three are the only parts a
+// page with no socket does differently.
+//
+// ⚠ THE SENTENCE COMES BACK WHOLE, deliberately. Composing it here from `RunLaid`'s
+// fields would be the fourth site again one layer down — the page would compose its
+// own and the two would drift, which is exactly what `S3` found when `25:1` and
+// `25:3` had both said *road laid* for months. What the server owns is the `S:`.
+//
+// ⚠ AND THE `println` IS NOT THE SAME TEXT, on purpose: the console line is shorter
+// than the acknowledgement and always was. It is composed here because it is this
+// driver's own log, not a claim about the gesture.
 fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
-           wld: &VoxelWorld, dirty: DirtySet, runs: WallRuns, draft: WallDraft) {
+           wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
   wmat = payload as integer ?? FENCE_MAT;
-  wfit = fit_nominal(wmat, FENCE_MAT, "wall material");
-  if !wfit.ft_ok {
-    srv.send_to(cid, "S:road refused — {fit_why(wfit)}");
-    println("editor: road refused — {fit_why(wfit)}");
+  // ⚠ AN AUTHOR BUILT HERE RATHER THAN `sess.es_author`, and that is the session's
+  // own recorded rule: this server HAS a walker, `px`/`pz` are written by the tick,
+  // and a session pose kept in step beside them would be a second authority on where
+  // the author is. A run reads x and z and nothing else, so the yaw is 0.
+  wlaid = hex_editor::session_run(sess, wld,
+                                  hex_editor::author_at(px, pz, 0.0, 0.0), wmat);
+  if wlaid.rl_code == hex_editor::RL_REFUSED {
+    srv.send_to(cid, "S:{wlaid.rl_say}");
+    println("editor: {wlaid.rl_say}");
     return;
   }
-  // ⚠ THE MACHINE IS `hex_editor::wall_step` — the headless thread. It records the
-  // near end on the first press and answers with the run on the second, and it
-  // CLOSES the draft either way: a refusal that left it open would make the next
-  // press mean something different from what it means after a success, which is a
-  // mode an author cannot see.
-  wstep = hex_editor::wall_step(draft, px, pz, wmat);
-  if wstep.ds_code == hex_editor::DS_STARTED {
-    srv.send_to(cid, "S:road started at {px},{pz}");
-    println("editor: road started at {px},{pz}");
+  if wlaid.rl_code == hex_editor::RL_STARTED {
+    srv.send_to(cid, "S:{wlaid.rl_say}");
+    println("editor: {wlaid.rl_say}");
     return;
   }
-  if wstep.ds_code == hex_editor::DS_REFUSED {
-    srv.send_to(cid, "S:road refused — {wstep.ds_why}");
+  mark_dirty(dirty, wlaid.rl_q0, wlaid.rl_r0, wlaid.rl_pad);
+  mark_dirty(dirty, wlaid.rl_q1, wlaid.rl_r1, wlaid.rl_pad);
+  srv.send_to(cid, "S:{wlaid.rl_say}");
+  if wlaid.rl_wall {
+    println("editor: wall {wlaid.rl_n} edges, heading {wlaid.rl_step}, "
+            + "length {wlaid.rl_reach}");
     return;
   }
-  step = wstep.ds_run.rd_step;
-  resid = wstep.ds_run.rd_resid;
-  reach = wstep.ds_run.rd_reach;
-  run = wstep.ds_run.rd_run;
-  grade = py_of(wld, draft.wd_x, draft.wd_z);
-
-  // ⚠ THE MATERIAL DECIDES, and until S3 it did not. `25:1` is a WALL and `25:3` a
-  // fence, and both laid a road — the ack said so on every press. A wall is now the
-  // line the author walked; a fence keeps the road-and-two-offsets shape, which is
-  // what it is and what `straight.mjs` measures.
-  if wmat == WALL_MAT {
-    marked = 0;
-    wall_stamp(wld, run, wmat, grade, runs, marked);
-    hxa = world_to_hex(run.wr_x0, run.wr_z0);
-    hxb = world_to_hex(run.wr_x1, run.wr_z1);
-    mark_dirty(dirty, hxa.ha_q, hxa.ha_r, 4);
-    mark_dirty(dirty, hxb.ha_q, hxb.ha_r, 4);
-    srv.send_to(cid, "S:wall laid {marked} edges, heading {step} of {HEADINGS} "
-                   + "(snapped, residual {resid}°), length {reach}");
-    println("editor: wall {marked} edges, heading {step}, length {reach}");
-    return;
-  }
-
-  fenced = 0;
-  cut = 0;
-  paved = road_stamp(wld, run, ROAD_HALF as float, wmat, grade, runs, fenced, cut);
-  hx = world_to_hex(run.wr_x0, run.wr_z0);
-  hx2 = world_to_hex(run.wr_x1, run.wr_z1);
-  mark_dirty(dirty, hx.ha_q, hx.ha_r, ROAD_HALF + 4);
-  mark_dirty(dirty, hx2.ha_q, hx2.ha_r, ROAD_HALF + 4);
-  srv.send_to(cid, "S:road laid {paved} cells and {fenced} fence edges, "
-                 + "cut {cut}, heading {step} of {HEADINGS} "
-                 + "(snapped, residual {resid}°), length {reach}");
-  println("editor: road {paved} cells, fence {fenced} edges, heading {step}, "
-          + "residual {resid}°");
+  println("editor: road {wlaid.rl_n} cells, fence {wlaid.rl_fenced} edges, "
+          + "heading {wlaid.rl_step}, residual {wlaid.rl_resid}°");
 }
 
 // The ground height at a world point, as an integer grade — a road is GRADED, so it
@@ -5680,7 +5664,7 @@ fn main() {
             println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");
           }
         } else if ev.msg_id == MSG_WALL {
-          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, sess.es_runs, sess.es_draft);
+          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, sess);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: `<roof_up>` — the roof height above the floor, in height
           // units — or `<roof_up>,<part>`, which places a SAVED part instead of

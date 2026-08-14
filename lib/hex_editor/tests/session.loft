@@ -687,8 +687,8 @@ fn test_the_first_press_records_and_builds_nothing() {
   w = a_world();
   s = session_new();
   session_at(s, w, 2.0, 0.0, 0.0);
-  got = session_wall(s, WALL_MAT);
-  assert(got.ds_code == DS_STARTED, "the first press answered {got.ds_code}");
+  got = session_run(s, w, s.es_author, WALL_MAT);
+  assert(got.rl_code == RL_STARTED, "the first press answered {got.rl_code}");
   assert(s.es_draft.wd_open, "the draft is not open after the first press");
   assert(s.es_draft.wd_x > 1.99 && s.es_draft.wd_x < 2.01,
          "the near end is at {s.es_draft.wd_x}, and the author stood at 2");
@@ -702,12 +702,12 @@ fn test_the_second_press_builds_the_run_and_closes_the_draft() {
   w = a_world();
   s = session_new();
   session_at(s, w, 0.0, 0.0, 0.0);
-  session_wall(s, WALL_MAT);
+  session_run(s, w, s.es_author, WALL_MAT);
   session_at(s, w, 6.0, 0.0, 0.0);
-  got = session_wall(s, WALL_MAT);
-  assert(got.ds_code == DS_RUN, "the second press answered {got.ds_code}");
-  assert(got.ds_run.rd_reach > 5.99 && got.ds_run.rd_reach < 6.01,
-         "the run is {got.ds_run.rd_reach} long for a six-unit walk");
+  got = session_run(s, w, s.es_author, WALL_MAT);
+  assert(got.rl_code == RL_LAID, "the second press answered {got.rl_code}");
+  assert(got.rl_reach > 5.99 && got.rl_reach < 6.01,
+         "the run is {got.rl_reach} long for a six-unit walk");
   assert(!s.es_draft.wd_open, "the draft is still open after a run was built");
 }
 
@@ -724,15 +724,123 @@ fn test_a_refused_second_press_closes_the_draft_too() {
   w = a_world();
   s = session_new();
   session_at(s, w, 0.0, 0.0, 0.0);
-  session_wall(s, WALL_MAT);
+  session_run(s, w, s.es_author, WALL_MAT);
   session_at(s, w, 0.1, 0.1, 0.0);
-  refused = session_wall(s, WALL_MAT);
-  assert(refused.ds_code == DS_REFUSED, "two presses in one place answered {refused.ds_code}");
+  refused = session_run(s, w, s.es_author, WALL_MAT);
+  assert(refused.rl_code == RL_REFUSED,
+         "two presses in one place answered {refused.rl_code}");
   assert(!s.es_draft.wd_open, "the draft survived a refusal");
   // The control: the next press STARTS a draft rather than completing the old one.
   session_at(s, w, 9.0, 0.0, 0.0);
-  next = session_wall(s, WALL_MAT);
-  assert(next.ds_code == DS_STARTED,
-         "the press after a refusal answered {next.ds_code} — it completed a draft "
+  next = session_run(s, w, s.es_author, WALL_MAT);
+  assert(next.rl_code == RL_STARTED,
+         "the press after a refusal answered {next.rl_code} — it completed a draft "
        + "the refusal was supposed to have closed");
+}
+
+// ── AND THE HALF THE THREE ABOVE COULD NOT SEE — plan 22 `K3` ────────────────
+//
+// ⚠ THE THREE TESTS ABOVE WERE GREEN FOR WEEKS AND THE GESTURE WAS NOT IN THE
+// LIBRARY. They measured `session_wall`, which recorded two presses and stamped
+// nothing; the stamping lived in `editor_server.loft` and its only instrument was a
+// socket. So *a run writes something* — the entire point of pressing the key — had
+// no headless test at all, and `session_wall`'s four callers were four tests.
+//
+// These four are what a draft test cannot be: they read the STORE.
+fn test_a_wall_run_writes_edges_into_the_world() {
+  w = a_world();
+  s = session_new();
+  session_at(s, w, 0.0, 0.0, 0.0);
+  session_run(s, w, s.es_author, WALL_MAT);
+  before = w.w_tau;
+  session_at(s, w, 4.0, 0.0, 0.0);
+  laid = session_run(s, w, s.es_author, WALL_MAT);
+  assert(laid.rl_code == RL_LAID, "the closing press answered {laid.rl_code}");
+  assert(laid.rl_wall, "a run of WALL_MAT reported itself as a road");
+  assert(laid.rl_n > 0, "the run laid {laid.rl_n} edges");
+  // ⚠ THE COUNT AND THE STORE ARE TWO INSTRUMENTS, and the count is the producer's
+  // own number — exactly the self-report `hex_voxel`'s clock exists to check. A
+  // `rl_n` of 30 against a store that never moved is what a stub returns.
+  assert(w.w_tau > before,
+         "the run reported {laid.rl_n} edges and the world's clock did not move");
+  // …and the run is in the session's registry, which is where the mesher looks for
+  // it. A wall stamped into the store and absent from `es_runs` draws as loose edges
+  // with no host — `R1b`'s finding, one gesture over.
+  assert(len(s.es_runs.items) == 1,
+         "the session holds {len(s.es_runs.items)} runs after one was laid");
+}
+
+// ⚠ THE MATERIAL DECIDES THE SHAPE, and this is the discriminator `S3` earned: for
+// months `25:1` and `25:3` both answered *road laid*, so a test that only pressed the
+// key twice and checked it wrote could not tell the two apart. Compared as WORLDS,
+// because the counts alone would agree with a stub that ignored the material.
+fn test_the_material_decides_whether_a_run_is_a_line_or_a_road() {
+  ww = a_world();
+  ws = session_new();
+  session_at(ws, ww, 0.0, 0.0, 0.0);
+  session_run(ws, ww, ws.es_author, WALL_MAT);
+  session_at(ws, ww, 4.0, 0.0, 0.0);
+  wall = session_run(ws, ww, ws.es_author, WALL_MAT);
+
+  rw = a_world();
+  rs = session_new();
+  session_at(rs, rw, 0.0, 0.0, 0.0);
+  session_run(rs, rw, rs.es_author, FENCE_MAT);
+  session_at(rs, rw, 4.0, 0.0, 0.0);
+  road = session_run(rs, rw, rs.es_author, FENCE_MAT);
+
+  assert(road.rl_code == RL_LAID, "the road's closing press answered {road.rl_code}");
+  assert(!road.rl_wall, "a run of FENCE_MAT reported itself as a wall");
+  assert(road.rl_fenced > 0,
+         "the road laid {road.rl_n} cells and {road.rl_fenced} fence edges — a road "
+       + "with no fences is the wall shape wearing the road's name");
+  assert(wall.rl_fenced == 0, "the wall laid {wall.rl_fenced} fence edges");
+  // The two worlds must differ, and by more than a count: the same two presses.
+  //
+  // ⚠ **A LENGTH IS NOT A CONTENT COMPARISON, AND THIS TEST SAID IT WAS ONCE.** The
+  // first version compared `len(world_to_bytes(…))` and went red on a correct
+  // gesture: both worlds encode to **32952 bytes**, because the layers are fixed-size
+  // and a wall and a road of the same span touch the same number of them. A digest is
+  // the instrument that can see the difference; a length was measuring the fixture.
+  assert(world_key(ww) != world_key(rw),
+         "a wall run and a road run over the same two presses build the same world "
+       + "({world_key(ww)})");
+}
+
+// ⚠ **BOTH ENDS, BECAUSE `Ack` CARRIES ONE.** The server marked two dirty discs from
+// numbers it derived itself; if `RunLaid` reported the near end twice the far half of
+// every run would draw stale, and nothing in the counts could see it.
+fn test_a_run_reports_both_of_its_ends() {
+  w = a_world();
+  s = session_new();
+  session_at(s, w, 0.0, 0.0, 0.0);
+  session_run(s, w, s.es_author, WALL_MAT);
+  session_at(s, w, 4.0, 0.0, 0.0);
+  laid = session_run(s, w, s.es_author, WALL_MAT);
+  assert(laid.rl_q0 != laid.rl_q1 || laid.rl_r0 != laid.rl_r1,
+         "a four-unit run begins and ends in the same cell ({laid.rl_q0},{laid.rl_r0})");
+  (nq, nr) = hex_grid::px_to_hex(0.0, 0.0);
+  assert(laid.rl_q0 == nq && laid.rl_r0 == nr,
+         "the near end reads ({laid.rl_q0},{laid.rl_r0}) and the author started at "
+       + "({nq},{nr})");
+  assert(laid.rl_pad > 0, "a laid run says nothing around it is stale");
+}
+
+// ⚠ AND A MATERIAL THE EDITOR DOES NOT HAVE IS REFUSED **BEFORE THE DRAFT OPENS** —
+// a guard belongs where the value arrives. Refusing after `wall_step` would leave a
+// press that built nothing having consumed the author's near end.
+fn test_a_material_the_editor_does_not_have_never_opens_a_draft() {
+  w = a_world();
+  s = session_new();
+  session_at(s, w, 0.0, 0.0, 0.0);
+  no = session_run(s, w, s.es_author, FENCE_MAT + 40);
+  assert(no.rl_code == RL_REFUSED, "an impossible material answered {no.rl_code}");
+  assert(!s.es_draft.wd_open,
+         "a refused material opened the draft — the next press would close a run "
+       + "the author never started");
+  // The control: the same two presses with a material that exists do build one.
+  ok = session_run(s, w, s.es_author, WALL_MAT);
+  assert(ok.rl_code == RL_STARTED,
+         "the fixture cannot start a run at all ({ok.rl_say}) — the refusal above "
+       + "is not being tested");
 }

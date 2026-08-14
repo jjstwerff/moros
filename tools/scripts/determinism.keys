@@ -34,9 +34,9 @@ step 5
 
 echo --- a wall run
 at -3 -3 0
-key R
+verb run
 at 3 -3 0
-key R
+verb run
 step 40
 
 save clockcheck

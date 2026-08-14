@@ -11,9 +11,9 @@ wait rebuilt
 
 echo --- one wall, west to east
 at -6 0 0
-key R
+verb run
 at 6 0 0
-key R
+verb run
 wait wall
 
 echo --- stand against it and cut a door

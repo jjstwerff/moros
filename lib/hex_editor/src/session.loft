@@ -368,9 +368,98 @@ pub fn session_storey(s: EditSession, w: VoxelWorld, dir: integer, why: &text) -
   storey_add(w, sq, sr, dir, STENCIL_R, why)
 }
 
-// `25:` — a press of the wall key, at wherever this driver stands.
-pub fn session_wall(s: EditSession, mat: integer) -> DraftStep {
-  wall_step(s.es_draft, s.es_author.au_x, s.es_author.au_z, mat)
+// ── A RUN, END TO END — `25:`, plan 22 `K3` ─────────────────────────────────
+//
+// ⚠ **THE STAMPING HALF WAS NEVER HERE, AND THE WRAPPER THAT WAS HID IT.**
+// `session_wall` moved the two-press MACHINE into the library and stopped at the
+// draft; *which material lays which shape, at what grade, into which registry* stayed
+// in `editor_server.loft`. Measured before this step: `session_wall` had four callers
+// and **every one of them was a test** — which is this tree's commonest defect wearing
+// a wrapper's clothes, and it read as coverage because the tests were green.
+//
+// ⚠ **AND THAT IS WHY `R` IS THE SLICE TO TAKE FIRST**: 22 of the 40 non-arrow key
+// presses across `tools/scripts/*.keys` are `R`, so the gesture with the least
+// library behind it was the one the scripts lean on hardest.
+//
+// ⚠ THE GRADE IS TAKEN AT THE NEAR END, which is the decision `wall_stamp` and
+// `road_stamp` both rest on: a way is GRADED, so it takes one height for its whole
+// run rather than following every bump under it. The near end is `wd_x`/`wd_z`, and
+// it survives `wall_step` closing the draft — only `wd_open` is cleared.
+pub const RL_STARTED = 0;   // the near end is recorded; press again to close
+pub const RL_LAID    = 1;
+pub const RL_REFUSED = 2;   // …and the draft is closed either way
+
+// ⚠ **TWO ENDS, AND `Ack` CARRIES ONE.** A run spans from a near cell to a far one
+// and a caller with a picture has to rebuild around **both** — which is why this is
+// its own answer rather than an `Ack`. The server marked two dirty discs from numbers
+// it derived itself; a library that handed back a single anchor would force it to go
+// on deriving them, which is the re-derivation `ak_q`/`ak_r` exists to stop.
+pub struct RunLaid {
+  rl_code:   integer,
+  rl_say:    text = "",        // the whole sentence, refusal and success alike
+  rl_wall:   boolean = false,  // the line itself, or a road and two fences
+  rl_n:      integer = 0,      // edges marked (a wall) or cells paved (a road)
+  rl_fenced: integer = 0,
+  rl_cut:    integer = 0,
+  rl_step:   integer = 0,
+  rl_resid:  float = 0.0,
+  rl_reach:  float = 0.0,
+  rl_q0: integer = 0, rl_r0: integer = 0,
+  rl_q1: integer = 0, rl_r1: integer = 0,
+  rl_pad: integer = 0,         // how far around each end the picture is stale
+}
+
+// `25:` — a press of the run key, at wherever this driver stands.
+//
+// ⚠ THE MATERIAL IS THE CALLER'S, and until a selection holds it that is the honest
+// shape rather than a shortcut: `25:1` is a wall and `25:3` a road, both reach this
+// from the wire today, and only one of them has a key. See `VB_RUN`.
+pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> RunLaid {
+  sr_fit = fit_nominal(mat, FENCE_MAT, "wall material");
+  if !sr_fit.ft_ok {
+    return RunLaid { rl_code: RL_REFUSED, rl_say: "road refused — {fit_why(sr_fit)}" };
+  }
+  sr_st = wall_step(s.es_draft, a.au_x, a.au_z, mat);
+  if sr_st.ds_code == DS_STARTED {
+    return RunLaid { rl_code: RL_STARTED,
+                     rl_say: "road started at {a.au_x},{a.au_z}" };
+  }
+  if sr_st.ds_code == DS_REFUSED {
+    return RunLaid { rl_code: RL_REFUSED, rl_say: "road refused — {sr_st.ds_why}" };
+  }
+  sr_run = sr_st.ds_run.rd_run;
+  sr_step = sr_st.ds_run.rd_step;
+  sr_resid = sr_st.ds_run.rd_resid;
+  sr_reach = sr_st.ds_run.rd_reach;
+  (sr_gq, sr_gr) = hex_grid::px_to_hex(s.es_draft.wd_x, s.es_draft.wd_z);
+  sr_grade = terrain_h(sr_gq, sr_gr, w);
+  (sr_q0, sr_r0) = hex_grid::px_to_hex(sr_run.wr_x0, sr_run.wr_z0);
+  (sr_q1, sr_r1) = hex_grid::px_to_hex(sr_run.wr_x1, sr_run.wr_z1);
+
+  // ⚠ THE MATERIAL DECIDES, and until `S3` it did not. A wall is the line the author
+  // walked; a fence keeps the road-and-two-offsets shape, which is what it is and what
+  // `straight.mjs` measures.
+  if mat == WALL_MAT {
+    sr_marked = 0;
+    wall_stamp(w, sr_run, mat, sr_grade, s.es_runs, sr_marked);
+    return RunLaid { rl_code: RL_LAID, rl_wall: true, rl_n: sr_marked,
+      rl_step: sr_step, rl_resid: sr_resid, rl_reach: sr_reach,
+      rl_q0: sr_q0, rl_r0: sr_r0, rl_q1: sr_q1, rl_r1: sr_r1, rl_pad: 4,
+      rl_say: "wall laid {sr_marked} edges, heading {sr_step} of {HEADINGS} "
+            + "(snapped, residual {sr_resid}°), length {sr_reach}" };
+  }
+
+  sr_fenced = 0;
+  sr_cut = 0;
+  sr_paved = road_stamp(w, sr_run, ROAD_HALF as float, mat, sr_grade, s.es_runs,
+                        sr_fenced, sr_cut);
+  RunLaid { rl_code: RL_LAID, rl_wall: false, rl_n: sr_paved,
+    rl_fenced: sr_fenced, rl_cut: sr_cut,
+    rl_step: sr_step, rl_resid: sr_resid, rl_reach: sr_reach,
+    rl_q0: sr_q0, rl_r0: sr_r0, rl_q1: sr_q1, rl_r1: sr_r1, rl_pad: ROAD_HALF + 4,
+    rl_say: "road laid {sr_paved} cells and {sr_fenced} fence edges, "
+          + "cut {sr_cut}, heading {sr_step} of {HEADINGS} "
+          + "(snapped, residual {sr_resid}°), length {sr_reach}" }
 }
 
 // `19:` — a prop where the author is STANDING.

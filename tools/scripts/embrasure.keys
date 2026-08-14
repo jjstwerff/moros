@@ -17,9 +17,9 @@ wait rebuilt
 
 echo --- one straight run
 at -8 0 0
-key R
+verb run
 at 8 0 0
-key R
+verb run
 
 echo --- a plain doorway to compare against, then the window seat
 at -4 -0.9 90

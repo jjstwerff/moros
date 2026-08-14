@@ -15,9 +15,9 @@ wait rebuilt
 
 echo --- one wall, west to east
 at -4 0 0
-key R
+verb run
 at 4 0 0
-key R
+verb run
 wait wall
 wait rebuilt
 

@@ -46,11 +46,18 @@
 #        above.
 #
 # ⚠ AND THE HEADLESS RUNNER CANNOT STAND IN FOR THAT, WHICH WAS THE FIRST IDEA.
-# `hex_editor::press` has no `R` — the wall run, the second most pressed key in this
-# tree — so seven of these eight scripts build **no wall at all** in `editor_run` and
-# every opening in them is refused with *"no wall here to open"*. The session
-# read-back `K1` added is the instrument that WOULD see a depth; it has nothing to
-# look at here until `press` grows the rest of its keys.
+# The verb layer had no `R` — the wall run, the second most pressed key in this tree —
+# so seven of these eight scripts built **no wall at all** in `editor_run` and every
+# opening in them was refused with *"no wall here to open"*. The session read-back
+# `K1` added is the instrument that WOULD see a depth; it had nothing to look at.
+#
+# ✅ **HALF OF THAT IS FIXED — plan 22 `K3`.** `verb_of("R")` names `run` and
+# `press_verb` builds it, so `editor_run` lays walls now: measured, `wall.keys`
+# headless answers *"wall laid 20 edges, heading 0 of 24 (snapped, residual 0°),
+# length 8"*, which is the server's own sentence because it is the server's own
+# function. This probe still drives a socket, because check 1's subject is what the
+# SERVER says and check 2's is the world a save wrote — but the reason it *had* to is
+# gone, and a headless second opinion is now possible where it was not.
 #
 # ⚠ PICTURES ARE STRIPPED FROM BOTH SIDES. `snap` photographs; it writes nothing and
 # decides nothing, and eight scripts × two runs × a headless browser is minutes of
@@ -147,6 +154,25 @@ for s in $list; do
     bad "tools/scripts/$s.keys still presses an opening key — the conversion is half done"
   else
     ok "the converted script cuts $(grep -c '^verb opening$' "tools/scripts/$s.keys") opening(s) by verb"
+  fi
+
+  # 6 — the SAME PAIR OF CONTROLS FOR `R`, plan 22 `K3`. The run key converts
+  # one-to-one, so it needs no `select` and check 5 has nothing to say about it — but
+  # checks 1 and 2 are only comparing two spellings if the baseline still presses the
+  # key and the live script no longer does. ⚠ `house.keys` presses no `R` at all,
+  # which is why this is conditional rather than required: demanding a run of every
+  # script would fail the one that has nothing to do with runs.
+  rbase=$(grep -cE '^key R$' "probe/k2/orig/$s.keys")
+  rconv=$(grep -c '^verb run$' "tools/scripts/$s.keys")
+  if [ "$rbase" -eq 0 ] && [ "$rconv" -eq 0 ]; then
+    ok "no run in this script — checks 1 and 2 say nothing about \`R\` here"
+  elif grep -qE '^key R$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses \`key R\` — the run conversion is half done"
+  elif [ "$rbase" != "$rconv" ]; then
+    bad "the baseline presses \`key R\` $rbase time(s) and the script says \
+\`verb run\` $rconv — a press was lost or gained"
+  else
+    ok "and it walks $rconv run press(es) by verb, where the baseline pressed \`R\`"
   fi
 
   # 5 — the kinds, through the wire's own table rather than through mine.

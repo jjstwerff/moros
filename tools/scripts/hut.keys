@@ -12,16 +12,16 @@ wait rebuilt
 
 echo --- wall 1: south side, west to east
 at -3 -3 0
-key R
+verb run
 at 3 -3 0
-key R
+verb run
 wait road laid
 
 echo --- wall 2: east side, south to north
 at 3 -3 0
-key R
+verb run
 at 3 3 0
-key R
+verb run
 wait road laid
 
 snap hut-two-walls

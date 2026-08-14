@@ -185,6 +185,11 @@ const VERBMAP = {
   opening: '36:',         // …with the profile from the SELECTION, not from here
   fence: '23:3,3',        // ring the disc you stand in, in fence material
   wall: '23:1,3',         // …the same ring in wall material
+  // ⚠ `run` IS NOT `wall`, and the two rows above are the reason the distinction had
+  // to be made in `hex_editor` before it could be made here: `wall` closes a ring
+  // around the author and `run` walks the line between two presses. They share a
+  // material and nothing else. Plan 22 `K3`.
+  run: '25:1',            // …and it takes TWO of these, near end then far
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 

@@ -12,9 +12,9 @@ wait rebuilt
 
 echo --- a cottage wall, and a bedstee built against it
 at -10 6 0
-key R
+verb run
 at -2 6 0
-key R
+verb run
 at -6 4.2 90
 key J
 

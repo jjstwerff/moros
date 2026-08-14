@@ -997,6 +997,13 @@ pub const VB_PLACE   = "place";
 pub const VB_OPENING = "opening";
 pub const VB_FENCE   = "fence";
 pub const VB_WALL    = "wall";
+// ⚠ **`run` IS NOT `wall`, AND THE TWO KEYS PROVE IT.** `G` rings the author with
+// wall — a closed cylinder, stored as edges, with no ends — and `R` walks a LINE
+// between two presses. They share a material and nothing else, so the ring keeps
+// `VB_WALL` and the line takes its own name. Naming the line `wall` because its
+// default material is wall is the mistake `S3` already measured once, at the other
+// end: `25:1` and `25:3` both answered *road laid* for months.
+pub const VB_RUN     = "run";
 
 // The DEFINITION — what key means what, and the only layer a person may remap.
 //
@@ -1018,6 +1025,7 @@ pub fn verb_of(key: text) -> text {
      || key == "N" || key == "M" { return VB_OPENING; }
   if key == "F" { return VB_FENCE; }
   if key == "G" { return VB_WALL; }
+  if key == "R" { return VB_RUN; }
   VB_NONE
 }
 
@@ -1110,5 +1118,22 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   }
   if verb == VB_FENCE { return ring_set(sess, w, a, FENCE_MAT, FENCE_R, a.au_y); }
   if verb == VB_WALL  { return ring_set(sess, w, a, WALL_MAT,  FENCE_R, a.au_y); }
+  // ⚠ **THE ONLY VERB WHOSE FIRST PRESS WRITES NOTHING**, and that is the gesture
+  // rather than a failure: a run has two ends and the first press records the near
+  // one. So it answers `ak_ok` with `ak_n: 0` and a sentence — *reason, offer,
+  // residual* — because a driver that reported a refusal here would teach an author
+  // to press again in the same place, which is the one input that closes the draft
+  // with nothing built.
+  //
+  // ⚠ AND `WALL_MAT` IS HARDCODED FOR THE REASON DIRECTLY ABOVE. `run` is where the
+  // ring's two verbs will meet it once a material selection exists; until then it is
+  // the wall run `R` has always been, and `25:3` reaches `session_run` from the wire
+  // with no key of its own.
+  if verb == VB_RUN {
+    vr_laid = session_run(sess, w, a, WALL_MAT);
+    if vr_laid.rl_code == RL_REFUSED { return ack_no(vr_laid.rl_say); }
+    return ack_at(ack_about(vr_laid.rl_n, vr_laid.rl_say, vr_laid.rl_resid as integer),
+                  vr_laid.rl_q1, vr_laid.rl_r1);
+  }
   Ack { ak_ok: false, ak_why: PR_NONE }
 }

@@ -67,6 +67,9 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #   DEMO_SABOTAGE=nochoose   the same `Q` run without the choosing key. If `Q2`
 #                            were about pressing `h` at all rather than about the
 #                            SELECTION, this would pass.
+#   DEMO_SABOTAGE=norun      the same `R` walk with the run key removed. If `R1`–`R3`
+#                            were reading the WALK's own lines rather than the run's,
+#                            this would pass.
 #   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
 #                            which is what a missing time bridge looks like from
 #                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
@@ -538,6 +541,62 @@ if [ "$g_feet" = "0" ] && [ "$g_landed" = "0" ]; then
   say "H3 control: the same walk over FLAT ground kept feet 0 and landed 0"
 else
   no "H3 the flat-ground walk reported feet '$g_feet' landed '$g_landed' — it should have neither, so H1/H2 prove nothing"
+fi
+
+# ── R  the demo can lay a WALL RUN — plan 22 `K3` ──────────────────────────
+#
+# ⚠ **THE DEMO'S MOST-PRESSED KEY WAS ITS DEADEST ONE.** `R` is 22 of the 40
+# non-arrow presses across `tools/scripts/*.keys`, and until `K3` local mode answered
+# it with *"'25:' is a server message and this page has no gesture for it yet"* — the
+# gesture lived in `editor_server.loft` where a page with no socket could not reach it.
+#
+# ⚠ **AND IT IS THE ONLY VERB WHOSE FIRST PRESS WRITES NOTHING**, which is what makes
+# these three checks possible and what makes them necessary. A run has two ends: press
+# one records the near end, press two lays the line between them. So *the world did not
+# move* is the CORRECT answer to the first press and the wrong one to the second, and a
+# wiring that ran the ring instead — the gesture `run` is easiest to confuse with —
+# would write on both.
+echo
+echo "── R   start a run, walk, and close it ─────────────────────────────"
+R_KEYS="r,w,w,w,w,w,w,r"
+case ",$SAB," in *,norun,*) R_KEYS="w,w,w,w,w,w"; echo "   SABOTAGE norun — the same walk with the run key removed" ;; esac
+timeout 300 node probe/b1b/press.mjs "file://$SITE" "$R_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/run.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/run.raw" > "$OUT/run.log" || true
+grep -E '^client: local run' "$OUT/run.log" | sed 's/^/   /'
+
+r_first=$(grep -m1 'client: local run' "$OUT/run.log" || true)
+r_last=$(grep 'client: local run' "$OUT/run.log" | tail -1 || true)
+r_n1=$(printf '%s' "$r_first" | sed -n 's/.*local run — \([0-9]*\) .*/\1/p')
+r_n2=$(printf '%s' "$r_last"  | sed -n 's/.*local run — \([0-9]*\) .*/\1/p')
+r_k1=$(printf '%s' "$r_first" | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
+r_k2=$(printf '%s' "$r_last"  | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
+
+# R1 — the page ran the gesture at all, rather than saying it has no gesture for `25:`.
+if [ -n "$r_first" ]; then
+  say "R1 the run key reached a gesture: ${r_first#client: local }"
+else
+  no "R1 the page never ran a run — $(grep -m1 "no gesture for it yet" "$OUT/run.log" || echo 'the key printed nothing')"
+fi
+
+# R2 — the first press RECORDS and the second LAYS, which is one claim in two numbers.
+# ⚠ THREE OUTCOMES: a run that never got its second press says nothing about either.
+if [ -z "$r_n2" ] || [ "$r_first" = "$r_last" ]; then
+  no "R2 only one run press landed in this transcript, so it cannot say what the second one does"
+elif [ "$r_n1" = "0" ] && [ -n "$r_n2" ] && [ "$r_n2" -gt 0 ] 2>/dev/null; then
+  say "R2 the first press wrote $r_n1 and the second laid $r_n2"
+else
+  no "R2 the two presses wrote '$r_n1' then '$r_n2' — a run records on the first and lays on the second"
+fi
+
+# R3 — and the STORE agrees, which a count cannot say on its own: the count is the
+# gesture's own number, and `world_key` is `hex_voxel`'s.
+if [ -n "$r_k1" ] && [ -n "$r_k2" ] && [ "$r_k1" != "$r_k2" ]; then
+  say "R3 and the world moved between them: $r_k1 → $r_k2"
+elif [ -n "$r_k1" ]; then
+  no "R3 the world is $r_k1 before and after — the second press reported $r_n2 and wrote nothing"
+else
+  no "R3 no world key was printed beside either run press"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────

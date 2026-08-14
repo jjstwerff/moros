@@ -12,9 +12,9 @@ wait rebuilt
 
 echo --- one wall, with a niche in it
 at -6 4 0
-key R
+verb run
 at 6 4 0
-key R
+verb run
 at -2 2.5 90
 select 11
 verb opening

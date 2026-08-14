@@ -393,6 +393,38 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3`'s FIRST SLICE — `R` IS A VERB, and the wrapper that was there hid the gesture, 2026-08-14
+
+**`verb_of("R")` names `run`, and `hex_editor::session_run` is the whole gesture.** All 22 `key R`
+lines across `tools/scripts/*.keys` now say `verb run`; `probe/k2` drives both spellings through a
+server and gets **identical sentences and byte-identical worlds on all eight scripts**.
+
+⛔ **AND `session_wall` WAS THE DEFECT WEARING A WRAPPER'S CLOTHES.** The library already had the
+two-press *machine* — and only the machine. The stamping (which material lays which shape, at what
+grade, into which registry) stayed in `editor_server.loft`, so `session_wall` had **four callers and
+every one of them was a test**. It read as coverage because those tests were green: they measured a
+draft, and *a run writes something* had no headless test at all.
+
+✅ **THREE THINGS BECAME POSSIBLE AT ONCE, AND NONE NEEDED NEW CODE.** `editor_run` lays walls
+headless (*"wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8"*, the server's own
+sentence because it is the server's own function); the demo's **most-pressed key stopped being its
+deadest** — `R` was 22 of 40 presses and local mode answered *"'25:' is a server message and this
+page has no gesture for it yet"*; and `probe/k2`'s header sentence about the runner being unable to
+stand in became false, which is how it was noticed.
+
+⚠ **`run` IS NOT `wall`** — `G` rings the author (a cylinder, stored as edges, no ends) and `R`
+walks a line between two presses. They share a material and nothing else. ⚠ **And it is the only
+verb whose first press writes nothing**, which is why `local_act` now prints the gesture's SENTENCE
+beside its count: `local run — 0` is a success that reads exactly like a broken key.
+
+⚠ **A TEST'S OWN COMMENT CLAIMED A SABOTAGE IT DID NOT CATCH.** `…_is_not_the_ring_verb` pressed `R`
+twice against `G` once and stayed **green** with `run` wired to `ring_set` — two rings differ from
+one ring for a reason that has nothing to do with the verb. Same poses on both sides is the fix.
+⚠ **And a LENGTH is not a content comparison**: the material test first compared
+`len(world_to_bytes(…))` and went red on a correct gesture — both worlds encode to **32952 bytes**.
+
+⏭ **Ten keys left**: `Y T J E Z X V K C B`.
+
 ## ⛔ `K3` IS SIZED, NOT DONE — and a key meant two things, 2026-08-14
 
 **`K3` is *drop the `key` spelling from scripts*, blocked on keys with no verb — and the scripts use
