@@ -502,6 +502,84 @@ fn test_a_tread_is_the_same_height_in_a_world_authored_at_another_unit() {
        + "{(frise as float) * fine.w_unit} in the other");
 }
 
+// ── `Z` IS A VERB AND `X` IS NOT YET — plan 22 `K3`, the third shape ────────
+//
+// ⚠ **TWO KEYS ON ONE MESSAGE FOR THE THIRD DISTINCT REASON.** The seats and annexes
+// collapsed because a THING separated them; the stairs did not because a DIRECTION
+// did; this pair does not because they are **two actions**, and `hole` cannot run at
+// all until `slab` has. The discriminator is therefore a REFUSAL, not a difference in
+// what got built: same session, same pose, and the void is refused with nothing to cut.
+// ⚠ **THROUGH `slab_over` RATHER THAN BY HAND, AND THE FIRST ATTEMPT IS WHY.** A
+// hand-built `slab_new(…, 12, SLAB_THICK)` reads perfectly and is a slab of thickness
+// `SLAB_THICK - 12` — the arguments are `lo, hi`, not `lo, thick` — so the fixture was
+// refused by `hole_fits_in` with *a slab with no thickness cannot carry a hole*. A
+// fixture assembled by the gesture that assembles the real thing cannot be wrong about
+// the real thing's shape.
+fn slabbed() -> EditSession {
+  sl = EditSession {};
+  sl.es_slabs.items += [slab_over(pose_footprint(0.0, 0.0, 0.0, HOUSE_W, HOUSE_D),
+                                  0, STOREY_H, SLAB_THICK)];
+  sl
+}
+
+// …and where to stand to cut through it. ⚠ A FOOTPRINT IS PLACED AHEAD OF THE AUTHOR,
+// so the slab is NOT underfoot — `slab.keys` records the refusal that taught this
+// (*reaching past the slab's end by 4.87*), and a test standing at the origin would
+// measure that refusal while believing it measured the verb.
+fn on_the_slab(s: EditSession, w: VoxelWorld) -> Author {
+  os = s.es_slabs.items[0] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
+  author_on(w, os.sl_x, os.sl_z, 0.0)
+}
+
+fn test_the_hole_verb_needs_a_slab_and_says_so_without_naming_a_key() {
+  assert(verb_of("Z") == VB_HOLE, "the hole key names '{verb_of(\"Z\")}'");
+
+  // Nothing laid: the verb must refuse, and the sentence is the whole instrument.
+  ew = flat();
+  es = EditSession {};
+  ea = press_verb(es, ew, author_on(ew, 0.0, 0.0, 0.0), verb_of("Z"));
+  assert(!ea.ak_ok, "a void was cut through a slab that does not exist");
+  assert(len(es.es_holes.items) == 0,
+         "a refused hole filed {len(es.es_holes.items)} void(s)");
+  // ⚠ AND IT MUST NOT NAME A KEYSTROKE. It said *press X first* — advice that is wrong
+  // for a script (which says `verb slab`), for a remapped keyboard, and for a driver
+  // with none. A library refusal names the GESTURE, which is what travels.
+  assert(!ea.ak_why.contains("press X"),
+         "the refusal names a keystroke: '{ea.ak_why}'");
+  assert(ea.ak_why.contains("slab"),
+         "the refusal does not say what is missing: '{ea.ak_why}'");
+}
+
+fn test_the_hole_verb_cuts_a_void_into_the_session_and_nothing_into_the_store() {
+  w = flat();
+  s = slabbed();
+  before = w.w_tau;
+  ack = press_verb(s, w, on_the_slab(s, w), verb_of("Z"));
+  assert(ack.ak_ok, "the void was refused over a slab that is there: {ack.ak_why}");
+  assert(len(s.es_holes.items) == 1,
+         "the verb filed {len(s.es_holes.items)} void(s) — the mesher's only source");
+  assert((s.es_holes.items[0]?.ho_kind ?? 0 - 1) == HO_RECT,
+         "the filed void is kind {s.es_holes.items[0]?.ho_kind ?? 0 - 1}, not a stairwell");
+  assert(ack.ak_n == 1, "the ack counted {ack.ak_n} voids");
+
+  // ⚠ **THE STORE IS THE CONTROL, AND IT IS A CLAIM RATHER THAN AN OMISSION.** A hole
+  // is session state end to end, so `w_tau` and a saved world are blind to it BY
+  // CONSTRUCTION — the same blindness the seats have. Asserting the clock did NOT move
+  // is what stops a later reader from adding a world instrument here and believing it.
+  assert(w.w_tau == before,
+         "cutting a void did {w.w_tau - before} store writes — a hole reaches no store, "
+       + "so any world instrument aimed at this gesture is measuring something else");
+}
+
+// ⚠ **THE PAD THE LIBRARY CANNOT NAME.** `session.loft` writes `HOLE_PAD = 13` because
+// `HOUSE_W`/`HOUSE_D` live in the root module, which `use`s it — a `use` goes one way.
+// This file can see both, so the equality is a TEST rather than a comment claiming it.
+fn test_the_hole_pad_is_the_slabs_footprint_the_library_cannot_read() {
+  assert(HOLE_PAD == HOUSE_W + HOUSE_D + 4,
+         "HOLE_PAD is {HOLE_PAD} and the footprint it stands for is "
+       + "{HOUSE_W + HOUSE_D + 4} — the two have drifted apart");
+}
+
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
 // ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
 // would run a gesture on every step of a walk.
@@ -548,7 +626,7 @@ fn test_every_verb_the_definition_produces_is_bound() {
   // was not extended, so `annex` sat here unasserted — the same shape as *built and
   // never called*, one layer up. `E` and `Q` are added with them.
   for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
-             "R", "Y", "T", "J", "K", "V", "E", "Q"] {
+             "R", "Y", "T", "J", "K", "V", "E", "Q", "Z"] {
     v = verb_of(bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);

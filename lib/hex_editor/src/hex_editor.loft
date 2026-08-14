@@ -1073,6 +1073,18 @@ pub const VB_ANNEX   = "annex";
 // a converted script says the verb and nothing else.
 pub const VB_STAIR_UP   = "stair_up";
 pub const VB_STAIR_DOWN = "stair_down";
+// ⚠ **`Z` AND `X` ARE TWO KEYS ON ONE MESSAGE AND TWO VERBS, FOR A THIRD REASON
+// AGAIN.** Not a THING (which collapses, as `seat` and `annex` did) and not a
+// DIRECTION (which does not, as `stair_up`/`stair_down` do not) — **two actions**,
+// where one cannot run until the other has. `39:0` lays a floor and `39:1`…`39:3` cut
+// a void through it, into two different registries. That is `place`/`opening`'s
+// relationship, and those have been two verbs since `V1`. See `session_hole_kind`.
+//
+// ⏭ **ONLY `hole` IS BOUND HERE.** `X` has no verb yet, so `slab` is the name this
+// pair is waiting on rather than one this step invented — declaring it unbound would
+// put a verb in `verb_of`'s table that `press_verb` answers `PR_NONE` to, which
+// `test_every_verb_the_definition_produces_is_bound` exists to refuse.
+pub const VB_HOLE = "hole";
 
 // The DEFINITION — what key means what, and the only layer a person may remap.
 //
@@ -1099,6 +1111,7 @@ pub fn verb_of(key: text) -> text {
   if key == "J" || key == "K" || key == "V" { return VB_ANNEX; }
   if key == "E" { return VB_STAIR_UP; }
   if key == "Q" { return VB_STAIR_DOWN; }
+  if key == "Z" { return VB_HOLE; }
   VB_NONE
 }
 
@@ -1233,6 +1246,21 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // `hex_proj::HEIGHT_SCALE`, a global that is the same number on the landscape and
   // **wrong on a part world**. A gesture that asks the world it is writing to cannot
   // be wrong about which world it is in.
+  // ⚠ **`HOLE_THROUGH` IS HARDCODED HERE FOR `VB_RUN`'s REASON, ONE GESTURE OVER.**
+  // Three kinds exist (a stairwell, a coffer, a sunken panel) and exactly one has a
+  // key, so there is nothing to select between yet — this is the stairwell `Z` has
+  // always cut, and `39:2`/`39:3` reach `session_hole_kind` from the wire with no key
+  // of their own. On the day a second kind gets a key they become a family and take
+  // the seats' answer: a selection, not a second verb.
+  //
+  // ⚠ **AND IT TAKES NO WORLD, WHICH IS THE THING TO NOTICE.** A hole is entirely
+  // session state — `es_holes` — so nothing here can be seen in a saved world or in
+  // `w_tau`. The sentence and the registry are the only instruments.
+  if verb == VB_HOLE {
+    vh_cut = session_hole(sess, a);
+    if !vh_cut.hm_ok { return ack_no(vh_cut.hm_say); }
+    return ack_at(ack_about(vh_cut.hm_n, vh_cut.hm_say, 0), vh_cut.hm_q, vh_cut.hm_r);
+  }
   if verb == VB_ANNEX {
     va_made = session_annex(sess, w, a);
     if !va_made.ax_ok { return ack_no(va_made.ax_say); }

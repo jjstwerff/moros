@@ -24,11 +24,8 @@ wait rebuilt
 # position was refused for reaching past the slab's end by 4.87, correctly; the
 # gesture now reports where the slab went, which is what made this line writable.
 echo --- and a stairwell through it, where the slab actually is
-# ⚠ `hole`, NOT `slab` WITH A KIND — plan 22 `K3`. `X` lays the floor and `Z` cuts
-# through it: two ACTIONS on one message id, and the second cannot run until the first
-# has. `key X` above is still a key because `slab` has no verb yet.
 at 0 6 90
-verb hole
+key Z
 wait rebuilt
 
 echo --- from below and to one side: the underside, and the rim's own edge

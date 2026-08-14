@@ -462,11 +462,23 @@ fn test_the_kind_chooses_the_profile_and_only_one_goes_through() {
          "the coffer and the sunken panel are cut from the same face");
 }
 
+// ⚠ **THIS TEST WAS PINNING A KEYSTROKE, AND IT WENT RED ON THE LINE THAT REMOVED
+// ONE** — plan 22 `K3` · `Z`. It asserted the refusal contained *press X*, so the
+// coupling `EDITING_MODES` exists to break — a library naming the key that a
+// PARTICULAR keyboard happens to bind — was not merely present, it was **enforced**.
+// `X` is remappable, a script says `verb slab` and never presses it, and a headless
+// driver has no keyboard at all: the advice was wrong for every reader but one.
+//
+// ⚠ AND THE ASSERTION IS STILL A POSITIVE ONE. Checking only that *press X* is absent
+// would pass on an empty string; the refusal has to say what is missing, which is the
+// obligation (*reason, offer, residual, never a blank no*) rather than the wording.
 fn test_cutting_with_no_slab_is_refused_by_name() {
   got = slab_hole(Slabs { items: [] }, HOLE_THROUGH, 0.0, 0.0, 2.0, 2.0);
   assert(!got.hx_ok, "a hole was cut in a world with no slab in it");
-  assert(got.hx_why.find("press X") >= 0,
-         "the refusal does not say what to do: {got.hx_why}");
+  assert(got.hx_why.find("slab") >= 0,
+         "the refusal does not say what is missing: {got.hx_why}");
+  assert(got.hx_why.find("press ") < 0,
+         "the refusal names a keystroke, which is not the library's to know: {got.hx_why}");
 }
 
 // ── `38:` — WHICH VOID A SEAT PICKS, and which way a figure looks ────────────

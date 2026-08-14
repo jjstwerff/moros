@@ -393,6 +393,66 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3` · `Z` — A THIRD REASON FOR TWO VERBS, and a library that named a keystroke, 2026-08-14
+
+**`Z` names `hole`; `X` is untouched and has no verb yet.** They are two keys on one message —
+the shape that has now produced three different answers in four slices — and this one is neither
+of the first two. Not a THING (which collapses: `seat`, `annex`), not a DIRECTION (which does not:
+`stair_up`/`stair_down`), but **two actions**, where one cannot run until the other has. `39:0`
+lays a floor into `es_slabs`; `39:1`…`39:3` cut a void into `es_holes`. That is
+`place`/`opening`'s relationship exactly — `H` builds a house, `O` cuts into its wall — and those
+have been two verbs since `V1`.
+
+⚠ **AND WITHIN `hole` THERE IS NO FAMILY TO COLLAPSE YET.** Three kinds exist (a stairwell, a
+coffer, a sunken panel) and **only kind 1 has a key**, so `Z` is one-to-one: `R`'s situation,
+taking `R`'s answer. The wire keeps carrying the resolved kind (`hole: '39:1'`), and `39:2`/`39:3`
+reach the same gesture with no key of their own.
+
+⛔ **AND A BARE `39:` IS A SLAB, WHICH MAKES ONE CONTRACT UNAVAILABLE ON THIS ID.** `36:`, `37:`
+and `38:` all read an empty payload as *the one I chose*; here `payload as integer ?? 0` is the
+**slab**, so a bare `hole` would lay a floor where an author asked for a void. Written into
+`script.mjs`, the library and the new `39` row, because the next person to add a selection will
+reach for it.
+
+⛔ **AND THE LIBRARY'S REFUSAL NAMED A KEYSTROKE — WITH A TEST ENFORCING IT.** `slab_hole` said
+*"no slab to cut — **press X first**"*, and `test_cutting_with_no_slab_is_refused_by_name`
+asserted that exact substring. So the coupling `EDITING_MODES` exists to break was not merely
+present, it was **pinned**: `X` is remappable, a script says `verb slab` and never presses it, and
+a headless driver has no keyboard at all. It says *lay a slab first* now, and the test asserts the
+obligation (it names what is missing) plus its negation (it names no key) — the positive half
+matters, because *absent* would pass on an empty string.
+
+⚠ **AND THE APPEND IS THE HALF THAT WAS NEVER IN THE LIBRARY.** `slab_hole` — the host choice, the
+kind table, the fit — was already `hex_editor`'s; the `es_holes` append, the sentence and the
+extents were at the socket. **The append is the one that matters**: a hole reaches no store at
+all, so `es_holes` is the mesher's only source and a driver that cut without filing would draw an
+unbroken floor and report success. The seats' finding, one gesture over.
+
+⚠ **WHICH MAKES `probe/k2` CHECK 2 BLIND HERE BY CONSTRUCTION** — two byte-identical worlds
+whatever was cut. The sabotage that deletes the append goes red on **one** assertion, the session
+count, and on nothing else. ⚠ And `2.0, 2.0` was a literal at that one call site; it is
+`HOLE_HALF` now, for `WORLD_EPS`'s reason.
+
+⚠ **AND A CONSTANT THE LIBRARY CANNOT NAME IS PINNED BY A TEST RATHER THAN A COMMENT.** `HOLE_PAD`
+is `HOUSE_W + HOUSE_D + 4`, and `session.loft` cannot say so — those live in the root module,
+which `use`s it, and a `use` goes one way. The test file sees both, so the equality is asserted
+there instead of claimed in prose.
+
+⛔ **AND MY FIXTURE BUILT A SLAB OF NEGATIVE THICKNESS THAT READ PERFECTLY.** `slab_new(…, 12,
+SLAB_THICK)` — the arguments are `lo, hi`, not `lo, thick` — refused with *a slab with no
+thickness cannot carry a hole*. Rebuilt through `slab_over`, the gesture that assembles the real
+one: **a fixture assembled by the production path cannot be wrong about the production shape.**
+⚠ And the author has to stand ON the slab, because a footprint is placed *ahead* — `slab.keys`
+records that refusal and a test at the origin would have measured it while believing it measured
+the verb.
+
+✅ 489 green both backends · 49/49 gates · `make parts` byte-identical · `probe/k2` **10 scripts**,
+`slab` joined: `key Z` and `verb hole` give identical sentences (`slab hole kind 1 at (0,4)`) and
+byte-identical worlds · `make probe-demo` PASS · seven sabotages red on their own test, two
+controls clean.
+
+⏭ **Three keys left**: `X C B` — and `X` is `slab`, the name this pair is already waiting on.
+
 ## ✅ `K3` · `E` — THE SLICE THAT STOPS THE PATTERN, and a second global standing in for the world, 2026-08-14
 
 **`E` and `Q` are TWO verbs — `stair_up` and `stair_down` — and `30:` keeps its sign.** From the

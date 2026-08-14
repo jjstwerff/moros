@@ -6445,7 +6445,14 @@ pub fn slab_hole(slabs: Slabs, kind: integer, x: float, z: float,
                  u: float, v: float) -> HoleAt {
   if len(slabs.items) < 1 {
     return HoleAt { hx_ok: false, hx_kind: kind,
-                    hx_why: "no slab to cut — press X first" };
+                    // ⚠ A LIBRARY REFUSAL MUST NOT NAME A KEYSTROKE — plan 22 `K3`.
+                    // This said *press X first*, and `X` is a key: resolved where the
+                    // keyboard is, remappable by the person, and absent entirely from
+                    // a script (which says `verb slab`) and from any driver with no
+                    // keyboard at all. The advice was wrong for every one of those
+                    // readers and right only for the one client that has no `39:`
+                    // binding. Name the GESTURE, which is what travels.
+                    hx_why: "no slab to cut — lay a slab first" };
   }
   sh_host = slabs.items[len(slabs.items) - 1] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 1);
   sh_hole = hole_rect(x, z, u, v);

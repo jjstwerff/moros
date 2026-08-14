@@ -78,7 +78,13 @@ OUT=probe/k2/out
 # 3, 4 and 5 conditional. They were unconditional and `continue`d on failure, so adding
 # a script with nothing to open would have skipped its whole run — reported as one loud
 # failure rather than silently, but skipped.
-ALL="annex determinism door embrasure furnish house niche opening profiles"
+# ⚠ AND `slab` JOINED AT `K3` · `Z`, for `determinism`'s reason one gesture over: it is
+# the only script that presses `Z`. ⚠ **AND CHECK 2 IS STRUCTURALLY BLIND TO WHAT IT
+# CHECKS** — a hole is `es_holes`, a SESSION registry, and reaches no store at all, so
+# the two saved worlds are byte-identical whether the script cut a stairwell, a coffer
+# or nothing. That is the seats' blindness exactly (check 8's ⚠), and check 11 plus the
+# sentences are what carry it.
+ALL="annex determinism door embrasure furnish house niche opening profiles slab"
 list=${*:-$ALL}
 rm -rf "$OUT" && mkdir -p "$OUT"
 fails=0
@@ -275,6 +281,34 @@ out of the verb and into nothing"
   else
     ok "and it cuts $uconv tread(s) up and $dconv down, by two verbs where the \
 baseline pressed two keys"
+  fi
+
+  # 11 — the HOLE, plan 22 `K3` · `Z`, and its shape is a third one again. Not a
+  # family with kinds to compare (checks 8 and 9) and not a direction pair (check 10):
+  # `X` and `Z` are two ACTIONS on one message id, so what this asserts is that the
+  # conversion took `Z` and **left `X` alone**. A conversion that turned both into one
+  # verb would be the `25:1`/`25:3` defect rebuilt — two gestures answering as one.
+  #
+  # ⚠ AND THE `X` HALF IS AN ASSERTION, NOT A LEFTOVER. `slab` has no verb yet, so the
+  # baseline and the live script must press `key X` the SAME number of times; a
+  # conversion that quietly dropped it would leave nothing to cut and check 1 would
+  # report a refusal rather than a missing press.
+  zbase=$(grep -cE '^key Z$' "probe/k2/orig/$s.keys")
+  zconv=$(grep -c '^verb hole$' "tools/scripts/$s.keys")
+  xbase=$(grep -cE '^key X$' "probe/k2/orig/$s.keys")
+  xlive=$(grep -cE '^key X$' "tools/scripts/$s.keys")
+  if [ "$zbase" -eq 0 ] && [ "$zconv" -eq 0 ]; then
+    ok "no hole in this script"
+  elif grep -qE '^key Z$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses \`key Z\` — the conversion is half done"
+  elif [ "$zbase" != "$zconv" ]; then
+    bad "the baseline presses \`Z\` $zbase time(s) and the script says \`verb hole\` \
+$zconv — a press was lost or gained"
+  elif [ "$xbase" != "$xlive" ]; then
+    bad "the slab presses moved: \`key X\` $xbase in the baseline, $xlive live — \
+\`X\` has no verb yet and must not have been converted"
+  else
+    ok "and it cuts $zconv void(s) by verb, over $xlive slab(s) still laid by \`key X\`"
   fi
 
   sed -n "s/^ *\([A-Z]\): '37:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/annexmap.txt"

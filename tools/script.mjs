@@ -201,6 +201,13 @@ const VERBMAP = {
   // `hex_editor::stair_ahead` keeps in the verb exactly as `raise`/`lower` do.
   stair_up: '30:1',       // one tread up, into the cell ahead
   stair_down: '30:-1',    // …and one down
+  // ⚠ `39:1` AND NOT A BARE `39:` — plan 22 `K3`, and this is the row where the bare
+  // form would be a live defect rather than a missing feature. `36:`, `37:` and `38:`
+  // all read an empty payload as *the one I chose*; on `39:` an empty payload parses
+  // to `0`, which is the SLAB — so a bare `hole` would lay a floor where the author
+  // asked for a void. One-to-one like `run`, and `39:2`/`39:3` reach the same gesture
+  // with no key of their own.
+  hole: '39:1',           // a stairwell through the slab last laid
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
