@@ -398,6 +398,13 @@ serves**, differing only in where a key press goes.
 **`hex_mesh::ground_under`** answers what is under the feet for both drivers, and
 **`hex_editor::fall_step`** evolves them. `B1c` is closed.
 
+✅ **VERIFIED**: `make lib-test` 22 suites on both backends, `make probe-demo` 20 checks, and
+`DEMO_SABOTAGE=noraise` red on **`H1`/`H2` alone** (17.28 units on flat ground, `feet 0 landed 0`).
+Test-name diff: **moros_sim 303/25 → 295/24**, **hex_editor 452/43 → 461/44** — the extra one is the
+gravity PIN. ⚠ **hex_mesh is 65/9, unchanged**: `ground_under` arrived with no tests of its own, which
+is this step's honest weak spot — its rule is exercised by the gates and the page, not by the package
+that owns it.
+
 ⛔ **THE CYCLE THE WALK DID NOT HAVE, THE FALL DOES.** `walk_to` never asks for the ground; the fall
 asks every tick — and `ground_under` needs `terrain_y`, which is `hex_mesh`'s, while **`hex_mesh`
 depends on `hex_editor`**. ✅ **So it went the other way**: into `hex_mesh`, beside the `terrain_y`

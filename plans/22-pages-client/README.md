@@ -295,6 +295,19 @@ question, and changing it here would have moved `probe-b1a`'s baseline under a s
 **The page falls.** `hex_mesh::ground_under` answers what is under the feet for both drivers, and
 `hex_editor::fall_step` evolves them.
 
+### The verification, and the accounting
+
+`make lib-test` **22 suites green on both backends**; `make probe-demo` 20 checks; and
+`DEMO_SABOTAGE=noraise` red on **`H1`/`H2` alone** — it walks **17.28 units on flat ground** with
+`feet 0 landed 0`, so the fall checks are about the GROUND rather than about walking or distance.
+
+Test-name diff, every row accounted for: **moros_sim 303/25 → 295/24** (−8) and **hex_editor
+452/43 → 461/44** (+9). ⚠ The extra one is the PIN — `moros_sim`'s file had 8 runnable tests plus
+two helpers the runner cannot call, and the ninth here is
+`test_the_editors_gravity_is_the_number_the_other_world_falls_at`. **hex_mesh is 65/9, unchanged**:
+`ground_under` arrived with no tests of its own, and that is the honest weak spot of this step —
+its rule is exercised by the server's gates and by the page, not by the package that now owns it.
+
 ### The cycle, paid on the side that owns the interpolation
 
 ⛔ **THIS IS THE BLOCKER THE WALK TURNED OUT NOT TO HAVE.** `walk_to` never asks for the ground; the
