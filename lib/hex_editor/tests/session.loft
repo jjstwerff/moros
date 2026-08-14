@@ -536,6 +536,98 @@ fn test_a_figure_faces_whoever_is_looking_at_it() {
        + "taken from the opening is the same from both sides");
 }
 
+// ── AND THE ASSEMBLY THE FIVE ABOVE CANNOT SEE — plan 22 `K3` ────────────────
+//
+// ⚠ THE FIVE TESTS ABOVE MEASURE `seat_bed` AND `seat_statue`, WHICH WERE ALREADY THE
+// LIBRARY'S — and were already called from `editor_server.loft` directly. What lived
+// at exactly one driver was the ASSEMBLY: *which of the two*, the `es_props` append,
+// and the two sentences. The middle one is the part that matters: nothing about a seat
+// reaches the store, so a gesture that answered without filing would be a success no
+// mesher can see and no `w_tau` can catch.
+//
+// A session with both voids in it, so the SELECTION is the only thing deciding.
+fn a_furnished_session() -> EditSession {
+  fs = session_new();
+  fs.es_annex.items += [a_box(0.0, 0.0, AN_BOX)];
+  fs.es_open.items += [alcove_opening(0.0, 0.0, 0.9, 2, 12, 0.6)];
+  fs
+}
+
+fn test_the_selection_decides_what_is_seated() {
+  bs = a_furnished_session();
+  bed = session_seat(bs, author_at(0.0, 4.0, 0.0, 0.0));
+  assert(bed.sm_ok, "a bed was refused in a session with a box: {bed.sm_say}");
+  assert(bed.sm_kind == PROP_BED, "the default selection seated kind {bed.sm_kind}");
+  assert(bed.sm_say.find("a bed") == 0, "the bed's sentence reads: {bed.sm_say}");
+
+  ss = a_furnished_session();
+  chose = session_select_seat(ss, PROP_STATUE);
+  assert(chose.ak_ok, "choosing a statue was refused: {chose.ak_why}");
+  fig = session_seat(ss, author_at(0.0, 4.0, 0.0, 0.0));
+  assert(fig.sm_ok, "a figure was refused in a session with a niche: {fig.sm_say}");
+  assert(fig.sm_kind == PROP_STATUE, "after choosing a statue it seated {fig.sm_kind}");
+  assert(fig.sm_say.find("a figure") == 0, "the figure's sentence reads: {fig.sm_say}");
+  // ⚠ AND THE TWO MUST BE DIFFERENT PROPS, not two sentences about one. The same
+  // session, the same pose, the same verb — only the selection moved.
+  assert((bs.es_props.items[0]?.pr_kind ?? 0 - 1) != (ss.es_props.items[0]?.pr_kind ?? 0 - 1),
+         "a bed and a figure were both filed as prop kind "
+       + "{bs.es_props.items[0]?.pr_kind ?? 0 - 1}");
+}
+
+// ⚠ THE REGISTRY IS THE ONLY WITNESS. A seat writes nothing to the store, so
+// `w_tau` — the instrument every other gesture here is checked with — reads the same
+// before and after. That is not a gap to route around: it is the reason `es_props`
+// has to be asserted directly.
+fn test_a_seat_is_filed_where_the_mesher_looks() {
+  fs = a_furnished_session();
+  assert(len(fs.es_props.items) == 0, "the fixture already holds a prop");
+  made = session_seat(fs, author_at(0.0, 4.0, 0.0, 0.0));
+  assert(made.sm_ok, "the seat was refused: {made.sm_say}");
+  assert(len(fs.es_props.items) == 1,
+         "the gesture answered '{made.sm_say}' and the session holds "
+       + "{len(fs.es_props.items)} props");
+  // …and it is the prop the answer described, not some other one.
+  assert(fs.es_props.items[0]?.pr_len == made.sm_prop.pr_len,
+         "the filed prop is {fs.es_props.items[0]?.pr_len ?? 0.0} long and the "
+       + "answer said {made.sm_prop.pr_len}");
+  assert(made.sm_pad > 0, "a seated prop says nothing around it is stale");
+}
+
+// ⚠ THE ONE-SHOT DOES NOT MOVE THE SELECTION — `session_open_kind`'s rule, and the
+// reason is `W4`'s: `38:<kind>` on the wire does not re-choose either, so a runner and
+// a server would otherwise leave different SESSIONS from one keystroke while leaving
+// identical worlds. A divergence under a green test.
+fn test_seating_one_kind_this_time_does_not_re_choose() {
+  fs = a_furnished_session();
+  assert(fs.es_seat_kind == PROP_BED, "the fixture starts on {fs.es_seat_kind}");
+  once = session_seat_kind(fs, author_at(0.0, 4.0, 0.0, 0.0), PROP_STATUE);
+  assert(once.sm_ok, "the one-shot statue was refused: {once.sm_say}");
+  assert(once.sm_kind == PROP_STATUE, "the one-shot seated {once.sm_kind}");
+  assert(fs.es_seat_kind == PROP_BED,
+         "seating a statue once moved the standing choice to {fs.es_seat_kind}");
+  // The control: the NEXT seat is a bed again, which is what the selection means.
+  next = session_seat(fs, author_at(0.0, 4.0, 0.0, 0.0));
+  assert(next.sm_kind == PROP_BED,
+         "the press after a one-shot seated {next.sm_kind}");
+}
+
+// ⚠ NOMINAL, SO A REFUSAL OFFERS NOTHING, and the guard is at BOTH doors: a kind the
+// editor does not have must not be storable by `52:` nor seatable by `38:<kind>`.
+fn test_a_seat_kind_the_editor_does_not_have_is_refused_at_both_doors() {
+  fs = a_furnished_session();
+  no = session_select_seat(fs, 7);
+  assert(!no.ak_ok, "7 was accepted as a seat kind");
+  assert(fs.es_seat_kind == PROP_BED,
+         "a refused selection still moved the choice to {fs.es_seat_kind}");
+  shot = session_seat_kind(fs, author_at(0.0, 4.0, 0.0, 0.0), 7);
+  assert(!shot.sm_ok, "seating kind 7 succeeded: {shot.sm_say}");
+  assert(len(fs.es_props.items) == 0,
+         "a refused kind filed {len(fs.es_props.items)} prop(s)");
+  // The control: the same two calls with a kind that exists both work.
+  yes = session_select_seat(fs, PROP_STATUE);
+  assert(yes.ak_ok, "the fixture cannot choose a statue at all — nothing is tested");
+}
+
 // ── `25:` — A RUN FROM TWO ENDS, and the length that is not the distance ─────
 //
 // ⚠ THE SNAP WAS ALWAYS THE LIBRARY'S; what needed a socket was the LENGTH, and it

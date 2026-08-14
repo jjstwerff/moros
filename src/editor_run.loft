@@ -195,6 +195,18 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // oculus, so `session_select_open` says no without an offer and leaves the
     // standing choice alone — which is the server's `49:` behaviour, because it is
     // the same call.
+    //
+    // ⚠ `select seat <kind>` NAMES ITS SUBJECT AND THE BARE FORM DOES NOT — plan 22
+    // `K3`. The bare one stays the opening because `K2a` converted eight scripts to
+    // write it that way, and giving the word a new meaning would move all of them for
+    // a spelling. ⏭ It is the form to migrate when a fourth selection lands: it is the
+    // only one whose subject is implied.
+    if rest.starts_with("seat ") {
+      ssel = hex_editor::session_select_seat(sess, rest[5..].trim() as integer ?? 0 - 1);
+      if !ssel.ak_ok { said = "selection refused — {ssel.ak_why}"; return true; }
+      said = "seat {ssel.ak_n} selected";
+      return true;
+    }
     sel = hex_editor::session_select_open(sess, rest as integer ?? 0 - 1);
     if !sel.ak_ok { said = "selection refused — {sel.ak_why}"; return true; }
     said = "opening {sel.ak_n} selected";

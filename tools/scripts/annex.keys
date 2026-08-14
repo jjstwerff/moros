@@ -22,7 +22,8 @@ echo --- and a cupboard hard against it: five walls for two boxes, not six
 key V
 
 echo --- a bed in the box, sized by the box rather than given a size
-key Y
+select seat 0
+verb seat
 
 echo --- a trunk: a ring of wall, which is a cylinder
 at 6 6 0
@@ -37,7 +38,8 @@ echo --- a niche in the cottage wall, and a figure standing in it
 at -3 4.2 90
 select 11
 verb opening
-key T
+select seat 1
+verb seat
 
 echo --- the joinery, off the axis so the shared wall and the two fronts read
 at -10 0 65

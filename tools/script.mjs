@@ -190,6 +190,10 @@ const VERBMAP = {
   // around the author and `run` walks the line between two presses. They share a
   // material and nothing else. Plan 22 `K3`.
   run: '25:1',            // …and it takes TWO of these, near end then far
+  // ⚠ BARE, LIKE `opening` AND FOR ITS REASON — plan 22 `K3`. `38:<kind>` says which
+  // to seat THIS TIME without moving the selection; `38:` seats what was chosen, and
+  // a converted script says `select seat <kind>` first so it names its own choice.
+  seat: '38:',            // a bed in the box, or a figure in the niche — the SELECTION says
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
@@ -1080,12 +1084,25 @@ for (const raw of lines) {
     console.log('  ' + await ack(['ground ', 'ground refused'], 10000));
   } else if (cmd === 'select') {
     // `select <kind>` — what the NEXT opening cuts, until something says otherwise.
+    // `select seat <kind>` — what the next `seat` puts in a void.
+    //
+    // ⚠ THE BARE FORM STAYS THE OPENING, which is a compatibility decision rather
+    // than a design one: `K2a` converted eight scripts to say `select <kind>` and
+    // giving the word a new meaning would move all of them for a spelling. ⏭ When a
+    // fourth selection lands, the bare form is the one to migrate — it is the only
+    // one whose subject is implied rather than named.
+    //
     // ⚠ IT WAITS FOR AN ANSWER RATHER THAN SLEEPING, because a refusal is a real
     // outcome here: `5` is not an opening kind and the standing choice does not
     // move. Both wordings are waited for, so a refused selection reads as a
     // refusal instead of as a dead wire.
-    ws.send(`49:${rest[0]}`);
-    console.log('  ' + await ack(['opening ', 'selection refused'], 10000));
+    if (rest[0] === 'seat') {
+      ws.send(`52:${rest[1]}`);
+      console.log('  ' + await ack(['seat ', 'selection refused'], 10000));
+    } else {
+      ws.send(`49:${rest[0]}`);
+      console.log('  ' + await ack(['opening ', 'selection refused'], 10000));
+    }
   } else if (cmd === 'hold') {
     const bit = HELD[rest[0]];
     const want = Number(rest[1]);

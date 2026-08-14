@@ -127,9 +127,19 @@ wire() {
   # From `listening on port` onward — everything said once the server was open for
   # business. Before that line it prints 21 lines of part-library thumbnails, and a
   # comparison that is mostly boilerplate reads as coverage.
+  # ⚠ **THE SELECTION LINES ARE DROPPED, AND THAT IS A COVERAGE MOVE RATHER THAN A
+  # LOOSENING.** A converted script SAYS what the key implied, so it prints one extra
+  # `… selected` per press and check 1 would fail every conversion for succeeding. What
+  # that exclusion costs is exactly *did it select the right thing*, which is why
+  # checks 5 and 8 exist and read the kinds against `tools/script.mjs`'s own table.
+  # Remove either of those and this line silently becomes the blind spot it looks like.
+  #
+  # ⚠ AND THE SEAT PATTERN WAS ADDED WITH `K3`, MEASURED RATHER THAN ANTICIPATED:
+  # `furnish` and `annex` came back red with a diff whose every line was `+editor: seat
+  # <n> selected` and nothing else — same sentences, same world, same everything.
   sed -n '/listening on port/,$p' "$OUT/$tag.server" | grep '^editor: ' \
     | grep -vE '^editor: (rebuilt|hex \(|brush |client )' \
-    | grep -v '^editor: opening [0-9]* selected' \
+    | grep -vE '^editor: (opening|seat) [0-9]* selected' \
     | sed 's/-> k2-[a-z]*-[ab]/-> <name>/' > "$OUT/$tag.said"
   return 0
 }
@@ -173,6 +183,51 @@ for s in $list; do
 \`verb run\` $rconv — a press was lost or gained"
   else
     ok "and it walks $rconv run press(es) by verb, where the baseline pressed \`R\`"
+  fi
+
+  # 7 — the same pair of controls for the SEAT family, plan 22 `K3`. `Y` and `T` are
+  # two keys on one message differing by the thing seated, so unlike `R` they convert
+  # to `select seat <kind>` + `verb seat` — the opening family's shape, one gesture over.
+  sbase=$(grep -cE '^key [YT]$' "probe/k2/orig/$s.keys")
+  sconv=$(grep -c '^verb seat$' "tools/scripts/$s.keys")
+  if [ "$sbase" -eq 0 ] && [ "$sconv" -eq 0 ]; then
+    ok "no seat in this script"
+  elif grep -qE '^key [YT]$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses a seat key — the conversion is half done"
+  elif [ "$sbase" != "$sconv" ]; then
+    bad "the baseline presses \`Y\`/\`T\` $sbase time(s) and the script says \
+\`verb seat\` $sconv — a press was lost or gained"
+  else
+    ok "and it seats $sconv thing(s) by verb, where the baseline pressed \`Y\`/\`T\`"
+  fi
+
+  # 8 — the seat KINDS, through the wire's own table, exactly as check 5 does for
+  # profiles.
+  #
+  # ⚠ **AND CHECK 2 IS STRUCTURALLY BLIND HERE, WHICH CHECK 5 ONLY WAS BY ACCIDENT.**
+  # A seat writes into `es_props` — a SESSION registry — and nothing at all into the
+  # store, so `k2-<s>-a.hxw` and `k2-<s>-b.hxw` are byte-identical whether the script
+  # seated a bed, a figure, or nothing. The saved world cannot fail for a seat. Check 1
+  # can (the two sentences differ: *a bed … long in the box* against *a figure … units
+  # tall in the niche*), and this can. Two instruments, because one is blind by
+  # construction — not for symmetry with the block above.
+  sed -n "s/^ *\([A-Z]\): '38:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/seatmap.txt"
+  awk 'NR==FNR { map[$1] = $2; next }
+       /^key [YT]$/ { print map[$2] }' \
+      "$OUT/seatmap.txt" "probe/k2/orig/$s.keys" > "$OUT/$s.seats-a"
+  awk '/^select seat / { ssel = $3 }
+       /^verb seat$/   { print ssel }' "tools/scripts/$s.keys" > "$OUT/$s.seats-b"
+  if [ "$sbase" -eq 0 ]; then
+    :
+  elif [ ! -s "$OUT/seatmap.txt" ]; then
+    bad "no 38: rows could be read out of tools/script.mjs — check 8 is vacuous"
+  elif [ ! -s "$OUT/$s.seats-a" ]; then
+    bad "the baseline's seat keys mapped to no kinds — check 8 is vacuous"
+  elif cmp -s "$OUT/$s.seats-a" "$OUT/$s.seats-b"; then
+    ok "and the seat kinds themselves: $(tr '\n' ' ' < "$OUT/$s.seats-a")"
+  else
+    bad "the seat keys named [$(tr '\n' ' ' < "$OUT/$s.seats-a")] and the script \
+selects [$(tr '\n' ' ' < "$OUT/$s.seats-b")]"
   fi
 
   # 5 — the kinds, through the wire's own table rather than through mine.

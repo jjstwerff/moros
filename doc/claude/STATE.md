@@ -393,6 +393,40 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3` · `Y` — THE SECOND FAMILY COLLAPSES, and one instrument was blind by construction, 2026-08-14
+
+**`Y` and `T` are one `seat` verb, and `52:<kind>` holds the choice.** They were two keys on ONE
+message (`38:0` a bed, `38:1` a figure) differing by the *thing seated* — which is `O`…`M`'s
+situation and takes `O`…`M`'s answer. This file's own rule decides it: a DIRECTION is part of the
+action (`raise`/`lower` stay two verbs forever), a THING is not.
+
+⚠ **SO `Y` COULD NOT BE DONE WITHOUT `T`.** `run` was hardcodable because `R` was the only key on
+`25:`; here both keys are on one message, and giving each its own verb would ship the flattening
+`EDITING_MODES` calls a shipped mistake and then undo it.
+
+⛔ **THE SEATING WAS ALREADY THE LIBRARY'S AND THE ASSEMBLY WAS NOT.** `seat_bed`/`seat_statue`
+were called from `editor_server.loft` **directly** — so five green tests measured them while
+*which of the two*, the **`es_props` append** and the two sentences existed at exactly one driver.
+The append is the one that matters: nothing about a seat reaches the store.
+
+⚠ **WHICH MAKES `w_tau` AND THE SAVED WORLD BLIND BY CONSTRUCTION.** `probe/k2` check 2 compares
+`.hxw` files and **stayed green** under a deliberate mis-transcription of a statue as a bed —
+measured, not assumed. The sentences (check 1) and the kinds (new check 8) are what can see it.
+That is the `Surface` lesson in miniature: when the usual instrument cannot answer, the answer is
+a second instrument.
+
+⚠ **AND `probe/k2` WENT RED FOR SUCCEEDING FIRST.** A converted script SAYS what the key implied,
+so it prints one extra `seat N selected`; `K2a` had already excluded `opening N selected` for the
+same reason. The exclusion is a coverage MOVE — checks 5 and 8 hold what it drops.
+
+✅ 476 green both backends · 8/8 scripts in `probe/k2` (identical sentences, byte-identical worlds)
+· 49 gates · six sabotages red on their own test. ⏭ **Nine keys left**: `J E Z X V K C B` and `T`
+is done with `Y`.
+
+⛔ **AND `loft test a.loft b.loft` SILENTLY RAN ONLY `a.loft`** — reported `ok. 1 file`, exit 0,
+with a failing test in `b.loft`. Caught mid-sabotage-sweep: four sabotages were confirmed against
+`session.loft` and the `verb.loft` half never ran. [loft#916](https://github.com/loft-lang/loft/issues/916).
+
 ## ✅ `K3`'s FIRST SLICE — `R` IS A VERB, and the wrapper that was there hid the gesture, 2026-08-14
 
 **`verb_of("R")` names `run`, and `hex_editor::session_run` is the whole gesture.** All 22 `key R`

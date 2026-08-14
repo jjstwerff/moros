@@ -71,6 +71,19 @@ fn first_difference(x: VoxelWorld, y: VoxelWorld) -> integer {
 
 fn same_world(x: VoxelWorld, y: VoxelWorld) -> boolean { first_difference(x, y) == 0 - 1 }
 
+// A session with BOTH voids in it, so the seat verb can succeed either way and the
+// only thing separating the two runs is the selection — plan 22 `K3`.
+//
+// ⚠ THE VOIDS ARE PUT IN BY HAND RATHER THAN BUILT BY `J` AND `N`, and that is the
+// point rather than a shortcut: building them would make this test depend on two other
+// gestures succeeding, so a red would not say which one moved.
+fn seatable() -> EditSession {
+  sb = EditSession {};
+  sb.es_annex.items += [annex_at(0.0, 0.0, 0.0, 1.0, 2.2, 1.4, 0.0, 2, 11, AN_BOX)];
+  sb.es_open.items += [alcove_opening(0.0, 0.0, 0.9, 2, 12, 0.6)];
+  sb
+}
+
 // The pose each key wants, and it is not the same one.
 //
 // ⚠ **30° FOR THE HOUSE IS NOT DECORATION** — only 6 of the lattice's 12 facings have
@@ -269,6 +282,42 @@ fn test_the_run_verb_is_not_the_ring_verb() {
   assert(verb_of("R") != verb_of("G"), "the run key and the ring key name one verb");
 }
 
+// ── `Y` AND `T` ARE ONE VERB — the second family to collapse, plan 22 `K3` ──
+//
+// ⚠ **THE COLLAPSE IS THE CLAIM, AND `verb_of` ALONE CANNOT MAKE IT.** Two keys naming
+// one verb is a table saying so; what has to be true underneath is that the SELECTION
+// decides, or the collapse has thrown a distinction away instead of moving it. So this
+// asserts both halves: the keys agree, and the same verb from the same pose seats two
+// different things depending only on what was chosen.
+fn test_the_two_seat_keys_name_one_verb_and_the_selection_decides() {
+  assert(verb_of("Y") == verb_of("T"),
+         "the seat keys name '{verb_of(\"Y\")}' and '{verb_of(\"T\")}' — the family "
+       + "has not collapsed");
+  assert(verb_of("Y") == VB_SEAT, "the seat keys name '{verb_of(\"Y\")}'");
+
+  bw = flat();
+  bs = seatable();
+  ba = press_verb(bs, bw, author_on(bw, 0.0, 4.0, 0.0), verb_of("Y"));
+  assert(ba.ak_ok, "the seat verb was refused with a box in the session: {ba.ak_why}");
+
+  sw = flat();
+  ss = seatable();
+  session_select_seat(ss, PROP_STATUE);
+  sa = press_verb(ss, sw, author_on(sw, 0.0, 4.0, 0.0), verb_of("T"));
+  assert(sa.ak_ok, "the seat verb was refused with a niche in the session: {sa.ak_why}");
+
+  // ⚠ THE SENTENCES, BECAUSE THE WORLD CANNOT ANSWER. A seat writes into `es_props`
+  // and nothing into the store, so `same_world` — the instrument every other
+  // discriminator here uses — reads identical for a bed and for a figure. That is the
+  // `Surface` lesson in miniature: when the usual instrument is blind by
+  // construction, the answer is a second instrument and not a looser threshold.
+  assert(same_world(bw, sw),
+         "a seat wrote to the STORE — this test's premise is wrong, and so is the "
+       + "note about which instrument can see it");
+  assert(ba.ak_why != sa.ak_why,
+         "one verb and two selections both answered '{ba.ak_why}'");
+}
+
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
 // ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
 // would run a gesture on every step of a walk.
@@ -307,7 +356,7 @@ fn test_every_verb_the_definition_produces_is_bound() {
   w = flat();
   s = EditSession {};
   for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
-             "R"] {
+             "R", "Y", "T"] {
     v = verb_of(bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);

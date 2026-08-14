@@ -20,7 +20,8 @@ select 11
 verb opening
 
 echo --- and a figure standing in the niche, sized by the niche
-key T
+select seat 1
+verb seat
 
 # ⚠ THE NICHE OPENS ON THE +z SIDE. A run's front face is the side its normal points
 # at, which is NOT the side the author stood on to cut into it — and photographing
@@ -33,7 +34,8 @@ snap s9-statue
 echo --- a box bed further along the same wall, and a bed in it
 at 3 2.6 90
 key J
-key Y
+select seat 0
+verb seat
 
 # ⚠ AND STAND ASIDE. The character is drawn where the author is and the camera sits
 # behind it, so `at` directly in front of a void photographs the back of a person.

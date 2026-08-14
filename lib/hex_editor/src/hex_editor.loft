@@ -1004,6 +1004,13 @@ pub const VB_WALL    = "wall";
 // default material is wall is the mistake `S3` already measured once, at the other
 // end: `25:1` and `25:3` both answered *road laid* for months.
 pub const VB_RUN     = "run";
+// ⚠ **THE SECOND FAMILY TO COLLAPSE, AND THE FIRST SINCE `opening`.** `Y` and `T` are
+// two keys on ONE message (`38:0` a bed, `38:1` a figure) differing by the thing
+// seated — so they are one verb and the kind comes from `es_seat_kind`, exactly as six
+// opening keys came to answer one `opening`. ⚠ `verb_of` is deliberately not injective
+// here either: a script that says `seat` and never says `select seat` gets whatever was
+// last chosen, which is why the conversion writes both.
+pub const VB_SEAT    = "seat";
 
 // The DEFINITION — what key means what, and the only layer a person may remap.
 //
@@ -1026,6 +1033,7 @@ pub fn verb_of(key: text) -> text {
   if key == "F" { return VB_FENCE; }
   if key == "G" { return VB_WALL; }
   if key == "R" { return VB_RUN; }
+  if key == "Y" || key == "T" { return VB_SEAT; }
   VB_NONE
 }
 
@@ -1134,6 +1142,19 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
     if vr_laid.rl_code == RL_REFUSED { return ack_no(vr_laid.rl_say); }
     return ack_at(ack_about(vr_laid.rl_n, vr_laid.rl_say, vr_laid.rl_resid as integer),
                   vr_laid.rl_q1, vr_laid.rl_r1);
+  }
+  // ⚠ THE KIND COMES FROM THE SELECTION AND FROM NOWHERE ELSE — `VB_OPENING`'s note
+  // one family over. `session_seat` is the entry point built for exactly this;
+  // reading `es_seat_kind` here instead would be a site that knows what a selection is.
+  //
+  // ⚠ AND IT NEEDS NO WORLD, which is worth saying rather than leaving as an unused
+  // parameter: a seat writes into `es_props` and nothing into the store. The mesher
+  // reads the registry. That is why `SeatMade` carries a cell at all — the caller
+  // rebuilding a picture has no store write to notice.
+  if verb == VB_SEAT {
+    vs_made = session_seat(sess, a);
+    if !vs_made.sm_ok { return ack_no(vs_made.sm_say); }
+    return ack_at(ack_about(1, vs_made.sm_say, 0), vs_made.sm_q, vs_made.sm_r);
   }
   Ack { ak_ok: false, ak_why: PR_NONE }
 }

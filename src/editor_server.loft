@@ -510,6 +510,17 @@ const MSG_SELECT = 49;
 // remembers the name, and a script remembering it in the message is the whole
 // reason `tools/scripts/*.keys` can be diffed.
 const MSG_SELECT_PART = 51;
+// ── `52:<kind>` — WHICH SEAT THE NEXT `38:` PUTS IN A VOID — plan 22 `K3` ────
+//
+// `49:`'s twin again, and the third of exactly three. `Y` and `T` were two keys on
+// one message differing by the thing seated — `38:0` a bed, `38:1` a figure — which
+// is `O`…`M`'s situation and takes `O`…`M`'s answer: the key stops carrying the kind
+// and this holds it. A bare `38:` then seats what was chosen.
+//
+// ⚠ IT IS NOT `49:` WITH A WIDER RANGE. `0` and `1` are legal opening kinds and legal
+// seat kinds both, so one message carrying both would be a value whose meaning depends
+// on which gesture reads it next — the four-sites defect with the table left out.
+const MSG_SELECT_SEAT = 52;
 // ── `50:<height>,<material>` — THE GROUND A SCENARIO STANDS ON — GROUND_DEFAULT `G7`
 //
 // *A world is an infinite plane of its ground default, and storage holds only what
@@ -5323,6 +5334,23 @@ fn main() {
             srv.send_to(ev.cid, "S:{psel.ak_why}");
             println("editor: {psel.ak_why}");
           }
+        } else if ev.msg_id == MSG_SELECT_SEAT {
+          // ── WHAT THE NEXT `seat` WILL PUT IN A VOID — plan 22 `K3` ───────────
+          //
+          // ⚠ A THIRD SELECTION AND NOT A THIRD MECHANISM. `49:` chose a profile,
+          // `51:` a part name, this a seat kind — three ids because the VALUES are
+          // three kinds of thing, and one shape because the question is one:
+          // *what am I working on*. Folding them onto `49:` was refused for the
+          // reason a merge always is here — `0` and `1` are legal opening kinds AND
+          // legal seat kinds, so one message could not say which had been chosen.
+          ssel = hex_editor::session_select_seat(sess, ev.payload as integer ?? 0 - 1);
+          if !ssel.ak_ok {
+            srv.send_to(ev.cid, "S:selection refused — {ssel.ak_why}");
+            println("editor: selection refused — {ssel.ak_why}");
+          } else {
+            srv.send_to(ev.cid, "S:seat {sess.es_seat_kind} selected");
+            println("editor: seat {sess.es_seat_kind} selected");
+          }
         } else if ev.msg_id == MSG_EYE {
           // ── STAND THE EYE THERE AND LOOK BACK — plan 22, `48:` ──────────────
           //
@@ -5530,32 +5558,37 @@ fn main() {
           // sits in — so this gesture picks a void and seats the thing, and every
           // dimension comes back from `hex_editor`. Nothing here knows how long a
           // bed is, which is the point: the box does.
-          pkind = ev.payload as integer ?? hex_editor::PROP_BED;
-          // ⚠ THE CHOOSING IS `hex_editor` NOW — the headless thread. Which void a
-          // seat goes in (the nearest CLOSED box; the nearest niche that HAS a back,
-          // so a doorway is passed over) and which way a figure faces were inline
-          // here, and neither could be reached without building a scene over a wire.
-          // What stays is the registry, the dirty mark and the sentence.
-          pseat = if pkind == hex_editor::PROP_BED {
-                    hex_editor::seat_bed(sess.es_annex, px, pz)
+          //
+          // ⚠ AN EMPTY PAYLOAD MEANS *THE ONE I CHOSE* — plan 22 `K3`, and it is
+          // `36:`'s contract word for word, for `36:`'s reason. `38:<kind>` still says
+          // which to seat this time and does NOT move the selection: a key that
+          // silently re-chose would make *what am I working on* depend on what you
+          // last pressed, which is the thing the subject line exists to answer.
+          //
+          // ⚠ AND WHAT WAS HERE WAS THE ASSEMBLY, NOT THE GESTURE — `session_seat` is
+          // `hex_editor`'s now. `seat_bed` and `seat_statue` were already the library's
+          // and were called from here directly; *which of the two*, the `es_props`
+          // append and the two sentences were not, so the middle one — the only thing
+          // a mesher can see — existed at exactly one driver.
+          pseat = if ev.payload == "" {
+                    hex_editor::session_seat(sess, hex_editor::author_at(px, pz, yaw, py))
                   } else {
-                    hex_editor::seat_statue(sess.es_open, px, pz, hex_draw::BAND_SIDES)
+                    hex_editor::session_seat_kind(
+                      sess, hex_editor::author_at(px, pz, yaw, py),
+                      ev.payload as integer ?? hex_editor::PROP_BED)
                   };
-          if !pseat.se_ok {
-            srv.send_to(ev.cid, "S:{pseat.se_why}");
-            println("editor: seat refused — {pseat.se_why}");
+          if !pseat.sm_ok {
+            srv.send_to(ev.cid, "S:{pseat.sm_say}");
+            println("editor: seat refused — {pseat.sm_say}");
           } else {
-            sess.es_props.items += [pseat.se_prop];
-            pshex = world_to_hex(pseat.se_prop.pr_x, pseat.se_prop.pr_z);
-            mark_dirty(dirty, pshex.ha_q, pshex.ha_r, 3);
-            if pkind == hex_editor::PROP_BED {
-              srv.send_to(ev.cid, "S:a bed {pseat.se_prop.pr_len} long in the box");
-              println("editor: bed {pseat.se_prop.pr_len} long at "
-                    + "({pshex.ha_q},{pshex.ha_r})");
+            mark_dirty(dirty, pseat.sm_q, pseat.sm_r, pseat.sm_pad);
+            srv.send_to(ev.cid, "S:{pseat.sm_say}");
+            if pseat.sm_kind == hex_editor::PROP_BED {
+              println("editor: bed {pseat.sm_prop.pr_len} long at "
+                    + "({pseat.sm_q},{pseat.sm_r})");
             } else {
-              srv.send_to(ev.cid, "S:a figure {pseat.se_prop.pr_up} units tall in the niche");
-              println("editor: statue {pseat.se_prop.pr_up} tall at "
-                    + "({pshex.ha_q},{pshex.ha_r})");
+              println("editor: statue {pseat.sm_prop.pr_up} tall at "
+                    + "({pseat.sm_q},{pseat.sm_r})");
             }
           }
         } else if ev.msg_id == MSG_ANNEX {
