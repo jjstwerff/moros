@@ -1011,6 +1011,11 @@ pub const VB_RUN     = "run";
 // here either: a script that says `seat` and never says `select seat` gets whatever was
 // last chosen, which is why the conversion writes both.
 pub const VB_SEAT    = "seat";
+// ⚠ THREE KEYS THIS TIME — `J` a bedstee, `K` a balcony, `V` a cupboard — and the
+// third selects a different CONSTRUCTION rather than a different kind of the same one.
+// That does not make it a second verb: *hang a volume on what I am standing at* is one
+// action, and which volume is the catalogue's business. See `ANX_CUPBOARD`.
+pub const VB_ANNEX   = "annex";
 
 // The DEFINITION — what key means what, and the only layer a person may remap.
 //
@@ -1034,6 +1039,7 @@ pub fn verb_of(key: text) -> text {
   if key == "G" { return VB_WALL; }
   if key == "R" { return VB_RUN; }
   if key == "Y" || key == "T" { return VB_SEAT; }
+  if key == "J" || key == "K" || key == "V" { return VB_ANNEX; }
   VB_NONE
 }
 
@@ -1155,6 +1161,17 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
     vs_made = session_seat(sess, a);
     if !vs_made.sm_ok { return ack_no(vs_made.sm_say); }
     return ack_at(ack_about(1, vs_made.sm_say, 0), vs_made.sm_q, vs_made.sm_r);
+  }
+  // ⚠ IT TAKES THE WORLD FOR ONE FIELD — `w.w_unit`, the height scale — and that is
+  // the point rather than an inconvenience: the handler this replaces reached for
+  // `hex_proj::HEIGHT_SCALE`, a global that is the same number on the landscape and
+  // **wrong on a part world**. A gesture that asks the world it is writing to cannot
+  // be wrong about which world it is in.
+  if verb == VB_ANNEX {
+    va_made = session_annex(sess, w, a);
+    if !va_made.ax_ok { return ack_no(va_made.ax_say); }
+    return ack_at(ack_about(va_made.ax_boxes, va_made.ax_say, 0),
+                  va_made.ax_q, va_made.ax_r);
   }
   Ack { ak_ok: false, ak_why: PR_NONE }
 }

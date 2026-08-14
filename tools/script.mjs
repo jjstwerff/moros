@@ -194,6 +194,7 @@ const VERBMAP = {
   // to seat THIS TIME without moving the selection; `38:` seats what was chosen, and
   // a converted script says `select seat <kind>` first so it names its own choice.
   seat: '38:',            // a bed in the box, or a figure in the niche — the SELECTION says
+  annex: '37:',           // a bedstee, a balcony, or a cupboard beside the last box
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 
@@ -1099,6 +1100,9 @@ for (const raw of lines) {
     if (rest[0] === 'seat') {
       ws.send(`52:${rest[1]}`);
       console.log('  ' + await ack(['seat ', 'selection refused'], 10000));
+    } else if (rest[0] === 'annex') {
+      ws.send(`53:${rest[1]}`);
+      console.log('  ' + await ack(['annex ', 'selection refused'], 10000));
     } else {
       ws.send(`49:${rest[0]}`);
       console.log('  ' + await ack(['opening ', 'selection refused'], 10000));

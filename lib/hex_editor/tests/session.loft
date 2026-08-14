@@ -536,6 +536,141 @@ fn test_a_figure_faces_whoever_is_looking_at_it() {
        + "taken from the opening is the same from both sides");
 }
 
+// ── `37:` — HANGING A VOLUME, AND THE THREE REGISTRIES IT MOVES — plan 22 `K3` ─
+//
+// ⚠ **THE SAME GAP AS THE SEATS, ONE FAMILY OVER.** `annex_build` and `annex_cupboard`
+// were the library's and were called from `editor_server.loft` directly; the ASSEMBLY
+// — which of the three, the three registries, the two sentences — was not. And the
+// registry half is the interesting one here: `es_awalls` is **rebuilt**, not appended
+// to, because adding an annex can change a NEIGHBOUR's handedness.
+//
+// A session with a wall to hang things on, which `annex_host` needs.
+fn a_walled_session() -> EditSession {
+  ws = session_new();
+  ws.es_runs.items += [WallRun { wr_x0: 0.0 - 6.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
+                                 wr_mat: WALL_MAT, wr_step: 0, wr_base: 0, wr_up: 0 }];
+  ws
+}
+
+fn test_an_annex_moves_three_registries_at_once() {
+  w = a_world();
+  s = a_walled_session();
+  before_open = len(s.es_open.items);
+  made = session_annex(s, w, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(made.ax_ok, "hanging a bedstee on a wall was refused: {made.ax_say}");
+  assert(len(s.es_annex.items) == 1,
+         "the session holds {len(s.es_annex.items)} annexes after one was hung");
+  // ⚠ THE WALLS ARE THE REBUILD, and a driver that forgot `annexes_runs` would leave
+  // this at 0 while every other number looked right.
+  assert(len(s.es_awalls.items) > 0,
+         "the annex has {len(s.es_awalls.items)} wall runs — it will draw as nothing");
+  // ⚠ AND THE WAY IN IS AN OPENING. A box with no mouth is a solid lump, and the
+  // count is the only thing that says the third registry moved.
+  assert(len(s.es_open.items) == before_open + 1,
+         "the annex filed {len(s.es_open.items) - before_open} openings — a box with "
+       + "no mouth is a lump");
+  assert(made.ax_walls == len(s.es_awalls.items) && made.ax_boxes == len(s.es_annex.items),
+         "the answer says {made.ax_walls}/{made.ax_boxes} and the session holds "
+       + "{len(s.es_awalls.items)}/{len(s.es_annex.items)}");
+}
+
+// ⚠ THE SELECTION DECIDES, AND THE THIRD KIND IS A DIFFERENT CONSTRUCTION. A cupboard
+// is hosted on the last BOX rather than on a wall — so on a session with a wall and no
+// box it refuses, and that refusal is the discriminator: a `session_annex` that ignored
+// the selection would hang a bedstee and succeed.
+fn test_the_selection_decides_which_volume_is_hung() {
+  w = a_world();
+  ds = a_walled_session();
+  session_select_annex(ds, AN_DECK);
+  deck = session_annex(ds, w, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(deck.ax_ok, "a balcony was refused: {deck.ax_say}");
+  assert(deck.ax_kind == AN_DECK, "after choosing a deck it hung {deck.ax_kind}");
+  assert((ds.es_annex.items[0]?.an_kind ?? 0 - 1) == AN_DECK,
+         "the filed annex is kind {ds.es_annex.items[0]?.an_kind ?? 0 - 1}");
+
+  cs = a_walled_session();
+  session_select_annex(cs, ANX_CUPBOARD);
+  none = session_annex(cs, w, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(!none.ax_ok,
+         "a cupboard was hung with no box to stand it beside: {none.ax_say}");
+  assert(none.ax_say.find("press J") >= 0, "the refusal reads: {none.ax_say}");
+  // …and with a box there, the same selection works and the result is a BOX, which is
+  // the fact `ANX_CUPBOARD` exists to keep straight: 2 is a gesture kind, not a stored one.
+  session_select_annex(cs, AN_BOX);
+  session_annex(cs, w, author_at(0.0, 2.0, 0.0, 0.0));
+  session_select_annex(cs, ANX_CUPBOARD);
+  cup = session_annex(cs, w, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(cup.ax_ok, "a cupboard beside a box was refused: {cup.ax_say}");
+  assert(cup.ax_say.find("a cupboard") == 0, "the cupboard's sentence: {cup.ax_say}");
+  assert((cs.es_annex.items[1]?.an_kind ?? 0 - 1) == AN_BOX,
+         "a cupboard was stored as kind {cs.es_annex.items[1]?.an_kind ?? 0 - 1} — "
+       + "`2` is a gesture kind and must never reach an `Annex`");
+}
+
+fn test_hanging_one_kind_this_time_does_not_re_choose() {
+  w = a_world();
+  s = a_walled_session();
+  assert(s.es_annex_kind == AN_BOX, "the fixture starts on {s.es_annex_kind}");
+  once = session_annex_kind(s, w, author_at(0.0, 2.0, 0.0, 0.0), AN_DECK);
+  assert(once.ax_ok, "the one-shot balcony was refused: {once.ax_say}");
+  assert(once.ax_kind == AN_DECK, "the one-shot hung {once.ax_kind}");
+  assert(s.es_annex_kind == AN_BOX,
+         "hanging a balcony once moved the standing choice to {s.es_annex_kind}");
+}
+
+fn test_an_annex_kind_the_editor_does_not_have_is_refused_at_both_doors() {
+  w = a_world();
+  s = a_walled_session();
+  no = session_select_annex(s, 9);
+  assert(!no.ak_ok, "9 was accepted as an annex kind");
+  assert(s.es_annex_kind == AN_BOX,
+         "a refused selection moved the choice to {s.es_annex_kind}");
+  shot = session_annex_kind(s, w, author_at(0.0, 2.0, 0.0, 0.0), 9);
+  assert(!shot.ax_ok, "hanging kind 9 succeeded: {shot.ax_say}");
+  assert(len(s.es_annex.items) == 0,
+         "a refused kind filed {len(s.es_annex.items)} annex(es)");
+  ok = session_annex(s, w, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(ok.ax_ok, "the fixture cannot hang anything at all — nothing is tested");
+}
+
+// ⚠ THE UNIT IS THE WORLD'S, NOT A GLOBAL — plan 22 `K3`, and it is a FIX rather than a
+// translation. The handler passed `hex_proj::HEIGHT_SCALE`: the same 0.25 on the
+// landscape and **wrong on a part world**, where `door/slat` is authored at 0.125. So
+// two worlds differing only in their unit must hang two different-sized mouths, and
+// nothing could have measured that while the number came from a global.
+fn test_the_annex_takes_its_height_from_the_world_it_is_in() {
+  coarse = world_new(UNIT, 0, EPS, THETA).wn_world;
+  session_ground(coarse, 12, 1, SURFACE_MAT);
+  cs = a_walled_session();
+  cw = session_annex(cs, coarse, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(cw.ax_ok, "the coarse world refused an annex: {cw.ax_say}");
+
+  fine = world_new(UNIT * 0.5, 0, EPS, THETA).wn_world;
+  session_ground(fine, 12, 1, SURFACE_MAT);
+  fs = a_walled_session();
+  fw = session_annex(fs, fine, author_at(0.0, 2.0, 0.0, 0.0));
+  assert(fw.ax_ok, "the fine world refused an annex: {fw.ax_say}");
+
+  // ⚠ **`op_spring`, NOT `op_hi` — AND THE FIRST VERSION OF THIS TEST USED `op_hi`
+  // AND WENT RED ON CORRECT CODE.** Both worlds crown their mouth at height 10,
+  // because that is `annex_mouth`'s recorded rule: *"an arch's CROWN is what has to
+  // clear, not its springing … the springing is derived from the crown down"*. So the
+  // crown is unit-independent **by design** and the springing is where the unit
+  // lands — a rise of `(half-width + clearance) / unit`, which halving the unit
+  // doubles. I quoted that rule in this comment and still reached for the field that
+  // cannot see it.
+  assert((cs.es_open.items[0]?.op_spring ?? 0) != (fs.es_open.items[0]?.op_spring ?? 0),
+         "a world at unit {coarse.w_unit} and one at {fine.w_unit} both spring their "
+       + "mouth at {cs.es_open.items[0]?.op_spring ?? 0} — the unit is coming from a "
+       + "global, not from the world");
+  // …and the crown is the control: it must be the SAME in both, or the difference
+  // above is the whole opening moving rather than the arch being redrawn.
+  assert((cs.es_open.items[0]?.op_hi ?? 0) == (fs.es_open.items[0]?.op_hi ?? 0),
+         "the crowns differ ({cs.es_open.items[0]?.op_hi ?? 0} against "
+       + "{fs.es_open.items[0]?.op_hi ?? 0}) — a mouth that has to clear a head does "
+       + "not move when the world is measured more finely");
+}
+
 // ── AND THE ASSEMBLY THE FIVE ABOVE CANNOT SEE — plan 22 `K3` ────────────────
 //
 // ⚠ THE FIVE TESTS ABOVE MEASURE `seat_bed` AND `seat_statue`, WHICH WERE ALREADY THE

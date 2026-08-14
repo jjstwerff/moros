@@ -33,7 +33,8 @@ snap s9-statue
 
 echo --- a box bed further along the same wall, and a bed in it
 at 3 2.6 90
-key J
+select annex 0
+verb annex
 select seat 0
 verb seat
 

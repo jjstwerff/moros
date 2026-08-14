@@ -127,6 +127,12 @@ pub struct EditSession {
   // must still seat something defensible — the same reason `es_open_kind` defaults to
   // `OP_ROUND` rather than to an invalid sentinel that every caller must test for.
   es_seat_kind: integer = PROP_BED,
+  // ── WHICH ANNEX IS CHOSEN — plan 22 `K3` ───────────────────────────────────
+  //
+  // `J`, `K` and `V` are three keys on one message (`37:0`, `37:1`, `37:2`). Same
+  // situation, same answer. ⚠ It defaults to `AN_BOX`, which is `0` — a session that
+  // never chose hangs the bedstee `J` always hung.
+  es_annex_kind: integer = AN_BOX,
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -376,6 +382,99 @@ pub fn session_open_kind(s: EditSession, w: VoxelWorld, a: Author, kind: integer
 pub fn session_storey(s: EditSession, w: VoxelWorld, dir: integer, why: &text) -> integer {
   (sq, sr) = hex_grid::px_to_hex(s.es_author.au_x, s.es_author.au_z);
   storey_add(w, sq, sr, dir, STENCIL_R, why)
+}
+
+// ── AN ATTACHED VOLUME — `37:`, plan 22 `K3` ────────────────────────────────
+//
+// ⚠ **THREE KEYS ON ONE MESSAGE** — `J` a bedstee, `K` a balcony, `V` a cupboard —
+// which is the seat family again with one more member, and it takes the same answer:
+// one `annex` verb, and the kind comes from the selection.
+//
+// ⚠ **AND THE THIRD KIND IS NOT A STORED KIND, WHICH IS WHY IT HAS ITS OWN NAME.**
+// `AN_BOX` and `AN_DECK` are what an `Annex` *is*, and `37:0`/`37:1` pass straight
+// through to `annex_build` as exactly that. `37:2` selects a different CONSTRUCTION —
+// `annex_cupboard`, hosted on the last box rather than on a wall — and the annex it
+// returns is an `AN_BOX`. So the payload space is two stored kinds plus one gesture
+// kind, and calling the third `AN_CUPBOARD` would invite somebody to store it.
+pub const ANX_CUPBOARD = 2;
+
+pub fn annex_kind_ok(kind: integer) -> boolean {
+  kind == AN_BOX || kind == AN_DECK || kind == ANX_CUPBOARD
+}
+
+pub fn session_select_annex(s: EditSession, kind: integer) -> Ack {
+  if !annex_kind_ok(kind) {
+    return ack_no("{kind} is not an annex kind; nominal, so there is no nearest one");
+  }
+  s.es_annex_kind = kind;
+  ack_ok(kind)
+}
+
+// ⚠ THE TWO COUNTS TRAVEL BECAUSE THE CUPBOARD'S SENTENCE SAYS THEM, and they are
+// counts of the SESSION after the append — a caller re-deriving them would be reading
+// the same registry one line later and could not disagree, but would have to know that
+// `annexes_runs` rebuilds `es_awalls` wholesale rather than appending to it.
+pub struct AnnexMade {
+  ax_ok:    boolean,
+  ax_say:   text = "",
+  ax_kind:  integer = 0,
+  ax_walls: integer = 0,       // annex wall runs, after the rebuild
+  ax_boxes: integer = 0,       // annexes in the session, after the append
+  ax_q: integer = 0, ax_r: integer = 0,
+  ax_pad: integer = 0,
+}
+
+// `37:` — hang the volume that is chosen on whatever the author is standing at.
+pub fn session_annex(s: EditSession, w: VoxelWorld, a: Author) -> AnnexMade {
+  session_annex_kind(s, w, a, s.es_annex_kind)
+}
+
+// …and the same gesture told which kind THIS TIME. ⚠ THE ONE-SHOT DOES NOT MOVE THE
+// SELECTION — `session_open_kind`'s rule, third family to take it.
+//
+// ⚠ **THE UNIT IS THE WORLD'S, NOT THE GLOBAL**, and that is a fix rather than a
+// translation: the handler passed `hex_proj::HEIGHT_SCALE`, and this file's own note at
+// `author_on` says why that is wrong — *"the same number (0.25) kept as a global … and
+// **wrong on a part world**; a world's own unit is the only answer that survives
+// leaving the landscape."* Identical on the editor's world, which is why nothing could
+// have gone red, and it is the same global-for-world substitution `hex_mesh` had.
+pub fn session_annex_kind(s: EditSession, w: VoxelWorld, a: Author,
+                          kind: integer) -> AnnexMade {
+  if !annex_kind_ok(kind) {
+    return AnnexMade { ax_ok: false, ax_kind: kind,
+      ax_say: "annex refused — {kind} is not an annex kind" };
+  }
+  // ⚠ AN ANNEX IS BUILT FROM THE HOST OUTWARD, so the first thing needed is the host's
+  // own outward normal where the author stands. On a wall that is the run's normal; on
+  // a trunk — a ring of wall — it is the radial direction. One code path, because a
+  // tree is not a special host.
+  sa_built = if kind == ANX_CUPBOARD {
+               annex_cupboard(s.es_annex, w.w_unit)
+             } else {
+               annex_build(annex_host(s.es_runs, a.au_x, a.au_z, a.au_yaw, s.es_trunk),
+                           kind, hex_draw::BAND_SIDES, w.w_unit)
+             };
+  if !sa_built.ab_ok {
+    return AnnexMade { ax_ok: false, ax_kind: kind, ax_say: sa_built.ab_why };
+  }
+  // ⚠ THREE REGISTRIES MOVE, NOT ONE, and the middle is a REBUILD rather than an
+  // append: whether an annex's wall is left- or right-handed depends on what it abuts,
+  // so adding one can change a neighbour's runs. `annexes_runs` re-derives all of them,
+  // which is why `es_awalls` is emptied first.
+  s.es_annex.items += [sa_built.ab_annex];
+  s.es_awalls.items = [];
+  annexes_runs(s.es_annex, WALL_MAT, s.es_awalls);
+  s.es_open.items += [sa_built.ab_open];
+  (aq, ar) = hex_grid::px_to_hex(sa_built.ab_annex.an_x, sa_built.ab_annex.an_z);
+  if kind == ANX_CUPBOARD {
+    return AnnexMade { ax_ok: true, ax_kind: kind, ax_q: aq, ax_r: ar, ax_pad: 4,
+      ax_walls: len(s.es_awalls.items), ax_boxes: len(s.es_annex.items),
+      ax_say: "a cupboard beside it — {len(s.es_awalls.items)} walls for "
+            + "{len(s.es_annex.items)} boxes" };
+  }
+  AnnexMade { ax_ok: true, ax_kind: kind, ax_q: aq, ax_r: ar, ax_pad: 4,
+    ax_walls: len(s.es_awalls.items), ax_boxes: len(s.es_annex.items),
+    ax_say: "an annex of kind {kind} at {aq},{ar} — 3 walls, a deck" }
 }
 
 // ── WHAT STANDS IN A VOID — `38:`, plan 22 `K3` ─────────────────────────────

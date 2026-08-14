@@ -139,7 +139,7 @@ wire() {
   # <n> selected` and nothing else — same sentences, same world, same everything.
   sed -n '/listening on port/,$p' "$OUT/$tag.server" | grep '^editor: ' \
     | grep -vE '^editor: (rebuilt|hex \(|brush |client )' \
-    | grep -vE '^editor: (opening|seat) [0-9]* selected' \
+    | grep -vE '^editor: (opening|seat|annex) [0-9]* selected' \
     | sed 's/-> k2-[a-z]*-[ab]/-> <name>/' > "$OUT/$tag.said"
   return 0
 }
@@ -211,6 +211,41 @@ for s in $list; do
   # can (the two sentences differ: *a bed … long in the box* against *a figure … units
   # tall in the niche*), and this can. Two instruments, because one is blind by
   # construction — not for symmetry with the block above.
+  # 9 — and the same pair for the ANNEX family, plan 22 `K3`. Three keys this time
+  # (`J` a bedstee, `K` a balcony, `V` a cupboard), and unlike the seats the annexes DO
+  # reach the store — `annexes_runs` writes wall runs — so check 2 is sighted here.
+  abase=$(grep -cE '^key [JKV]$' "probe/k2/orig/$s.keys")
+  aconv=$(grep -c '^verb annex$' "tools/scripts/$s.keys")
+  if [ "$abase" -eq 0 ] && [ "$aconv" -eq 0 ]; then
+    ok "no annex in this script"
+  elif grep -qE '^key [JKV]$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses an annex key — the conversion is half done"
+  elif [ "$abase" != "$aconv" ]; then
+    bad "the baseline presses \`J\`/\`K\`/\`V\` $abase time(s) and the script says \
+\`verb annex\` $aconv — a press was lost or gained"
+  else
+    ok "and it hangs $aconv volume(s) by verb, where the baseline pressed \`J\`/\`K\`/\`V\`"
+  fi
+
+  sed -n "s/^ *\([A-Z]\): '37:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/annexmap.txt"
+  awk 'NR==FNR { map[$1] = $2; next }
+       /^key [JKV]$/ { print map[$2] }' \
+      "$OUT/annexmap.txt" "probe/k2/orig/$s.keys" > "$OUT/$s.annex-a"
+  awk '/^select annex / { asel = $3 }
+       /^verb annex$/   { print asel }' "tools/scripts/$s.keys" > "$OUT/$s.annex-b"
+  if [ "$abase" -eq 0 ]; then
+    :
+  elif [ ! -s "$OUT/annexmap.txt" ]; then
+    bad "no 37: rows could be read out of tools/script.mjs — check 9 is vacuous"
+  elif [ ! -s "$OUT/$s.annex-a" ]; then
+    bad "the baseline's annex keys mapped to no kinds at all"
+  elif cmp -s "$OUT/$s.annex-a" "$OUT/$s.annex-b"; then
+    ok "and the annex kinds themselves: $(tr '\n' ' ' < "$OUT/$s.annex-a")"
+  else
+    bad "the annex keys named [$(tr '\n' ' ' < "$OUT/$s.annex-a")] and the script \
+selects [$(tr '\n' ' ' < "$OUT/$s.annex-b")]"
+  fi
+
   sed -n "s/^ *\([A-Z]\): '38:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/seatmap.txt"
   awk 'NR==FNR { map[$1] = $2; next }
        /^key [YT]$/ { print map[$2] }' \

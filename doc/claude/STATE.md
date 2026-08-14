@@ -393,6 +393,39 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3` · `J` — THE THIRD FAMILY, and a global that was wrong on a part world, 2026-08-14
+
+**`J`, `K` and `V` are one `annex` verb, and `53:<kind>` holds the choice.** Three keys on ONE
+message (`37:0` a bedstee, `37:1` a balcony, `37:2` a cupboard). Same shape as the seats, so `J`
+could no more be taken alone than `Y` could.
+
+⚠ **THE THIRD KIND IS NOT A STORED KIND, WHICH IS WHY IT HAS ITS OWN NAME.** `AN_BOX` and
+`AN_DECK` are what an `Annex` *is* and pass straight through; `ANX_CUPBOARD` selects a different
+CONSTRUCTION — hosted on the last box rather than on a wall — whose result is itself an `AN_BOX`.
+Calling it `AN_CUPBOARD` would invite somebody to store it.
+
+⛔ **AND THE HANDLER PASSED `hex_proj::HEIGHT_SCALE` WHERE THE WORLD'S OWN UNIT BELONGS.** The
+library's note at `author_on` had said so for months: *"the same number (0.25) kept as a global …
+and **wrong on a part world** — a world's own unit is the only answer that survives leaving the
+landscape."* Identical on the landscape, so nothing could have gone red. Fixed in passing;
+`hex_mesh` had the same substitution.
+
+⚠ **THREE REGISTRIES MOVE AND THE MIDDLE ONE IS A REBUILD.** `es_awalls` is emptied and
+re-derived, not appended to, because adding an annex can change a NEIGHBOUR's handedness — a
+driver that appended would draw the wrong walls and report success.
+
+⛔ **AND MY OWN TEST OF THE UNIT FIX WENT RED ON CORRECT CODE.** It asserted `op_hi` — and a mouth
+is crowned at a fixed head in BOTH worlds, because `annex_mouth`'s recorded rule is *"an arch's
+CROWN is what has to clear … the springing is derived from the crown down."* `op_spring` is where
+the unit lands. I quoted that rule in the test's own comment and still reached for the field that
+cannot see it.
+
+✅ 482 green both backends · `probe/k2` 8/8 with two more checks (`annex.keys` walks kinds `0 2 1`)
+· 49 gates · `probe-demo` PASS · seven sabotages red on their own test. ✅ **And `furnish.keys` now
+runs headless END TO END** — its bed was refused an hour ago because `J` had no verb.
+
+⏭ **Five keys left**: `E Z X C B` (`Q` used by none).
+
 ## ✅ `K3` · `Y` — THE SECOND FAMILY COLLAPSES, and one instrument was blind by construction, 2026-08-14
 
 **`Y` and `T` are one `seat` verb, and `52:<kind>` holds the choice.** They were two keys on ONE

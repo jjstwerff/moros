@@ -16,10 +16,12 @@ verb run
 at -2 6 0
 verb run
 at -6 4.2 90
-key J
+select annex 0
+verb annex
 
 echo --- and a cupboard hard against it: five walls for two boxes, not six
-key V
+select annex 2
+verb annex
 
 echo --- a bed in the box, sized by the box rather than given a size
 select seat 0
@@ -32,7 +34,8 @@ wait rebuilt
 
 echo --- and a balcony on its east side
 at 9 6 0
-key K
+select annex 1
+verb annex
 
 echo --- a niche in the cottage wall, and a figure standing in it
 at -3 4.2 90

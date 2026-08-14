@@ -521,6 +521,15 @@ const MSG_SELECT_PART = 51;
 // seat kinds both, so one message carrying both would be a value whose meaning depends
 // on which gesture reads it next — the four-sites defect with the table left out.
 const MSG_SELECT_SEAT = 52;
+// ── `53:<kind>` — WHICH ANNEX THE NEXT `37:` HANGS — plan 22 `K3` ────────────
+//
+// The fourth selection, and the third family to collapse: `J` a bedstee, `K` a
+// balcony, `V` a cupboard were three keys on one message differing by the thing hung.
+//
+// ⚠ ITS THIRD VALUE IS NOT A STORED KIND. `0` and `1` are `AN_BOX` and `AN_DECK` and
+// pass straight through; `hex_editor::ANX_CUPBOARD` selects a different CONSTRUCTION —
+// hosted on the last box rather than on a wall — whose result is itself an `AN_BOX`.
+const MSG_SELECT_ANNEX = 53;
 // ── `50:<height>,<material>` — THE GROUND A SCENARIO STANDS ON — GROUND_DEFAULT `G7`
 //
 // *A world is an infinite plane of its ground default, and storage holds only what
@@ -5351,6 +5360,20 @@ fn main() {
             srv.send_to(ev.cid, "S:seat {sess.es_seat_kind} selected");
             println("editor: seat {sess.es_seat_kind} selected");
           }
+        } else if ev.msg_id == MSG_SELECT_ANNEX {
+          // ── WHAT THE NEXT `37:` WILL HANG — plan 22 `K3` ────────────────────
+          //
+          // ⚠ THE FOURTH OF FOUR, AND THE SHAPE HAS NOT MOVED ONCE: the choosing and
+          // the refusal are the library's, the sentence is the server's. `49:` a
+          // profile, `51:` a part name, `52:` a seat kind, this an annex kind.
+          asel = hex_editor::session_select_annex(sess, ev.payload as integer ?? 0 - 1);
+          if !asel.ak_ok {
+            srv.send_to(ev.cid, "S:selection refused — {asel.ak_why}");
+            println("editor: selection refused — {asel.ak_why}");
+          } else {
+            srv.send_to(ev.cid, "S:annex {sess.es_annex_kind} selected");
+            println("editor: annex {sess.es_annex_kind} selected");
+          }
         } else if ev.msg_id == MSG_EYE {
           // ── STAND THE EYE THERE AND LOOK BACK — plan 22, `48:` ──────────────
           //
@@ -5597,39 +5620,41 @@ fn main() {
           // the run's normal; on a trunk — a ring of wall — it is the radial
           // direction, and the ring's centre is the nearest thing the author can be
           // standing outside of. One code path, because a tree is not a special host.
-          akind = ev.payload as integer ?? hex_editor::AN_BOX;
           // ⚠ WHAT AN ANNEX IS — its proportions, its way in, and the cupboard that
           // takes an existing one as its host — is `hex_editor` now. The numbers had
           // a recorded reason and nothing but a screenshot could read them back: *"a
-          // balcony at ankle height is a doorstep"*. What stays here is the scene
-          // state this file owns, the dirty mark and the sentence.
-          abuilt = if akind == 2 {
-                     hex_editor::annex_cupboard(sess.es_annex, HEIGHT_SCALE)
+          // balcony at ankle height is a doorstep"*.
+          //
+          // ⚠ AND SO IS THE ASSEMBLY, AS OF `K3` — which is the half that mattered.
+          // `annex_build` and `annex_cupboard` were already the library's and were
+          // called from here directly, so *which of the three*, the THREE registries
+          // that move, and the two sentences lived at exactly one driver. The middle is
+          // the one to look at: `es_awalls` is REBUILT rather than appended to, because
+          // adding an annex can change a neighbour's handedness — a driver that
+          // appended would draw the wrong walls and report success.
+          //
+          // ⚠ AN EMPTY PAYLOAD MEANS *THE ONE I CHOSE*, `36:`'s contract for the third
+          // family; `37:<kind>` says which this time and does not re-choose.
+          abuilt = if ev.payload == "" {
+                     hex_editor::session_annex(sess, wld,
+                       hex_editor::author_at(px, pz, yaw, py))
                    } else {
-                     hex_editor::annex_build(
-                       hex_editor::annex_host(sess.es_runs, px, pz, yaw,
-                                              sess.es_trunk),
-                       akind, hex_draw::BAND_SIDES, HEIGHT_SCALE)
+                     hex_editor::session_annex_kind(sess, wld,
+                       hex_editor::author_at(px, pz, yaw, py),
+                       ev.payload as integer ?? hex_editor::AN_BOX)
                    };
-          if !abuilt.ab_ok {
-            srv.send_to(ev.cid, "S:{abuilt.ab_why}");
-            println("editor: annex refused — {abuilt.ab_why}");
+          if !abuilt.ax_ok {
+            srv.send_to(ev.cid, "S:{abuilt.ax_say}");
+            println("editor: annex refused — {abuilt.ax_say}");
           } else {
-            sess.es_annex.items += [abuilt.ab_annex];
-            sess.es_awalls.items = [];
-            hex_editor::annexes_runs(sess.es_annex, hex_editor::WALL_MAT, sess.es_awalls);
-            sess.es_open.items += [abuilt.ab_open];
-            ahex = world_to_hex(abuilt.ab_annex.an_x, abuilt.ab_annex.an_z);
-            mark_dirty(dirty, ahex.ha_q, ahex.ha_r, 4);
-            if akind == 2 {
-              srv.send_to(ev.cid, "S:a cupboard beside it — {len(sess.es_awalls.items)} "
-                                + "walls for {len(sess.es_annex.items)} boxes");
-              println("editor: cupboard at ({ahex.ha_q},{ahex.ha_r}) — "
-                    + "{len(sess.es_awalls.items)} walls for {len(sess.es_annex.items)} boxes");
+            mark_dirty(dirty, abuilt.ax_q, abuilt.ax_r, abuilt.ax_pad);
+            srv.send_to(ev.cid, "S:{abuilt.ax_say}");
+            if abuilt.ax_kind == hex_editor::ANX_CUPBOARD {
+              println("editor: cupboard at ({abuilt.ax_q},{abuilt.ax_r}) — "
+                    + "{abuilt.ax_walls} walls for {abuilt.ax_boxes} boxes");
             } else {
-              srv.send_to(ev.cid, "S:an annex of kind {akind} at "
-                                + "{ahex.ha_q},{ahex.ha_r} — 3 walls, a deck");
-              println("editor: annex kind {akind} at ({ahex.ha_q},{ahex.ha_r})");
+              println("editor: annex kind {abuilt.ax_kind} at "
+                    + "({abuilt.ax_q},{abuilt.ax_r})");
             }
           }
         } else if ev.msg_id == MSG_HOUSE {

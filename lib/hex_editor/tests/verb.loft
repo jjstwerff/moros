@@ -318,11 +318,61 @@ fn test_the_two_seat_keys_name_one_verb_and_the_selection_decides() {
          "one verb and two selections both answered '{ba.ak_why}'");
 }
 
+// ── `J`, `K` AND `V` ARE ONE VERB — the third family, plan 22 `K3` ──────────
+//
+// ⚠ **THREE KEYS AND THE THIRD IS A DIFFERENT CONSTRUCTION**, which is what makes this
+// worth its own test rather than a copy of the seat one: `annex_cupboard` takes the
+// last BOX as its host where `annex_build` takes a wall. So a `press_verb` that ignored
+// the selection would not merely hang the wrong thing — with a wall and no box it would
+// SUCCEED where the cupboard must refuse, and that asymmetry is the discriminator.
+fn a_run_to_hang_on() -> EditSession {
+  wv = EditSession {};
+  wv.es_runs.items += [WallRun { wr_x0: 0.0 - 6.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
+                                 wr_mat: WALL_MAT, wr_step: 0, wr_base: 0, wr_up: 0 }];
+  wv
+}
+
+fn test_the_three_annex_keys_name_one_verb_and_the_selection_decides() {
+  assert(verb_of("J") == verb_of("K") && verb_of("K") == verb_of("V"),
+         "the annex keys name '{verb_of(\"J\")}', '{verb_of(\"K\")}' and "
+       + "'{verb_of(\"V\")}' — the family has not collapsed");
+  assert(verb_of("J") == VB_ANNEX, "the annex keys name '{verb_of(\"J\")}'");
+
+  bw = flat();
+  bs = a_run_to_hang_on();
+  ba = press_verb(bs, bw, author_on(bw, 0.0, 2.0, 0.0), verb_of("J"));
+  assert(ba.ak_ok, "a bedstee on a wall was refused: {ba.ak_why}");
+
+  dw = flat();
+  ds = a_run_to_hang_on();
+  session_select_annex(ds, AN_DECK);
+  da = press_verb(ds, dw, author_on(dw, 0.0, 2.0, 0.0), verb_of("K"));
+  assert(da.ak_ok, "a balcony on a wall was refused: {da.ak_why}");
+  assert((ds.es_annex.items[0]?.an_kind ?? 0 - 1) == AN_DECK,
+         "the `K` press filed kind {ds.es_annex.items[0]?.an_kind ?? 0 - 1}");
+
+  // ⚠ THE REFUSAL IS THE DISCRIMINATOR. Same wall, same pose, same verb — and a
+  // cupboard has nothing to stand beside, so it must say so. A branch that fell
+  // through to `annex_build` would hang a bedstee here and report success.
+  cw = flat();
+  cs = a_run_to_hang_on();
+  session_select_annex(cs, ANX_CUPBOARD);
+  ca = press_verb(cs, cw, author_on(cw, 0.0, 2.0, 0.0), verb_of("V"));
+  assert(!ca.ak_ok,
+         "the cupboard verb hung something with no box to stand it beside: {ca.ak_why}");
+  assert(len(cs.es_annex.items) == 0,
+         "a refused cupboard filed {len(cs.es_annex.items)} annex(es)");
+}
+
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
 // ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
 // would run a gesture on every step of a walk.
 fn test_a_key_that_is_not_a_gesture_names_no_verb() {
-  for nk in ["W", "A", "S", "D", "", "ArrowLeft", "K", "zzz"] {
+  // ⚠ `K` WAS IN THIS LIST AND IS A GESTURE NOW — plan 22 `K3` gave it `annex`, and
+  // this test went red for the right reason on the line that added it. `L` replaces it:
+  // levelling is a client toggle with no gesture behind it, and the row's job is to
+  // hold a key that genuinely names nothing rather than a specific letter.
+  for nk in ["W", "A", "S", "D", "", "ArrowLeft", "L", "zzz"] {
     assert(verb_of(nk) == VB_NONE,
            "key '{nk}' is not a gesture and the definition gives it verb "
          + "'{verb_of(nk)}'");
