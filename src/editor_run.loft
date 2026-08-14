@@ -151,7 +151,8 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // What is left here is a driver's business: saying what happened. A key nobody
     // bound answers `VB_NONE`, which `press_verb` reports as `PR_NONE` — the same
     // answer `press` gave, so the sentence below did not have to change.
-    return said_ack(hex_editor::press_verb(sess, w, a, hex_editor::verb_of(rest)),
+    return said_ack(hex_editor::press_verb(sess, w, a, hex_editor::verb_of(rest),
+                                           "{source_dir()}/../data/parts"),
                     rest, said);
   }
 
@@ -170,7 +171,23 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // last. That is why `select` lands in the same step — a script converted without
   // it would still build a world, silently, with the wrong head on every door.
   if cmd == "verb" {
-    return said_ack(hex_editor::press_verb(sess, w, a, rest), rest, said);
+    // ⚠ THE LIBRARY ROOT IS THIS RUNNER'S OWN — plan 22 `B2e`. It reads the same
+    // `data/parts/` the server does, so a script that chooses a part and places it
+    // builds what the editor would. ⚠ Resolved through `source_dir()` for loft#712's
+    // reason, exactly as the SCRIPT path above is.
+    return said_ack(hex_editor::press_verb(sess, w, a, rest,
+                                           "{source_dir()}/../data/parts"), rest, said);
+  }
+
+  if cmd == "part" {
+    // ⚠ THE SAME CHOOSING THE PAGE MAKES — plan 22 `B2e`. `select` picks an opening
+    // profile; this picks a PART, and `verb place` then puts that in the world
+    // instead of the procedural house. A bare `part` with no name clears it, which
+    // is how a script goes back to building houses.
+    sel = hex_editor::session_select_part(sess, rest);
+    if !sel.ak_ok { said = "part refused — {sel.ak_why}"; return true; }
+    said = sel.ak_why;
+    return true;
   }
 
   if cmd == "select" {

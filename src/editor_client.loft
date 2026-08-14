@@ -210,6 +210,12 @@ const WALL_CMD = "23:1,3";
 // `P` — only `tools/script.mjs` ever sent them, so every house in every picture
 // of this editor was placed by a script and never by a person at the keyboard.
 // Found while wiring `W4`; the three keys below are new.
+// ⚠ `k` — CYCLE THE CHOSEN PART, and it is one of the twelve keys `K3` records as
+// having no verb. It has none here either: cycling is the DRIVER's, because the
+// catalogue it steps through is the driver's — the library it read, in the order it
+// read it. What the session holds is a NAME, and `session_select_part` is what puts
+// it there.
+const KEY_PART = 107;         // k — step through the part library
 const KEY_HOUSE = 104;        // h — a house where you are looking
 const KEY_DOOR  = 111;        // o — a door in the wall you face
 const KEY_WINDOW = 112;       // p — …and a window
@@ -494,6 +500,11 @@ struct Client {
   // place that knows what its own keys did.
   turned_by: float,
   said_still: boolean,
+  // Which catalogue row is chosen, 0 for none — plan 22 `B2e`. The NAME lives in
+  // the session; this is the driver's place in its own list.
+  part_pick: integer,
+  part_names: vector<text>,
+  was_part: boolean,
   tick_begun: boolean,
   // ── The page's own collision proxy (plan 22 `B1c.2c`) ──────────────────────
   //
@@ -1423,7 +1434,7 @@ fn send_aspect(h: web::WsHandler) {
 // gesture is written twice; only the DELIVERY differs, and that is what `act` is.
 fn local_act(sess: hex_editor::EditSession, st: Client, a: hex_editor::Author,
              verb: text) {
-  ack = hex_editor::press_verb(sess, st.cache, a, verb);
+  ack = hex_editor::press_verb(sess, st.cache, a, verb, LOCAL_PARTS);
   // ⚠ A REFUSAL IS A SENTENCE AND A SUCCESS IS A COUNT — `editor_run`'s `said_ack`
   // rule, because a gesture that succeeds with an empty `ak_why` printed verbatim
   // reads as "the key did nothing", the one thing a driver must never say when
@@ -1716,6 +1727,35 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
     if st.levelling { wire(h, st, "6:1"); } else { wire(h, st, "6:0"); }
   }
   st.was_level = klevel;
+
+  // ── CHOOSE WHAT `h` WILL PLACE — plan 22 `B2e` ─────────────────────────────
+  //
+  // ⚠ LOCAL ONLY, AND THE ASYMMETRY IS PRE-EXISTING RATHER THAN INTRODUCED HERE.
+  // Attached, a part cannot be placed at all: `44:` has no client binding — this
+  // file has recorded that for months — and the SERVER holds no selection to send
+  // one to. So this wires the half that is reachable, and the other half needs the
+  // server to gain `es_part` and a message to set it. ⚠ Said rather than left for a
+  // reader to discover from silence.
+  kpart = graphics::gl_key_pressed(KEY_PART);
+  if kpart && !st.was_part {
+    if st.local {
+      // ⚠ THE INDEX IS THE DRIVER'S AND THE NAME IS THE SESSION'S. Cycling needs the
+      // LIST, which belongs to whoever read the library; the gesture needs only the
+      // chosen name. One past the end clears the choice, so `h` goes back to
+      // building the procedural house — the way out is the same key.
+      st.part_pick = st.part_pick + 1;
+      if st.part_pick > len(st.part_names) { st.part_pick = 0; }
+      pick = "";
+      if st.part_pick > 0 { pick = st.part_names[st.part_pick - 1] ?? ""; }
+      psel = hex_editor::session_select_part(sess, pick);
+      if !psel.ak_ok { println("client: local part refused — {psel.ak_why}"); }
+      else { println("client: local {psel.ak_why}"); }
+      st.panel_dirty = true;
+    } else {
+      wire(h, st, "44:");
+    }
+  }
+  st.was_part = kpart;
 
   kfence = graphics::gl_key_pressed(KEY_FENCE);
   if kfence && !st.was_fence { act(h, st, sess, a, hex_editor::verb_of("F")); }
@@ -2488,6 +2528,7 @@ fn main() {
     coll_rt: hex_way::track_new(),
     tick_begun: false, coll_have: false, coll_q: 0, coll_r: 0, coll_tau: 0 - 1,
     coll_surf: 0, walked: 0.0, py: 0.0, vy: 0.0, fell: 0,
+    part_pick: 0, part_names: [], was_part: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
@@ -2540,6 +2581,7 @@ fn main() {
   local_cat = hex_mesh::catalogue_for(LOCAL_PARTS);
   local_avail = hex_mesh::part_availability(LOCAL_PARTS);
   println("client: local library — {len(local_avail)} parts under '{LOCAL_PARTS}'");
+  for la in local_avail { st.part_names += [la.av_name]; }
 
   // ── THE THUMBNAILS LOCAL MODE DRAWS — plan 22 `B2d` ────────────────────────
   //

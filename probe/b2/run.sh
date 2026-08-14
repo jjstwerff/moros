@@ -64,6 +64,9 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #   DEMO_SABOTAGE=noparts    the demo built with `--no-parts`. If the catalogue's
 #                            rows came from the page rather than from the baked
 #                            library, this would pass.
+#   DEMO_SABOTAGE=nochoose   the same `Q` run without the choosing key. If `Q2`
+#                            were about pressing `h` at all rather than about the
+#                            SELECTION, this would pass.
 #   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
 #                            which is what a missing time bridge looks like from
 #                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
@@ -356,6 +359,54 @@ else
   no "F5 a house was placed and no wall was ever drawn"
 fi
 
+# ── Q  the SELECTION decides what `place` makes — plan 22 `B2e` ────────────
+#
+# ⚠ THE CONTROL IS THE `F` BLOCK, ALREADY RUN. F presses `d` then `h` with nothing
+# chosen and builds the procedural house: **27 cells, world `41145:1306471549`**.
+# This presses `d`, then `k` to choose a part, then the SAME `h` at the same pose —
+# so a different world can only be the selection, not the key, the facing or the
+# place.
+#
+# ⚠ AND IT IS `S2b`'s SHAPE ONE FAMILY OVER: *picking a profile must change what the
+# next opening cuts*, asserted by building two and diffing them — never by reading
+# the line that says what is picked.
+echo
+echo "── Q   choose a part, and place THAT instead of a house ────────────"
+# ⚠ IT RETRIES THE PLACE, for the reason `F` and `G` both had to: one key press is
+# 3 OR 4 fixed steps, and a footprint fits only the six EVEN rotations — so a single
+# `h` lands on an inadmissible facing about half the time and NOTHING is built.
+Q_KEYS="d,k,h,d,h,d,h"
+case ",$SAB," in *,nochoose,*) Q_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nochoose — the same run without the choosing key" ;; esac
+timeout 300 node probe/b1b/press.mjs "file://$SITE" "$Q_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/part.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/part.raw" > "$OUT/part.log" || true
+grep -E "^client: local (part|place)" "$OUT/part.log" | sed 's/^/   /'
+
+q_chosen=$(grep -m1 "client: local part '" "$OUT/part.log" || true)
+q_placed=$(grep -m1 'client: local place — ' "$OUT/part.log" || true)
+q_key=$(printf '%s' "$q_placed" | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
+q_n=$(printf '%s' "$q_placed" | sed -n 's/.*place — \([0-9]*\) .*/\1/p')
+
+if [ -n "$q_chosen" ]; then say "Q1 chosen: ${q_chosen#client: local }"
+else no "Q1 no part was chosen — the choosing key did nothing"; fi
+
+# ⚠ THE VERDICT IS THE WORLD, NOT THE COUNT. A cell count says the gesture did
+# something; only the world says it did something ELSE than the house F built at
+# this very pose.
+#
+# ⚠ AND THREE OUTCOMES, NOT TWO — the split `G2` and `P2` each needed after saying
+# something they had not measured. A run that placed NOTHING cannot speak about the
+# selection at all, and reporting it as *the selection changed nothing* is an
+# instrument describing a failure it did not see. This is the third time in this
+# file; the shape is now the default rather than a correction.
+if [ -z "$q_key" ]; then
+  no "Q2 nothing was placed in this run, so it cannot say whether the selection changed what `place` makes (the turn may have landed short of an admissible facing)"
+elif [ "$q_key" != "41145:1306471549" ]; then
+  say "Q2 the same key built $q_key ($q_n cells) where F4 built 41145:1306471549 (27)"
+else
+  no "Q2 place built F4's own house world ($q_key) — the selection changed nothing"
+fi
+
 # ── G  the demo can WALK, and it moves where a house lands — `B1c.2c` ──────
 #
 # ⚠ THE CLAIM IS NOT *the numbers moved*, IT IS *the walk reaches the gesture*.
@@ -443,8 +494,14 @@ fi
 # driven.
 echo
 echo "── H   raise the ground, walk over it, and fall ────────────────────"
-H_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*44))")
-case ",$SAB," in *,noraise,*) H_KEYS=$(python3 -c "print(','.join(['w']*44))"); echo "   SABOTAGE noraise — the same walk with nothing raised to fall off" ;; esac
+# ⚠ 60 PRESSES, NOT 44, AND THE DIFFERENCE IS A FLAKE THIS CHECK ALREADY SHIPPED.
+# At 44 the walker reaches the crest of the raised patch and stops there about half
+# the time — `feet` up, `landed` 0 — because one press is 3 OR 4 fixed steps. It
+# passed three runs in a row with 1, 2 and 3 landings, which is not evidence of
+# reliability: it is a coin that came up heads three times. The walk has to CLEAR
+# the crest for a descent to exist at all.
+H_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*60))")
+case ",$SAB," in *,noraise,*) H_KEYS=$(python3 -c "print(','.join(['w']*60))"); echo "   SABOTAGE noraise — the same walk with nothing raised to fall off" ;; esac
 timeout 400 node probe/b1b/press.mjs "file://$SITE" "$H_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/fall.raw" 2>&1 || true
 grep -E '^(client|moros editor client)' "$OUT/fall.raw" > "$OUT/fall.log" || true
@@ -467,7 +524,7 @@ fi
 if [ -n "$h_landed" ] && [ "$h_landed" -gt 0 ] 2>/dev/null; then
   say "H2 a fall COMPLETED $h_landed time(s) — airborne, then touched down"
 else
-  no "H2 the feet never landed (landed '$h_landed'). A height that merely tracks the terrain is the CLIMB; only a landing is the fall"
+  no "H2 the feet never landed (landed '$h_landed') though they reached $h_feet. A height that merely tracks the terrain is the CLIMB; only a landing is the fall — and a walker still ON the crest has had nothing to fall off yet, which is what too short a walk looks like"
 fi
 
 if [ "$g_feet" = "0" ] && [ "$g_landed" = "0" ]; then

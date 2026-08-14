@@ -1043,11 +1043,62 @@ pub fn verb_of(key: text) -> text {
 // cannot collapse before that selection exists — the equality below would go red on
 // one of them the moment `verb_of` mapped both keys to one verb, which is the test
 // enforcing the decomposition rather than a rule anybody has to remember.
-pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text) -> Ack {
+// Place the part the session has chosen, at the author's own cell.
+//
+// ⚠ EVERY REFUSAL NAMES ITS OWN CAUSE, because there are four and they are not
+// interchangeable to whoever pressed the key: no library configured, a name the
+// library does not hold, a file that will not load, and a part that does not FIT.
+// *Reason, offer, residual, never a blank no.*
+//
+// ⚠ AND THE FIT'S REFUSAL CARRIES THE STORE'S OWN CODE. `ps_fit` says WHICH rule
+// said no — a fold, the reserve, the window — where `PS_FIT` alone says only *it
+// did not fit*, and a caller that can only report the latter has thrown the answer
+// away. The server's `place_part` encodes it as `-10 - ps_fit` on the wire; this
+// puts it in the sentence, which is where a person reads it.
+pub fn place_chosen_part(sess: EditSession, w: VoxelWorld, a: Author, root: text) -> Ack {
+  if root == "" {
+    return ack_no("part '{sess.es_part}' is chosen and this driver has no part "
+                + "library to read it from");
+  }
+  (pq, pr) = px_to_hex(a.au_x, a.au_z);
+  ld = world_load("{root}/{sess.es_part}.hxw");
+  if ld.wl_code != 0 {
+    return ack_no("part '{sess.es_part}' will not load ({ld.wl_code}) {ld.wl_detail}");
+  }
+  // ⚠ `part_place`, NOT `part_stamp` — the band's floor is a placement policy about
+  // buildings and it lives with the gesture that makes one, so a procedural house
+  // and an authored one cut into a slope by the same amount.
+  st = part_place(w, ld.wl_world, pq, pr, 0);
+  if st.ps_code != hex_part::PS_OK {
+    return ack_no("part '{sess.es_part}' does not fit here ({st.ps_code}/{st.ps_fit})");
+  }
+  ack_about(st.ps_cells, "placed '{sess.es_part}' — {st.ps_cells} cells", 0)
+}
+
+// ⚠ `root` IS WHERE THIS DRIVER'S PART LIBRARY IS — plan 22 `B2e`, and it is
+// defaulted for the same reason `cliff_edges` defaults its step and `fall_step` its
+// gravity: a caller with no opinion still gets a defensible one. Here "no opinion"
+// is literal — `editor_run` and every library test genuinely have no library, and a
+// part placement there is refused with a reason rather than silently building
+// something else.
+//
+// ⚠ IT IS NOT IN THE SESSION. A session is a driver's STATE; a library root is a
+// driver's CONFIGURATION, and the two drivers read from different places entirely —
+// a disk and a baked base tree. Putting it in the session would make every saved or
+// compared session carry a path that means nothing on the other side.
+pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
+                  root: text = "") -> Ack {
   if verb == VB_RAISE { return raise_ahead(w, a, 1); }
   if verb == VB_LOWER { return raise_ahead(w, a, 0 - 1); }
+  // ⚠ THE SELECTION DECIDES WHAT `place` PRODUCES — plan 22 `B2e`, and it is `S3`'s
+  // collapse one family over. Nothing chosen builds the procedural house it always
+  // did, so every existing driver and every baseline is untouched; a chosen part is
+  // placed instead. One verb, one key, and the catalogue says which thing it makes.
   if verb == VB_PLACE {
-    return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
+    if sess.es_part == "" {
+      return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
+    }
+    return place_chosen_part(sess, w, a, root);
   }
   // ⚠ THE PROFILE COMES FROM THE SELECTION AND FROM NOWHERE ELSE. `session_opening`
   // is the entry point `S2b` built for exactly this — reading `es_open_kind` here

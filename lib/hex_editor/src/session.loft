@@ -106,6 +106,17 @@ pub struct EditSession {
   // one where six keys collapse to one verb, and inventing the split before then
   // would be designing a container for contents nobody has measured.
   es_open_kind: integer = OP_ROUND,
+  // ── WHICH PART IS CHOSEN — plan 22 `B2e` ───────────────────────────────────
+  //
+  // Empty means *none*, and that is a real state rather than a missing one: with
+  // nothing chosen the placing verb builds the procedural house it always did, so
+  // a driver that never selects behaves exactly as it did before this field
+  // existed.
+  //
+  // ⚠ A NAME, NOT A LOADED WORLD. A part is a file, the two drivers read it from
+  // different places (a disk, a baked base tree), and a session that held bytes
+  // would be a second copy of the library going stale behind whoever edits it.
+  es_part: text = "",
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -256,6 +267,30 @@ pub fn session_select_open(s: EditSession, kind: integer) -> Ack {
   }
   s.es_open_kind = kind;
   ack_ok(kind)
+}
+
+// ── CHOOSING A PART — plan 22 `B2e`, and it is `session_select_open`'s shape ──
+//
+// ⚠ THE NAME IS CHECKED, NOT TRUSTED, and by the package that owns what a part name
+// is: `hex_part::part_name_ok` is the inverse of `part_list`, and the server's
+// `place_part` already calls it under the note *"this site, `44:` and `8:` each
+// spelled out their own `..` check … three copies is how one of them comes to
+// disagree."* A fourth here would be that again.
+//
+// ⚠ AND IT DOES NOT CHECK THAT THE PART EXISTS, deliberately. Whether a name is
+// well-formed is a fact about the name; whether a file is there is a fact about a
+// LIBRARY, and the two drivers look in different places. The placing gesture
+// refuses a part it cannot load, with the reason, which is where that answer can
+// actually be known.
+pub fn session_select_part(s: EditSession, name: text) -> Ack {
+  if name == "" {
+    s.es_part = "";
+    return ack_about(0, "nothing chosen — the placing verb builds a house again", 0);
+  }
+  nk = hex_part::part_name_ok(name);
+  if nk.nk_code != hex_part::PN_OK { return ack_no(nk.nk_why); }
+  s.es_part = name;
+  ack_about(1, "part '{name}' chosen", 0)
 }
 
 // One press of the opening gesture, with the profile taken from the SELECTION

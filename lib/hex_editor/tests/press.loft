@@ -522,3 +522,71 @@ fn test_an_embrasure_with_no_niche_is_refused_in_words() {
   assert(ack.ak_why != PR_NONE && ack.ak_why != PR_SELECT,
          "…with a reason of its own: {ack.ak_why}");
 }
+
+// ── THE PART SELECTION DECIDES WHAT `place` MAKES — plan 22 `B2e` ───────────
+//
+// `S2b` built exactly this for openings — *"picking a profile must change what the
+// next `opening` cuts"* — and this is the same claim one family over.
+
+// ⚠ THE DEFAULT IS THE OLD BEHAVIOUR, AND THIS IS THE ASSERTION THAT SAYS SO. Every
+// driver and every baseline in this tree presses `place` without ever selecting, so
+// if an empty selection did anything other than build the procedural house, `B1a`'s
+// committed world and eight scripts would all move at once.
+fn test_with_nothing_chosen_place_still_builds_the_house() {
+  w = flat();
+  s = EditSession {};
+  assert(s.es_part == "", "a fresh session has a part chosen: '{s.es_part}'");
+  (ax, az) = hex_to_px(11, 11);
+  // ⚠ NOT YAW 0. A footprint has mitred corners only at the six EVEN rotations and
+  // yaw 0 is rot 9 — the live refusal `B1a` found and `B1c.1`'s turn exists to get
+  // past. One lattice step round is rot 10, which fits.
+  a = author_on(w, ax, az, PI / 6.0 ?? 0.0);
+  before = w.w_tau;
+  ack = press_verb(s, w, a, VB_PLACE);
+  assert(ack.ak_ok, "place with nothing chosen refused: {ack.ak_why}");
+  assert(w.w_tau > before,
+         "place with nothing chosen wrote nothing — the procedural house is gone");
+}
+
+// ⚠ A NAME IS CHECKED, A LIBRARY IS NOT — the two answers live in different places
+// and this pins the split. `part_name_ok` is the inverse of `part_list`, so an
+// escaping name is refused here; whether a file EXISTS is the placing gesture's
+// answer, because only it is told where to look.
+fn test_choosing_checks_the_name_and_not_the_library() {
+  s = EditSession {};
+  bad = session_select_part(s, "../etc/passwd");
+  assert(!bad.ak_ok, "an escaping part name was accepted");
+  assert(s.es_part == "", "a refused choice changed the selection to '{s.es_part}'");
+
+  ok = session_select_part(s, "door/leaf");
+  assert(ok.ak_ok, "a well-formed name was refused: {ok.ak_why}");
+  assert(s.es_part == "door/leaf", "the choice did not stick: '{s.es_part}'");
+}
+
+// ⚠ AND CHOOSING NOTHING IS A STATE, NOT A MISSING ONE — the way back to the
+// procedural house without constructing a new session.
+fn test_choosing_nothing_goes_back_to_the_house() {
+  s = EditSession {};
+  session_select_part(s, "door/leaf");
+  cleared = session_select_part(s, "");
+  assert(cleared.ak_ok && s.es_part == "",
+         "clearing the choice left '{s.es_part}' ({cleared.ak_why})");
+}
+
+// ⚠ THE REFUSAL NAMES ITS OWN CAUSE. A driver with no library must not silently
+// build a house instead — that is a key doing something other than what the
+// catalogue says it will, which is worse than a refusal.
+fn test_a_chosen_part_with_no_library_is_refused_and_says_why() {
+  w = flat();
+  s = EditSession {};
+  session_select_part(s, "door/leaf");
+  (ax, az) = hex_to_px(11, 11);
+  a = author_on(w, ax, az, PI / 6.0 ?? 0.0);
+  before = w.w_tau;
+  ack = press_verb(s, w, a, VB_PLACE);
+  assert(!ack.ak_ok, "a part was placed with no library to read it from");
+  assert(ack.ak_why.find("library") != null,
+         "the refusal does not name the missing library: '{ack.ak_why}'");
+  assert(w.w_tau == before,
+         "the refused placement still wrote to the world (tau {before} -> {w.w_tau})");
+}

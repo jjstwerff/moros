@@ -290,6 +290,67 @@ rather than the raw yaw.
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
 
+## ✅ What placing turned up (2026-08-14) — no selection existed anywhere
+
+**The demo can choose a part and place it.** `k` steps through the catalogue, `h` puts the chosen
+part in the world instead of the procedural house: `local part 'door/doorway' chosen`, then
+`local place — 9 · world 8277:3726603134`, where the house at that same pose is **27 cells and
+`41145:1306471549`**. `make probe-demo` is 25 checks.
+
+⚠ **THE GAP WAS NOT "LOCAL MODE CANNOT PLACE" — IT WAS THAT NOTHING COULD CHOOSE.** There was no
+selection in the client, the server or the session: the catalogue was a list you could look at and
+not pick from, and the subject line carried the world, the mode and the opening kind but nothing
+about a part. So this is `S2a`/`S2b` one family over — the step those took for openings, which
+`S2b` states as *"picking a profile must change what the next `opening` cuts"*.
+
+✅ **AND `place` PRODUCES WHAT IS CHOSEN — `S3`'s COLLAPSE, ONE FAMILY OVER.** Nothing chosen builds
+the procedural house exactly as before, so every driver, every script and `B1a`'s committed world
+are untouched; a chosen part is placed instead. One verb, one key, and the catalogue decides which
+thing it makes.
+
+### Two design calls, and why each went the way it did
+
+| | |
+|---|---|
+| the library root is a **defaulted parameter** on `press_verb`, not session state | A session is a driver's STATE; a library root is its CONFIGURATION, and the two drivers read from different places — a disk and a baked base tree. A session carrying a path would mean nothing on the other side. ⚠ Defaulted to `""` for the reason `cliff_edges` defaults its step and `fall_step` its gravity: **all 28 existing call sites are untouched**, and a driver with no library gets a refusal that NAMES the missing library rather than silently building something else |
+| **cycling is the driver's, the name is the session's** | Stepping through the catalogue needs the LIST, which belongs to whoever read the library and in the order it read it; the gesture needs only the chosen name |
+
+⚠ **AND THE NAME IS CHECKED WHILE THE LIBRARY IS NOT.** `session_select_part` refuses an escaping
+name through `hex_part::part_name_ok` — the inverse of `part_list`, and the fourth site that would
+otherwise have spelled its own `..` check — but says nothing about whether a file exists. That is
+the PLACING gesture's answer, because only it is told where to look.
+
+### ⛔ The same instrument mistake, a third time — so the shape is now the default
+
+`Q2` shipped saying *"place built F4's own house world — the selection changed nothing"* about a run
+in which **nothing was placed at all**. `G2` and `P2` had each needed exactly that correction
+already. Three outcomes, not two: *no world built* is **"this run cannot say"**, and only an actual
+house-world is the failure. ⚠ It is written at the check now as the default shape rather than as a
+correction applied after the fact.
+
+### ⛔ And `H2` was a flaky check I had already shipped
+
+It asserted *a fall completed* on the strength of **three consecutive passes** — 1, 2 and 3
+landings — which is a coin coming up heads three times, not evidence. At 44 presses the walker
+reaches the CREST of the raised patch and stops there about half the time: feet up, `landed` 0, and
+nothing to fall off. The fourth run caught it.
+
+✅ **Sixty presses clear the crest, and the margin is the point**: **28 and 20** landings over two
+runs instead of 0–3. ⚠ **A number that is sometimes 0 and sometimes 3 was never a threshold** — it
+was the fixture ending mid-climb, and the check could not tell that from a fall that did not happen.
+The refusal says so now: *"a walker still ON the crest has had nothing to fall off yet, which is
+what too short a walk looks like."*
+
+⚠ **AND BOTH `Q` RUNS RETRY THE PLACE**, for the reason `F` and `G` both had to: one key press is 3
+**or** 4 fixed steps and a footprint fits only the six EVEN rotations, so a single `h` lands
+inadmissible about half the time and builds nothing.
+
+⏭ **WHAT THIS DOES NOT CLOSE: ATTACHED MODE STILL CANNOT PLACE A PART.** `44:` has no client binding
+— this tree has recorded that for months — and the SERVER holds no selection to send one to. The
+asymmetry is **pre-existing rather than introduced here**, and closing it means giving the server
+`es_part` and a message to set it. Said in the client at the key, so a reader does not have to infer
+it from silence.
+
 ## ✅ What the thumbnails turned up (2026-08-14) — an argument that expired, and a constant in THREE places
 
 **The demo's catalogue has pictures.** 11 material swatches and **20 part thumbnails**, composed by

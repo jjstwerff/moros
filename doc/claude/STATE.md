@@ -393,6 +393,42 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ THE DEMO PLACES A PART — and no SELECTION existed anywhere, 2026-08-14
+
+**`k` steps the catalogue, `h` places the chosen part instead of the procedural house.**
+`local part 'door/doorway' chosen`, then `local place — 9 · world 8277:3726603134` — where the
+house at that same pose is **27 cells and `41145:1306471549`**. `make probe-demo` is 25 checks.
+
+⚠ **THE GAP WAS NOT "LOCAL MODE CANNOT PLACE" — NOTHING COULD CHOOSE.** No selection existed in the
+client, the server or the session; the catalogue was a list you could look at and not pick from. So
+this is `S2a`/`S2b` one family over, and ✅ **`place` now produces what is chosen** — `S3`'s collapse
+again: nothing chosen builds the procedural house exactly as before, so every driver, every script
+and `B1a`'s committed world are untouched.
+
+⚠ **THE LIBRARY ROOT IS A DEFAULTED PARAMETER ON `press_verb`, NOT SESSION STATE.** A session is a
+driver's STATE; a library root is its CONFIGURATION, and the two drivers read from different places
+— a disk and a baked base tree. Defaulted to `""` for the reason `cliff_edges` defaults its step:
+**all 28 call sites untouched**, and a driver with no library gets a refusal NAMING the missing
+library rather than silently building something else. ⚠ And **cycling is the driver's, the name is
+the session's** — stepping the catalogue needs the LIST, the gesture needs only the name.
+
+⛔ **THE SAME INSTRUMENT MISTAKE, A THIRD TIME.** `Q2` shipped saying *"place built F4's own house
+world — the selection changed nothing"* about a run where **nothing was placed**. `G2` and `P2` each
+needed that same correction already. **Three outcomes, not two**: *nothing built* is "this run
+cannot say". It is now written as the default shape in that file rather than as a correction applied
+after the fact.
+
+⛔ **AND `H2` WAS A FLAKY CHECK ALREADY SHIPPED.** It asserted *a fall completed* on three
+consecutive passes (1, 2 and 3 landings) — a coin coming up heads three times. At 44 presses the
+walker reaches the CREST about half the time: feet up, `landed` 0, nothing to fall off. ✅ Sixty
+presses clear it — **28 and 20** landings over two runs. ⚠ **A number that is sometimes 0 and
+sometimes 3 was never a threshold**; it was the fixture ending mid-climb, and the check could not
+tell that from a fall that did not happen.
+
+⏭ **ATTACHED MODE STILL CANNOT PLACE A PART**: `44:` has no client binding (recorded for months) and
+the server holds no selection to send one to. **Pre-existing, not introduced here** — closing it
+means giving the server `es_part` and a message to set it.
+
 ## ✅ THE DEMO'S CATALOGUE HAS PICTURES — and an argument that had expired, 2026-08-14
 
 **20 part thumbnails and 11 material swatches**, composed by the page from its own baked library:
