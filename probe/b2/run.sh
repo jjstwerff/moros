@@ -221,6 +221,8 @@ else no "D7 the page never named a surface it drew"; fi
 p_lib=$(grep -m1 'client: local library' "$OUT/demo.log" || true)
 p_n=$(printf '%s' "$p_lib" | sed -n 's/.*library — \([0-9]*\) parts.*/\1/p')
 p_sw=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/^client: \([0-9]*\) swatches.*/\1/p')
+p_th=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/.*and \([0-9]*\) thumbnails.*/\1/p')
+p_arr=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/.*(\([0-9]*\) thumbnail meshes arrived.*/\1/p')
 
 if [ -n "$p_n" ] && [ "$p_n" -gt 0 ] 2>/dev/null; then
   say "P1 library: ${p_lib#client: local }"
@@ -242,6 +244,22 @@ if [ -n "$p_sw" ] && [ "$p_sw" -gt 0 ] 2>/dev/null; then
   say "P2 the panel took it: $p_sw material swatches rendered (⚠ blind to the parts — see noparts)"
 else
   no "P2 the panel rendered $p_sw material swatches — the composed catalogue never reached it"
+fi
+
+# P3 — and every part row carries a PICTURE, which is what makes it usable.
+#
+# ⚠ THIS IS THE CHECK `P2` COULD NOT MAKE. Swatches are material rows and exist with
+# no library at all (`noparts` proved it by staying green); a THUMBNAIL is a part
+# meshed, framed and drawn, so a count above zero cannot come from anywhere else.
+#
+# ⚠ AND `arrived` MUST BE ZERO, WHICH IS THE HALF THAT SAYS WHERE THEY CAME FROM.
+# That counter is incremented by the `Y:` WIRE handler; a page composing its own
+# thumbnails and feeding the same store leaves it at 0 while `held` and `cameras`
+# rise. A non-zero here would mean a server was answering, and this run has none.
+if [ -n "$p_th" ] && [ "$p_th" -gt 0 ] 2>/dev/null && [ "$p_arr" = "0" ]; then
+  say "P3 pictures: $p_th thumbnails drawn, $p_arr arrived over a wire"
+else
+  no "P3 the catalogue drew $p_th thumbnails ($p_arr off the wire) — a part row without a picture is a row an author cannot use"
 fi
 
 # ── F  the demo can BUILD A HOUSE — plan 22 `B1c.1`, the turn ───────────────

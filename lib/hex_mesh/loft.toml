@@ -35,3 +35,8 @@ graphics     = ">=0.1"
 # that matters: `hex_editor`, already here, depends on both.
 hex_way      = ">=0.1"
 hex_part     = { path = "../hex_part" }
+# ⚠ ARRIVED WITH THE THUMBNAIL — plan 22 `B2d`. A part may name a `.glb` for its
+# body (`A6.1`), and a catalogue image that skipped it would draw a statue as an
+# empty row. `glb_read` is a leaf — `mesh3d` and nothing else — so the cone does not
+# widen in any direction that matters.
+glb_read     = { path = "../glb_read" }

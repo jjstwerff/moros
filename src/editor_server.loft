@@ -787,9 +787,9 @@ fn cart_mesh_lines() -> vector<text> {
   cwm = mesh("wheel");
   hex_proj::emit_cylinder_post(cwm, vec3(0.0, 0.0, 0.0 - 0.06),
                           vec3(0.0, 0.0, 0.06), CART_RADIUS, 12);
-  ["M:{CART_BODY};0;{mesh_wire(cbm, 0.42, 0.28, 0.16)}",
-   "M:{CART_WHEEL_L};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}",
-   "M:{CART_WHEEL_R};0;{mesh_wire(cwm, 0.18, 0.16, 0.14)}"]
+  ["M:{CART_BODY};0;{hex_mesh::mesh_wire(cbm, 0.42, 0.28, 0.16)}",
+   "M:{CART_WHEEL_L};0;{hex_mesh::mesh_wire(cwm, 0.18, 0.16, 0.14)}",
+   "M:{CART_WHEEL_R};0;{hex_mesh::mesh_wire(cwm, 0.18, 0.16, 0.14)}"]
 }
 
 // ⚠ `X:`, NOT AN EMPTY `M:` — plan 17 `A8.9b`. Both work now that the client drops
@@ -1808,14 +1808,6 @@ fn posed_mesh(pm_g: Mesh, pm_at: hex_part::MeshAt) -> Mesh {
   pm_out
 }
 
-fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
-  fs = mesh_to_floats(wm);
-  out = "{wr},{wg},{wb};";
-  for wf in fs {
-    if wf#first { out += "{wf}"; } else { out += ",{wf}"; }
-  }
-  out
-}
 
 // S4 — SEND THE GROUND ONLY TO THE CLIENTS THAT CANNOT DERIVE IT.
 //
@@ -1895,8 +1887,8 @@ fn send_surfaces(srv: server::Server, cid: integer, ms: vector<Mesh>) {
     ssf = hex_mesh::surface_at(ssi);
     ssmid = cid * SURFACES + MESH_FIGURE_MAX + 1 + ssi;
     srv.broadcast("M:{ssmid};{hex_mesh::surface_ramp(ssf.sf_name)};"
-      + "{mesh_wire(hex_mesh::chunk_mesh_slot(ms, ssi), ssf.sf_r, ssf.sf_g, ssf.sf_b)}");
-    srv.broadcast("T:{ssmid};{mat_wire(mat4_identity())}");
+      + "{hex_mesh::mesh_wire(hex_mesh::chunk_mesh_slot(ms, ssi), ssf.sf_r, ssf.sf_g, ssf.sf_b)}");
+    srv.broadcast("T:{ssmid};{hex_mesh::mat_wire(mat4_identity())}");
   }
 }
 
@@ -2015,13 +2007,6 @@ fn digest_wire(wld: VoxelWorld, chunks: vector<DirtyChunk>) -> text {
   out
 }
 
-fn mat_wire(mw: Mat4) -> text {
-  out = "";
-  for mv in mw.m {
-    if mv#first { out += "{mv}"; } else { out += ",{mv}"; }
-  }
-  out
-}
 
 // The figure's own frame: stand it at (px, pz) on the ground, turned by yaw.
 fn body_at(bx: float, by: float, bz: float, byaw: float) -> Mat4 {
@@ -2224,57 +2209,6 @@ fn mode_name(m: integer) -> text {
 // downsampling. ⚠ THE ASPECT MUST MATCH THE ROW'S, or a house comes out
 // stretched: the projection is built from `THUMB_W / THUMB_H` and the client
 // blits into a 22×16 box, and 66/48 is 22/16 exactly.
-const THUMB_W = 66;
-const THUMB_H = 48;
-const THUMB_FOV = 0.6981317;     // 40°, vertical
-const THUMB_AZ  = 0.7853982;     // 45° round — the "three-quarter" turn
-const THUMB_EL  = 0.5235988;     // 30° up — and its lift
-// A margin, so the extreme corner of the part is not sitting on the frame's rim.
-const THUMB_FILL = 1.10;
-
-struct ThumbView { tv_view: Mat4, tv_proj: Mat4, tv_ok: boolean }
-
-// The canonical camera's own axes. ⚠ THEY DEPEND ON NOTHING BUT THE TWO ANGLES,
-// which is what makes measuring a part in them legitimate: the view is the same
-// for every part, so "how tall is this part on screen" is a question that can be
-// answered before a camera has been placed.
-struct ThumbAxes {
-  ax_rx: float, ax_ry: float, ax_rz: float,      // right
-  ax_ux: float, ax_uy: float, ax_uz: float,      // up
-  ax_fx: float, ax_fy: float, ax_fz: float,      // forward, centre -> eye NEGATED
-}
-
-fn thumb_axes() -> ThumbAxes {
-  // The unit vector from a part's centre to the eye — the canonical turn and
-  // lift, and the only place they are spelled out.
-  ta_ux = cos(THUMB_EL) * sin(THUMB_AZ);
-  ta_uy = sin(THUMB_EL);
-  ta_uz = cos(THUMB_EL) * cos(THUMB_AZ);
-  ta_fx = 0.0 - ta_ux;
-  ta_fy = 0.0 - ta_uy;
-  ta_fz = 0.0 - ta_uz;
-  // right = normalise(cross(forward, worldUp)); worldUp is (0,1,0) so the cross
-  // collapses to (-fz, 0, fx) — written out rather than called, it is two numbers.
-  ta_rl = sqrt(ta_fz * ta_fz + ta_fx * ta_fx) ?? 1.0;
-  if ta_rl < 0.0001 { ta_rl = 1.0; }
-  ta_rx = (0.0 - ta_fz) / ta_rl ?? 0.0;
-  ta_rz = ta_fx / ta_rl ?? 0.0;
-  ThumbAxes {
-    ax_rx: ta_rx, ax_ry: 0.0, ax_rz: ta_rz,
-    // up = cross(right, forward), with right.y == 0
-    ax_ux: 0.0 - ta_rz * ta_fy,
-    ax_uy: ta_rz * ta_fx - ta_rx * ta_fz,
-    ax_uz: ta_rx * ta_fy,
-    ax_fx: ta_fx, ax_fy: ta_fy, ax_fz: ta_fz,
-  }
-}
-
-// What a `.glb` body is drawn in. ⚠ FOUND BY NAME, NOT BY INDEX: the surface list
-// is ordered for the mesher's own slots and a literal 7 here would silently repaint
-// every statue the day a surface is inserted above it.
-//
-// ⚠ IT HANDS BACK AN INDEX RATHER THAN A `Surface`, AND THE REASON HAS CHANGED —
-// plan 19 `L1`. `Surface` used to be declared TWICE in this program's graph, by
 // `hex_voxel` and by `hex_mesh`, and a loft struct name is global to a
 // consumer, so the two had merged and `hex_voxel`'s won: writing the literal gave
 // five *"Unknown field `Surface.sf_r`"* errors with no mention of a collision, and
@@ -2298,15 +2232,6 @@ fn thumb_axes() -> ThumbAxes {
 // so a palette that lost `frame` prints a line AND draws a statue the panel gate's
 // *no row darker than the well it sits in* check rejects. A silent grass-green
 // fallback would have been quieter and worse.
-fn prop_surface() -> integer {
-  ps_i = 0;
-  for ps_s in hex_mesh::surfaces() {
-    if ps_s.sf_name == "frame" { return ps_i; }
-    ps_i = ps_i + 1;
-  }
-  println("editor: no 'frame' surface in the palette — a prop body has no colour");
-  0 - 1
-}
 
 // Every vertex of a body, measured in the camera's axes.
 //
@@ -2315,24 +2240,11 @@ fn prop_surface() -> integer {
 // a fight. It was one inline loop until plan 17 `A6.2` gave a part a SECOND kind
 // of body — and two copies of *fit the camera to these vertices* is exactly how the
 // glb body ends up framed by a rule the cell body no longer uses.
-struct ThumbFit { tf_r: vector<float> = [], tf_u: vector<float> = [], tf_f: vector<float> = [] }
 
 // ⚠ SIX FLOATS A VERTEX — position then normal, the stride `gl_upload_vertices` is
 // given on the other side. ⚠ `as float`: `mesh_to_floats` returns the GPU's 32-bit
 // `single` and loft will not widen it silently; the bounds are compared and
 // averaged, so they are kept in the wider type rather than the buffer's.
-fn thumb_take(fit: ThumbFit, fs: vector<single>, ax: ThumbAxes) {
-  tk_k = 0;
-  while tk_k + 5 < len(fs) {
-    tk_x = (fs[tk_k] ?? 0.0 as single) as float;
-    tk_y = (fs[tk_k + 1] ?? 0.0 as single) as float;
-    tk_z = (fs[tk_k + 2] ?? 0.0 as single) as float;
-    fit.tf_r += [tk_x * ax.ax_rx + tk_y * ax.ax_ry + tk_z * ax.ax_rz];
-    fit.tf_u += [tk_x * ax.ax_ux + tk_y * ax.ax_uy + tk_z * ax.ax_uz];
-    fit.tf_f += [tk_x * ax.ax_fx + tk_y * ax.ax_fy + tk_z * ax.ax_fz];
-    tk_k = tk_k + 6;
-  }
-}
 
 // The camera, SOLVED FROM THE VERTICES — the smallest distance at which every
 // one of them is inside the frame.
@@ -2358,73 +2270,6 @@ fn thumb_take(fit: ThumbFit, fs: vector<single>, ax: ThumbAxes) {
 // ⚠ AND THE MARGIN IS A NARROWER FRUSTUM, not a longer distance. Multiplying the
 // distance scales the part uniformly; narrowing the field leaves the same margin
 // on every side however the part is shaped.
-fn part_thumb_view(vr: vector<float>, vu: vector<float>, vf: vector<float>) -> ThumbView {
-  ptv_ax = thumb_axes();
-  ptv_n = len(vf);
-  if ptv_n == 0 { return ThumbView { tv_view: mat4_identity(), tv_proj: mat4_identity(), tv_ok: false }; }
-  ptv_minr = vr[0] ?? 0.0; ptv_maxr = ptv_minr;
-  ptv_minu = vu[0] ?? 0.0; ptv_maxu = ptv_minu;
-  ptv_minf = vf[0] ?? 0.0; ptv_maxf = ptv_minf;
-  for ptv_i in 0..ptv_n {
-    ptv_r = vr[ptv_i] ?? 0.0;
-    ptv_u = vu[ptv_i] ?? 0.0;
-    ptv_f = vf[ptv_i] ?? 0.0;
-    if ptv_r < ptv_minr { ptv_minr = ptv_r; }
-    if ptv_r > ptv_maxr { ptv_maxr = ptv_r; }
-    if ptv_u < ptv_minu { ptv_minu = ptv_u; }
-    if ptv_u > ptv_maxu { ptv_maxu = ptv_u; }
-    if ptv_f < ptv_minf { ptv_minf = ptv_f; }
-    if ptv_f > ptv_maxf { ptv_maxf = ptv_f; }
-  }
-  // What the camera aims at: the middle of the part as the camera sees it, so the
-  // margin left over is shared between opposite sides instead of all falling on one.
-  ptv_mr = (ptv_minr + ptv_maxr) * 0.5;
-  ptv_mu = (ptv_minu + ptv_maxu) * 0.5;
-  ptv_mf = (ptv_minf + ptv_maxf) * 0.5;
-
-  ptv_asp = (THUMB_W as float) / (THUMB_H as float) ?? 1.0;
-  // The margin, taken out of the frustum: a field this much narrower than the
-  // real one has to hold the part, so the real one holds it with room to spare.
-  ptv_t = tan(THUMB_FOV * 0.5) / THUMB_FILL ?? 0.3;
-  ptv_tx = ptv_t * ptv_asp;
-  // The eye's own forward coordinate. Every vertex says how close it may come;
-  // the nearest such bound wins.
-  ptv_e = ptv_minf - 1.0;
-  ptv_first = true;
-  for ptv_j in 0..ptv_n {
-    ptv_du = abs((vu[ptv_j] ?? 0.0) - ptv_mu);
-    ptv_dr = abs((vr[ptv_j] ?? 0.0) - ptv_mr);
-    ptv_lf = vf[ptv_j] ?? 0.0;
-    ptv_bu = ptv_lf - (ptv_du / ptv_t ?? 0.0);
-    ptv_br = ptv_lf - (ptv_dr / ptv_tx ?? 0.0);
-    ptv_b = if ptv_bu < ptv_br { ptv_bu } else { ptv_br };
-    if ptv_first || ptv_b < ptv_e { ptv_e = ptv_b; ptv_first = false; }
-  }
-  ptv_d = ptv_mf - ptv_e;
-  // A part with no extent at all — one flat cell seen edge-on — would put the eye
-  // inside it. It still gets a camera it can be seen from.
-  if ptv_d < 0.01 { ptv_d = 1.0; }
-
-  // The aim point and the eye, back in world space. The three axes are
-  // orthonormal, so a point is its coordinates times them — no inverse to get wrong.
-  ptv_cx = ptv_mr * ptv_ax.ax_rx + ptv_mu * ptv_ax.ax_ux + ptv_mf * ptv_ax.ax_fx;
-  ptv_cy = ptv_mr * ptv_ax.ax_ry + ptv_mu * ptv_ax.ax_uy + ptv_mf * ptv_ax.ax_fy;
-  ptv_cz = ptv_mr * ptv_ax.ax_rz + ptv_mu * ptv_ax.ax_uz + ptv_mf * ptv_ax.ax_fz;
-  ptv_eye = vec3(ptv_cx - ptv_d * ptv_ax.ax_fx,
-                 ptv_cy - ptv_d * ptv_ax.ax_fy,
-                 ptv_cz - ptv_d * ptv_ax.ax_fz);
-  // ⚠ THE PLANES ARE THE PART'S OWN DEPTHS, not a multiple of the distance. A
-  // near plane behind the front wall slices the house open, and a far plane short
-  // of the back one takes its far corner off — both of which read as a modelling
-  // fault rather than as a camera one.
-  ptv_near = (ptv_minf - ptv_e) * 0.9;
-  if ptv_near < 0.01 { ptv_near = 0.01; }
-  ThumbView {
-    tv_view: mat4_look_at(ptv_eye, vec3(ptv_cx, ptv_cy, ptv_cz), vec3(0.0, 1.0, 0.0)),
-    tv_proj: mat4_perspective(THUMB_FOV, ptv_asp, ptv_near, (ptv_maxf - ptv_e) * 1.1 + 0.1),
-    tv_ok:   true,
-  }
-}
 
 // One part's thumbnail, as the messages that carry it.
 //
@@ -2454,35 +2299,7 @@ fn part_thumb_view(vr: vector<float>, vu: vector<float>, vf: vector<float>) -> T
 //
 // ⚠ THE EMPTY SURFACES ARE DROPPED HERE. A part of four chunks offers 36 slots and
 // a cottage fills six; carrying the empties would make every caller test for them.
-struct PartSurf { ps_surface: integer, ps_mesh: Mesh }
 
-fn part_body_meshes(pbm_w: VoxelWorld) -> vector<PartSurf> {
-  pbm_out: vector<PartSurf> = [];
-  // A part has no wall runs, no roof plans, no leaves and no dressing of its own —
-  // those are the server's registries for the world being edited. Empty is the
-  // honest argument, and `chunk_mesh_props` already keeps the fallback paths it
-  // makes it take: walls draw as per-edge panels and a roof from its own cells.
-  pbm_runs = WallRuns { items: [] };
-  pbm_roofs = hex_editor::RoofPlans { items: [] };
-  pbm_leaves = hex_editor::DoorLeaves { items: [] };
-  pbm_open = hex_editor::Openings { items: [] };
-  pbm_annex = hex_editor::Annexes { items: [] };
-  pbm_awalls = WallRuns { items: [] };
-  pbm_props = hex_editor::Props { items: [] };
-  pbm_slabs = hex_editor::Slabs { items: [] };
-  pbm_holes = hex_editor::Holes { items: [] };
-  for pbm_ch in pbm_w.w_chunks {
-    pbm_ms = hex_mesh::chunk_meshes_all(pbm_ch.ck_cx, pbm_ch.ck_cz, pbm_w, true,
-               pbm_runs, pbm_roofs, pbm_leaves, pbm_open, pbm_annex,
-               pbm_awalls, pbm_props, pbm_slabs, pbm_holes);
-    for pbm_si in 0..SURFACES {
-      pbm_m = hex_mesh::chunk_mesh_slot(pbm_ms, pbm_si);
-      if len(mesh_to_floats(pbm_m)) < 6 { continue; }
-      pbm_out += [PartSurf { ps_surface: pbm_si, ps_mesh: pbm_m }];
-    }
-  }
-  pbm_out
-}
 
 // ── DOES A PART'S SKIN COVER ITS BLOCKOUT? — plan 17 `A8.7`, §P9.11 ─────────
 //
@@ -2518,94 +2335,6 @@ fn skin_check(sc_w: VoxelWorld) -> hex_part::SkinCheck {
     0.001)
 }
 
-fn part_thumb_wire(idx: integer, name: text) -> vector<text> {
-  ptw_out: vector<text> = [];
-  ptw_ld = world_load(part_path(name));
-  if ptw_ld.wl_code != WL_OK {
-    println("editor: thumbnail refused — part '{name}' ({ptw_ld.wl_code}) {ptw_ld.wl_detail}");
-    return ptw_out;
-  }
-  ptw_pw = ptw_ld.wl_world;
-  ptw_ax = thumb_axes();
-  // ⚠ EVERY VERTEX, IN THE CAMERA'S AXES — not a bounding box in the world's. See
-  // `part_thumb_view` for the three framings this replaced and the picture each
-  // of them produced. Kept rather than re-derived because the fit needs two
-  // passes: one to find the middle of what is on screen, one to find how close
-  // the eye may come to it.
-  ptw_fit = ThumbFit {};
-  ptw_bodies: vector<text> = [];
-  // ⚠ THE MESHING IS `part_body_meshes`, SHARED WITH THE DISPLAY PATH — `A8.2`.
-  // What stays here is what a thumbnail does with it and a joint does not: the
-  // camera fit, the ground's ramp, and the `Y:` wire.
-  for ptw_bm in part_body_meshes(ptw_pw) {
-    thumb_take(ptw_fit, mesh_to_floats(ptw_bm.ps_mesh), ptw_ax);
-    ptw_sf = hex_mesh::surface_at(ptw_bm.ps_surface);
-    // The ground keeps the height ramp it is drawn with in the world, so a
-    // part's lawn is the same green as the lawn it will stand on.
-    ptw_ramp = "0";
-    if ptw_bm.ps_surface == 0 { ptw_ramp = "1"; }
-    ptw_bodies += ["Y:{idx};{ptw_ramp};"
-                   + "{mesh_wire(ptw_bm.ps_mesh, ptw_sf.sf_r, ptw_sf.sf_g, ptw_sf.sf_b)}"];
-  }
-  // ── §P5's OTHER BODY — plan 17 `A6.2` ──────────────────────────────────────
-  //
-  // ⚠ A PART MAY HAVE NO CELLS AT ALL, and until `A6.2` put one in the library
-  // that was a shape nothing here had met: `chunk_meshes_all` over a world with no
-  // chunks produces nothing, so a statue listed as a blank row with a *"meshed to
-  // nothing"* line in the log. A blank row is a picture of nothing, and the
-  // catalogue's own claim is that every row carries an image.
-  //
-  // ⚠ AND THIS IS `glb_read`'s FIRST CONSUMER THAT IS NOT A TEST. `A6.1` built the
-  // reader and `part_mesh_loads` was called by the suite and by `make parts` — this
-  // tree's *built and not called* trap, live. A thumbnail is the natural one.
-  //
-  // ⚠ THE TWO MESH TYPES ARE ONE TYPE. `chunk_mesh_slot` hands back `mesh3d::Mesh`
-  // and so does `glb_read`, so `mesh_wire` takes the `.glb` unchanged — no
-  // conversion, and no second encoder to drift. Both are `+Y` up (`thumb_axes`
-  // spells world-up as `(0,1,0)`, which is glTF's own), so nothing is turned.
-  ptw_ref = hex_part::part_mesh(ptw_pw);
-  if ptw_ref.pr_code == hex_part::MR_OK {
-    ptw_gl = load_glb(hex_part::mesh_file(parts_root(), ptw_ref.pr_name));
-    if ptw_gl.gr_code != GR_OK {
-      // ⚠ SAID, NOT SWALLOWED. A part naming a mesh that is absent or corrupt draws
-      // nothing, and *the row is blank* is not a diagnosis an author can act on.
-      println("editor: thumbnail — part '{name}' names mesh '{ptw_ref.pr_name}', which "
-            + "will not load ({ptw_gl.gr_code}) {ptw_gl.gr_detail}");
-    } else {
-      ptw_gf = mesh_to_floats(ptw_gl.gr_mesh);
-      thumb_take(ptw_fit, ptw_gf, ptw_ax);
-      // Stone, and the flat ramp — a prop is not ground, so it takes no height
-      // ramp the way surface 0 does.
-      //
-      // ⚠ IT REUSES `frame` RATHER THAN MINTING A SURFACE, and that is two
-      // decisions. A stone statue IS dressed stone, so it is honest; and
-      // `surface_count()` is the catalogue's material stride, so a tenth surface
-      // would add a tenth material row to a list whose count is gated (`nine
-      // materials, the mesher's own surfaces`). ⚠ Consequence, stated: a statue and
-      // a window surround are ONE bucket to every chromaticity gate. Nothing draws a
-      // statue in the world yet; when something does, separate them in the RENDERER
-      // and not in the classifier (STATE.md decision 12).
-      ptw_gs = hex_mesh::surface_at(prop_surface());
-      ptw_bodies += ["Y:{idx};0;"
-                     + "{mesh_wire(ptw_gl.gr_mesh, ptw_gs.sf_r, ptw_gs.sf_g, ptw_gs.sf_b)}"];
-    }
-  }
-
-  if len(ptw_fit.tf_f) == 0 {
-    println("editor: thumbnail refused — part '{name}' meshed to nothing");
-    return ptw_out;
-  }
-  ptw_v = part_thumb_view(ptw_fit.tf_r, ptw_fit.tf_u, ptw_fit.tf_f);
-  if !ptw_v.tv_ok {
-    println("editor: thumbnail refused — part '{name}' has no camera");
-    return ptw_out;
-  }
-  ptw_out += ["W:{idx};{mat_wire(ptw_v.tv_view)};{mat_wire(ptw_v.tv_proj)}"];
-  for ptw_b in ptw_bodies { ptw_out += [ptw_b]; }
-  println("editor: thumbnail '{name}' — {len(ptw_bodies)} meshes, "
-        + "{len(ptw_fit.tf_f)} vertices");
-  ptw_out
-}
 
 // ── THE CACHE, AND WHAT INVALIDATES IT (§C4, plan 18 `B5.3`) ─────────────────
 //
@@ -2657,7 +2386,7 @@ fn part_thumbs_all() -> vector<PartThumb> {
       pt_row:   pta_row,
       pt_mtime: part_version_mtime(pta_p),
       pt_size:  part_version_size(pta_p),
-      pt_wire:  part_thumb_wire(pta_row, pta_p),
+      pt_wire:  hex_mesh::part_thumb_wire(parts_root(), pta_row, pta_p),
     }];
     pta_i = pta_i + 1;
   }
@@ -2694,7 +2423,7 @@ fn thumbs_refresh(srv: Server, ts: &vector<PartThumb>) -> integer {
     // console full of one complaint, and a world load per second behind it.
     tr_t.pt_mtime = tr_m;
     tr_t.pt_size = tr_s;
-    tr_w = part_thumb_wire(tr_t.pt_row, tr_t.pt_name);
+    tr_w = hex_mesh::part_thumb_wire(parts_root(), tr_t.pt_row, tr_t.pt_name);
     if len(tr_w) == 0 {
       srv.broadcast("S:thumbnail '{tr_t.pt_name}' changed and could not be drawn");
       continue;
@@ -3110,10 +2839,10 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // eases either: a tripod that drifted into place would make two consecutive
   // `snap`s of one scene different pictures.
   if eye_at.pe_on {
-    return "C:{mat_wire(mat4_look_at(vec3(eye_at.pe_x, eye_at.pe_y, eye_at.pe_z),
+    return "C:{hex_mesh::mat_wire(mat4_look_at(vec3(eye_at.pe_x, eye_at.pe_y, eye_at.pe_z),
                                      vec3(cx, cyy + figure_wu() * 0.55, cz),
                                      vec3(0.0, 1.0, 0.0)))};"
-      + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
+      + "{hex_mesh::mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
   }
   // ── EYES: THE EYE *IS* THE HEAD, AND THE TARGET SWINGS WITH THE PITCH ──────
   //
@@ -3134,8 +2863,8 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
     // One convention, so a mode change is a swing rather than an inversion.
     eeye = vec3(eex, eey, eez);
     etgt = vec3(eex + cos(cyaw) * ekp, eey - esp, eez + sin(cyaw) * ekp);
-    return "C:{mat_wire(mat4_look_at(eeye, etgt, vec3(0.0, 1.0, 0.0)))};"
-      + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
+    return "C:{hex_mesh::mat_wire(mat4_look_at(eeye, etgt, vec3(0.0, 1.0, 0.0)))};"
+      + "{hex_mesh::mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
   }
   fh = figure_wu();
   ky = cos(cyaw); sy = sin(cyaw);
@@ -3177,8 +2906,8 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   if ey < floor_at_eye { ey = floor_at_eye; }
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
-  "C:{mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
-    + "{mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}"
+  "C:{hex_mesh::mat_wire(mat4_look_at(eye, tgt, vec3(0.0, 1.0, 0.0)))};"
+    + "{hex_mesh::mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}"
 }
 
 // The fade is centred on the CHARACTER, not the camera, because the culling is:
@@ -3515,11 +3244,11 @@ fn main() {
   arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
   body = body_mesh();
 
-  wire_body = "M:{PART_BODY};0;{mesh_wire(body, 0.80, 0.60, 0.45)}";
-  wire_leg_l = "M:{PART_LEG_L};0;{mesh_wire(leg, 0.80, 0.60, 0.45)}";
-  wire_leg_r = "M:{PART_LEG_R};0;{mesh_wire(leg, 0.80, 0.60, 0.45)}";
-  wire_arm_l = "M:{PART_ARM_L};0;{mesh_wire(arm, 0.80, 0.60, 0.45)}";
-  wire_arm_r = "M:{PART_ARM_R};0;{mesh_wire(arm, 0.80, 0.60, 0.45)}";
+  wire_body = "M:{PART_BODY};0;{hex_mesh::mesh_wire(body, 0.80, 0.60, 0.45)}";
+  wire_leg_l = "M:{PART_LEG_L};0;{hex_mesh::mesh_wire(leg, 0.80, 0.60, 0.45)}";
+  wire_leg_r = "M:{PART_LEG_R};0;{hex_mesh::mesh_wire(leg, 0.80, 0.60, 0.45)}";
+  wire_arm_l = "M:{PART_ARM_L};0;{hex_mesh::mesh_wire(arm, 0.80, 0.60, 0.45)}";
+  wire_arm_r = "M:{PART_ARM_R};0;{hex_mesh::mesh_wire(arm, 0.80, 0.60, 0.45)}";
   // The catalogue's thumbnails, meshed once for the same reason the figure is
   // (plan 18 `B5.2`). ⚠ AT STARTUP AND NOT ON CONNECT: a world load and four
   // chunks of geometry per part, paid once, not once per tab.
@@ -5213,7 +4942,7 @@ fn main() {
           xscale = 1.0;
           if in_part && W_UNIT != 0.0 { xscale = wld.w_unit / W_UNIT ?? 1.0; }
           if in_part {
-            for xps in part_body_meshes(wld) {
+            for xps in hex_mesh::part_body_meshes(wld) {
               xbase = len(xbm.vertices);
               for xv in xps.ps_mesh.vertices {
                 add_vertex(xbm, vertex(
@@ -5311,8 +5040,8 @@ fn main() {
               imid = IMPORT_BASE + n_imported;
               n_imported = n_imported + 1;
               iw = hex_to_world(ihx.ha_q, ihx.ha_r, itop);
-              srv.broadcast("M:{imid};0;{mesh_wire(gr.gr_mesh, 0.55, 0.45, 0.30)}");
-              srv.broadcast("T:{imid};{mat_wire(mat4_translate(iw.x, iw.y, iw.z))}");
+              srv.broadcast("M:{imid};0;{hex_mesh::mesh_wire(gr.gr_mesh, 0.55, 0.45, 0.30)}");
+              srv.broadcast("T:{imid};{hex_mesh::mat_wire(mat4_translate(iw.x, iw.y, iw.z))}");
               srv.send_to(ev.cid,
                 "S:imported {len(gr.gr_mesh.vertices)} vertices as mesh {imid} "
                 + "at {ihx.ha_q},{ihx.ha_r}");
@@ -6886,7 +6615,7 @@ fn main() {
                     + "({disp_lw.wl_code}) {disp_lw.wl_detail}");
               disp_unskinned = disp_unskinned + 1;
             } else {
-              disp_body = part_body_meshes(disp_lw.wl_world);
+              disp_body = hex_mesh::part_body_meshes(disp_lw.wl_world);
               if len(disp_body) == 0 {
                 // ⚠ SAID, NOT SWALLOWED. A limb with neither a mesh nor a cell is
                 // what `A3.1`'s *empty part* refusal already forbids on save, so
@@ -6899,7 +6628,7 @@ fn main() {
                 if disp_drawn < PART_MESH_MAX {
                   disp_bs = hex_mesh::surface_at(disp_pb.ps_surface);
                   srv.broadcast("M:{PART_MESH_BASE + disp_drawn};0;"
-                    + "{mesh_wire(posed_mesh(disp_pb.ps_mesh, disp_m), disp_bs.sf_r, disp_bs.sf_g, disp_bs.sf_b)}");
+                    + "{hex_mesh::mesh_wire(posed_mesh(disp_pb.ps_mesh, disp_m), disp_bs.sf_r, disp_bs.sf_g, disp_bs.sf_b)}");
                   disp_drawn = disp_drawn + 1;
                 }
               }
@@ -6913,9 +6642,9 @@ fn main() {
             println("editor: part display — '{disp_m.ma_mesh}' will not load "
                   + "({disp_gl.gr_code}) {disp_gl.gr_detail}");
           } else {
-            disp_ps = hex_mesh::surface_at(prop_surface());
+            disp_ps = hex_mesh::surface_at(hex_mesh::prop_surface());
             srv.broadcast("M:{PART_MESH_BASE + disp_drawn};0;"
-              + "{mesh_wire(posed_mesh(disp_gl.gr_mesh, disp_m), disp_ps.sf_r, disp_ps.sf_g, disp_ps.sf_b)}");
+              + "{hex_mesh::mesh_wire(posed_mesh(disp_gl.gr_mesh, disp_m), disp_ps.sf_r, disp_ps.sf_g, disp_ps.sf_b)}");
             disp_drawn = disp_drawn + 1;
           }
           }
@@ -7012,10 +6741,10 @@ fn main() {
           srv.broadcast("Q:{dc2.cx},{dc2.cz},{hex_mesh::mesh_crc(dm)}");
           // S4 — the ~1 MB of ASCII floats this line used to broadcast unconditionally.
           gn2 = send_ground(srv, clients,
-                  "M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{ground_ramp()};{mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
+                  "M:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{ground_ramp()};{hex_mesh::mesh_wire(dm, GRASS_R, GRASS_G, GRASS_B)}");
           if gn2 > 0 {
             send_ground(srv, clients,
-              "T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+              "T:{dc2.id * SURFACES + MESH_FIGURE_MAX + 1};{hex_mesh::mat_wire(mat4_identity())}");
           }
           g_sent = g_sent + gn2;
           g_held = g_held + (len(clients) - gn2);
@@ -7163,7 +6892,7 @@ fn main() {
               cmesh = hex_mesh::chunk_mesh_slot(cms, 0);
               srv.broadcast("Q:{scx},{scz},{hex_mesh::mesh_crc(cmesh)}");
               gn1 = send_ground(srv, clients,
-                      "M:{cid * SURFACES + MESH_FIGURE_MAX + 1};{ground_ramp()};{mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
+                      "M:{cid * SURFACES + MESH_FIGURE_MAX + 1};{ground_ramp()};{hex_mesh::mesh_wire(cmesh, GRASS_R, GRASS_G, GRASS_B)}");
               g_sent = g_sent + gn1;
               g_held = g_held + (len(clients) - gn1);
               // ⚠ THE SAME FUNCTION AS THE FLUSH, WHICH IT SAID IT WAS AND WAS NOT.
@@ -7175,7 +6904,7 @@ fn main() {
               // ⚠ THE GROUND'S PLACEMENT IS BROADCAST, not sent with its mesh. A
               // deriving client installs its OWN ground under this id and still
               // needs the transform; the mesh above is the one thing it is spared.
-              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 1};{mat_wire(mat4_identity())}");
+              srv.broadcast("T:{cid * SURFACES + MESH_FIGURE_MAX + 1};{hex_mesh::mat_wire(mat4_identity())}");
               added = added + 1;
             }
           }
@@ -7221,11 +6950,11 @@ fn main() {
       bmat = body_at(px, py, pz, yaw);
       hipz = hd * 0.42;
       shz = hd * 2.0 * 0.5 + hd * 0.16;
-      t_body = "T:{PART_BODY};{mat_wire(bmat)}";
-      t_leg_l = "T:{PART_LEG_L};{mat_wire(limb_at(bmat, 0.0, hip_wu(), 0.0 - hipz, swing))}";
-      t_leg_r = "T:{PART_LEG_R};{mat_wire(limb_at(bmat, 0.0, hip_wu(), hipz, 0.0 - swing))}";
-      t_arm_l = "T:{PART_ARM_L};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), 0.0 - shz, 0.0 - aswing))}";
-      t_arm_r = "T:{PART_ARM_R};{mat_wire(limb_at(bmat, 0.0, shoulder_wu(), shz, aswing))}";
+      t_body = "T:{PART_BODY};{hex_mesh::mat_wire(bmat)}";
+      t_leg_l = "T:{PART_LEG_L};{hex_mesh::mat_wire(limb_at(bmat, 0.0, hip_wu(), 0.0 - hipz, swing))}";
+      t_leg_r = "T:{PART_LEG_R};{hex_mesh::mat_wire(limb_at(bmat, 0.0, hip_wu(), hipz, 0.0 - swing))}";
+      t_arm_l = "T:{PART_ARM_L};{hex_mesh::mat_wire(limb_at(bmat, 0.0, shoulder_wu(), 0.0 - shz, 0.0 - aswing))}";
+      t_arm_r = "T:{PART_ARM_R};{hex_mesh::mat_wire(limb_at(bmat, 0.0, shoulder_wu(), shz, aswing))}";
       fogw = fog_wire(px, py, pz);
       // ⚠ A CLOSED TAB IS INVISIBLE TO THIS LOOP. `server`'s own docs say it:
       // disconnect events (kind 2) are "skipped internally", so `poll_event`

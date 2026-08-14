@@ -1924,8 +1924,14 @@ struct Swatch { sw_tex: integer }
 // its eave to the sampling grid; the same house at 66 filtered down keeps it.
 // The aspect must match the row's exactly or the projection stretches it, and
 // 66/48 is 22/16.
-const THUMB_W = 66;
-const THUMB_H = 48;
+//
+// ⚠ `THUMB_W`/`THUMB_H` ARE `hex_mesh`'s NOW — plan 22 `B2d`, and they were declared
+// in THREE places: here, in `src/editor_server.loft`, and nowhere that made them
+// equal. The server builds the PROJECTION from its pair and this file allocates the
+// TEXTURE from its own — so a drift between them is not a wrong number anywhere, it
+// is a picture stretched by the ratio of two constants nobody compared. `THUMB_AMB`
+// below stays local on purpose: the canonical LIGHT is the drawer's, and the server
+// has no opinion about it.
 // ⚠ CANONICAL LIGHT, NOT THE WORLD'S — and this is the one place the thumbnail
 // deliberately parts company with the swatch beside it. A swatch is re-rendered
 // with `st.amb`/`st.lamp` so it dims when the world does; a thumbnail is CACHED
@@ -2060,10 +2066,10 @@ fn render_thumb(st: Client, row: integer, fbo: integer) -> integer {
   // return a texture — an image that is uniformly "something", which passes any
   // "is it blank" test perfectly and shows the author nothing.
   if rt_n == 0 { return 0; }
-  rt_tex = graphics::gl_create_color_texture(THUMB_W, THUMB_H);
+  rt_tex = graphics::gl_create_color_texture(hex_mesh::THUMB_W, hex_mesh::THUMB_H);
   graphics::gl_framebuffer_texture(fbo, 0, rt_tex);
   graphics::gl_bind_framebuffer(fbo);
-  graphics::gl_viewport(0, 0, THUMB_W, THUMB_H);
+  graphics::gl_viewport(0, 0, hex_mesh::THUMB_W, hex_mesh::THUMB_H);
   // ⚠ DEPTH ON, AND THE FRAMEBUFFER HAS A BUFFER FOR IT. This is the opposite of
   // the swatch below and for the same reason the swatch turned it off: a flat
   // hexagon needs no depth and had no attachment, while a house is solid and
@@ -2172,7 +2178,7 @@ fn render_row_images(st: Client, items: vector<Entry>) -> vector<Swatch> {
   // only where something tests against it.
   fbo_sw = graphics::gl_create_framebuffer();
   fbo_tb = graphics::gl_create_framebuffer();
-  depth = graphics::gl_create_depth_texture(THUMB_W, THUMB_H);
+  depth = graphics::gl_create_depth_texture(hex_mesh::THUMB_W, hex_mesh::THUMB_H);
   graphics::gl_framebuffer_texture(fbo_tb, 1, depth);
   mat_n = 0;
   for it in items {
@@ -2532,8 +2538,39 @@ fn main() {
   // well as `list_dir`, and a page whose library is present but unreadable lists
   // NOTHING — indistinguishable from a demo shipped without one.
   local_cat = hex_mesh::catalogue_for(LOCAL_PARTS);
-  println("client: local library — {len(hex_mesh::part_availability(LOCAL_PARTS))} "
-          + "parts under '{LOCAL_PARTS}'");
+  local_avail = hex_mesh::part_availability(LOCAL_PARTS);
+  println("client: local library — {len(local_avail)} parts under '{LOCAL_PARTS}'");
+
+  // ── THE THUMBNAILS LOCAL MODE DRAWS — plan 22 `B2d` ────────────────────────
+  //
+  // ⚠ IT COMPOSES THE SAME `W:`/`Y:` BODIES THE SERVER SENDS AND FEEDS THEM TO THE
+  // SAME TWO HANDLERS. Encoding a mesh to text and parsing it straight back inside
+  // one process is waste, and it is deliberate: `add_thumb_cam`/`add_thumb_mesh`
+  // are this client's ONE path into its thumbnail store, and a local entry beside
+  // them is the fork this plan refuses everywhere else — `B1b.2c.4c`'s finding is
+  // that a second recipe for drawing something is how a surface comes to be in the
+  // world and missing from the catalogue.
+  //
+  // ⚠ AND THE ROW INDEX IS THE CATALOGUE'S, NOT THE PART'S. `N:` puts the materials
+  // first, so a thumbnail addressed by its place among the PARTS lands on `grass` —
+  // `part_thumbs_all` says the same thing on the server's side, and both take it
+  // from `surface_count()` rather than counting again.
+  //
+  // ⚠ ONCE, AT BOOT. A part changes when a person rewrites a file, which cannot
+  // happen to a page's baked base tree — so there is no `thumbs_refresh` here and
+  // no clock to hang one on.
+  local_thumbs = 0;
+  for lt_i in 0..len(local_avail) {
+    lt_row = hex_mesh::surface_count() + lt_i;
+    for lt_m in hex_mesh::part_thumb_wire(LOCAL_PARTS, lt_row,
+                                          (local_avail[lt_i] ?? hex_mesh::PartAvail {}).av_name) {
+      lt_body = lt_m[2..];
+      if lt_m[0..2] == "W:" { add_thumb_cam(st, lt_body); }
+      else { add_thumb_mesh(st, lt_body); local_thumbs = local_thumbs + 1; }
+    }
+  }
+  println("client: local thumbnails — {local_thumbs} meshes for "
+          + "{len(local_avail)} parts");
 
   // ⚠ NOT `if prog == 0 { fail }`, which is what the API's own doc says to write
   // ("Returns the program ID (0 on failure)"). In the browser `gl_create_shader`

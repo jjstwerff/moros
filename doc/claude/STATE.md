@@ -393,6 +393,40 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ THE DEMO'S CATALOGUE HAS PICTURES — and an argument that had expired, 2026-08-14
+
+**20 part thumbnails and 11 material swatches**, composed by the page from its own baked library:
+`local thumbnails — 49 meshes for 20 parts`, and `20 thumbnails rendered … 0 thumbnail meshes
+arrived, 49 held, 20 cameras`.
+
+⛔ **THE SERVER'S REASON FOR OWNING THIS HAD EXPIRED AND NOTHING NOTICED.** It argued that a client
+could not mesh a part because *"four of a chunk's nine surfaces come out of `chunk_mesh_props`,
+which lives in THIS file … a thumbnail that looked like a lawn."* **That stopped being true at
+`B1b.2c.3`** when the props mesher moved to `hex_mesh` — and the comment sat beside code that still
+worked, so nothing was red. ⚠ The other half is still load-bearing (*one projection path, not two*),
+which is why the camera fit moved WITH the meshing rather than being re-derived.
+
+⚠ **AND `THUMB_W`/`THUMB_H` WERE IN THREE PLACES** — server, client, and nothing making them equal.
+The server builds the PROJECTION from its pair and the client allocates the TEXTURE from its own, so
+a drift is **a picture stretched by the ratio of two constants nobody compared**. ⚠ `THUMB_AMB` stays
+in the client: the canonical LIGHT is the drawer's.
+
+⚠ **THE PAGE COMPOSES THE SAME WIRE RATHER THAN A SHORTCUT.** Encoding to text and parsing back in
+one process is waste and is the deliberate choice: `add_thumb_cam`/`add_thumb_mesh` are the client's
+ONE path into its thumbnail store. ✅ **And `arrived` is what says where they came from** — that
+counter belongs to the `Y:` handler, so a local page leaves it at **0** while `held` and `cameras`
+rise. `P3` asserts both; `DEMO_SABOTAGE=noparts` is red on `P1`/`P3` and green on `P2`.
+
+⛔ **TWO MECHANICAL LESSONS.** **Deleting by line offset is unsafe once earlier deletions have
+shifted the file** — the first attempt ate **`skin_check`**, unrelated to thumbnails; restored from
+git and redone BY NAME, touching only declarations and never adjacent comments. And **the compiler
+settled where the code lives**: a `thumb.loft` module cannot call `chunk_meshes_all`, because *"a
+`use` imports the used file's names into the file that used it, never the other way round"* — so it
+sits in `hex_mesh.loft` itself.
+
+⏭ **STILL MISSING: PLACING a part in local mode.** The catalogue can be seen and selected; the
+gesture that puts one in the world is next.
+
 ## ✅ THE DEMO CARRIES ITS PART LIBRARY — and a MODULE name is a namespace, 2026-08-14
 
 **`build-pages.mjs` bakes `data/parts/` to `/data/parts`** as a `globalThis.loftBaseFS` prelude — 23

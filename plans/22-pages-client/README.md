@@ -290,6 +290,54 @@ rather than the raw yaw.
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
 
+## ✅ What the thumbnails turned up (2026-08-14) — an argument that expired, and a constant in THREE places
+
+**The demo's catalogue has pictures.** 11 material swatches and **20 part thumbnails**, composed by
+the page from its own baked library: `local thumbnails — 49 meshes for 20 parts`, and
+`20 thumbnails rendered … 0 thumbnail meshes arrived, 49 held, 20 cameras`.
+
+⛔ **THE SERVER'S REASON FOR OWNING THIS HAD EXPIRED, AND NOTHING NOTICED.** It argued at length:
+*"THE SERVER MESHES AND THE CLIENT DRAWS … four of a chunk's nine surfaces come out of
+`chunk_mesh_props`, which lives in THIS file … A client meshing a part would draw its ground and
+its floor and no walls at all — a house with no house in it, and a thumbnail that looked like a
+lawn."* **That stopped being true at `B1b.2c.3`**, when the props mesher moved into `hex_mesh` —
+and the comment sat beside code that still worked, so nothing was red. ⚠ The *other* half is still
+load-bearing (*"a SECOND projection path to keep honest for a picture 22 pixels wide"*), which is
+why the camera fit moved WITH the meshing instead of being re-derived: there is still exactly one.
+
+⚠ **AND `THUMB_W`/`THUMB_H` WERE DECLARED IN THREE PLACES** — the server, the client, and nothing
+making them equal. The server builds the PROJECTION from its pair and the client allocates the
+TEXTURE from its own, so a drift is not a wrong number anywhere: **it is a picture stretched by the
+ratio of two constants nobody compared**. Both copies are gone. ⚠ `THUMB_AMB` stays in the client
+on purpose — the canonical LIGHT is the drawer's, and the server has no opinion about it.
+
+### The page composes the same wire rather than a shortcut
+
+Encoding a mesh to text and parsing it straight back inside one process is waste, and it is the
+deliberate choice: `add_thumb_cam`/`add_thumb_mesh` are the client's **one** path into its thumbnail
+store, and a local entry beside them is the fork this plan refuses everywhere. Twenty parts once at
+boot, not a per-frame cost.
+
+✅ **AND `arrived` IS THE HALF THAT SAYS WHERE THEY CAME FROM.** That counter belongs to the `Y:`
+wire handler, so a page composing its own leaves it at **0** while `held` (49) and `cameras` (20)
+rise. `P3` asserts both, and a non-zero would mean a server was answering a run that has none.
+
+### ⛔ Two mechanical lessons, both paid for in this move
+
+**Deleting by line offset is unsafe once other deletions have shifted the file.** The first attempt
+removed the cone by ranges computed up-front and silently ate **`skin_check`**, a function with
+nothing to do with thumbnails. Restored from git and redone **by name**, touching only each
+declaration and never the comments around it.
+
+**And the compiler settled where the code lives, better than reasoning would have.** A `thumb.loft`
+module could not call `chunk_meshes_all`: *"a `use` imports the used file's names into the file that
+used it, never the other way round. Move it into a file that BOTH `use`."* So the thumbnail sits in
+`hex_mesh.loft` itself, and the note says splitting it properly means moving the chunk mesher into a
+shared module — a restructure this step has no business starting.
+
+⏭ **WHAT IS STILL MISSING: PLACING a part in local mode.** The catalogue can now be seen and
+selected; the gesture that puts one in the world is the next step.
+
 ## ✅ What inlining `data/parts` turned up (2026-08-14) — a module name is a namespace
 
 **The demo carries its part library.** `build-pages.mjs` bakes `data/parts/` to `/data/parts` as a

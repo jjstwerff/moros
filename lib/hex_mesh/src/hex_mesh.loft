@@ -2837,3 +2837,421 @@ pub fn terrain_y(wx: float, wz: float, wld: VoxelWorld) -> float {
   }
   cw3.y
 }
+
+
+// ══ A PART'S THUMBNAIL — plan 22 `B2d`, moved from the server ═══════════════
+//
+// §C4's rule is that a catalogue image is RENDERED rather than loaded, because *a
+// stored image is a CLAIM about the thing and drifts silently the day the renderer
+// changes*. This is that rendering: the part's own meshes, a canonical
+// three-quarter camera fitted to what is actually on screen, and the `Y:`/`W:`
+// bodies a client draws from.
+//
+// ── ⚠ IT WAS THE SERVER'S, AND ONE OF ITS TWO REASONS EXPIRED ───────────────
+//
+// `src/editor_server.loft` argued the split at length: *"THE SERVER MESHES AND THE
+// CLIENT DRAWS … four of a chunk's nine surfaces come out of `chunk_mesh_props`,
+// which lives in THIS file and reads wall EDGES, roof cells, dressing and the
+// server's registries. A client meshing a part would draw its ground and its floor
+// and no walls at all — a house with no house in it, and a thumbnail that looked
+// like a lawn."*
+//
+// **That stopped being true at plan 22 `B1b.2c.3`**, when the props mesher moved
+// into this package — and nothing noticed, because the comment sat beside code that
+// still worked. The second reason (*"a SECOND projection path to keep honest for a
+// picture 22 pixels wide"*) is why the camera fit moved WITH the meshing rather than
+// being re-derived: there is still exactly one, it is just no longer the server's.
+//
+// ⚠ AND IT IS IN THIS FILE RATHER THAN A MODULE OF ITS OWN, WHICH THE COMPILER
+// DECIDED. `part_body_meshes` calls `chunk_meshes_all` and `chunk_mesh_slot`, both
+// declared here — and loft said exactly why a `thumb.loft` could not: *"a `use`
+// imports the used file's names into the file that used it, never the other way
+// round."* Splitting it properly means moving the chunk mesher into a module both
+// could use, which is a restructure this step has no business starting.
+//
+// ⚠ THE LIBRARY ROOT IS A PARAMETER. The server reads `data/parts/` off a disk; a
+// page reads its own baked base tree. `parts_root()` stays with the driver.
+//
+// ⚠ AND THE PAGE COMPOSES THE SAME WIRE RATHER THAN A SHORTCUT. Encoding a mesh to
+// text and parsing it straight back inside one process is waste, and it is the
+// deliberate choice: `add_thumb_mesh`/`add_thumb_cam` are the client's ONE path into
+// its thumbnail store, and a local entry beside them is the fork this plan refuses
+// everywhere else. Twenty parts once at boot, not a per-frame cost.
+
+// ── THE CANONICAL VIEW ──────────────────────────────────────────────────────
+//
+// ⚠ 66x48 IS 22x16 EXACTLY, and that ratio is the whole reason the numbers are
+// stated rather than derived: the projection is built from `THUMB_W / THUMB_H` and
+// the client blits into a 22x16 box, so a thumbnail rendered at any other aspect
+// arrives STRETCHED and looks like a modelling error.
+pub const THUMB_W = 66;
+pub const THUMB_H = 48;
+pub const THUMB_FOV = 0.6981317;     // 40 degrees, vertical
+pub const THUMB_AZ  = 0.7853982;     // 45 round — the "three-quarter" turn
+pub const THUMB_EL  = 0.5235988;     // 30 up — and its lift
+// A margin, so the extreme corner of the part is not sitting on the frame's rim.
+pub const THUMB_FILL = 1.10;
+
+// ── THE TWO WIRE ENCODERS ───────────────────────────────────────────────────
+//
+// ⚠ THEY CAME WITH THE THUMBNAIL BECAUSE IT COMPOSES `Y:` AND `W:`, and a second
+// spelling of either is a mesh that decodes to something else. `mesh_wire` is also
+// what the server's `M:` uses — one encoder, seventeen call sites there and this
+// one here, rather than the copy that would otherwise have appeared in the page.
+pub fn mesh_wire(wm: Mesh, wr: float, wg: float, wb: float) -> text {
+  fs = mesh_to_floats(wm);
+  out = "{wr},{wg},{wb};";
+  for wf in fs {
+    if wf#first { out += "{wf}"; } else { out += ",{wf}"; }
+  }
+  out
+}
+
+pub fn mat_wire(mw: Mat4) -> text {
+  out = "";
+  for mv in mw.m {
+    if mv#first { out += "{mv}"; } else { out += ",{mv}"; }
+  }
+  out
+}
+
+pub struct ThumbView { tv_view: Mat4, tv_proj: Mat4, tv_ok: boolean }
+
+// The canonical camera's own axes. ⚠ THEY DEPEND ON NOTHING BUT THE TWO ANGLES,
+// which is what makes measuring a part in them legitimate: the view is the same
+// for every part, so "how tall is this part on screen" is a question that can be
+// answered before a camera has been placed.
+pub struct ThumbAxes {
+  ax_rx: float, ax_ry: float, ax_rz: float,      // right
+  ax_ux: float, ax_uy: float, ax_uz: float,      // up
+  ax_fx: float, ax_fy: float, ax_fz: float,      // forward, centre -> eye NEGATED
+}
+
+pub fn thumb_axes() -> ThumbAxes {
+  // The unit vector from a part's centre to the eye — the canonical turn and
+  // lift, and the only place they are spelled out.
+  ta_ux = cos(THUMB_EL) * sin(THUMB_AZ);
+  ta_uy = sin(THUMB_EL);
+  ta_uz = cos(THUMB_EL) * cos(THUMB_AZ);
+  ta_fx = 0.0 - ta_ux;
+  ta_fy = 0.0 - ta_uy;
+  ta_fz = 0.0 - ta_uz;
+  // right = normalise(cross(forward, worldUp)); worldUp is (0,1,0) so the cross
+  // collapses to (-fz, 0, fx) — written out rather than called, it is two numbers.
+  ta_rl = sqrt(ta_fz * ta_fz + ta_fx * ta_fx) ?? 1.0;
+  if ta_rl < 0.0001 { ta_rl = 1.0; }
+  ta_rx = (0.0 - ta_fz) / ta_rl ?? 0.0;
+  ta_rz = ta_fx / ta_rl ?? 0.0;
+  ThumbAxes {
+    ax_rx: ta_rx, ax_ry: 0.0, ax_rz: ta_rz,
+    // up = cross(right, forward), with right.y == 0
+    ax_ux: 0.0 - ta_rz * ta_fy,
+    ax_uy: ta_rz * ta_fx - ta_rx * ta_fz,
+    ax_uz: ta_rx * ta_fy,
+    ax_fx: ta_fx, ax_fy: ta_fy, ax_fz: ta_fz,
+  }
+}
+
+// What a `.glb` body is drawn in. ⚠ FOUND BY NAME, NOT BY INDEX: the surface list
+// is ordered for the mesher's own slots and a literal 7 here would silently repaint
+// every statue the day a surface is inserted above it.
+//
+// ⚠ IT HANDS BACK AN INDEX RATHER THAN A `Surface`, AND THE REASON HAS CHANGED —
+// plan 19 `L1`. `Surface` used to be declared TWICE in this program's graph, by
+// `hex_voxel` and by `hex_mesh`, and a loft struct name is global to a
+// consumer, so the two had merged and `hex_voxel`'s won: writing the literal gave
+// five *"Unknown field `Surface.sf_r`"* errors with no mention of a collision, and
+// ⚠ **qualifying it as `Surface` did not help** — the return TYPE
+// was accepted and the constructor still resolved to the other struct.
+//
+// ✅ **FIXED 2026-08-06: `hex_voxel`'s is `SurfaceAt` now**, which follows this
+// tree's own convention for a derived positional record (`MeshAt`, `SocketAt`) and
+// reads as what it is — *the surface at this hex, under these feet*. `Surface` is
+// left to the palette entry, whose own header already says *"the surfaces the
+// mesher can emit"*. The literal compiles. ⚠ **The finding stands even though the
+// instance is gone**: grep `lib/`, the siblings and the registry before adding a
+// public name, because after the fact there is no way out short of a rename — and
+// a package suite cannot see it, since each package is green on its own.
+//
+// The index is kept anyway, because it was never only about the collision: the
+// caller reads the colour through `surface_at`, which is how every other line in
+// this file already does it.
+//
+// ⚠ AND `-1` IS LOUD IN BOTH DIRECTIONS. `surface_at` answers a black `?` for it,
+// so a palette that lost `frame` prints a line AND draws a statue the panel gate's
+// *no row darker than the well it sits in* check rejects. A silent grass-green
+// fallback would have been quieter and worse.
+pub fn prop_surface() -> integer {
+  ps_i = 0;
+  for ps_s in surfaces() {
+    if ps_s.sf_name == "frame" { return ps_i; }
+    ps_i = ps_i + 1;
+  }
+  println("editor: no 'frame' surface in the palette — a prop body has no colour");
+  0 - 1
+}
+
+// Every vertex of a body, measured in the camera's axes.
+//
+// ⚠ A STRUCT RATHER THAN THREE `&` VECTORS, and that is loft's shape rather than a
+// preference: field mutation propagates to the caller, a bare vector parameter is
+// a fight. It was one inline loop until plan 17 `A6.2` gave a part a SECOND kind
+// of body — and two copies of *fit the camera to these vertices* is exactly how the
+// glb body ends up framed by a rule the cell body no longer uses.
+pub struct ThumbFit { tf_r: vector<float> = [], tf_u: vector<float> = [], tf_f: vector<float> = [] }
+
+// ⚠ SIX FLOATS A VERTEX — position then normal, the stride `gl_upload_vertices` is
+// given on the other side. ⚠ `as float`: `mesh_to_floats` returns the GPU's 32-bit
+// `single` and loft will not widen it silently; the bounds are compared and
+// averaged, so they are kept in the wider type rather than the buffer's.
+pub fn thumb_take(fit: ThumbFit, fs: vector<single>, ax: ThumbAxes) {
+  tk_k = 0;
+  while tk_k + 5 < len(fs) {
+    tk_x = (fs[tk_k] ?? 0.0 as single) as float;
+    tk_y = (fs[tk_k + 1] ?? 0.0 as single) as float;
+    tk_z = (fs[tk_k + 2] ?? 0.0 as single) as float;
+    fit.tf_r += [tk_x * ax.ax_rx + tk_y * ax.ax_ry + tk_z * ax.ax_rz];
+    fit.tf_u += [tk_x * ax.ax_ux + tk_y * ax.ax_uy + tk_z * ax.ax_uz];
+    fit.tf_f += [tk_x * ax.ax_fx + tk_y * ax.ax_fy + tk_z * ax.ax_fz];
+    tk_k = tk_k + 6;
+  }
+}
+
+// The camera, SOLVED FROM THE VERTICES — the smallest distance at which every
+// one of them is inside the frame.
+//
+// ⚠ FOUR FITS WERE BUILT AND MEASURED, AND THE FIRST THREE ALL LOOKED RIGHT ON
+// PAPER. Against the same cottage, as a fraction of the thumbnail it fills:
+//
+//   bounding sphere        ~35%   most of a sphere over a squat roof is air
+//   bounding box           ~35%   *further away* than the sphere — no change at all
+//   box in camera axes      63%   the arithmetic checked out and the picture did not
+//   every vertex solved     the frame
+//
+// The third is the instructive one. Its rule is `d = hz + hy/t`: put the object
+// far enough that its topmost corner still fits WHEN that corner is also the
+// nearest one. That is exactly right for a box with all eight corners populated,
+// and a house is not one — its tall points are its roof and its near points are
+// its front wall, and they are not the same points. So the whole part gets pushed
+// back by a depth nothing occupies. Predicted 91%, measured 63%, and 63% is what
+// the formula actually asks for; the error was in believing the box stood for the
+// house. **Solve the constraint the picture is about**: for each vertex, the eye
+// can be no closer than `f - |u| / tan(fov/2)`, and the answer is the minimum.
+//
+// ⚠ AND THE MARGIN IS A NARROWER FRUSTUM, not a longer distance. Multiplying the
+// distance scales the part uniformly; narrowing the field leaves the same margin
+// on every side however the part is shaped.
+pub fn part_thumb_view(vr: vector<float>, vu: vector<float>, vf: vector<float>) -> ThumbView {
+  ptv_ax = thumb_axes();
+  ptv_n = len(vf);
+  if ptv_n == 0 { return ThumbView { tv_view: mat4_identity(), tv_proj: mat4_identity(), tv_ok: false }; }
+  ptv_minr = vr[0] ?? 0.0; ptv_maxr = ptv_minr;
+  ptv_minu = vu[0] ?? 0.0; ptv_maxu = ptv_minu;
+  ptv_minf = vf[0] ?? 0.0; ptv_maxf = ptv_minf;
+  for ptv_i in 0..ptv_n {
+    ptv_r = vr[ptv_i] ?? 0.0;
+    ptv_u = vu[ptv_i] ?? 0.0;
+    ptv_f = vf[ptv_i] ?? 0.0;
+    if ptv_r < ptv_minr { ptv_minr = ptv_r; }
+    if ptv_r > ptv_maxr { ptv_maxr = ptv_r; }
+    if ptv_u < ptv_minu { ptv_minu = ptv_u; }
+    if ptv_u > ptv_maxu { ptv_maxu = ptv_u; }
+    if ptv_f < ptv_minf { ptv_minf = ptv_f; }
+    if ptv_f > ptv_maxf { ptv_maxf = ptv_f; }
+  }
+  // What the camera aims at: the middle of the part as the camera sees it, so the
+  // margin left over is shared between opposite sides instead of all falling on one.
+  ptv_mr = (ptv_minr + ptv_maxr) * 0.5;
+  ptv_mu = (ptv_minu + ptv_maxu) * 0.5;
+  ptv_mf = (ptv_minf + ptv_maxf) * 0.5;
+
+  ptv_asp = (THUMB_W as float) / (THUMB_H as float) ?? 1.0;
+  // The margin, taken out of the frustum: a field this much narrower than the
+  // real one has to hold the part, so the real one holds it with room to spare.
+  ptv_t = tan(THUMB_FOV * 0.5) / THUMB_FILL ?? 0.3;
+  ptv_tx = ptv_t * ptv_asp;
+  // The eye's own forward coordinate. Every vertex says how close it may come;
+  // the nearest such bound wins.
+  ptv_e = ptv_minf - 1.0;
+  ptv_first = true;
+  for ptv_j in 0..ptv_n {
+    ptv_du = abs((vu[ptv_j] ?? 0.0) - ptv_mu);
+    ptv_dr = abs((vr[ptv_j] ?? 0.0) - ptv_mr);
+    ptv_lf = vf[ptv_j] ?? 0.0;
+    ptv_bu = ptv_lf - (ptv_du / ptv_t ?? 0.0);
+    ptv_br = ptv_lf - (ptv_dr / ptv_tx ?? 0.0);
+    ptv_b = if ptv_bu < ptv_br { ptv_bu } else { ptv_br };
+    if ptv_first || ptv_b < ptv_e { ptv_e = ptv_b; ptv_first = false; }
+  }
+  ptv_d = ptv_mf - ptv_e;
+  // A part with no extent at all — one flat cell seen edge-on — would put the eye
+  // inside it. It still gets a camera it can be seen from.
+  if ptv_d < 0.01 { ptv_d = 1.0; }
+
+  // The aim point and the eye, back in world space. The three axes are
+  // orthonormal, so a point is its coordinates times them — no inverse to get wrong.
+  ptv_cx = ptv_mr * ptv_ax.ax_rx + ptv_mu * ptv_ax.ax_ux + ptv_mf * ptv_ax.ax_fx;
+  ptv_cy = ptv_mr * ptv_ax.ax_ry + ptv_mu * ptv_ax.ax_uy + ptv_mf * ptv_ax.ax_fy;
+  ptv_cz = ptv_mr * ptv_ax.ax_rz + ptv_mu * ptv_ax.ax_uz + ptv_mf * ptv_ax.ax_fz;
+  ptv_eye = vec3(ptv_cx - ptv_d * ptv_ax.ax_fx,
+                 ptv_cy - ptv_d * ptv_ax.ax_fy,
+                 ptv_cz - ptv_d * ptv_ax.ax_fz);
+  // ⚠ THE PLANES ARE THE PART'S OWN DEPTHS, not a multiple of the distance. A
+  // near plane behind the front wall slices the house open, and a far plane short
+  // of the back one takes its far corner off — both of which read as a modelling
+  // fault rather than as a camera one.
+  ptv_near = (ptv_minf - ptv_e) * 0.9;
+  if ptv_near < 0.01 { ptv_near = 0.01; }
+  ThumbView {
+    tv_view: mat4_look_at(ptv_eye, vec3(ptv_cx, ptv_cy, ptv_cz), vec3(0.0, 1.0, 0.0)),
+    tv_proj: mat4_perspective(THUMB_FOV, ptv_asp, ptv_near, (ptv_maxf - ptv_e) * 1.1 + 0.1),
+    tv_ok:   true,
+  }
+}
+
+// One part's thumbnail, as the messages that carry it.
+//
+// ⚠ `W:` COMES LAST AND IS SENT FIRST. The camera is fitted to the vertices, so
+// it cannot be composed until every mesh has been built — and the client needs
+// it before it can render, so the caller puts it at the head. Emitting a camera
+// from the cell extent to get it out early is exactly the shortcut the comment on
+// `part_thumb_view` refuses.
+//
+// ⚠ AN EMPTY SURFACE IS SKIPPED, and that is safe HERE and nowhere near the
+// world. A world mesh id is a slot the client overwrites, so skipping one leaves
+// the previous chunk's triangles under it; a thumbnail is accumulated per part
+// from nothing, so an absent surface is an absent surface. Four chunks × nine
+// surfaces is 36 messages of which a cottage fills six.
+// ── A PART'S OWN CELLS, MESHED — plan 17 `A8.2` ─────────────────────────────
+//
+// One surface mesh per chunk per occupied surface, in the PART's own frame. Two
+// consumers want exactly this and they used to have one copy each in prospect: the
+// catalogue thumbnail, which frames it, and the display path, which POSES it on a
+// joint. A second copy is a second answer that can disagree with the first — and
+// disagree invisibly, since one draws a 212 px row and the other draws a door.
+//
+// ⚠ IT RETURNS THE MESHES RATHER THAN WIRING THEM, because the two callers differ
+// in every step after this one: the thumbnail accumulates a camera fit and speaks
+// `Y:`, the display path applies `mesh_swing` and a translate and speaks `M:`. What
+// they share is *which triangles a part's cells make*, and that is all this owns.
+//
+// ⚠ THE EMPTY SURFACES ARE DROPPED HERE. A part of four chunks offers 36 slots and
+// a cottage fills six; carrying the empties would make every caller test for them.
+pub struct PartSurf { ps_surface: integer, ps_mesh: Mesh }
+
+pub fn part_body_meshes(pbm_w: VoxelWorld) -> vector<PartSurf> {
+  pbm_out: vector<PartSurf> = [];
+  // A part has no wall runs, no roof plans, no leaves and no dressing of its own —
+  // those are the server's registries for the world being edited. Empty is the
+  // honest argument, and `chunk_mesh_props` already keeps the fallback paths it
+  // makes it take: walls draw as per-edge panels and a roof from its own cells.
+  pbm_runs = WallRuns { items: [] };
+  pbm_roofs = hex_editor::RoofPlans { items: [] };
+  pbm_leaves = hex_editor::DoorLeaves { items: [] };
+  pbm_open = hex_editor::Openings { items: [] };
+  pbm_annex = hex_editor::Annexes { items: [] };
+  pbm_awalls = WallRuns { items: [] };
+  pbm_props = hex_editor::Props { items: [] };
+  pbm_slabs = hex_editor::Slabs { items: [] };
+  pbm_holes = hex_editor::Holes { items: [] };
+  for pbm_ch in pbm_w.w_chunks {
+    pbm_ms = chunk_meshes_all(pbm_ch.ck_cx, pbm_ch.ck_cz, pbm_w, true,
+               pbm_runs, pbm_roofs, pbm_leaves, pbm_open, pbm_annex,
+               pbm_awalls, pbm_props, pbm_slabs, pbm_holes);
+    for pbm_si in 0..surface_count() {
+      pbm_m = chunk_mesh_slot(pbm_ms, pbm_si);
+      if len(mesh_to_floats(pbm_m)) < 6 { continue; }
+      pbm_out += [PartSurf { ps_surface: pbm_si, ps_mesh: pbm_m }];
+    }
+  }
+  pbm_out
+}
+
+pub fn part_thumb_wire(root: text, idx: integer, name: text) -> vector<text> {
+  ptw_out: vector<text> = [];
+  ptw_ld = world_load("{root}/{name}.hxw");
+  if ptw_ld.wl_code != WL_OK {
+    println("editor: thumbnail refused — part '{name}' ({ptw_ld.wl_code}) {ptw_ld.wl_detail}");
+    return ptw_out;
+  }
+  ptw_pw = ptw_ld.wl_world;
+  ptw_ax = thumb_axes();
+  // ⚠ EVERY VERTEX, IN THE CAMERA'S AXES — not a bounding box in the world's. See
+  // `part_thumb_view` for the three framings this replaced and the picture each
+  // of them produced. Kept rather than re-derived because the fit needs two
+  // passes: one to find the middle of what is on screen, one to find how close
+  // the eye may come to it.
+  ptw_fit = ThumbFit {};
+  ptw_bodies: vector<text> = [];
+  // ⚠ THE MESHING IS `part_body_meshes`, SHARED WITH THE DISPLAY PATH — `A8.2`.
+  // What stays here is what a thumbnail does with it and a joint does not: the
+  // camera fit, the ground's ramp, and the `Y:` wire.
+  for ptw_bm in part_body_meshes(ptw_pw) {
+    thumb_take(ptw_fit, mesh_to_floats(ptw_bm.ps_mesh), ptw_ax);
+    ptw_sf = surface_at(ptw_bm.ps_surface);
+    // The ground keeps the height ramp it is drawn with in the world, so a
+    // part's lawn is the same green as the lawn it will stand on.
+    ptw_ramp = "0";
+    if ptw_bm.ps_surface == 0 { ptw_ramp = "1"; }
+    ptw_bodies += ["Y:{idx};{ptw_ramp};"
+                   + "{mesh_wire(ptw_bm.ps_mesh, ptw_sf.sf_r, ptw_sf.sf_g, ptw_sf.sf_b)}"];
+  }
+  // ── §P5's OTHER BODY — plan 17 `A6.2` ──────────────────────────────────────
+  //
+  // ⚠ A PART MAY HAVE NO CELLS AT ALL, and until `A6.2` put one in the library
+  // that was a shape nothing here had met: `chunk_meshes_all` over a world with no
+  // chunks produces nothing, so a statue listed as a blank row with a *"meshed to
+  // nothing"* line in the log. A blank row is a picture of nothing, and the
+  // catalogue's own claim is that every row carries an image.
+  //
+  // ⚠ AND THIS IS `glb_read`'s FIRST CONSUMER THAT IS NOT A TEST. `A6.1` built the
+  // reader and `part_mesh_loads` was called by the suite and by `make parts` — this
+  // tree's *built and not called* trap, live. A thumbnail is the natural one.
+  //
+  // ⚠ THE TWO MESH TYPES ARE ONE TYPE. `chunk_mesh_slot` hands back `mesh3d::Mesh`
+  // and so does `glb_read`, so `mesh_wire` takes the `.glb` unchanged — no
+  // conversion, and no second encoder to drift. Both are `+Y` up (`thumb_axes`
+  // spells world-up as `(0,1,0)`, which is glTF's own), so nothing is turned.
+  ptw_ref = hex_part::part_mesh(ptw_pw);
+  if ptw_ref.pr_code == hex_part::MR_OK {
+    ptw_gl = load_glb(hex_part::mesh_file(root, ptw_ref.pr_name));
+    if ptw_gl.gr_code != GR_OK {
+      // ⚠ SAID, NOT SWALLOWED. A part naming a mesh that is absent or corrupt draws
+      // nothing, and *the row is blank* is not a diagnosis an author can act on.
+      println("editor: thumbnail — part '{name}' names mesh '{ptw_ref.pr_name}', which "
+            + "will not load ({ptw_gl.gr_code}) {ptw_gl.gr_detail}");
+    } else {
+      ptw_gf = mesh_to_floats(ptw_gl.gr_mesh);
+      thumb_take(ptw_fit, ptw_gf, ptw_ax);
+      // Stone, and the flat ramp — a prop is not ground, so it takes no height
+      // ramp the way surface 0 does.
+      //
+      // ⚠ IT REUSES `frame` RATHER THAN MINTING A SURFACE, and that is two
+      // decisions. A stone statue IS dressed stone, so it is honest; and
+      // `surface_count()` is the catalogue's material stride, so a tenth surface
+      // would add a tenth material row to a list whose count is gated (`nine
+      // materials, the mesher's own surfaces`). ⚠ Consequence, stated: a statue and
+      // a window surround are ONE bucket to every chromaticity gate. Nothing draws a
+      // statue in the world yet; when something does, separate them in the RENDERER
+      // and not in the classifier (STATE.md decision 12).
+      ptw_gs = surface_at(prop_surface());
+      ptw_bodies += ["Y:{idx};0;"
+                     + "{mesh_wire(ptw_gl.gr_mesh, ptw_gs.sf_r, ptw_gs.sf_g, ptw_gs.sf_b)}"];
+    }
+  }
+
+  if len(ptw_fit.tf_f) == 0 {
+    println("editor: thumbnail refused — part '{name}' meshed to nothing");
+    return ptw_out;
+  }
+  ptw_v = part_thumb_view(ptw_fit.tf_r, ptw_fit.tf_u, ptw_fit.tf_f);
+  if !ptw_v.tv_ok {
+    println("editor: thumbnail refused — part '{name}' has no camera");
+    return ptw_out;
+  }
+  ptw_out += ["W:{idx};{mat_wire(ptw_v.tv_view)};{mat_wire(ptw_v.tv_proj)}"];
+  for ptw_b in ptw_bodies { ptw_out += [ptw_b]; }
+  println("editor: thumbnail '{name}' — {len(ptw_bodies)} meshes, "
+        + "{len(ptw_fit.tf_f)} vertices");
+  ptw_out
+}
