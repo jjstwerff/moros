@@ -495,6 +495,21 @@ const MSG_EYE   = 48;
 // It is a step toward six keys becoming one verb, and it is the thing `S1` needed —
 // a selected profile's only possible consumer is the gesture that cuts one.
 const MSG_SELECT = 49;
+// ── `51:<name>` — WHICH PART THE NEXT `place` PUTS DOWN — plan 22 `B2f` ──────
+//
+// `49:`'s twin, one family over. `36:` cuts what `49:` chose; `32:` places what
+// this chose — and a bare `51:` clears it, so `place` builds the procedural house
+// again. CATALOGUE §C1's *what are you working on*, answered for the catalogue's
+// other half.
+//
+// ⚠ IT IS NOT `14:<roof>,<part>`, AND BOTH ARE KEPT ON PURPOSE. That message names
+// a part IN the placement, which is what a SCRIPT wants: one line that says exactly
+// what to build, replayable with no state behind it. This is what a PERSON wants:
+// choose once, then press the same key as always. The two end in the same
+// `part_place`, so they cannot build different things — what differs is who
+// remembers the name, and a script remembering it in the message is the whole
+// reason `tools/scripts/*.keys` can be diffed.
+const MSG_SELECT_PART = 51;
 // ── `50:<height>,<material>` — THE GROUND A SCENARIO STANDS ON — GROUND_DEFAULT `G7`
 //
 // *A world is an infinite plane of its ground default, and storage holds only what
@@ -5303,6 +5318,27 @@ fn main() {
                                    levelling, roading, tracing, sess.es_open_kind));
             println("editor: opening {sess.es_open_kind} selected");
           }
+        } else if ev.msg_id == MSG_SELECT_PART {
+          // ── WHAT THE NEXT `place` WILL PUT DOWN — plan 22 `B2f` ──────────────
+          //
+          // ⚠ THE CHOOSING IS `hex_editor::session_select_part`, INCLUDING THE
+          // REFUSAL — the same division `49:` keeps. The library owns what a part
+          // NAME may be (`part_name_ok`, the inverse of `part_list`); what stays
+          // here is the sentence and the subject line.
+          //
+          // ⚠ AND WHETHER THE FILE EXISTS IS NOT ASKED HERE, deliberately: that is
+          // the placing gesture's answer, because a name that is well-formed and
+          // absent must refuse when it is USED and not when it is picked — an
+          // author who mistypes learns it at the same moment either way, and this
+          // handler would otherwise need a second opinion about the library.
+          psel = hex_editor::session_select_part(sess, ev.payload.trim());
+          if !psel.ak_ok {
+            srv.send_to(ev.cid, "S:part refused — {psel.ak_why}");
+            println("editor: part refused — {psel.ak_why}");
+          } else {
+            srv.send_to(ev.cid, "S:{psel.ak_why}");
+            println("editor: {psel.ak_why}");
+          }
         } else if ev.msg_id == MSG_EYE {
           // ── STAND THE EYE THERE AND LOOK BACK — plan 22, `48:` ──────────────
           //
@@ -5613,8 +5649,12 @@ fn main() {
           // — the client decided what `H` meant before it sent anything — which is the
           // same split the verb layer makes explicit: the key is resolved where the
           // keyboard is, and the verb travels.
+          // ⚠ AND THE LIBRARY ROOT IS PASSED — plan 22 `B2f`. `place` puts down what
+          // `51:` chose, and this is the only thing that lets it: without a root the
+          // gesture refuses a chosen part rather than reading one. The page passes
+          // its own baked tree at the same call.
           hack = hex_editor::press_verb(sess, wld, hex_editor::author_at(px, pz, yaw, py),
-                                        hex_editor::VB_PLACE);
+                                        hex_editor::VB_PLACE, parts_root());
           if !hack.ak_ok {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");

@@ -290,6 +290,45 @@ rather than the raw yaw.
 [EDITING_MODES](../../doc/claude/EDITING_MODES.md) question about what a verb means, not a walk
 question, and changing it here would have moved `probe-b1a`'s baseline under a step about turning.
 
+## ✅ What attached-mode placing turned up (2026-08-14) — the wrong message, and both were "about a part"
+
+**`51:<name>` chooses, `32:` places what was chosen.** Driven against a live server: the client
+cycled the catalogue **the server sent it**, and the server logged
+`part 'door/doorway' chosen` then `placed 'door/doorway' — 9 cells at (0,0)`. The asymmetry
+`B2e` recorded is closed.
+
+⛔ **AND THE CLIENT WAS SENDING `44:`, WHICH IS PART *MODE*.** `B2e` wired the choosing key's
+attached branch to `44:` on the assumption that it was the placement message — it OPENS A PART FOR
+EDITING, so pressing the key against a real server would have swapped the author's whole world for
+a door. ⚠ **Nothing could have gone red**: the client had no attached path to exercise before this
+step, and both ids are honestly described as *a message about a part*. Found by reading the
+server's id table, which is the only instrument that could have.
+
+⚠ **AND `MSG_HOUSE` NEEDED ONE ARGUMENT, NOT A HANDLER.** The server's `place` already went through
+`press_verb` (`V2a`), so the whole of attached placing was: pass `parts_root()`. Without it the
+gesture refuses a chosen part with *"this driver has no part library"* — which is the defaulted
+root doing exactly what it was built to do, in the one place that would otherwise have failed
+silently.
+
+### `51:` and `14:<roof>,<part>` are both kept, for different callers
+
+| | |
+|---|---|
+| `14:<roof>,<part>` | names the part **in the placement** — what a SCRIPT wants: one line saying exactly what to build, replayable with no state behind it. It is why `tools/scripts/*.keys` can be diffed |
+| `51:<name>` then `32:` | choose once, then press the same key as always — what a PERSON wants, and `49:`/`36:`'s shape one family over |
+
+**Both end in the same `part_place`**, so they cannot build different things; what differs is who
+remembers the name.
+
+### ⚠ And the cycling reads ONE list, whichever authority filled it
+
+`part_names_of(st.mats)` takes the part rows out of the catalogue STRING — which local mode
+composes and the server sends as `N:` — so the rows the panel draws and the order the key cycles
+are the same list by construction. ⚠ The page's own `part_names` vector is gone: it was a second
+copy of the same thing, which is what this plan spends its time removing. **Measured in the served
+run**: the page reported `local library — 0 parts` (an http-served page has no baked base tree, so
+that is correct) and cycled to `door/doorway` anyway, off the server's catalogue.
+
 ## ✅ What placing turned up (2026-08-14) — no selection existed anywhere
 
 **The demo can choose a part and place it.** `k` steps through the catalogue, `h` puts the chosen

@@ -503,7 +503,6 @@ struct Client {
   // Which catalogue row is chosen, 0 for none — plan 22 `B2e`. The NAME lives in
   // the session; this is the driver's place in its own list.
   part_pick: integer,
-  part_names: vector<text>,
   was_part: boolean,
   tick_begun: boolean,
   // ── The page's own collision proxy (plan 22 `B1c.2c`) ──────────────────────
@@ -1736,23 +1735,35 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // one to. So this wires the half that is reachable, and the other half needs the
   // server to gain `es_part` and a message to set it. ⚠ Said rather than left for a
   // reader to discover from silence.
+  // ⚠ ONE LIST, WHICHEVER AUTHORITY FILLED IT — plan 22 `B2f`. The names come from
+  // `st.mats`, the catalogue string, which local mode composes and the server sends
+  // as `N:` — so cycling reads the same rows the panel draws and cannot come to
+  // disagree with them. The page's own `part_names` is gone: it was a second list of
+  // the same thing, which is what this plan spends its time removing.
   kpart = graphics::gl_key_pressed(KEY_PART);
   if kpart && !st.was_part {
+    pnames = part_names_of(st.mats);
+    st.part_pick = st.part_pick + 1;
+    if st.part_pick > len(pnames) { st.part_pick = 0; }
+    pick = "";
+    if st.part_pick > 0 { pick = pnames[st.part_pick - 1] ?? ""; }
+    // ⚠ THE INDEX IS THE DRIVER'S AND THE NAME IS THE SESSION'S — here and on the
+    // server alike. Cycling needs the LIST, which belongs to whoever holds the
+    // catalogue; the gesture needs only the chosen name. One past the end clears
+    // it, so `h` goes back to building the procedural house: the way out is the
+    // same key.
     if st.local {
-      // ⚠ THE INDEX IS THE DRIVER'S AND THE NAME IS THE SESSION'S. Cycling needs the
-      // LIST, which belongs to whoever read the library; the gesture needs only the
-      // chosen name. One past the end clears the choice, so `h` goes back to
-      // building the procedural house — the way out is the same key.
-      st.part_pick = st.part_pick + 1;
-      if st.part_pick > len(st.part_names) { st.part_pick = 0; }
-      pick = "";
-      if st.part_pick > 0 { pick = st.part_names[st.part_pick - 1] ?? ""; }
       psel = hex_editor::session_select_part(sess, pick);
       if !psel.ak_ok { println("client: local part refused — {psel.ak_why}"); }
       else { println("client: local {psel.ak_why}"); }
       st.panel_dirty = true;
     } else {
-      wire(h, st, "44:");
+      // ⚠ `51:`, NOT `44:`. `44:` is part MODE — it opens a part for EDITING — and
+      // sending it here would have swapped the author's whole world for a door
+      // instead of choosing one to place. Caught by reading the server's id table
+      // rather than by anything going red: both are "a message about a part", and
+      // the wrong one is a plausible-looking editor doing something drastic.
+      wire(h, st, "51:{pick}");
     }
   }
   st.was_part = kpart;
@@ -2433,6 +2444,18 @@ fn split_on(s: text, sep: text) -> vector<text> {
 // so ONE list can carry both families (§C3). A row with too few fields is
 // SKIPPED rather than guessed at: a catalogue that invents a name from a
 // truncated row offers the author something that is not there.
+// The part rows of a catalogue string, in the order the panel shows them — plan 22
+// `B2f`. ⚠ It reuses `parse_entries` rather than scanning the string again: the
+// panel's rows and the cycling order are the same list by construction, so a part
+// cannot be shown in one place and skipped in the other.
+fn part_names_of(mats: text) -> vector<text> {
+  out: vector<text> = [];
+  for e in parse_entries(mats) {
+    if e.en_kind == hex_mesh::KIND_PART { out += [e.en_label]; }
+  }
+  out
+}
+
 fn parse_entries(s: text) -> vector<Entry> {
   out: vector<Entry> = [];
   for row in split_on(s, ";") {
@@ -2528,7 +2551,7 @@ fn main() {
     coll_rt: hex_way::track_new(),
     tick_begun: false, coll_have: false, coll_q: 0, coll_r: 0, coll_tau: 0 - 1,
     coll_surf: 0, walked: 0.0, py: 0.0, vy: 0.0, fell: 0,
-    part_pick: 0, part_names: [], was_part: false,
+    part_pick: 0, was_part: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
@@ -2581,7 +2604,6 @@ fn main() {
   local_cat = hex_mesh::catalogue_for(LOCAL_PARTS);
   local_avail = hex_mesh::part_availability(LOCAL_PARTS);
   println("client: local library — {len(local_avail)} parts under '{LOCAL_PARTS}'");
-  for la in local_avail { st.part_names += [la.av_name]; }
 
   // ── THE THUMBNAILS LOCAL MODE DRAWS — plan 22 `B2d` ────────────────────────
   //

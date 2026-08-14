@@ -393,6 +393,29 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ ATTACHED MODE PLACES A PART — and the client was sending the wrong message, 2026-08-14
+
+**`51:<name>` chooses, `32:` places what was chosen.** Against a live server: `part 'door/doorway'
+chosen`, then `placed 'door/doorway' — 9 cells at (0,0)`. `B2e`'s recorded asymmetry is closed.
+
+⛔ **THE CLIENT WAS SENDING `44:`, WHICH IS PART *MODE*.** `B2e` wired the choosing key's attached
+branch to it on the assumption that it placed a part — it OPENS A PART FOR EDITING, so the key would
+have swapped the author's whole world for a door. ⚠ **Nothing could have gone red**: there was no
+attached path to exercise, and both ids are honestly *a message about a part*. Found by reading the
+server's id table.
+
+⚠ **AND `MSG_HOUSE` NEEDED ONE ARGUMENT, NOT A HANDLER**: it already went through `press_verb`
+(`V2a`), so attached placing was `parts_root()` passed at one call. Without it the gesture refuses
+with *"this driver has no part library"* — the defaulted root doing exactly what it was built for.
+
+⚠ **`51:` AND `14:<roof>,<part>` ARE BOTH KEPT.** `14:` names the part IN the placement, which is
+what a SCRIPT wants (one replayable line, and why `*.keys` can be diffed); `51:` is choose-once,
+which is what a PERSON wants. Both end in the same `part_place`.
+
+⚠ **AND CYCLING READS ONE LIST**: `part_names_of(st.mats)` takes the part rows out of the catalogue
+string, which local mode composes and the server sends — so the panel's rows and the cycling order
+are the same list by construction. The page's own `part_names` vector is gone.
+
 ## ✅ THE DEMO PLACES A PART — and no SELECTION existed anywhere, 2026-08-14
 
 **`k` steps the catalogue, `h` places the chosen part instead of the procedural house.**
