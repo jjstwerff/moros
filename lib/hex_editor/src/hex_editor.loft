@@ -35,6 +35,10 @@ use names;
 use session;
 // The sentences the editor says — plan: the wire becomes transport.
 use say;
+// The definition layer as data — plan 22 `M1`. ⚠ IT KNOWS NO VERB NAMES, which is why
+// the arrow points this way: `keymap.loft` is the mechanism and `keymap_default` below
+// is the only place the default LAYOUT is written, beside the `VB_*` it names.
+use keymap;
 // ⚠ AFTER `gesture`, because it takes an `Author`. What a HELD key means, how fast
 // it turns you and how big one step is — plan 22 `B1c`. Those three lived in
 // `src/editor_server.loft` alone, which is why a page with the same keyboard and
@@ -1219,6 +1223,80 @@ pub fn verb_of(key: text) -> text {
   if key == "B" { return VB_STOREY; }
   if key == "C" { return VB_CELLAR; }
   VB_NONE
+}
+
+// ── …AND THE SAME DEFINITION AS DATA — plan 22 `M1` ─────────────────────────
+//
+// **The default layout, which `keymap_default` is the only place to read it.** The
+// mechanism — the table, the lookup, the rebind — is `keymap.loft`, which knows no
+// verb names at all; this is where the two meet, because `VB_*` lives here beside
+// `press_verb` and a `use` goes one way.
+//
+// ⚠ **AND `verb_of` ABOVE IS KEPT AS AN INDEPENDENT BODY, FOR EXACTLY AS LONG AS IT
+// TAKES TO PROVE THIS ONE.** Writing `verb_of(k) = verb_in(keymap_default(), k)` today
+// would make the equality a tautology — a table checked against the table, which
+// cannot be surprised. That is `V1`'s lesson at the layer below, and `press(key)` was
+// deleted the same way: two bodies, an exhaustive comparison, then one deletion.
+// `lib/hex_editor/tests/keymap.loft` drives **the whole key universe** through both.
+//
+// ⚠ **THE ORDER IS THE ONE A BAR DRAWS IN**, so it is grouped by what an author is
+// doing rather than by the alphabet: the ground, then what stands on it, then what is
+// cut into that, then the storeys. It is the only thing in this table a person reads
+// as a sequence, and `keymap_verbs` hands it out unchanged.
+//
+// ⚠ **SIX KEYS BECAME ONE ROW, AND THAT IS `S3`'s COLLAPSE ARRIVING HERE.** `O P I U
+// N M` all named `opening`, and the profile they carried comes from the selection —
+// so the definition has ONE opening row and the other five keys are simply free. A
+// definition that still listed six would be the key table growing with the CONTENT,
+// which is the tell that a selection is missing.
+pub fn keymap_default() -> KeyMap {
+  keymap_of([
+    bind_of("ArrowUp",   VB_RAISE),
+    bind_of("ArrowDown", VB_LOWER),
+    bind_of("F", VB_FENCE),
+    bind_of("G", VB_WALL),
+    bind_of("R", VB_RUN),
+    bind_of("H", VB_PLACE),
+    bind_of("O", VB_OPENING),
+    bind_of("Y", VB_SEAT),
+    bind_of("J", VB_ANNEX),
+    bind_of("E", VB_STAIR_UP),
+    bind_of("Q", VB_STAIR_DOWN),
+    bind_of("X", VB_SLAB),
+    bind_of("Z", VB_HOLE),
+    bind_of("B", VB_STOREY),
+    bind_of("C", VB_CELLAR),
+  ])
+}
+
+// A short label for a verb, for a bar that has a slot's width and not a line's.
+//
+// ⚠ **IT IS NOT THE VERB NAME TRUNCATED, AND THAT IS THE WHOLE POINT.** `stair_up`
+// and `stair_down` share their first five characters, so a truncating bar draws two
+// identical slots — the failure a hotkey glyph already had in `client_panel_spec`,
+// where "drag" cut to "d" and read as *press d*. A blank is honest where a truncation
+// invents an instruction, and a chosen short name is better than either.
+//
+// ⚠ **AND IT DEFAULTS TO THE VERB ITSELF RATHER THAN TO EMPTY.** A verb this table
+// has not been taught draws under its own name — long, and correct — where a blank
+// would read as a slot that does nothing.
+pub fn verb_short(verb: text) -> text {
+  if verb == VB_RAISE      { return "rise"; }
+  if verb == VB_LOWER      { return "sink"; }
+  if verb == VB_PLACE      { return "hous"; }
+  if verb == VB_OPENING    { return "door"; }
+  if verb == VB_FENCE      { return "fenc"; }
+  if verb == VB_WALL       { return "wall"; }
+  if verb == VB_RUN        { return "run"; }
+  if verb == VB_SEAT       { return "seat"; }
+  if verb == VB_ANNEX      { return "anex"; }
+  if verb == VB_STAIR_UP   { return "st+"; }
+  if verb == VB_STAIR_DOWN { return "st-"; }
+  if verb == VB_SLAB       { return "slab"; }
+  if verb == VB_HOLE       { return "hole"; }
+  if verb == VB_STOREY     { return "flr+"; }
+  if verb == VB_CELLAR     { return "flr-"; }
+  verb
 }
 
 // The FLEXIBLE layer — what a verb does, here, with what is chosen.

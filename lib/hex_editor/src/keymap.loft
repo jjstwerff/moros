@@ -1,0 +1,301 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE KEYBOARD IS THE PERSON'S — the definition layer, as DATA.
+//
+// ⚠ **WHY THIS EXISTS: *what key means what* IS ASSERTED IN FOUR PLACES AND ONE OF
+// THEM IS VISIBLY WRONG ON SCREEN.** Counted 2026-08-15, and the last row is what
+// turns this from tidiness into a defect:
+//
+//   1. `hex_editor::verb_of` — an `if` chain, and the authority
+//   2. `editor_client.loft`'s `KEY_*` constants — a physical code per key
+//   3. …and the poll block beside them, which spells the SAME key again as a string:
+//      `gl_key_pressed(KEY_STOREY_UP)` then `verb_of("B")`. The file's own comment
+//      admits it — *"the key is spelled twice here … a mismatch here is the last
+//      place this step could hide one"*
+//   4. `client_panel_spec`'s toolbar, which draws a hotkey GLYPH per button as a
+//      literal. ⛔ **Three of its five are wrong**: it shows `e` beside *Stencil*
+//      where `e` is `stair_up`, `c` beside *Cart* where `c` is `cellar`, and `f`
+//      beside *Field* where `f` is `fence`. Nobody noticed, because a literal glyph
+//      is connected to nothing that could disagree with it.
+//
+// > **THE INVARIANT: a key is resolved to a verb exactly ONCE, where the keyboard is,
+// > out of a table the person owns — and nothing downstream can tell which key was
+// > pressed.**
+//
+// The second clause is what makes rebinding free, and it is already true of
+// everything below the resolution: the wire carries the verb
+// ([EDITING_MODES](../../../doc/claude/EDITING_MODES.md)), `tools/scripts/*.keys`
+// says `verb <name>` for every gesture since plan 22 `K3`, and `press_verb` never
+// sees a key. **The scripts had to be converted first, and they now are** — a
+// recording written in keystrokes would replay differently for two people.
+//
+// ⚠ **A KEY IS A LOCAL PREFERENCE AND A VERB IS A PUBLISHED NAME.** Renaming a verb
+// breaks every recording in `tools/scripts/`; rebinding a key breaks nothing at all.
+//
+// ── ⚠ WHAT THIS FILE DELIBERATELY DOES NOT KNOW ────────────────────────────
+//
+// **Which verbs exist.** There is no `VB_*` in here and no default layout: those live
+// in `hex_editor.loft` beside `press_verb`, which is the authority on what a verb
+// DOES. This file is the mechanism — a table, a lookup, a rebind — and it would serve
+// a different editor with a different vocabulary unchanged. That is `lavition_ui`'s
+// rule one layer down: *this file knows nothing about what it is showing.*
+//
+// ⚠ **AND `""` IS THE UNBOUND VERB, WHICH THE ROOT MODULE CALLS `VB_NONE`.** It cannot
+// be named here — `hex_editor.loft` `use`s this one and a `use` goes one way — so the
+// equality is a TEST rather than a comment claiming it, exactly as `SLAB_PAD` is
+// pinned to `HOUSE_W + HOUSE_D + 4`.
+
+// ── ONE BINDING ─────────────────────────────────────────────────────────────
+//
+// ⚠ **TWO SPELLINGS OF ONE KEY, AND THAT IS NOT THE DUPLICATION ABOVE.** `kb_key` is
+// the key's NAME — what `tools/scripts/*.keys` writes, what a person reads in a
+// binding list, what `verb_of` has always taken. `kb_code` is what the HARDWARE
+// reports. They are two facts about one key and the second is DERIVED from the first
+// by `key_code_of`, so a binding cannot carry a name and a code that disagree unless
+// somebody builds one by hand.
+//
+// ⚠ AND THE CODE IS CARRIED RATHER THAN DERIVED AT EVERY POLL, because a GL client
+// asks `gl_key_pressed(code)` once per binding per frame; a lookup by name there
+// would put a string compare in the input loop.
+pub struct KeyBind {
+  kb_key:  text,        // "B", "ArrowUp", "Tab" — the name every driver shares
+  kb_code: integer,     // the same key as `gl_key_pressed` takes; 0 = no code
+  kb_verb: text,        // the verb it names
+}
+
+// The whole definition, in the order it is shown.
+//
+// ⚠ **A VECTOR AND NOT A MAP, BECAUSE THE ORDER IS PART OF THE ANSWER.** This is what
+// a binding list and a verb bar are drawn from, and *which verb sits where* must not
+// depend on a hash. It is short by construction — one row per verb a person can press
+// — so a linear scan is the right shape as well as the honest one.
+pub struct KeyMap { km_items: vector<KeyBind> }
+
+// ── NAMES AND CODES ─────────────────────────────────────────────────────────
+//
+// ⚠ **THIS IS HARDWARE, NOT PREFERENCE, WHICH IS WHY IT IS A FUNCTION AND NOT A TABLE
+// A PERSON EDITS.** Which byte the keyboard sends for `b` is not something anyone
+// gets to choose; which VERB `b` names is the only choice this file carries.
+//
+// The code space is `graphics`': lowercase ASCII for letters, `48`–`57` for digits,
+// `128`–`131` for the arrows, and the named keys the editor already uses. ⚠ `Tab` IS
+// 9 AND IT IS NOT DECORATION — the catalogue cycles on it, and punctuation is
+// unreachable to the page at all (the browser bridge's `mapKey` answers 0 for
+// anything that is not `Key*`, `Digit*` or one of eight names), which is what made
+// `Tab` the choice at plan 22 `K3`.
+pub const KEY_NONE = 0;
+
+const UPPERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const LOWERS = "abcdefghijklmnopqrstuvwxyz";
+const DIGITS = "0123456789";
+
+pub fn key_code_of(name: text) -> integer {
+  if name == "ArrowUp"    { return 128; }
+  if name == "ArrowDown"  { return 129; }
+  if name == "ArrowLeft"  { return 130; }
+  if name == "ArrowRight" { return 131; }
+  if name == "Tab"        { return 9; }
+  if name == "Space"      { return 32; }
+  if name == "Escape"     { return 27; }
+  // ⚠ THE LENGTH TEST COMES FIRST. Without it `"ArrowUp"` falls through to the letter
+  // branch on its own first character and answers the code for `A` — a binding that
+  // works, points at the wrong key, and never says so.
+  if len(name) != 1 { return KEY_NONE; }
+  for i in 0..26 {
+    // Letters are NAMED in upper case (a script says `key B`) and PRESSED in lower.
+    // The definition is about which key, not about a shift state.
+    if name == UPPERS[i..i + 1] || name == LOWERS[i..i + 1] { return 97 + i; }
+  }
+  for d in 0..10 {
+    if name == DIGITS[d..d + 1] { return 48 + d; }
+  }
+  KEY_NONE
+}
+
+// …and back, for a driver that has only what the hardware sent.
+pub fn key_name_of(code: integer) -> text {
+  if code == 128 { return "ArrowUp"; }
+  if code == 129 { return "ArrowDown"; }
+  if code == 130 { return "ArrowLeft"; }
+  if code == 131 { return "ArrowRight"; }
+  if code == 9   { return "Tab"; }
+  if code == 32  { return "Space"; }
+  if code == 27  { return "Escape"; }
+  if code >= 97 && code <= 122 { return UPPERS[code - 97..code - 96]; }
+  if code >= 48 && code <= 57  { return DIGITS[code - 48..code - 47]; }
+  ""
+}
+
+// A key's name, short enough for a slot.
+//
+// ⛔ **THE ROW THAT CAUGHT THIS WAS A FIXTURE THAT COULD NOT FAIL.** The verb bar's
+// layout suite used a one-character key for all fifteen of its slots, so *the glyph
+// fits its box* passed with nothing to fit — and the first real run drew
+// `ArrowUp:raise`, a seven-character name in a 34px slot at an 8px advance. Fifty-six
+// pixels of text in thirty-four. **A fixture easier than the thing it stands for is
+// how a picture claim goes green while the picture is wrong.**
+//
+// ⚠ **AND IT IS A SEPARATE FUNCTION RATHER THAN TRUNCATION, FOR `verb_short`'s
+// REASON.** `ArrowUp` and `ArrowDown` share their first five characters, so a bar that
+// truncated would draw two identical glyphs on two different keys — the failure the
+// panel's hotkey column already shipped once, where "drag" cut to "d" and read as
+// *press d*. ⚠ The bar truncates too, as a backstop; this is what stops it mattering.
+//
+// ⚠ ASCII, NOT ARROWS. `↑` reads better and the editor's font is a bitmap atlas built
+// from the ASCII range — a glyph it has no cell for draws as nothing at all, which is
+// the blank a rebind is supposed to mean.
+pub fn key_glyph(name: text) -> text {
+  if name == "ArrowUp"    { return "Up"; }
+  if name == "ArrowDown"  { return "Dn"; }
+  if name == "ArrowLeft"  { return "Lt"; }
+  if name == "ArrowRight" { return "Rt"; }
+  if name == "Space"      { return "Spc"; }
+  if name == "Escape"     { return "Esc"; }
+  name
+}
+
+// One row, with its code derived rather than written twice.
+pub fn bind_of(key: text, verb: text) -> KeyBind {
+  KeyBind { kb_key: key, kb_code: key_code_of(key), kb_verb: verb }
+}
+
+pub fn keymap_of(items: vector<KeyBind>) -> KeyMap { KeyMap { km_items: items } }
+
+// ── ASKING THE MAP ──────────────────────────────────────────────────────────
+
+// What this key names here. `""` — the root module's `VB_NONE` — is *nothing is bound
+// to it*: a walk key, a camera key, or a key nobody has used yet.
+pub fn verb_in(m: KeyMap, key: text) -> text {
+  if key == "" { return ""; }
+  for b in m.km_items { if b.kb_key == key { return b.kb_verb; } }
+  ""
+}
+
+// …and the same question from a driver that has a hardware code.
+//
+// ⚠ **IT IS NOT `verb_in(m, key_name_of(code))`, AND THE DIFFERENCE IS REAL.** A code
+// outside the named keys, the letters and the digits round-trips to `""`, which would
+// then match an UNBOUND row — every rebind leaves one behind. Asking the code
+// directly cannot do that, and the unbound rows carry `KEY_NONE` so they cannot be
+// hit by a real press either.
+pub fn verb_at_code(m: KeyMap, code: integer) -> text {
+  if code == KEY_NONE { return ""; }
+  for b in m.km_items { if b.kb_code == code { return b.kb_verb; } }
+  ""
+}
+
+// Which key reaches this verb, for a bar or a binding list to draw. `""` means the
+// verb is bound to nothing — which a UI must show as a BLANK rather than hide, so
+// that *this verb exists and you have no key for it* stays visible.
+pub fn key_for(m: KeyMap, verb: text) -> text {
+  if verb == "" { return ""; }
+  for b in m.km_items { if b.kb_verb == verb { return b.kb_key; } }
+  ""
+}
+
+// …and the same answer as a hardware code, for a GL driver that polls per verb.
+//
+// ⚠ **THIS IS THE FUNCTION THAT DELETES THE `KEY_*` CONSTANTS.** A client polling
+// `gl_key_pressed(KEY_STOREY_UP)` and then calling `verb_of("B")` spells one key
+// twice, in two alphabets, on adjacent lines — its own comment called that *"the last
+// place this step could hide one"*. Polling `code_for(m, VB_STOREY)` names the VERB at
+// the input site and lets the map say which finger reaches it, which is the invariant
+// at the top of this file with the keyboard actually attached.
+pub fn code_for(m: KeyMap, verb: text) -> integer {
+  if verb == "" { return KEY_NONE; }
+  for b in m.km_items { if b.kb_verb == verb { return b.kb_code; } }
+  KEY_NONE
+}
+
+// The verbs this definition can reach, in the order they are shown.
+//
+// ⚠ **A QUERY AND NOT A CONSTANT, WHICH [EDITING_MODES] ASKED FOR BEFORE IT COULD BE
+// BUILT.** *"A type that contributes verbs means the verb set is not knowable at
+// compile time, so 'which keys does this editor have' becomes a query. Anything that
+// lists keys — the subject line, a help overlay, a script validator — has to ask
+// rather than know."* This is that function. The mode and the type narrow what it
+// returns later, and no caller has to change when they do.
+pub fn keymap_verbs(m: KeyMap) -> vector<text> {
+  vs: vector<text> = [];
+  for b in m.km_items { vs += [b.kb_verb]; }
+  vs
+}
+
+// ── REBINDING ───────────────────────────────────────────────────────────────
+
+// What a rebind did, because it is never only *ok*.
+//
+// ⚠ **A COLLISION IS THE NORMAL CASE, NOT THE ERROR CASE.** Every letter is taken —
+// counted at plan 22 `K3`: 21 in the script's table and 5 more in the client's
+// movement keys, all 26 — so *the key you want is already doing something* is what
+// rebinding IS, and refusing it would make the feature useless. It replaces, and it
+// says what it displaced: **reason, offer, residual, never a blank no**, applied to a
+// keyboard.
+pub struct BindMade {
+  bm_ok:    boolean,
+  bm_say:   text = "",
+  bm_took:  text = "",       // the verb that lost this key; "" if it was free
+  bm_freed: text = "",       // the key this verb used to have; "" if it had none
+}
+
+// Bind `key` to `verb`, moving it off whatever had it.
+//
+// ⚠ **A VERB HAS AT MOST ONE KEY, AND THAT IS A DECISION RATHER THAN A LIMITATION.**
+// Two keys for one verb is harmless in itself; two ROWS for one verb is not, because
+// a bar draws a row per verb and `key_for` answers the first. So a rebind MOVES a
+// verb's row rather than adding one, and the vector stays one-row-per-verb — the
+// property every reader of it assumes.
+//
+// ⚠ **AND THE DISPLACED VERB KEEPS ITS ROW WITH NO KEY, rather than being dropped.**
+// A verb that vanished from the bar the moment you took its letter would look like a
+// feature you had deleted; an empty slot says *this still exists and you have no key
+// for it*, which is the only honest reading.
+pub fn keymap_bind(m: KeyMap, key: text, verb: text) -> BindMade {
+  if verb == "" {
+    return BindMade { bm_ok: false, bm_say: "nothing to bind — name a verb" };
+  }
+  code = key_code_of(key);
+  if code == KEY_NONE {
+    return BindMade { bm_ok: false,
+      bm_say: "'{key}' is not a key this editor can read" };
+  }
+  had  = key_for(m, verb);
+  took = verb_in(m, key);
+  if took == verb {
+    return BindMade { bm_ok: true, bm_freed: had, bm_say: "{verb} is already on {key}" };
+  }
+  if key_for(m, verb) == "" && !verb_is_known(m, verb) {
+    return BindMade { bm_ok: false,
+      bm_say: "'{verb}' is not a verb this editor has" };
+  }
+  // ⚠ ONE PASS THAT REBUILDS, and the two arms are exclusive because `took != verb`
+  // was answered above: a row is either the verb being moved or the one being
+  // displaced, never both.
+  next: vector<KeyBind> = [];
+  for b in m.km_items {
+    if b.kb_verb == verb {
+      next += [KeyBind { kb_key: key, kb_code: code, kb_verb: verb }];
+    } else if b.kb_key == key {
+      next += [KeyBind { kb_key: "", kb_code: KEY_NONE, kb_verb: b.kb_verb }];
+    } else {
+      next += [b];
+    }
+  }
+  m.km_items = next;
+  if took == "" {
+    return BindMade { bm_ok: true, bm_freed: had, bm_say: "{verb} is on {key}" };
+  }
+  BindMade { bm_ok: true, bm_took: took, bm_freed: had,
+    bm_say: "{verb} is on {key} — {took} has no key now" }
+}
+
+// ⚠ **A REBIND MAY NOT INVENT A VERB, and this is what stops it.** `keymap_bind`
+// MOVES a row; a verb with no row would silently bind nothing and report success,
+// which is the *built and never called* defect reached through a typo. The map is the
+// list of verbs this editor has — that is `keymap_verbs`' whole claim — so a name
+// that is not in it is a mistake rather than a new feature.
+pub fn verb_is_known(m: KeyMap, verb: text) -> boolean {
+  for b in m.km_items { if b.kb_verb == verb { return true; } }
+  false
+}

@@ -109,7 +109,20 @@ const PAGE = wasm ? '/client' : '/';
 // `deck_soffit` red — a gate that wants to be fully under a deck, reading the
 // bottom bar as sky.
 const UI_STRIP   = 240;
-const UI_STATUS  = 24;
+// ⛔ **AND THE VERB BAR SITS ABOVE THE STATUS STRIP — plan 22 `M2`, and this file
+// PREDICTED the failure it caused.** The note above records what happened when the
+// panel arrived: *"counting it moved every share in every gate at once"*. The bar did
+// exactly that on the day it was drawn — a constant `soffit 0.0787` in every shot,
+// which is 40 rows of slot plus 12 of padding out of 660, and it took `cellar_ceiling`
+// and `camera_indoors` red on a change that touched no world code.
+//
+// ⚠ **THE SHARE IS THE TELL, AND IT IS WORTH KNOWING FOR NEXT TIME**: an overlay
+// misread as a surface reports the SAME fraction in every frame of every gate, because
+// its pixels do not depend on the world. A world defect moves; furniture does not.
+//
+// `lavition_ui::verbbar_height()` — `VERB_SLOT_H` 40 plus `VERB_BAR_PAD` 6 twice.
+const UI_VERBBAR = 52;
+const UI_STATUS  = 24 + UI_VERBBAR;
 // And the SUBJECT bar across the top (plan 18 B1.5) — the always-visible line
 // saying what you are working on. Same reason as the status bar: it spans the
 // window because its content does.

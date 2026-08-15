@@ -154,25 +154,28 @@ fn ws_candidates() -> vector<text> {
 // The keys, as the ASCII codes `gl_key_pressed` takes. `graphics` exports names for
 // most of them, but its `KEY_F` is documented as "lower-layer" — a meaning from a
 // different editor. Naming them by what they do HERE keeps that confusion out.
+//
+// ⚠ **WHAT IS LEFT HERE IS THE KEYS THAT NAME NO VERB — plan 22 `M1`.** Eight
+// constants went: `f g e q b c r` and the arrows were each spelled TWICE, once as a
+// code here and once as a string at the input site (`gl_key_pressed(KEY_STOREY_UP)`
+// then `verb_of("B")`), and the comment beside them called that *"the last place this
+// step could hide one"*. The input site names a VERB now and `st.keys` says which
+// finger reaches it, so a rebind moves the key and nothing else has to know.
+//
+// ⚠ **AND THESE FOUR ARE NOT AN EXCEPTION WAITING TO BE TIDIED.** Walking is not a
+// gesture — it has no verb, writes nothing, and is a HELD state where every verb is
+// an edge. Binding it would mean `press_verb` had a `walk` case, which is the
+// flattening `PR_NONE` exists to refuse.
 const KEY_FORWARD = 119;      // w
 const KEY_BACK = 115;         // s
 const KEY_LEFT_TURN = 97;     // a
 const KEY_RIGHT_TURN = 100;   // d
+// ⚠ AND THESE TWO ARE VERBS-IN-WAITING RATHER THAN NON-VERBS, which is worth the
+// distinction: levelling is a client TOGGLE (`6:1`/`6:0`) and the catalogue cycle is a
+// list walk. Neither reaches `press_verb`, so neither can be in the map yet without
+// putting a verb there that answers `PR_NONE` — the exact thing
+// `test_every_verb_the_definition_produces_is_bound` refuses.
 const KEY_LEVEL = 108;        // l — toggle levelling
-const KEY_FENCE = 102;        // f — fence the ground you stand in
-const KEY_WALL = 103;         // g — wall it
-// e / q — cut ONE step into the cell ahead, up or down. The gesture that makes an
-// upper storey reachable: a storey is three strides, so three presses and a walk.
-const KEY_STEP_UP = 101;      // e
-const KEY_STEP_DOWN = 113;    // q
-// b / c — a storey above you, a cellar below, on the disc you stand in.
-const KEY_STOREY_UP = 98;     // b
-const KEY_STOREY_DOWN = 99;   // c
-// ⚠ r — the STRAIGHT wall, and the reason it needs a key of its own: `23:` (f/g)
-// rings the HEXES you stand in, so it zigzags along their edges by construction.
-// `25:` is a RUN — two presses, start and end — snapped to one of 24 headings and
-// drawn off that exact line.
-const KEY_WALL_RUN = 114;     // r
 
 // `23:<material>,<radius>`. A fence you see over, a wall you do not, and the camera
 // treats them differently for exactly that reason — same tool, different material.
@@ -249,7 +252,17 @@ const STOREY_DOWN_CMD = "12:-1";
 // the driver's — the library it read, in the order it read it. What the session
 // holds is a NAME, and `session_select_part` is what puts it there.
 const KEY_PART = 9;           // Tab — step through the part library
-const KEY_HOUSE = 104;        // h — a house where you are looking
+// ⚠ `KEY_HOUSE` WENT WITH THE OTHER EIGHT — plan 22 `M1`. `h` is `st.keys`' answer for
+// `VB_PLACE` now, and this constant was the last place a code and a verb name sat on
+// two lines describing one key.
+//
+// ⚠ **AND `o`/`p` ARE STILL HERE BECAUSE THEY ARE NOT VERBS YET, WHICH IS A DEBT AND
+// NOT AN EXEMPTION.** They send `36:1`/`36:2` straight to the wire — a PROFILE, which
+// is the selection axis — so routing them through `VB_OPENING` would either pin one
+// profile (and `p` stops cutting a pointed head) or move the standing SELECTION where
+// it did not move before. The note at their poll site has the full argument; until it
+// is paid they are the fifth site that decides what a key means, and the only one
+// left.
 const KEY_DOOR  = 111;        // o — a door in the wall you face
 const KEY_WINDOW = 112;       // p — …and a window
 
@@ -425,6 +438,12 @@ struct Part {
 }
 
 struct Client {
+  // ⚠ **THE KEYBOARD, AS DATA — plan 22 `M1`.** Which finger reaches which verb is
+  // this client's own state, not the library's and not the server's: it is a person's
+  // preference, and the wire has never carried a key. Every input site below names a
+  // VERB and asks this map for the code, which is what deletes the `KEY_*` constants
+  // and the second spelling beside them.
+  keys: hex_editor::KeyMap,
   // ⚠ THE SUBJECT LINE, AS THE SERVER SENT IT — never composed here. §C1's whole
   // point is that this is what the server SAYS, so the client keeps the string
   // verbatim and has no way to phrase one of its own.
@@ -1696,6 +1715,24 @@ fn wire(h: web::WsHandler, st: Client, msg: text) {
           + "gesture for it yet");
 }
 
+// Is the key this person has bound to `verb` down right now?
+//
+// ⚠ **THE INPUT SITE NAMES A VERB AND THE MAP SAYS WHICH FINGER REACHES IT** — plan 22
+// `M1`, and it is the whole of the rebinding layer at this end. Before it, every site
+// spelled its key twice: a `KEY_*` constant for the hardware and a string for
+// `verb_of`, on adjacent lines, with the file's own comment calling that *"the last
+// place this step could hide one"*. Now nothing here knows a key at all.
+//
+// ⚠ **AN UNBOUND VERB IS NOT DOWN, WHICH IS THE HONEST ANSWER RATHER THAN A GUARD.**
+// A rebind can leave a verb with no key (`keymap_bind` displaces rather than refuses),
+// and `KEY_NONE` must never be handed to `gl_key_pressed` — code 0 is not a key and
+// what it reports is the bridge's business, not ours.
+fn verb_down(st: Client, verb: text) -> boolean {
+  c = hex_editor::code_for(st.keys, verb);
+  if c == hex_editor::KEY_NONE { return false; }
+  graphics::gl_key_pressed(c)
+}
+
 fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
        a: hex_editor::Author, verb: text) {
   if st.local { local_act(sess, st, a, verb); return; }
@@ -1775,11 +1812,11 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // in the definition every driver shares (`tools/scripts/*.keys` writes the same
   // string). They are two spellings of one key and they sit on adjacent lines for
   // that reason — a mismatch here is the last place this step could hide one.
-  kup = graphics::gl_key_pressed(graphics::KEY_UP);
-  if kup && !st.was_up { act(h, st, sess, a, hex_editor::verb_of("ArrowUp")); }
+  kup = verb_down(st, hex_editor::VB_RAISE);
+  if kup && !st.was_up { act(h, st, sess, a, hex_editor::VB_RAISE); }
   st.was_up = kup;
-  kdown = graphics::gl_key_pressed(graphics::KEY_DOWN);
-  if kdown && !st.was_down { act(h, st, sess, a, hex_editor::verb_of("ArrowDown")); }
+  kdown = verb_down(st, hex_editor::VB_LOWER);
+  if kdown && !st.was_down { act(h, st, sess, a, hex_editor::VB_LOWER); }
   st.was_down = kdown;
 
   klevel = graphics::gl_key_pressed(KEY_LEVEL);
@@ -1830,11 +1867,11 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   }
   st.was_part = kpart;
 
-  kfence = graphics::gl_key_pressed(KEY_FENCE);
-  if kfence && !st.was_fence { act(h, st, sess, a, hex_editor::verb_of("F")); }
+  kfence = verb_down(st, hex_editor::VB_FENCE);
+  if kfence && !st.was_fence { act(h, st, sess, a, hex_editor::VB_FENCE); }
   st.was_fence = kfence;
-  kwall = graphics::gl_key_pressed(KEY_WALL);
-  if kwall && !st.was_wall { act(h, st, sess, a, hex_editor::verb_of("G")); }
+  kwall = verb_down(st, hex_editor::VB_WALL);
+  if kwall && !st.was_wall { act(h, st, sess, a, hex_editor::VB_WALL); }
   st.was_wall = kwall;
 
   // The stair, also an edge and not a state: the gesture SETS the cell ahead to one
@@ -1845,11 +1882,11 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // cut a stair at all. Attached it resolves to the same two messages; local it runs
   // `stair_ahead` in this page. `wire` here answered *"'30:1' is a server message and
   // this page has no gesture for it yet"*, which is `R`'s finding one key over.
-  kstepu = graphics::gl_key_pressed(KEY_STEP_UP);
-  if kstepu && !st.was_step_up { act(h, st, sess, a, hex_editor::verb_of("E")); }
+  kstepu = verb_down(st, hex_editor::VB_STAIR_UP);
+  if kstepu && !st.was_step_up { act(h, st, sess, a, hex_editor::VB_STAIR_UP); }
   st.was_step_up = kstepu;
-  kstepd = graphics::gl_key_pressed(KEY_STEP_DOWN);
-  if kstepd && !st.was_step_down { act(h, st, sess, a, hex_editor::verb_of("Q")); }
+  kstepd = verb_down(st, hex_editor::VB_STAIR_DOWN);
+  if kstepd && !st.was_step_down { act(h, st, sess, a, hex_editor::VB_STAIR_DOWN); }
   st.was_step_down = kstepd;
 
   // ⚠ **THE LAST TWO RAW `wire` SENDS IN THIS BLOCK, AND THEY WERE THE DEAD ONES** —
@@ -1859,11 +1896,11 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // message and this page has no gesture for it yet"* and the demo could not build a
   // storey or dig a cellar at all. `R`'s finding and `E`'s, still live on the one pair
   // nobody had converted. Attached, `act` puts the same two messages on the wire.
-  kstoru = graphics::gl_key_pressed(KEY_STOREY_UP);
-  if kstoru && !st.was_storey_up { act(h, st, sess, a, hex_editor::verb_of("B")); }
+  kstoru = verb_down(st, hex_editor::VB_STOREY);
+  if kstoru && !st.was_storey_up { act(h, st, sess, a, hex_editor::VB_STOREY); }
   st.was_storey_up = kstoru;
-  kstord = graphics::gl_key_pressed(KEY_STOREY_DOWN);
-  if kstord && !st.was_storey_down { act(h, st, sess, a, hex_editor::verb_of("C")); }
+  kstord = verb_down(st, hex_editor::VB_CELLAR);
+  if kstord && !st.was_storey_down { act(h, st, sess, a, hex_editor::VB_CELLAR); }
   st.was_storey_down = kstord;
   // ⚠ A VERB NOW, NOT A WIRE MESSAGE — plan 22 `K3`, and `R` is the slice that pays:
   // 22 of the 40 non-arrow presses across `tools/scripts/*.keys` are this key. Local,
@@ -1871,21 +1908,21 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // socket and the server runs the same function. Before this, `wire` was the whole
   // of local mode's answer — *"'25:' is a server message and this page has no gesture
   // for it yet"* — which is the demo's most-pressed key doing nothing.
-  krun = graphics::gl_key_pressed(KEY_WALL_RUN);
-  if krun && !st.was_wall_run { act(h, st, sess, a, hex_editor::verb_of("R")); }
+  krun = verb_down(st, hex_editor::VB_RUN);
+  if krun && !st.was_wall_run { act(h, st, sess, a, hex_editor::VB_RUN); }
   st.was_wall_run = krun;
 
   // ⚠ EDGES, NOT STATES — the same rule as the stair above. A held `h` would send
   // the same house every frame; the first would place it and the rest would be
   // refused, which reads to an author as the key not working.
-  khouse = graphics::gl_key_pressed(KEY_HOUSE);
+  khouse = verb_down(st, hex_editor::VB_PLACE);
   // ⚠ `32:` CARRIES NO PARAMETER, so it names a message without deciding a
   // meaning — which is why this one was always safe to send from a client. The
   // house handler also files the ROOF PLAN, and `press_verb` cannot own that until
   // `hex_editor` can reach `HEIGHT_SCALE`: that lives in `hex_proj`, `hex_proj`
   // pulls `graphics`, and putting a GL binding under the gesture library is the
   // cone `L3'` was reverted for twice.
-  if khouse && !st.was_house { act(h, st, sess, a, hex_editor::verb_of("H")); }
+  if khouse && !st.was_house { act(h, st, sess, a, hex_editor::VB_PLACE); }
   st.was_house = khouse;
 
   // ⚠ THE OPENING PAIR IS THE ONE `B1a` DOES NOT CONVERT, and that is the step's
@@ -1969,9 +2006,16 @@ struct UiText {
 // by the string, and THEN the instrument C5 asks for — a count of
 // `create_text_texture` calls per second — starts being worth taking. Today the
 // structure answers it.
-fn build_ui_text(p: Panel, font: integer, size: float) -> vector<UiText> {
+fn build_ui_text(p: Panel, b: VerbBar, font: integer, size: float) -> vector<UiText> {
   out: vector<UiText> = [];
-  for t in panel_text_list(p, theme_default()) {
+  // ⚠ THE BAR'S STRINGS GO THROUGH THE SAME CACHE, which is why it is built here
+  // rather than drawn per frame: `create_text_texture` rasterises AND uploads on
+  // every call, so a bar of fifteen slots drawn per frame is thirty uploads a frame
+  // for text that changes when somebody rebinds a key.
+  lines: vector<DrawText> = [];
+  for pt in panel_text_list(p, theme_default()) { lines += [pt]; }
+  for bt in verbbar_text_list(b, theme_default(), p.p_metrics) { lines += [bt]; }
+  for t in lines {
     if t.dt_text == "" { continue; }
     tex = graphics::create_text_texture(font, t.dt_text, size, t.dt_colour);
     if tex == 0 { continue; }
@@ -2352,9 +2396,12 @@ fn draw_swatches(p: Panel, sw: vector<Swatch>, painter: Painter2D) {
   }
 }
 
-fn draw_panel(p: Panel, painter: Painter2D) {
+fn draw_panel(p: Panel, b: VerbBar, painter: Painter2D) {
   graphics::gl_disable(graphics::GL_DEPTH_TEST);
-  for d in panel_draw_list(p, theme_default()) {
+  rects: vector<DrawRect> = [];
+  for pd in panel_draw_list(p, theme_default()) { rects += [pd]; }
+  for bd in verbbar_draw_list(b, theme_default()) { rects += [bd]; }
+  for d in rects {
     r = d.dr_rect;
     // `lavition_ui` names a colour as packed 0xRRGGBB so it needs no graphics
     // dependency to have a theme; `draw_rect_at` wants four floats. The unpack
@@ -2430,8 +2477,52 @@ fn authority_line(st: Client) -> text {
   AUTH_CONNECTING
 }
 
+// What the VERB BAR shows: every verb this person can press, with the key they have
+// bound to it — plan 22 `M2`.
+//
+// ⚠ **THE GLYPHS COME FROM THE MAP AND FROM NOWHERE ELSE**, which is the whole point.
+// The toolbar below drew its hotkeys as literals and three of six were wrong for
+// months; this cannot drift, because there is nothing here to drift FROM. A rebind
+// moves the label with the binding.
+//
+// ⚠ **AND THE LIST IS A QUERY, NOT A CONSTANT.** `keymap_verbs` answers what the
+// editor can do, in the order the definition lists it. ⏭ When `mode_at` lands (`D1`)
+// the same call returns only the verbs available where the author is standing, and
+// this function does not change — which is what makes the bar short without anybody
+// choosing a subset.
+fn client_verb_specs(st: Client) -> vector<SpecVerb> {
+  vs: vector<SpecVerb> = [];
+  for v in hex_editor::keymap_verbs(st.keys) {
+    // ⚠ `key_glyph`, NOT THE RAW NAME. `ArrowUp` is seven characters and a slot is 34px
+    // at an 8px advance — the bar truncates as a backstop, and `ArrowUp`/`ArrowDown`
+    // truncate to the SAME five characters, which is two identical glyphs on two
+    // different keys. Shortening on purpose is what keeps them distinguishable.
+    vs += [spec_verb(v, hex_editor::verb_short(v),
+                     hex_editor::key_glyph(hex_editor::key_for(st.keys, v)))];
+  }
+  vs
+}
+
 fn client_panel_spec(st: Client) -> PanelSpec {
   PanelSpec {
+    // ⛔ **THREE OF THESE GLYPHS WERE WRONG, AND THEY WERE DRAWN ON SCREEN FOR
+    // MONTHS** — plan 22 `M1`, and this is the defect that motivated the whole step.
+    // The column was six hand-written literals connected to nothing: it showed `e`
+    // beside *Stencil* where `e` is `stair_up`, `c` beside *Cart* where `c` is
+    // `cellar`, and `f` beside *Field* where `f` is `fence`. A literal glyph has
+    // nothing that can disagree with it, so nobody noticed.
+    //
+    // ⚠ **THE FIX IS NOT BETTER LITERALS, IT IS ASKING.** Every row that names a verb
+    // reads its key from `st.keys`, so a rebind moves the label with the binding and
+    // the two cannot drift again. Rows that name a TOOL rather than a verb get a
+    // blank — `Look` is a mouse drag, and *Field*, *Stencil* and *Cart* are tools with
+    // no verb behind them at all, which is why their glyphs were free to be wrong.
+    // ⚠ A blank is honest where a wrong glyph is an instruction that does something
+    // else, which is the same rule `Look` was already keeping for a different reason.
+    //
+    // ⏭ **AND THIS TOOLBAR IS SUPERSEDED BY THE VERB BAR**, not repaired by it: a
+    // strip drawn from `keymap_verbs` says what you can press and what presses it,
+    // which is what four of these six rows were pretending to be.
     ps_buttons: [
       // ⚠ NO HOTKEY, because there is no key. Looking is a mouse drag, and the
       // hotkey column fits ONE glyph at this advance — so "drag" truncated to
@@ -2439,10 +2530,10 @@ fn client_panel_spec(st: Client) -> PanelSpec {
       // honest where a truncation invents an instruction.
       spec_button("Look",    ""),
       spec_button("Level",   "l"),
-      spec_button("Field",   "f"),
-      spec_button("Stencil", "e"),
-      spec_button("Wall",    "r"),
-      spec_button("Cart",    "c"),
+      spec_button("Field",   ""),
+      spec_button("Stencil", ""),
+      spec_button("Wall",    hex_editor::key_for(st.keys, hex_editor::VB_RUN)),
+      spec_button("Cart",    ""),
     ],
     ps_selected_button: -1,          // the SERVER owns this; nothing to claim yet
     ps_items: parse_entries(st.mats),
@@ -2585,6 +2676,7 @@ fn main() {
   }
 
   st = Client {
+    keys: hex_editor::keymap_default(),
     hud: "",
     mats: "",
     panel_dirty: false,
@@ -2801,8 +2893,9 @@ fn main() {
     }
   }
   ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
+  ui_bar = verbbar_build(client_verb_specs(st), WIN_W, WIN_H, PANEL_WIDTH, ui_m);
   ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
-  ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
+  ui_texts = build_ui_text(ui_panel, ui_bar, ui_font, UI_SIZE);
   ui_swatches: vector<Swatch> = [];
   drift_s = "";
   drift = metrics_drift(ui_font, ui_m, drift_s);
@@ -2817,6 +2910,18 @@ fn main() {
   println("client: metrics drift {drift}px (worst '{drift_s}'), control {bad}px");
   ui_lr = ui_panel.p_list.lb_rect;
   println("client: panel {len(ui_panel.p_toolbar)} buttons, advance {metrics_advance(ui_m)}, mono {ui_m.m_mono}, list {ui_lr.r_w}x{ui_lr.r_h}");
+  // ⚠ **THE BAR SAYS WHICH KEY IS IN WHICH SLOT, AND A PICTURE CANNOT** — plan 22
+  // `M2`. A screenshot can show that a strip of squares reached the canvas; it cannot
+  // show that the glyph in slot 12 is the key `cellar` is actually bound to, which is
+  // the exact claim the toolbar failed silently for months. So the pairs are printed,
+  // read out of the BUILT bar rather than re-composed from the map — a line that
+  // re-derived them would agree with itself however the layout had gone.
+  bar_s = "";
+  for bs in ui_bar.vb_slots {
+    if bar_s != "" { bar_s += " "; }
+    bar_s += "{if bs.vt_key == \"\" { \"-\" } else { bs.vt_key }}:{bs.vt_verb}";
+  }
+  println("client: verb bar {len(ui_bar.vb_slots)} slots, {ui_bar.vb_hidden} hidden — {bar_s}");
   // ⚠ READ OUT OF THE BUILT PANEL, NEVER RE-COMPOSED. `authority_line(st)` here
   // would agree with itself for as long as it was copied correctly and say
   // nothing about what the panel holds — the `K1` shape. `ss_text` is what
@@ -2921,7 +3026,8 @@ fn main() {
       for old in ui_texts { graphics::gl_delete_texture(old.ut_tex); }
       for olds in ui_swatches { graphics::gl_delete_texture(olds.sw_tex); }
       ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
-      ui_texts = build_ui_text(ui_panel, ui_font, UI_SIZE);
+      ui_bar = verbbar_build(client_verb_specs(st), WIN_W, WIN_H, PANEL_WIDTH, ui_m);
+      ui_texts = build_ui_text(ui_panel, ui_bar, ui_font, UI_SIZE);
       // ⚠ CACHED PER MATERIAL, and rendered only when the list changes — §C4
       // asks for the swatch to be the material, not for it to be re-rendered
       // every frame. The list arrives once, so in practice this runs once.
@@ -2968,7 +3074,7 @@ fn main() {
     // and it is `hex_editor::TICK_US` so that neither program can spell it alone.
     if st.local { author = local_tick(st, sess, author); }
     draw_world(st);
-    draw_panel(ui_panel, ui_painter);
+    draw_panel(ui_panel, ui_bar, ui_painter);
     draw_swatches(ui_panel, ui_swatches, ui_painter);
     draw_ui_text(ui_texts, ui_painter);
     // ⚠ THE PICTURE IS TAKEN HERE — between the draw and the swap, because

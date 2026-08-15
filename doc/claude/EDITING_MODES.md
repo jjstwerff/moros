@@ -767,3 +767,71 @@ at cell `(-2,1)`) and from `-6 -1` (at `(-4,-1)`), both measured through the ser
 found so far cut into the face the script's camera cannot see — and its acceptance is *does a
 person call it a door*. That wants the user's eyes, not a coordinate that makes a log line
 appear.
+
+---
+
+# Phase 6 — the keyboard is the PERSON's, and the verbs are visible
+
+> *"I want a layer where the user can rebind keys and we can present the possible verbs like
+> world-of-warcraft in a way that doesn't take up too much screen space (not that all verbs need
+> to be number bound)."*
+
+**This is the phase this whole document was written for**, and it could not start earlier: a
+recording written in keystrokes replays differently for two people, so every
+`tools/scripts/*.keys` had to say `verb <name>` first. Plan 22 `K3` finished that on 2026-08-15.
+
+> **THE INVARIANT: a key is resolved to a verb exactly ONCE, where the keyboard is, out of a table
+> the person owns — and nothing downstream can tell which key was pressed.**
+
+The second clause was already true below the resolution — the wire carries the verb, `press_verb`
+never sees a key — which is what makes rebinding cost nothing at the far end.
+
+## ⛔ The measurement that started it: FOUR sites, and one of them is wrong on screen
+
+Counted 2026-08-15. The fourth row is what turns this from tidiness into a defect:
+
+| # | site | what it asserts |
+|---|---|---|
+| 1 | `hex_editor::verb_of` | an `if` chain — the authority |
+| 2 | `editor_client.loft`'s `KEY_*` constants | a physical code per key |
+| 3 | …the poll block beside them | the **same key again as a string**: `gl_key_pressed(KEY_STOREY_UP)` then `verb_of("B")`. ⚠ The file's own comment called this *"the last place this step could hide one"* |
+| 4 | `client_panel_spec`'s toolbar | a hotkey **glyph** per button, as a literal |
+
+⛔ **Three of row 4's glyphs are WRONG and have been drawn on screen for months**: `e` beside
+*Stencil* where `e` is `stair_up`, `c` beside *Cart* where `c` is `cellar`, `f` beside *Field*
+where `f` is `fence`. A literal glyph is connected to nothing that could disagree with it, so
+nothing did. **That is the argument for the whole phase in one row**: the binding was not data, so
+the picture of it was free to lie.
+
+## The two calls, and why each went the way it did
+
+| | |
+|---|---|
+| **slots are NOT numbered** | The bar shows *whatever key the person bound*, and there is no `1..9` convention. WoW's numbers are a consequence of its bars being pages of a fixed size; here a verb has a letter because a letter is what an author's hand is already on. ⚠ This is the *"not that all verbs need to be number bound"* clause, and it is also what makes the bar a **view of the binding** rather than a second binding surface. |
+| **the bar shows the verbs available HERE** | Which is the design's own answer to *doesn't take up too much screen space*: `keymap_verbs` is a **query**, and once `D1` lands the mode narrows it — inside a house you have openings, stairs, annexes and seats, outside you have terrain, roads and placement. ⏭ Until then it lists all bound verbs and the compactness arrives free. |
+
+## ⚠ And one row per verb, which frees eight keys
+
+`verb_of` bound **23 keys to 15 verbs**: `O P I U N M` all answer `opening`, `Y T` both `seat`,
+`J K V` all `annex`. Those are not eight bindings — they are `S3`'s collapse leaving the old keys
+in place, and each does exactly what its primary does, because the profile they used to carry
+comes from the selection now. **A definition with six `opening` rows draws six identical slots in
+a bar and six identical rows in a rebinding list**, which is a surface a person cannot use.
+
+⛔ **So the table is one row per verb and those eight are free — a behaviour change, measured
+rather than assumed safe.** Nothing in production resolved them: every `.keys` script says
+`verb <name>` since `K3` (`probe/k2` check 14 keeps the grep), and the client's `o`/`p` send
+`36:1`/`36:2` straight to the wire and have never reached `verb_of`.
+
+## The steps
+
+| step | what runs beside it | what would surprise the test |
+|---|---|---|
+| ✅ **`M1`** — the definition as DATA: `KeyMap`, `keymap_default()`, rebind, and both drivers read it | ⚠ **`verb_of`'s `if` chain, kept as an independent body** — `verb_of(k) = verb_in(default, k)` would be a tautology, which is `V1`'s lesson one layer down | the two disagreeing on **any key in the universe**, not on a list somebody remembered: 26 letters, 10 digits, 7 named keys and six things that are not keys at all |
+| **`M2`** — the verb bar: `lavition_ui` lays out slots from data, the client draws it | the panel, unchanged | ⚠ a bar whose key glyphs come from anywhere but the map — the row-4 defect rebuilt one widget over |
+| **`M3`** — rebinding from the editor: arm, pick a slot, press a key | the default map | a collision reported as a refusal. ⚠ *Every* letter is taken, so **displacing is what rebinding IS**; refusing would make the feature useless |
+| **`M4`** — delete `verb_of` | — | ⚠ not "the suite is green" — a deletion makes tests pass by removing their subject. `V3`'s instrument: the **test-name diff**, with every retired claim named where it went |
+
+⚠ **`M1` DOES NOT PERSIST A REBIND, DELIBERATELY.** The map is `Client` state and a fresh page
+gets the default. Persisting it is a `LayeredFS` question (`P6` proved the page has a filesystem)
+and it belongs after `M3`, because *what* to persist is not settled until a person can make one.

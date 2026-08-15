@@ -1,0 +1,254 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE VERB BAR — what you can press, and what presses it, in one strip.
+//
+// A row of slots along the bottom of the window. Each slot is a VERB the editor can
+// do here, drawn with the KEY the person has bound to it. It is the picture of the
+// definition layer ([EDITING_MODES § Phase 6](../../../doc/claude/EDITING_MODES.md)),
+// and it is a **view** of that table rather than a second place the binding lives.
+//
+// ⛔ **WHY IT EXISTS: THE THING IT REPLACES WAS WRONG ON SCREEN.** The side panel's
+// toolbar drew a hotkey glyph per button as a literal — `e` beside *Stencil* where `e`
+// is `stair_up`, `c` beside *Cart* where `c` is `cellar`, `f` beside *Field* where `f`
+// is `fence`. Three of six, for months, because a literal glyph is connected to
+// nothing that could disagree with it. Everything below takes its glyph from the
+// caller's map, so a rebind moves the label with the binding.
+//
+// ── ⚠ THE TWO DESIGN CALLS, because both could reasonably have gone the other way ──
+//
+// **1. Slots are NOT numbered.** There is no `1..9` convention: a slot shows whatever
+// key its verb is bound to, and an unbound verb shows a blank. World of Warcraft's
+// numbers are a consequence of its bars being PAGES of fixed size; here a verb has a
+// letter because a letter is where an author's hand already is. ⚠ Numbering would also
+// quietly make the bar a second binding surface — *slot 3 is verb X* — which is the
+// duplication the whole phase exists to remove.
+//
+// **2. One row, and overflow is REPORTED rather than wrapped.** A bar that grows a
+// second row is a bar that eats the window it is drawn over, and the ask was for
+// something that *doesn't take up too much screen space*. So it keeps what fits and
+// says how many it could not show — `vb_hidden`, which a consumer draws as `+3`.
+// ⏭ The real answer to overflow is the MODE (`D1`): the verbs available where you are
+// standing are a handful, not the whole vocabulary, and this bar shrinks for free the
+// day that query narrows.
+//
+// ⚠ **AND THIS FILE KNOWS NOTHING ABOUT VERBS**, exactly as `panel.loft` knows nothing
+// about what it is showing. It takes labels, key glyphs and an armed flag; the words
+// `opening` and `cellar` never appear here. That is what lets a different editor with
+// a different vocabulary use it unchanged.
+use widgets;
+use panel;
+use font;
+// `DrawRect`, `DrawText` and `Theme` — the picture as lists, which is `render.loft`'s
+// shape and this file's for its reason: no GL here, so the tests need no window.
+use render;
+
+// ── Layout constants ─────────────────────────────────────────────
+//
+// ⚠ **SMALL ON PURPOSE, AND THE WIDTH IS A MEASUREMENT RATHER THAN A TASTE.** The
+// content is a 4-character short label under a key glyph; the editor's font measures
+// **10px per character, mono** (`client: panel … advance 10`), so the label is 40px and
+// the slot is that plus 3px each side. Anything bigger is a toolbar, and a toolbar is
+// what this replaces.
+//
+// ⛔ **IT WAS 34, WHICH IS THE WIDTH A DIFFERENT FONT WANTED.** Guessed at an 8px
+// advance and shipped: the first real run drew every label truncated to one character
+// plus an ellipsis — `fenc` as `f…` — while the layout suite stayed green, because the
+// only claim it made was *the text is inside its box* and truncated text always is.
+// `test_a_four_character_label_survives_the_editors_own_metrics` is the row that says
+// the slot is wide enough for the content it exists to hold.
+pub VERB_SLOT_W   = 46;
+// ⚠ **TWO LINES, AND THE HEIGHT IS THE SECOND MEASUREMENT THIS WIDGET GOT WRONG BY
+// GUESSING.** The editor draws at `UI_SIZE` 16.0, which measures ~16px per line; a slot
+// holding a key over a label needs both plus a little air. ⛔ It was 30 — enough for
+// one line and four pixels — so the first real run drew `Up` and `rise` ON TOP OF EACH
+// OTHER, while the layout suite stayed green because its only claim was that the key's
+// y is LESS than the label's. Ordering is not separation.
+// `test_the_two_lines_of_a_slot_do_not_overlap_at_the_editors_metrics` is the row that
+// says so now.
+pub VERB_SLOT_H   = 40;
+pub VERB_SLOT_GAP = 3;
+// The margin between the bar and the bottom of the window, and between the bar and
+// the panel on its left.
+pub VERB_BAR_PAD  = 6;
+// ⚠ THE BAR'S HEIGHT IS THE SLOT'S, and it is a constant rather than a sum, because a
+// consumer needs to reserve the strip before it knows how many slots there are.
+pub fn verbbar_height() -> integer { VERB_SLOT_H + VERB_BAR_PAD * 2 }
+
+// ── What a consumer hands over ───────────────────────────────────
+//
+// ⚠ `sv_verb` IS CARRIED THROUGH UNTOUCHED AND NEVER DRAWN. It is what a click means —
+// *rebind THIS verb* — and a consumer that had to map a slot index back to a verb
+// would be keeping a second list in step with this one. `panel.loft` uses indices for
+// its list because a catalogue row has no name that outlives the list; a verb does.
+pub struct SpecVerb {
+  sv_verb:  text,        // the published name — what a rebind names
+  sv_label: text,        // the short label the slot draws, already fitted by the caller
+  sv_key:   text,        // the key glyph, "" when the verb is bound to nothing
+  sv_on:    boolean,     // armed / mid-gesture — a run with one end down, say
+}
+
+pub fn spec_verb(verb: text, label: text, key: text) -> SpecVerb {
+  SpecVerb { sv_verb: verb, sv_label: label, sv_key: key, sv_on: false }
+}
+
+pub fn spec_verb_on(verb: text, label: text, key: text, on: boolean) -> SpecVerb {
+  SpecVerb { sv_verb: verb, sv_label: label, sv_key: key, sv_on: on }
+}
+
+// ── The laid-out bar ─────────────────────────────────────────────
+pub struct VerbSlot {
+  vt_rect:  UiRect,
+  vt_verb:  text,
+  vt_label: text,
+  vt_key:   text,
+  vt_on:    boolean,
+}
+
+pub struct VerbBar {
+  vb_rect:   UiRect,
+  vb_slots:  vector<VerbSlot>,
+  // How many the strip could not show. ⚠ **REPORTED, NEVER SILENTLY DROPPED** — a bar
+  // that truncated quietly would read as *those verbs do not exist here*, which is
+  // exactly the wrong sentence to put in front of an author who cannot find one.
+  vb_hidden: integer,
+}
+
+// Lay the bar out along the bottom of the window, to the right of the side panel.
+//
+// ⚠ **IT TAKES THE PANEL'S WIDTH RATHER THAN ASSUMING IT.** A consumer with no side
+// panel passes 0 and gets a full-width bar; this package must not decide that an
+// editor has a panel at all.
+//
+// ⚠ **AND THE STATUS STRIP IS ABOVE IT, NOT BELOW** — `panel.loft` puts the status
+// across the bottom of the WINDOW, so the bar sits clear of it. Two things claiming
+// the last 24 rows of pixels is the overlap `panel_draw_list`'s own comment warns
+// about for the subject bar, one edge over.
+// ⚠ **IT FITS ITS OWN TEXT, WHICH IS `panel_build`'s CONTRACT ONE WIDGET OVER.** That
+// file's `panel_text_list` says *"every string here is already fitted … so a caller
+// cannot draw a label the panel never agreed would fit"*, and the same has to hold
+// here or a long key glyph runs out of its slot and across its neighbour. ⚠ It is a
+// BACKSTOP and not the answer: two names sharing a prefix truncate to the same thing,
+// so a caller that wants them distinguishable shortens them itself (`key_glyph`).
+pub fn verbbar_build(specs: vector<SpecVerb>, win_w: integer, win_h: integer,
+                     panel_w: integer, m: Metrics) -> VerbBar {
+  x0 = panel_w + VERB_BAR_PAD;
+  avail = win_w - x0 - VERB_BAR_PAD;
+  bar_h = verbbar_height();
+  y0 = win_h - STATUS_HEIGHT - bar_h;
+  bar = rect(x0, y0, if avail > 0 { avail } else { 0 }, bar_h);
+
+  // How many fit: n slots and n-1 gaps.
+  //
+  // ⚠ **THE ARITHMETIC IS WRITTEN AS A LOOP RATHER THAN A DIVISION**, because the
+  // closed form is off by one at the boundary in the direction that OVERFLOWS — a
+  // slot half outside the bar is the failure a division silently produces, and the
+  // rows in `tests/verbbar.loft` that assert containment are what found it.
+  slots: vector<VerbSlot> = [];
+  hidden = 0;
+  cx = x0 + VERB_BAR_PAD;
+  for s in specs {
+    right = cx + VERB_SLOT_W;
+    if right <= x0 + bar.r_w - VERB_BAR_PAD {
+      slots += [VerbSlot {
+        vt_rect:  rect(cx, y0 + VERB_BAR_PAD, VERB_SLOT_W, VERB_SLOT_H),
+        vt_verb:  s.sv_verb,
+        vt_label: fit_text(s.sv_label, VERB_SLOT_W - 2, m),
+        vt_key:   fit_text(s.sv_key, VERB_SLOT_W - 2, m),
+        vt_on:    s.sv_on,
+      }];
+      cx = right + VERB_SLOT_GAP;
+    } else {
+      hidden = hidden + 1;
+    }
+  }
+  VerbBar { vb_rect: bar, vb_slots: slots, vb_hidden: hidden }
+}
+
+// Which slot is under the pointer, or -1.
+//
+// ⚠ **IT ANSWERS AN INDEX AND THE CALLER READS THE VERB OFF IT**, rather than
+// answering the verb directly: -1 has to mean *nothing*, and a text return would have
+// to spell that as `""`, which is also a legal verb name in the caller's world (it is
+// `VB_NONE`). An integer cannot be confused with an answer.
+pub fn verbbar_hit(b: VerbBar, mx: integer, my: integer) -> integer {
+  i = 0;
+  for s in b.vb_slots {
+    if rect_contains(s.vt_rect, mx, my) { return i; }
+    i += 1;
+  }
+  0 - 1
+}
+
+// The verb a slot names, or "" when the index is not a slot.
+pub fn verbbar_verb(b: VerbBar, i: integer) -> text {
+  if i < 0 || i >= len(b.vb_slots) { return ""; }
+  (b.vb_slots[i] ?? VerbSlot {}).vt_verb
+}
+
+// ── The picture, as lists ────────────────────────────────────────
+//
+// Same shape and same reason as `panel_draw_list`: rectangles and strings, so this
+// package needs no GL and its tests need no window.
+pub fn verbbar_draw_list(b: VerbBar, th: Theme) -> vector<DrawRect> {
+  dl: vector<DrawRect> = [];
+  dl += [DrawRect { dr_rect: b.vb_rect, dr_colour: th.th_panel_bg }];
+  for s in b.vb_slots {
+    dl += [DrawRect {
+      dr_rect:   s.vt_rect,
+      dr_colour: if s.vt_on { th.th_button_sel } else { th.th_button },
+    }];
+  }
+  dl
+}
+
+// ⚠ **TWO LINES PER SLOT, KEY OVER LABEL, AND THE ORDER IS THE POINT.** The question a
+// bar answers at a glance is *which key does this*, so the key is the top line and the
+// label reads under it. Putting the label first makes the bar a list of features and
+// the key an annotation, which is the toolbar it replaces.
+//
+// ⚠ **AN UNBOUND VERB DRAWS A BLANK TOP LINE RATHER THAN BEING HIDDEN.** The slot says
+// *this exists and you have no key for it*, which is the only honest reading after a
+// rebind displaces something — `keymap_bind` leaves the displaced verb in the list
+// precisely so this slot can appear.
+pub fn verbbar_text_list(b: VerbBar, th: Theme, m: Metrics) -> vector<DrawText> {
+  tl: vector<DrawText> = [];
+  for s in b.vb_slots {
+    r = s.vt_rect;
+    // ⚠ **BOTH LINES ARE PLACED FROM THE METRICS, NOT FROM TWO MAGIC OFFSETS.** The
+    // pair has to be centred as a BLOCK — a key pinned to the top and a label pinned
+    // to the bottom overlap the moment the font is taller than the slot expected,
+    // which is exactly how the first version drew `Up` through `rise`.
+    pad = (r.r_h - m.m_line_h * 2) / 2 ?? 0;
+    if pad < 0 { pad = 0; }
+    kw = text_width(s.vt_key, m);
+    tl += [DrawText {
+      dt_text:   s.vt_key,
+      dt_x:      r.r_x + (r.r_w - kw) / 2 ?? r.r_x,
+      dt_y:      r.r_y + pad,
+      dt_colour: th.th_text,
+    }];
+    // …and the short label directly under it, dimmer, because the key is the answer.
+    lw = text_width(s.vt_label, m);
+    tl += [DrawText {
+      dt_text:   s.vt_label,
+      dt_x:      r.r_x + (r.r_w - lw) / 2 ?? r.r_x,
+      dt_y:      r.r_y + pad + m.m_line_h,
+      dt_colour: th.th_text_dim,
+    }];
+  }
+  // ⚠ THE OVERFLOW COUNT IS DRAWN, which is what makes `vb_hidden` a report rather
+  // than a field nobody reads. It sits after the last slot, in the dim colour, so it
+  // reads as *there is more* and not as another verb.
+  if b.vb_hidden > 0 {
+    lastx = b.vb_rect.r_x + VERB_BAR_PAD;
+    for s2 in b.vb_slots { lastx = s2.vt_rect.r_x + s2.vt_rect.r_w + VERB_SLOT_GAP; }
+    tl += [DrawText {
+      dt_text:   "+{b.vb_hidden}",
+      dt_x:      lastx + 2,
+      dt_y:      b.vb_rect.r_y + VERB_BAR_PAD + (VERB_SLOT_H - m.m_line_h) / 2 ?? 0,
+      dt_colour: th.th_text_dim,
+    }];
+  }
+  tl
+}

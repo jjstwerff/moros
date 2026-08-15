@@ -1,0 +1,330 @@
+// M1 — THE DEFINITION LAYER AS DATA, and the equality that makes it safe to move to.
+//
+// plan 22 `M1`. `verb_of`'s `if` chain and `keymap_default()` are two independent
+// bodies for the length of this step, and every row below is the same shape `V1` used
+// one layer down: **drive the whole key universe through both.**
+//
+// ⚠ **THE UNIVERSE, NOT A LIST OF THE KEYS I EXPECT TO MATTER.** A table checked
+// against the keys somebody remembered is a table checked against itself. Every letter
+// `A`–`Z`, every digit, every named key and a handful of things that are not keys at
+// all go through both resolvers — so a row silently dropped from `keymap_default` and a
+// row silently added both fail here, and neither is reachable by reading the source.
+use hex_editor;
+
+// ⚠ EVERY KEY THIS EDITOR CAN READ, built rather than listed, so that adding a name to
+// `key_code_of` and forgetting it here is not possible for the letters and digits.
+fn key_universe() -> vector<text> {
+  ks: vector<text> = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+                      "Tab", "Space", "Escape"];
+  for i in 0..26 { ks += ["ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i..i + 1]]; }
+  for d in 0..10 { ks += ["0123456789"[d..d + 1]]; }
+  // …and things that are NOT keys, which is the half a universe of real keys cannot
+  // test: both resolvers must answer *nothing* rather than guessing.
+  ks += ["", "zzz", "Arrow", "ctrl-b", " ", "ArrowUpp"];
+  ks
+}
+
+// ── THE EQUALITY ────────────────────────────────────────────────────────────
+
+// ⚠ **THE EIGHT KEYS THE TABLE DELIBERATELY DOES NOT CARRY, NAMED HERE SO THE
+// DIFFERENCE IS PINNED RATHER THAN HIDDEN.** `verb_of` is not injective: `O P I U N M`
+// all answer `opening`, `Y T` both `seat`, `J K V` all `annex`. Those are not eight
+// bindings — they are `S3`'s collapse leaving the old keys in place, and every one of
+// them does exactly what its primary does, because the profile they used to carry
+// comes from the selection now.
+//
+// A definition with six `opening` rows would draw six identical slots in a bar and
+// six identical rows in a rebinding list, which is the shape a person cannot use. So
+// the table is **one row per verb** and these eight are free.
+//
+// ⛔ **AND THAT IS A BEHAVIOUR CHANGE, MEASURED RATHER THAN ASSUMED SAFE.** Nothing in
+// production resolves them: `tools/scripts/*.keys` says `verb <name>` for every
+// gesture since `K3` (`probe/k2/run.sh` keeps the grep), and the client's `o`/`p` send
+// `36:1`/`36:2` straight to the wire and have never reached `verb_of`.
+fn freed_aliases() -> vector<text> { ["P", "I", "U", "N", "M", "T", "K", "V"] }
+
+fn is_freed(k: text) -> boolean {
+  for f in freed_aliases() { if f == k { return true; } }
+  false
+}
+
+fn test_the_table_and_the_if_chain_agree_on_every_key_but_the_freed_aliases() {
+  m = keymap_default();
+  u = key_universe();
+  // The control: a universe that reached no bound key at all would satisfy the loop
+  // below for the worst possible reason.
+  bound = 0;
+  for k in u { if verb_of(k) != VB_NONE { bound = bound + 1; } }
+  assert(bound == 23,
+         "the universe reaches {bound} bound keys where the chain binds 23 — "
+       + "this row is comparing two functions on keys that do nothing");
+  for k2 in u {
+    if !is_freed(k2) {
+      assert(verb_of(k2) == verb_in(m, k2),
+             "key '{k2}': the chain says '{verb_of(k2)}' and the table says "
+           + "'{verb_in(m, k2)}'");
+    }
+  }
+}
+
+// …and the freed eight are exactly the eight, which is the half that stops this from
+// being an escape hatch. A key quietly added to `freed_aliases` would let any
+// disagreement through the row above.
+fn test_the_freed_aliases_are_exactly_the_duplicates_the_collapse_left() {
+  m = keymap_default();
+  for f in freed_aliases() {
+    // Each was a real binding in the chain…
+    assert(verb_of(f) != VB_NONE, "'{f}' is listed as freed and the chain never bound it");
+    // …it is free in the table…
+    assert(verb_in(m, f) == VB_NONE,
+           "'{f}' is listed as freed and the table binds it to '{verb_in(m, f)}'");
+    // …and NO VERB WAS LOST, which is the whole claim: the verb it named is still
+    // reachable, from a different key.
+    assert(key_for(m, verb_of(f)) != "",
+           "'{f}' named verb '{verb_of(f)}' and the table gives that verb no key at "
+         + "all — this is a lost gesture, not a freed duplicate");
+    assert(key_for(m, verb_of(f)) != f,
+           "'{f}' is listed as freed and is still the primary for '{verb_of(f)}'");
+  }
+  // And the count closes it: 23 keys in the chain, 15 verbs, 8 freed.
+  assert(len(freed_aliases()) == 23 - len(keymap_verbs(m)),
+         "{len(freed_aliases())} keys are listed as freed where the chain binds 23 "
+       + "and the table has {len(keymap_verbs(m))} rows");
+}
+
+// ⚠ **AND THE SAME ANSWER FROM A HARDWARE CODE**, which is the half the client needs
+// and the half no script can exercise. A GL driver never sees the name.
+fn test_a_code_resolves_to_what_its_name_resolves_to() {
+  m = keymap_default();
+  hit = 0;
+  for k in key_universe() {
+    c = key_code_of(k);
+    if c != KEY_NONE {
+      assert(verb_at_code(m, c) == verb_in(m, k),
+             "key '{k}' is code {c}: by name '{verb_in(m, k)}', by code "
+           + "'{verb_at_code(m, c)}'");
+      if verb_at_code(m, c) != VB_NONE { hit = hit + 1; }
+    }
+  }
+  assert(hit == 15, "{hit} codes reached a verb where the definition has 15");
+}
+
+// ⚠ **THE UNBOUND VERB IS `""`, AND `keymap.loft` CANNOT SAY SO.** It is the mechanism
+// and knows no verb names; the root module owns `VB_NONE`. This file sees both, so the
+// equality is a test rather than a comment claiming it — `SLAB_PAD`'s shape exactly.
+fn test_the_mechanisms_unbound_verb_is_the_vocabularys_none() {
+  assert(VB_NONE == "",
+         "`keymap.loft` answers '' for unbound and the vocabulary's VB_NONE is "
+       + "'{VB_NONE}' — the two have drifted apart");
+}
+
+// ── NAMES AND CODES ─────────────────────────────────────────────────────────
+
+fn test_a_name_and_its_code_round_trip_for_every_key_there_is() {
+  named = 0;
+  for k in key_universe() {
+    c = key_code_of(k);
+    if c == KEY_NONE {
+      // Not a key: it must not round-trip INTO one, which is the direction that
+      // silently invents a binding.
+      assert(key_name_of(c) == "",
+             "'{k}' is not a key and code {c} names '{key_name_of(c)}'");
+    } else {
+      named = named + 1;
+      // ⚠ THE LETTERS ROUND-TRIP TO UPPER CASE, which is the definition's spelling —
+      // `tools/scripts/*.keys` writes `key B`. A lower-case name is accepted going in
+      // and normalised coming out, so a UI shows one spelling.
+      assert(key_code_of(key_name_of(c)) == c,
+             "'{k}' is code {c}, which names '{key_name_of(c)}', which is code "
+           + "{key_code_of(key_name_of(c))}");
+    }
+  }
+  assert(named == 43,
+         "{named} of the universe are keys — 26 letters, 10 digits and 7 named");
+}
+
+// ⛔ **THE ROW THAT CAUGHT A REAL BUG BEFORE IT SHIPPED.** Without the length test in
+// `key_code_of`, `"ArrowUp"` falls through to the letter loop on its first character
+// and answers 97 — the code for `A`. That is a binding that WORKS, points at the
+// wrong key, and never says so.
+fn test_a_long_name_is_not_read_as_its_first_letter() {
+  assert(key_code_of("ArrowUp") != key_code_of("A"),
+         "'ArrowUp' and 'A' are both code {key_code_of(\"A\")}");
+  assert(key_code_of("ArrowUp") == 128, "'ArrowUp' is code {key_code_of(\"ArrowUp\")}");
+  for bad in ["Arrow", "ArrowUpp", "zzz", "ctrl-b", "Ban"] {
+    assert(key_code_of(bad) == KEY_NONE,
+           "'{bad}' is not a key and answers code {key_code_of(bad)}");
+  }
+}
+
+// ── THE QUERY ───────────────────────────────────────────────────────────────
+
+// ⚠ **THE VERB SET IS A QUERY, AND THIS IS THE ROW THAT SAYS IT ANSWERS THE TRUTH.**
+// Every verb `press_verb` binds has to be reachable from the definition, or the editor
+// has a gesture no keyboard can press — *built and never called*, one layer up.
+fn test_every_verb_the_definition_lists_is_bound_and_every_bound_verb_is_listed() {
+  m = keymap_default();
+  vs = keymap_verbs(m);
+  w = flat_world();
+  s = EditSession {};
+  a = author_on(w, 0.0, 0.0, 0.0);
+  for v in vs {
+    ack = press_verb(s, w, a, v);
+    assert(ack.ak_why != PR_NONE,
+           "the definition lists verb '{v}' and nothing is bound to it");
+  }
+  // …and the other direction, which is the one that catches a verb added to
+  // `press_verb` with no way to reach it. ⚠ It is spelled as a walk over the key
+  // chain rather than as a second list, because a second list is a third assertion of
+  // the same fact — and it counts DISTINCT verbs, since the chain is not injective.
+  for k in key_universe() {
+    if verb_of(k) != VB_NONE {
+      assert(key_for(m, verb_of(k)) != "",
+             "key '{k}' reaches verb '{verb_of(k)}' in the chain and the definition "
+           + "gives it no key — a gesture no keyboard can press");
+    }
+  }
+}
+
+fn test_a_key_can_be_asked_for_a_verb_and_a_verb_for_its_key() {
+  m = keymap_default();
+  for v in keymap_verbs(m) {
+    k = key_for(m, v);
+    assert(k != "", "verb '{v}' is in the definition and has no key");
+    assert(verb_in(m, k) == v,
+           "verb '{v}' says key '{k}' and key '{k}' says verb '{verb_in(m, k)}'");
+  }
+  assert(key_for(m, "no-such-verb") == "",
+         "an unknown verb answered key '{key_for(m, \"no-such-verb\")}'");
+}
+
+// ── REBINDING ───────────────────────────────────────────────────────────────
+
+// ⚠ **THE FREE-KEY CASE FIRST, AND IT IS THE RARE ONE.** Every letter is taken, so a
+// rebind onto a genuinely unused key needs a digit.
+fn test_binding_a_verb_to_a_free_key_moves_it_and_frees_the_old_one() {
+  m = keymap_default();
+  before = key_for(m, VB_CELLAR);
+  assert(before == "C", "the cellar starts on '{before}'");
+  r = keymap_bind(m, "5", VB_CELLAR);
+  assert(r.bm_ok, "binding the cellar to a free key was refused: {r.bm_say}");
+  assert(r.bm_took == "", "'5' displaced verb '{r.bm_took}'");
+  assert(r.bm_freed == "C", "the cellar reports leaving '{r.bm_freed}'");
+  assert(key_for(m, VB_CELLAR) == "5", "the cellar is on '{key_for(m, VB_CELLAR)}'");
+  assert(verb_in(m, "5") == VB_CELLAR, "'5' names '{verb_in(m, \"5\")}'");
+  // ⚠ **AND THE OLD KEY IS FREE, WHICH IS THE HALF A NAIVE REBIND LEAVES BEHIND.** A
+  // map that added a row instead of moving one answers the cellar to BOTH keys, and
+  // `key_for` — which returns the first — would keep saying `C` for ever.
+  assert(verb_in(m, "C") == VB_NONE,
+         "'C' still names '{verb_in(m, \"C\")}' after the cellar moved off it");
+  assert(verb_at_code(m, key_code_of("C")) == VB_NONE,
+         "the code for 'C' still reaches '{verb_at_code(m, key_code_of(\"C\"))}'");
+}
+
+// ⚠ **A COLLISION IS THE NORMAL CASE**, because all 26 letters are taken. It replaces
+// and says what it displaced, and the displaced verb keeps its row with no key.
+fn test_binding_over_a_taken_key_displaces_the_verb_that_had_it_and_says_so() {
+  m = keymap_default();
+  r = keymap_bind(m, "C", VB_STOREY);
+  assert(r.bm_ok, "a collision was refused: {r.bm_say}");
+  assert(r.bm_took == VB_CELLAR, "'C' displaced '{r.bm_took}'");
+  assert(r.bm_freed == "B", "the storey reports leaving '{r.bm_freed}'");
+  assert(r.bm_say.contains(VB_CELLAR),
+         "the sentence does not name what lost its key: '{r.bm_say}'");
+  assert(key_for(m, VB_STOREY) == "C", "the storey is on '{key_for(m, VB_STOREY)}'");
+  // ⚠ **THE DISPLACED VERB IS STILL THERE, WITH NO KEY.** A verb that vanished would
+  // look like a feature you had deleted; an empty slot says *this still exists and you
+  // have no key for it*, which a bar can draw.
+  assert(key_for(m, VB_CELLAR) == "",
+         "the cellar kept key '{key_for(m, VB_CELLAR)}' after losing it");
+  assert(verb_is_known(m, VB_CELLAR), "the cellar was dropped from the definition");
+  assert(len(keymap_verbs(m)) == 15,
+         "the definition has {len(keymap_verbs(m))} verbs after a rebind — a rebind "
+       + "moves a row and must neither add nor drop one");
+  // …and `B`, which the storey left, is free for something else now.
+  assert(verb_in(m, "B") == VB_NONE, "'B' still names '{verb_in(m, \"B\")}'");
+}
+
+// ⚠ **AND THE MAP IS STILL ONE ROW PER VERB AFTER A SWAP**, which is the property
+// `key_for` and every bar reader assume and which two separate rebinds could break.
+fn test_two_verbs_can_trade_keys_and_the_definition_stays_one_row_per_verb() {
+  m = keymap_default();
+  keymap_bind(m, "9", VB_STOREY);      // park the storey
+  keymap_bind(m, "B", VB_CELLAR);      // the cellar takes B
+  keymap_bind(m, "C", VB_STOREY);      // and the storey takes C
+  assert(key_for(m, VB_STOREY) == "C" && key_for(m, VB_CELLAR) == "B",
+         "after the trade the storey is on '{key_for(m, VB_STOREY)}' and the cellar "
+       + "on '{key_for(m, VB_CELLAR)}'");
+  assert(verb_in(m, "B") == VB_CELLAR && verb_in(m, "C") == VB_STOREY,
+         "'B' names '{verb_in(m, \"B\")}' and 'C' names '{verb_in(m, \"C\")}'");
+  assert(verb_in(m, "9") == VB_NONE, "the parking key still names '{verb_in(m, \"9\")}'");
+  assert(len(keymap_verbs(m)) == 15,
+         "the definition has {len(keymap_verbs(m))} rows after three rebinds");
+}
+
+// ⚠ **A REBIND MAY NOT INVENT A VERB.** `keymap_bind` MOVES a row, so a name with no
+// row would bind nothing and report success — the *built and never called* defect
+// reached through a typo.
+fn test_a_rebind_refuses_a_verb_the_editor_does_not_have() {
+  m = keymap_default();
+  r = keymap_bind(m, "5", "tunnel");
+  assert(!r.bm_ok, "'tunnel' is not a verb and the rebind reported success");
+  assert(r.bm_say.contains("tunnel"), "the refusal does not name it: '{r.bm_say}'");
+  assert(verb_in(m, "5") == VB_NONE, "'5' now names '{verb_in(m, \"5\")}'");
+  assert(len(keymap_verbs(m)) == 15,
+         "a refused rebind left {len(keymap_verbs(m))} rows");
+}
+
+fn test_a_rebind_refuses_a_key_the_editor_cannot_read() {
+  m = keymap_default();
+  for bad in [".", "ctrl-b", "", "Arrow"] {
+    r = keymap_bind(m, bad, VB_CELLAR);
+    assert(!r.bm_ok, "'{bad}' is not a key and binding to it reported success");
+  }
+  assert(key_for(m, VB_CELLAR) == "C",
+         "the cellar moved to '{key_for(m, VB_CELLAR)}' through a refused rebind");
+}
+
+// ── THE SHORT LABEL ─────────────────────────────────────────────────────────
+
+// ⚠ **A BAR HAS A SLOT'S WIDTH, AND TRUNCATION IS WHAT IT MUST NOT DO.** `stair_up`
+// and `stair_down` share five characters, so a truncating bar draws two identical
+// slots — which is the failure `client_panel_spec`'s hotkey column already had, where
+// "drag" cut to "d" and read as *press d*.
+fn test_no_two_verbs_share_a_short_label() {
+  m = keymap_default();
+  vs = keymap_verbs(m);
+  for i in 0..len(vs) {
+    for j in 0..len(vs) {
+      if i != j {
+        assert(verb_short(vs[i] ?? "") != verb_short(vs[j] ?? ""),
+               "'{vs[i] ?? \"\"}' and '{vs[j] ?? \"\"}' both draw as "
+             + "'{verb_short(vs[i] ?? \"\")}'");
+      }
+    }
+  }
+}
+
+fn test_a_short_label_fits_a_slot_and_an_unknown_verb_still_draws() {
+  for v in keymap_verbs(keymap_default()) {
+    assert(len(verb_short(v)) > 0 && len(verb_short(v)) <= 4,
+           "verb '{v}' draws as '{verb_short(v)}', which is {len(verb_short(v))} "
+         + "characters where a slot has 4");
+  }
+  // ⚠ AND A VERB THIS TABLE HAS NOT BEEN TAUGHT DRAWS UNDER ITS OWN NAME — long, and
+  // correct — where a blank would read as a slot that does nothing.
+  assert(verb_short("tunnel") == "tunnel",
+         "an unlisted verb draws as '{verb_short(\"tunnel\")}'");
+}
+
+// The fixture: flat ground, so `press_verb` has somewhere to refuse or act. ⚠ The
+// rows above assert `ak_why != PR_NONE`, which is *this verb is bound* — a refusal is
+// a perfectly good answer and a fixture that had to satisfy every gesture would be a
+// world, not a fixture.
+fn flat_world() -> VoxelWorld {
+  fw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  for gq in 0 - 20..21 {
+    for gr in 0 - 20..21 { ground_set(fw, gq, gr, 8, SURFACE_MAT); }
+  }
+  fw
+}

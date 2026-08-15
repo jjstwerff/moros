@@ -688,6 +688,53 @@ else
   no "B3 the cellar printed '${b_dn#client: local }' — neither a dig nor the library's own refusal"
 fi
 
+# ── K  the VERB BAR says what you can press and what presses it — `M2` ─────
+#
+# ⛔ **WHAT THIS REPLACES WAS WRONG ON SCREEN FOR MONTHS.** The side panel's toolbar
+# drew a hotkey glyph per button as a literal — `e` beside *Stencil* where `e` is
+# `stair_up`, `c` beside *Cart* where `c` is `cellar`, `f` beside *Field* where `f` is
+# `fence`. Three of six, and nothing could notice, because a literal glyph is connected
+# to nothing that can disagree with it.
+#
+# ⚠ **A PICTURE CANNOT MAKE THIS CLAIM, WHICH IS WHY THE CHECK READS A SENTENCE.** A
+# screenshot shows a strip of squares reached the canvas; it cannot show that the glyph
+# in one of them is the key `cellar` is actually bound to. The client prints the pairs
+# out of the BUILT bar — a line that re-derived them from the map would agree with
+# itself however the layout had gone.
+echo
+echo "── K   the verb bar, and the keys in it ────────────────────────────"
+grep -m1 '^client: verb bar' "$OUT/storey.log" | sed 's/^/   /'
+k_line=$(grep -m1 '^client: verb bar' "$OUT/storey.log" || true)
+
+# K1 — it exists at all, and it is not empty.
+k_n=$(printf '%s' "$k_line" | sed -n 's/.*verb bar \([0-9]*\) slots.*/\1/p')
+if [ -n "$k_n" ] && [ "$k_n" -gt 0 ] 2>/dev/null; then
+  say "K1 the bar is drawn with $k_n slots"
+else
+  no "K1 no verb bar was built — the page reported '${k_line:-nothing}'"
+fi
+
+# K2 — and the pairs are the DEFINITION's, spot-checked against keys this probe
+# already pressed. ⚠ `b` and `c` are the two the `B` block drove, so a bar that agreed
+# with the map but disagreed with what the keyboard does would still fail here.
+if printf '%s' "$k_line" | grep -q 'B:storey' && printf '%s' "$k_line" | grep -q 'C:cellar'; then
+  say "K2 the glyphs are the bindings: B:storey and C:cellar, the two keys B drove"
+else
+  no "K2 the bar does not pair B with storey and C with cellar — '${k_line#client: }'"
+fi
+
+# K3 — one row, and it says what it could not show. ⚠ THREE OUTCOMES: a bar that fits
+# everything reports 0 hidden, which is a pass; a bar that hid some must SAY so; a bar
+# with no count at all is the silent truncation this field exists to prevent.
+k_h=$(printf '%s' "$k_line" | sed -n 's/.*slots, \([0-9]*\) hidden.*/\1/p')
+if [ -z "$k_h" ]; then
+  no "K3 the bar reports no hidden count — an overflow would be invisible"
+elif [ "$k_h" = "0" ]; then
+  say "K3 and all $k_n fit this window, with nothing hidden"
+else
+  say "K3 and it says what it could not show: $k_h hidden"
+fi
+
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────
 #
 # ⚠ THREE RUNS, AND TWO OF THEM ARE CONTROLS. *The page connected* means nothing

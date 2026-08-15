@@ -387,6 +387,25 @@ gone back into a payload the wire table cannot carry"
 the baseline pressed two keys"
   fi
 
+  # 14 — NO LIVE SCRIPT PRESSES A FREED ALIAS, plan 22 `M1`. `verb_of` bound 23 keys to
+  # 15 verbs — `O P I U N M` all `opening`, `Y T` both `seat`, `J K V` all `annex` —
+  # and the definition-as-data carries ONE row per verb, so those eight keys resolve to
+  # nothing now. That is safe exactly while no script presses one, and this is the
+  # grep that keeps it true.
+  #
+  # ⚠ THE BASELINES ARE NOT CHECKED AND MUST NOT BE. `probe/k2/orig/*.keys` press them
+  # on purpose — they are the pre-`K2a` spelling — and they reach the server through
+  # `script.mjs`'s `KEYMAP`, which sends `36:2` directly and never asks `verb_of`. A
+  # check that swept them too would demand the baselines be converted, which is the one
+  # thing that would make checks 1 and 2 compare a file with itself.
+  if grep -qE '^key [PIUNMTKV]$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys presses a freed alias key — \
+$(grep -E '^key [PIUNMTKV]$' "tools/scripts/$s.keys" | sort -u | tr '\n' ' ')— \
+these resolve to no verb since the definition became data"
+  else
+    ok "no freed alias key is pressed here"
+  fi
+
   sed -n "s/^ *\([A-Z]\): '37:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/annexmap.txt"
   awk 'NR==FNR { map[$1] = $2; next }
        /^key [JKV]$/ { print map[$2] }' \

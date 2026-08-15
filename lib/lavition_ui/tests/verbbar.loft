@@ -1,0 +1,301 @@
+// M2 — THE VERB BAR, and the claims a screenshot cannot make.
+//
+// plan 22 `M2`. What a gate can say about this strip is *it reached the canvas*; what
+// it cannot say is that no slot leaves the bar, that overflow was reported rather than
+// dropped, or that a click lands on the verb under the pointer. Those are facts about
+// the LAYOUT, countable here, and only arguable from a picture.
+use lavition_ui;
+
+// The panel suite's own helper, restated here because a test file is its own scope.
+fn m() -> Metrics {
+  run = (8 * 10) as float;
+  metrics_measured(run, run, 10, 12)
+}
+
+// ⚠ FIFTEEN, WHICH IS THE REAL VOCABULARY. A fixture of three would fit any bar and
+// say nothing about the case this widget exists for.
+//
+// ⛔ **AND THE KEYS ARE REAL NAMES, WHICH THEY WERE NOT AT FIRST.** Every slot carried
+// `"K"` — one character — so *the glyph fits its box* passed with nothing to fit, and
+// the first real run of the editor drew `ArrowUp` (seven characters, 56px at an 8px
+// advance) in a 34px slot. **A fixture easier than the thing it stands for is how a
+// layout claim goes green while the layout is wrong**, and this row is the correction.
+fn fifteen() -> vector<SpecVerb> {
+  vs: vector<SpecVerb> = [];
+  ks = ["ArrowUp", "ArrowDown", "F", "G", "R", "H", "O", "Y", "J", "E", "Q",
+        "X", "Z", "B", "C"];
+  for i in 0..15 { vs += [spec_verb("verb{i}", "v{i}", ks[i] ?? "")]; }
+  vs
+}
+
+// ── WHERE IT SITS ───────────────────────────────────────────────────────────
+
+fn test_the_bar_is_one_row_clear_of_the_panel_and_the_status_strip() {
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  assert(b.vb_rect.r_h == verbbar_height(),
+         "the bar is {b.vb_rect.r_h} tall where one row is {verbbar_height()}");
+  assert(b.vb_rect.r_x >= PANEL_WIDTH,
+         "the bar starts at {b.vb_rect.r_x}, inside a panel {PANEL_WIDTH} wide");
+  // ⚠ THE STATUS STRIP IS ACROSS THE BOTTOM OF THE WINDOW, so the bar must end above
+  // it. Two things claiming the same pixels is the overlap `panel_draw_list` warns
+  // about for the subject bar, one edge over — and a picture shows it only if someone
+  // looks at that corner.
+  assert(b.vb_rect.r_y + b.vb_rect.r_h <= 660 - STATUS_HEIGHT,
+         "the bar ends at {b.vb_rect.r_y + b.vb_rect.r_h} and the status strip starts "
+       + "at {660 - STATUS_HEIGHT}");
+  assert(b.vb_rect.r_y >= 0, "the bar starts above the window at {b.vb_rect.r_y}");
+}
+
+// ⚠ **A CONSUMER WITH NO SIDE PANEL PASSES 0**, and this package must not decide that
+// an editor has one.
+fn test_a_consumer_with_no_panel_gets_the_full_width() {
+  wide = verbbar_build(fifteen(), 1200, 660, 0, m());
+  narrow = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  assert(wide.vb_rect.r_w > narrow.vb_rect.r_w,
+         "with no panel the bar is {wide.vb_rect.r_w} wide and with one it is "
+       + "{narrow.vb_rect.r_w}");
+  assert(len(wide.vb_slots) >= len(narrow.vb_slots),
+         "the wider bar shows {len(wide.vb_slots)} slots and the narrower "
+       + "{len(narrow.vb_slots)}");
+}
+
+// ── THE SLOTS ───────────────────────────────────────────────────────────────
+
+// ⛔ **THE ROW THAT FOUND THE OFF-BY-ONE.** A closed-form `avail / (W + GAP)` puts the
+// last slot half outside the bar at some widths, which draws as a clipped square and
+// is invisible in a screenshot at any width but that one.
+fn test_no_slot_leaves_the_bar_at_any_window_width() {
+  for w in [420, 640, 800, 1024, 1200, 1600] {
+    b = verbbar_build(fifteen(), w, 660, PANEL_WIDTH, m());
+    for s in b.vb_slots {
+      assert(s.vt_rect.r_x >= b.vb_rect.r_x,
+             "at {w}px a slot starts at {s.vt_rect.r_x}, left of the bar at "
+           + "{b.vb_rect.r_x}");
+      assert(s.vt_rect.r_x + s.vt_rect.r_w <= b.vb_rect.r_x + b.vb_rect.r_w,
+             "at {w}px a slot ends at {s.vt_rect.r_x + s.vt_rect.r_w}, past the bar "
+           + "at {b.vb_rect.r_x + b.vb_rect.r_w}");
+      assert(s.vt_rect.r_y >= b.vb_rect.r_y
+          && s.vt_rect.r_y + s.vt_rect.r_h <= b.vb_rect.r_y + b.vb_rect.r_h,
+             "at {w}px a slot is outside the bar vertically");
+    }
+  }
+}
+
+fn test_slots_do_not_overlap_and_keep_their_order() {
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  assert(len(b.vb_slots) > 1, "one slot cannot show an ordering");
+  for i in 0..len(b.vb_slots) - 1 {
+    l = b.vb_slots[i] ?? VerbSlot {};
+    r = b.vb_slots[i + 1] ?? VerbSlot {};
+    assert(l.vt_rect.r_x + l.vt_rect.r_w <= r.vt_rect.r_x,
+           "slot {i} ends at {l.vt_rect.r_x + l.vt_rect.r_w} and slot {i + 1} starts "
+         + "at {r.vt_rect.r_x}");
+    assert(l.vt_verb == "verb{i}",
+           "slot {i} names '{l.vt_verb}' — the order the caller gave is the order it "
+         + "is drawn in");
+  }
+}
+
+// ── OVERFLOW ────────────────────────────────────────────────────────────────
+
+// ⚠ **REPORTED, NEVER SILENTLY DROPPED.** A bar that truncated quietly would read as
+// *those verbs do not exist here*, which is the wrong sentence for an author who
+// cannot find one.
+fn test_what_does_not_fit_is_counted_rather_than_dropped() {
+  b = verbbar_build(fifteen(), 560, 660, PANEL_WIDTH, m());
+  assert(b.vb_hidden > 0,
+         "a 560px window fits all 15 slots — this row is asking nothing");
+  assert(len(b.vb_slots) + b.vb_hidden == 15,
+         "{len(b.vb_slots)} shown and {b.vb_hidden} hidden of 15 — one went missing");
+  // The control: given room, nothing is hidden and the count is honest in both
+  // directions.
+  wide = verbbar_build(fifteen(), 1600, 660, PANEL_WIDTH, m());
+  assert(wide.vb_hidden == 0 && len(wide.vb_slots) == 15,
+         "with room the bar shows {len(wide.vb_slots)} and hides {wide.vb_hidden}");
+}
+
+// ⚠ **AND THE BAR NEVER GROWS A SECOND ROW**, which is the whole of *doesn't take up
+// too much screen space*. A wrapping bar eats the window it is drawn over.
+fn test_the_bar_is_the_same_height_however_many_verbs_there_are() {
+  few = verbbar_build([spec_verb("a", "a", "A")], 1200, 660, PANEL_WIDTH, m());
+  many: vector<SpecVerb> = [];
+  for i in 0..60 { many += [spec_verb("verb{i}", "v{i}", "K")]; }
+  lots = verbbar_build(many, 1200, 660, PANEL_WIDTH, m());
+  assert(few.vb_rect.r_h == lots.vb_rect.r_h,
+         "1 verb makes a bar {few.vb_rect.r_h} tall and 60 make one "
+       + "{lots.vb_rect.r_h} tall");
+  assert(lots.vb_hidden > 0, "60 verbs fitted a 1200px window — nothing overflowed");
+  for s in lots.vb_slots {
+    assert(s.vt_rect.r_y == few.vb_slots[0]?.vt_rect.r_y ?? 0 - 1,
+           "a slot sits at y {s.vt_rect.r_y} where the single-slot bar puts one at "
+         + "{few.vb_slots[0]?.vt_rect.r_y ?? 0 - 1} — the bar has wrapped");
+  }
+}
+
+// ── HITTING IT ──────────────────────────────────────────────────────────────
+
+fn test_a_click_in_a_slot_names_that_slots_verb() {
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  i = 0;
+  for s in b.vb_slots {
+    cx = s.vt_rect.r_x + s.vt_rect.r_w / 2 ?? 0;
+    cy = s.vt_rect.r_y + s.vt_rect.r_h / 2 ?? 0;
+    assert(verbbar_hit(b, cx, cy) == i,
+           "the centre of slot {i} hits {verbbar_hit(b, cx, cy)}");
+    assert(verbbar_verb(b, verbbar_hit(b, cx, cy)) == s.vt_verb,
+           "slot {i} names '{s.vt_verb}' and the hit reads "
+         + "'{verbbar_verb(b, verbbar_hit(b, cx, cy))}'");
+    i += 1;
+  }
+}
+
+// ⚠ **THE MISSES MATTER AS MUCH AS THE HITS**, and the gap between slots is the one a
+// hit-test written as *which slot index is this x nearest* gets wrong: it answers a
+// slot for a click that landed on the bar's background.
+fn test_a_click_between_or_outside_slots_names_nothing() {
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  s0 = b.vb_slots[0] ?? VerbSlot {};
+  gap_x = s0.vt_rect.r_x + s0.vt_rect.r_w + 1;
+  gap_y = s0.vt_rect.r_y + s0.vt_rect.r_h / 2 ?? 0;
+  assert(verbbar_hit(b, gap_x, gap_y) == 0 - 1,
+         "a click in the gap between slots hit {verbbar_hit(b, gap_x, gap_y)}");
+  assert(verbbar_hit(b, 0, 0) == 0 - 1, "a click at the origin hit a slot");
+  assert(verbbar_hit(b, 5000, 5000) == 0 - 1, "a click off the window hit a slot");
+  assert(verbbar_verb(b, 0 - 1) == "", "a miss named '{verbbar_verb(b, 0 - 1)}'");
+  assert(verbbar_verb(b, 999) == "", "an index past the end named a verb");
+}
+
+// ── THE PICTURE ─────────────────────────────────────────────────────────────
+
+fn test_every_slot_is_drawn_and_the_bar_is_behind_them() {
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  dl = verbbar_draw_list(b, theme_default());
+  assert(len(dl) == len(b.vb_slots) + 1,
+         "{len(dl)} rectangles for {len(b.vb_slots)} slots and one bar");
+  // ⚠ THE ORDER IS THE Z-ORDER — `panel_draw_list`'s own rule. A bar emitted after its
+  // slots paints over every one of them, which is a bug a picture shows and a count
+  // does not.
+  assert((dl[0] ?? DrawRect {}).dr_rect.r_w == b.vb_rect.r_w,
+         "the first rectangle is not the bar — the slots would be painted over");
+}
+
+// ⚠ **AN ARMED SLOT IS DRAWN DIFFERENTLY, AND THAT IS A FACT ABOUT THE DECISION** —
+// countable here, arguable only from a screenshot otherwise. A `run` with one end down
+// is the case: the next press closes it, and an author needs to see that.
+fn test_an_armed_slot_is_drawn_differently_from_a_resting_one() {
+  th = theme_default();
+  rest = verbbar_draw_list(verbbar_build([spec_verb("r", "run", "R")],
+                                         1200, 660, PANEL_WIDTH, m()), th);
+  armed = verbbar_draw_list(verbbar_build([spec_verb_on("r", "run", "R", true)],
+                                          1200, 660, PANEL_WIDTH, m()), th);
+  assert((rest[1] ?? DrawRect {}).dr_colour != (armed[1] ?? DrawRect {}).dr_colour,
+         "an armed slot and a resting one are both colour "
+       + "{(rest[1] ?? DrawRect {}).dr_colour}");
+}
+
+// ⚠ **THE KEY IS THE TOP LINE AND THE LABEL READS UNDER IT.** The question a bar
+// answers at a glance is *which key does this*; putting the label first makes it a
+// list of features with the key as an annotation, which is the toolbar it replaces.
+fn test_each_slot_draws_its_key_over_its_label_inside_its_own_box() {
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, m());
+  tl = verbbar_text_list(b, theme_default(), m());
+  assert(len(tl) == len(b.vb_slots) * 2,
+         "{len(tl)} strings for {len(b.vb_slots)} slots of two lines each");
+  i = 0;
+  for s in b.vb_slots {
+    k = tl[i * 2] ?? DrawText {};
+    l = tl[i * 2 + 1] ?? DrawText {};
+    assert(k.dt_text == s.vt_key && l.dt_text == s.vt_label,
+           "slot {i} draws '{k.dt_text}' over '{l.dt_text}' where the slot is "
+         + "'{s.vt_key}' / '{s.vt_label}'");
+    assert(k.dt_y < l.dt_y,
+           "slot {i} draws its key at y {k.dt_y} and its label at {l.dt_y} — the key "
+         + "is the answer and belongs on top");
+    assert(k.dt_x >= s.vt_rect.r_x
+        && k.dt_x + text_width(k.dt_text, m()) <= s.vt_rect.r_x + s.vt_rect.r_w,
+           "slot {i}'s key runs outside its own box");
+    assert(l.dt_y + text_height(m()) <= s.vt_rect.r_y + s.vt_rect.r_h,
+           "slot {i}'s label runs below its own box");
+    i += 1;
+  }
+}
+
+// ⚠ **AN UNBOUND VERB KEEPS ITS SLOT AND DRAWS A BLANK KEY.** After a rebind displaces
+// something, the slot says *this exists and you have no key for it* — the only honest
+// reading, and the reason `keymap_bind` leaves a displaced verb in the list at all.
+fn test_a_verb_with_no_key_still_gets_a_slot() {
+  b = verbbar_build([spec_verb("cellar", "flr-", "")], 1200, 660, PANEL_WIDTH, m());
+  assert(len(b.vb_slots) == 1, "an unbound verb was dropped from the bar");
+  tl = verbbar_text_list(b, theme_default(), m());
+  assert((tl[0] ?? DrawText {}).dt_text == "",
+         "the key line reads '{(tl[0] ?? DrawText {}).dt_text}' for an unbound verb");
+  assert((tl[1] ?? DrawText {}).dt_text == "flr-",
+         "the label went missing with the key");
+}
+
+// ⚠ **AND THE OVERFLOW COUNT IS DRAWN**, which is what makes `vb_hidden` a report
+// rather than a field nobody reads.
+fn test_the_hidden_count_reaches_the_picture() {
+  b = verbbar_build(fifteen(), 560, 660, PANEL_WIDTH, m());
+  assert(b.vb_hidden > 0, "nothing overflowed — this row is asking nothing");
+  tl = verbbar_text_list(b, theme_default(), m());
+  assert(len(tl) == len(b.vb_slots) * 2 + 1,
+         "{len(tl)} strings for {len(b.vb_slots)} slots and one overflow mark");
+  last = tl[len(tl) - 1] ?? DrawText {};
+  assert(last.dt_text == "+{b.vb_hidden}",
+         "the overflow mark reads '{last.dt_text}' where {b.vb_hidden} are hidden");
+}
+
+// ⛔ **THE ROW THE SLOT WIDTH WAS SHIPPED WITHOUT.** Containment is satisfied by
+// truncation — `f…` is inside its box — so *the text fits* was green while every label
+// in the real editor was cut to one character. The claim that matters is that the slot
+// holds what it was designed to hold, **at the metrics the consumer actually has**:
+// the editor's font measures 10px per character, mono, which its own `client: panel …
+// advance 10` line reports.
+fn test_a_four_character_label_survives_the_editors_own_metrics() {
+  run = (10 * 10) as float;
+  editor = metrics_measured(run, run, 10, 14);
+  b = verbbar_build([spec_verb("stair_up", "st+", "E"),
+                     spec_verb("fence", "fenc", "F"),
+                     spec_verb("opening", "door", "O")], 1200, 660, PANEL_WIDTH, editor);
+  want = ["st+", "fenc", "door"];
+  i = 0;
+  for s in b.vb_slots {
+    assert(s.vt_label == want[i] ?? "",
+           "slot {i} draws '{s.vt_label}' where the caller gave '{want[i] ?? \"\"}' — "
+         + "a {VERB_SLOT_W}px slot cannot hold 4 characters at a 10px advance");
+    i += 1;
+  }
+  // …and the key glyphs too, which is the same claim for the top line: `Spc` and `Esc`
+  // are three characters and `key_glyph` promises they arrive intact.
+  k = verbbar_build([spec_verb("x", "x", "Spc")], 1200, 660, PANEL_WIDTH, editor);
+  assert((k.vb_slots[0] ?? VerbSlot {}).vt_key == "Spc",
+         "a 3-character key glyph draws as "
+       + "'{(k.vb_slots[0] ?? VerbSlot {}).vt_key}'");
+}
+
+// ⛔ **THE SECOND ROW THIS WIDGET SHIPPED WITHOUT.** `k.dt_y < l.dt_y` asserts the key
+// is ABOVE the label; it says nothing about whether they touch. The first real run drew
+// `Up` through `rise` and `Dn` through `sink` — two legible strings in the same pixels
+// — with the suite green. ⚠ At the EDITOR's metrics: `UI_SIZE` 16.0 measures about 16px
+// a line, and a fixture at 12 has four pixels of slack that hides the defect.
+fn test_the_two_lines_of_a_slot_do_not_overlap_at_the_editors_metrics() {
+  run = (10 * 10) as float;
+  editor = metrics_measured(run, run, 10, 16);
+  b = verbbar_build(fifteen(), 1200, 660, PANEL_WIDTH, editor);
+  tl = verbbar_text_list(b, theme_default(), editor);
+  i = 0;
+  for s in b.vb_slots {
+    k = tl[i * 2] ?? DrawText {};
+    l = tl[i * 2 + 1] ?? DrawText {};
+    assert(k.dt_y + text_height(editor) <= l.dt_y,
+           "slot {i}: the key runs to y {k.dt_y + text_height(editor)} and the label "
+         + "starts at {l.dt_y} — they are drawn through each other");
+    assert(l.dt_y + text_height(editor) <= s.vt_rect.r_y + s.vt_rect.r_h,
+           "slot {i}: the label runs to y {l.dt_y + text_height(editor)} and its slot "
+         + "ends at {s.vt_rect.r_y + s.vt_rect.r_h}");
+    assert(k.dt_y >= s.vt_rect.r_y,
+           "slot {i}: the key starts at y {k.dt_y}, above its slot at {s.vt_rect.r_y}");
+    i += 1;
+  }
+}

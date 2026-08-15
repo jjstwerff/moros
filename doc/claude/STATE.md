@@ -393,6 +393,73 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `M1`+`M2` — THE KEYBOARD IS THE PERSON'S, and three instruments that could not fail, 2026-08-15
+
+**The binding is DATA and the verbs are on screen.** `hex_editor::KeyMap` is the definition
+layer — `keymap_default()`, `verb_in`, `key_for`, `code_for`, `keymap_bind` — and both drivers
+read it: `editor_run` resolves a script's `key` line through the map, and every input site in
+`editor_client` names a **verb** while `st.keys` says which finger reaches it. The verb bar
+(`lavition_ui::verbbar`) draws one slot per verb with the key over a short label, one row along
+the bottom, overflow reported rather than wrapped. The design is
+[EDITING_MODES § Phase 6](EDITING_MODES.md).
+
+⛔ **THE MEASUREMENT THAT STARTED IT: FOUR SITES, AND ONE WAS WRONG ON SCREEN.** `verb_of`'s `if`
+chain; the client's `KEY_*` codes; the poll block beside them spelling the same key again as a
+string (`gl_key_pressed(KEY_STOREY_UP)` then `verb_of("B")` — the file's own comment called that
+*"the last place this step could hide one"*); and the side panel's toolbar, which drew a hotkey
+glyph per button as a **literal**. ⛔ **Three of its six were wrong for months** — `e` beside
+*Stencil* where `e` is `stair_up`, `c` beside *Cart* where `c` is `cellar`, `f` beside *Field*
+where `f` is `fence`. A literal glyph is connected to nothing that could disagree with it.
+
+⚠ **ONE ROW PER VERB, WHICH FREES EIGHT KEYS.** `verb_of` bound **23 keys to 15 verbs** —
+`O P I U N M` all `opening`, `Y T` both `seat`, `J K V` all `annex`. Those are `S3`'s collapse
+leaving the old keys in place, and a definition with six `opening` rows draws six identical slots
+in a bar and six identical rows in a rebinding list. Measured safe rather than assumed: no live
+script presses one (`probe/k2` check 14 keeps the grep) and the client's `o`/`p` send `36:1`/`36:2`
+straight to the wire and have never reached `verb_of`.
+
+⛔ **AND THREE OF THIS WORK'S OWN INSTRUMENTS COULD NOT FAIL — ALL THREE FOUND BY LOOKING AT THE
+PICTURE.** This is the session's repeated lesson arriving a third time in one day:
+
+> **1. The layout fixture was easier than the thing it stood for.** Every slot in the suite
+> carried a one-character key, so *the glyph fits its box* passed with nothing to fit — and the
+> first real run drew `ArrowUp`, seven characters at a 10px advance, in a 34px slot.
+>
+> **2. Containment is satisfied by truncation.** With the fixture fixed, `fit_text` cut every
+> label to `f…` and the row stayed green, because truncated text is still inside its box. The
+> claim that matters is that the slot holds what it was **designed** to hold, at the metrics the
+> consumer actually has — `advance 10, mono`, which the client's own panel line reports.
+>
+> **3. Ordering is not separation.** `key.dt_y < label.dt_y` says the key is above the label and
+> nothing about whether they touch. At `UI_SIZE` 16.0 they were drawn **through each other** —
+> `Up` over `rise`, legibly, in the same pixels — with the suite green.
+
+Each has a row now, and each was seen red on the value that shipped. ⚠ **The general shape: a
+layout claim that only bounds a thing cannot see a thing that has been squeezed to fit.**
+
+⛔ **AND DRAWING IT COST TWO PICTURE GATES, WHICH `tools/script.mjs` HAD ALREADY PREDICTED.** Its
+own comment records what happened when the side panel arrived — *"counting it moved every share in
+every gate at once"* — and the bar did it again: a **constant `soffit 0.0787`** in every shot,
+which is the bar's 52 of 660 rows, taking `cellar_ceiling` and `camera_indoors` red on a change
+that touched no world code. ⚠ **The constancy is the tell, and it is worth keeping**: an overlay
+misread as a surface reports the *same* fraction in every frame of every gate, because its pixels
+do not depend on the world. A world defect moves; furniture does not. The strip is excluded now,
+beside the panel and the status bar.
+
+⚠ **AND ONE THRESHOLD MOVED, WITH THE MEASUREMENT RATHER THAN A SHRUG.** `indoors.keys`' SNUG row
+wanted a whole-frame `sd ≥ 0.125` and read **0.1193** — because the excluded rows carried
+contrast, so the view this row measures is genuinely smaller. Checked the honest way: the client
+was **rebuilt with the bar removed and the identical scene passed**, which is what separates *the
+sample changed* from *the picture got worse*. It is `0.11` now, and the script's own note is why
+that is allowed — *"`sd:masonry` … 0.0031 without the lamp, 0.0762 with it — a factor of 25,
+against a whole-frame `sd` that moved by 0.0003"*. The coarse bound still catches a black or flat
+frame; **the row that actually sees the lamp is untouched**.
+
+⏭ `M3` is rebinding from the editor — arm, pick a slot, press a key. ⏭ `M4` deletes `verb_of`,
+which now has only test callers and is kept as `V1`'s independent control until the comparison is
+spent. ⏭ And the bar shortens for free the day `mode_at` (`D1`) lands: `keymap_verbs` is a query,
+so *the verbs available where you are standing* needs no change here.
+
 ## ✅ `K3` · `B`+`C` — THE LAST TWO KEYS, and two sweeps that could not fail, 2026-08-15
 
 **`B` names `storey` and `C` names `cellar`.** Every key the scripts press is a verb now.

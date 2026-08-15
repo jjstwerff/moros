@@ -135,7 +135,19 @@ snap s10-auto-snug
 # exactly that**, with a further third of it fallen so dark that a WALL now matches
 # the ROAD's chromaticity. The lamp is what keeps a low-ambient room a picture
 # rather than a silhouette, and this is the number that says so.
-frame 0 0.85 figure 0 0.002 lum 0.05 0.22 sd 0.125 1.0 sd:masonry 0.03 1.0 black 0 0.002 sky 0 0.001
+# ⛔ **THE WHOLE-FRAME `sd` FLOOR WENT 0.125 → 0.11 WHEN THE VERB BAR ARRIVED — plan 22
+# `M2`, and it is a change to the SAMPLE and not to a threshold that stopped fitting.**
+# The bar covers the bottom 52 of 660 rows, so `tools/script.mjs` excludes them exactly
+# as it excludes the panel and the status strip; the view this row measures is now
+# smaller, and the rows it lost carried contrast. Measured, not guessed: **0.1193 with
+# the bar, and the identical scene PASSES with the client rebuilt without one.**
+#
+# ⚠ **AND THIS IS THE HALF THE NOTE ABOVE ALREADY CALLS WEAK.** *"`sd:masonry` … 0.0031
+# without the lamp, 0.0762 with it — a factor of 25, against a whole-frame `sd` that
+# moved by 0.0003."* The whole-frame spread is a coarse *the picture is not flat* bound
+# — a black frame and a flat grey one both read 0 — and 0.11 still holds it. The row
+# that actually sees the lamp is `sd:masonry 0.03`, and it is untouched.
+frame 0 0.85 figure 0 0.002 lum 0.05 0.22 sd 0.11 1.0 sd:masonry 0.03 1.0 black 0 0.002 sky 0 0.001
 
 echo --- and back out: the degradation is not a one-way door
 at 0 0 90

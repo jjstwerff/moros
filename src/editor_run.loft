@@ -151,8 +151,28 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // What is left here is a driver's business: saying what happened. A key nobody
     // bound answers `VB_NONE`, which `press_verb` reports as `PR_NONE` — the same
     // answer `press` gave, so the sentence below did not have to change.
-    return said_ack(hex_editor::press_verb(sess, w, a, hex_editor::verb_of(rest),
-                                           "{source_dir()}/../data/parts"),
+    //
+    // ⚠ **AND IT ASKS A MAP RATHER THAN A FUNCTION — plan 22 `M1`.** `verb_of` is an
+    // `if` chain compiled into the library; `keymap_default()` is the same definition
+    // as DATA, which is what makes it a person's to change. This is the first
+    // production caller, and the two bodies are compared over the whole key universe
+    // in `lib/hex_editor/tests/keymap.loft` — a table checked against itself could
+    // not be surprised, so they stay independent until `verb_of` is deleted.
+    //
+    // ⚠ **THE MAP IS BUILT PER LINE AND THAT IS DELIBERATE FOR NOW.** A script has no
+    // way to rebind, so a per-line default is the same map every time; the moment a
+    // `bind` command exists it becomes session state and this line reads it from
+    // there instead. Building it here rather than threading it through is what keeps
+    // this step to one caller.
+    //
+    // ⚠ **AND EIGHT KEYS STOP RESOLVING: `P I U N M T K V`.** They were `S3`'s
+    // collapse leaving the old keys in place — each does exactly what its primary
+    // does — and no live script presses one (`K3` converted them all; `probe/k2`
+    // keeps the grep). A definition with six `opening` rows would draw six identical
+    // slots in a bar and six identical rows in a rebinding list.
+    return said_ack(hex_editor::press_verb(sess, w, a,
+                      hex_editor::verb_in(hex_editor::keymap_default(), rest),
+                      "{source_dir()}/../data/parts"),
                     rest, said);
   }
 
