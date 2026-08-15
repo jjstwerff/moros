@@ -154,7 +154,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K3` · `Z`** — the void becomes the verb `hole`; `X` stays a key | S | **DONE 2026-08-14.** ⚠ **A THIRD ANSWER TO "two keys, one message"**: not a THING (collapses) and not a DIRECTION (does not), but **two actions** — `39:0` lays a floor, `39:1`…`39:3` cut through it, and the second cannot run until the first has. `place`/`opening`'s relationship. ⛔ **The library refused with *press X first* and a test PINNED that substring** — a keystroke named by a package no keyboard belongs to. ⛔ **A bare `39:` is a slab**, so the *empty means the one I chose* contract is unavailable on this id · `probe/k2` **10 scripts** · seven sabotages red |
 | ✅ **`K3` · `X`** — the floor becomes the verb `slab`, and the pair is whole | S | **DONE 2026-08-15.** The name `Z` was waiting on, bound. ⛔ **The instrument I added to cover the moved sentence had to be REMOVED the same hour**: `tools/script.mjs` prints, after each line it sends, whatever arrives NEXT, and returns 250 ms after its last send — so the wire capture LAGS and TRUNCATES, and two scripts of different lengths lose different tails. Measured over all ten pairs; the finding is now in `probe/k2/run.sh`'s header, which is what says why check 1 reads the server's log. ⛔ **`HOLE_PAD` and a hand-written `HOUSE_W + HOUSE_D + 4` were one number under two names** at the socket — `SLAB_PAD` for both, with a test that both gestures reach for it. ⚠ **A `pub const` used above its own declaration is reported as an UPPER_CASE local** ([loft#921](https://github.com/loft-lang/loft/issues/921)) — it resolves correctly (measured `sb_pad = 13`), so the one diagnostic pointing at a constant says it is not one · hex_editor 489 → 492 both backends · `probe/k2` 10 scripts · nine sabotages red, with a control that must stay green |
 | ✅ **`K3` · `B`+`C`** — the storey pair, and every key the scripts press is a verb | S | **DONE 2026-08-15.** Two verbs by BOTH rules at once — a direction, and not mirror images (a cellar comes with its stair) — and the naming rule earns a sentence: **a verb takes the word the domain has**, so `cellar` rather than `storey_down`. ⛔ **The client's `b`/`c` were the last raw `wire` sends and were DEAD in local mode** — the demo could not build a storey at all; `make probe-demo`'s new `B` block reads `local storey — 19`. ⛔ **The stride was a global for the third time** (`cliff_step()`, wrong on a part world), with the disc radius and both pads as literals beside it. ⛔ **Two of this session's own instruments could not fail**: a sabotage that does not BUILD scored *nothing went red* in all four sweeps, and the disc assertion was a closed form checked against itself · hex_editor 492 → 494 both backends · `probe/k2` **12 scripts** · nine sabotages red plus three demo checks |
-| **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Every key a script presses is now a verb.** What is left is the *drop* half: `tools/script.mjs`'s `key` spelling and `KEYMAP` still exist, and `Q` is bound and pressed by no script |
+| ✅ **`K2b`** — convert the mechanical remainder: **91 lines over 32 files** | S | **DONE 2026-08-15.** `make probe-k2b` — **31 scripts**, each beside its own pre-conversion self out of git, equal on the world key, the session digest, the saved bytes and the transcript. ⛔ **The 32nd file was a script that is not a file**: `probe/a83/leaf_visible/switch.sh` builds its script in a **heredoc**, so it was invisible to the probe's `*.keys` glob and to the `--include=*.keys` grep that produced the *zero remain* claim in this row's own previous text. ⛔ **The probe was red on all 31 scripts the first time it ran, for two reasons that were both about the instrument**: the runner labels a bare acknowledgement with **the word the script used** (`said_ack` prints `"{what}: {n}"`, so `ArrowUp: 1` against `raise: 1`), and the two runs wrote worlds under **different names** which the runner then prints in its own summary line. ⛔ **AND TWO COPIES OF THE PROBE RAN AT ONCE**, one queued behind the `B4` sweep — they shared `probe/k2b/out` *and* `worlds/k2b-a.hxw`, so a byte comparison could have passed on **a world the other process built**. ✅ Measured: the rewrite reaches **80 of 90** lines and `place`'s ten are compared **word for word**, because a gesture only wears the bare label when it has nothing of its own to say | ✅ Done |
+| **`K3`** — drop the key spelling from both readers | S | the test-name and script-vocabulary diff, **not** a green suite | ⏭ **After `K2b`, and it has a price to state**: `tools/script.mjs`'s `KEYMAP` and `editor_run`'s `key` branch are what keep `probe/k1`'s `keyed.keys` and `probe/k2/orig/`'s twelve baselines RUNNABLE. Dropping the reader retires them, which is `V3`'s shape — a transitional instrument spent — and has to be said rather than discovered. `Q` is bound and pressed by no script |
 | ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
 | ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | S | **DONE 2026-08-15.** `hex_editor::Rebind`, two fences in the client, `make probe-demo` `M1`–`M6`. ⛔ **The row it turned out to be about was not the collision one**: a POLLING editor fires the verb it has just bound, because the completing key is still down on the next frame — and that raise is correct in every particular. ⛔ **The map is not the whole keyboard** (8 client keys outside it, invisible to `keymap_bind`). ⛔ **The driver had been turning `5` into code 85** since it was written, and digits are the only free keys there are. ⛔ **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`** — measured on the pre-`M3` commit before it was blamed on anything · hex_editor keymap 15 → 28 tests · 4 library + 3 demo sabotages red · `make probe-auth` 36 → **37 PASS** | ✅ Done |
 | ✅ **`M4`** — delete `verb_of` | XS | **DONE 2026-08-15.** The suite reads **522 → 522** and that is the wrong instrument: the **test-name diff** is 6 lines, 1 deleted, 1 added, 4 renamed with the claim change written on each. ⛔ **The row that said it caught *built and never called* never could** — measured on the pre-`M4` tree, an arm in `press_verb` reachable from no key left the suite at 522 passed. `the_vocabulary()` replaces it, **with the case it still cannot see written into the test**. ⛔ **The deletion silently disarmed four sibling sweeps** — all four sed'd the deleted chain, and only the two whose subject guard happened to NAME the binding said so; the other two printed *NOTHING went red*. ⛔ **And a sweep piped through `head` left its sabotage in the tree**, because the trap had no `PIPE` · `sh probe/k2/sabotage-m4.sh` 5 red + 2 controls · `make lib-test` **3624 both backends** · `make fast` 156 files · `make gate` 49 · `make parts` byte-identical | ✅ Done |
@@ -168,7 +169,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`B1b.1b`** — the authority becomes TWO: no socket → local, and a key WRITES | S | **DONE 2026-08-13.** `make probe-auth`: 28 checks. The page and `editor_run` at `GROUND=0` agree on the **world** (`32952:1545220309`) and on the **session** — two instruments, because a ring's trunk is in one and its edges in the other. Nine sabotages | ✅ Done |
 | ✅ **`B1b.1`** — local mode holds a session, an author and its own world; a key WRITES into it | M | **DONE as `B1b.1a` + `B1b.1b`.** ⛔ Its boot switch could not be asked for — `host_input()` BLOCKS with no host, measured ([loft#891](https://github.com/loft-lang/loft/issues/891)) — so route 3 replaced it: connect-or-local, with the panel saying which |
 | ✅ **`B1b.2`** — local mode DRAWS what it wrote (re-mesh on write) | S | **DONE 2026-08-13.** `make probe-auth` is 33 checks: a horizon where a page with no camera has only the clear colour, the picture holding still with nothing pressed, and the raise redrawing it — and the far ground unchanged, which is what separates a gesture from a camera. Meshing writes nothing: the digest is the same before and after (`hex_voxel` measured, 25 tiles) | ✅ Done |
-| ◐ **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | **L**, measured | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws. **Sized: 32 functions, 1342 lines, 9 constants, and nothing else of the server's** | ◐ **`c.1` done** |
+| ✅ **`B1b.2c`** — the other eight surfaces: walls, roofs, fences drawn in local mode | **L**, measured | ⚠ `chunk_meshes_all` moves out of the server, or the page becomes the third place that knows what a chunk draws. **Sized: 32 functions, 1342 lines, 9 constants, and nothing else of the server's** | ✅ **Done in four** — `c.1`, `c.2`, `c.3`, `c.4a`–`c.4c` below. ⚠ This row read *"◐ `c.1` done"* for two days after the last of them landed: **a parent row is not updated by finishing its children**, and the plan is where that shows |
 | ✅ **`B1b.2c.1`** — the five primitives the mesher needs, out of `moros_render` | S | **DONE 2026-08-13.** `make probe-emitters`: five `mesh_crc` pairs identical with a control, and the ambiguity error named all 10 server call sites so none could be missed | ✅ Done |
 | ✅ **`B1b.2c.2`** — the five find their real home, and `moros_render`'s go | S | **DONE 2026-08-13.** ⛔ `c.1`'s home was WRONG: all five have internal `moros_render` users, so they could not leave — they are **`hex_proj`'s** now, the leaf both sides already depend on. 14 tests moved with them (moros_render 167 → 153, hex_proj 8 → 22, every row accounted for); 3 fixture-only tests build their own geometry | ✅ Done |
 | ✅ **`B1b.2c.3`** — the props mesher itself, and `chunk_meshes_all` | L | **DONE 2026-08-13.** `make probe-mesher`: 49 tiles × 11 surfaces, **99 with geometry in them**, every one the same mesh. Both bodies live — the server's is `chunk_meshes_all_srv` until `c.4` | ✅ Done |
@@ -272,8 +273,13 @@ coherent, the fix compiled, the check passed, and all three were about the wrong
 
 The sentinel for *nothing has been saved yet* looked obvious. Measured on the first run:
 
-- ⚠ **a fresh world is at tau 1, not 0** — the ground fill is a write — so a page that opened and
-  was never touched **encoded and wrote a whole world on its first frame**.
+- ⚠ **a fresh world is at tau 1, not 0** — ⛔ **and the reason written here first was one I made
+  up.** *The ground fill is a write* names a mechanism that does not exist: `world_new` puts
+  `w_tau: 1` in its own struct literal and `world_set_ground` never touches the clock. Measured
+  after the fact, because a number that is right by accident goes on being quoted — the runner on
+  an **empty** script at `GROUND=0` reports **`0 chunks, τ 1`**, so nothing wrote and nothing
+  filled. What is true is the consequence: **no legal `w_tau` means *nothing yet*** — so a page
+  that opened and was never touched **encoded and wrote a whole world on its first frame**.
 - ⛔ **and on the failure route it destroys the thing it failed to read.** A page that could not
   decode `world.hxw` would overwrite it a frame later, before the person could do anything about
   it. My own comment claimed *"the first edit will overwrite it"*, which is what I had written and
@@ -2414,6 +2420,85 @@ fixture happens to be written is not a check about the system.**
 `key O` still sends `36:1`. The runner and the wire disagree about what `key O` means until `V3`
 deletes the key form, and the divergence is **bounded by `K2a`**: no script presses an opening
 key any more, so nothing exercises it.
+
+## What `K2b` turned up (2026-08-15) — the mechanical half, and three instruments before one script
+
+**91 lines over 32 files**, `key ArrowUp` → `verb raise` ×79, `key H` → `verb place` ×10,
+`key G` → `verb wall` ×1, and not one of them loses or gains anything. `make probe-k2b` runs
+every converted script beside its own pre-conversion self — `git show 0e2d48a:<path>`, a
+baseline that cannot drift and cannot be converted by accident — and compares the world key,
+the session digest, the saved bytes and the transcript. **31 scripts, all four equal.**
+
+⚠ **AND *MECHANICAL* IS THE WHOLE ARGUMENT FOR MEASURING IT.** A conversion that is obviously
+right is one nobody looks at twice; the failure it can still have is one mistyped verb on one
+line of ninety, in a script no gate runs, found later as a scene that quietly builds something
+else.
+
+### ⛔ The 32nd file was a script that is not a file
+
+`probe/a83/leaf_visible/switch.sh` writes its script into a **heredoc** and drives it from
+there. It pressed `key ArrowUp`, and it was invisible to the probe's `*.keys` glob, to
+`grep -rn '^key ' --include=*.keys`, and therefore to this plan's own row, which said *zero
+`key` lines left outside the deliberate baselines* while one sat in the tree.
+
+> **A glob is an instrument and its default answer is *absent*.** It was found by dropping the
+> `--include` and greping everything, which is the check any coverage claim is worth.
+
+Converted and verified inert rather than assumed: `tools/script.mjs` sends `5:1` for `key
+ArrowUp` and `5:1` for `verb raise`, so the two spellings are the same bytes on the wire.
+
+### ⛔ The probe was red on all 31 scripts, and neither reason was a conversion
+
+Both were the instrument describing itself:
+
+- **the runner labels a bare acknowledgement with the word the script used.** `said_ack`
+  prints `"{what}: {n}"` when a gesture has nothing of its own to say — so the base transcript
+  reads `  ArrowUp: 1` and the converted one `  raise: 1`. **Comparing the raw transcripts
+  asserts the step did not happen.** The base side is rewritten by the same map the conversion
+  used, one-sided, with the count and every other sentence left alone.
+- **the world FILENAME was in the runner's summary line** (`… τ 3813 -> k2b-a.hxw`), because
+  the two runs wrote to `k2b-a` and `k2b-b`. Fixed by removing the difference rather than
+  teaching the diff to ignore it: one PID-scoped world name, and the md5 taken *between* the
+  runs.
+
+✅ **And the rewrite turned out to be narrower than it looks, measured over a green run:**
+`  ArrowUp: ` is **79 lines across all 31 scripts**, `  G: ` is **1**, and `  H: ` is **none at
+all**. A gesture wears the bare label only when it has nothing of its own to say, and `place`
+always does — `house placed 27 cells, 84 wall edges, ridge at 21, seated at 0 …`. **So the ten
+presses with the most to get wrong are the ten compared word for word**, and the dead `H` row
+is kept for `window.loft`'s reason: it is dead because of how `place` answers *today*, which is
+a fact about a gesture rather than about this comparison.
+
+### ⛔ And two copies of the probe ran at once, which could have produced a false PASS
+
+One was started by hand, one had been queued behind the `B4` sweep by an earlier session. They
+shared `probe/k2b/out` **and** `worlds/k2b-a.hxw`.
+
+> The loud half was harmless: `rm -rf "$OUT"` under the second deleted the first's baselines
+> mid-flight, so a script was compared against a file that no longer existed and said so.
+> **The silent half is the one that matters — both runs took an md5 of the same path, so a
+> byte comparison could have passed on a world the OTHER process built.** A false PASS on the
+> step's central claim, produced by nothing either run did wrong.
+
+Closed in two ways on purpose, because they are two failures: a **lock** stops a second run
+(the only fix for a directory named so a person can read it afterwards), and the world name
+carries the **PID** anyway — ⚠ *a guard that can be bypassed must not be the only thing
+standing between an md5 and the wrong file.*
+
+### The two controls, and why one of them had to exist
+
+| | what it does | red on |
+|---|---|---|
+| `K2B_SABOTAGE=lower` | one `verb raise` in `house.keys` becomes `verb lower` | **3** — the world key, the saved bytes, the transcript |
+| `K2B_SABOTAGE=refuse` | `house.keys` gains a `verb hole` with no slab under it | **1** — **the transcript alone** |
+| control | neither | **PASS, 31 scripts** |
+
+⛔ **THE SECOND ONE EXISTS BECAUSE THE FIRST CANNOT VALIDATE THE TRANSCRIPT.** `lower` moves
+the world, the bytes *and* the sentences, so it goes red even on a transcript comparison that
+has silently stopped working — **which is exactly the state this probe was in when it was first
+run.** A refused gesture writes nothing: same world, same bytes, same session, one extra
+sentence (`refused: hole refused — no slab to cut — lay a slab first`). If that row were green,
+the transcript check would be decoration.
 
 ## What `K2a` turned up (2026-08-12) — and it split the step
 

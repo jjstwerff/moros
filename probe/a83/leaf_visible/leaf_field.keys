@@ -17,7 +17,7 @@
 
 send 44:
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- CONTROL: the recoloured leaf ALONE. Green here means the probe can see.

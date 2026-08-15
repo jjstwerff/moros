@@ -13,7 +13,7 @@
 echo --- CONTROL: a house on flat ground, which must be exactly as it always was
 at 0 0 30
 step 20
-key H
+verb place
 wait rebuilt
 step 30
 at -6 1 0
@@ -28,17 +28,17 @@ echo --- now a hill, and a house on its FLANK
 # which on this slope is a different number entirely.
 at 40 0 30
 step 20
-key ArrowUp
-key ArrowUp
-key ArrowUp
-key ArrowUp
+verb raise
+verb raise
+verb raise
+verb raise
 wait rebuilt
 step 30
 
 echo --- stand on the flank and place it
 at 46 0 30
 step 30
-key H
+verb place
 wait rebuilt
 step 40
 

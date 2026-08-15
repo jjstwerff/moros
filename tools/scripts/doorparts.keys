@@ -16,7 +16,7 @@
 
 send 44:
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 send 40:0
 wait mode

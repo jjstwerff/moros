@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth pages probe-demo plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k2b pages probe-demo plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -622,6 +622,16 @@ probe-verbs:
 # a niche's depth. `sh probe/k2/run.sh niche` runs one.
 probe-convert:
 	@sh probe/k2/run.sh
+
+# K2b (plan 22) — THE MECHANICAL REMAINDER, and *mechanical* is why it is measured.
+# 90 lines over 31 scripts that lose nothing (`key ArrowUp` → `verb raise`, `key H` →
+# `verb place`, `key G` → `verb wall`), so nobody looks at them twice — and the
+# failure left is one mistyped verb on one line, in a script no gate runs, found
+# later as a scene that quietly builds something else. Every converted script runs
+# beside its own pre-conversion self out of git, compared on the world, the session,
+# the saved bytes AND the transcript. `K2B_SABOTAGE=lower` is the negative control.
+probe-k2b:
+	@sh probe/k2b/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \

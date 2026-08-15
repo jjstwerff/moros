@@ -392,7 +392,66 @@ serves**, differing only in where a key press goes.
 | ✅ `B2`=`B3` | **THE DEMO EXISTS** — `make pages` writes `_site/index.html` (the engine build, verbatim) and `make probe-demo` opens it from `file://` with no listener at either end. ⛔ Most of the step was cancelled by its first measurement: the engine already ran from a disk |
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ✅ `B4` | **THE GOAL SENTENCE IS TRUE** — build something, close the tab, come back and it is there. `world_save` on the edit clock, `world_load` on the frame the authority moves. ⛔ Three finished parts (`W1`, `P6`, `M5b`'s pattern) and **no wire between them**; ⛔ and a safeguard of mine that `fall_step` already owned, which only its sabotage could say. Section above |
+| ✅ `K2b` | **EVERY SCRIPT IN THE TREE SAYS A VERB** — 91 lines over 32 files, `make probe-k2b` comparing 31 scripts against their own pre-conversion selves on the world, the session, the bytes and the transcript. ⛔ The 32nd file was a script that is not a file (a **heredoc**), and the probe was red on all 31 before it was right, for two reasons that were both about the instrument |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `K2b` — EVERY SCRIPT SAYS A VERB, and three instruments before one script, 2026-08-15
+
+**91 lines over 32 files** — `key ArrowUp` → `verb raise` ×79, `key H` → `verb place` ×10,
+`key G` → `verb wall` ×1 — and `make probe-k2b` runs each converted script beside its own
+pre-conversion self out of git, equal on the **world key, the session digest, the saved bytes
+and the transcript**. 31 scripts, all four. ⚠ **The baseline is a COMMIT rather than a copy**:
+`git show 0e2d48a:<path>` cannot drift and cannot be converted by accident, at the price that
+the probe stops being runnable the day that commit leaves the history — which is what its
+vacuity guard is really watching.
+
+⛔ **THE 32ND FILE WAS A SCRIPT THAT IS NOT A FILE.** `probe/a83/leaf_visible/switch.sh` builds
+its script in a **heredoc** and drives it from there, so its `key ArrowUp` was invisible to the
+probe's `*.keys` glob, to `grep -rn '^key ' --include=*.keys`, and to the plan row that used
+that grep to claim **zero remained**. ⚠ **A glob is an instrument and its default answer is
+*absent*** — the same sentence this file already records about greps, one layer out. Found by
+dropping the `--include`; converted, and verified inert rather than assumed (`tools/script.mjs`
+sends `5:1` for both spellings).
+
+⛔ **AND THE PROBE WAS RED ON ALL 31 SCRIPTS BEFORE IT WAS RIGHT ON ANY, FOR TWO REASONS THAT
+WERE BOTH THE INSTRUMENT DESCRIBING ITSELF.** `said_ack` acknowledges a gesture with nothing of
+its own to say as `"{what}: {n}"` — **the word the script used** — so the base reads
+`  ArrowUp: 1` and the conversion `  raise: 1`, and comparing raw transcripts asserts the step
+did not happen. And the runner prints the world's FILENAME in its summary line, which differed
+because the two runs wrote to `k2b-a` and `k2b-b`. ⚠ **The two got opposite fixes on purpose**:
+the filename is a difference to *remove* (one PID-scoped name, md5 taken between the runs), the
+label is one to *normalise* — one-sided, by the same map the conversion used, with the count
+and every other sentence untouched.
+
+✅ **AND THE NORMALISATION IS NARROWER THAN IT LOOKS — 80 OF 90, MEASURED.** `  ArrowUp: ` is 79
+lines across all 31 scripts, `  G: ` is 1, and `  H: ` is **none at all**: `place` always has
+something of its own to say (*house placed 27 cells, 84 wall edges, ridge at 21, seated at 0…*),
+so **the ten presses with the most to get wrong are the ten compared word for word.** The dead
+`H` row is kept for `window.loft`'s reason — it is dead because of how `place` answers *today*,
+which is a fact about a gesture, not about this comparison.
+
+⛔ **AND TWO COPIES OF THE PROBE RAN AT ONCE, WHICH COULD HAVE PRODUCED A FALSE PASS.** One
+started by hand, one queued behind the `B4` sweep by an earlier session, sharing
+`probe/k2b/out` **and** `worlds/k2b-a.hxw`. The loud half was harmless — `rm -rf "$OUT"` deleted
+the other's baselines mid-flight, and a comparison against a missing file says so. **The silent
+half is the finding: both runs took an md5 of the same path, so a byte comparison could have
+passed on a world the OTHER process built** — a false pass on the step's central claim,
+produced by nothing either run did wrong. A lock now stops the second run, **and** the world
+name carries the PID regardless: ⚠ *a guard that can be bypassed must not be the only thing
+between an md5 and the wrong file.*
+
+✅ **AND THE SECOND CONTROL EXISTS BECAUSE THE FIRST CANNOT VALIDATE THE TRANSCRIPT.**
+`K2B_SABOTAGE=lower` (one `raise` becomes a `lower`) is red on **3** — world, bytes, transcript
+— so it would go red even on a transcript check that had silently stopped working, *which is
+the state this probe was in when it was first run*. `K2B_SABOTAGE=refuse` adds a `verb hole`
+with no slab under it: a refusal writes nothing, so it is red on **the transcript alone**, and
+the clean control is **PASS over 31 scripts**. ⚠ **A sabotage that trips every instrument
+cannot tell you which instrument works.**
+
+⏭ **`K3` IS WHAT IS LEFT, AND IT HAS A PRICE TO STATE RATHER THAN DISCOVER**: dropping the `key`
+spelling from `editor_run` and `tools/script.mjs` retires `probe/k1`'s `keyed.keys`/`carried.keys`
+and `probe/k2/orig/`'s twelve baselines, because a reader that no longer exists cannot run them.
+That is `V3`'s shape — a transitional instrument spent.
 
 ## ✅ `B4` — THE GOAL SENTENCE IS TRUE: BUILD, CLOSE THE TAB, COME BACK, 2026-08-15
 
@@ -428,7 +487,10 @@ never was, and **the instrument moved with the code**: `O3` reads the pose the c
 from, and the feet comparison is kept as `O4` with its blind spot written into the check.
 
 ⛔ **AND `0 - 1` AS *NOTHING SAVED YET* WAS WRONG THREE WAYS, WHICH ONE RUN SAID AND NO READING
-HAD.** A fresh world is at **tau 1**, not 0 — the ground fill is a write — so an untouched page
+HAD.** A fresh world is at **tau 1**, not 0 — `world_new` seeds the clock in its own literal, and
+⚠ **this file said *the ground fill is a write* for an hour, which is a mechanism that does not
+exist**: `world_set_ground` never moves `w_tau`, and a runner on an empty script at `GROUND=0`
+reports `0 chunks, τ 1`. **The number was measured and the reason was invented** — so an untouched page
 encoded and wrote a whole world on its first frame; and on the failure route it **overwrites the
 file it could not read**, a frame later, destroying the thing a person came back to recover. The
 seed is the world this page is about to edit, on all three routes out of the loader.

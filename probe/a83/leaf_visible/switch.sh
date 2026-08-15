@@ -36,7 +36,7 @@ cat > "$TMP/switch.keys" <<'EOF'
 # is ONE cell and one panel; anything grey in this picture belongs to the frame.
 send 44:
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 send 40:0
 wait mode

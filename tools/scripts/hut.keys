@@ -7,7 +7,7 @@
 
 echo --- flat ground to build on
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- wall 1: south side, west to east

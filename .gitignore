@@ -43,6 +43,11 @@ probe/**/out/
 # holds one `loft test` log per row; four such directories were sitting untracked
 # before this line was written, which is how a committed one eventually happens.
 probe/**/out-*/
+# …and the LOCK `probe/k2b/run.sh` holds while it runs. It is a directory because
+# `mkdir` is the atomic test-and-set a shell has, and it outlives a run that was
+# killed — so it is exactly the kind of thing that gets committed once and then
+# refuses every future run with *another run holds this*.
+probe/**/out.lock/
 
 # `loft update` writes the same stubs at the ROOT, for the script-level
 # loft.lock that `src/` runs against. Its resolver cache is noise; the api/

@@ -7,7 +7,7 @@
 
 echo --- flat ground
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- a cottage wall, and a bedstee built against it
@@ -29,7 +29,7 @@ verb seat
 
 echo --- a trunk: a ring of wall, which is a cylinder
 at 6 6 0
-key G
+verb wall
 wait rebuilt
 
 echo --- and a balcony on its east side

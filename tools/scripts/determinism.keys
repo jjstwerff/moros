@@ -7,10 +7,10 @@
 
 echo --- shape the ground
 at 0 0 0
-key ArrowUp
+verb raise
 step 20
 at 3.46 0 0
-key ArrowUp
+verb raise
 step 20
 
 echo --- cut a stair, which exercises the walk's surface rule

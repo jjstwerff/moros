@@ -14,7 +14,7 @@
 
 echo --- ground to stand on, made by levelling as we walk
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 send 6:1
 keys 1

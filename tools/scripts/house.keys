@@ -20,12 +20,12 @@
 
 echo --- flat ground to build on
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- a house, facing one of the six the lattice can mitre
 at -6 -6 30
-key H
+verb place
 
 echo --- a door and a window in its near wall (stand ON the wall's own cells)
 at -3 2 30

@@ -21,7 +21,7 @@
 
 send 44:
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- open the doorway as a part

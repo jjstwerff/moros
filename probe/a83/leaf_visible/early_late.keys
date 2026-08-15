@@ -6,7 +6,7 @@
 # it arrived. The same station twice, seconds apart, separates those.
 send 44:
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 send 44:door/hung

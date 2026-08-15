@@ -10,7 +10,7 @@
 
 echo --- flat ground to build on
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- one wall, west to east
@@ -27,7 +27,7 @@ snap s3-wall
 
 echo --- and a house, which needs a facing the lattice can mitre
 at -8 -8 30
-key H
+verb place
 
 echo --- stand well back and look at the house
 at -16 -16 40

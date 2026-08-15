@@ -21,9 +21,9 @@
 
 echo --- a hill, because a cellar needs a storey of room beneath the ground
 at 0 0 0
-key ArrowUp
-key ArrowUp
-key ArrowUp
+verb raise
+verb raise
+verb raise
 wait rebuilt
 step 10
 

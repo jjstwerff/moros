@@ -6,7 +6,7 @@
 
 echo --- flat ground
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- one wall to hang a door in

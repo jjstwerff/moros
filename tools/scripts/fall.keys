@@ -12,11 +12,11 @@ rate 0
 at 0 0 0
 
 echo --- a hill to fall off
-key ArrowUp
+verb raise
 step 5
-key ArrowUp
+verb raise
 step 5
-key ArrowUp
+verb raise
 step 5
 save fallworld
 

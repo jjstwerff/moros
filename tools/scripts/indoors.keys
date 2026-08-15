@@ -6,12 +6,12 @@
 
 echo --- flat ground
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- a house where the author is looking
 at 0 -4 90
-key H
+verb place
 wait rebuilt
 
 echo --- from outside, for reference — the control the indoor rows are read against

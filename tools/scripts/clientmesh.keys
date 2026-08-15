@@ -20,7 +20,7 @@ rate 0
 # test. Dropping it because this gate judges no picture left the run with nobody to
 # compare anything — every verdict line simply never arrived.
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 step 20
 snap s3-mesh
@@ -40,10 +40,10 @@ last cache
 #
 # So: raise the ground again, now, with the client deriving. Every ground mesh rebuilt
 # from here is one the server builds and does NOT put on the wire for that client.
-key ArrowUp
+verb raise
 wait rebuilt
 step 20
-key ArrowUp
+verb raise
 step 20
 # `derive N of M ground sent S held H` — what the server PUT ON THE WIRE against what it
 # withheld. Reported when the counters change, never at the opt-in.

@@ -11,7 +11,7 @@
 
 echo --- flat ground
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 
 echo --- a slab in the open, at storey height

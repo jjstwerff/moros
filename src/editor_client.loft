@@ -579,10 +579,18 @@ struct Client {
   // on a world of any size, and costs one integer compare on a frame where nothing
   // happened.
   //
-  // ⚠ **`0 - 1` RATHER THAN `0`, BECAUSE A FRESH WORLD IS AT TAU 0.** Seeding this
-  // with the same value a new world carries would make *nothing has been saved* and
-  // *the empty world has been saved* the same state — and the second is what a page
-  // must never conclude before it has read what is on the disk.
+  // ⚠ **`0 - 1` BECAUSE NO LEGAL `w_tau` MEANS *NOTHING YET* — THE CLOCK STARTS AT
+  // ONE.** `world_new` builds its world with `w_tau: 1` in the literal and
+  // `world_set_ground` never touches the clock, so a world that has had nothing done
+  // to it at all reads 1, not 0. Measured rather than reasoned: a runner given an
+  // empty script with `GROUND=0` reports **`0 chunks, τ 1`**. So `0` would have made
+  // *nothing has been saved* and *a world exists* the same state, and the second is
+  // what a page must never conclude before it has read what is on the disk.
+  //
+  // ⚠ **AND THE SENTINEL IS NOT WHAT MAKES THIS SAFE** — `local_restore` overwrites it
+  // with the clock of the world this page is about to edit, on every route out of the
+  // loader. The sentinel only has to be a value no world can carry; the reason it must
+  // not survive into the frame loop is in that function's own note.
   saved_tau: integer,
   // Has the disk been consulted at all? ⚠ It is not `saved_tau != 0 - 1`: a page that
   // read the disk and found NOTHING is a page that has consulted it, and that is
@@ -1089,8 +1097,14 @@ fn local_restore(st: Client, a: hex_editor::Author) -> hex_editor::Author {
   ld = world_load(WORLD_PATH);
   // ⚠ **THE SEED IS WHATEVER WORLD THIS PAGE IS ABOUT TO EDIT, ON EVERY ROUTE OUT OF
   // HERE — AND `0 - 1` WOULD HAVE BEEN WRONG THREE DIFFERENT WAYS.** Measured on the
-  // first run: a fresh world is at **tau 1**, not 0, so a page that opened and was
-  // never touched wrote a whole world on its first frame. Worse on the failure route
+  // first run: a fresh world is at **tau 1**, so a page that opened and was never
+  // touched wrote a whole world on its first frame. ⚠ **And the REASON was mis-stated
+  // here for an hour — *the ground fill is a write*, which is not what happens.**
+  // `world_new` seeds `w_tau: 1` in its own struct literal and `world_set_ground`
+  // never moves the clock; the runner on an empty script at `GROUND=0` reports
+  // `0 chunks, τ 1`, so there is no fill and nothing wrote. The number was right and
+  // the mechanism was invented, which is the shape this tree distrusts most: a claim
+  // that predicts nothing further. Worse on the failure route
   // — a page that could not READ the saved file would then overwrite it a frame
   // later, destroying the thing a person might have come back to recover. Seeded
   // here, the first write is the first EDIT, on all three routes.

@@ -12,7 +12,7 @@
 
 echo --- CONTROL: one stroke of the brush is a hillside, and grass holds it
 at 0 0 0
-key ArrowUp
+verb raise
 wait rebuilt
 step 20
 # The steepest step a single stroke makes is 3 (23.4°), where grass stands to 6
@@ -50,12 +50,12 @@ echo --- SIX MORE STROKES ON THE SAME HILL: a mountain, and grass does not hold 
 # flanks past what soil stands at, which is the whole claim.
 at 0 0 0
 step 10
-key ArrowUp
-key ArrowUp
-key ArrowUp
-key ArrowUp
-key ArrowUp
-key ArrowUp
+verb raise
+verb raise
+verb raise
+verb raise
+verb raise
+verb raise
 wait rebuilt
 step 30
 # ⚠ A LOWER BOUND, NOT A FIXED COUNT. The exact quad count depends on where the
