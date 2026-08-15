@@ -704,6 +704,30 @@ let snaps = 0;
 // ⚠ A judged frame that fails must fail the RUN. A gate that prints FAIL and exits
 // 0 is a gate the suite reports as green.
 let frameFails = 0;
+// ⛔ **A LINE THIS DRIVER DID NOT SEND USED TO PRINT AND SURVIVE — plan 22 `K3b`,
+// and it is `K3a` on the other reader, word for word.** `src/editor_run.loft` had
+// exactly this shape until the day before: the complaint went to stdout, the loop
+// carried on, and the process exited **0** — so a script could lose a gesture and
+// still report success. Measured here before it moved, against a real server:
+// `verb hoist` and `hoist 1 2` each printed their `!!` line and came back **rc=0**.
+//
+// ⚠ **AND IT IS THE FLOOR UNDER THE DELETION, NOT A TIDY-UP.** `K3b` drops `KEYMAP`
+// and the `key` branch below; with this counter absent, every stale `key H` would
+// have become a silent no-op in a run that still said it succeeded. The guard has to
+// exist before the vocabulary shrinks, which is the order `K3a` established.
+//
+// ⚠ **WHAT IT COUNTS IS WHAT THE DRIVER DID NOT SEND, AND NOT WHAT THE SERVER
+// REFUSED** — the two are different claims and only the first is answerable here.
+// `editor_run` sees a refusal because `press_verb` hands it an acknowledgement
+// struct; this driver has only the status line, and `probe/k2/run.sh`'s header has
+// the measurement saying that channel LAGS and TRUNCATES. So a gesture the server
+// declines is still rc=0 from here, deliberately and stated.
+//
+// ⚠ **AND `cam` WITH NO CAMERA AND `last` WITH NO MATCH ARE DELIBERATELY NOT ON IT.**
+// Both print `!!` too, but they are checks that found nothing rather than words the
+// driver could not read — a different claim, and widening this counter to them would
+// red gates for a reason this step never measured.
+let unknown = 0;
 // HOW FAR BEHIND THE BROWSER IS, measured against the runner's own stream.
 //
 // ⚠ THE RUNNER IS A CLIENT TOO, and that is what makes this answerable at all. Both
@@ -1095,7 +1119,7 @@ for (const raw of lines) {
   } else if (cmd === 'key') {
     const k = rest[0];
     const msg = KEYMAP[k];
-    if (!msg) { console.log(`  !! no key '${k}' — add it to KEYMAP and to editor.html`); continue; }
+    if (!msg) { console.log(`  !! no key '${k}' — add it to KEYMAP and to editor.html`); unknown += 1; continue; }
     ws.send(msg);
     await sleep(250);
     const said = status[status.length - 1];
@@ -1108,7 +1132,7 @@ for (const raw of lines) {
     // knows that `key` does not is that the id comes from the VERB.
     const v = rest[0];
     const vmsg = VERBMAP[v];
-    if (!vmsg) { console.log(`  !! no verb '${v}' — see hex_editor::press_verb`); continue; }
+    if (!vmsg) { console.log(`  !! no verb '${v}' — see hex_editor::press_verb`); unknown += 1; continue; }
     ws.send(vmsg);
     await sleep(250);
     const vsaid = status[status.length - 1];
@@ -1404,6 +1428,7 @@ for (const raw of lines) {
     console.log('  ' + rest.join(' '));
   } else {
     console.log(`  !! unknown command '${cmd}'`);
+    unknown += 1;
   }
 }
 
@@ -1412,6 +1437,20 @@ console.log('script done');
 // ⚠ A JUDGED FRAME THAT FAILED MUST FAIL THE RUN. A gate that prints FAIL and exits
 // 0 is a gate the suite reports as green — which is worse than no gate, because it
 // is a green light nobody earned.
+// ⚠ **THE VOCABULARY VERDICT COMES FIRST, AND IT IS A PREMISE RATHER THAN ONE MORE
+// FAILURE — plan 22 `K3b`.** A run that lost a line built a different scene from the
+// one the script describes, so every frame verdict below it is a judgement of
+// something else. Reported first, and with `editor_run`'s own exit code so the two
+// readers answer a stale script identically.
+//
+// ⚠ **AND IT REPORTS A COUNT, NOT THE FIRST OFFENDER.** Every bad line already
+// printed its own `!!` above, so one run shows a person all of them — the loop is
+// the diagnostic and this is only the verdict. `K3a`'s wording, and its reason.
+if (unknown > 0) {
+  console.log(`script: ${unknown} line(s) this driver could not send — each is printed above after '!!'`);
+  if (frameFails > 0) console.log(`script: ${frameFails} frame check(s) also failed`);
+  process.exit(101);
+}
 if (frameFails > 0) {
   console.log(`script: ${frameFails} frame check(s) failed`);
   process.exit(1);

@@ -203,10 +203,25 @@ say "E  CONTROL — an unknown verb is refused out loud (the runner)"
 printf 'at 0 0 0\nverb hoist\n' > "$OUT/typo.keys"
 SCRIPT="$PWD/$OUT/typo.keys" WORLD=k1-typo $LOFT --lib lib/ src/editor_run.loft \
   > "$OUT/typo.log" 2>&1
+trc=$?
 if grep -q 'no gesture for hoist' "$OUT/typo.log"; then
   ok "the runner: $(grep -m1 'no gesture' "$OUT/typo.log" | sed 's/^ *//')"
 else
   bad "the runner accepted 'verb hoist' silently"
+fi
+# ⚠ **AND OUT LOUD IS NOT ENOUGH — THE RUN HAS TO FAIL.** Plan 22 `K3a` for this
+# reader and `K3b` for the wire one below: both PRINTED a complaint and exited **0**
+# for as long as they had existed, so a caller checking rc was told the script ran.
+# This check was written against the sentence alone and could not have seen that.
+#
+# ⚠ **IT IS THE FLOOR UNDER THE DELETION `K3b` MAKES.** With the `key` branch gone
+# from both readers a stale `key H` is an unknown word, and an unknown word that
+# exits 0 is a silent no-op in a run that reports success. Asserted on both drivers
+# rather than one, because the deletion is on both.
+if [ "$trc" -ne 0 ]; then
+  ok "…and the run FAILED on it: rc=$trc"
+else
+  bad "the runner printed its complaint and exited 0 — a lost line reads as success"
 fi
 
 if [ "$WIRE" = "0" ]; then
@@ -255,7 +270,11 @@ wire_run() {
     kill "$wsrv" 2>/dev/null
     return 1
   fi
+  # ⚠ THE DRIVER'S EXIT CODE IS KEPT, NOT DISCARDED — plan 22 `K3b`. `E`'s wire half
+  # below asserts it, and a `wire_run` that threw it away could only ever check what
+  # the driver PRINTED. Named per tag so two runs cannot overwrite each other's.
   node tools/script.mjs "probe/k1/$1.keys" > "$OUT/$1.wire" 2>&1
+  echo $? > "$OUT/$1.rc"
   # ⚠ AND IT WAITS FOR THE LOG TO SETTLE BEFORE KILLING THE SERVER. The first
   # version did not, and it **silently lost the last gesture of every run** — the
   # second ring never reached the file, so the comparison was over four sentences
@@ -311,6 +330,17 @@ if [ -s "$OUT/typo-wire.said" ]; then
   bad "the server acted on an unknown verb: $(head -1 "$OUT/typo-wire.said")"
 else
   ok "and the server was asked nothing"
+fi
+# ⚠ THE SAME ASSERT AS THE HEADLESS HALF, ON THE OTHER DRIVER — plan 22 `K3b`.
+# Measured against a real server before the guard was written: `verb hoist` printed
+# `!! no verb 'hoist'` and came back **rc=0**, which is `K3a`'s finding rebuilt in
+# JavaScript. A driver that says it does not know a word and then reports success is
+# the one thing a script corpus cannot survive a vocabulary change with.
+wrc=$(cat "$OUT/typo-wire.rc" 2>/dev/null)
+if [ "${wrc:-0}" -ne 0 ] 2>/dev/null; then
+  ok "…and the wire driver FAILED the run too: rc=$wrc"
+else
+  bad "tools/script.mjs printed its complaint and exited ${wrc:-0}"
 fi
 rm -f probe/k1/typo-wire.keys
 
