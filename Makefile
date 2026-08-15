@@ -571,10 +571,11 @@ probe-b1a:
 pages:
 	@node tools/build-pages.mjs
 
-# B2/B3/B2b/B1c.1 (plan 22) — DOES THE DEMO OPEN FROM A DISK, AND CAN YOU BUILD IN IT?
-# `_site/index.html` over `file://` with no listener at either end: it boots, decides
-# it is on its own, draws its own world, a key WRITES into it (D), a TURN unblocks a
-# house where `place` was refused (F), and it attaches to a server it is told about
+# B2/B3/B2b/B1c.1/B4 (plan 22) — DOES THE DEMO OPEN FROM A DISK, CAN YOU BUILD IN IT,
+# AND IS IT STILL THERE TOMORROW? `_site/index.html` over `file://` with no listener at
+# either end: it boots, decides it is on its own, draws its own world, a key WRITES into
+# it (D), a TURN unblocks a house where `place` was refused (F), the keyboard survives a
+# reload (N), the WORLD survives one (O), and it attaches to a server it is told about
 # (E). ⚠ The first check here that needs no port at all.
 #   DEMO_SABOTAGE=emptypage   `B3`'s own warning made runnable — a page with the right
 #                             elements and no editor. Red on all seven D checks.

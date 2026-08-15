@@ -25,6 +25,13 @@ base tree exactly as the interpreter reads a directory. ⛔ **`W5` is cancelled 
 it**; `P2`, which was run to make `W5` buildable, is spent. *Build a house, close the tab, reopen
 it* is now short exactly one thing: **a page with the gestures in it.**
 
+✅ **AND THE GOAL SENTENCE IS TRUE NOW — `B4`, 2026-08-15.** Build something, close the tab, come
+back and it is there: `world_save` on the edit clock, `world_load` on the frame the authority
+moves, `make probe-demo` `O1`–`O4`. ⛔ **The step was three finished parts and no wire between
+them** — `W1`'s codec, `P6`'s filesystem and `M5b`'s load-at-boot pattern were all green and
+nothing joined them, which is where this tree's commonest defect hides best: **between** steps
+that are each honestly tested.
+
 ✅ **AND `B1a` IS BUILT — the client's five one-to-one keys name verbs, 2026-08-13.** `W4` is three
 of four sites, and `make probe-b1a` is the first check in this tree that has ever pressed a key in
 the client at all.
@@ -104,6 +111,7 @@ key press goes.
 | ✅ `B1a` | the SERVER receives **exactly what it received before** for the same key sequence | a key names a verb **in the client too** — `W4`'s fourth site | ✅ **BOTH RUN.** `act`'s `fence` → the wall's message: **every sentence identical**, world `82d622b3` → `cdabc1dc`. `act`'s `place` → a raise: transcript, presence check and world all red. ⏭ The opening pair is **left out** rather than pinned — see the finding above; pinning would have made `p` stop cutting a pointed head, which is a change wearing a refactor's clothes |
 | ✅ `B1b.1a` | the panel's status is **derived from the client's own socket**, and moves when it moves | a fact is asserted only where it can be **known** | ⚠ **THREE, AND ONE OF THEM PASSED FIRST TIME.** `literal` (the line as it was) → red on the panel's first word and red with no server. `assume` (authority off the send, not off its success) → red where the client's claim meets the WIRE's log. `nodirty` (the fact moves, the panel is not told) → **green in both runs**, because the real server's `N:`/`H:` rebuild the panel anyway — which is what added the third situation, a socket that opens and says nothing, where `panel_dirty` has exactly one possible writer |
 | ✅ `B1b` | the local page and the runner build the **same world** from the same verbs | the two authority modes are **one editor** | ⚠ **NOT `w_tau` — that row was written before `V1` measured it blind**, and the correction it made (**`world_to_bytes` AND the session**) is what the built version does. ✅ **NINE SABOTAGES.** The two that matter: `elsewhere` (the same gestures at an author one unit over) is invisible to every count and every sentence — a ring writes 42 edges wherever it is laid — and red on the world key alone; `scratchsession` (press into a session nobody keeps) leaves the world **byte-identical** and is red on the session alone |
+| ✅ `B4` | the reloaded page keys **the world that was saved**, and its camera is solved on that world's ground | **a page is a place to keep things, not a sketchpad** — the edit clock is the trigger, so *save when tau moved* is exact on any box | ✅ **THREE, AND EACH IS RED SOMEWHERE DIFFERENT.** `noworldsave` (the trigger removed) is red on **O1** — in its own half of the run, which is what separates it from its twin; `noworldload` is red on O2/O3/O4 with **O1 green**; `nopose` is red on **O3 alone**, because a page that restored every cell and solved its view against the old ground keys a **byte-identical** world. ⛔ **A fourth was written and RETIRED**: `nofeet` was green on everything, because the invariant it guarded belongs to `fall_step` and already had a test |
 | ✅ `B3` | the demo check opens `_site/index.html` **with no server** and reads an edit out of the picture | the quick start **stays** working | ✅ **BOTH RUN.** `emptypage` — a page with the right ELEMENTS and no editor — is red on **all seven** checks, which is this row's own warning made runnable. `deadkey` — press `z`, one of the twelve keys with no verb — is red on **D5/D6 alone** and green on the other five: the picture check sees a *gesture*, not the passage of time |
 
 ⚠ **`B2` (`build-pages.mjs`) has no exact-invariant surface** — it assembles files and decides
@@ -152,6 +160,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`M4`** — delete `verb_of` | XS | **DONE 2026-08-15.** The suite reads **522 → 522** and that is the wrong instrument: the **test-name diff** is 6 lines, 1 deleted, 1 added, 4 renamed with the claim change written on each. ⛔ **The row that said it caught *built and never called* never could** — measured on the pre-`M4` tree, an arm in `press_verb` reachable from no key left the suite at 522 passed. `the_vocabulary()` replaces it, **with the case it still cannot see written into the test**. ⛔ **The deletion silently disarmed four sibling sweeps** — all four sed'd the deleted chain, and only the two whose subject guard happened to NAME the binding said so; the other two printed *NOTHING went red*. ⛔ **And a sweep piped through `head` left its sabotage in the tree**, because the trap had no `PIPE` · `sh probe/k2/sabotage-m4.sh` 5 red + 2 controls · `make lib-test` **3624 both backends** · `make fast` 156 files · `make gate` 49 · `make parts` byte-identical | ✅ Done |
 | ✅ **`M5a`** — a fresh-press requirement for the scan | S | **DONE 2026-08-15.** `rebind_scan` is the rising edge the hardware does not have — `gl_key_pressed` answers *is it down*, so it is built from two looks, and **the first look SEEDS rather than fires**: the machine arrives in the middle of a keyboard it has never seen, so *unknown* has to read as *was already down*. ⛔ **A row I wrote could not fail, and the sweep is what said so** — the mis-click row was green under all five original sabotages, because a reseed makes the held key stale too; the falsifiable direction is the opposite one. ⛔ **And the obvious symmetry was refused on paper**: `rebind_pick` reseeding looks right and swallows a genuine press, so arming is the only place the memory is dropped. ⚠ **The driver could not say the sentence** — `+key`/`-key` in `probe/b1b/press.mjs` is what holds a key across a click · hex_editor keymap 28 → **36 tests**, suite 522 → 530 · `sh probe/k2/sabotage-m5.sh` **8 rows, 6 red on their own claim, 2 clean controls** · `make probe-demo` `M7`+`M8`, `DEMO_SABOTAGE=nofresh` red on `M7` alone | ✅ Done |
 | ✅ **`M5b`** — persist a rebind (`LayeredFS`) | S | **DONE 2026-08-15.** `keymap_delta`/`keymap_apply` over `keymap_save`/`keymap_load`; the client loads at boot and writes on every bind. ⛔ **My own claim for it was too strong, and the test I wrote passed for the wrong reason** — *a verb the editor GAINED keeps its key* is true of a whole-table file too, because applying assigns per named verb. What only a delta earns is the **editor's freedom to MOVE a default**: a whole table pins all fifteen verbs to the layout of the day it was written, including the fourteen the author never chose. ⚠ **The absences are recorded, worked on paper first** — a document of only the keyed non-default rows leaves a verb on a key its owner lost two gestures ago. ⛔ **And the sabotage for that went red through the COLLISION guard**, not through its own claim: a document missing an absence puts two verbs on one key, so the rule is enforced twice · keymap **36 → 45 tests** · `sh probe/k2/sabotage-m5b.sh` **8 rows, 6 red on their own claim, 2 clean controls** · `make probe-demo` `N1`–`N3` over a page RELOADED mid-run | ✅ Done |
+| ✅ **`B4`** — **the page's WORLD outlives the tab**: `world_save` on the edit clock, `world_load` on the frame the authority moves | S | **DONE 2026-08-15.** The plan's goal sentence, and every piece of it existed with **nothing joining them** — `W1`'s codec, `P6`'s filesystem and `M5b`'s load-at-boot/write-on-change pattern, all green, all uncalled by any page. ⛔ **I wrote a safeguard the library already owned, and only the sabotage could say so**: seeding `st.py` on restore left **every check green**, because `fall_step`'s first branch stands a walker on ground above them — *"the CLIMB case"*, its own words, with `test_the_ground_rising_past_the_feet_is_the_climb` already in `lib/hex_editor/tests/fall.loft`. A consumer re-asserting a library invariant is code no check here can red; deleted. ⛔ **And the real consequence was one layer over**: `local_camera` reads `au_y` for eye AND aim and is re-solved **only on a turn**, so the pose rebuild is load-bearing and the page would otherwise look out from inside its own hill indefinitely — the instrument moved with it. ⛔ **And the seed had to be the boot world's clock on all three routes**, measured: a fresh world is at **tau 1**, so `0 - 1` made an untouched page write a whole world on its first frame — and made a page that could not READ a saved file overwrite it a frame later, destroying what a person came back to recover. ⚠ **`raise_ahead` lands 10 hexes AHEAD with radius 7**, so the fixture walks 40 steps BACK to put the dome over the origin — the only place a reopened page can measure · `make probe-demo` `O1`–`O4`, 3 sabotages | ✅ Done |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
@@ -204,6 +213,116 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `B4` turned up (2026-08-15) — the milestone was three finished parts and no wire between them
+
+**Build a house, close the tab, reopen it and the house is there.** That is this plan's goal
+sentence, written at the top of this file since it opened, and every piece of it had been built
+and gated for two days:
+
+| | |
+|---|---|
+| `W1` | `world_save`/`world_load` over one codec, `make parts` byte-identical, three sabotages |
+| `P6` | a `--html` page has a filesystem, **and a world saved in it survives a reload** — measured over `http` AND `file://` |
+| `M5b` | this very client reading a document at boot and writing it on every change — **for the keyboard** |
+
+⛔ **NOTHING CALLED THEM.** `world_save` had eleven callers in this tree and not one was a page;
+`P6` proved the mechanism in a probe program of its own. This is `CLAUDE.md`'s *commonest defect
+in this tree* sitting on the milestone it was named for, and the way it hid is worth stating: each
+of the three steps was honestly green, and **the gap was between them**, where no suite looks.
+
+**The trigger is the edit clock.** `local_persist` compares `w_tau` against the last saved value
+once a frame — in the frame loop, not in `local_act`, because a hook on the gesture path persists
+what the gesture path writes and silently stops covering anything that later writes another way.
+`w_tau` moves iff the store changed, whoever changed it.
+
+### ⛔ I wrote a safeguard the library already owned, and only the sabotage could say so
+
+The pose this page boots with is derived from **flat ground**, so restoring a world whose origin
+was raised leaves the author at the old height. I wrote that up as *the author is buried* and
+fixed it in the place that story pointed at: `local_fall` writes `au_y` from `st.py` every tick
+(`B1c.3` put the authority there deliberately), so `local_restore` seeded **`st.py`** and the
+sabotage `nofeet` removed the seed.
+
+> ⛔ **`nofeet` was green on every check in the file.** `fall_step`'s first branch is
+> `if y <= gnd { stand on it }`, and its own comment names this case: *"This is also the CLIMB
+> case — the ground rose past the feet."* A restored world with a higher origin **is** the ground
+> rising past the feet, so the first tick lifts them. `lib/hex_editor/tests/fall.loft` even has
+> the row — `test_the_ground_rising_past_the_feet_is_the_climb`.
+
+**I had written a consumer-side re-assertion of a library invariant**, which is code that no check
+in this tree can ever make go red — the lower bound of a safe step, failed. It is deleted.
+
+⚠ **AND THE REAL CONSEQUENCE WAS ONE LAYER OVER, WHERE I HAD NOT LOOKED.** `local_camera` puts the
+eye at `au_y + LOCAL_LIFT` and aims it at `au_y + LOCAL_AIM`, and it is **re-solved only when the
+YAW changes** — so a page that restored a raised world without rebuilding the pose looks out from
+1.25 units inside its own hill, and stays there until the author happens to turn. The pose rebuild
+is load-bearing; the feet seed never was.
+
+> **The instrument moved with it.** A camera's consequence is not a number the walker reports —
+> the fall repairs that one — so `O3` now reads the pose the camera was solved from, and the old
+> feet comparison is kept as `O4` **with its blind spot written into the check**: it reds under
+> `noworldsave`/`noworldload` because there is then no ground at all, and it stays green under
+> `nopose`, because the fall does not read the pose.
+
+⚠ **Both halves of this were found by RUNNING the sweep, not by reading the code** — the story was
+coherent, the fix compiled, the check passed, and all three were about the wrong variable.
+
+### ⛔ And `0 - 1` was wrong three ways, which one run said and no reading had
+
+The sentinel for *nothing has been saved yet* looked obvious. Measured on the first run:
+
+- ⚠ **a fresh world is at tau 1, not 0** — the ground fill is a write — so a page that opened and
+  was never touched **encoded and wrote a whole world on its first frame**.
+- ⛔ **and on the failure route it destroys the thing it failed to read.** A page that could not
+  decode `world.hxw` would overwrite it a frame later, before the person could do anything about
+  it. My own comment claimed *"the first edit will overwrite it"*, which is what I had written and
+  not what the code did.
+- ⚠ **the fix is one line in the right place**: seed `saved_tau` from the world this page is about
+  to edit, on **all three** routes out of the loader. The first write is then the first edit.
+
+### ⚠ The fixture has to walk backwards, and the gesture is why
+
+`raise_ahead` lands `PEAK_AHEAD` = **10 hexes ahead** with a brush radius of 7, and refuses rather
+than falling back to the author's own cell — its own comment records that *"the hill ended up
+underfoot"* once. A reopened page puts the author back at the **origin**, which is the only place
+`O3` can measure. So a hill raised from a standing start is 10 hexes from the one cell that
+matters, and the run walks **40 steps back** first: the author ends ~7.9 hexes behind the origin,
+the dome centres ~2.1 hexes past it, and the origin sits under it at **1.25** units.
+
+⚠ **AND `O3`'s ORACLE IS THIS RUN'S OWN FIRST BOOT, NOT THE NUMBER 1.25.** A constant nobody can
+re-derive is a check that goes stale silently. What is asserted is that the **same code at the
+same position** reports a different height on the two boots — `0` on fresh ground, non-zero on the
+restored world — with the fresh reading as the row's vacuity guard.
+
+### The three sabotages, and why the pair had to be split
+
+⚠ **`noworldsave` FIRST PATCHED THE CALL AND WOULD HAVE COLLAPSED TWO EXPERIMENTS INTO ONE.**
+Replacing `world_save(…)` with a bare `WS_OK` leaves the page **saying it saved** — which is
+`noworldload`'s transcript exactly, so both sabotages would have produced one indistinguishable
+run while the header claimed they differed. It removes the **trigger** instead, which is also the
+likelier real defect (a wrong `w_tau` guard), and the two halves separate: a page that never wrote
+says so in its **own** half of the run.
+
+| | what it takes away | red on |
+|---|---|---|
+| `noworldsave` | the save is never **triggered** | **O1**, then O2, O3 and O4 |
+| `noworldload` | the world is written and never read back | O2, O3, O4 — **O1 green** |
+| `nopose` | the restored ground never reaches the **camera** | **O3 alone** — the world is saved, restored and keyed **byte-identically** |
+| ⛔ ~~`nofeet`~~ | *(retired)* the restored ground never reaches `st.py` | **nothing** — see above |
+
+### ⏭ What it does NOT carry, said rather than left quiet
+
+- **The scene records.** A world's bytes are cells and sections; the nine registries — runs,
+  roofs, leaves, openings, annexes, props, slabs, holes, the trunk — live in the `EditSession`.
+  `session.loft` had already worked out the cost (*"EMPTY IS NOT A LOSS OF THE HOUSE — it is a
+  loss of the RECORDS"*, with the drawn result degrading to `chunk_mesh_props`'s per-edge
+  fallback), so the restore line **says so in the transcript** rather than letting a person
+  discover it by looking at a roof.
+- **The pose.** A reopened page stands the author at the origin. That is defensible — a known
+  starting point — and it is what makes the feet rebuild necessary rather than optional.
+- ⏭ **Two tabs on one origin** both write `world.hxw` and the last one wins. `world_save_as`
+  carries an owner guard (`X2`) for the same hazard on disk; nothing here does.
 
 ## ✅ What `M5b` turned up (2026-08-15) — a claim of mine that was too strong, and a rule enforced twice
 

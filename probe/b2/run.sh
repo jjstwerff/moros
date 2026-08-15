@@ -71,6 +71,22 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            first time it ran** — with one `5` and one `ArrowUp` after
 #                            the reload, survived and not-survived both produce exactly
 #                            one raise. See N3.
+#   DEMO_SABOTAGE=noworldsave `B4`'s own row: an edit is never written down, so the
+#                            reloaded page comes back on fresh ground. Red on ALL
+#                            THREE — and O1 is the one that matters, because a page
+#                            that never wrote says so in its OWN half of the run.
+#   DEMO_SABOTAGE=noworldload the other half — the world is written and never read
+#                            back. ⚠ NOT symmetric with the one above: this run's
+#                            first half still reports the save, so O1 is untouched
+#                            and only O2/O3 move. From the SECOND page the two are
+#                            one sentence apart, which is why the pair exists.
+#   DEMO_SABOTAGE=nopose     the restored world's ground never reaches the CAMERA. Red
+#                            on O3 ALONE — the world is saved, restored and keyed
+#                            BYTE-IDENTICALLY, and the page looks out from inside the
+#                            hill until the author happens to turn. ⛔ **It was `nofeet`
+#                            first and could not fail**: seeding `st.py` is a consumer
+#                            re-asserting `fall_step`'s own climb branch, so removing it
+#                            left every check green. See O3/O4.
 #
 #   DEMO_SABOTAGE=nofresh    `M5a`'s own row: the scan binds whatever it finds DOWN
 #                            instead of what was just pressed, which is the client as
@@ -203,6 +219,64 @@ case ",$SAB," in
     mkdir -p _site && cp probe/b2/.loft/.nopersist.html "$SITE" \
       || fail "the sabotaged page was not emitted where expected"
     ;;
+  # ⛔ `noworldsave` IS `B4`'s OWN ROW, and it is the SAVE for `nopersist`'s reason: from
+  # inside the second page *nothing was written* and *nothing was read* are the same
+  # sentence, and only the first half of the run can tell them apart. It leaves the
+  # world in the picture and takes away the writing, which is the failure a person meets
+  # as "I built a house and it was gone".
+  *,noworldsave,*)
+    # ⚠ THE TRIGGER, NOT THE CALL — and the difference is what makes this pair a pair.
+    # Patching `world_save` to a bare `WS_OK` leaves the page SAYING it saved, which is
+    # `noworldload`'s transcript exactly and would collapse two experiments into one.
+    # Removing the trigger is also the likelier real defect: a wrong `w_tau` guard.
+    sed 's|^  if st.cache.w_tau == st.saved_tau { return; }$|  if true { return; }   // SABOTAGE noworldsave|' \
+      src/editor_client.loft > probe/b2/.noworldsave.loft
+    grep -q 'SABOTAGE noworldsave' probe/b2/.noworldsave.loft \
+      || fail "the noworldsave sabotage patched nothing: the world save call has been reshaped"
+    echo "   SABOTAGE noworldsave — an edit is never written down"
+    loft --html --lib lib/ probe/b2/.noworldsave.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.noworldsave.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
+  # ⛔ The other half: the world is written and never read back. ⚠ It is a DIFFERENT
+  # experiment from `noworldsave` and not a symmetric one — this run's first half still
+  # reports the save, so `O1` stays green and only `O2` moves. That is what makes the
+  # pair worth having: the two failures are one sentence apart in the second page and
+  # a whole check apart in the first.
+  *,noworldload,*)
+    sed 's|^  if ld.wl_code == WL_MISSING {$|  if true {   // SABOTAGE noworldload|' \
+      src/editor_client.loft > probe/b2/.noworldload.loft
+    grep -q 'SABOTAGE noworldload' probe/b2/.noworldload.loft \
+      || fail "the noworldload sabotage patched nothing: the restore has been reshaped"
+    echo "   SABOTAGE noworldload — a saved world is never read back"
+    loft --html --lib lib/ probe/b2/.noworldload.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.noworldload.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
+  # ⛔ `nopose` IS THE ROW NO DIGEST CAN SEE. The world is saved, restored and keyed
+  # **byte-identically**, and the camera is solved against the height the ground used to
+  # have — the eye 1.25 units inside the hill, and `local_camera` is re-solved only on a
+  # TURN, so it stays there.
+  #
+  # ⛔ **THIS SABOTAGE WAS `nofeet` FIRST AND IT COULD NOT FAIL.** It removed a
+  # `st.py = ra.au_y` seed and left EVERY check green, because `fall_step`'s first
+  # branch stands a walker on ground above them — its own comment calls it *"the CLIMB
+  # case"* and `lib/hex_editor/tests/fall.loft` owns the claim. The seed was a consumer
+  # re-asserting a library invariant, which is code no check here can ever red. It is
+  # gone, and what is sabotaged now is the pose the CAMERA is solved from.
+  *,nopose,*)
+    sed 's|^  ra = hex_editor::author_on(st.cache, a.au_x, a.au_z, a.au_yaw);$|  ra = a;   // SABOTAGE nopose|' \
+      src/editor_client.loft > probe/b2/.nopose.loft
+    grep -q 'SABOTAGE nopose' probe/b2/.nopose.loft \
+      || fail "the nopose sabotage patched nothing: the pose rebuild has been reshaped"
+    echo "   SABOTAGE nopose — the restored world's ground never reaches the camera"
+    loft --html --lib lib/ probe/b2/.nopose.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.nopose.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
   # The INSTRUMENT rather than the subject: the bar is rebuilt and not re-reported, so
   # the only bar line in the transcript is the boot one. ⚠ It exists to prove `M3`
   # reads the REBUILT bar — a check that took the first line would call the starting
@@ -237,7 +311,7 @@ case ",$SAB," in
   # `$SITE` raw and carries **no part-library prelude**. The `P` rows therefore go red
   # in these runs for a reason that is not the subject — read the block the sabotage
   # names, not the exit code. (`deadclock` set this precedent; `M3`'s three follow it.)
-  *,deadclock,*|*,nosettle,*|*,noarm,*|*,nobarsay,*|*,nofresh,*|*,nopersist,*)
+  *,deadclock,*|*,nosettle,*|*,noarm,*|*,nobarsay,*|*,nofresh,*|*,nopersist,*|*,noworldsave,*|*,noworldload,*|*,nopose,*)
     echo "   (the engine-identity check is skipped: this page is deliberately not it)"
     ;;
   *)
@@ -1093,6 +1167,134 @@ elif [ "$n_raises" = "0" ]; then
   no "N3 nothing raised after the reload — neither the restored key nor the old one"
 else
   no "N3 $n_raises raises from two 5 and one ArrowUp after the reload"
+fi
+
+# ── O — THE WORLD SURVIVES A RELOAD — plan 22 `B4` ─────────────────────────
+#
+# **Build something, close the tab, come back and it is still there.** This is the
+# plan's goal sentence, and every piece of it existed before this step with nothing
+# joining them: `world_save`/`world_load` are `W1`'s, a page has had a filesystem since
+# `P6` (a world surviving a reload, measured, over `http` AND `file://`), and `M5b`
+# taught this client to read a document at boot and write it on change — **for the
+# keyboard only**. The world was never persisted by anything.
+#
+# ⚠ **THE FIXTURE WALKS BACKWARDS FIRST, AND THAT IS FORCED BY THE GESTURE.**
+# `raise_ahead` lands `PEAK_AHEAD` = 10 hexes AHEAD with a brush radius of 7 — never
+# underfoot, and its own comment says why ("*a refusal … never a silent fallback to the
+# author's own cell, which is how the hill ended up underfoot*"). A page reopens with
+# the author back at the ORIGIN, so a hill raised from a standing start is 10 hexes away
+# from the only place `O3` can measure. Walking 40 steps back puts the author ~7.9 hexes
+# behind the origin, the brush centre ~2.1 hexes past it, and the origin under the dome.
+#
+# ⚠ **AND `O3`'s CONTROL IS THIS RUN'S OWN FIRST BOOT.** *The restored feet are 1.25*
+# would be a constant nobody could check; what is asserted instead is that the SAME
+# code, at the SAME position, reports a different height on the two boots — 0 on fresh
+# ground, non-zero on the restored world. The fixture guard is the first half: if the
+# fresh boot did not report 0, the row means nothing and says so.
+echo
+O_KEYS=$(python3 -c "print(','.join(['s']*40 + ['ArrowUp', '!reload']))")
+timeout 500 node probe/b1b/press.mjs "file://$SITE" "$O_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/world.raw" 2>&1 || true
+grep -E '^(client|canvas|---)' "$OUT/world.raw" > "$OUT/world.log" || true
+sed -n '1,/^--- reloading ---/p' "$OUT/world.log" > "$OUT/world1.log"
+sed -n '/^--- reloading ---/,$p' "$OUT/world.log" > "$OUT/world2.log"
+grep -E '^client: local world' "$OUT/world.log" | sed 's/^/   /'
+
+# The key `<cells>:<crc>` out of each half. ⚠ THE LAST save in half one, because the
+# walk itself writes nothing and only the raise does — but a fixture that grew a second
+# gesture must compare against what was actually last on the disk.
+o_fresh=$(grep -c 'client: local world — no saved world' "$OUT/world1.log" || true)
+o_saved=$(grep 'client: local world — saved ' "$OUT/world1.log" | tail -1 \
+          | sed 's/.*saved \([0-9]*:[0-9]*\) .*/\1/' || true)
+o_boot=$(grep -m1 'client: local — .* world ' "$OUT/world1.log" \
+         | sed 's/.*world \([0-9]*:[0-9]*\).*/\1/' || true)
+o_back=$(grep -m1 'client: local world — restored ' "$OUT/world2.log" \
+         | sed 's/.*restored \([0-9]*:[0-9]*\) .*/\1/' || true)
+o_fail=$(grep -c 'client: local world ⚠' "$OUT/world.log" || true)
+# Where the author is standing on each boot, as the page reports it at the one moment
+# the camera is solved — the same field, the same position, two worlds.
+o_at1=$(grep -m1 'client: local — .* author stands at ' "$OUT/world1.log" \
+        | sed 's/.*author stands at \(.*\)$/\1/' || true)
+o_at2=$(grep -m1 'client: local — .* author stands at ' "$OUT/world2.log" \
+        | sed 's/.*author stands at \(.*\)$/\1/' || true)
+# And where the walker ends up, off its own line.
+#
+# ⚠ **`at (0,0)` IS IN THE PATTERN, AND A FIRST-LINE GREP WOULD HAVE BEEN A TIMING
+# ACCIDENT.** The walker reports every ~300 frames, so *the first report* is at the
+# origin only for as long as the first report happens to land before the first walk key
+# is delivered. This row's claim is about the feet AT THE ORIGIN — it should say so, and
+# then a fixture that starts walking sooner makes it go VACUOUS rather than wrong.
+o_feet1=$(grep -m1 'client: local walker .*at (0,0) feet' "$OUT/world1.log" \
+          | sed 's/.*feet \([^ ]*\) .*/\1/' || true)
+o_feet2=$(grep -m1 'client: local walker .*at (0,0) feet' "$OUT/world2.log" \
+          | sed 's/.*feet \([^ ]*\) .*/\1/' || true)
+
+# O1 — the first half started clean and wrote something down. ⚠ BOTH HALVES OF THAT,
+# and the first is the vacuity guard: this driver launches a fresh browser profile per
+# run, so a page that did NOT say *no saved world* is a page reading somebody else's
+# leftovers, and every row below it would be measuring the wrong run.
+if [ "$o_fresh" = "0" ]; then
+  no "O1 vacuous — the first page did not start on fresh ground, so the profile was not clean: $(grep -m1 'client: local world' "$OUT/world1.log" || echo 'it said nothing about a saved world at all')"
+elif [ -z "$o_saved" ]; then
+  no "O1 nothing was written down before the reload — the edit never reached the disk"
+elif [ "$o_fail" != "0" ]; then
+  no "O1 a world write or read was refused: $(grep -m1 'client: local world ⚠' "$OUT/world.log")"
+else
+  say "O1 the page started on fresh ground and wrote its edit down: $o_saved"
+fi
+
+# O2 — …and the reloaded page came back holding it. ⚠ TWO COMPARISONS, BECAUSE ONE
+# CANNOT ANSWER: equal to what was saved is the claim, and DIFFERENT from the boot world
+# is what stops a page that restored nothing from passing by booting the same way twice.
+if [ -z "$o_back" ]; then
+  no "O2 the reloaded page restored no world — $(grep -m1 'client: local world' "$OUT/world2.log" || echo 'it said nothing about a saved world at all')"
+elif [ "$o_back" != "$o_saved" ]; then
+  no "O2 the reloaded page came back with $o_back where $o_saved was written"
+elif [ "$o_back" = "$o_boot" ]; then
+  no "O2 vacuous — the restored world $o_back is the world a fresh page boots with, so the edit is not in it"
+else
+  say "O2 the reloaded page came back holding what was built: $o_back (a fresh page boots $o_boot)"
+fi
+
+# O3 — and the CAMERA is solved on it. ⚠ NO DIGEST CAN SEE THIS ROW: a page that
+# restored every cell and solved its view against the height the ground used to have
+# keys a **byte-identical** world, and looks out from inside the hill. `local_camera`
+# puts the eye at `au_y + LOCAL_LIFT` and is re-solved only on a TURN, so this is not a
+# frame's worth of wrong — it persists until the author happens to turn.
+#
+# ⚠ **THE ORACLE IS THIS RUN'S OWN FIRST BOOT.** *The restored ground is 1.25* would be
+# a constant nobody could re-derive; what is asserted is that the same code at the same
+# position reports a different height on the two boots, with the fresh reading (0, flat
+# ground) as the vacuity guard.
+if [ -z "$o_at1" ]; then
+  no "O3 vacuous — the fresh page never said where its author was standing, so there is nothing to compare against"
+elif [ "$o_at1" != "0" ]; then
+  no "O3 vacuous — the FRESH boot stood the author at $o_at1, so a different reading after the reload says nothing about the restored ground"
+elif [ -z "$o_at2" ]; then
+  no "O3 the reloaded page never said where its author was standing"
+elif [ "$o_at2" = "0" ]; then
+  no "O3 the reloaded page solved its camera at 0 on a world whose origin was raised — the ground came back and the eye did not"
+else
+  say "O3 …and the camera is solved on it: the author stands at $o_at2 after the reload, against $o_at1 on the same spot in a fresh page"
+fi
+
+# O4 — and the WALKER ends up on it too, end to end.
+#
+# ⚠ **THIS ROW IS NOT INDEPENDENTLY FALSIFIABLE HERE, AND THAT IS WRITTEN DOWN RATHER
+# THAN LEFT TO BE DISCOVERED.** It was `O3` first, aimed at a `st.py` seed in the client
+# — and removing that seed left every check green, because `fall_step` stands a walker
+# on ground above them on the next tick (*"the CLIMB case"*, its own words). So the
+# claim below is TRUE and its owner is `lib/hex_editor/tests/fall.loft`, not this file:
+# it reds under `noworldsave`/`noworldload` because there is then no ground to stand on,
+# and it stays green under `nopose` because the fall does not read the pose. Kept as the
+# end-to-end sentence — *the person ends up on the ground they built* — with its blind
+# spot named, which is `M4`'s rule for exactly this shape.
+if [ -z "$o_feet1" ] || [ "$o_feet1" != "0" ]; then
+  no "O4 vacuous — the fresh page reported feet '$o_feet1' at (0,0), so a different reading after the reload says nothing"
+elif [ "$o_feet2" = "0" ] || [ -z "$o_feet2" ]; then
+  no "O4 the reloaded page's walker stands at feet '$o_feet2' on a world whose origin was raised"
+else
+  say "O4 …and the walker is on it: feet $o_feet2 after the reload, against $o_feet1 in a fresh page (the FALL owns this, not the load)"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────

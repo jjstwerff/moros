@@ -391,7 +391,67 @@ serves**, differing only in where a key press goes.
 | ✅ `B1b.1b` | **THE AUTHORITY IS TWO.** No socket → the page edits its own world, and the status line says so. `make probe-auth` is 28 checks: the page and `editor_run` at `GROUND=0` agree on the **world** AND the **session**, and nine sabotages say which check sees what. ⛔ Its digest was a CRC32 first, and this format cancels one |
 | ✅ `B2`=`B3` | **THE DEMO EXISTS** — `make pages` writes `_site/index.html` (the engine build, verbatim) and `make probe-demo` opens it from `file://` with no listener at either end. ⛔ Most of the step was cancelled by its first measurement: the engine already ran from a disk |
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
+| ✅ `B4` | **THE GOAL SENTENCE IS TRUE** — build something, close the tab, come back and it is there. `world_save` on the edit clock, `world_load` on the frame the authority moves. ⛔ Three finished parts (`W1`, `P6`, `M5b`'s pattern) and **no wire between them**; ⛔ and a safeguard of mine that `fall_step` already owned, which only its sabotage could say. Section above |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
+
+## ✅ `B4` — THE GOAL SENTENCE IS TRUE: BUILD, CLOSE THE TAB, COME BACK, 2026-08-15
+
+**`world_save` on the edit clock, `world_load` on the frame the authority moves.** `local_persist`
+compares `w_tau` against the last value saved, once a frame — **in the frame loop, not in
+`local_act`**, because a hook on the gesture path persists what that path writes and silently stops
+covering whatever later writes another way. `w_tau` moves iff the store changed, whoever changed it.
+
+⛔ **THE STEP WAS THREE FINISHED PARTS AND NO WIRE BETWEEN THEM.** `W1`'s codec (gated byte for
+byte), `P6`'s page filesystem (*a world saved in it survives a reload*, measured over `http` **and**
+`file://`) and `M5b`'s load-at-boot/write-on-change pattern **in this very client** — all green for
+two days, and **nothing called them**. `world_save` had eleven callers and not one was a page.
+
+> That is `CLAUDE.md`'s *commonest defect in this tree* sitting on the milestone it was named for,
+> and it shows where the defect hides best: **between steps that are each honestly tested**, where
+> no suite looks.
+
+⛔ **AND I WROTE A SAFEGUARD THE LIBRARY ALREADY OWNED — THE SABOTAGE IS THE ONLY THING THAT COULD
+SAY SO.** Restoring a world whose origin was raised leaves the author at the *boot* world's height,
+so I fixed it where that story pointed: `local_fall` writes the pose from `st.py` every tick
+(`B1c.3` put the authority there), so `local_restore` seeded `st.py`. **The sabotage removing that
+seed was green on every check in the file** — `fall_step`'s first branch is
+`if y <= gnd { stand on it }` and its own comment names the case, *"the ground rose past the
+feet"*, with `test_the_ground_rising_past_the_feet_is_the_climb` already in
+`lib/hex_editor/tests/fall.loft`. **A consumer re-asserting a library invariant is code no check
+here can ever red**, which is the lower bound of a safe step, failed. Deleted.
+
+⚠ **AND THE REAL CONSEQUENCE WAS ONE LAYER OVER, WHERE I HAD NOT LOOKED.** `local_camera` reads
+`au_y` for the eye **and** the aim, and is re-solved **only when the yaw changes** — so a page that
+restored a raised world without rebuilding the pose looks out from 1.25 units inside its own hill
+and stays there until the author happens to turn. The pose rebuild is load-bearing; the feet seed
+never was, and **the instrument moved with the code**: `O3` reads the pose the camera was solved
+from, and the feet comparison is kept as `O4` with its blind spot written into the check.
+
+⛔ **AND `0 - 1` AS *NOTHING SAVED YET* WAS WRONG THREE WAYS, WHICH ONE RUN SAID AND NO READING
+HAD.** A fresh world is at **tau 1**, not 0 — the ground fill is a write — so an untouched page
+encoded and wrote a whole world on its first frame; and on the failure route it **overwrites the
+file it could not read**, a frame later, destroying the thing a person came back to recover. The
+seed is the world this page is about to edit, on all three routes out of the loader.
+
+⚠ **THE FIXTURE WALKS BACKWARDS, AND THE GESTURE IS WHY.** `raise_ahead` lands `PEAK_AHEAD` = **10
+hexes ahead** with radius 7 and refuses rather than falling back underfoot (its own comment records
+*"the hill ended up underfoot"* once). A reopened page stands the author at the **origin**, the only
+place `O3` can measure — so the run walks 40 steps back, the dome centres ~2.1 hexes past the origin
+and the ground there is **1.25**. ⚠ **And the oracle is this run's own first boot, not the number**:
+the same code at the same position reports 0 on fresh ground and non-zero on the restored world,
+with the fresh reading as the row's vacuity guard.
+
+⚠ **AND `O3` FIRST READ THE WALKER'S FEET, WHICH IS A NUMBER THE FALL REPAIRS.** The consequence
+being guarded is a CAMERA, and a camera's consequence is not something the walker reports — this
+tree's own rule, *give a claim the instrument that can SEE it*, arriving as a check that could not
+fail rather than as a picture that could not tell.
+
+⚠ **WHAT IT DOES NOT CARRY IS IN THE TRANSCRIPT RATHER THAN LEFT QUIET.** A world's bytes are cells
+and sections; the **nine scene registries** live in the `EditSession`, so a restored cottage has no
+runs, roofs, openings or props and its picture degrades to `chunk_mesh_props`'s per-edge fallback —
+`session.loft` had already priced that (*"EMPTY IS NOT A LOSS OF THE HOUSE — it is a loss of the
+RECORDS"*). Putting them in the bytes is a FORMAT question and a plan of its own. ⏭ The **pose** is
+not saved either, and two tabs on one origin both write `world.hxw` with the last one winning.
 
 ## ✅ `M5b` — THE KEYBOARD SURVIVES A RELOAD, and a claim of mine that was too strong, 2026-08-15
 

@@ -303,6 +303,19 @@ const WIN_H = 660;
 // keyboard last touched this box would replay differently for two people.
 const KEYMAP_PATH = "keymap.txt";
 
+// Where the person's WORLD lives — plan 22 `B4`.
+//
+// ⚠ **THE SAME PLACE AND THE SAME REASON AS THE KEYBOARD ABOVE**, and it is worth
+// saying that they are two documents rather than one: a keyboard is a setting that
+// follows a person across every world they open, and a world is the thing they built.
+// A single file holding both would make *reset my keys* and *start again* one gesture.
+//
+// ⚠ **AND IT IS A `.hxw` LIKE EVERY OTHER WORLD IN THIS TREE** — `world_save` writes
+// it and `world_load` reads it, the same two functions `make parts` and the server's
+// `8:` use, so a world built in a page is a file the runner can open. That is `W1`'s
+// dividend: the bytes are the format and a path is a destination.
+const WORLD_PATH = "world.hxw";
+
 // The reference look, ported verbatim from `html/editor.html`. Written as desktop
 // GLSL (`#version 330 core`) because loft's browser shell rewrites the version
 // directive to `#version 300 es` and injects the precision qualifiers — so ONE
@@ -557,6 +570,24 @@ struct Client {
   // decision, and it is printed with it, so *how long did it wait* is answerable
   // from a transcript.
   dials: integer,
+  // ── What has been written down (plan 22 `B4`) ──────────────────────────────
+  //
+  // The `w_tau` this page last saved. ⚠ **THE EDIT CLOCK IS THE TRIGGER AND A WALL
+  // CLOCK IS NOT** — `PAGES_EDITOR.md`'s own rule, and this tree has three scars from
+  // timing something by the machine it ran on. `w_tau` bumps once per write that
+  // CHANGED something, so *save when tau moved* is exact, is the same on any box and
+  // on a world of any size, and costs one integer compare on a frame where nothing
+  // happened.
+  //
+  // ⚠ **`0 - 1` RATHER THAN `0`, BECAUSE A FRESH WORLD IS AT TAU 0.** Seeding this
+  // with the same value a new world carries would make *nothing has been saved* and
+  // *the empty world has been saved* the same state — and the second is what a page
+  // must never conclude before it has read what is on the disk.
+  saved_tau: integer,
+  // Has the disk been consulted at all? ⚠ It is not `saved_tau != 0 - 1`: a page that
+  // read the disk and found NOTHING is a page that has consulted it, and that is
+  // exactly the state where the seed above is still in place.
+  loaded: boolean,
   // ── The page's own walker (plan 22 `B1c.1`) ────────────────────────────────
   //
   // `tick_at` is the clock this page last consumed a step at, in `ticks()`'s own
@@ -995,6 +1026,141 @@ const LOCAL_COLL_R = 8;
 // measured a page listing 20 parts from it — the interpreter's own answer for the
 // real directory.
 const LOCAL_PARTS = "/data/parts";
+
+// ── THE WORLD A PERSON LEFT BEHIND, READ BACK — plan 22 `B4` ────────────────
+//
+// **Build a house, close the tab, reopen it and the house is there** is this plan's
+// goal sentence, and until this step every piece of it existed and nothing joined
+// them: `world_save`/`world_load` are `W1`'s (one decoder, gated byte for byte),
+// the page has had a filesystem since `P6` (21 `fs_*` names, a world surviving a
+// reload over `http` AND `file://`), and `M5b` taught this client to read a document
+// at boot and write it on change. **Nothing called them.** That is this tree's
+// commonest defect sitting on the milestone it was named for.
+//
+// ⚠ **A MISSING FILE IS THE NORMAL CASE AND IS NOT A FAILURE.** Every first visit
+// hits it, so it says *no saved world* the way `keymap_load` says *no saved key map*
+// — one sentence, no warning glyph — and any OTHER code is a real fault that gets the
+// glyph. The two must not share a branch: a page whose storage is broken and a page
+// nobody has built in yet would then read identically, and only one of them is fine.
+//
+// ⚠ **AND THE POSE IS REBUILT ON THE WORLD THAT ARRIVED, FOR THE CAMERA.** The pose
+// this page booted with was derived from FLAT GROUND; `local_camera` puts the eye at
+// `au_y + LOCAL_LIFT` and aims it at `au_y + LOCAL_AIM`, and it is **re-solved only
+// when the YAW changes**. So a page that restored a raised world without this would
+// look out from 1.25 units inside its own hill, and go on doing so until the author
+// happened to turn. The restored `au_x`/`au_z`/`au_yaw` are kept and only the ground
+// under them is re-derived: a load does not teleport anybody, which is
+// `session_scene_clear`'s own rule about this same event.
+//
+// ⛔ **AND THE FEET NEEDED NOTHING — I SEEDED `st.py` TOO, AND THE SABOTAGE IS WHAT
+// SAID SO.** The story I wrote first was that an unseeded `py` leaves the author
+// buried, since `local_fall` writes the pose FROM `st.py` every tick. Removing that
+// seed left **every check green**, because `fall_step`'s first branch is
+// `if y <= gnd { stand on it }` — and its own comment names this exact case:
+// *"This is also the CLIMB case — the ground rose past the feet."* A restored world
+// with a higher origin **is** the ground rising past the feet, so the first tick
+// lifts them. `lib/hex_editor/tests/fall.loft` owns that claim
+// (`test_the_ground_rising_past_the_feet_is_the_climb`), and a consumer re-asserting
+// a library invariant is code no test here can ever make go red.
+//
+// ⚠ **SO THE ROW AND THE CODE MOVED TOGETHER**: what is load-bearing is the CAMERA's
+// input, not the walker's, and the check reads the pose the camera is solved from
+// rather than a height the fall repairs a frame later.
+//
+// ⚠ **THE SCENE RECORDS ARE NOT IN THE FILE, AND THE SENTENCE SAYS SO.** A world's
+// bytes are cells and sections; the nine registries — wall runs, roof plans, leaves,
+// openings, annexes, props, slabs, holes, the trunk — live in the `EditSession`, and
+// `session.loft` already worked out what that costs: *"EMPTY IS NOT A LOSS OF THE
+// HOUSE — it is a loss of the RECORDS"*, with the drawn result degrading to the
+// per-edge fallback `chunk_mesh_props` keeps. Putting them in the world's bytes is a
+// FORMAT question and a plan of its own. What this step will not do is stay quiet
+// about it, because a person who saved a cottage and reopened it to find its roof
+// drawn from cells is owed the reason.
+//
+// ⚠ **AND NOTHING CLEARS THE SESSION HERE, MEASURED RATHER THAN ASSUMED.** `S0`'s
+// rule is that the records go with the store they describe, so a load into a live
+// session is exactly the two-authorities defect `session_scene_clear` exists for —
+// but this load runs on the frame `local` is decided, and `act` routes to
+// `local_act` only when `local` is already true. The session cannot have a record in
+// it yet. ⏭ **The day a page can load a SECOND world** — an open gesture, a demo that
+// offers a scene — that call is owed, and this is where it goes.
+fn local_restore(st: Client, a: hex_editor::Author) -> hex_editor::Author {
+  st.loaded = true;
+  ld = world_load(WORLD_PATH);
+  // ⚠ **THE SEED IS WHATEVER WORLD THIS PAGE IS ABOUT TO EDIT, ON EVERY ROUTE OUT OF
+  // HERE — AND `0 - 1` WOULD HAVE BEEN WRONG THREE DIFFERENT WAYS.** Measured on the
+  // first run: a fresh world is at **tau 1**, not 0, so a page that opened and was
+  // never touched wrote a whole world on its first frame. Worse on the failure route
+  // — a page that could not READ the saved file would then overwrite it a frame
+  // later, destroying the thing a person might have come back to recover. Seeded
+  // here, the first write is the first EDIT, on all three routes.
+  st.saved_tau = st.cache.w_tau;
+  if ld.wl_code == WL_MISSING {
+    println("client: local world — no saved world at '{WORLD_PATH}', "
+            + "starting on fresh ground");
+    return a;
+  }
+  if ld.wl_code != WL_OK {
+    // ⚠ REASON, OFFER, RESIDUAL. `wl_detail` is the decoder's own account of what it
+    // refused, and the page keeps the world it booted with rather than half of one —
+    // `world_from_bytes` refuses a truncated buffer instead of decoding it as zeroes
+    // (`W1`'s second control), so there is no partial world to inherit.
+    println("client: local world ⚠ the saved world could not be read (code "
+            + "{ld.wl_code}) — {ld.wl_detail} — this page starts on fresh ground, "
+            + "and the first edit will overwrite it");
+    return a;
+  }
+  st.cache = ld.wl_world;
+  st.saved_tau = st.cache.w_tau;
+  // The ground under the author, on the world that just arrived. ⚠ `st.py` is
+  // deliberately NOT touched — see the ⛔ above: the fall owns it, with a library test
+  // of its own.
+  ra = hex_editor::author_on(st.cache, a.au_x, a.au_z, a.au_yaw);
+  // ⚠ **THE GROUND IS IN THE SENTENCE**, because the world key cannot carry it: a page
+  // that restored every cell and solved its camera against the height the ground used
+  // to have keys a **byte-identical** world. It is the one number here that is about
+  // where the person is standing rather than about the store.
+  println("client: local world — restored {world_key(st.cache)} from "
+          + "'{WORLD_PATH}' at tau {st.cache.w_tau} · ground {ra.au_y} ⚠ its scene "
+          + "records (runs, roofs, openings, props) are not in a world file");
+  ra
+}
+
+// ── AND WRITTEN BACK WHENEVER THE EDIT CLOCK MOVES — plan 22 `B4` ───────────
+//
+// **There is no save gesture, for the reason `M5b` gave the keyboard**: a person who
+// built a house and closed the tab did not decline to save it. `w_tau` bumps once per
+// write that CHANGED something, so this is exact, costs one integer compare on an idle
+// frame, and is the same on any box — `PAGES_EDITOR.md`'s rule, against a wall-clock
+// autosave that measures the machine.
+//
+// ⚠ **THE GUARD IS `loaded`, NOT `local`, AND THAT ORDER IS LOAD-BEARING.** Both are
+// set on the same frame today, so the two guards are indistinguishable *now* — and
+// they answer different questions. `local` is *may this page own a world*; `loaded` is
+// *has this page read what was already there*. A save fenced only by `local` that ever
+// ran before the load would write a fresh world over a saved one, which is the one
+// failure here that destroys something a person made rather than merely losing it.
+//
+// ⚠ **AND `saved_tau` MOVES EVEN WHEN THE WRITE FAILS.** Retrying a failing save every
+// frame would flood the console and spend a whole encode per frame for as long as the
+// fault lasts — a page that is out of storage would go from *cannot save* to *cannot
+// draw*. It is reported per EDIT instead, which is bounded by the person's hands.
+fn local_persist(st: Client) {
+  if !st.loaded { return; }
+  if st.cache.w_tau == st.saved_tau { return; }
+  st.saved_tau = st.cache.w_tau;
+  ps_code = world_save(st.cache, WORLD_PATH, []);
+  if ps_code != WS_OK {
+    println("client: local world ⚠ this edit could not be written (code {ps_code}) "
+            + "— it is in the picture and will not survive a reload");
+    return;
+  }
+  // ⚠ **SAID ON EVERY SAVE, WHICH IS PER EDIT AND NOT PER FRAME.** A save that
+  // happens silently is a save nothing can distinguish from one that never ran — and
+  // this line is what would report the failure mode the guard above exists for: a
+  // world written on a frame nobody edited would show up here as a flood.
+  println("client: local world — saved {world_key(st.cache)} at tau {st.cache.w_tau}");
+}
 
 fn local_camera(st: Client, a: hex_editor::Author) {
   lc_fx = cos(a.au_yaw);
@@ -2964,6 +3130,7 @@ fn main() {
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
+    saved_tau: 0 - 1, loaded: false,
     tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false,
     coll: hex_field::edgeset_new(0, 0, 1, 1), coll_sf: hex_edge::surfaces_new(),
     coll_rt: hex_way::track_new(),
@@ -3232,18 +3399,34 @@ fn main() {
           println("client: no server answered in {st.dials} dials — "
                   + "this page edits its own world");
           st.panel_dirty = true;
-          // ⚠ AND THE PICTURE STARTS HERE, ON THE FRAME THE AUTHORITY MOVES —
-          // plan 22 `B1b.2a`. There is nothing to draw before it: attached, the
-          // camera and every mesh arrive from the server; local, this is the
-          // moment the page becomes the thing that answers both.
+          // ── THE WORLD THE PERSON LEFT BEHIND — plan 22 `B4` ─────────────────
+          //
+          // ⚠ **HERE, AND NOT AT BOOT, BECAUSE ONLY A LOCAL PAGE OWNS A WORLD.**
+          // Attached, `st.cache` is a COPY of the server's — streamed in as `G:`
+          // chunks — so a page that loaded its own file over it at boot would draw
+          // one world, key another, and hand the server edits against a store
+          // nobody else has. This is the frame the cache stops being a copy.
+          //
+          // ⚠ **AND BEFORE THE CAMERA AND THE MESH BELOW**, which is the whole
+          // reason it is on this line rather than three lines down: both are
+          // DERIVED from the world, and a camera solved against flat ground with a
+          // hill in the file is the *swap-and-look* this plan refuses.
+          author = local_restore(st, author);
           local_camera(st, author);
           // ⚠ THE SAME FIELD THE `N:` HANDLER WRITES, so the panel cannot tell
           // which authority filled it — that is what makes one catalogue rather
           // than a local imitation of one.
           if local_cat != st.mats { st.mats = local_cat; st.panel_dirty = true; }
           lg_boot = local_surfaces(st, sess, author);
+          // ⚠ **AND WHERE THE AUTHOR IS STANDING — plan 22 `B4`.** It is the pose
+          // `local_camera` was solved from two lines up, reported at the one moment it
+          // matters: a page whose world came off a disk has a ground here that a fresh
+          // page does not, and the camera is re-solved only on a TURN, so getting this
+          // wrong is not a frame's worth of wrong. ⚠ Appended, because six greps in
+          // `probe/b2` and `probe/b1b` match the head of this line.
           println("client: local — {lg_boot} ground floats in {len(st.parts)} "
-                  + "drawables · world {world_key(st.cache)}");
+                  + "drawables · world {world_key(st.cache)} · author stands at "
+                  + "{author.au_y}");
         }
       }
       if st.hello {
@@ -3337,6 +3520,15 @@ fn main() {
     // always*, a backlog worked off one step per pass rather than one big one —
     // and it is `hex_editor::TICK_US` so that neither program can spell it alone.
     if st.local { author = local_tick(st, sess, author); }
+    // ── AND IT IS WRITTEN DOWN — plan 22 `B4` ─────────────────────────────
+    //
+    // ⚠ **IN THE FRAME LOOP RATHER THAN IN `local_act`, WHICH IS THE WHOLE POINT
+    // OF PUTTING THE TRIGGER ON THE CLOCK.** A hook on the gesture would persist
+    // what the gesture path writes and silently stop covering anything that comes
+    // to write another way — a load, an undo, a message handler, the tick. The
+    // world's own `w_tau` is the one fact that cannot be got round: it moves iff
+    // something changed the store, whoever did it.
+    local_persist(st);
     draw_world(st);
     draw_panel(ui_panel, ui_bar, ui_painter);
     draw_swatches(ui_panel, ui_swatches, ui_painter);

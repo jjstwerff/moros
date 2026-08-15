@@ -103,6 +103,12 @@ loft ships **`VirtFS`**, and loft's own file paths already honour it under wasm 
 both halves of the request, it is loft's own, and it means `world_save(path)` — the call every
 other target already makes — is the whole persistence design.
 
+✅ **AND IT IS BUILT AND ANSWERING THE ASK — plan 22 `B4`, 2026-08-15.** *Nothing is lost on
+closing the page* is true now: `world_save` fires whenever `w_tau` moves and `world_load` runs on
+the frame the authority goes local. ⚠ **What it holds is the WORLD**, cells and sections — the
+scene registries live in the `EditSession` and a restored cottage says so in its own transcript
+line, which is a FORMAT question and a plan of its own rather than a gap in this one.
+
 ### ✅ The two browser shells bound opposite halves — **FIXED UPSTREAM, and measured here**
 
 | shell | binds | missing |
@@ -603,7 +609,7 @@ else** at first, and the whole prop/door/vehicle surface can wait.
 | ✅ ~~`P4`~~, ✅ ~~`P2`~~ | **both run, both hold.** Nothing left that can reshape the work; `P5` only decides where the assets sit | done |
 | ✅ `W1` | world ⇄ bytes | **BUILT** — and 1.6× faster, not slower |
 | ◐ `W4` (house keys) | `press` for the arrows, `H`, `O`, `P`, `F`, `G` | **BUILT, and `editor_run` wired.** ⏭ **Next: the server, `editor_client`, `script.mjs` — and delete their tables.** `R`/`B`/`C`/`E` (wall run, storey, cellar, step) need adapting: they do not return an `Ack` |
-| ⛔ ~~`W5`~~ **or** ✅ `#851` + autosave | **the route is decided: `#851`, measured.** `world_save(path)` against `LayeredFS`, then save-on-`w_tau` | **this is the first testable milestone** — build a house, close the tab, reopen it. ⚠ **The STORAGE half of it is now done and gated** (`make probe-p6`); what is left is a page with the gestures in it, which is `B1` |
+| ⛔ ~~`W5`~~ **or** ✅ `#851` + autosave | ✅ **BUILT — plan 22 `B4`, 2026-08-15.** `world_save(path)` against `LayeredFS`, triggered by `w_tau` in the frame loop | ✅ **THE MILESTONE IS MET** — build something, close the tab, reopen it, `make probe-demo` `O1`–`O4`. ⛔ **And the step was three finished parts with no wire between them**: this row's storage half (`P6`), `W1`'s codec and `M5b`'s load-at-boot pattern were all green and **nothing called them**, which is where *built and never called* hides best — between steps that are each honestly tested |
 | `W2`/`W3` + the base tree | the assets | doors and props are parts; the house shell is not |
 | the rest of `W4` | every remaining key, and **delete the other three tables** | ⚠ the step is not done until they are gone |
 | **the demo gate** | open `_site/index.html`, build a house, read the picture | ⚠ **NOT OPTIONAL, and it is the first gate here needing NO server.** A permanent demo with no gate is broken the first week nobody opens it |
