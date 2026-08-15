@@ -1,13 +1,18 @@
 // V1 — A KEY NAMES A VERB, AND THE VERB IS WHAT TRAVELS.
 //
-// plan 22 `V1`, and ⚠ **`V3` HAS SINCE DELETED ONE OF THE TWO BODIES.** For the
-// length of `V1`–`V2b` this file was the comparison that made the move safe: the old
-// path and the new one both running, every one of the eleven keys driven through
-// both, the two worlds compared as BYTES. `press(key)` is gone, so those two rows
-// are retired — see below, where what they proved and what replaces it is written
-// out rather than left to a git log. What remains is the DEFINITION (`verb_of`) and
-// the behaviour of the layer under it (`press_verb`), including the byte instrument
-// itself and the blindness that justified building it.
+// plan 22 `V1`, and ⚠ **BOTH OF THIS FILE'S TRANSITIONAL BODIES ARE NOW DELETED.**
+// For the length of `V1`–`V2b` it was the comparison that made the first move safe:
+// `press(key)` and `press_verb` both running, every one of the eleven keys driven
+// through both, the two worlds compared as BYTES — `V3` removed that one. `M1`–`M3`
+// did it again one layer up, with `verb_of`'s `if` chain beside `keymap_default()`,
+// and `M4` removed that one. Each retirement below says what it proved and where the
+// claim went, rather than leaving it to a git log.
+//
+// ⚠ **SO A VERB IS NAMED AS A VERB HERE, AND A KEY ONLY WHERE THE KEY IS THE CLAIM.**
+// Most rows are about what a verb DOES — they take `VB_RUN`, `VB_HOLE`, `VB_SLAB`
+// directly, which is what the file is testing. The handful whose subject is the
+// key→verb mapping ask `verb_in(keymap_default(), …)`, because that is now the only
+// body that answers it.
 //
 // ⚠ **BYTES, NOT `w_tau`, AND THE DIFFERENCE IS MEASURED BELOW RATHER THAN
 // ASSERTED.** The edit clock counts writes that changed something, so a fence ring
@@ -139,22 +144,32 @@ fn world_for(key: text) -> VoxelWorld {
 //
 // ⚠ **AND IT IS WRITTEN OUT RATHER THAN DERIVED.** Deriving both sides from one list
 // is a table checked against itself, and `W4`'s whole finding is that four tables
-// disagreed.
+// disagreed. ⚠ **It is also the LAST place the pairs are in words** — `verb_of`'s
+// chain said them too until `M4`, and this row is what stopped that deletion from
+// being a coverage cut.
 fn test_the_definition_names_the_verb_each_direct_key_is_written_to_name() {
+  m = keymap_default();
   keys  = ["ArrowUp", "ArrowDown", "H", "F", "G"];
   verbs = [VB_RAISE, VB_LOWER, VB_PLACE, VB_FENCE, VB_WALL];
   for vi in 0..5 {
     k = keys[vi] ?? "";
     want = verbs[vi] ?? "";
-    assert(verb_of(k) == want,
-           "key '{k}' names verb '{verb_of(k)}' and the definition says '{want}'");
+    assert(verb_in(m, k) == want,
+           "key '{k}' names verb '{verb_in(m, k)}' and the definition says '{want}'");
   }
-  // …and the six that collapse. ⚠ THE POINT OF THE FAMILY: `verb_of` is deliberately
-  // NOT injective, so the key is not recoverable from the verb and a driver that
-  // wanted a profile has to ask the selection.
-  for ok in ["O", "P", "I", "U", "N", "M"] {
-    assert(verb_of(ok) == VB_OPENING,
-           "key '{ok}' names '{verb_of(ok)}' and the six are one verb");
+  // …and the family that collapsed. ⚠ **THE POINT OF THE FAMILY, AND `M4` CHANGED HOW
+  // IT IS SAID.** `verb_of` bound all six of `O P I U N M` to `opening`; the table is
+  // one row per verb, so `O` carries it and the other five are free. The claim is the
+  // same either way — the key is not recoverable from the verb, and a driver that
+  // wants a profile has to ask the selection — and the five being FREE is the stronger
+  // spelling of it, because a definition that grew a second `opening` row is the tell
+  // that a selection went missing again.
+  assert(verb_in(m, "O") == VB_OPENING,
+         "the opening key names '{verb_in(m, \"O\")}'");
+  for ok in ["P", "I", "U", "N", "M"] {
+    assert(verb_in(m, ok) == VB_NONE,
+           "key '{ok}' names '{verb_in(m, ok)}' — the opening family has grown a "
+         + "second key, which is what a lost selection looks like from here");
   }
 }
 
@@ -164,15 +179,15 @@ fn test_the_definition_names_the_verb_each_direct_key_is_written_to_name() {
 // THAT CHECK HERE.** A fence ring and a wall ring write the same edges of the same
 // disc with a different material: the same number of writes, each changing
 // something, so the edit clock reports **the same number** for two different worlds.
-// Every equality above would still pass with `verb_of("G")` returning `VB_FENCE` if
+// Every equality above would still pass with `VB_WALL` returning `VB_FENCE` if
 // this file counted instead of encoding.
 fn test_the_edit_clock_cannot_tell_a_fence_from_a_wall() {
   wf = flat();
   wg = flat();
   sf = EditSession {};
   sg = EditSession {};
-  af = press_verb(sf, wf, pose_for("F", wf), verb_of("F"));
-  ag = press_verb(sg, wg, pose_for("G", wg), verb_of("G"));
+  af = press_verb(sf, wf, pose_for("F", wf), VB_FENCE);
+  ag = press_verb(sg, wg, pose_for("G", wg), VB_WALL);
   assert(af.ak_ok && ag.ak_ok, "the fixture refused a ring: {af.ak_why} / {ag.ak_why}");
   assert(wf.w_tau == wg.w_tau,
          "a fence did {wf.w_tau} writes and a wall did {wg.w_tau} — if these ever "
@@ -191,8 +206,8 @@ fn test_two_worlds_built_the_same_way_are_the_same_bytes() {
   a2 = flat();
   s1 = EditSession {};
   s2 = EditSession {};
-  press_verb(s1, a1, pose_for("H", a1), verb_of("H"));
-  press_verb(s2, a2, pose_for("H", a2), verb_of("H"));
+  press_verb(s1, a1, pose_for("H", a1), VB_PLACE);
+  press_verb(s2, a2, pose_for("H", a2), VB_PLACE);
   assert(same_world(a1, a2),
          "two identical presses differ at byte {first_difference(a1, a2)} — the "
        + "encoder carries something that is not the world");
@@ -202,13 +217,14 @@ fn test_two_worlds_built_the_same_way_are_the_same_bytes() {
 }
 
 // ⚠ **AND THE FIVE MUST NOT ALL BE THE SAME GESTURE**, or `press_verb` wired to a
-// constant satisfies every equality above. `verb_of` is deliberately not injective
-// over the opening keys; over these five it must be.
+// constant satisfies every equality above. The definition is deliberately not
+// injective over the opening family; over these five it must be.
 fn test_the_five_direct_verbs_do_five_different_things() {
+  m = keymap_default();
   keys = ["ArrowUp", "ArrowDown", "H", "F", "G"];
   seen: vector<text> = [];
   for dk in keys {
-    v = verb_of(dk);
+    v = verb_in(m, dk);
     for prev in seen {
       assert(prev != v, "two of the five direct keys both name '{v}'");
     }
@@ -245,13 +261,13 @@ fn test_the_run_verb_takes_two_presses_and_the_first_writes_nothing() {
   w = flat();
   s = EditSession {};
   quiet = w.w_tau;
-  first = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), verb_of("R"));
+  first = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), VB_RUN);
   assert(first.ak_ok, "the first press of a run was refused: {first.ak_why}");
   assert(first.ak_n == 0, "the first press of a run reported {first.ak_n} written");
   assert(w.w_tau == quiet,
          "the first press of a run did {w.w_tau - quiet} writes — it is building "
        + "something, and a run has no far end yet");
-  second = press_verb(s, w, author_on(w, 4.0, 0.0, 0.0), verb_of("R"));
+  second = press_verb(s, w, author_on(w, 4.0, 0.0, 0.0), VB_RUN);
   assert(second.ak_ok, "the closing press of a run was refused: {second.ak_why}");
   assert(second.ak_n > 0, "the closing press laid {second.ak_n}");
   assert(w.w_tau > quiet, "the closing press of a run wrote nothing");
@@ -270,40 +286,50 @@ fn test_the_run_verb_takes_two_presses_and_the_first_writes_nothing() {
 fn test_the_run_verb_is_not_the_ring_verb() {
   rw = flat();
   rs = EditSession {};
-  press_verb(rs, rw, author_on(rw, 0.0, 0.0, 0.0), verb_of("R"));
-  press_verb(rs, rw, author_on(rw, 4.0, 0.0, 0.0), verb_of("R"));
+  press_verb(rs, rw, author_on(rw, 0.0, 0.0, 0.0), VB_RUN);
+  press_verb(rs, rw, author_on(rw, 4.0, 0.0, 0.0), VB_RUN);
 
   gw = flat();
   gs = EditSession {};
-  press_verb(gs, gw, author_on(gw, 0.0, 0.0, 0.0), verb_of("G"));
-  press_verb(gs, gw, author_on(gw, 4.0, 0.0, 0.0), verb_of("G"));
+  press_verb(gs, gw, author_on(gw, 0.0, 0.0, 0.0), VB_WALL);
+  press_verb(gs, gw, author_on(gw, 4.0, 0.0, 0.0), VB_WALL);
 
   assert(!same_world(rw, gw), "verb 'run' and verb 'wall' build the same world");
-  assert(verb_of("R") != verb_of("G"), "the run key and the ring key name one verb");
+  m = keymap_default();
+  assert(verb_in(m, "R") != verb_in(m, "G"),
+         "the run key and the ring key name one verb");
 }
 
-// ── `Y` AND `T` ARE ONE VERB — the second family to collapse, plan 22 `K3` ──
+// ── `seat` IS ONE VERB — the second family to collapse, plan 22 `K3` ────────
 //
-// ⚠ **THE COLLAPSE IS THE CLAIM, AND `verb_of` ALONE CANNOT MAKE IT.** Two keys naming
-// one verb is a table saying so; what has to be true underneath is that the SELECTION
-// decides, or the collapse has thrown a distinction away instead of moving it. So this
-// asserts both halves: the keys agree, and the same verb from the same pose seats two
-// different things depending only on what was chosen.
-fn test_the_two_seat_keys_name_one_verb_and_the_selection_decides() {
-  assert(verb_of("Y") == verb_of("T"),
-         "the seat keys name '{verb_of(\"Y\")}' and '{verb_of(\"T\")}' — the family "
-       + "has not collapsed");
-  assert(verb_of("Y") == VB_SEAT, "the seat keys name '{verb_of(\"Y\")}'");
+// ⚠ **THE COLLAPSE IS THE CLAIM, AND THE DEFINITION ALONE CANNOT MAKE IT.** One verb
+// where there were two keys is a table saying so; what has to be true underneath is
+// that the SELECTION decides, or the collapse has thrown a distinction away instead of
+// moving it. So this asserts both halves: the family is one row, and the same verb from
+// the same pose seats two different things depending only on what was chosen.
+//
+// ⚠ **`M4` MOVED THE FIRST HALF AND THE ROW WAS RENAMED FOR IT.** It used to read
+// `VB_SEAT == VB_SEAT` — two keys, one verb, which is how the chain could
+// say it. The table is one row per verb, so `T` is free and the claim is now *one key
+// carries `seat` and the other reaches nothing*; the freed pairing itself lives in
+// `keymap.loft`'s
+// `test_the_keys_the_collapse_freed_are_free_and_the_verbs_they_named_survived`.
+fn test_the_seat_family_is_one_verb_and_the_selection_decides() {
+  m = keymap_default();
+  assert(verb_in(m, "Y") == VB_SEAT, "the seat key names '{verb_in(m, \"Y\")}'");
+  assert(verb_in(m, "T") == VB_NONE,
+         "'T' names '{verb_in(m, \"T\")}' — the seat family has two keys again, and a "
+       + "second row is what a lost selection looks like from here");
 
   bw = flat();
   bs = seatable();
-  ba = press_verb(bs, bw, author_on(bw, 0.0, 4.0, 0.0), verb_of("Y"));
+  ba = press_verb(bs, bw, author_on(bw, 0.0, 4.0, 0.0), VB_SEAT);
   assert(ba.ak_ok, "the seat verb was refused with a box in the session: {ba.ak_why}");
 
   sw = flat();
   ss = seatable();
   session_select_seat(ss, PROP_STATUE);
-  sa = press_verb(ss, sw, author_on(sw, 0.0, 4.0, 0.0), verb_of("T"));
+  sa = press_verb(ss, sw, author_on(sw, 0.0, 4.0, 0.0), VB_SEAT);
   assert(sa.ak_ok, "the seat verb was refused with a niche in the session: {sa.ak_why}");
 
   // ⚠ THE SENTENCES, BECAUSE THE WORLD CANNOT ANSWER. A seat writes into `es_props`
@@ -332,21 +358,24 @@ fn a_run_to_hang_on() -> EditSession {
   wv
 }
 
-fn test_the_three_annex_keys_name_one_verb_and_the_selection_decides() {
-  assert(verb_of("J") == verb_of("K") && verb_of("K") == verb_of("V"),
-         "the annex keys name '{verb_of(\"J\")}', '{verb_of(\"K\")}' and "
-       + "'{verb_of(\"V\")}' — the family has not collapsed");
-  assert(verb_of("J") == VB_ANNEX, "the annex keys name '{verb_of(\"J\")}'");
+fn test_the_annex_family_is_one_verb_and_the_selection_decides() {
+  m = keymap_default();
+  assert(verb_in(m, "J") == VB_ANNEX, "the annex key names '{verb_in(m, \"J\")}'");
+  for al in ["K", "V"] {
+    assert(verb_in(m, al) == VB_NONE,
+           "'{al}' names '{verb_in(m, al)}' — the annex family has more than one key "
+         + "again, and a second row is what a lost selection looks like from here");
+  }
 
   bw = flat();
   bs = a_run_to_hang_on();
-  ba = press_verb(bs, bw, author_on(bw, 0.0, 2.0, 0.0), verb_of("J"));
+  ba = press_verb(bs, bw, author_on(bw, 0.0, 2.0, 0.0), VB_ANNEX);
   assert(ba.ak_ok, "a bedstee on a wall was refused: {ba.ak_why}");
 
   dw = flat();
   ds = a_run_to_hang_on();
   session_select_annex(ds, AN_DECK);
-  da = press_verb(ds, dw, author_on(dw, 0.0, 2.0, 0.0), verb_of("K"));
+  da = press_verb(ds, dw, author_on(dw, 0.0, 2.0, 0.0), VB_ANNEX);
   assert(da.ak_ok, "a balcony on a wall was refused: {da.ak_why}");
   assert((ds.es_annex.items[0]?.an_kind ?? 0 - 1) == AN_DECK,
          "the `K` press filed kind {ds.es_annex.items[0]?.an_kind ?? 0 - 1}");
@@ -357,7 +386,7 @@ fn test_the_three_annex_keys_name_one_verb_and_the_selection_decides() {
   cw = flat();
   cs = a_run_to_hang_on();
   session_select_annex(cs, ANX_CUPBOARD);
-  ca = press_verb(cs, cw, author_on(cw, 0.0, 2.0, 0.0), verb_of("V"));
+  ca = press_verb(cs, cw, author_on(cw, 0.0, 2.0, 0.0), VB_ANNEX);
   assert(!ca.ak_ok,
          "the cupboard verb hung something with no box to stand it beside: {ca.ak_why}");
   assert(len(cs.es_annex.items) == 0,
@@ -379,11 +408,14 @@ fn stairable() -> VoxelWorld {
 }
 
 fn test_the_two_stair_keys_are_two_verbs_because_a_direction_is_part_of_the_action() {
-  assert(verb_of("E") != verb_of("Q"),
-         "`E` and `Q` both name '{verb_of(\"E\")}' — a direction has been "
+  m = keymap_default();
+  assert(verb_in(m, "E") != verb_in(m, "Q"),
+         "`E` and `Q` both name '{verb_in(m, \"E\")}' — a direction has been "
        + "flattened into a selection");
-  assert(verb_of("E") == VB_STAIR_UP && verb_of("Q") == VB_STAIR_DOWN,
-         "the stair keys name '{verb_of(\"E\")}' and '{verb_of(\"Q\")}'");
+  // …and WHICH way round, which the inequality cannot say. (It does close the
+  // both-free case on its own: two keys naming nothing are equal, not unequal.)
+  assert(verb_in(m, "E") == VB_STAIR_UP && verb_in(m, "Q") == VB_STAIR_DOWN,
+         "the stair keys name '{verb_in(m, \"E\")}' and '{verb_in(m, \"Q\")}'");
 
   // …and the two verbs have to actually build different worlds, or the names differ
   // and the gesture does not. ⚠ THE ANCHOR IS ASSERTED FIRST: both must have cut
@@ -392,8 +424,8 @@ fn test_the_two_stair_keys_are_two_verbs_because_a_direction_is_part_of_the_acti
   dw = stairable();
   us = EditSession {};
   ds = EditSession {};
-  ua = press_verb(us, uw, author_on(uw, 0.0, 0.0, 0.0), verb_of("E"));
-  da = press_verb(ds, dw, author_on(dw, 0.0, 0.0, 0.0), verb_of("Q"));
+  ua = press_verb(us, uw, author_on(uw, 0.0, 0.0, 0.0), VB_STAIR_UP);
+  da = press_verb(ds, dw, author_on(dw, 0.0, 0.0, 0.0), VB_STAIR_DOWN);
   assert(ua.ak_ok && da.ak_ok, "the fixture refused a tread: {ua.ak_why} / {da.ak_why}");
   assert(ua.ak_q == da.ak_q && ua.ak_r == da.ak_r,
          "the two treads landed at ({ua.ak_q},{ua.ak_r}) and ({da.ak_q},{da.ak_r})");
@@ -413,7 +445,7 @@ fn test_the_stair_verb_cuts_the_cell_ahead_and_not_the_one_underfoot() {
   s = EditSession {};
   a = author_on(w, 0.0, 0.0, 0.0);
   (hq, hr) = px_to_hex(a.au_x, a.au_z);
-  ack = press_verb(s, w, a, verb_of("E"));
+  ack = press_verb(s, w, a, VB_STAIR_UP);
   assert(ack.ak_ok, "the fixture refused a tread: {ack.ak_why}");
   assert(ack.ak_q != hq || ack.ak_r != hr,
          "the tread was cut at ({ack.ak_q},{ack.ak_r}), which is the author's own cell");
@@ -434,7 +466,7 @@ fn test_the_stair_verb_writes_what_the_socket_wrote_by_hand() {
   va = author_on(by_verb, 0.0, 0.0, 0.0);
   ha = author_on(by_hand, 0.0, 0.0, 0.0);
 
-  vack = press_verb(vs, by_verb, va, verb_of("E"));
+  vack = press_verb(vs, by_verb, va, VB_STAIR_UP);
 
   (hfound, hq, hr) = cell_ahead(ha.au_x, ha.au_z, ha.au_yaw);
   assert(hfound, "the fixture found no cell along the facing — nothing to compare");
@@ -497,8 +529,8 @@ fn test_a_tread_is_the_same_height_in_a_world_authored_at_another_unit() {
   fine   = flat_at(0.125);
   cs = EditSession {};
   fs = EditSession {};
-  ca = press_verb(cs, coarse, author_on(coarse, 0.0, 0.0, 0.0), verb_of("E"));
-  fa = press_verb(fs, fine,   author_on(fine,   0.0, 0.0, 0.0), verb_of("E"));
+  ca = press_verb(cs, coarse, author_on(coarse, 0.0, 0.0, 0.0), VB_STAIR_UP);
+  fa = press_verb(fs, fine,   author_on(fine,   0.0, 0.0, 0.0), VB_STAIR_UP);
   assert(ca.ak_ok && fa.ak_ok, "a fixture refused a tread: {ca.ak_why} / {fa.ak_why}");
 
   crise = terrain_h(ca.ak_q, ca.ak_r, coarse) - 8;
@@ -545,12 +577,13 @@ fn on_the_slab(s: EditSession, w: VoxelWorld) -> Author {
 }
 
 fn test_the_hole_verb_needs_a_slab_and_says_so_without_naming_a_key() {
-  assert(verb_of("Z") == VB_HOLE, "the hole key names '{verb_of(\"Z\")}'");
+  assert(verb_in(keymap_default(), "Z") == VB_HOLE,
+         "the hole key names '{verb_in(keymap_default(), \"Z\")}'");
 
   // Nothing laid: the verb must refuse, and the sentence is the whole instrument.
   ew = flat();
   es = EditSession {};
-  ea = press_verb(es, ew, author_on(ew, 0.0, 0.0, 0.0), verb_of("Z"));
+  ea = press_verb(es, ew, author_on(ew, 0.0, 0.0, 0.0), VB_HOLE);
   assert(!ea.ak_ok, "a void was cut through a slab that does not exist");
   assert(len(es.es_holes.items) == 0,
          "a refused hole filed {len(es.es_holes.items)} void(s)");
@@ -567,7 +600,7 @@ fn test_the_hole_verb_cuts_a_void_into_the_session_and_nothing_into_the_store() 
   w = flat();
   s = slabbed();
   before = w.w_tau;
-  ack = press_verb(s, w, on_the_slab(s, w), verb_of("Z"));
+  ack = press_verb(s, w, on_the_slab(s, w), VB_HOLE);
   assert(ack.ak_ok, "the void was refused over a slab that is there: {ack.ak_why}");
   assert(len(s.es_holes.items) == 1,
          "the verb filed {len(s.es_holes.items)} void(s) — the mesher's only source");
@@ -591,11 +624,12 @@ fn test_the_hole_verb_cuts_a_void_into_the_session_and_nothing_into_the_store() 
 // append goes red HERE and leaves the hole rows green — which is what lets a sweep say
 // which gesture broke. Routing it through would have been more red and less signal.
 fn test_the_slab_verb_lays_a_floor_into_the_session_and_nothing_into_the_store() {
-  assert(verb_of("X") == VB_SLAB, "the slab key names '{verb_of(\"X\")}'");
+  assert(verb_in(keymap_default(), "X") == VB_SLAB,
+         "the slab key names '{verb_in(keymap_default(), \"X\")}'");
   w = flat();
   s = EditSession {};
   before = w.w_tau;
-  ack = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), verb_of("X"));
+  ack = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), VB_SLAB);
   assert(ack.ak_ok, "the slab was refused over flat ground: {ack.ak_why}");
   assert(len(s.es_slabs.items) == 1,
          "the verb filed {len(s.es_slabs.items)} slab(s) — `es_slabs` is the mesher's "
@@ -622,7 +656,7 @@ fn test_the_slab_the_verb_lays_has_a_thickness_and_a_clear_height_under_it() {
   w = flat();
   s = EditSession {};
   a = author_on(w, 0.0, 0.0, 0.0);
-  ack = press_verb(s, w, a, verb_of("X"));
+  ack = press_verb(s, w, a, VB_SLAB);
   assert(ack.ak_ok, "the slab was refused: {ack.ak_why}");
   sl = s.es_slabs.items[0] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 0);
   floor = grade_under(w, a);
@@ -651,21 +685,21 @@ fn test_the_slab_the_verb_lays_has_a_thickness_and_a_clear_height_under_it() {
 fn test_the_hole_is_refused_until_the_slab_verb_has_run_in_the_same_session() {
   w = flat();
   s = EditSession {};
-  lay = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), verb_of("X"));
+  lay = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), VB_SLAB);
   assert(lay.ak_ok, "the slab was refused: {lay.ak_why}");
 
   // ⚠ THE POSE IS THE SLAB'S, NOT THE AUTHOR'S — a footprint is placed AHEAD, so a
   // cut at the origin measures *reaching past the slab's end* while believing it
   // measures the pair. `on_the_slab` reads where the floor actually landed.
   a = on_the_slab(s, w);
-  cut = press_verb(s, w, a, verb_of("Z"));
+  cut = press_verb(s, w, a, VB_HOLE);
   assert(cut.ak_ok, "the void was refused over a floor this session just laid: "
        + "{cut.ak_why}");
 
   // The control, and it is the row that makes the one above mean something: the same
   // verb at the same pose in a session where `slab` never ran.
   ns = EditSession {};
-  no = press_verb(ns, w, a, verb_of("Z"));
+  no = press_verb(ns, w, a, VB_HOLE);
   assert(!no.ak_ok,
          "a void was cut in a session with no floor in it — the two verbs are not "
        + "two actions after all: '{no.ak_why}'");
@@ -711,8 +745,9 @@ fn test_the_slab_pad_is_the_footprint_the_library_cannot_read() {
 // stair. The rows below assert the second — the first is only a naming decision, and
 // a naming decision cannot go red.
 fn test_the_storey_and_the_cellar_are_two_verbs_and_the_cellar_is_not_a_mirror() {
-  assert(verb_of("B") == VB_STOREY, "the storey key names '{verb_of(\"B\")}'");
-  assert(verb_of("C") == VB_CELLAR, "the cellar key names '{verb_of(\"C\")}'");
+  km = keymap_default();
+  assert(verb_in(km, "B") == VB_STOREY, "the storey key names '{verb_in(km, \"B\")}'");
+  assert(verb_in(km, "C") == VB_CELLAR, "the cellar key names '{verb_in(km, \"C\")}'");
   assert(VB_STOREY != VB_CELLAR, "the pair has collapsed onto one verb");
 
   up = storey_here(deep(0.25), author_on(deep(0.25), 0.0, 0.0, 0.0), 1);
@@ -811,10 +846,11 @@ fn test_a_key_that_is_not_a_gesture_names_no_verb() {
   // this test went red for the right reason on the line that added it. `L` replaces it:
   // levelling is a client toggle with no gesture behind it, and the row's job is to
   // hold a key that genuinely names nothing rather than a specific letter.
+  m = keymap_default();
   for nk in ["W", "A", "S", "D", "", "ArrowLeft", "L", "zzz"] {
-    assert(verb_of(nk) == VB_NONE,
+    assert(verb_in(m, nk) == VB_NONE,
            "key '{nk}' is not a gesture and the definition gives it verb "
-         + "'{verb_of(nk)}'");
+         + "'{verb_in(m, nk)}'");
   }
 }
 
@@ -839,21 +875,102 @@ fn test_an_unbound_verb_is_named_rather_than_refused() {
          "seven unbound verbs did {w.w_tau - before} writes between them");
 }
 
-// …and the discriminator above must not pass by refusing everything: every verb the
-// definition can produce has to be bound.
+// …and the discriminator above must not pass by refusing everything: every key the
+// definition binds has to reach a gesture.
+//
+// ⚠ **THE LIST WAS 23 KEYS AND IS 15 SINCE `M4`**, which is the collapse arriving here
+// rather than coverage lost: `P I U N M T K V` were the freed aliases, and a row that
+// still pressed them would assert *the definition gives this key no verb* about eight
+// keys the definition deliberately frees. They are held in `keymap.loft`'s
+// `test_the_keys_the_collapse_freed_are_free_and_the_verbs_they_named_survived`, with
+// the verb each used to reach written beside it.
+//
+// ⚠ `J`, `K` AND `V` WERE MISSING FROM THIS LIST once, and it is the check whose whole
+// job is to notice that. They were bound at a slice and the row was not extended, so
+// `annex` sat here unasserted — the same shape as *built and never called*, one layer
+// up.
 fn test_every_verb_the_definition_produces_is_bound() {
   w = flat();
   s = EditSession {};
-  // ⚠ `J`, `K` AND `V` WERE MISSING FROM THIS LIST, and it is the check whose whole
-  // job is to notice that. They were bound at the slice before this one and the row
-  // was not extended, so `annex` sat here unasserted — the same shape as *built and
-  // never called*, one layer up. `E` and `Q` are added with them.
-  for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
-             "R", "Y", "T", "J", "K", "V", "E", "Q", "Z", "X", "B", "C"] {
-    v = verb_of(bk);
+  m = keymap_default();
+  for bk in ["ArrowUp", "ArrowDown", "H", "O", "F", "G",
+             "R", "Y", "J", "E", "Q", "Z", "X", "B", "C"] {
+    v = verb_in(m, bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);
     assert(ack.ak_why != PR_NONE,
            "key '{bk}' names verb '{v}' and nothing is bound to it");
   }
+}
+
+// ── THE VOCABULARY, AND THE ONE CASE NOTHING CAN SEE — plan 22 `M4` ─────────
+//
+// **Every verb this editor has, listed once.** Until `M4` the second declaration of
+// this set was `verb_of`'s `if` chain, and `keymap.loft`'s
+// `test_every_verb_the_definition_lists_is_bound` walked it to close the set from the
+// verb end. The chain is gone, so the list is here — in the TEST rather than in the
+// library, because a `verb_all()` beside `keymap_default()` would be a public function
+// with exactly one caller, which is the *built and never called* shape this file spends
+// its time refusing.
+//
+// ⚠ **IT IS A THIRD DECLARATION AND THAT IS THE POINT.** `keymap_default()` says which
+// KEY reaches each verb, `press_verb` says what each verb DOES, and this says which
+// verbs EXIST — three bodies over one set, checked pairwise below. A verb added to two
+// of the three is what the rows catch.
+//
+// ⛔ **AND THE CASE THEY STILL CANNOT SEE WAS MEASURED, NOT ASSUMED.** A verb bound in
+// `press_verb` and named in NEITHER of the other two is invisible to every instrument
+// in this tree: an arm added for a verb bound nowhere else left the suite at **522
+// passed** on 2026-08-15. That is a gesture no keyboard can press — *built and never
+// called* in its purest form — and loft has no reflection to enumerate what `press_verb`
+// answers to. ⚠ It is written here rather than covered by a comment claiming otherwise,
+// which is what the retired row in `keymap.loft` did for four slices.
+fn the_vocabulary() -> vector<text> {
+  [VB_RAISE, VB_LOWER, VB_PLACE, VB_OPENING, VB_FENCE, VB_WALL, VB_RUN, VB_SEAT,
+   VB_ANNEX, VB_STAIR_UP, VB_STAIR_DOWN, VB_HOLE, VB_SLAB, VB_STOREY, VB_CELLAR]
+}
+
+fn test_the_vocabulary_the_definition_and_press_verb_are_one_set() {
+  m = keymap_default();
+  vocab = the_vocabulary();
+  w = flat();
+  s = EditSession {};
+  a = author_on(w, 0.0, 0.0, 0.0);
+
+  // The control: a list with a verb twice would satisfy the count below while covering
+  // one fewer than it claims, and `VB_NONE` in it would make every row vacuous.
+  for i in 0..len(vocab) {
+    vi = vocab[i] ?? "";
+    assert(vi != VB_NONE, "the vocabulary lists the unbound verb at row {i}");
+    for j in 0..len(vocab) {
+      if i != j {
+        assert(vi != (vocab[j] ?? ""), "the vocabulary lists '{vi}' twice");
+      }
+    }
+  }
+
+  // 1 — every verb the editor has can be REACHED. This is the direction that catches a
+  // gesture added to `press_verb` and forgotten in the definition, which is the way an
+  // unreachable verb actually happens.
+  for v in vocab {
+    assert(key_for(m, v) != "",
+           "the editor has verb '{v}' and the definition gives it no key at all — a "
+         + "gesture no keyboard can press");
+    assert(press_verb(s, w, a, v).ak_why != PR_NONE,
+           "the editor has verb '{v}' and nothing is bound to it");
+  }
+
+  // 2 — …and the definition holds nothing else, which is what stops the list going
+  // stale in the other direction: a row added to `keymap_default` and not here draws a
+  // slot in the bar that this file has never heard of.
+  for kv in keymap_verbs(m) {
+    known = false;
+    for v2 in vocab { if v2 == kv { known = true; } }
+    assert(known,
+           "the definition binds a key to verb '{kv}', which is not one of the "
+         + "{len(vocab)} verbs this editor has");
+  }
+  assert(len(keymap_verbs(m)) == len(vocab),
+         "the definition has {len(keymap_verbs(m))} rows and the editor has "
+       + "{len(vocab)} verbs");
 }

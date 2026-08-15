@@ -1,14 +1,17 @@
-// M1 — THE DEFINITION LAYER AS DATA, and the equality that makes it safe to move to.
+// M1 — THE DEFINITION LAYER AS DATA, and the equality that made it safe to move to.
 //
-// plan 22 `M1`. `verb_of`'s `if` chain and `keymap_default()` are two independent
-// bodies for the length of this step, and every row below is the same shape `V1` used
-// one layer down: **drive the whole key universe through both.**
+// plan 22 `M1`, and ⚠ **`M4` HAS SINCE DELETED THE OTHER BODY.** For the length of
+// `M1`–`M3` `verb_of`'s `if` chain and `keymap_default()` were two independent
+// declarations, and the rows that compared them were the same shape `V1` used one
+// layer down: **drive the whole key universe through both.** The chain is gone, so
+// those rows are retired — see below, where what each proved and what replaces it is
+// written out rather than left to a git log.
 //
-// ⚠ **THE UNIVERSE, NOT A LIST OF THE KEYS I EXPECT TO MATTER.** A table checked
-// against the keys somebody remembered is a table checked against itself. Every letter
-// `A`–`Z`, every digit, every named key and a handful of things that are not keys at
-// all go through both resolvers — so a row silently dropped from `keymap_default` and a
-// row silently added both fail here, and neither is reachable by reading the source.
+// ⚠ **THE UNIVERSE, NOT A LIST OF THE KEYS I EXPECT TO MATTER.** That principle
+// outlived the comparison and the rows below still obey it: every letter `A`–`Z`,
+// every digit, every named key and a handful of things that are not keys at all go
+// through the name↔code round trip and the scan, so a key the editor can read that
+// nothing asks for is caught without anybody remembering to list it.
 use hex_editor;
 
 // ⚠ EVERY KEY THIS EDITOR CAN READ, built rather than listed, so that adding a name to
@@ -24,72 +27,88 @@ fn key_universe() -> vector<text> {
   ks
 }
 
-// ── THE EQUALITY ────────────────────────────────────────────────────────────
+// ── THE EQUALITY, AND WHAT OUTLIVED IT ──────────────────────────────────────
+//
+// ⚠ **RETIRED AT `M4`: `test_the_table_and_the_if_chain_agree_on_every_key_but_the_
+// freed_aliases`.** It drove the whole key universe — 43 real keys and six things that
+// are not keys — through `verb_of` and through `verb_in(keymap_default(), …)` and
+// demanded the same answer everywhere but the eight aliases. **It had two declarations
+// to compare and now there is one**, so it could only be rewritten as
+// `verb_in(m, k) == verb_in(m, k)`. It was seen green across `M1`, `M2` and `M3`, and
+// its control (*the universe reaches 23 bound keys*) is what stopped it from passing
+// over keys that do nothing.
+//
+// What it was really protecting is that the table says what the editor's author meant
+// it to say, key by key, and that survives in two places: `verb.loft`'s
+// `test_the_definition_names_the_verb_each_direct_key_is_written_to_name` writes the
+// pairs out in words, and `the_vocabulary()` in the same file closes the set from the
+// verb end. **Moved before removed.**
 
-// ⚠ **THE EIGHT KEYS THE TABLE DELIBERATELY DOES NOT CARRY, NAMED HERE SO THE
-// DIFFERENCE IS PINNED RATHER THAN HIDDEN.** `verb_of` is not injective: `O P I U N M`
-// all answer `opening`, `Y T` both `seat`, `J K V` all `annex`. Those are not eight
-// bindings — they are `S3`'s collapse leaving the old keys in place, and every one of
-// them does exactly what its primary does, because the profile they used to carry
-// comes from the selection now.
+// ⚠ **THE EIGHT KEYS THE TABLE DELIBERATELY DOES NOT CARRY, WITH THE VERB EACH USED TO
+// REACH.** `verb_of` was not injective: `O P I U N M` all answered `opening`, `Y T`
+// both `seat`, `J K V` all `annex`. Those were never eight bindings — they are `S3`'s
+// collapse leaving the old keys in place, and every one of them did exactly what its
+// primary does, because the profile they used to carry comes from the selection now.
 //
 // A definition with six `opening` rows would draw six identical slots in a bar and
 // six identical rows in a rebinding list, which is the shape a person cannot use. So
 // the table is **one row per verb** and these eight are free.
 //
-// ⛔ **AND THAT IS A BEHAVIOUR CHANGE, MEASURED RATHER THAN ASSUMED SAFE.** Nothing in
-// production resolves them: `tools/scripts/*.keys` says `verb <name>` for every
-// gesture since `K3` (`probe/k2/run.sh` keeps the grep), and the client's `o`/`p` send
-// `36:1`/`36:2` straight to the wire and have never reached `verb_of`.
+// ⚠ **THE VERB IS PAIRED WITH THE KEY SINCE `M4`, BECAUSE THE CHAIN WAS WHERE IT USED
+// TO COME FROM.** `verb_of(f)` answered it; with the chain gone the pairing is history
+// and has to be written down, which is also what makes the row still able to fail —
+// re-binding `P` to anything, or dropping `opening` from the definition, is red.
+//
+// ⛔ **AND THE FREEING WAS A BEHAVIOUR CHANGE, MEASURED RATHER THAN ASSUMED SAFE.**
+// Nothing in production resolves them: `tools/scripts/*.keys` says `verb <name>` for
+// every gesture since `K3` (`probe/k2/run.sh` keeps the grep), and the client's `o`/`p`
+// send `36:1`/`36:2` straight to the wire and never reached the definition at all.
 fn freed_aliases() -> vector<text> { ["P", "I", "U", "N", "M", "T", "K", "V"] }
+
+fn the_verb_each_alias_reached() -> vector<text> {
+  [VB_OPENING, VB_OPENING, VB_OPENING, VB_OPENING, VB_OPENING,
+   VB_SEAT, VB_ANNEX, VB_ANNEX]
+}
+
+fn test_the_keys_the_collapse_freed_are_free_and_the_verbs_they_named_survived() {
+  m = keymap_default();
+  fa = freed_aliases();
+  fv = the_verb_each_alias_reached();
+  assert(len(fa) == len(fv),
+         "{len(fa)} freed keys and {len(fv)} verbs beside them — the pairing has a "
+       + "hole in it and every row below reads past the end of one list");
+  for i in 0..len(fa) {
+    f = fa[i] ?? "";
+    v = fv[i] ?? "";
+    // It is free in the table…
+    assert(verb_in(m, f) == VB_NONE,
+           "'{f}' is listed as freed and the table binds it to '{verb_in(m, f)}'");
+    // …and NO VERB WENT WITH IT, which is the whole claim: the verb it used to name is
+    // still reachable, from a different key.
+    assert(key_for(m, v) != "",
+           "'{f}' reached verb '{v}' and the table gives that verb no key at all — "
+         + "this is a lost gesture, not a freed duplicate");
+    assert(key_for(m, v) != f,
+           "'{f}' is listed as freed and is still the primary for '{v}'");
+  }
+  // ⚠ **AND THE EIGHT ARE THE ONLY ONES**, which is the half that stops the list from
+  // being an escape hatch. It used to be closed by the chain's count (23 keys, 15
+  // verbs, 8 freed); with the chain gone it is closed against the key universe — every
+  // letter the editor can read is either a primary in the table or one of these eight
+  // or genuinely nothing, and a ninth key quietly freed by dropping its row is caught
+  // by `the_vocabulary()` in `verb.loft` losing a key.
+  loose = 0;
+  for k in key_universe() {
+    if verb_in(m, k) == VB_NONE && is_freed(k) { loose = loose + 1; }
+  }
+  assert(loose == len(fa),
+         "{loose} of the eight freed aliases are free in the table — the rest are "
+       + "bound again, and the collapse has been half undone");
+}
 
 fn is_freed(k: text) -> boolean {
   for f in freed_aliases() { if f == k { return true; } }
   false
-}
-
-fn test_the_table_and_the_if_chain_agree_on_every_key_but_the_freed_aliases() {
-  m = keymap_default();
-  u = key_universe();
-  // The control: a universe that reached no bound key at all would satisfy the loop
-  // below for the worst possible reason.
-  bound = 0;
-  for k in u { if verb_of(k) != VB_NONE { bound = bound + 1; } }
-  assert(bound == 23,
-         "the universe reaches {bound} bound keys where the chain binds 23 — "
-       + "this row is comparing two functions on keys that do nothing");
-  for k2 in u {
-    if !is_freed(k2) {
-      assert(verb_of(k2) == verb_in(m, k2),
-             "key '{k2}': the chain says '{verb_of(k2)}' and the table says "
-           + "'{verb_in(m, k2)}'");
-    }
-  }
-}
-
-// …and the freed eight are exactly the eight, which is the half that stops this from
-// being an escape hatch. A key quietly added to `freed_aliases` would let any
-// disagreement through the row above.
-fn test_the_freed_aliases_are_exactly_the_duplicates_the_collapse_left() {
-  m = keymap_default();
-  for f in freed_aliases() {
-    // Each was a real binding in the chain…
-    assert(verb_of(f) != VB_NONE, "'{f}' is listed as freed and the chain never bound it");
-    // …it is free in the table…
-    assert(verb_in(m, f) == VB_NONE,
-           "'{f}' is listed as freed and the table binds it to '{verb_in(m, f)}'");
-    // …and NO VERB WAS LOST, which is the whole claim: the verb it named is still
-    // reachable, from a different key.
-    assert(key_for(m, verb_of(f)) != "",
-           "'{f}' named verb '{verb_of(f)}' and the table gives that verb no key at "
-         + "all — this is a lost gesture, not a freed duplicate");
-    assert(key_for(m, verb_of(f)) != f,
-           "'{f}' is listed as freed and is still the primary for '{verb_of(f)}'");
-  }
-  // And the count closes it: 23 keys in the chain, 15 verbs, 8 freed.
-  assert(len(freed_aliases()) == 23 - len(keymap_verbs(m)),
-         "{len(freed_aliases())} keys are listed as freed where the chain binds 23 "
-       + "and the table has {len(keymap_verbs(m))} rows");
 }
 
 // ⚠ **AND THE SAME ANSWER FROM A HARDWARE CODE**, which is the half the client needs
@@ -160,29 +179,38 @@ fn test_a_long_name_is_not_read_as_its_first_letter() {
 // ── THE QUERY ───────────────────────────────────────────────────────────────
 
 // ⚠ **THE VERB SET IS A QUERY, AND THIS IS THE ROW THAT SAYS IT ANSWERS THE TRUTH.**
-// Every verb `press_verb` binds has to be reachable from the definition, or the editor
-// has a gesture no keyboard can press — *built and never called*, one layer up.
-fn test_every_verb_the_definition_lists_is_bound_and_every_bound_verb_is_listed() {
+// Every verb the definition lists has to be bound, or the bar draws a slot that does
+// nothing.
+//
+// ⛔ **AND ITS SECOND HALF WAS RETIRED AT `M4` BECAUSE IT NEVER DID WHAT IT SAID.** It
+// walked the key universe through `verb_of` and asserted each verb the chain named had
+// a key in the table, under a comment claiming it *"catches a verb added to `press_verb`
+// with no way to reach it"*. It could not: a verb `press_verb` binds and the chain never
+// named was invisible to it, and that is the case the comment describes. **Measured
+// before it was believed** — an arm added to `press_verb` for a verb bound nowhere else
+// left the suite at **522 passed**, which is the *built and never called* defect passing
+// the row written to catch it. What it actually caught was a verb in the CHAIN missing
+// from the TABLE, which is the retired equality's job and went with it.
+//
+// The claim it was aiming at lives in `verb.loft` now, as `the_vocabulary()` — every
+// verb this editor has, listed once, checked against the definition in both directions
+// and against `press_verb`. ⚠ Read its note: one case is still invisible and it is
+// named there rather than covered by a comment.
+fn test_every_verb_the_definition_lists_is_bound() {
   m = keymap_default();
   vs = keymap_verbs(m);
   w = flat_world();
   s = EditSession {};
   a = author_on(w, 0.0, 0.0, 0.0);
+  // The control: an empty definition would satisfy the loop below by having nothing
+  // in it, which is the shape a query that lost its rows returns.
+  assert(len(vs) == 15,
+         "the definition lists {len(vs)} verbs — this row is walking a set that is "
+       + "not the editor's vocabulary");
   for v in vs {
     ack = press_verb(s, w, a, v);
     assert(ack.ak_why != PR_NONE,
            "the definition lists verb '{v}' and nothing is bound to it");
-  }
-  // …and the other direction, which is the one that catches a verb added to
-  // `press_verb` with no way to reach it. ⚠ It is spelled as a walk over the key
-  // chain rather than as a second list, because a second list is a third assertion of
-  // the same fact — and it counts DISTINCT verbs, since the chain is not injective.
-  for k in key_universe() {
-    if verb_of(k) != VB_NONE {
-      assert(key_for(m, verb_of(k)) != "",
-             "key '{k}' reaches verb '{verb_of(k)}' in the chain and the definition "
-           + "gives it no key — a gesture no keyboard can press");
-    }
   }
 }
 

@@ -135,8 +135,8 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // happens; resolving in that order is what stops a driver from being a fourth
     // place that decides what a keystroke means.
     //
-    // ⚠ **AND IT IS NOT A RENAME: `verb_of` IS NOT INJECTIVE.** `O P I U N M` all
-    // answer `opening`, so a key press cuts **what is chosen** rather than what the
+    // ⚠ **AND IT IS NOT A RENAME: THE DEFINITION IS NOT INJECTIVE.** `O P I U N M` all
+    // answered `opening`, so a key press cuts **what is chosen** rather than what the
     // key used to spell — `key O` after `select 2` cuts a pointed one. That is the
     // collapse finishing, and it is why `K1`/`K2` taught the scripts to say `select`
     // first: every script that pressed an opening key was converted before this line
@@ -152,12 +152,13 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     // bound answers `VB_NONE`, which `press_verb` reports as `PR_NONE` — the same
     // answer `press` gave, so the sentence below did not have to change.
     //
-    // ⚠ **AND IT ASKS A MAP RATHER THAN A FUNCTION — plan 22 `M1`.** `verb_of` is an
+    // ⚠ **AND IT ASKS A MAP RATHER THAN A FUNCTION — plan 22 `M1`.** `verb_of` was an
     // `if` chain compiled into the library; `keymap_default()` is the same definition
-    // as DATA, which is what makes it a person's to change. This is the first
-    // production caller, and the two bodies are compared over the whole key universe
-    // in `lib/hex_editor/tests/keymap.loft` — a table checked against itself could
-    // not be surprised, so they stay independent until `verb_of` is deleted.
+    // as DATA, which is what makes it a person's to change. This was the first
+    // production caller, and the two bodies were compared over the whole key universe
+    // in `lib/hex_editor/tests/keymap.loft` for four slices — a table checked against
+    // itself cannot be surprised, so they stayed independent until `M4` deleted the
+    // chain. **This line is now the only thing that answers what a key means here.**
     //
     // ⚠ **THE MAP IS BUILT PER LINE AND THAT IS DELIBERATE FOR NOW.** A script has no
     // way to rebind, so a per-line default is the same map every time; the moment a
@@ -186,7 +187,7 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // compared exactly (`probe/k1/run.sh`).
   //
   // ⚠ **AND THE CONVERSION IS NOT A SPELLING CHANGE FOR THE OPENING FAMILY.**
-  // `verb_of` is deliberately not injective: six keys answer one `opening`, so a
+  // The definition is deliberately not injective: six keys named one `opening`, so a
   // script that says `opening` and never says `select` cuts whatever was chosen
   // last. That is why `select` lands in the same step — a script converted without
   // it would still build a world, silently, with the wrong head on every door.

@@ -98,7 +98,13 @@ restore() {
   cp "$OUT/hex_editor.loft.orig" "$SRC"
   cp "$OUT/determinism.keys.orig" "$KEYS"
 }
-trap restore EXIT INT TERM
+# ⛔ **`PIPE` IS IN THAT LIST BECAUSE IT WAS NOT, AND A SABOTAGED TREE SURVIVED THE RUN.**
+# Piping this script through `head` closes the pipe mid-row; the shell dies on SIGPIPE,
+# the EXIT trap never fires, and the working tree is left with the sabotage APPLIED —
+# which the next `make lib-test` reports as a real failure in a step you thought was
+# green. Measured on 2026-08-15 at `M4`: `hex_editor` came back 11 failed with a
+# `bind_of("5", "tunnel")` still in the source.
+trap restore EXIT INT TERM PIPE
 
 printf '── the library: what the gesture does ─────────────────────────────────\n'
 # ⚠ **THE SUBJECT HAS TO BE THERE BEFORE A SWEEP MEANS ANYTHING.** Every row below
@@ -120,8 +126,13 @@ row control "unsabotaged" 0
 
 # 1 — collapse the pair in the DEFINITION, which is the mistake this whole slice
 # exists to refuse: three families collapsed before it and this one must not.
-sed -i 's/^  if key == "Q" { return VB_STAIR_DOWN; }$/  if key == "Q" { return VB_STAIR_UP; }/' "$SRC"
-row s1 "verb_of(Q) answers stair_up — the family collapsed" 1
+# ⛔ **THIS ROW WAS A SILENT NO-OP AFTER `M4` AND THE GUARD ABOVE COULD NOT SEE IT.**
+# It sed'd `verb_of`'s `if key == "Q"`, which the deletion removed; the pattern stopped
+# matching and the row reported *NOTHING went red*. The guard names `stair_ahead`, which
+# is still there, so it passed. **A subject guard only sees what it names** — and the
+# two sweeps whose guard happened to name the binding exited loudly instead.
+sed -i 's/^    bind_of("Q", VB_STAIR_DOWN),$/    bind_of("Q", VB_STAIR_UP),/' "$SRC"
+row s1 "the definition gives Q the stair_up verb — the family collapsed" 1
 restore
 
 # 2 — …and the same collapse one layer DOWN, where the two names still differ and the

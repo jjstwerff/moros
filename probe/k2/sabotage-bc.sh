@@ -32,7 +32,13 @@ restore() {
   cp "$OUT/root.orig" "$ROOT"
   cp "$OUT/deck.orig" "$DECK"; cp "$OUT/cell.orig" "$CELL"
 }
-trap restore EXIT INT TERM
+# ⛔ **`PIPE` IS IN THAT LIST BECAUSE IT WAS NOT, AND A SABOTAGED TREE SURVIVED THE RUN.**
+# Piping this script through `head` closes the pipe mid-row; the shell dies on SIGPIPE,
+# the EXIT trap never fires, and the working tree is left with the sabotage APPLIED —
+# which the next `make lib-test` reports as a real failure in a step you thought was
+# green. Measured on 2026-08-15 at `M4`: `hex_editor` came back 11 failed with a
+# `bind_of("5", "tunnel")` still in the source.
+trap restore EXIT INT TERM PIPE
 
 # ⚠ ONE FILE THIS TIME, and that is a fact about the step rather than a shortcut:
 # every claim `B`/`C` makes lives in `verb.loft`, because `storey_here` is a gesture
@@ -97,7 +103,10 @@ printf '── the library: what the gesture does ──────────
 if ! grep -q '^pub fn storey_here' "$ROOT"; then
   printf '    FAIL the subject is absent — %s has no `storey_here`\n' "$ROOT"; exit 1
 fi
-if ! grep -q '^  if key == "B" { return VB_STOREY; }$' "$ROOT"; then
+# ⚠ **THE BINDING MOVED AT `M4`** — `verb_of`'s chain is deleted and `keymap_default()`
+# is the definition. The guard moved with it; leaving it behind makes this sweep exit
+# *the subject is absent*, which is the loud half of that deletion's effect here.
+if ! grep -q '^    bind_of("B", VB_STOREY),$' "$ROOT"; then
   printf '    FAIL the subject is absent — %s does not bind `B`\n' "$ROOT"; exit 1
 fi
 if ! grep -q '^verb storey$' "$DECK" || ! grep -q '^verb cellar$' "$CELL"; then
@@ -108,7 +117,7 @@ row control "unsabotaged" 0
 
 # 1 — the pair collapsed onto one verb, which is what a DIRECTION in a selection would
 # look like from here: two keys, one name, and the sign gone.
-sed -i 's/^  if key == "C" { return VB_CELLAR; }$/  if key == "C" { return VB_STOREY; }/' "$ROOT"
+sed -i 's/^    bind_of("C", VB_CELLAR),$/    bind_of("C", VB_STOREY),/' "$ROOT"
 row s1 "C names the storey verb — the pair merged" 1
 restore
 

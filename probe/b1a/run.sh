@@ -7,9 +7,10 @@
 #   B1A_SOURCE=<file> …              build a DIFFERENT client (the sabotages)
 #
 # `src/editor_client.loft` was `W4`'s fourth site: a table saying what a key means
-# AND how it travels, in one row. `B1a` splits it — `hex_editor::verb_of` for the
-# first half, a local `act` for the second — for the five keys where `verb_of` is
-# one-to-one. **The wire must not move.**
+# AND how it travels, in one row. `B1a` splits it — `hex_editor`'s DEFINITION for the
+# first half, a local `act` for the second — for the five keys where the definition is
+# one-to-one. **The wire must not move.** (It was `hex_editor::verb_of` when this was
+# written and it is `verb_in(st.keys, …)` since `M1`/`M4`.)
 #
 # ⚠ AND THERE IS NO GATE BETWEEN THE CLIENT'S KEYS AND ANYTHING. `make gate` drives
 # the SERVER through `tools/script.mjs`; `make client-check` counts colours in a

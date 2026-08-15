@@ -50,7 +50,7 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            of time with a gesture stays green here.
 #                            ⚠ **THE REASON IT IS DEAD CHANGED, AND THE ROW READ AS
 #                            STALE.** It said *"one of the twelve keys with no verb"*;
-#                            `verb_of("Z")` names `hole` since `K3` · `Z`. What makes
+#                            the definition names `Z` `hole` since `K3` · `Z`. What makes
 #                            `z` inert here is that **this CLIENT binds no key for it**
 #                            — there is no `KEY_` for 122 — so no verb is ever looked
 #                            up. Written down because the obvious repair is to pick a

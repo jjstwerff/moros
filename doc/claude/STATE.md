@@ -393,6 +393,69 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `M4` — `verb_of` IS DELETED, and a row that claimed to catch the tree's commonest defect never could, 2026-08-15
+
+**What a key means is `keymap_default()` and nothing else.** The `if` chain stood beside the
+table from `M1` for exactly as long as it took to prove it — `lib/hex_editor/tests/keymap.loft`
+drove the whole key universe through both across three slices — and that is what a transitional
+instrument is for. ⚠ **The suite reads 522 → 522, which is the wrong instrument**: a deletion
+makes tests pass by removing their subject, so the **test-name diff** is the check, and it is
+6 lines with every one accounted for (1 deleted, 1 added, 4 renamed because the claim changed
+shape).
+
+⛔ **AND THE ROW THAT SAID IT CAUGHT *BUILT AND NEVER CALLED* COULD NOT SEE IT.** `keymap.loft`'s
+second loop walked the key universe under a comment claiming it *"catches a verb added to
+`press_verb` with no way to reach it"* — this tree's commonest defect, named in `CLAUDE.md`,
+claimed covered:
+
+> **Measured on the pre-`M4` tree before it was believed**: an arm added to `press_verb` for a
+> verb bound in neither the chain nor the table left the suite at **522 passed**. The loop only
+> ever saw verbs *the chain named*, so the case its own comment describes was invisible to it.
+> What it actually caught was a verb in the CHAIN missing from the TABLE — the retired equality's
+> job, which went with it.
+
+`the_vocabulary()` in `verb.loft` replaces it: every verb the editor has, listed once, checked
+against the definition in **both** directions and against `press_verb`. It is in the TEST rather
+than the library on purpose — a `verb_all()` beside `keymap_default()` would be a public function
+with one caller. ⚠ **And the residual blind spot is written into the test** rather than covered by
+a comment: a verb in `press_verb` and in neither list is still invisible, because loft has no
+reflection to enumerate what a dispatch answers to. That sentence is the whole difference between
+the new row and the one it replaces.
+
+⛔ **AND THE DELETION SILENTLY DISARMED FOUR SABOTAGE SWEEPS, IN TWO DIFFERENT WAYS.** Every `K3`
+sweep sabotages the definition by `sed`ing `verb_of`'s chain, so all four became **no-ops** the
+moment it went — measured by running each sed against the post-`M4` source and comparing files.
+`sabotage-x` and `sabotage-bc` exited loudly (*the subject is absent*) because their subject guard
+named the **binding**; `sabotage-e` and `sabotage-z` did not, because theirs name `stair_ahead`
+and `session_hole_kind`, both still present — so those rows ran, changed nothing, and printed
+**NOTHING went red**. ⚠ **A subject guard only sees what it names**, which is `K3` · `B`'s finding
+one step earlier: a sabotage that does not *apply* reads exactly like a sabotage that does not
+*build*, and both read like a test that cannot fail. All four are retargeted at `bind_of` rows and
+re-measured; `sabotage-e`'s `s1` is **2 red** where it had been silent.
+
+⛔ **AND RUNNING THE SIBLINGS FOUND A THIRD STALE INSTRUMENT, ONE SLICE OLD.** `sabotage-z`'s `s6`
+reported *a half-done conversion went unnoticed* about a check that noticed loudly: `K3` · `X`
+merged two checks into one message — ``still presses `key X`/`key Z` `` — updated `sabotage-x.sh`
+to match, and left `sabotage-z.sh` greping `still presses .key Z.`. ⚠ It fails SAFE, and a day
+passed only because nothing had run that sweep since `X` landed.
+
+⛔ **AND A SWEEP PIPED THROUGH `head` LEFT ITS SABOTAGE IN THE WORKING TREE.** The trap was
+`EXIT INT TERM`; SIGPIPE kills the shell without firing it, so the next `make lib-test` came back
+`hex_editor` **11 failed** with `bind_of("5", "tunnel")` still in the source — a real-looking
+regression in a step that was green minutes earlier. All five sweeps trap `PIPE` now. ⚠ **And my
+own check reported that run as fine**, because `make …; echo rc=$?; grep …` hands back the *last*
+command's status: a failed suite arrived labelled *exited with code 0*, with the failure on line
+6450 of a log I had summarised past. **A summary is an instrument, and its default answer was
+*fine*.**
+
+✅ hex_editor **522 both backends** (unmoved, by construction) · `make lib-test` **3624** ·
+`make fast` 156 files · `make gate` **49** · `make parts` byte-identical ·
+`sh probe/k2/sabotage-m4.sh` 5 sabotages red on their own claim with a clean control at both ends ·
+`sabotage-e` 7/7 with the retargeted row biting again.
+
+⏭ **`M5` IS NEXT** — persist a rebind (`LayeredFS`) together with a fresh-press requirement for the
+scan, because both are *the map outliving the frame it was made in*.
+
 ## ✅ `M3` — REBINDING FROM THE EDITOR, and a polling client fires the key it just bound, 2026-08-15
 
 **Arm with `Escape`, click a slot, press a key.** `hex_editor::Rebind` is the machine —

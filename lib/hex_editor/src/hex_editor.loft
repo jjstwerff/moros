@@ -1097,14 +1097,15 @@ pub const PR_SELECT = "an opening needs a profile, and nothing selects one yet";
 // the right shape, because a key is a KEYBOARD's business and a verb is what
 // travels — onto the wire, into a script, into a house type's own declaration.
 //
-// What replaces it is two levels, both below: `verb_of(key)` says which verb a key
-// names, and `press_verb(…, verb)` says what a verb does. A caller resolves in that
-// order; `src/editor_run.loft` is the one that did, and it was the last production
-// caller this function had (`V2b`). `editor_server`'s `MSG_HOUSE` passes a literal
-// verb (`V2a`), and `editor_client` never called it.
+// What replaces it is two levels, both below: the DEFINITION says which verb a key
+// names — `verb_of(key)` at `V3`, `verb_in(keymap_default(), key)` since `M4` — and
+// `press_verb(…, verb)` says what a verb does. A caller resolves in that order;
+// `src/editor_run.loft` is the one that did, and it was the last production caller
+// this function had (`V2b`). `editor_server`'s `MSG_HOUSE` passes a literal verb
+// (`V2a`), and `editor_client` never called it.
 //
 // ⚠ **AND THE DELETION IS NOT A RENAME, WHICH IS WHY IT NEEDED THE THREE STEPS
-// BEFORE IT.** `verb_of` is not injective — `O P I U N M` all answer `opening` —
+// BEFORE IT.** The definition is not injective — `O P I U N M` all answered `opening` —
 // so a key press cuts **what is chosen** rather than what the key used to spell.
 // `K1` gave the scripts `select`, `K2a` converted the eighteen presses that carried
 // a profile, and only then could `V2b` move the runner. Deleting this earlier would
@@ -1160,9 +1161,9 @@ pub const VB_RUN     = "run";
 // ⚠ **THE SECOND FAMILY TO COLLAPSE, AND THE FIRST SINCE `opening`.** `Y` and `T` are
 // two keys on ONE message (`38:0` a bed, `38:1` a figure) differing by the thing
 // seated — so they are one verb and the kind comes from `es_seat_kind`, exactly as six
-// opening keys came to answer one `opening`. ⚠ `verb_of` is deliberately not injective
-// here either: a script that says `seat` and never says `select seat` gets whatever was
-// last chosen, which is why the conversion writes both.
+// opening keys came to answer one `opening`. ⚠ The verb does not carry the kind: a
+// script that says `seat` and never says `select seat` gets whatever was last chosen,
+// which is why the conversion writes both.
 pub const VB_SEAT    = "seat";
 // ⚠ THREE KEYS THIS TIME — `J` a bedstee, `K` a balcony, `V` a cupboard — and the
 // third selects a different CONSTRUCTION rather than a different kind of the same one.
@@ -1172,9 +1173,9 @@ pub const VB_ANNEX   = "annex";
 // ⚠ **TWO VERBS, AND THIS IS THE PAIR THAT PROVES THE RULE HAS TEETH.** `E` and `Q`
 // are two keys on ONE message (`30:1`, `30:-1`) — the shape that collapsed three
 // times in a row above — and they stay apart, because what separates them is a
-// DIRECTION and not a thing. See `stair_ahead`. ⚠ **And `verb_of` IS injective
-// here**, unlike `opening`, `seat` and `annex`: nothing has to be selected first, so
-// a converted script says the verb and nothing else.
+// DIRECTION and not a thing. See `stair_ahead`. ⚠ **And these two keep a key each**,
+// unlike `opening`, `seat` and `annex`: nothing has to be selected first, so a
+// converted script says the verb and nothing else.
 pub const VB_STAIR_UP   = "stair_up";
 pub const VB_STAIR_DOWN = "stair_down";
 // ⚠ **`Z` AND `X` ARE TWO KEYS ON ONE MESSAGE AND TWO VERBS, FOR A THIRD REASON
@@ -1185,7 +1186,7 @@ pub const VB_STAIR_DOWN = "stair_down";
 // relationship, and those have been two verbs since `V1`. See `session_hole_kind`.
 //
 // ⚠ **AND `slab` IS THE NAME THE PAIR WAS WAITING ON** — plan 22 `K3` · `X`, the slice
-// after `Z`'s. It was deliberately NOT declared there: a verb in `verb_of`'s table that
+// after `Z`'s. It was deliberately NOT declared there: a verb in the vocabulary that
 // `press_verb` answers `PR_NONE` to is what
 // `test_every_verb_the_definition_produces_is_bound` exists to refuse, so the name was
 // left to the step that binds it. `hole`'s refusal has said *lay a slab first* since
@@ -1193,51 +1194,43 @@ pub const VB_STAIR_DOWN = "stair_down";
 pub const VB_HOLE = "hole";
 pub const VB_SLAB = "slab";
 
-// The DEFINITION — what key means what, and the only layer a person may remap.
+// ── `verb_of(key)` WAS HERE, AND IT IS GONE — plan 22 `M4` ──────────────────
 //
-// `VB_NONE` is *this key names no verb*, which is `PR_NONE`'s question one level up:
-// a walk key, a camera key, or nothing at all.
+// It was the DEFINITION as an `if` chain: 23 keys, 15 verbs, the authority on what a
+// key names. `M1` built `keymap_default()` — the same definition as DATA — beside it
+// and kept both **for exactly as long as it took to prove the second one**, because
+// writing `verb_of(k) = verb_in(keymap_default(), k)` would have made the equality a
+// tautology. `lib/hex_editor/tests/keymap.loft` drove the whole key universe through
+// both for four slices; that comparison is spent, and this is the deletion it was
+// paying for.
 //
-// ⚠ **SIX KEYS, ONE VERB.** `O P I U N M` all answer `opening`, and the profile they
-// used to carry comes from the selection (`session_select_open`) instead. That is
-// the collapse `S3` measured, finished: the key stops carrying a profile **here**.
-// ⏭ Which means `verb_of` is deliberately NOT injective and the key form is not
-// recoverable from the verb — a script that says `opening` and never says `select`
-// gets whatever was last chosen, which is why `K1`–`K3` convert the scripts to say
-// both before `V3` deletes `press(key)`.
-pub fn verb_of(key: text) -> text {
-  if key == "ArrowUp"   { return VB_RAISE; }
-  if key == "ArrowDown" { return VB_LOWER; }
-  if key == "H" { return VB_PLACE; }
-  if key == "O" || key == "P" || key == "I" || key == "U"
-     || key == "N" || key == "M" { return VB_OPENING; }
-  if key == "F" { return VB_FENCE; }
-  if key == "G" { return VB_WALL; }
-  if key == "R" { return VB_RUN; }
-  if key == "Y" || key == "T" { return VB_SEAT; }
-  if key == "J" || key == "K" || key == "V" { return VB_ANNEX; }
-  if key == "E" { return VB_STAIR_UP; }
-  if key == "Q" { return VB_STAIR_DOWN; }
-  if key == "Z" { return VB_HOLE; }
-  if key == "X" { return VB_SLAB; }
-  if key == "B" { return VB_STOREY; }
-  if key == "C" { return VB_CELLAR; }
-  VB_NONE
-}
+// ⚠ **WHAT THE CHAIN COULD SAY THAT THE TABLE CANNOT: THE EIGHT FREED ALIASES.**
+// `verb_of` was not injective — `O P I U N M` all answered `opening`, `Y T` both
+// `seat`, `J K V` all `annex` — and the table is **one row per verb**, because a
+// definition with six `opening` rows draws six identical slots in a bar and six
+// identical rows in a rebinding list. So `P I U N M T K V` name nothing now. That is
+// `S3`'s collapse finished rather than a binding lost, and
+// `test_the_keys_the_collapse_freed_are_free_and_the_verbs_they_named_survived`
+// is where the eight are still written down with the verb each used to reach.
+//
+// ⚠ **AND THE NON-INJECTIVITY IS A PROPERTY OF THE EDITOR, NOT OF THE CHAIN.** The
+// key form is still not recoverable from the verb — a script that says `opening` and
+// never says `select` gets whatever was last chosen — which is why `K1`–`K3` had to
+// convert every script before any of this could move.
 
-// ── …AND THE SAME DEFINITION AS DATA — plan 22 `M1` ─────────────────────────
+// ── THE DEFINITION, AS DATA — plan 22 `M1` ──────────────────────────────────
 //
-// **The default layout, which `keymap_default` is the only place to read it.** The
+// **The default layout, and `keymap_default` is the only place to read it.** The
 // mechanism — the table, the lookup, the rebind — is `keymap.loft`, which knows no
 // verb names at all; this is where the two meet, because `VB_*` lives here beside
 // `press_verb` and a `use` goes one way.
 //
-// ⚠ **AND `verb_of` ABOVE IS KEPT AS AN INDEPENDENT BODY, FOR EXACTLY AS LONG AS IT
-// TAKES TO PROVE THIS ONE.** Writing `verb_of(k) = verb_in(keymap_default(), k)` today
-// would make the equality a tautology — a table checked against the table, which
-// cannot be surprised. That is `V1`'s lesson at the layer below, and `press(key)` was
-// deleted the same way: two bodies, an exhaustive comparison, then one deletion.
-// `lib/hex_editor/tests/keymap.loft` drives **the whole key universe** through both.
+// ⚠ **IT IS THE ONLY BODY SINCE `M4`**, so a row silently added or dropped here is no
+// longer caught by a second declaration disagreeing. What holds it instead is
+// `verb.loft`'s `the_vocabulary()` — every verb this editor has, listed once, checked
+// against this table in **both** directions and against `press_verb`. ⛔ Read that
+// test's note before trusting it: the case it still cannot see was **measured**, not
+// assumed.
 //
 // ⚠ **THE ORDER IS THE ONE A BAR DRAWS IN**, so it is grouped by what an author is
 // doing rather than by the alphabet: the ground, then what stands on it, then what is
@@ -1301,26 +1294,22 @@ pub fn verb_short(verb: text) -> text {
 
 // The FLEXIBLE layer — what a verb does, here, with what is chosen.
 //
-// ⚠ **THIS IS A SECOND BODY BESIDE `press` ON PURPOSE, AND ONLY UNTIL `V3`.** The
-// two paths run at once and a test drives every key through both, comparing the
-// worlds **as bytes** — which is the only way to move a chokepoint without a period
-// where two tables both exist and neither is known to be the authority. `W1` moved
-// the world format the same way. `V2` moves the callers one at a time; `V3` deletes
-// `press(key)`, and this takes the name `press` once nothing is left to collide
-// with — a rename is free here and only here, because `hex_editor` is unpublished.
-//
-// ⚠ **AND THE DUPLICATION IS WHAT MAKES THE TEST ABLE TO FAIL.** Writing
-// `press(key) = press_verb(verb_of(key))` today would make the equality a tautology
-// — a table checked against itself, which cannot be surprised.
+// ⚠ **IT IS THE ONLY LAYER LEFT THAT RESOLVES ANYTHING.** `press(key)` stood beside it
+// as a second body through `V1`–`V2b` and `V3` deleted it; `verb_of(key)` stood beside
+// `keymap_default()` through `M1`–`M3` and `M4` deleted that. Both were transitional
+// instruments — built to be compared exhaustively and then removed — and both are
+// recorded above where they were. **A duplicate kept past its comparison stops being
+// an instrument and becomes a second authority.**
 //
 // ⚠ **`raise`/`lower` AND `fence`/`wall` ARE TWO VERBS EACH, AND FOR DIFFERENT
 // REASONS.** A direction is part of the action — every editor has *zoom in* and
 // *zoom out* — so `raise` and `lower` stay two verbs however the layer grows. A
 // MATERIAL is not: `fence` and `wall` are one `ring` verb waiting for a selection to
 // hold the material, exactly as the opening family waited for `es_open_kind`. They
-// cannot collapse before that selection exists — the equality below would go red on
-// one of them the moment `verb_of` mapped both keys to one verb, which is the test
-// enforcing the decomposition rather than a rule anybody has to remember.
+// cannot collapse before that selection exists — `verb.loft`'s
+// `test_the_five_direct_verbs_do_five_different_things` goes red on one of them the
+// moment the definition binds both keys to one verb, which is the test enforcing the
+// decomposition rather than a rule anybody has to remember.
 // Place the part the session has chosen, at the author's own cell.
 //
 // ⚠ EVERY REFUSAL NAMES ITS OWN CAUSE, because there are four and they are not

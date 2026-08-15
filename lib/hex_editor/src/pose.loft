@@ -9,7 +9,7 @@
 // `src/editor_server.loft` alone — so the page, which has the same keyboard and
 // the same author, had no way to move at all.
 //
-// ⚠ IT IS THE `W4` SHAPE ONE LEVEL DOWN. *What a key means* is `verb_of`; *what
+// ⚠ IT IS THE `W4` SHAPE ONE LEVEL DOWN. *What a key means* is the definition; *what
 // a HELD key means* is here. The wire already carries the bits (`4:<keybits>`),
 // the client composes them and the server decodes them — two spellings of one
 // table, and a page that wanted to walk locally would have made a third.

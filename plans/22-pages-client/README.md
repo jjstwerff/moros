@@ -149,7 +149,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Every key a script presses is now a verb.** What is left is the *drop* half: `tools/script.mjs`'s `key` spelling and `KEYMAP` still exist, and `Q` is bound and pressed by no script |
 | ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
 | ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | S | **DONE 2026-08-15.** `hex_editor::Rebind`, two fences in the client, `make probe-demo` `M1`–`M6`. ⛔ **The row it turned out to be about was not the collision one**: a POLLING editor fires the verb it has just bound, because the completing key is still down on the next frame — and that raise is correct in every particular. ⛔ **The map is not the whole keyboard** (8 client keys outside it, invisible to `keymap_bind`). ⛔ **The driver had been turning `5` into code 85** since it was written, and digits are the only free keys there are. ⛔ **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`** — measured on the pre-`M3` commit before it was blamed on anything · hex_editor keymap 15 → 28 tests · 4 library + 3 demo sabotages red · `make probe-auth` 36 → **37 PASS** | ✅ Done |
-| **`M4`** — delete `verb_of` | XS | ⚠ not "the suite is green" — a deletion makes tests pass by removing their subject. `V3`'s instrument: the **test-name diff**, with every retired claim named where it went | ⏭ Next |
+| ✅ **`M4`** — delete `verb_of` | XS | **DONE 2026-08-15.** The suite reads **522 → 522** and that is the wrong instrument: the **test-name diff** is 6 lines, 1 deleted, 1 added, 4 renamed with the claim change written on each. ⛔ **The row that said it caught *built and never called* never could** — measured on the pre-`M4` tree, an arm in `press_verb` reachable from no key left the suite at 522 passed. `the_vocabulary()` replaces it, **with the case it still cannot see written into the test**. ⛔ **The deletion silently disarmed four sibling sweeps** — all four sed'd the deleted chain, and only the two whose subject guard happened to NAME the binding said so; the other two printed *NOTHING went red*. ⛔ **And a sweep piped through `head` left its sabotage in the tree**, because the trap had no `PIPE` · `sh probe/k2/sabotage-m4.sh` 5 red + 2 controls · `make lib-test` **3624 both backends** · `make fast` 156 files · `make gate` 49 · `make parts` byte-identical | ✅ Done |
 | **`M5`** — persist a rebind (`LayeredFS`), and a fresh-press requirement for the scan | S | ⚠ **two things one slice**, because both are *the map outlives the frame it was made in*. The scan cannot tell HELD from PRESSED, so a key held from before the arm binds itself at the pick — and testing that wants a driver that can hold a key across a click | ⏭ Opened by `M3` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
@@ -203,6 +203,106 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `M4` turned up (2026-08-15) — a row that claimed to catch the tree's commonest defect, and never could
+
+**`verb_of` is deleted.** What a key means is `keymap_default()` and nothing else — one body,
+data, the person's to rebind. The chain stood beside it from `M1` for exactly as long as it took
+to prove the table, which is what a transitional instrument is for; `lib/hex_editor/tests/keymap.loft`
+drove the whole key universe through both across `M1`, `M2` and `M3`.
+
+⚠ **THE INSTRUMENT IS THE TEST-NAME DIFF, NOT THE COUNT — and this step is why.** The suite reads
+**522 → 522**, identical, because one row was deleted and one added. A deletion makes tests pass by
+removing their subject, so a green suite of the same size is exactly what a coverage cut looks like.
+The diff is six lines, every one accounted for:
+
+| | |
+|---|---|
+| ⛔ deleted | `test_the_table_and_the_if_chain_agree_on_every_key_but_the_freed_aliases` — the comparison, **spent**. Green across `M1`–`M3`; with one body left it could only be rewritten as `verb_in(m,k) == verb_in(m,k)` |
+| ⛔ halved | `…_is_bound_and_every_bound_verb_is_listed` → `test_every_verb_the_definition_lists_is_bound`. **See below — the removed half never did what it said** |
+| ◐ renamed | the seat and annex family rows: *two keys name one verb* is not sayable against a one-row-per-verb table, and *the family is one verb and the alias is free* is the stronger spelling |
+| ◐ renamed | `test_the_freed_aliases_are_exactly_the_duplicates_the_collapse_left` → `…_the_verbs_they_named_survived`, because the verb each alias reached came from the chain and now has to be written down |
+| ✅ added | `test_the_vocabulary_the_definition_and_press_verb_are_one_set` |
+
+### ⛔ The row that said it caught *built and never called* could not see it, and I measured that before believing it
+
+`keymap.loft`'s second loop walked the key universe through `verb_of` under a comment saying it
+*"catches a verb added to `press_verb` with no way to reach it"* — this tree's commonest defect,
+named in `CLAUDE.md`, claimed covered.
+
+> **It could not.** The loop only ever saw verbs *the chain named*. A verb bound in `press_verb`
+> and named nowhere else was invisible to it — which is precisely the case the comment describes.
+> **Measured on the pre-`M4` tree**: an arm added to `press_verb` for a verb bound in neither the
+> chain nor the table left the suite at **522 passed**. What the loop actually caught was a verb in
+> the CHAIN missing from the TABLE, which is the retired equality's job and went with it.
+
+`the_vocabulary()` replaces it — every verb the editor has, listed once, checked against
+`keymap_default()` in **both** directions and against `press_verb`. It is in the TEST rather than
+the library on purpose: a `verb_all()` beside `keymap_default()` would be a public function with
+exactly one caller, which is the shape this plan spends its time removing. ⚠ **And the residual
+blind spot is written into the test rather than covered by a comment** — a verb in `press_verb`
+and in neither list is still invisible, because loft has no reflection to enumerate what a
+dispatch answers to. That sentence is the difference between this row and the one it replaces.
+
+### ⛔ And the deletion silently disarmed four sabotage sweeps — two said so, two did not
+
+Every `K3` sweep sabotages the definition, and all four did it by `sed`ing `verb_of`'s chain. The
+moment the chain went, **all four seds became no-ops** — measured by running each one against the
+post-`M4` source and comparing files. The two halves are the finding:
+
+| | subject guard names | what it did |
+|---|---|---|
+| `sabotage-x`, `sabotage-bc` | the BINDING (`if key == "X"`, `if key == "B"`) | ✅ exit 1, *the subject is absent* — loud, correct |
+| `sabotage-e`, `sabotage-z` | `stair_ahead`, `session_hole_kind` — still present | ⛔ the row ran, the sed changed nothing, and it printed **NOTHING went red** |
+
+⚠ **A subject guard only sees what it names.** `K3` · `B` established that a sabotage which does
+not BUILD reads exactly like a sabotage nothing noticed; this is the same sentence one step
+earlier — a sabotage that does not *apply*. All four are retargeted at `keymap_default()`'s
+`bind_of` rows and each was re-measured as biting. ⏭ The general repair is a sweep that asserts its
+own patch changed the file, which is a change to the shared `row()` harness and is worth making
+next time one of these is touched.
+
+### The sweep, and what each row sees
+
+`sh probe/k2/sabotage-m4.sh` — 5 sabotages, 2 controls, both suites (`verb` and `keymap`) because
+`M4`'s claims are split across them. ⚠ **The subject guard is INVERTED**, which no sibling needed:
+the subject of a deletion is an absence, so the guard refuses to run if `verb_of` is back.
+
+| row | what it does | the row that names it |
+|---|---|---|
+| `s1` | `bind_of("O", VB_OPENING)` deleted | **the vocabulary row**: *the editor has verb 'opening' and the definition gives it no key at all* — the exact claim the retired loop overclaimed |
+| `s2` | `P` bound to `opening` again | the definition row: *the opening family has grown a second key, which is what a lost selection looks like from here* |
+| `s3` | a key bound to the verb `tunnel` | the vocabulary row's other direction: *a key to verb 'tunnel', which is not one of the 15 verbs this editor has* |
+| `s4` | `Q` bound to `stair_up` | `K3` · `E`'s claim, moved onto the table — **and it goes red twice**, on the pair and on `stair_down` losing its only key |
+| `s5` | `T` bound to `seat` again | `K3` · `Y`+`T`'s claim, moved the same way |
+
+⚠ **`s4`'s double red is the argument for the new row existing.** The pair test alone says *the two
+names agree*; the vocabulary row says *a gesture no keyboard can press*, which is the consequence
+and the thing an author would actually notice.
+
+### ⛔ And the sweep left a sabotage in the working tree, because its trap does not cover `PIPE`
+
+Running `sh probe/k2/sabotage-m4.sh | head -30` to read the first rows closes the pipe mid-run; the
+shell dies on SIGPIPE, **the `EXIT` trap never fires**, and the tree keeps the sabotage. The next
+`make lib-test` then came back `hex_editor` **11 failed** with `bind_of("5", "tunnel")` still in the
+source — a real-looking regression in a step that was green ten minutes earlier. All five sweeps in
+`probe/k2/` had it; the trap is `EXIT INT TERM PIPE` now.
+
+### ⛔ And running the siblings found a third stale instrument, one slice old
+
+`sabotage-z` row `s6` reported *a half-done conversion went unnoticed* about a check that noticed
+loudly. `K3` · `X` merged two checks into one message — ``still presses `key X`/`key Z` `` — and
+updated `sabotage-x.sh` to match while leaving `sabotage-z.sh` greping `still presses .key Z.`,
+which stopped matching that day. ⚠ **It fails SAFE** (a false alarm, not a false pass) and it is
+still *a grep over a log is an instrument whose default answer is absent*. It had not been run
+since `X` landed, which is the only reason a day passed. Fixed to the sibling's pattern.
+
+⚠ **AND MY OWN CHECK REPORTED THAT RUN AS FINE.** The command was
+`make lib-test > log 2>&1; echo rc=$?; grep …` — and what the harness printed back was the **last**
+command's status, so a failed suite arrived labelled *exited with code 0*. The log said
+`FAILED: hex_editor (interpreter)` on line 6450 and I had summarised past it. **A summary is an
+instrument, and this one's default answer was *fine*.** The re-run checks `make`'s own rc first and
+prints it before anything else.
 
 ## ✅ What `M3` turned up (2026-08-15) — a polling editor fires the key it has just bound
 

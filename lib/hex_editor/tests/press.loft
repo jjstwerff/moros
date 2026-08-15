@@ -6,10 +6,11 @@
 // gesture is answered as such rather than as a refusal.
 //
 // ⚠ **`press(key)` IS GONE AND THESE TESTS OUTLIVED IT — plan 22 `V3`.** The
-// chokepoint is two levels now: `verb_of(key)` names a verb, `press_verb(…, verb)`
-// runs it. Every row below that pressed a key presses `press_verb(…, verb_of(k))`
-// instead, which is what a caller does — so the claims are about the same
-// composition and can still fail for the same reasons.
+// chokepoint is two levels now: the DEFINITION names a verb and `press_verb(…, verb)`
+// runs it. Every row below that pressed a key resolves through the definition first,
+// which is what a caller does — so the claims are about the same composition and can
+// still fail for the same reasons. ⚠ **The top level moved at `M4`**: it was
+// `verb_of(k)` and it is `verb_in(keymap_default(), k)`, the one body left.
 //
 // ⚠ **AND FOUR ROWS WERE RETIRED RATHER THAN CONVERTED, each with somewhere to go.**
 // A test whose subject is deleted must have its CLAIM moved before it is removed, or
@@ -75,14 +76,15 @@ fn test_the_grade_is_taken_under_the_author_not_at_the_origin() {
 // *too steep* or *no wall there*, and a caller that cannot tell those apart prints
 // "no gesture for key W" for every step of a walk. It was a single call into
 // `press(key)`; with two levels the same question is two, and `verb.loft` asks both:
-// `test_a_key_that_is_not_a_gesture_names_no_verb` (`verb_of` answers `VB_NONE`) and
-// `test_an_unbound_verb_is_named_rather_than_refused` (`press_verb` answers
-// `PR_NONE` for it, having done no writes). Their composition IS this row.
+// `test_a_key_that_is_not_a_gesture_names_no_verb` (the definition answers `VB_NONE`)
+// and
+// `test_an_unbound_verb_is_named_rather_than_refused` (`press_verb` answers `PR_NONE`
+// for it, having done no writes). Their composition IS this row.
 //
 // `test_every_mapped_key_is_reachable` was its discriminator — a real gesture must
 // NOT answer `PR_NONE`, or the row above passes by refusing everything. That is
-// `verb.loft`'s `test_every_verb_the_definition_produces_is_bound`, over the same
-// eleven keys and through `verb_of`.
+// `verb.loft`'s `test_every_verb_the_definition_produces_is_bound`, over the keys the
+// definition binds.
 //
 // ⚠ `O` AND `P` STAYED ON THAT LIST THROUGH `R3`, when they answered `PR_SELECT` —
 // a refusal WITH A REASON rather than *not a gesture*, because the editor had an
@@ -110,7 +112,7 @@ fn test_pressing_the_house_key_is_calling_place_house() {
   ha_pose = author_on(by_hand, ax, az, 30.0 * PI / 180.0 ?? 0.0);
   assert(ka_pose.au_y == ha_pose.au_y, "the two fixtures do not share a ground height");
 
-  ka = press_verb(ks, by_key, ka_pose, verb_of("H"));
+  ka = press_verb(ks, by_key, ka_pose, verb_in(keymap_default(), "H"));
   ha = place_house(by_hand, ha_pose, HOUSE_W, HOUSE_D, grade_under(by_hand, ha_pose), hs.es_runs);
 
   assert(ka.ak_ok == ha.ak_ok, "one placed a house and the other did not");
@@ -202,12 +204,17 @@ fn test_no_key_writes_a_material_the_wire_cannot() {
   // was then reading a layer the write had left. The control above shares this
   // fixture EXACTLY — same world, same wall, nothing else pressed — so its 1 and
   // this 0 are the same question asked twice.
-  for k in ["ArrowUp", "ArrowDown", "H", "F", "G", "O", "P"] {
+  // ⚠ **`P` LEFT THIS LIST AT `M4` AND ITS REMOVAL IS NOT A GAP.** It was the second
+  // opening key; the definition frees it, so pressing it would resolve to nothing and
+  // the row would then pass by doing nothing — the worst kind of green, because the
+  // list is what makes this sweep look exhaustive. `O` carries the whole family now.
+  km = keymap_default();
+  for k in ["ArrowUp", "ArrowDown", "H", "F", "G", "O"] {
     kw = flat();
     ks = EditSession {};
     ka = author_on(kw, ax, az, 0.0);
     against_a_wall(kw, ka);
-    press_verb(ks, kw, ka, verb_of(k));
+    press_verb(ks, kw, ka, verb_in(km, k));
     assert(owned_edges(kw, 0, 0, WINDOW_MAT, ka.au_y) == 0,
            "key '{k}' left {owned_edges(kw, 0, 0, WINDOW_MAT, ka.au_y)} edges "
            + "carrying WINDOW_MAT — a material no `36:` message can produce, so the "
@@ -273,7 +280,7 @@ fn test_pressing_the_fence_key_rings_at_the_authors_feet_and_not_on_the_ground()
          "the fixture puts both references on layer {edge_layer(by_key, 6, 6, 0.0)} "
          + "— this test cannot see the difference it exists for");
 
-  ka = press_verb(ks, by_key, up, verb_of("F"));
+  ka = press_verb(ks, by_key, up, verb_in(keymap_default(), "F"));
   ha = fence_ring(by_hand, up, FENCE_MAT, FENCE_R, up.au_y);
   assert(ka.ak_ok && ha.ak_ok, "the fixture refused the ring: {ka.ak_why} / {ha.ak_why}");
   assert(ka.ak_n == ha.ak_n, "{ka.ak_n} edges by key, {ha.ak_n} by hand");
@@ -307,8 +314,9 @@ fn test_the_ring_does_not_read_the_authors_yaw() {
   ts = EditSession {};
   (ax, az) = hex_to_px(6, 6);
   up = (STOREY_H as float) * facing.w_unit;
-  fa = press_verb(fs, facing, author_at(ax, az, 0.0, up), verb_of("G"));
-  ta = press_verb(ts, turned, author_at(ax, az, 2.1, up), verb_of("G"));
+  gv = verb_in(keymap_default(), "G");
+  fa = press_verb(fs, facing, author_at(ax, az, 0.0, up), gv);
+  ta = press_verb(ts, turned, author_at(ax, az, 2.1, up), gv);
   assert(fa.ak_ok && ta.ak_ok, "the fixture refused a ring");
   assert(facing.w_tau == turned.w_tau,
          "the same ring at two yaws did {facing.w_tau} and {turned.w_tau} writes");
@@ -350,7 +358,7 @@ fn test_a_ring_records_the_trunk_a_balcony_hangs_on() {
   up = author_at(ax, az, 0.0, (STOREY_H as float) * w.w_unit);
   assert(!sess.es_trunk.tk_live, "the fixture starts with a trunk already standing");
 
-  ack = press_verb(sess, w, up, verb_of("G"));
+  ack = press_verb(sess, w, up, verb_in(keymap_default(), "G"));
   assert(ack.ak_ok, "the fixture refused the ring: {ack.ak_why}");
   assert(sess.es_trunk.tk_live,
          "pressing G left no trunk — `K` has nothing to attach to, silently");
@@ -411,8 +419,9 @@ fn test_the_height_is_in_the_worlds_own_unit() {
 // ⚠ ONE VERB NEEDED SIX KEYS BECAUSE THE PROFILE WAS ENCODED IN THE KEY, and a
 // seventh profile would have needed a seventh key. `S2b` gave the profile somewhere
 // else to live, `S3` proved moving it there lossless, and `V3` deleted the key form
-// — so `verb_of("O")` and `verb_of("M")` are the same verb and the kind comes from
-// the selection alone.
+// — so `O` and `M` named the same verb and the kind comes from the selection alone.
+// ⚠ `M4` finished it: the definition is one row per verb, so `O` carries `opening`
+// and the other five keys are free.
 
 // A wall to open, with the author standing on it.
 fn ring_world() -> VoxelWorld {
@@ -447,8 +456,8 @@ fn with_a_niche(s: EditSession, w: VoxelWorld) {
 //
 // It was the collapse's own proof — for each of the six kinds, pressing the key and
 // selecting-then-cutting left the same world AND the same session. **It had two
-// bodies to compare and now there is one**, so it cannot fail: `press_verb(verb_of(k))`
-// is the right-hand side for all six values of `k`.
+// bodies to compare and now there is one**, so it cannot fail: resolving `k` and
+// pressing the verb is the right-hand side for all six values of `k`.
 //
 // What it was really protecting is that a SELECTION reaches the gesture intact, and
 // that lives in `opening.loft`:
@@ -467,8 +476,9 @@ fn with_a_niche(s: EditSession, w: VoxelWorld) {
 // the constant rot into something nothing can answer.
 //
 // ⚠ AND IT IS OVER THE SIX KINDS RATHER THAN THE SIX KEYS, which is the same sweep
-// one layer down: `verb_of` maps all six keys to one verb, so looping over keys here
-// would be six identical calls wearing a table's clothes.
+// one layer down: all six keys named one verb, so looping over keys here would be six
+// identical calls wearing a table's clothes. ⚠ Since `M4` five of them name nothing,
+// which would make that loop five no-ops and one call.
 fn test_the_opening_verb_is_a_gesture_for_every_kind_it_can_be_given() {
   for kind in [1, 2, 3, 4, 11, 21] {
     w = ring_world();

@@ -51,7 +51,7 @@
 # opening in them was refused with *"no wall here to open"*. The session read-back
 # `K1` added is the instrument that WOULD see a depth; it had nothing to look at.
 #
-# ✅ **HALF OF THAT IS FIXED — plan 22 `K3`.** `verb_of("R")` names `run` and
+# ✅ **HALF OF THAT IS FIXED — plan 22 `K3`.** The definition names `R` `run` and
 # `press_verb` builds it, so `editor_run` lays walls now: measured, `wall.keys`
 # headless answers *"wall laid 20 edges, heading 0 of 24 (snapped, residual 0°),
 # length 8"*, which is the server's own sentence because it is the server's own
@@ -391,11 +391,12 @@ the baseline pressed two keys"
   # 15 verbs — `O P I U N M` all `opening`, `Y T` both `seat`, `J K V` all `annex` —
   # and the definition-as-data carries ONE row per verb, so those eight keys resolve to
   # nothing now. That is safe exactly while no script presses one, and this is the
-  # grep that keeps it true.
+  # grep that keeps it true. ⚠ **`M4` deleted the chain**, so this grep is now the only
+  # thing standing between the eight freed keys and a script that quietly presses one.
   #
   # ⚠ THE BASELINES ARE NOT CHECKED AND MUST NOT BE. `probe/k2/orig/*.keys` press them
   # on purpose — they are the pre-`K2a` spelling — and they reach the server through
-  # `script.mjs`'s `KEYMAP`, which sends `36:2` directly and never asks `verb_of`. A
+  # `script.mjs`'s `KEYMAP`, which sends `36:2` directly and never asks the library. A
   # check that swept them too would demand the baselines be converted, which is the one
   # thing that would make checks 1 and 2 compare a file with itself.
   if grep -qE '^key [PIUNMTKV]$' "tools/scripts/$s.keys"; then

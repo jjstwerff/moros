@@ -190,8 +190,9 @@ const KEYMAP = {
 // ⏭ **AND IT DISAPPEARS WHEN THE WIRE TAKES A VERB.** `EDITING_MODES` says the wire
 // carries the verb and never the key; on the day a message does, `verb <name>` is a
 // passthrough and this table is deleted rather than converted. Six rows of debt, said
-// out loud — `hex_editor::verb_of` is the authority for what a key names, and
-// `hex_editor::press_verb` for what a verb does.
+// out loud — `hex_editor::keymap_default` is the authority for what a key names
+// (`verb_of` was, until `M4` deleted it), and `hex_editor::press_verb` for what a
+// verb does.
 const VERBMAP = {
   raise: '5:1', lower: '5:-1',
   place: '32:',           // a house where you are looking

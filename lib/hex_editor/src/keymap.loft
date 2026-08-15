@@ -7,7 +7,9 @@
 // THEM IS VISIBLY WRONG ON SCREEN.** Counted 2026-08-15, and the last row is what
 // turns this from tidiness into a defect:
 //
-//   1. `hex_editor::verb_of` — an `if` chain, and the authority
+//   1. `hex_editor::verb_of` — an `if` chain, and the authority. ⚠ **Deleted at
+//      `M4`**: this table is the authority now, and the chain outlived its purpose
+//      by exactly the four slices it took to prove this one
 //   2. `editor_client.loft`'s `KEY_*` constants — a physical code per key
 //   3. …and the poll block beside them, which spells the SAME key again as a string:
 //      `gl_key_pressed(KEY_STOREY_UP)` then `verb_of("B")`. The file's own comment
@@ -50,7 +52,7 @@
 //
 // ⚠ **TWO SPELLINGS OF ONE KEY, AND THAT IS NOT THE DUPLICATION ABOVE.** `kb_key` is
 // the key's NAME — what `tools/scripts/*.keys` writes, what a person reads in a
-// binding list, what `verb_of` has always taken. `kb_code` is what the HARDWARE
+// binding list, what the deleted `verb_of` took. `kb_code` is what the HARDWARE
 // reports. They are two facts about one key and the second is DERIVED from the first
 // by `key_code_of`, so a binding cannot carry a name and a code that disagree unless
 // somebody builds one by hand.
@@ -197,7 +199,7 @@ pub fn key_for(m: KeyMap, verb: text) -> text {
 // …and the same answer as a hardware code, for a GL driver that polls per verb.
 //
 // ⚠ **THIS IS THE FUNCTION THAT DELETES THE `KEY_*` CONSTANTS.** A client polling
-// `gl_key_pressed(KEY_STOREY_UP)` and then calling `verb_of("B")` spells one key
+// `gl_key_pressed(KEY_STOREY_UP)` and then resolving the string `"B"` spells one key
 // twice, in two alphabets, on adjacent lines — its own comment called that *"the last
 // place this step could hide one"*. Polling `code_for(m, VB_STOREY)` names the VERB at
 // the input site and lets the map say which finger reaches it, which is the invariant

@@ -5684,7 +5684,7 @@ fn main() {
           // worked — the lattice has six placeable facings of twelve, and the author
           // is owed the one to turn to rather than a silent 30° swing.
           // ⚠ **THE VERB, NOT THE KEY — plan 22 `V2`, and this is the ONE site that
-          // could move today.** `verb_of` throws a key's profile away (six opening
+          // could move today.** The definition throws a key's profile away (six opening
           // keys answer one `opening`), so every caller that resolves a SCRIPT's keys
           // has to wait for `K1`/`K2` to teach the scripts to say `select` first —
           // measured, and the runner cannot even see the regression it would cause,

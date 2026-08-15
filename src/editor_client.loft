@@ -1467,8 +1467,11 @@ fn send_aspect(h: web::WsHandler) {
 //
 // Two levels, and keeping them apart is `W4`'s whole subject:
 //
-//   hex_editor::verb_of(key)   what a KEY means — declared once, shared by every
-//                              driver, and the only layer a person may remap
+//   verb_in(st.keys, key)      what a KEY means — declared once, shared by every
+//                              driver, and the only layer a person may remap.
+//                              ⚠ It was `hex_editor::verb_of(key)` until `M4`; the
+//                              definition is DATA now, which is what let `M3` make
+//                              it rebindable from inside the editor
 //   act(h, verb)               which MESSAGE implements a verb on THIS socket —
 //                              a fact about the wire, and this file's own business
 //
@@ -2045,11 +2048,11 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // shape rather than laziness — the mirror image of `K2a`, which converted ONLY
   // this family and left every other key alone.
   //
-  // `verb_of` is one-to-one for the five keys above: each names a verb no other
+  // The definition is one-to-one for the five keys above: each names a verb no other
   // key names, so routing them through it cannot change what they do and the wire
   // stays byte-identical — which is what makes this step comparable at all.
-  // `O` and `P` are not: they are two of the SIX keys that answer `opening`, and
-  // the profile they carry (`1` round, `2` pointed) is precisely what `verb_of`
+  // `O` and `P` are not: they were two of the SIX keys that answered `opening`, and
+  // the profile they carry (`1` round, `2` pointed) is precisely what the definition
   // throws away. Converting them here has only two possible spellings and both are
   // changes, not refactors: pin one kind and `p` stops cutting a pointed head, or
   // send `49:<kind>` first and the standing SELECTION moves where it did not move

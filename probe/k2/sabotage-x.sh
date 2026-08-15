@@ -38,7 +38,13 @@ restore() {
   cp "$OUT/root.orig" "$ROOT"; cp "$OUT/sess.orig" "$SESS"
   cp "$OUT/say.orig" "$SAY";   cp "$OUT/keys.orig" "$KEYS"
 }
-trap restore EXIT INT TERM
+# ⛔ **`PIPE` IS IN THAT LIST BECAUSE IT WAS NOT, AND A SABOTAGED TREE SURVIVED THE RUN.**
+# Piping this script through `head` closes the pipe mid-row; the shell dies on SIGPIPE,
+# the EXIT trap never fires, and the working tree is left with the sabotage APPLIED —
+# which the next `make lib-test` reports as a real failure in a step you thought was
+# green. Measured on 2026-08-15 at `M4`: `hex_editor` came back 11 failed with a
+# `bind_of("5", "tunnel")` still in the source.
+trap restore EXIT INT TERM PIPE
 
 # ⚠ TWO FILES, because the claims are split across them: `verb.loft` holds the verb
 # layer and `session.loft` the session's own rows. `loft test a b` silently runs only
@@ -103,7 +109,12 @@ printf '── the library: what the gesture does ──────────
 if ! grep -q '^pub fn session_slab' "$SESS"; then
   printf '    FAIL the subject is absent — %s has no `session_slab`\n' "$SESS"; exit 1
 fi
-if ! grep -q '^  if key == "X" { return VB_SLAB; }$' "$ROOT"; then
+# ⚠ **THE BINDING MOVED AT `M4`** — it was `verb_of`'s `if key == "X"` and it is a
+# `bind_of` row in `keymap_default()`. The guard moved with it, and it had to: with the
+# guard still naming the deleted chain this sweep exits *the subject is absent*, which
+# is the LOUD half of what that deletion did to the four sweeps here. See `sabotage-e`
+# and `sabotage-z` for the quiet half.
+if ! grep -q '^    bind_of("X", VB_SLAB),$' "$ROOT"; then
   printf '    FAIL the subject is absent — %s does not bind `X`\n' "$ROOT"; exit 1
 fi
 if ! grep -q '^verb slab$' "$KEYS"; then
@@ -115,7 +126,7 @@ row control "unsabotaged" 0
 
 # 1 — `X` collapsed onto the other half of its own pair, which is the mistake this
 # slice refuses: two ACTIONS answering as one is the `25:1`/`25:3` defect rebuilt.
-sed -i 's/^  if key == "X" { return VB_SLAB; }$/  if key == "X" { return VB_HOLE; }/' "$ROOT"
+sed -i 's/^    bind_of("X", VB_SLAB),$/    bind_of("X", VB_HOLE),/' "$ROOT"
 row s1 "X names the hole verb — the two actions merged" 1
 restore
 

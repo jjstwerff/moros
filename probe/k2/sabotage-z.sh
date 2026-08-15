@@ -32,7 +32,13 @@ restore() {
   cp "$OUT/root.orig" "$ROOT"; cp "$OUT/sess.orig" "$SESS"
   cp "$OUT/gest.orig" "$GEST"; cp "$OUT/keys.orig" "$KEYS"
 }
-trap restore EXIT INT TERM
+# ⛔ **`PIPE` IS IN THAT LIST BECAUSE IT WAS NOT, AND A SABOTAGED TREE SURVIVED THE RUN.**
+# Piping this script through `head` closes the pipe mid-row; the shell dies on SIGPIPE,
+# the EXIT trap never fires, and the working tree is left with the sabotage APPLIED —
+# which the next `make lib-test` reports as a real failure in a step you thought was
+# green. Measured on 2026-08-15 at `M4`: `hex_editor` came back 11 failed with a
+# `bind_of("5", "tunnel")` still in the source.
+trap restore EXIT INT TERM PIPE
 
 # ⚠ TWO FILES, because `Z`'s claims are split across them: `verb.loft` holds the verb
 # layer and `session.loft` holds the refusal wording. `loft test a b` silently runs
@@ -102,7 +108,12 @@ row control "unsabotaged" 0
 
 # 1 — `Z` collapsed onto the slab, which is the mistake this slice refuses: two
 # ACTIONS answering as one is the `25:1`/`25:3` defect rebuilt on a new id.
-sed -i 's/^  if key == "Z" { return VB_HOLE; }$/  if key == "Z" { return VB_PLACE; }/' "$ROOT"
+# ⛔ **THIS ROW WAS A SILENT NO-OP AFTER `M4` AND THE GUARD ABOVE COULD NOT SEE IT.**
+# It sed'd `verb_of`'s `if key == "Z"`, which the deletion removed; the pattern stopped
+# matching, the file was left untouched, and the row reported *NOTHING went red* — the
+# same sentence a test that cannot fail produces. The guard names `session_hole_kind`,
+# which is still there, so it passed. **A subject guard only sees what it names.**
+sed -i 's/^    bind_of("Z", VB_HOLE),$/    bind_of("Z", VB_PLACE),/' "$ROOT"
 row s1 "Z names another verb — the two actions merged" 1
 restore
 
@@ -135,8 +146,17 @@ restore
 printf '── the probe: whether the script was transcribed faithfully ───────────\n'
 
 # 6 — the conversion half done: the live script still presses the key.
+#
+# ⛔ **THE PATTERN WENT STALE AT `K3` · `X` AND NOTHING SAID SO FOR A DAY.** When `X`
+# got its verb, `run.sh`'s check merged the pair into one message — ``still presses
+# `key X`/`key Z` `` — and `sabotage-x.sh` was written against the new wording while
+# this file kept greping `still presses .key Z.`, which no longer matches. So the row
+# printed *a half-done conversion went unnoticed* about a check that noticed loudly, in
+# different words. ⚠ It fails SAFE (a false alarm, not a false pass) and it is still the
+# `CLAUDE.md` rule: **a grep over a log is an instrument whose default answer is
+# absent.** Found by running this sweep at `M4`; it had not been run since `X` landed.
 sed -i '0,/^verb hole$/s//key Z/' "$KEYS"
-scripted "a half-done conversion" 'still presses .key Z.' s6
+scripted "a half-done conversion" 'still presses .key X./.key Z.' s6
 restore
 
 # 7 — RETIRED BY `K3` · `X`, and it is retired rather than deleted because its
