@@ -902,12 +902,26 @@ m6_raises=$(grep -c '^client: local raise — ' "$OUT/rebind2.log" || true)
 # happened* is what a page that never armed, never picked and never bound reports too —
 # a run where the rebinding failed entirely would score this row green for the worst
 # possible reason. It is only evidence once the rebind is known to have happened.
+#
+# ⛔ **AND THE COUNT IS BRANCHED BECAUSE THE FIRST VERSION OF THIS ROW BLAMED THE WRONG
+# HALF — found by the `nosettle` sweep.** This run holds ONE `5` (the bind) and TWO
+# `ArrowUp`, so a non-zero count has two possible causes and the row said *the old
+# binding is live* for both. With the settle fence removed the bind press raises once
+# and `ArrowUp` is correctly dead — a true report of `1` under a false headline, which
+# would send the next reader to `keymap_bind` for a defect that is in `act`. The counts
+# separate cleanly: **1 is the bind firing, 2 is the old key, 3 is both.** *A total
+# cannot say WHICH* — this plan's own `B1b.2c.4c` finding, arriving in an instrument
+# written after it.
 if [ -z "$m6_bound" ]; then
   no "M6 vacuous — nothing was rebound in this run, so 'ArrowUp did nothing' says nothing"
 elif [ "$m6_raises" = "0" ]; then
   say "M6 and the old key is dead: 2 presses of ArrowUp after the rebind, no raise"
+elif [ "$m6_raises" = "1" ]; then
+  no "M6 one raise from a run with one 5 and two ArrowUp — that is the BIND firing, not the old key (see M4); ArrowUp itself is dead"
+elif [ "$m6_raises" = "2" ]; then
+  no "M6 ArrowUp raised twice after raise moved to 5 — the old binding is still live"
 else
-  no "M6 ArrowUp still raised $m6_raises times after raise moved to 5 — the old binding is live"
+  no "M6 $m6_raises raises where the run holds one 5 and two ArrowUp — the old key is live AND the bind fired"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────

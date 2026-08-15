@@ -405,11 +405,38 @@ saw "fence — "  1 "the fence ring wrote"
 saw "wall — "   1 "the wall ring wrote"
 saw "lower — "  1 "the lower wrote"
 saw "place refused" 1 "and the house was REFUSED, in the same words the runner uses"
-# The walk key: local mode has no gesture for it, and says so exactly once.
-if [ "$(grep -c "^client: local — '4:' is a server message" "$OUT/b.log" || true)" -eq 1 ]; then
-  ok "B9 the walk key said it has no local gesture — once, not per frame"
+# ⛔ **B9 IS INVERTED, AND IT HAD BEEN RED SINCE `B1c.1` — found while `M3` was
+# touching the line it guards, and measured on the PRE-`M3` commit before it was
+# blamed on anything.** It asserted the walk key says *"'4:' is a server message and
+# this page has no gesture for it yet"* exactly once. `B1c.1` gave local mode a walk —
+# `local_tick` integrates `st.held` — and guarded the send with `if !st.local`, so the
+# apology became unreachable **and untrue in the same commit**. The client's own
+# comment beside that line says so: *"a page that went on apologising for a key that
+# now works is the `ps_status` literal a third time"*. The code was corrected and the
+# gate asserting the old sentence was not, so `make probe-auth` has read `1 of 36`
+# ever since.
+#
+# ⚠ **THE CLAIM IS KEPT, INVERTED, RATHER THAN DELETED** — *move before you remove*.
+# What it says now is the thing `B1c.2c` actually earned: **local mode has a gesture
+# for the walk and does not apologise for it.** ⚠ And the ORIGINAL claim — *once, not
+# per frame* — is not lost: `wire`'s dedupe is what implements it, and it is still
+# asserted, on a message that really has no local gesture.
+if [ "$(grep -c "^client: local — '4:'" "$OUT/b.log" || true)" -eq 0 ]; then
+  ok "B9 local mode never apologised for the walk key — it has a gesture for it"
 else
-  bad "B9 the walk key said '$(grep -c "^client: local — '4:'" "$OUT/b.log" || true)' times; it must say it exactly once"
+  bad "B9 the walk key still says it has no local gesture $(grep -c "^client: local — '4:'" "$OUT/b.log" || true) time(s) — a stale apology for a key that works"
+fi
+# …and the dedupe itself, on a message that genuinely has no local gesture. ⚠ THREE
+# OUTCOMES: absent says nothing (nothing pressed it), once is the claim, more than once
+# is the per-frame flood `wire`'s `said_local` list exists to stop.
+b9b=$(grep -c "^client: local — '" "$OUT/b.log" || true)
+b9u=$(grep "^client: local — '" "$OUT/b.log" | sort -u | wc -l)
+if [ "$b9b" -eq 0 ]; then
+  ok "B9b (no server-only message was reached in this run — nothing to dedupe)"
+elif [ "$b9b" -eq "$b9u" ]; then
+  ok "B9b and each server-only message apologised ONCE, not per frame — $b9b of them"
+else
+  bad "B9b $b9b apologies for $b9u distinct messages — the per-frame flood is back"
 fi
 
 # ⚠ THE CLAIM, AND IT IS IN TWO HALVES BECAUSE ONE INSTRUMENT CANNOT ANSWER. The

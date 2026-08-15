@@ -393,6 +393,84 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `M3` — REBINDING FROM THE EDITOR, and a polling client fires the key it just bound, 2026-08-15
+
+**Arm with `Escape`, click a slot, press a key.** `hex_editor::Rebind` is the machine —
+`rebind_arm`/`rebind_pick`/`rebind_press`/`rebind_release` beside `keymap_bind` — and the client's
+whole share is **two fences**, `act` for verbs and `wire` for everything with no verb, rather than
+a condition on each of ten edge detectors. `make probe-demo` grew an `M` block: six checks over two
+runs, `M1`–`M6`.
+
+⛔ **THE DESIGN NAMED THE WRONG FAILURE, AND THE RIGHT ONE IS INVISIBLE TO EVERY OTHER INSTRUMENT.**
+The step table predicted *a collision reported as a refusal*; that half was settled at `M1` and
+green before this started. What nobody had written down is that the client **polls**:
+
+> `poll_input` asks `gl_key_pressed(code_for(map, verb))` once a frame and acts on the RISING EDGE.
+> Bind `raise` to `5` and the physical `5` is **still down** on the very next frame — false → true,
+> an edge, and the ground rises. **The rebind performs the verb it was defining.**
+
+⚠ **And that raise is correct in every particular** — right verb, right author, right world, right
+`w_tau` — so nothing in this tree could tell it from one a person asked for. `RB_SETTLE` holds the
+keyboard until the finger comes up, and it is why the machine has four states.
+
+⛔ **AND THE MAP IS NOT THE WHOLE KEYBOARD.** Eight keys are bound in `editor_client.loft` and in no
+`KeyMap` — `w a s d` walk, `l` levels, `Tab` cycles, `o`/`p` go straight on the wire — so binding
+`raise` onto `w` is reported as a **clean rebind with nothing displaced**, because the collision is
+with a table `keymap_bind` is not in. `client_reserved` SAYS it rather than refusing: every letter
+is taken, and refusing is the useless-feature failure one layer down. ⏭ The real fix puts them in
+the map, which needs `press_verb` to have a shape for a HELD state — `D1`'s neighbourhood.
+
+⛔ **AND THE NEW FENCE WOULD HAVE CAUSED THE BUG ITS NEIGHBOUR FIXES.** Arming must zero `st.held`
+or a walking author keeps walking through the whole rebinding — and the `4:0` that stops the server
+is the **withdrawal** of input, which is exactly what `wire`'s fence withholds. It goes straight to
+`web::send` now, with the reason written beside it.
+
+⛔ **AND TWO INSTRUMENTS WERE WRONG, ONE OF THEM NOT MINE:**
+
+> **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`.** It asserted local mode says *"'4:' is a
+> server message and this page has no gesture for it yet"* exactly once; `B1c.1` gave local mode a
+> walk **and** guarded the send with `if !st.local`, making the apology unreachable and untrue in
+> one commit — with the client's own comment beside it saying so. ⚠ **Measured before it was blamed
+> on history**: `HEAD~1`'s client was built and run and fails B9 identically. Inverted now, with
+> the original *once, not per frame* claim **moved rather than removed** to a new `B9b` that asks
+> it of a message which really has no local gesture. `auth PASS — 37`.
+
+> **And my own `M6` blamed the wrong half — found by running the `nosettle` sweep.** Its run holds
+> one `5` and two `ArrowUp`, and it read any non-zero raise as *the old binding is live*. With the
+> fence gone the bind press raises once and `ArrowUp` is correctly dead: a true count under a false
+> headline. **1 is the bind firing, 2 is the old key, 3 is both**, and it is branched now — *a
+> total cannot say WHICH*, this plan's own finding arriving in an instrument written after it.
+
+⛔ **AND THE DRIVER HAD BEEN TURNING `5` INTO CODE 85 SINCE IT WAS WRITTEN.** `press.mjs`'s fallback
+is a LETTER heuristic: `'Key' + '5'` is `Key5`, which no keyboard sends, and the page's `mapKey`
+takes the `Key` branch anyway and computes `'Key5'.charCodeAt(3) + 32`. The press was delivered,
+the client saw nothing, and the transcript read exactly like rebinding not working. ⚠ **Digits are
+the only genuinely free keys**, which is why no probe had ever pressed one and why they are what a
+person rebinds ONTO.
+
+✅ **AND THREE THINGS BUILT-AND-NEVER-CALLED HAVE CONSUMERS NOW** — `verbbar_hit`, `verbbar_verb`
+(no widget in this tree had ever been hit-tested) and `spec_verb_on`, which lights the picked slot.
+⏭ **`panel_hit_test` is the last one still uncalled.**
+
+⏭ **AND WHAT IT OPENED — the scan cannot tell HELD from PRESSED.** `graphics` has no event queue,
+so *which key did they press* is 43 asks of `gl_key_pressed`, which answers *is it down*.
+`RB_SETTLE` solves that at one end only: **a key held from before the arm binds itself the instant
+a slot is picked.** It is `M5` together with persistence, because both are *the map outliving the
+frame it was made in*, and it wants a driver that can hold a key across a click.
+
+✅ hex_editor keymap **15 → 28 tests** · `make lib-test` **3624 both backends** · `make fast` 156
+files · `make gate` 49 green · `make parts` byte-identical · 4 library sabotages red on their own
+row with a clean control at both ends · `make probe-demo` PASS with `M1`–`M6`, three sabotages
+(`nosettle` → M4+M6, `noarm` → all, `nobarsay` → M3 alone) · `make probe-auth` **37 PASS**.
+
+⚠ **AND `make gate` IS SILENT WHEN IT PASSES, WHICH READS AS A VACUOUS RUN AND IS NOT.**
+`run-gates.sh` prints nothing for a green gate on purpose — loft's Goal F, *a tool that reports its
+good health teaches the reader to skip the line where it eventually reports the opposite* — so 49
+passing gates produce **zero output and rc=0**. That is the same shape as the broken harness this
+file records at `G4`, read the other way round, and the way to tell them apart is to check the
+instrument against something it should find: `GATE_VERBOSE=1` makes a PASS speak, and a gate given
+a dead port says `SERVER NEVER LISTENED` loudly. Both were run.
+
 ## ✅ `M1`+`M2` — THE KEYBOARD IS THE PERSON'S, and three instruments that could not fail, 2026-08-15
 
 **The binding is DATA and the verbs are on screen.** `hex_editor::KeyMap` is the definition

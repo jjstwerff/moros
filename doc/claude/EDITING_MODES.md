@@ -829,9 +829,60 @@ rather than assumed safe.** Nothing in production resolved them: every `.keys` s
 |---|---|---|
 | ✅ **`M1`** — the definition as DATA: `KeyMap`, `keymap_default()`, rebind, and both drivers read it | ⚠ **`verb_of`'s `if` chain, kept as an independent body** — `verb_of(k) = verb_in(default, k)` would be a tautology, which is `V1`'s lesson one layer down | the two disagreeing on **any key in the universe**, not on a list somebody remembered: 26 letters, 10 digits, 7 named keys and six things that are not keys at all |
 | **`M2`** — the verb bar: `lavition_ui` lays out slots from data, the client draws it | the panel, unchanged | ⚠ a bar whose key glyphs come from anywhere but the map — the row-4 defect rebuilt one widget over |
-| **`M3`** — rebinding from the editor: arm, pick a slot, press a key | the default map | a collision reported as a refusal. ⚠ *Every* letter is taken, so **displacing is what rebinding IS**; refusing would make the feature useless |
+| ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | the default map | a collision reported as a refusal. ⚠ *Every* letter is taken, so **displacing is what rebinding IS**; refusing would make the feature useless. ⛔ **AND THE ROW THAT MATTERED WAS NOT THIS ONE** — see below |
 | **`M4`** — delete `verb_of` | — | ⚠ not "the suite is green" — a deletion makes tests pass by removing their subject. `V3`'s instrument: the **test-name diff**, with every retired claim named where it went |
 
 ⚠ **`M1` DOES NOT PERSIST A REBIND, DELIBERATELY.** The map is `Client` state and a fresh page
 gets the default. Persisting it is a `LayeredFS` question (`P6` proved the page has a filesystem)
 and it belongs after `M3`, because *what* to persist is not settled until a person can make one.
+
+## ⛔ What `M3` measured: a POLLING editor fires the key it has just bound
+
+**The row the step turned out to be about was not the collision one.** The design predicted a
+refused collision as the failure to watch; the collision half was already right, because
+`keymap_bind` had settled it at `M1`. What no one had written down is this:
+
+> **THE INVARIANT: while a rebind is in progress the keyboard belongs to the rebinder, and the
+> key that COMPLETES one does not fire the verb it just bound.**
+
+The client does not listen for key events — it **polls**. `poll_input` asks
+`gl_key_pressed(code_for(map, verb))` once a frame and acts on the rising edge. So the moment
+`raise` is bound to `5`, the physical `5` is **still down**, `verb_down(raise)` flips false → true,
+and the ground rises. ⚠ **And that raise is correct in every particular** — right verb, right
+author, right world — so no instrument in this tree can tell it from one a person asked for.
+`RB_SETTLE` holds the keyboard until the finger comes up; `probe/b2`'s `M4` is the row that would
+see it go, and `DEMO_SABOTAGE=nosettle` is it going.
+
+⚠ **THE STATES ARE FOUR AND EACH EARNS ITSELF.** `RB_ARMED` exists so a click on the bar cannot
+eat the next keystroke from somebody who only wanted to read a slot; `RB_PICKED` is where the scan
+runs; `RB_SETTLE` is the above. `hex_editor::Rebind` is the machine, `keymap.loft` holds it beside
+`keymap_bind`, and the client's whole share is **two fences** — `act` for verbs, `wire` for
+everything with no verb — rather than a condition on each of ten edge detectors.
+
+## ⛔ And the map is not the whole keyboard, which nothing but a hand-written list can say
+
+**Eight keys are bound in `editor_client.loft` and in no `KeyMap`**: `w a s d` walk, `l` toggles
+levelling, `Tab` cycles the catalogue, `o`/`p` put an opening profile straight on the wire. So
+binding `raise` onto `w` is reported by `keymap_bind` as a **clean rebind with nothing displaced**
+— it cannot see a collision with a table it is not in — and the author gets a key that walks *and*
+raises, with no instrument anywhere that would report it.
+
+⚠ **SAID, NOT REFUSED** (`client_reserved`). Every letter is taken, so refusing is the
+useless-feature failure one layer down; what an author must not get is silence. ⏭ **The real fix
+is to put them in the map**, which is `D1`'s neighbourhood: the walk is a HELD state where every
+verb here is an edge, so `press_verb` has no shape for it yet.
+
+## ⏭ And the open edge: the scan cannot tell HELD from PRESSED
+
+`graphics` has no event queue, so *which key did they press* is 43 asks of `gl_key_pressed`. That
+answers **is it down**, not **did it just go down** — and `RB_SETTLE` is that distinction solved at
+one end only. At the other end it is still open: **a key held from before the arm binds itself the
+instant a slot is picked.** Walk forward, press `Escape` with the other hand, click a slot with the
+mouse, and `w` is bound before you have chosen anything.
+
+⚠ **It is one gap with two faces, which is why it is a slice and not a patch.** The same missing
+edge means a *refused* press would reprint its refusal every frame; that path is unreachable today
+(every code the scan offers is readable, and the verb was checked at the pick), and it becomes
+reachable the moment either of those changes. The fix is a fresh-press requirement — the codes down
+at pick time, ignored until released — and it wants a driver that can hold a key across a click,
+which `probe/b1b/press.mjs` cannot do yet.

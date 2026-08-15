@@ -147,6 +147,10 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K3` · `X`** — the floor becomes the verb `slab`, and the pair is whole | S | **DONE 2026-08-15.** The name `Z` was waiting on, bound. ⛔ **The instrument I added to cover the moved sentence had to be REMOVED the same hour**: `tools/script.mjs` prints, after each line it sends, whatever arrives NEXT, and returns 250 ms after its last send — so the wire capture LAGS and TRUNCATES, and two scripts of different lengths lose different tails. Measured over all ten pairs; the finding is now in `probe/k2/run.sh`'s header, which is what says why check 1 reads the server's log. ⛔ **`HOLE_PAD` and a hand-written `HOUSE_W + HOUSE_D + 4` were one number under two names** at the socket — `SLAB_PAD` for both, with a test that both gestures reach for it. ⚠ **A `pub const` used above its own declaration is reported as an UPPER_CASE local** ([loft#921](https://github.com/loft-lang/loft/issues/921)) — it resolves correctly (measured `sb_pad = 13`), so the one diagnostic pointing at a constant says it is not one · hex_editor 489 → 492 both backends · `probe/k2` 10 scripts · nine sabotages red, with a control that must stay green |
 | ✅ **`K3` · `B`+`C`** — the storey pair, and every key the scripts press is a verb | S | **DONE 2026-08-15.** Two verbs by BOTH rules at once — a direction, and not mirror images (a cellar comes with its stair) — and the naming rule earns a sentence: **a verb takes the word the domain has**, so `cellar` rather than `storey_down`. ⛔ **The client's `b`/`c` were the last raw `wire` sends and were DEAD in local mode** — the demo could not build a storey at all; `make probe-demo`'s new `B` block reads `local storey — 19`. ⛔ **The stride was a global for the third time** (`cliff_step()`, wrong on a part world), with the disc radius and both pads as literals beside it. ⛔ **Two of this session's own instruments could not fail**: a sabotage that does not BUILD scored *nothing went red* in all four sweeps, and the disc assertion was a closed form checked against itself · hex_editor 492 → 494 both backends · `probe/k2` **12 scripts** · nine sabotages red plus three demo checks |
 | **`K2b`**–**`K3`** — convert the rest, then drop the key spelling | M | a converted script and its original build the same world **and the same session** | ⏭ **Every key a script presses is now a verb.** What is left is the *drop* half: `tools/script.mjs`'s `key` spelling and `KEYMAP` still exist, and `Q` is bound and pressed by no script |
+| ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
+| ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | S | **DONE 2026-08-15.** `hex_editor::Rebind`, two fences in the client, `make probe-demo` `M1`–`M6`. ⛔ **The row it turned out to be about was not the collision one**: a POLLING editor fires the verb it has just bound, because the completing key is still down on the next frame — and that raise is correct in every particular. ⛔ **The map is not the whole keyboard** (8 client keys outside it, invisible to `keymap_bind`). ⛔ **The driver had been turning `5` into code 85** since it was written, and digits are the only free keys there are. ⛔ **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`** — measured on the pre-`M3` commit before it was blamed on anything · hex_editor keymap 15 → 28 tests · 4 library + 3 demo sabotages red · `make probe-auth` 36 → **37 PASS** | ✅ Done |
+| **`M4`** — delete `verb_of` | XS | ⚠ not "the suite is green" — a deletion makes tests pass by removing their subject. `V3`'s instrument: the **test-name diff**, with every retired claim named where it went | ⏭ Next |
+| **`M5`** — persist a rebind (`LayeredFS`), and a fresh-press requirement for the scan | S | ⚠ **two things one slice**, because both are *the map outlives the frame it was made in*. The scan cannot tell HELD from PRESSED, so a key held from before the arm binds itself at the pick — and testing that wants a driver that can hold a key across a click | ⏭ Opened by `M3` |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | Blocked on `K2` |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
@@ -199,6 +203,103 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `M3` turned up (2026-08-15) — a polling editor fires the key it has just bound
+
+**Arm with `Escape`, click a slot, press a key.** `hex_editor::Rebind` is the state machine;
+`make probe-demo` grew an `M` block of six checks over two runs. The design is
+[EDITING_MODES § Phase 6](../../doc/claude/EDITING_MODES.md), which now carries the invariant this
+step measured rather than the one it predicted.
+
+### ⛔ The design named the wrong failure, and the right one is invisible to every other instrument
+
+The step table said *what would surprise the test* is **a collision reported as a refusal**. That
+half was already right — `keymap_bind` settled it at `M1` and its tests were green before this step
+started. What nobody had written down is that the client does not listen for key events, it
+**polls**:
+
+> `poll_input` asks `gl_key_pressed(code_for(map, verb))` once a frame and acts on the rising
+> edge. Bind `raise` to `5` and the physical `5` is **still down** on the very next frame:
+> `verb_down(raise)` goes false → true, an edge fires, and the ground rises. **The rebind performs
+> the verb it was defining.**
+
+⚠ **AND THAT RAISE IS CORRECT IN EVERY PARTICULAR** — right verb, right author, right world, right
+`w_tau`. There is no instrument in this tree that could tell it from one a person asked for, which
+is why `RB_SETTLE` — hold the keyboard until the finger comes up — is the whole reason the machine
+has four states instead of three. `DEMO_SABOTAGE=nosettle` removes the fence and `M4` reads *both
+presses of 5 raised*.
+
+### ⛔ The map is not the whole keyboard, and `keymap_bind` cannot see it
+
+**Eight keys are bound in `editor_client.loft` and in no `KeyMap`** — `w a s d` walk, `l` levels,
+`Tab` cycles the catalogue, `o`/`p` put an opening profile straight on the wire. Binding `raise`
+onto `w` is therefore reported as a **clean rebind with nothing displaced**, because the collision
+is with a table `keymap_bind` is not in, and the author gets a key that walks *and* raises.
+
+⚠ **SAID RATHER THAN REFUSED** (`client_reserved`): every letter is taken, so refusing is the
+useless-feature failure `keymap_bind` already decided against one layer down. ⏭ The real fix is to
+put those keys in the map, which needs `press_verb` to have a shape for a HELD state — `D1`'s
+neighbourhood, not this step's.
+
+### ⛔ And the fence would have caused the bug its neighbour fixes
+
+The walk is a held state, so arming has to zero `st.held` or a walking author keeps walking for the
+whole rebinding. ⚠ **`wire`'s new fence makes that worse rather than better**: the `4:0` that stops
+the server *is* the withdrawal of input, and the fence withholds exactly it. **A withdrawal is not
+an input** — it goes straight to `web::send`, and the branch was already `!st.local`, so `wire`'s
+local apology was unreachable from there anyway.
+
+### ⛔ The driver had been turning `5` into code 85 since it was written
+
+`press.mjs`'s fallback is a **letter** heuristic: `'Key' + '5'` is `Key5`, which no keyboard sends,
+and the page's `mapKey` takes the `Key` branch anyway and computes `'Key5'.charCodeAt(3) + 32` =
+**85**, a code that names no key at all. The press was delivered, the client saw nothing, and the
+transcript read exactly like rebinding not working.
+
+⚠ **DIGITS ARE THE ONLY GENUINELY FREE KEYS**, which is both why no probe in this tree had ever
+pressed one and why they are precisely what a person rebinds ONTO. The `.` and `Tab` rows in that
+table are the same finding twice already; this is the third.
+
+### ⛔ Two instruments were wrong, and the sweep found the second one
+
+> **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`, and it is not mine.** It asserted that local
+> mode says *"'4:' is a server message and this page has no gesture for it yet"* exactly once.
+> `B1c.1` gave local mode a walk **and** guarded the send with `if !st.local` — making the apology
+> unreachable and untrue in one commit, with the client's own comment beside it saying so. The gate
+> was not moved with the code. ⚠ **Measured before it was blamed on history**: `HEAD~1`'s client
+> was built and run, and fails B9 identically. It is inverted now — *local mode has a gesture and
+> does not apologise* — and the original *once, not per frame* claim is **moved, not removed**, to
+> `B9b`, where it is asked of a message that really has no local gesture. `auth PASS — 37`.
+
+> **And `M6` blamed the wrong half — found by running `nosettle`.** Its run holds one `5` and two
+> `ArrowUp`, and it read any non-zero raise count as *the old binding is live*. With the settle
+> fence gone the bind press raises once and `ArrowUp` is correctly dead: a true count under a false
+> headline, pointing the next reader at `keymap_bind` for a defect in `act`. The counts separate
+> cleanly — **1 is the bind firing, 2 is the old key, 3 is both** — and it is branched now. *A
+> total cannot say WHICH*, which is this plan's own `B1b.2c.4c` finding arriving in an instrument
+> written after it.
+
+### ✅ Three things built-and-never-called now have consumers
+
+`verbbar_hit` and `verbbar_verb` were built at `M2` and invoked by nothing — **no widget in this
+tree had ever been hit-tested** — and `spec_verb_on`, the armed flag, is how the picked slot lights
+up. ⏭ **`panel_hit_test` is still uncalled**, and it is the last one.
+
+⚠ **AND THE SLOT CENTRES ARE READ OFF THE CLIENT'S OWN LINE.** `client: verb slots — raise@275,610
+…` comes out of the LAID-OUT bar, and the driver clicks what it reports; a probe that computed the
+position from `VERB_SLOT_W` and `PANEL_WIDTH` would be a second copy of the layout, green while
+clicking at the wrong pixel — and a mis-click reads as *rebinding does not work*, which is the
+wrong bug to go hunting.
+
+### ⏭ What it opened: the scan cannot tell HELD from PRESSED
+
+`graphics` has no event queue, so *which key did they press* is 43 asks of `gl_key_pressed` — which
+answers **is it down**, never **did it just go down**. `RB_SETTLE` solves that at one end only.
+**A key held from before the arm binds itself the instant a slot is picked**: walk forward, press
+`Escape` with the other hand, click a slot, and `w` is bound before anything was chosen. The same
+missing edge means a *refused* press would reprint every frame — unreachable today, and reachable
+the moment either premise moves. It is `M5`, with persistence, because both are *the map outliving
+the frame it was made in* — and it wants a driver that can hold a key across a click.
 
 ## ✅ What `B1c.1` turned up (2026-08-13) — a continuous turn, a quantised gesture
 

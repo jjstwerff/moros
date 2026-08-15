@@ -140,4 +140,8 @@ probe/b1c/.loft/
 probe/b1c/.origin.html
 probe/b1c/.chrome/
 probe/b2/.deadclock.loft
+# …and `M3`'s three, which build a sabotaged client the same way (plan 22).
+probe/b2/.nosettle.loft
+probe/b2/.noarm.loft
+probe/b2/.nobarsay.loft
 probe/b2/.loft/
