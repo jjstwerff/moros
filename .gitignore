@@ -43,7 +43,8 @@ probe/**/out/
 # holds one `loft test` log per row; four such directories were sitting untracked
 # before this line was written, which is how a committed one eventually happens.
 probe/**/out-*/
-# …and the LOCK `probe/k2b/run.sh` holds while it runs. It is a directory because
+# …and the LOCK a probe holds while it runs (`probe/k2b/run.sh` was the one that
+# needed it, and it retired at plan 22 `K3b`). It is a directory because
 # `mkdir` is the atomic test-and-set a shell has, and it outlives a run that was
 # killed — so it is exactly the kind of thing that gets committed once and then
 # refuses every future run with *another run holds this*.

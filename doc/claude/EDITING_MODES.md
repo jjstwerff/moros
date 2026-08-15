@@ -547,6 +547,13 @@ caller at a time, so the runner and the wire disagree about what `key O` means u
 deletes the key form. That divergence is **bounded by `K2a`**: no script presses an opening key
 any more, so nothing exercises it. Stated here rather than discovered later.
 
+✅ **AND IT IS SETTLED — `K3b`, 2026-08-16.** The divergence could not be closed by making the
+two agree, because the thing they disagreed about is gone: `KEYMAP` is deleted and so is the
+`key` branch in both readers. The claim this section says *moved to where it can be stated
+directly* moved once more and is now a library test —
+`test_a_gesture_does_not_move_the_standing_selection` — because the two probes stating it both
+retired with the spelling, and **nothing in `opening.loft` had ever cut twice from one choice**.
+
 ### ✅ `V3` — the chokepoint is deleted, and a green suite is the wrong instrument
 
 **Built 2026-08-12.** `hex_editor::press(key)` and its private `open_press` are gone. What a
@@ -611,11 +618,16 @@ returns one of three values", it would be a self-test and it would have to merge
 
 ### ✅ `K1` — and the row's own negative control was blind, again
 
-**Built 2026-08-12.** Both readers take `verb <name>` and `select <kind>`:
+⛔ **READ THIS SECTION AS A RECORD: `K3b` DELETED THE KEY SPELLING ON 2026-08-16**, so the
+twin-pair comparison it describes no longer exists and `keyed.keys` and `carried.keys` are
+gone. What survives of `probe/k1` is the paragraph below this one — the read-back checked
+against a mis-converted script — because that half was never about two spellings.
+
+**Built 2026-08-12.** Both readers took `verb <name>` and `select <kind>`:
 `src/editor_run.loft`, which calls the gestures, and `tools/script.mjs`, which drives the
-socket. `probe/k1/run.sh` (`make probe-verbs`) runs a twin pair of scripts —
+socket. `probe/k1/run.sh` (`make probe-verbs`) ran a twin pair of scripts —
 `keyed.keys` and `verbed.keys`, the same six gestures in both spellings — through **both**
-drivers and compares them exactly.
+drivers and compared them exactly.
 
 ⚠ **THE ROW SAID *"run one converted script and its original and diff the world"*, AND THAT
 CANNOT SEE THE ONE MISTAKE A CONVERSION MAKES.** `key P` becomes `select 2` + `verb opening`,
@@ -679,8 +691,14 @@ spelling and nothing else, and it cannot even finish — `press` has no verb for
 ⚠ **THE EIGHT SCRIPTS HAVE NO GATE BETWEEN THEM.** The suite drives `cache`, `indoors`,
 `cellar`, `clientmesh` and `deck`; `annex`, `door`, `embrasure`, `furnish`, `house`, `niche`,
 `opening` and `profiles` are run by hand. So `make gate` staying green says nothing about this
-conversion, and `probe/k2/` (`make probe-convert`) is their only check: each script beside a
+conversion, and `probe/k2/` (`make probe-convert`) was their only check: each script beside a
 committed baseline of itself, both driven through a server.
+
+⛔ **AND THAT CHECK IS RETIRED — plan 22 `K3b`, 2026-08-16.** Its instrument was a diff against
+the same script in the KEY spelling, and the key spelling is deleted from both readers, so
+there is no second side to the diff. The conversion it guarded is finished and cannot regress
+by transcription; **what genuinely went with it is the only regression check those ten
+un-gated scripts had**, which is `K3d` rather than a gap anyone should discover twice.
 
 ⚠ **AND BOTH WIRE INSTRUMENTS ARE BLIND TO A NICHE'S DEPTH — MEASURED, NOT SUSPECTED.** The
 server prints `om_kind`, whose own field comment reads *"the profile, after the tens and

@@ -1,12 +1,15 @@
-# K1 — THE SECOND SPELLING. The same six gestures, said as VERBS.
+# K1 — THE SIX GESTURES, AND THE SIDE `C` TREATS AS CORRECT.
 #
-# Line for line the twin of `keyed.keys`, with one difference that is the whole
-# point: the opening keys carried a profile and the verb does not, so where the
-# original pressed `O` and `P` this one CHOOSES and then cuts.
+# ⛔ **THIS WAS ONE OF A PAIR AND ITS TWIN IS GONE — plan 22 `K3b`.** `keyed.keys`
+# said the same six things as KEY PRESSES, and the two were run side by side so a
+# conversion could be compared exactly before `K2` touched a real script. The key
+# spelling is deleted from both readers now, so what is left of this file is the
+# CORRECT half of `wrong.keys`: they differ in one chosen kind and nothing else.
 #
-# ⚠ THE EXTRA LINE IS NOT NOISE. `verb_of` maps six keys to one `opening`, so a
-# script converted without `select` would build a byte-identical world with the
-# wrong head on every door — `probe/k1/run.sh` control `C` measures exactly that.
+# ⚠ THE `select` LINES ARE NOT NOISE. Six keys named one `opening`, so a script
+# converted without them would build a byte-identical world with the wrong head on
+# every door — `run.sh` check `C` measures exactly that, and it is the only
+# instrument in this tree that can.
 
 echo --- flat ground to build on
 at 0 0 0
@@ -30,7 +33,3 @@ at 14 14 0
 verb fence
 at -16 10 0
 verb wall
-
-# The twin of `keyed.keys`'s last line, under its own name — see there for why the
-# wire half needs a world beside the sentences.
-save k1w-verbed

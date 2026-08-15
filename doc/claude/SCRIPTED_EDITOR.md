@@ -82,17 +82,26 @@ which is what keeps one script serving both drivers.
 it — with a point behind the eye as the control that stops that instrument answering
 *inside* for everything.
 
-### ⚠ A script says a VERB now, not a keystroke — plan 22 `K1`, 2026-08-12
+### ⚠ A script says a VERB, not a keystroke — plan 22 `K1`, closed by `K3b` on 2026-08-16
 
 **A script is a document, not a keyboard.** It outlives the layout it was written on and it
-is read by a person deciding what a scene does, so `verb place` says that where `key H` says
-which finger moved. Both spellings are accepted, in **both** readers, and `K3` drops the key
-form once every script has been converted.
+is read by a person deciding what a scene does, so `verb place` says that where `key H` said
+which finger moved. Both spellings ran side by side from `K1` until every script was
+converted; **`key <K>` is now deleted from both readers.**
 
 ```
-verb <name>      raise · lower · place · opening · fence · wall
+verb <name>      raise · lower · place · opening · fence · wall · run · seat · annex
+                 stair_up · stair_down · slab · hole · storey · cellar
 select <kind>    what the NEXT opening cuts — `49:<kind>` on the wire
+                 `select seat <kind>` · `select annex <kind>` name their own subject
 ```
+
+⛔ **AND A STALE `key H` IS NOW A FAILED RUN, WHICH IS THE ONLY REASON THE DELETION WAS
+SAFE.** Both readers used to print a complaint at a word they did not understand and exit
+**0** — measured on each, `25 of 55` scripts were printing one and every run reported success.
+`K3a` fixed `src/editor_run.loft` and `K3b.1` fixed `tools/script.mjs`, *before* the vocabulary
+shrank. Without that order, deleting the branch turns every missed line into a silent no-op in
+a green run.
 
 ⚠ **`select` IS NOT COSMETIC, AND THAT IS THE WHOLE STEP.** `hex_editor::verb_of` is
 deliberately not injective: `O P I U N M` all name one `opening` verb, so a converted script
@@ -108,10 +117,13 @@ opening's geometry, and [`probe/k1/run.sh`](../../probe/k1/run.sh) (`make probe-
 that instrument against a deliberately mis-converted script before trusting it to report
 agreement.
 
-⚠ **A KEY DOES NOT RE-CHOOSE, SO THE TWO SPELLINGS END ON DIFFERENT SELECTIONS.** That is
-`S3`'s fork, visible: `key O` `key P` finishes holding the selection it started with, its verb
-twin finishes holding `2`. The probe **asserts they differ** — agreement there would mean a
-key had silently re-chosen.
+⚠ **A GESTURE DOES NOT RE-CHOOSE, AND THAT CLAIM MOVED INTO THE LIBRARY AT `K3b`.** It is
+`S3`'s fork: a press CUTS, and leaves the standing selection where it was, so a script may
+choose once and cut many times. Two probes held it and both retired with the key spelling;
+every test in `opening.loft` chose once and cut once, so all of them were satisfied by a
+gesture that CONSUMES its choice. `test_a_gesture_does_not_move_the_standing_selection` is the
+rule now — seen red on a sabotage that resets the kind after each cut, with the other 17
+green, which is what says the gap was real rather than assumed.
 
 ⚠ **AND THE READ-BACK IS `hex_editor::session_digest` NOW, NOT THIS RUNNER'S** (plan 22
 `B1b.1b`): the page in local mode has to be held against the runner, and two programs each

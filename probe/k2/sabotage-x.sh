@@ -90,21 +90,6 @@ row() {
   fi
 }
 
-# ⚠ THE SCRIPTED ROWS NAME THE CHECK THEY EXPECT, not just "a failure". A sweep row
-# that accepts any red passes when the probe breaks for an unrelated reason — which is
-# a green sweep over a broken instrument.
-scripted() {
-  label=$1; want=$2; tag=$3
-  sh probe/k2/run.sh slab > "$OUT/$tag.log" 2>&1
-  if grep -q "$want" "$OUT/$tag.log"; then
-    printf '    ok   %s → %s\n' "$label" \
-      "$(grep -m1 "$want" "$OUT/$tag.log" | sed 's/^ *//' | cut -c1-96)"
-  else
-    printf '    FAIL %s went unnoticed (see %s.log)\n' "$label" "$tag"
-    fails=$((fails + 1))
-  fi
-}
-
 printf '── the library: what the gesture does ─────────────────────────────────\n'
 if ! grep -q '^pub fn session_slab' "$SESS"; then
   printf '    FAIL the subject is absent — %s has no `session_slab`\n' "$SESS"; exit 1
@@ -165,38 +150,29 @@ sed -i 's/^                 grade_under(w, a));$/                 0);/' "$ROOT"
 row s6 "the slab is laid from zero instead of the ground under the author" 1
 restore
 
-printf '── the probe: whether the script was transcribed faithfully ───────────\n'
-
-# 7 — the conversion half done: the live script still presses the key.
-sed -i '0,/^verb slab$/s//key X/' "$KEYS"
-scripted "a half-done conversion" 'still presses .key X./.key Z.' s7
-
-# 8 — …and both actions flattened onto one verb, which is the mistake the pair
-# invites. ⚠ This is `sabotage-z.sh`'s retired row 7 turned the right way up: with
-# `slab` bound, the failure is no longer *a verb that reaches nothing* but *a verb
-# that reaches the wrong one of two*.
-restore
-sed -i 's/^verb hole$/verb slab/' "$KEYS"
-scripted "both actions spelled as one verb" 'a press was lost or gained' s8
-restore
-
-# 9 — THE SLAB LAID SOMEWHERE ELSE. The pose moves one cell before the floor goes
-# down, so the slab lands off the hole's centre and the void that follows is refused
-# for reaching past its edge. ⚠ **CHECK 2 IS BLIND** — neither a slab nor a hole
-# reaches the store, so the two worlds stay byte-identical through this; only the
-# sentence moves, which is the blindness `sabotage-z.sh` recorded and this re-measures
-# from the other side of the pair.
-sed -i '0,/^at 0 0 90$/s//at 1 0 90/' "$KEYS"
-scripted "the floor laid a cell off" 'said different things' s9
-if grep -q 'and the same world' "$OUT/s9.log"; then
-  printf '    ok   …and CONTROL — check 2 saw nothing, as it cannot: %s\n' \
-    "$(grep -m1 'and the same world' "$OUT/s9.log" | sed 's/^ *//')"
-else
-  printf '    FAIL CONTROL — check 2 went red too, so the store is not blind here \
-after all and the note above is wrong\n'
-  fails=$((fails + 1))
-fi
-restore
+# ⛔ **THE SCRIPTED ROWS ARE GONE — plan 22 `K3b`, and what they asked is worth
+# recording.** They drove `probe/k2/run.sh`, which ran each converted script beside
+# `probe/k2/orig/`'s copy of itself in the KEY spelling and diffed the sentences and
+# the saved world. `K3b` deleted the key branch from both readers, so there is no
+# second spelling to be the other half of that diff, and the baselines went with it.
+#
+# **Where each retired row's claim lives now:**
+#
+#   *a half-done conversion* — **stronger than it was.** A `key <K>` line is an
+#   unknown word in both readers now, and `K3a`/`K3b.1` make an unknown word FAIL the
+#   run. It is caught on every script in every driver rather than on one script in a
+#   probe nobody runs; `probe/k1` asserts it directly.
+#
+#   *the transcription rows* — the SYSTEM claim under each is a library test and is
+#   listed in the rows above (a direction stays in the verb; two actions stay two
+#   verbs; a cellar is not a storey's mirror). What retired is transcription fidelity
+#   of one FILE, and the conversion is a one-time event that is finished.
+#
+# ⚠ **AND ONE THING IS GENUINELY UNCOVERED, SAID OUT LOUD RATHER THAN IMPLIED.** Ten
+# of the twelve scripts `probe/k2` drove have no gate behind them — that was the
+# probe's own stated reason for existing — so a press deleted from one of them now
+# goes unnoticed. `cellar.keys` and `deck.keys` are the exceptions, wrapped by
+# `tools/gates/world/cellar_ceiling.mjs` and `deck_soffit.mjs`. Plan 22 `K3d`.
 
 printf '\n'
 if [ "$fails" -eq 0 ]; then

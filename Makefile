@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k2b pages probe-demo plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth pages probe-demo plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -608,30 +608,14 @@ probe-auth:
 probe-split:
 	@sh probe/l6/run.sh
 
-# K1 (plan 22) — DOES A SCRIPT SAYING `verb` BUILD WHAT THE SAME SCRIPT SAYING `key`
-# BUILT? Both readers, compared exactly, plus the control that says why the obvious
-# instrument (diff the world) is blind to the one mistake a conversion makes.
+# K1 (plan 22) — CAN ANYTHING HERE SEE A WRONG PROFILE, and does a word neither
+# driver knows FAIL the run? ⛔ It asked *does `verb` build what `key` built* until
+# `K3b` deleted the key spelling; what survives is the half that was never about two
+# spellings — the session read-back checked against a mis-chosen kind it SHOULD find,
+# because the obvious instrument (diff the world) is blind to exactly that.
 # `K1_WIRE=0` skips the server half and needs no port.
 probe-verbs:
 	@sh probe/k1/run.sh
-
-# K2 (plan 22) — DOES A CONVERTED SCRIPT BUILD WHAT IT BUILT BEFORE? The eight
-# scripts that press an opening key have NO gate between them, so this is their only
-# check: each one beside its pre-conversion baseline, through a server, compared on
-# the sentences, the saved world AND the kinds — because the first two are blind to
-# a niche's depth. `sh probe/k2/run.sh niche` runs one.
-probe-convert:
-	@sh probe/k2/run.sh
-
-# K2b (plan 22) — THE MECHANICAL REMAINDER, and *mechanical* is why it is measured.
-# 90 lines over 31 scripts that lose nothing (`key ArrowUp` → `verb raise`, `key H` →
-# `verb place`, `key G` → `verb wall`), so nobody looks at them twice — and the
-# failure left is one mistyped verb on one line, in a script no gate runs, found
-# later as a scene that quietly builds something else. Every converted script runs
-# beside its own pre-conversion self out of git, compared on the world, the session,
-# the saved bytes AND the transcript. `K2B_SABOTAGE=lower` is the negative control.
-probe-k2b:
-	@sh probe/k2b/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \

@@ -67,15 +67,24 @@ understand **fails the run**; it used to print a complaint and exit 0, which wou
 `K3b`'s deletion turn every stale `key H` into a silent no-op. Measured first: **25 of 55 scripts**
 were already printing `unknown command` and every one exited 0.
 
-**Next:** **`K3b`** — drop the key spelling from both readers, which finishes `W4`'s fourth site
-and retires the baselines that record what was converted from. Then **`K3c`** (`send` of an
-authoring id must not be dropped, found by `K3a`), and **`T1`**/**`D1`**, both unblocked now that
-`K2` and `V2` are done.
+✅ **AND `W4`'s FOURTH SITE IS CLOSED — `K3b`, 2026-08-16.** `key <K>` is deleted from both
+readers, so **nothing headless resolves a key any more**: `keymap_default()`'s only production
+consumers are in the CLIENT, where a keyboard belongs and where a person can rebind it. ⛔ **The
+price was THREE probes, not the two this row predicted** — `probe/k2b` is baselined on a commit
+whose scripts are in the key spelling, so the deletion made it unrunnable and its own vacuity
+guard said so out loud (*"the label map rewrote NOTHING over 31 script(s)"*). ⛔ **And it was not
+safe as written**: `tools/script.mjs` had `K3a`'s defect untouched, so `K3b.1` had to land first.
 
-⚠ **AND TWO INSTRUMENTS ARE RED BEFORE ANY OF IT STARTS, BOTH PRE-EXISTING.** `probe/k1` checks
-`A`/`B` have failed since `S3` collapsed the opening keys — measured on HEAD, not caused by
-`K3a` — and `probe/k2` needs 24 server starts and times out on a loaded box. Neither is in
-`make fast` or `make gate`, which is how they rotted unnoticed; `K3b` retires both.
+**Next:** **`K3c`** (`send` of an authoring id must not be dropped, found by `K3a`), then
+**`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done. **`K3d`** is the debt `K3b`
+created and is the one to weigh against them: ten scripts no gate runs lost their only
+regression check.
+
+✅ **AND THE TWO INSTRUMENTS THAT WERE RED BEFORE ANY OF IT STARTED ARE GONE.** `probe/k1` checks
+`A`/`B` had failed since `S3` collapsed the opening keys — measured on HEAD, not caused by
+`K3a` — and `probe/k2` needed 24 server starts and timed out on a loaded box. Neither was in
+`make fast` or `make gate`, which is how they rotted unnoticed. `K3b` retired both; what is left
+of `probe/k1` is green and starts **one** server instead of three.
 
 The full step decomposition is
 [EDITING_MODES § The order of work](../../doc/claude/EDITING_MODES.md#the-order-of-work-in-steps-that-can-each-go-red),
@@ -166,7 +175,9 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K3` · `B`+`C`** — the storey pair, and every key the scripts press is a verb | S | **DONE 2026-08-15.** Two verbs by BOTH rules at once — a direction, and not mirror images (a cellar comes with its stair) — and the naming rule earns a sentence: **a verb takes the word the domain has**, so `cellar` rather than `storey_down`. ⛔ **The client's `b`/`c` were the last raw `wire` sends and were DEAD in local mode** — the demo could not build a storey at all; `make probe-demo`'s new `B` block reads `local storey — 19`. ⛔ **The stride was a global for the third time** (`cliff_step()`, wrong on a part world), with the disc radius and both pads as literals beside it. ⛔ **Two of this session's own instruments could not fail**: a sabotage that does not BUILD scored *nothing went red* in all four sweeps, and the disc assertion was a closed form checked against itself · hex_editor 492 → 494 both backends · `probe/k2` **12 scripts** · nine sabotages red plus three demo checks |
 | ✅ **`K2b`** — convert the mechanical remainder: **91 lines over 32 files** | S | **DONE 2026-08-15.** `make probe-k2b` — **31 scripts**, each beside its own pre-conversion self out of git, equal on the world key, the session digest, the saved bytes and the transcript. ⛔ **The 32nd file was a script that is not a file**: `probe/a83/leaf_visible/switch.sh` builds its script in a **heredoc**, so it was invisible to the probe's `*.keys` glob and to the `--include=*.keys` grep that produced the *zero remain* claim in this row's own previous text. ⛔ **The probe was red on all 31 scripts the first time it ran, for two reasons that were both about the instrument**: the runner labels a bare acknowledgement with **the word the script used** (`said_ack` prints `"{what}: {n}"`, so `ArrowUp: 1` against `raise: 1`), and the two runs wrote worlds under **different names** which the runner then prints in its own summary line. ⛔ **AND TWO COPIES OF THE PROBE RAN AT ONCE**, one queued behind the `B4` sweep — they shared `probe/k2b/out` *and* `worlds/k2b-a.hxw`, so a byte comparison could have passed on **a world the other process built**. ✅ Measured: the rewrite reaches **80 of 90** lines and `place`'s ten are compared **word for word**, because a gesture only wears the bare label when it has nothing of its own to say | ✅ Done |
 | ✅ **`K3a`** — a word the runner does not understand FAILS the run | XS | **DONE 2026-08-15.** ⛔ **`K3` could not be a deletion until this existed.** `run_line` has answered `false` since it was written and `main` threw the answer away: an unknown word printed and the process exited **0**, so deleting the `key` branch would have made every stale `key H` a silent no-op in a run that still reported success. ⛔ **And the skip list was stale in a way nothing could see** — it named nine words, real scripts use nine more, and a missed word is reported in the same sentence a typo is: measured over the corpus, **25 of 55 scripts** printed `unknown command` and every one exited 0 · subject: a typo now exits **101** with the save and every diagnostic still describing the run · control: **41 of 41 live scripts unmoved**, `make headless-same` rc=0, `probe/k2b` 31 scripts PASS, `tools/layering.sh` rc=0 | ✅ Done |
-| **`K3b`** — drop the key spelling from both readers | S | the test-name and script-vocabulary diff, **not** a green suite | ⏭ **Unblocked by `K3a`, and the price is now exact.** `tools/script.mjs`'s `KEYMAP` and `editor_run`'s `key` branch keep `probe/k1`'s `keyed.keys` and `probe/k2/orig/`'s twelve baselines RUNNABLE; dropping the reader retires them, which is `V3`'s shape — a transitional instrument spent. ⚠ **And `probe/k2` reads `KEYMAP` and the `37:`/`38:` tables OUT OF `tools/script.mjs` BY REGEX** (checks 5, 8, 9), so those go with it rather than merely losing a baseline. ⚠ **9 of the 12 baselines already fail `K3a`'s assert** — they press one of `S3`'s eight dead keys — which is the retirement arriving early and on its own evidence. `Q` is bound and pressed by no script |
+| ✅ **`K3b.1`** — `tools/script.mjs` fails a run on a line it could not send | XS | ⚠ the exit code, **not** the complaint — the check that existed was written against the wording | **DONE 2026-08-16.** ⛔ **`K3a` on the OTHER reader, and nobody had looked.** `!! no verb 'hoist'` and `!! unknown command 'hoist'` both printed and exited **0**, measured against a real server before the change and **101** after, with a clean script and a `key ArrowUp` still 0. ⛔ **It had to land before `K3b`, not with it** — the deletion turns every missed `key H` into a silent no-op otherwise. ⚠ **`probe/k1` `E` could not have seen it**: it grepped for the complaint, which a driver that exits 0 prints perfectly. Both halves assert rc now. ⚠ **What it deliberately does not count**: a gesture the SERVER refuses — `editor_run` sees that through an ack struct, this driver has only a status line that LAGS and TRUNCATES. Control: every first word and every `verb <name>` in the live corpus already resolves, so **0 of 41 scripts moved** | ✅ Done |
+| ✅ **`K3b`** — drop the key spelling from both readers | S | the test-name and script-vocabulary diff, **not** a green suite | **DONE 2026-08-16.** `key <K>` gone from `src/editor_run.loft` and `tools/script.mjs`; `KEYMAP`'s 22 rows gone with it, and this file's last opinion about a keyboard. ⛔ **THE PRICE WAS THREE PROBES, NOT TWO** — this row predicted `probe/k1` and `probe/k2`, and `probe/k2b` died too: it baselines on `git show 0e2d48a:<path>`, so its baseline side is in the deleted spelling and builds **nothing** (`runs 0` against the converted side's real world). Its own vacuity guard reported it — *the label map rewrote NOTHING over 31 script(s)* — which is what an instrument that can see its own emptiness is worth. ⛔ **AND A CLAIM WAS ABOUT TO GO OUT WITH THEM**: *a gesture does not move the standing selection* was held by `probe/k1` `D` and relied on as `probe/k2` check 5's premise, and **every test in `opening.loft` chose once and cut once** — so all 17 were satisfied by a gesture that CONSUMES its choice. Moved first, then seen red on a sabotage that resets the kind after each cut, **with the other 17 green**, which is what proved the gap real. ⚠ **Move before you remove.** ⏭ The genuine loss is named rather than absorbed: `K3d`. Retired the scripted half of four sabotage sweeps and kept every library row (`sabotage-x` 6 rows red on their own claims, control green, tree restored) · `probe/k1` **4 FAILED → green**, and it now asserts the deletion directly (*a stale `key H` is an unknown word and fails: rc=101*) | ✅ Done |
+| **`K3d`** — the ten un-gated scripts get a regression check that is not a second spelling | S | ⚠ it must go red on a press DELETED from a live script — the failure `probe/k2` caught and nothing does now | ⛔ **Created by `K3b`, and it is a real coverage cut rather than a tidy-up's leftovers.** `probe/k2`'s own reason for existing was that `annex` `door` `embrasure` `furnish` `house` `niche` `opening` `profiles` `determinism` `slab` are driven by **nobody automatically** — `make gate` runs `cache`, `indoors`, `cellar`, `clientmesh` and `deck`. `cellar.keys` and `deck.keys` keep their gates; the other ten now have no check that they still build what they built. ⏭ Wants a committed world-key + session-digest baseline per script, regenerable on purpose — **not** a diff against a second spelling, which is what just retired |
 | **`K3c`** — `send` of an **authoring** id must not be silently dropped | S | ⚠ the ten scripts must go RED where they run headless — that is the deliverable, not a regression | ⛔ **Found by `K3a` and older than it.** `send <id>:` is a raw wire frame and [WIRE_PROTOCOL](../../doc/claude/WIRE_PROTOCOL.md) sorts every id into **A** (*survives as a store write*), **V** and **S**. `editor_run` drops all of them. Measured: **ten scripts send an A id** — `6` LEVEL and `10` ROAD change what every gesture after them builds, `47` WATER lays cells, and `44` PART **swaps which store is edited**, so `doorparts.keys` opens six parts that never open, every edit lands in the main world and each close discards nothing. `ground` is the same message under a friendlier name (`50:`). ⏭ Wants `send` classified by id, refusing the A ones — a cost to pay on purpose |
 | ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
 | ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | S | **DONE 2026-08-15.** `hex_editor::Rebind`, two fences in the client, `make probe-demo` `M1`–`M6`. ⛔ **The row it turned out to be about was not the collision one**: a POLLING editor fires the verb it has just bound, because the completing key is still down on the next frame — and that raise is correct in every particular. ⛔ **The map is not the whole keyboard** (8 client keys outside it, invisible to `keymap_bind`). ⛔ **The driver had been turning `5` into code 85** since it was written, and digits are the only free keys there are. ⛔ **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`** — measured on the pre-`M3` commit before it was blamed on anything · hex_editor keymap 15 → 28 tests · 4 library + 3 demo sabotages red · `make probe-auth` 36 → **37 PASS** | ✅ Done |
@@ -307,6 +318,65 @@ directory would have measured a different program — and removed after.
   so one run shows a person all of them.
 - ⏭ **`tools/script.mjs` is untouched.** Its unknown-command branch has the same shape and is
   `K3b`'s to answer, along with the `KEYMAP` its checks read by regex.
+
+## ✅ What `K3b` turned up (2026-08-16) — a deletion's price is what it makes unrunnable, not what it removes
+
+`key <K>` is gone from both readers. The diff that matters is not the two branches deleted;
+it is the **three probes, four sabotage sweeps and one library claim** that were standing on
+them, and only one of those was named in the row before the work started.
+
+### ⛔ The deletion was not safe as written, and the reason was on the other reader
+
+`K3a` made `src/editor_run.loft` fail a run on a word it did not understand. **`tools/script.mjs`
+still had that defect** — measured against a real server before anything moved: `verb hoist`
+rc=**0**, `hoist 1 2` rc=**0**, each with its complaint printed above it. Delete `KEYMAP` with
+that in place and every stale `key H` becomes a silent no-op in a run reporting success, which
+is exactly the state `K3a` was cut out as its own step to prevent on the first reader.
+
+⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS WRITTEN AGAINST THE WORDING.** `probe/k1` `E`
+grepped for `no verb 'hoist'` — which a driver that prints and exits 0 produces perfectly. **A
+check on what a program SAYS cannot see what it RETURNS**, and that is not a subtle distinction
+here: it is the whole difference between a refusal and a report. Both halves assert rc now.
+
+### ⛔ Three probes, and the third was not predicted
+
+| | what it was | why it could not survive |
+|---|---|---|
+| `probe/k1` | `keyed.keys` against `verbed.keys` | a comparison needs two spellings |
+| `probe/k2` | twelve scripts against `orig/`'s pre-conversion copies | the baselines are in the deleted spelling |
+| **`probe/k2b`** | 31 scripts against `git show 0e2d48a:<path>` | ⛔ **the same reason, and this row did not say so** |
+
+`probe/k2b` was found by running it: its baseline side built **nothing** (`session: runs 0`
+against the converted side's real world) because every `key` line in a commit from two days
+earlier is now an unknown word. ✅ **Its own vacuity guard is what reported it** — *"the label
+map rewrote NOTHING over 31 script(s): the transcripts were compared without the presses in
+them"* — which is what an instrument that can describe its own emptiness is worth. A probe
+without that guard would have printed 31 green rows over two runs that both did nothing.
+
+### ⛔ And a live claim was inside the wreckage
+
+**A gesture does not move the standing selection.** `probe/k1` `D` asserted it directly and
+`probe/k2` check 5 relied on it as a premise — it walks a converted script forward carrying the
+last `select`, because `niche.keys` chooses once and cuts twice.
+
+⚠ **Every test in `lib/hex_editor/tests/opening.loft` chose ONCE and cut ONCE**, so all
+seventeen were satisfied by a gesture that CONSUMES its choice and leaves nothing standing.
+Moved before removed: `test_a_gesture_does_not_move_the_standing_selection`, seen red on a
+sabotage that resets the kind after each cut — **with the other 17 green**, which is what turns
+*probably a gap* into *measured a gap*.
+
+### ⏭ And one loss is real, so it is a row rather than a footnote
+
+`probe/k2`'s stated reason for existing was that ten of its twelve scripts are **driven by
+nobody automatically**. `cellar.keys` and `deck.keys` have real gates behind them; the other ten
+now have no check that they still build what they built. That is `K3d`, and it wants a
+committed world-key baseline rather than a second spelling — the thing that just retired.
+
+⚠ **What did NOT retire, and is stronger than what it replaced**: *a half-done conversion* was
+four sabotage rows across four sweeps, each catching one script that still pressed a key. A
+`key <K>` line now fails in **every** driver on **every** script, because it is not vocabulary
+and an unknown word fails the run. The library halves of all four sweeps are untouched — six
+rows red on their own claims in `sabotage-x`, control green, tree restored.
 
 ## ✅ What `B4` turned up (2026-08-15) — the milestone was three finished parts and no wire between them
 

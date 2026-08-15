@@ -392,6 +392,50 @@ fn test_a_selection_that_is_not_one_is_refused_and_changes_nothing() {
          "a refused selection moved the choice to {made.om_open.op_kind}");
 }
 
+// ⛔ **A CLAIM THAT LIVED ONLY IN TWO GATES UNTIL `K3b` — CHOOSE ONCE, CUT TWICE.**
+// Every test above selects once and cuts once, so all of them are satisfied by a
+// gesture that CONSUMES its selection and leaves nothing standing. The rule that a
+// choice outlives the gesture it feeds was asserted in `probe/k1` check `D` (`select
+// 2`, press, and the selection must still read 2) and relied on as a premise by
+// `probe/k2` check 5, which walks a converted script forward carrying the last
+// `select` — `niche.keys` chooses once and cuts twice, and a check expecting one
+// `select` per opening would have called that a lost press.
+//
+// Both of those instruments retire with the key spelling, so the claim moves here
+// first. **Move before you remove**: dropping a gate that holds a claim no loft test
+// makes is a coverage cut wearing a tidy-up's clothes.
+//
+// ⚠ **AND THE TWO OPENINGS ARE AT DIFFERENT PLACES ON ONE RUN, DELIBERATELY.**
+// Cutting the same spot twice asks a different question — the family already refuses
+// a hole that goes through — and would leave this test green through a gesture that
+// simply re-read a hole it had already made.
+fn test_a_gesture_does_not_move_the_standing_selection() {
+  w = walled();
+  s = a_session_at_a_wall(w);
+  assert(hex_editor::session_select_open(s, hex_editor::OP_POINTED).ak_ok, "pointed");
+
+  first = hex_editor::session_opening(s, w, at_the_wall(w), hex_editor::STOREY_H);
+  assert(first.om_ok, "the first was refused: {first.om_why}");
+  assert(first.om_open.op_kind == hex_editor::OP_POINTED,
+         "the first cut a {first.om_open.op_kind} where pointed was chosen");
+
+  // The same run, further along it — the author walks and cuts again, saying nothing
+  // about a kind, which is what a converted script does between two `verb opening`s.
+  (x2, z2) = hex_to_px(0 - 2, 0);
+  second = hex_editor::session_opening(s, w, hex_editor::author_on(w, x2, z2, 0.0),
+                                       hex_editor::STOREY_H);
+  assert(second.om_ok, "the second was refused: {second.om_why}");
+  assert(second.om_open.op_kind == hex_editor::OP_POINTED,
+         "the second opening cut a {second.om_open.op_kind} — the gesture consumed "
+       + "the choice, so a script that chooses once and cuts twice builds the wrong "
+       + "head on everything after the first");
+
+  // ⚠ AND BOTH REACHED THE REGISTRY, so this cannot pass on a second gesture that
+  // decided correctly and appended nothing — the same guard the test above it carries.
+  assert(len(s.es_open.items) == 2,
+         "two openings left {len(s.es_open.items)} in the session");
+}
+
 // ⚠ AND THE ADMISSIBLE SET IS NOT A RANGE, which is the whole reason it is a
 // predicate rather than a bound. `0..24` waves through nine kinds no branch answers.
 fn test_every_kind_the_family_can_make_is_selectable_and_no_others() {

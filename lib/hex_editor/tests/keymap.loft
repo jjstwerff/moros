@@ -61,8 +61,14 @@ fn key_universe() -> vector<text> {
 //
 // ⛔ **AND THE FREEING WAS A BEHAVIOUR CHANGE, MEASURED RATHER THAN ASSUMED SAFE.**
 // Nothing in production resolves them: `tools/scripts/*.keys` says `verb <name>` for
-// every gesture since `K3` (`probe/k2/run.sh` keeps the grep), and the client's `o`/`p`
-// send `36:1`/`36:2` straight to the wire and never reached the definition at all.
+// every gesture since `K3`, and the client's `o`/`p` send `36:1`/`36:2` straight to
+// the wire and never reached the definition at all.
+//
+// ⚠ **`probe/k2/run.sh` KEPT THE GREP THAT HELD THE FIRST HALF, AND IT IS GONE — plan
+// 22 `K3b`.** What replaced it is stronger rather than weaker: a script cannot press
+// one of these keys at all now, because `key <K>` is not vocabulary in either reader
+// and an unknown word FAILS the run (`K3a`, `K3b.1`). The grep policed a spelling
+// that no longer parses.
 fn freed_aliases() -> vector<text> { ["P", "I", "U", "N", "M", "T", "K", "V"] }
 
 fn the_verb_each_alias_reached() -> vector<text> {

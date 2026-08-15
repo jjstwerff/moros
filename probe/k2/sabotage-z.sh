@@ -84,17 +84,6 @@ row() {
   fi
 }
 
-scripted() {
-  label=$1; want=$2; tag=$3
-  sh probe/k2/run.sh slab > "$OUT/$tag.log" 2>&1
-  if grep -q "$want" "$OUT/$tag.log"; then
-    printf '    ok   %s → %s\n' "$label" "$(grep -m1 "$want" "$OUT/$tag.log" | sed 's/^ *//')"
-  else
-    printf '    FAIL %s went unnoticed (see %s.log)\n' "$label" "$tag"
-    fails=$((fails + 1))
-  fi
-}
-
 printf '── the library: what the gesture does ─────────────────────────────────\n'
 if ! grep -q '^pub fn session_hole_kind' "$SESS"; then
   printf '    FAIL the subject is absent — %s has no `session_hole_kind`\n' "$SESS"; exit 1
@@ -143,31 +132,29 @@ sed -i 's/^  hk_cut = slab_hole(s.es_slabs, kind, a.au_x, a.au_z, HOLE_HALF, HOL
 row s5 "a void is cut with no slab under it" 1
 restore
 
-printf '── the probe: whether the script was transcribed faithfully ───────────\n'
-
-# 6 — the conversion half done: the live script still presses the key.
+# ⛔ **THE SCRIPTED ROWS ARE GONE — plan 22 `K3b`, and what they asked is worth
+# recording.** They drove `probe/k2/run.sh`, which ran each converted script beside
+# `probe/k2/orig/`'s copy of itself in the KEY spelling and diffed the sentences and
+# the saved world. `K3b` deleted the key branch from both readers, so there is no
+# second spelling to be the other half of that diff, and the baselines went with it.
 #
-# ⛔ **THE PATTERN WENT STALE AT `K3` · `X` AND NOTHING SAID SO FOR A DAY.** When `X`
-# got its verb, `run.sh`'s check merged the pair into one message — ``still presses
-# `key X`/`key Z` `` — and `sabotage-x.sh` was written against the new wording while
-# this file kept greping `still presses .key Z.`, which no longer matches. So the row
-# printed *a half-done conversion went unnoticed* about a check that noticed loudly, in
-# different words. ⚠ It fails SAFE (a false alarm, not a false pass) and it is still the
-# `CLAUDE.md` rule: **a grep over a log is an instrument whose default answer is
-# absent.** Found by running this sweep at `M4`; it had not been run since `X` landed.
-sed -i '0,/^verb hole$/s//key Z/' "$KEYS"
-scripted "a half-done conversion" 'still presses .key X./.key Z.' s6
-restore
-
-# 7 — RETIRED BY `K3` · `X`, and it is retired rather than deleted because its
-# left-hand side is gone. It sabotaged the script by writing `verb slab` where `key X`
-# stood, on the claim that `slab` was a verb nothing was bound to — and `X` is bound
-# now, so that edit is the correct spelling and the row would be asserting a failure
-# that must not happen.
+# **Where each retired row's claim lives now:**
 #
-# **What it proved is spent, not lost.** `probe/k2/sabotage-x.sh` row 8 is the same
-# claim the right way up: with both verbs bound, the mistake the pair still invites is
-# spelling the two ACTIONS as one verb, and that row goes red on check 11's count.
+#   *a half-done conversion* — **stronger than it was.** A `key <K>` line is an
+#   unknown word in both readers now, and `K3a`/`K3b.1` make an unknown word FAIL the
+#   run. It is caught on every script in every driver rather than on one script in a
+#   probe nobody runs; `probe/k1` asserts it directly.
+#
+#   *the transcription rows* — the SYSTEM claim under each is a library test and is
+#   listed in the rows above (a direction stays in the verb; two actions stay two
+#   verbs; a cellar is not a storey's mirror). What retired is transcription fidelity
+#   of one FILE, and the conversion is a one-time event that is finished.
+#
+# ⚠ **AND ONE THING IS GENUINELY UNCOVERED, SAID OUT LOUD RATHER THAN IMPLIED.** Ten
+# of the twelve scripts `probe/k2` drove have no gate behind them — that was the
+# probe's own stated reason for existing — so a press deleted from one of them now
+# goes unnoticed. `cellar.keys` and `deck.keys` are the exceptions, wrapped by
+# `tools/gates/world/cellar_ceiling.mjs` and `deck_soffit.mjs`. Plan 22 `K3d`.
 
 printf '\n'
 if [ "$fails" -eq 0 ]; then

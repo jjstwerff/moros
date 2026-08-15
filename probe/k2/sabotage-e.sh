@@ -72,18 +72,6 @@ row() {
   fi
 }
 
-# One converted script through a server, both spellings, scored on a named failure.
-scripted() {
-  label=$1; want=$2
-  sh probe/k2/run.sh determinism > "$OUT/$3.log" 2>&1
-  if grep -q "$want" "$OUT/$3.log"; then
-    printf '    ok   %s → %s\n' "$label" "$(grep -m1 "$want" "$OUT/$3.log" | sed 's/^ *//')"
-  else
-    printf '    FAIL %s went unnoticed (see %s.log)\n' "$label" "$3"
-    fails=$((fails + 1))
-  fi
-}
-
 # ⛔ **RESTORE FROM A COPY, NEVER FROM `git checkout`** — and this line cost the work
 # it was protecting. The first version restored with `git checkout -- $SRC $KEYS`,
 # which is correct only if the subject is already committed; the subject of a sabotage
@@ -156,28 +144,29 @@ sed -i 's/^                     walker_step(w.w_unit), sa_why);$/               
 row s4 "the stride is the old global instead of w_unit" 1
 restore
 
-printf '── the probe: whether the script was transcribed faithfully ───────────\n'
-
-# 5 — the conversion half done: the live script still presses the key.
-sed -i '0,/^verb stair_up$/s//key E/' "$KEYS"
-scripted "a half-done conversion" 'still presses a stair key' s5
-restore
-
-# 6 — a press that changed DIRECTION. ⚠ THE TOTAL IS STILL TWO, which is exactly what
-# check 10 counting `E` and `Q` separately rather than summing them exists to catch.
-sed -i '0,/^verb stair_up$/s//verb stair_down/' "$KEYS"
-scripted "an up transcribed as a down" 'a tread changed direction' s6
-restore
-
-# 7 — a press LOST altogether. ⚠ **CHECK 10 IS WHAT REPORTS IT, NOT CHECKS 1 AND 2** —
-# measured, and this comment said the opposite before the sweep ran. The counter fires
-# on the file, before either server is started, so the sentence-and-world comparison
-# never gets to speak. That is fine and it is worth writing down: the cheap instrument
-# answers first, and a reader who assumed the expensive one caught it would think this
-# row proves something it does not.
-sed -i '0,/^verb stair_up$/s//echo a tread that is not cut/' "$KEYS"
-scripted "a lost tread" 'FAIL' s7
-restore
+# ⛔ **THE SCRIPTED ROWS ARE GONE — plan 22 `K3b`, and what they asked is worth
+# recording.** They drove `probe/k2/run.sh`, which ran each converted script beside
+# `probe/k2/orig/`'s copy of itself in the KEY spelling and diffed the sentences and
+# the saved world. `K3b` deleted the key branch from both readers, so there is no
+# second spelling to be the other half of that diff, and the baselines went with it.
+#
+# **Where each retired row's claim lives now:**
+#
+#   *a half-done conversion* — **stronger than it was.** A `key <K>` line is an
+#   unknown word in both readers now, and `K3a`/`K3b.1` make an unknown word FAIL the
+#   run. It is caught on every script in every driver rather than on one script in a
+#   probe nobody runs; `probe/k1` asserts it directly.
+#
+#   *the transcription rows* — the SYSTEM claim under each is a library test and is
+#   listed in the rows above (a direction stays in the verb; two actions stay two
+#   verbs; a cellar is not a storey's mirror). What retired is transcription fidelity
+#   of one FILE, and the conversion is a one-time event that is finished.
+#
+# ⚠ **AND ONE THING IS GENUINELY UNCOVERED, SAID OUT LOUD RATHER THAN IMPLIED.** Ten
+# of the twelve scripts `probe/k2` drove have no gate behind them — that was the
+# probe's own stated reason for existing — so a press deleted from one of them now
+# goes unnoticed. `cellar.keys` and `deck.keys` are the exceptions, wrapped by
+# `tools/gates/world/cellar_ceiling.mjs` and `deck_soffit.mjs`. Plan 22 `K3d`.
 
 printf '\n'
 if [ "$fails" -eq 0 ]; then

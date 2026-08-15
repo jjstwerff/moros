@@ -84,21 +84,6 @@ row() {
   fi
 }
 
-# ⚠ THE SCRIPTED ROWS NAME THE CHECK THEY EXPECT, not just "a failure". A row that
-# accepts any red passes when the probe breaks for an unrelated reason — a green sweep
-# over a broken instrument.
-scripted() {
-  label=$1; want=$2; tag=$3
-  sh probe/k2/run.sh cellar deck > "$OUT/$tag.log" 2>&1
-  if grep -q "$want" "$OUT/$tag.log"; then
-    printf '    ok   %s → %s\n' "$label" \
-      "$(grep -m1 "$want" "$OUT/$tag.log" | sed 's/^ *//' | cut -c1-96)"
-  else
-    printf '    FAIL %s went unnoticed (see %s.log)\n' "$label" "$tag"
-    fails=$((fails + 1))
-  fi
-}
-
 printf '── the library: what the gesture does ─────────────────────────────────\n'
 if ! grep -q '^pub fn storey_here' "$ROOT"; then
   printf '    FAIL the subject is absent — %s has no `storey_here`\n' "$ROOT"; exit 1
@@ -161,27 +146,29 @@ sed -i 's/sy_pad: CELLAR_PAD,$/sy_pad: STOREY_PAD,/' "$ROOT"
 row s6 "the cellar marks a storey's stale region" 1
 restore
 
-printf '── the probe: whether the scripts were transcribed faithfully ─────────\n'
-
-# 7 — the conversion half done: the live script still presses the key.
-sed -i '0,/^verb storey$/s//key B/' "$DECK"
-scripted "a half-done conversion" 'still presses a storey key' s7
-restore
-
-# 8 — …and the pair swapped, which is the mistake two keys on one message invite and
-# the one a total would hide: `cellar.keys` says `storey` and the count still balances
-# across the two scripts unless each key is counted against its OWN verb.
-sed -i 's/^verb cellar$/verb storey/' "$CELL"
-scripted "a cellar transcribed as a storey" 'a floor changed direction' s8
-restore
-
-# 9 — and the direction back in a payload, which is what a reader reaching for `36:`'s
-# *empty means the one I chose* contract would write. `VERBMAP` carries no argument, so
-# `verb cellar -1` reaches `12:-1` and the `-1` is silently dropped — it happens to be
-# right here, and would be a lie the moment anyone wrote `verb storey -1`.
-sed -i 's/^verb storey$/verb storey -1/' "$DECK"
-scripted "the direction written as an argument" 'gone back into a payload' s9
-restore
+# ⛔ **THE SCRIPTED ROWS ARE GONE — plan 22 `K3b`, and what they asked is worth
+# recording.** They drove `probe/k2/run.sh`, which ran each converted script beside
+# `probe/k2/orig/`'s copy of itself in the KEY spelling and diffed the sentences and
+# the saved world. `K3b` deleted the key branch from both readers, so there is no
+# second spelling to be the other half of that diff, and the baselines went with it.
+#
+# **Where each retired row's claim lives now:**
+#
+#   *a half-done conversion* — **stronger than it was.** A `key <K>` line is an
+#   unknown word in both readers now, and `K3a`/`K3b.1` make an unknown word FAIL the
+#   run. It is caught on every script in every driver rather than on one script in a
+#   probe nobody runs; `probe/k1` asserts it directly.
+#
+#   *the transcription rows* — the SYSTEM claim under each is a library test and is
+#   listed in the rows above (a direction stays in the verb; two actions stay two
+#   verbs; a cellar is not a storey's mirror). What retired is transcription fidelity
+#   of one FILE, and the conversion is a one-time event that is finished.
+#
+# ⚠ **AND ONE THING IS GENUINELY UNCOVERED, SAID OUT LOUD RATHER THAN IMPLIED.** Ten
+# of the twelve scripts `probe/k2` drove have no gate behind them — that was the
+# probe's own stated reason for existing — so a press deleted from one of them now
+# goes unnoticed. `cellar.keys` and `deck.keys` are the exceptions, wrapped by
+# `tools/gates/world/cellar_ceiling.mjs` and `deck_soffit.mjs`. Plan 22 `K3d`.
 
 printf '\n'
 if [ "$fails" -eq 0 ]; then

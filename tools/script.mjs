@@ -8,10 +8,13 @@
 //
 //   node tools/script.mjs <script.keys> [--port 18090] [--shots] [--keep]
 //
-// The script speaks in the keys a person presses. One table below maps each to the
-// wire message the client sends for it — ⚠ IT MUST MATCH `html/editor.html`, and
-// that is the one duplication here; a key that does something different in the
-// page than in this file makes every script a lie.
+// ⛔ **THE SCRIPT SPEAKS IN GESTURES, NOT IN KEYSTROKES — plan 22 `K3b`.** It said
+// `key H` until 2026-08-16, and one table here decided what each key sent, which is
+// what made this file one of four places that knew a keyboard. A script is a
+// DOCUMENT: it outlives the layout it was written on, and it is read by a person
+// deciding what a scene does, so `verb place` is what it says now. One table remains
+// and its subject is the WIRE — which message id implements a verb — because this
+// file drives a socket and something here has to name one.
 //
 // ⚠ NO BROWSER BY DEFAULT. `watched = live_clients > 0`, and this runner IS a
 // client — so the server ticks for it, and the whole scene can be driven and read
@@ -21,7 +24,8 @@
 //
 //   # a comment
 //   at <x> <z> [yawdeg]     teleport — exact, repeatable, the workhorse
-//   key <K>                 send what pressing K sends
+//   verb <name>             perform that gesture — `place`, `opening`, `raise` …
+//   select <kind>           what the NEXT `opening` cuts; `select seat|annex <kind>`
 //   hold <WASD> <wu>        hold a key until that much ground is covered
 //   turn <deg>              turn by that much, measured off the body's facing
 //   wait <prefix>           wait for a status line starting with this
@@ -129,70 +133,34 @@ const UI_STATUS  = 24 + UI_VERBBAR;
 const UI_SUBJECT = 24;
 const CANVAS = wasm ? '#c' : '#gl';
 
-// ⚠ THIS COMMENT SAID "KEEP IN STEP WITH `html/editor.html`'s keydown handler"
-// AND THAT FILE WAS DELETED ON 2026-08-02 — the instruction naming where the truth
-// lived pointed at nothing for nine days. The truth is `hex_editor::press` now.
+// ── THE ONLY SPELLING — plan 22 `K1` opened it, `K3b` closed it ─────────────
 //
-// ⚠ PLAN 22 `W4` TRIED TO MOVE THE PARAMETER-PICKING ENTRIES TO `48:<key>` — the
-// message that hands a keystroke to `hex_editor::press` — AND BACKED OUT, because
-// measuring the two sides first showed they do not agree:
+// ⛔ **`KEYMAP` IS GONE AND WITH IT THIS FILE'S LAST OPINION ABOUT A KEYBOARD.** It
+// was 22 rows saying what a KEY sends, and it was one of the four places `W4` counted
+// that each decided what a key means. Two facts about it are worth keeping:
 //
-//   `O`/`P`  `36:<kind>` is a PROFILE (0 flat, 1 round, 2 pointed) and the handler
-//            always cuts with `DOOR_MAT`. `press` reads O/P as door-versus-window.
-//            Different axes, not different spellings.
-//   `F`/`G`  `do_fence` uses the author's ground height as the ring's reference and
-//            forces yaw to 0.0, then remembers the ring as a TRUNK for annexes.
-//            `press` does none of that.
+//   · **it had already diverged from the server and said so.** `W4` tried to route it
+//     through `hex_editor::press` and backed out on measurement — `O`/`P` were a
+//     PROFILE here (`36:1`/`36:2`) and door-versus-window there, different axes
+//     rather than different spellings; `F`/`G` took the ring's reference from the
+//     author's ground and remembered a TRUNK, which `press` did not do. A known
+//     duplicate rather than an unnoticed one, and now not a duplicate at all.
+//   · **the comment above it pointed at a deleted file for nine days** — *"keep in
+//     step with `html/editor.html`'s keydown handler"*, and that file went on
+//     2026-08-02. A table whose authority is named in prose outlives the authority.
 //
-// `press` was written from `src/editor_run.loft`'s table, and the RUNNER had
-// diverged from the server. **So the chokepoint is right and its contents are the
-// runner's**; the server is the authority and reconciling it key by key is what is
-// left of `W4`. Until then this table stays as it is, and it is a KNOWN duplicate
-// rather than an unnoticed one — which is the whole difference.
-const KEYMAP = {
-  ArrowUp: '5:1', ArrowDown: '5:-1',
-  F: '23:3,3',            // ring a fence around you
-  G: '23:1,3',            // the same tool with wall material — a hex RING, not a line
-  E: '30:1', Q: '30:-1',  // cut one step into the cell ahead
-  B: '12:1', C: '12:-1',  // a storey above, a cellar below
-  R: '25:1',              // a wall run — two presses, start and end
-  H: '32:',               // a house where you are looking (S4)
-  O: '36:1',              // a ROUND-headed opening in the wall you face
-  P: '36:2',              // …a POINTED one
-  I: '36:3',              // …a segmental one
-  U: '36:4',              // …and an oculus, a round window
-  N: '36:11',             // a round-headed NICHE — the same curve, stopped short
-  M: '36:21',             // …and a window in that niche's BACK — the embrasure
-  J: '37:0',              // a BEDSTEE — a closed box built ONTO the wall you face
-  K: '37:1',              // a BALCONY — an open deck with a rail, and a way in
-  V: '37:2',              // a CUPBOARD beside the last box — they share a wall
-  Y: '38:0',              // a BED in the box you stand at — sized by the box
-  T: '38:1',              // a STATUE in the niche — sized by the niche
-  X: '39:0',              // a SLAB over the last house — a floor WITH A THICKNESS
-  Z: '39:1',              // a stairwell through it, with a reveal in the thickness
-};
-// ── THE SECOND SPELLING — plan 22 `K1` ──────────────────────────────────────
-//
-// `verb <name>` beside `key <k>`, and the two run side by side until `K3` drops
-// the key form. A script is a document rather than a keyboard: it outlives the
-// layout it was written on, and `verb place` says what the scene does where `key H`
-// says which finger moved.
-//
-// ⚠ **THIS IS A SMALLER TABLE THAN THE ONE IT REPLACES, AND THE DIFFERENCE IS NOT
-// THE ROW COUNT.** `KEYMAP` decides what a KEY means — which is the fact re-asserted
-// in four places that `W4` exists to close. This decides which message id implements
-// a VERB, which is a fact about the wire and is this file's own business: it drives a
-// socket, so something here has to name a message id. What it deliberately does not
-// hold is a PROFILE. `O`…`M` differ in `KEYMAP` (`36:1 2 3 4 11 21`) and a converted
-// script says `select 2` then `verb opening`, so the head a door gets stops being
-// something a JS table knows.
+// What remains is one table saying which MESSAGE a verb sends, which is a fact about
+// the wire and this file's own business: it drives a socket, so something here has to
+// name a message id. What it deliberately does not hold is a PROFILE — `O`…`M` used
+// to differ by `36:1 2 3 4 11 21` and a script now says `select 2` then
+// `verb opening`, so the head a door gets is no longer something a JS table knows.
 //
 // ⏭ **AND IT DISAPPEARS WHEN THE WIRE TAKES A VERB.** `EDITING_MODES` says the wire
 // carries the verb and never the key; on the day a message does, `verb <name>` is a
-// passthrough and this table is deleted rather than converted. Six rows of debt, said
-// out loud — `hex_editor::keymap_default` is the authority for what a key names
-// (`verb_of` was, until `M4` deleted it), and `hex_editor::press_verb` for what a
-// verb does.
+// passthrough and this table is deleted rather than converted. Fourteen rows of debt,
+// said out loud — `hex_editor::keymap_default` is the authority for what a key names
+// and `hex_editor::press_verb` for what a verb does, and since `K3b` the only
+// consumer of the first is the CLIENT, where a keyboard belongs.
 const VERBMAP = {
   raise: '5:1', lower: '5:-1',
   place: '32:',           // a house where you are looking
@@ -711,17 +679,32 @@ let frameFails = 0;
 // still report success. Measured here before it moved, against a real server:
 // `verb hoist` and `hoist 1 2` each printed their `!!` line and came back **rc=0**.
 //
-// ⚠ **AND IT IS THE FLOOR UNDER THE DELETION, NOT A TIDY-UP.** `K3b` drops `KEYMAP`
-// and the `key` branch below; with this counter absent, every stale `key H` would
-// have become a silent no-op in a run that still said it succeeded. The guard has to
-// exist before the vocabulary shrinks, which is the order `K3a` established.
+// ⚠ **AND IT IS THE FLOOR UNDER THE DELETION, NOT A TIDY-UP.** `K3b` dropped `KEYMAP`
+// and the `key` branch in the commit after this counter landed; with it absent, every
+// stale `key H` would have become a silent no-op in a run that still said it
+// succeeded. The guard had to exist before the vocabulary shrank, which is the order
+// `K3a` established on the other reader — and it is what a `key` line meets today.
 //
 // ⚠ **WHAT IT COUNTS IS WHAT THE DRIVER DID NOT SEND, AND NOT WHAT THE SERVER
 // REFUSED** — the two are different claims and only the first is answerable here.
 // `editor_run` sees a refusal because `press_verb` hands it an acknowledgement
-// struct; this driver has only the status line, and `probe/k2/run.sh`'s header has
-// the measurement saying that channel LAGS and TRUNCATES. So a gesture the server
-// declines is still rc=0 from here, deliberately and stated.
+// struct; this driver has only the status line. So a gesture the server declines is
+// still rc=0 from here, deliberately and stated.
+//
+// ⛔ **AND THE REASON THAT CANNOT BE FIXED BY READING HARDER IS A PROPERTY OF THIS
+// FILE, measured at plan 22 `K3` · `X` and kept here because its old home
+// (`probe/k2/run.sh`'s header) was deleted at `K3b`.** This driver prints, after each
+// line it sends, whatever message arrives NEXT — routinely a push left over from the
+// line before — and it returns 250 ms after its last send with replies still in
+// flight. **So the transcript LAGS and TRUNCATES.** Measured over ten script pairs:
+// four matched; `annex`, `embrasure`, `niche` and `profiles` were each missing one or
+// two `opened a profile …` replies **whose worlds and server sentences were
+// identical**; and `determinism` had three EXTRA lines. Every one of those is the
+// pairing shifting, not a gesture changing.
+//
+// ⏭ It is fixable — drain the socket to quiescence before this file exits — and that
+// is a change every gate in the tree runs through, so it wants its own step. Until
+// then: **the server's own log is the diffable channel, and this transcript is not.**
 //
 // ⚠ **AND `cam` WITH NO CAMERA AND `last` WITH NO MATCH ARE DELIBERATELY NOT ON IT.**
 // Both print `!!` too, but they are checks that found nothing rather than words the
@@ -1088,7 +1071,7 @@ for (const raw of lines) {
   // It rewrites the SUBJECT BAR (`· opening <kind>`), which is 24 rows of every
   // frame this file classifies, so a `snap` taken before it and judged after it
   // would be judged against a strip that has changed.
-  if (['at', 'key', 'verb', 'select', 'ground', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
+  if (['at', 'verb', 'select', 'ground', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
     lastShot = null;
   }
   if (cmd === 'at') {
@@ -1116,20 +1099,13 @@ for (const raw of lines) {
       ws.send(`48:${x},${z}${h === undefined || Number.isNaN(h) ? '' : `,${h}`}`);
       console.log('  ' + await ack('eye ', 10000));
     }
-  } else if (cmd === 'key') {
-    const k = rest[0];
-    const msg = KEYMAP[k];
-    if (!msg) { console.log(`  !! no key '${k}' — add it to KEYMAP and to editor.html`); unknown += 1; continue; }
-    ws.send(msg);
-    await sleep(250);
-    const said = status[status.length - 1];
-    if (said) console.log('  ' + said);
   } else if (cmd === 'verb') {
-    // ⚠ IT SENDS AND READS EXACTLY AS `key` DOES, DELIBERATELY. `K1`'s own bar is
-    // that **no gate moves on the day the format changes** — so a converted line
-    // must put the same sentence in the transcript at the same moment, or `K2`
-    // would be a spelling change that reds a picture gate. The one thing this
-    // knows that `key` does not is that the id comes from the VERB.
+    // ⚠ IT SENDS AND READS EXACTLY AS `key` DID, AND THAT IS WHY NO GATE MOVED WHEN
+    // `key` WENT. `K1`'s own bar was that **no gate moves on the day the format
+    // changes** — a converted line had to put the same sentence in the transcript at
+    // the same moment, or `K2` would have been a spelling change that reds a picture
+    // gate. The one thing this knows that `key` did not is that the id comes from the
+    // VERB, which is why the profile could leave the table above with it.
     const v = rest[0];
     const vmsg = VERBMAP[v];
     if (!vmsg) { console.log(`  !! no verb '${v}' — see hex_editor::press_verb`); unknown += 1; continue; }
