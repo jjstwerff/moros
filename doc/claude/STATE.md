@@ -393,6 +393,57 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3` · `X` — THE NAME THE PAIR WAS WAITING ON, and an instrument removed the hour it was built, 2026-08-15
+
+**`X` names `slab`.** `Z` bound `hole` a slice earlier and deliberately did not declare the
+other half — a verb `press_verb` answers `PR_NONE` to is what
+`test_every_verb_the_definition_produces_is_bound` exists to refuse — so `slab` was a name
+waiting for the step that binds it rather than one this step invented. `hole`'s refusal has said
+*lay a slab first* since `Z`, and this is the verb it was naming. `session_slab` is the
+assembly; `probe/k2` check 11 now counts both halves and asserts they stayed **two verbs**.
+
+⛔ **AND THE INSTRUMENT I ADDED TO COVER THE MOVED SENTENCE WAS REMOVED THE SAME HOUR.** Every
+`K3` slice moves an `S:` reply into `hex_editor` — `say_slab` is this one's — and `probe/k2`
+check 1 **cannot see any of them**: it greps `^editor: `, which is the `println` BESIDE the
+reply, and on the slab the two say different things (*slab at (0,6) 10..12* against *a slab 2
+units thick at 0,6 — ceiling 10, floor above 12, clear 10*). So a twelfth check compared the
+wire. It went red on four scripts — and every red was the instrument, not the subject:
+
+> **`tools/script.mjs`'s capture LAGS and TRUNCATES.** It prints, after each line it sends,
+> whatever message arrives NEXT — routinely a push left over from the line before — and returns
+> 250 ms after its last send with replies still in flight. Two scripts of **different lengths**
+> (a converted one sends an extra `select` per press) therefore lag by different amounts and
+> lose different tails. Measured over all ten pairs: four matched, four were missing an
+> `opened a profile …` reply **whose world and server sentences were identical**, and
+> `determinism` had three EXTRA lines.
+
+⚠ **THE REMOVAL IS NOT A COVERAGE CUT, AND THE CHECK IS WHAT SAYS SO.** `say_slab` is a library
+function, and `lib/hex_editor/tests/verb.loft` asserts all three of its numbers — the ceiling,
+the floor above, and the clear height between them, which is exactly the claim a model of sheets
+cannot state. That is `CLAUDE.md`'s division working: **a sentence that becomes a library
+function gets a library test.** ⏭ Draining the socket to quiescence before `script.mjs` exits
+would make the wire diffable, and it is a change to the driver every gate in the tree runs.
+
+⛔ **AND `HOLE_PAD` WAS ONE NUMBER UNDER TWO NAMES.** The socket marked
+`HOUSE_W + HOUSE_D + 4` by hand for the slab and asked `hm_pad` for the hole — the same
+footprint, for the same reason, with nothing between them that could notice a drift. It is
+`SLAB_PAD` for both, and the test asserts **both gestures reach for it**, because a constant
+only one caller consults is the *built and never called* defect in its smallest form.
+
+⚠ **A `pub const` USED ABOVE ITS OWN DECLARATION IS REPORTED AS A LOCAL WITH THE WRONG CASING** —
+*"Variable 'SLAB_PAD' is UPPER_CASE — that style is reserved for constants"*, against a
+`pub const`. It **resolves correctly** (measured: `sb_pad = 13`), so the cost is diagnosis time:
+the one diagnostic pointing at a real constant is the one saying it is not one, which sends you
+hunting a shadowing binding that does not exist.
+[loft#921](https://github.com/loft-lang/loft/issues/921), with a control in the same file — the
+identical constant declared *before* its use is not advised. The fix here is the declaration
+order the shared constant wanted anyway.
+
+⏭ **TWO KEYS LEFT: `B` AND `C`** — a storey above and a cellar below. ⚠ They are the first pair
+whose scripts have a **real gate**: `deck.keys` and `cellar.keys` are driven by
+`deck_soffit.mjs` and `cellar_ceiling.mjs`, where the other eight `probe/k2` scripts are run by
+hand.
+
 ## ✅ `K3` · `Z` — A THIRD REASON FOR TWO VERBS, and a library that named a keystroke, 2026-08-14
 
 **`Z` names `hole`; `X` is untouched and has no verb yet.** They are two keys on one message —

@@ -77,6 +77,16 @@ pub fn say_stair(dir: integer, q: integer, r: integer, to: integer, from: intege
   "stair {dir:+} at {q},{r} height {to} from {from}"
 }
 
+// ⚠ THE SENTENCE IS THE CLAIM `slab.keys` EXISTS FOR, so it says all three numbers
+// and not one of them. A model of sheets has the ceiling and the floor above at the
+// SAME height and has nowhere at all to put the clear — so *ceiling 11, floor above
+// 13, clear 10* is three facts a sheet cannot state, and a wording that dropped any
+// of them would make the script's own claim unreadable.
+pub fn say_slab(s: Slab, floor: integer) -> text {
+  "a slab {slab_thick(s)} units thick at {s.sl_x},{s.sl_z} — ceiling {s.sl_lo}, "
++ "floor above {s.sl_hi}, clear {slab_clear(floor, s)}"
+}
+
 // `P1` in one line: a stencil owns a band, and what it KEPT is what it did not
 // destroy — the cave below and the deck above.
 pub fn say_stencil(cells: integer, below: integer, above: integer) -> text {

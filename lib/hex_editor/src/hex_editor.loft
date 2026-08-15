@@ -1080,11 +1080,14 @@ pub const VB_STAIR_DOWN = "stair_down";
 // a void through it, into two different registries. That is `place`/`opening`'s
 // relationship, and those have been two verbs since `V1`. See `session_hole_kind`.
 //
-// ⏭ **ONLY `hole` IS BOUND HERE.** `X` has no verb yet, so `slab` is the name this
-// pair is waiting on rather than one this step invented — declaring it unbound would
-// put a verb in `verb_of`'s table that `press_verb` answers `PR_NONE` to, which
-// `test_every_verb_the_definition_produces_is_bound` exists to refuse.
+// ⚠ **AND `slab` IS THE NAME THE PAIR WAS WAITING ON** — plan 22 `K3` · `X`, the slice
+// after `Z`'s. It was deliberately NOT declared there: a verb in `verb_of`'s table that
+// `press_verb` answers `PR_NONE` to is what
+// `test_every_verb_the_definition_produces_is_bound` exists to refuse, so the name was
+// left to the step that binds it. `hole`'s refusal has said *lay a slab first* since
+// `Z`, and this is the verb it was naming.
 pub const VB_HOLE = "hole";
+pub const VB_SLAB = "slab";
 
 // The DEFINITION — what key means what, and the only layer a person may remap.
 //
@@ -1112,6 +1115,7 @@ pub fn verb_of(key: text) -> text {
   if key == "E" { return VB_STAIR_UP; }
   if key == "Q" { return VB_STAIR_DOWN; }
   if key == "Z" { return VB_HOLE; }
+  if key == "X" { return VB_SLAB; }
   VB_NONE
 }
 
@@ -1260,6 +1264,25 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
     vh_cut = session_hole(sess, a);
     if !vh_cut.hm_ok { return ack_no(vh_cut.hm_say); }
     return ack_at(ack_about(vh_cut.hm_n, vh_cut.hm_say, 0), vh_cut.hm_q, vh_cut.hm_r);
+  }
+  // ⚠ **THE VERB THE ONE ABOVE REFUSES WITHOUT** — plan 22 `K3` · `X`, and the two
+  // read in the wrong order here on purpose: `hole` was bound a slice earlier because
+  // it is what `slab.keys` photographs, and this is what it needs to have run first.
+  //
+  // ⚠ **THE FOOTPRINT IS BUILT HERE AND THE PITCH IS NOT**, which is the seam
+  // `session_slab` states: `pose_footprint`, `HOUSE_W` and `HOUSE_D` are this module's,
+  // and `STOREY_H`/`SLAB_THICK` are `gesture.loft`'s and are read there. Passing them
+  // down from here would put *how tall a storey is* in a second place.
+  //
+  // ⚠ **AND `grade_under` IS `py_of` — the SERVER's own function, by another name.**
+  // Both read `world_ground_cell(…).h_height` under the author's own cell, so this is
+  // the handler's number and not a new choice about which ground a slab sits over.
+  if verb == VB_SLAB {
+    vsb_laid = session_slab(sess,
+                 pose_footprint(a.au_x, a.au_z, a.au_yaw, HOUSE_W, HOUSE_D),
+                 grade_under(w, a));
+    return ack_at(ack_about(vsb_laid.sb_n, vsb_laid.sb_say, 0),
+                  vsb_laid.sb_q, vsb_laid.sb_r);
   }
   if verb == VB_ANNEX {
     va_made = session_annex(sess, w, a);

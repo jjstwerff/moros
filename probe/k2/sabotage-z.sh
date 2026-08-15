@@ -127,11 +127,15 @@ sed -i '0,/^verb hole$/s//key Z/' "$KEYS"
 scripted "a half-done conversion" 'still presses .key Z.' s6
 restore
 
-# 7 — `X` CONVERTED TOO, which is the specific mistake this pair invites: `slab` has
-# no verb, so a `verb slab` line reaches nothing and the floor is never laid.
-sed -i '0,/^key X$/s//verb slab/' "$KEYS"
-scripted "the slab key converted as well" 'FAIL' s7
-restore
+# 7 — RETIRED BY `K3` · `X`, and it is retired rather than deleted because its
+# left-hand side is gone. It sabotaged the script by writing `verb slab` where `key X`
+# stood, on the claim that `slab` was a verb nothing was bound to — and `X` is bound
+# now, so that edit is the correct spelling and the row would be asserting a failure
+# that must not happen.
+#
+# **What it proved is spent, not lost.** `probe/k2/sabotage-x.sh` row 8 is the same
+# claim the right way up: with both verbs bound, the mistake the pair still invites is
+# spelling the two ACTIONS as one verb, and that row goes red on check 11's count.
 
 printf '\n'
 if [ "$fails" -eq 0 ]; then

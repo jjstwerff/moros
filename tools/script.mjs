@@ -208,6 +208,12 @@ const VERBMAP = {
   // asked for a void. One-to-one like `run`, and `39:2`/`39:3` reach the same gesture
   // with no key of their own.
   hole: '39:1',           // a stairwell through the slab last laid
+  // ⚠ `39:0` AND NOT A BARE `39:`, EVEN THOUGH THE BARE FORM WOULD WORK — plan 22
+  // `K3` · `X`. `payload as integer ?? 0` parses an empty payload to `0`, which IS
+  // the slab, so `slab: '39:'` would be right **by accident**: the row above is bare
+  // nowhere precisely because that default belongs to this one, and a reader seeing
+  // two bare `39:` rows could not tell which the default served. Written out.
+  slab: '39:0',           // a floor with a thickness, over the pose you are in
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 

@@ -59,6 +59,34 @@
 # SERVER says and check 2's is the world a save wrote — but the reason it *had* to is
 # gone, and a headless second opinion is now possible where it was not.
 #
+# ── ⛔ AND CHECK 1 READS THE SERVER'S LOG, NOT THE WIRE — MEASURED, `K3` · `X` ───
+#
+# A twelfth check was written and **removed the same hour**, and what it cost is worth
+# more than it was: *compare what the CLIENT was told*. The reasoning was sound — every
+# `K3` slice moves an `S:` reply into `hex_editor` (`say_slab` is `X`'s), and check 1
+# cannot see any of them, because it greps `^editor: `, which is the `println` BESIDE
+# the reply. On the slab those two say different things (*slab at (0,6) 10..12* against
+# *a slab 2 units thick at 0,6 — ceiling 10, floor above 12, clear 10*).
+#
+# ⛔ **THE WIRE CAPTURE IS NOT A DIFFABLE CHANNEL, AND THAT IS A PROPERTY OF THE
+# DRIVER.** `tools/script.mjs` prints, after each line it sends, whatever message
+# arrives NEXT — which is routinely a push left over from the line before — and it
+# returns 250 ms after its last send with replies still in flight. So the log LAGS and
+# TRUNCATES, and two scripts of different lengths (a converted one sends an extra
+# `select` per press) lag by different amounts and lose different tails. Measured over
+# all ten pairs: `door`, `house`, `opening` and `slab` matched; `annex`, `embrasure`,
+# `niche` and `profiles` were each missing one or two `opened a profile …` replies from
+# the converted side **whose worlds and server sentences were identical**; and
+# `determinism` had three EXTRA lines on the converted side. Every one of those is the
+# pairing shifting, not a gesture changing.
+#
+# ⏭ It is fixable — drain the socket to quiescence before `script.mjs` exits — and
+# that is a change to the driver every gate in the tree runs, so it is not this step's.
+# ✅ **What the removed check would have covered is covered**: `say_slab` is a library
+# function now, and `lib/hex_editor/tests/verb.loft` asserts all three of its numbers.
+# That is the division `CLAUDE.md` draws working as intended — a sentence that becomes
+# a library function gets a library test, and the gate keeps the drawn result.
+#
 # ⚠ PICTURES ARE STRIPPED FROM BOTH SIDES. `snap` photographs; it writes nothing and
 # decides nothing, and eight scripts × two runs × a headless browser is minutes of
 # nothing. The shots are a function of the world, and the world is check 2.
@@ -283,32 +311,38 @@ out of the verb and into nothing"
 baseline pressed two keys"
   fi
 
-  # 11 — the HOLE, plan 22 `K3` · `Z`, and its shape is a third one again. Not a
-  # family with kinds to compare (checks 8 and 9) and not a direction pair (check 10):
-  # `X` and `Z` are two ACTIONS on one message id, so what this asserts is that the
-  # conversion took `Z` and **left `X` alone**. A conversion that turned both into one
-  # verb would be the `25:1`/`25:3` defect rebuilt — two gestures answering as one.
+  # 11 — the SLAB AND THE HOLE, plan 22 `K3` · `Z` then `X`, and their shape is a third
+  # one again. Not a family with kinds to compare (checks 8 and 9) and not a direction
+  # pair (check 10): `X` and `Z` are two ACTIONS on one message id, so what this
+  # asserts is that they converted to **two verbs that stayed apart**. A conversion
+  # that turned both into one verb would be the `25:1`/`25:3` defect rebuilt — two
+  # gestures answering as one — and that is what the `verb slab` line below the
+  # `verb hole` count is written to catch.
   #
-  # ⚠ AND THE `X` HALF IS AN ASSERTION, NOT A LEFTOVER. `slab` has no verb yet, so the
-  # baseline and the live script must press `key X` the SAME number of times; a
-  # conversion that quietly dropped it would leave nothing to cut and check 1 would
-  # report a refusal rather than a missing press.
+  # ⚠ THE TWO ARE COUNTED SEPARATELY AND THE ORDER IS NOT CHECKED HERE. It cannot be
+  # from a count, and it does not need to be: a script that cut before it laid is
+  # refused by the library with *lay a slab first*, so check 1 reports a sentence the
+  # baseline never said. The counts catch a LOST press, which is the failure a refusal
+  # would otherwise be blamed for.
   zbase=$(grep -cE '^key Z$' "probe/k2/orig/$s.keys")
   zconv=$(grep -c '^verb hole$' "tools/scripts/$s.keys")
   xbase=$(grep -cE '^key X$' "probe/k2/orig/$s.keys")
-  xlive=$(grep -cE '^key X$' "tools/scripts/$s.keys")
-  if [ "$zbase" -eq 0 ] && [ "$zconv" -eq 0 ]; then
-    ok "no hole in this script"
-  elif grep -qE '^key Z$' "tools/scripts/$s.keys"; then
-    bad "tools/scripts/$s.keys still presses \`key Z\` — the conversion is half done"
-  elif [ "$zbase" != "$zconv" ]; then
-    bad "the baseline presses \`Z\` $zbase time(s) and the script says \`verb hole\` \
-$zconv — a press was lost or gained"
-  elif [ "$xbase" != "$xlive" ]; then
-    bad "the slab presses moved: \`key X\` $xbase in the baseline, $xlive live — \
-\`X\` has no verb yet and must not have been converted"
+  xconv=$(grep -c '^verb slab$' "tools/scripts/$s.keys")
+  if [ "$zbase" -eq 0 ] && [ "$zconv" -eq 0 ] && [ "$xbase" -eq 0 ] && [ "$xconv" -eq 0 ]
+  then
+    ok "no slab or hole in this script"
+  elif grep -qE '^key [XZ]$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses \`key X\`/\`key Z\` — the conversion is \
+half done"
+  elif [ "$zbase" != "$zconv" ] || [ "$xbase" != "$xconv" ]; then
+    bad "the baseline presses \`X\` $xbase and \`Z\` $zbase time(s) and the script says \
+\`verb slab\` $xconv and \`verb hole\` $zconv — a press was lost or gained"
+  elif grep -qE '^verb slab [0-9]' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys says \`verb slab <kind>\` — the two actions have been \
+flattened onto one verb with a payload"
   else
-    ok "and it cuts $zconv void(s) by verb, over $xlive slab(s) still laid by \`key X\`"
+    ok "and it lays $xconv slab(s) and cuts $zconv void(s), by two verbs where the \
+baseline pressed two keys"
   fi
 
   sed -n "s/^ *\([A-Z]\): '37:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/annexmap.txt"

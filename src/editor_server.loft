@@ -5531,21 +5531,28 @@ fn main() {
             // a cellar, a courtyard, a gap between two walls. Tying it to the last
             // house also made it impossible to PHOTOGRAPH, because a house has a
             // roof over it and the slab is underneath.
-            sslab = hex_editor::slab_over(
-              hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
-              py_of(wld, px, pz), STOREY_H, hex_editor::SLAB_THICK);
-            sess.es_slabs.items += [sslab];
-            shx = world_to_hex(sslab.sl_x, sslab.sl_z);
-            mark_dirty(dirty, shx.ha_q, shx.ha_r, HOUSE_W + HOUSE_D + 4);
+            //
+            // ⚠ **THE APPEND, THE SENTENCE AND THE EXTENTS WERE HERE — plan 22 `K3`
+            // · `X`, and it is the branch below's finding one action over.**
+            // `slab_over` was already the library's; `es_slabs.items += […]` was not,
+            // and it is the half that matters: a slab reaches NO STORE, so that
+            // vector is the mesher's only source for a floor AND `slab_hole`'s only
+            // source for something to cut through.
+            //
+            // ⚠ AND `HOUSE_W + HOUSE_D + 4` WAS WRITTEN OUT HERE while the hole one
+            // screen down asked `hm_pad` for the same footprint. One number, two
+            // spellings, no instrument between them — it is `SLAB_PAD` for both now.
+            ssl = hex_editor::session_slab(sess,
+                    hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
+                    py_of(wld, px, pz));
+            mark_dirty(dirty, ssl.sb_q, ssl.sb_r, ssl.sb_pad);
+            sslab = ssl.sb_slab;
             // ⚠ AND WHERE IT LANDED. A footprint is placed AHEAD of the author —
             // that is what "a house where you are looking" means — so a slab is not
             // under your feet, and the first hole cut at the author's own position
             // was refused for reaching past the slab's end by 4.87. The refusal was
             // right; what was missing was any way to know where to stand.
-            srv.send_to(ev.cid, "S:a slab {hex_editor::slab_thick(sslab)} units thick "
-                              + "at {sslab.sl_x},{sslab.sl_z} — ceiling {sslab.sl_lo}, "
-                              + "floor above {sslab.sl_hi}, clear "
-                              + "{hex_editor::slab_clear(py_of(wld, px, pz), sslab)}");
+            srv.send_to(ev.cid, "S:{ssl.sb_say}");
             println("editor: slab at ({sslab.sl_x},{sslab.sl_z}) "
                     + "{sslab.sl_lo}..{sslab.sl_hi}, clear "
                     + "{hex_editor::slab_clear(py_of(wld, px, pz), sslab)} of {STOREY_H}");

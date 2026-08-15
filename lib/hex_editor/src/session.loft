@@ -36,6 +36,13 @@
 use gesture;
 use hex_voxel;
 use hex_grid;
+// ⚠ THE FIRST `use say` IN THIS FILE, and it is the file's own note above being taken
+// at its word rather than an exception to it. *"The SENTENCES … are composed in
+// `editor_server`"* was true when this was written and stopped being true when
+// `say.loft` was cut out of the server — so a sentence a gate reads belongs there, and
+// the three composed inline below (`a bed … in the box`, `hole refused — …`) are the
+// residue of the older arrangement rather than the rule.
+use say;
 
 // ⚠ `EditSession`, NOT `Session`. `ssh` publishes `pub struct Session` and a struct
 // name is GLOBAL across a consumer's dependency graph — two declarations merge into
@@ -553,6 +560,88 @@ pub fn session_seat_kind(s: EditSession, a: Author, kind: integer) -> SeatMade {
     sm_say: "a figure {ss_made.se_prop.pr_up} units tall in the niche" }
 }
 
+// ── A FLOOR WITH A THICKNESS — `39:0`, plan 22 `K3` ─────────────────────────
+//
+// ⚠ **THE OTHER HALF OF THE PAIR BELOW, AND IT ARRIVED SECOND FOR A REASON WORTH
+// KEEPING.** `Z` took its verb first because `hole` is what `slab.keys` photographs;
+// this is the gesture `hole` refuses without. So the two are now `place`/`opening`'s
+// relationship end to end — a verb that BUILDS and a verb that CUTS INTO what was
+// built — and the refusal one screen down (*"lay a slab first"*) names this one.
+//
+// ⚠ **AND IT IS THE FOURTH SLICE WHOSE ASSEMBLY WAS AT THE SOCKET AND WHOSE GESTURE
+// WAS ALREADY HERE.** `slab_over` — the storey split, the yaw, the extent off the
+// footprint — has been `gesture.loft`'s since the band was designed. What sat in
+// `editor_server.loft` was the `es_slabs` append, the sentence and where the picture
+// went stale, which is the seats' finding and the holes' finding word for word.
+//
+// ⚠ **THE APPEND IS AGAIN THE HALF THAT MATTERS.** A slab reaches NO STORE — `w_tau`
+// does not move — so `es_slabs` is the mesher's only source for a floor *and*
+// `slab_hole`'s only source for something to cut through. A driver that laid without
+// filing would draw nothing, report success, and then refuse every hole with *no slab
+// to cut*, which reads as the hole being broken.
+
+// How far around a laid floor or a cut void the picture is stale, in cells — the
+// slab's whole footprint, because both change the surface a floor draws across all
+// of it.
+//
+// ⚠ **IT WAS `HOLE_PAD`, AND ONE NUMBER UNDER TWO NAMES IS THE THING THIS TREE SPENDS
+// ITS TIME DELETING** — plan 22 `K3` · `X`. The server marked `HOUSE_W + HOUSE_D + 4`
+// for the slab and `hm_pad` for the hole, which are the same footprint for the same
+// reason; giving the slab a `SLAB_PAD` of its own beside a `HOLE_PAD` would have been
+// two constants that must agree and no instrument that says so.
+//
+// ⚠ **AND IT IS `HOUSE_W + HOUSE_D + 4` AND CANNOT SAY SO**: those live in the root
+// module, which `use`s this one, and a `use` goes one way. So the number is written
+// out here and **a test makes the two equal** — the test file can see both, where this
+// file cannot. A comment claiming the equality would be the kind of agreement-by-luck
+// `WORLD_EPS` was declared twice under.
+//
+// ⚠ **IT SITS ABOVE BOTH GESTURES THAT READ IT, AND THAT IS NOT TIDINESS.** Declared
+// below `session_slab` — where it was, as the hole's own constant — it still RESOLVED
+// (measured: `sb_pad = 13`), but `loft test` reported
+// *"Variable 'SLAB_PAD' is UPPER_CASE — that style is reserved for constants"* against
+// the use site. A forward reference inside one file reads to the linter as a local
+// being introduced, so the one diagnostic pointing at a real constant is the one that
+// says it is not one. Filed as a gotcha; the fix here is the declaration order the
+// shared constant wanted anyway.
+pub const SLAB_PAD = 13;
+
+// ⚠ **THE FOOTPRINT IS THE CALLER'S AND THE PITCH IS NOT.** `pose_footprint`,
+// `HOUSE_W` and `HOUSE_D` live in the root module, which `use`s this one — so the
+// footprint arrives as an argument, exactly as `session_opening` takes `STOREY_H`.
+// The pitch and the thickness do NOT: they are `gesture.loft`'s own constants, this
+// file can read them, and a socket allowed to pass its own would be the second place
+// that decides how tall a storey is.
+pub struct SlabLaid {
+  sb_ok:   boolean,
+  sb_say:  text = "",           // the sentence, refusal and success alike
+  sb_slab: Slab = Slab {},
+  sb_n:    integer = 0,         // slabs in the session, after the append
+  sb_q: integer = 0, sb_r: integer = 0,
+  sb_pad:  integer = 0,         // how far around it the picture is stale
+}
+
+// `39:0` — lay a floor over the footprint given, one storey above the floor given.
+//
+// ⚠ **IT CANNOT REFUSE, AND `sb_ok` IS THERE ANYWAY.** `slab_over` is total: a
+// footprint and a floor always decompose into a ceiling and the floor above. The field
+// is the shape every other gesture in this file answers in, and a caller that had to
+// remember *this one is the infallible one* is a caller that will stop checking the
+// others too.
+//
+// ⚠ **THE FLOOR IS THE AUTHOR'S GROUND, NOT THE FOOTPRINT'S.** They differ — a
+// footprint is placed AHEAD of the author — and the server has read it under the
+// author since the gesture existed. Taking it under the slab instead would move every
+// slab ever laid on sloping ground, which is a change to make on purpose and not in a
+// step about verbs.
+pub fn session_slab(s: EditSession, f: Footprint, floor: integer) -> SlabLaid {
+  sb_new = slab_over(f, floor, STOREY_H, SLAB_THICK);
+  s.es_slabs.items += [sb_new];
+  (sq, sr) = hex_grid::px_to_hex(sb_new.sl_x, sb_new.sl_z);
+  SlabLaid { sb_ok: true, sb_slab: sb_new, sb_n: len(s.es_slabs.items),
+    sb_q: sq, sb_r: sr, sb_pad: SLAB_PAD, sb_say: say_slab(sb_new, floor) }
+}
+
 // ── A VOID THROUGH THE LAST SLAB — `39:1`…`39:3`, plan 22 `K3` ──────────────
 //
 // ⚠ **`X` AND `Z` ARE TWO VERBS, AND NOT FOR THE STAIR PAIR'S REASON.** `E`/`Q` stayed
@@ -580,16 +669,6 @@ pub fn session_seat_kind(s: EditSession, a: Author, kind: integer) -> SeatMade {
 // `2.0, 2.0` written at the one call site, and a second driver would have picked its
 // own number with every test green on both.
 pub const HOLE_HALF = 2.0;
-
-// How far around a cut void the picture is stale, in cells — the slab's whole
-// footprint, because a hole changes the surface a floor draws across all of it.
-//
-// ⚠ **IT IS `HOUSE_W + HOUSE_D + 4` AND IT CANNOT SAY SO**: those live in the root
-// module, which `use`s this one, and a `use` goes one way. So the number is written
-// out here and **a test makes the two equal** — the test file can see both, where this
-// file cannot. A comment claiming the equality would be the kind of agreement-by-luck
-// `WORLD_EPS` was declared twice under.
-pub const HOLE_PAD = 13;
 
 // ⚠ THE HOLE TRAVELS WHOLE, like the seat's prop: a caller may want the reveal, the
 // datum or the extents, and a result carrying one of them would be this function
@@ -629,7 +708,7 @@ pub fn session_hole_kind(s: EditSession, a: Author, kind: integer) -> HoleMade {
   s.es_holes.items += [hk_cut.hx_hole];
   (hq, hr) = hex_grid::px_to_hex(hk_cut.hx_hole.ho_x, hk_cut.hx_hole.ho_z);
   HoleMade { hm_ok: true, hm_kind: kind, hm_hole: hk_cut.hx_hole,
-    hm_n: len(s.es_holes.items), hm_q: hq, hm_r: hr, hm_pad: HOLE_PAD,
+    hm_n: len(s.es_holes.items), hm_q: hq, hm_r: hr, hm_pad: SLAB_PAD,
     hm_say: "a hole of kind {kind} through the slab" }
 }
 

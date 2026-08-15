@@ -571,13 +571,123 @@ fn test_the_hole_verb_cuts_a_void_into_the_session_and_nothing_into_the_store() 
        + "so any world instrument aimed at this gesture is measuring something else");
 }
 
-// ⚠ **THE PAD THE LIBRARY CANNOT NAME.** `session.loft` writes `HOLE_PAD = 13` because
+// ── …AND `X` IS THE VERB IT WAS REFUSING FOR — plan 22 `K3` · `X` ───────────
+//
+// ⚠ **THE FIXTURE ABOVE IS DELIBERATELY NOT ROUTED THROUGH THIS VERB.** `slabbed()`
+// still assembles its slab with `slab_over` by hand, so a sabotage of `session_slab`'s
+// append goes red HERE and leaves the hole rows green — which is what lets a sweep say
+// which gesture broke. Routing it through would have been more red and less signal.
+fn test_the_slab_verb_lays_a_floor_into_the_session_and_nothing_into_the_store() {
+  assert(verb_of("X") == VB_SLAB, "the slab key names '{verb_of(\"X\")}'");
+  w = flat();
+  s = EditSession {};
+  before = w.w_tau;
+  ack = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), verb_of("X"));
+  assert(ack.ak_ok, "the slab was refused over flat ground: {ack.ak_why}");
+  assert(len(s.es_slabs.items) == 1,
+         "the verb filed {len(s.es_slabs.items)} slab(s) — `es_slabs` is the mesher's "
+       + "only source for a floor AND `slab_hole`'s only source for something to cut");
+  assert(ack.ak_n == 1, "the ack counted {ack.ak_n} slabs");
+
+  // ⚠ **THE STORE IS THE CONTROL, AND IT IS A CLAIM RATHER THAN AN OMISSION** — the
+  // hole's note one gesture over, and it holds for the same reason: a slab is session
+  // state end to end, so `w_tau` and a saved world are blind to it BY CONSTRUCTION.
+  // This is what makes `probe/k2` check 2 unable to fail on `slab.keys`, and asserting
+  // the clock did not move is what stops a later reader aiming a world instrument here
+  // and believing it.
+  assert(w.w_tau == before,
+         "laying a floor did {w.w_tau - before} store writes — a slab reaches no "
+       + "store, so any world instrument aimed at this gesture is measuring something "
+       + "else");
+}
+
+// The claim `tools/scripts/slab.keys` exists to photograph, as an equality instead of
+// a picture: **a ceiling, a floor above it, and a CLEAR height between them are three
+// different numbers.** In a model of sheets the first two are the same value and the
+// third has nowhere to live.
+fn test_the_slab_the_verb_lays_has_a_thickness_and_a_clear_height_under_it() {
+  w = flat();
+  s = EditSession {};
+  a = author_on(w, 0.0, 0.0, 0.0);
+  ack = press_verb(s, w, a, verb_of("X"));
+  assert(ack.ak_ok, "the slab was refused: {ack.ak_why}");
+  sl = s.es_slabs.items[0] ?? slab_new(0.0, 0.0, 0.0, 1.0, 1.0, 0, 0);
+  floor = grade_under(w, a);
+  assert(slab_thick(sl) == SLAB_THICK,
+         "the laid slab is {slab_thick(sl)} units thick and the library's floor is "
+       + "{SLAB_THICK}");
+  assert(slab_clear(floor, sl) == STOREY_H - SLAB_THICK,
+         "the room under it is {slab_clear(floor, sl)} clear where a storey of "
+       + "{STOREY_H} minus a floor of {SLAB_THICK} is {STOREY_H - SLAB_THICK}");
+  // …and the three are distinct, which is the half a sheet model would pass without.
+  assert(sl.sl_lo != sl.sl_hi && slab_clear(floor, sl) != slab_thick(sl),
+         "ceiling {sl.sl_lo}, floor above {sl.sl_hi}, clear {slab_clear(floor, sl)} — "
+       + "these have collapsed onto each other and the slab is a sheet again");
+  // The sentence carries all three, because the wire is where an author reads them.
+  assert(ack.ak_why.contains("ceiling {sl.sl_lo}")
+      && ack.ak_why.contains("floor above {sl.sl_hi}")
+      && ack.ak_why.contains("clear {slab_clear(floor, sl)}"),
+         "the sentence drops one of the three numbers: '{ack.ak_why}'");
+}
+
+// ⚠ **THE PAIR'S WHOLE CLAIM, IN ONE SESSION: REFUSED, THEN ACCEPTED.** `X` and `Z` are
+// two keys on one message id and two verbs because they are two ACTIONS — one cannot
+// run until the other has. A test that laid and then cut would prove only that cutting
+// works; what says these are two actions rather than one is the SAME verb at the SAME
+// pose answering differently either side of the other one.
+fn test_the_hole_is_refused_until_the_slab_verb_has_run_in_the_same_session() {
+  w = flat();
+  s = EditSession {};
+  lay = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), verb_of("X"));
+  assert(lay.ak_ok, "the slab was refused: {lay.ak_why}");
+
+  // ⚠ THE POSE IS THE SLAB'S, NOT THE AUTHOR'S — a footprint is placed AHEAD, so a
+  // cut at the origin measures *reaching past the slab's end* while believing it
+  // measures the pair. `on_the_slab` reads where the floor actually landed.
+  a = on_the_slab(s, w);
+  cut = press_verb(s, w, a, verb_of("Z"));
+  assert(cut.ak_ok, "the void was refused over a floor this session just laid: "
+       + "{cut.ak_why}");
+
+  // The control, and it is the row that makes the one above mean something: the same
+  // verb at the same pose in a session where `slab` never ran.
+  ns = EditSession {};
+  no = press_verb(ns, w, a, verb_of("Z"));
+  assert(!no.ak_ok,
+         "a void was cut in a session with no floor in it — the two verbs are not "
+       + "two actions after all: '{no.ak_why}'");
+  assert(no.ak_why.contains("slab"),
+         "the refusal does not name the verb that would fix it: '{no.ak_why}'");
+}
+
+// ⚠ **THE PAD THE LIBRARY CANNOT NAME.** `session.loft` writes `SLAB_PAD = 13` because
 // `HOUSE_W`/`HOUSE_D` live in the root module, which `use`s it — a `use` goes one way.
 // This file can see both, so the equality is a TEST rather than a comment claiming it.
-fn test_the_hole_pad_is_the_slabs_footprint_the_library_cannot_read() {
-  assert(HOLE_PAD == HOUSE_W + HOUSE_D + 4,
-         "HOLE_PAD is {HOLE_PAD} and the footprint it stands for is "
+//
+// ⚠ **AND IT IS ONE CONSTANT FOR BOTH GESTURES SINCE `X`.** The server wrote
+// `HOUSE_W + HOUSE_D + 4` out for the slab and asked `hm_pad` for the hole — the same
+// footprint twice, with nothing between them that could notice a drift.
+fn test_the_slab_pad_is_the_footprint_the_library_cannot_read() {
+  assert(SLAB_PAD == HOUSE_W + HOUSE_D + 4,
+         "SLAB_PAD is {SLAB_PAD} and the footprint it stands for is "
        + "{HOUSE_W + HOUSE_D + 4} — the two have drifted apart");
+
+  // ⚠ **AND BOTH GESTURES HAVE TO REACH FOR IT, WHICH THE EQUALITY ABOVE CANNOT SAY.**
+  // A constant nobody reads is the *built and never called* defect in its smallest
+  // form: the server used to write the slab's pad out as a literal, so a `SLAB_PAD`
+  // that only the hole consulted would leave the two free to drift again with this
+  // row still green. `Ack` carries no pad, so the slab is asked through
+  // `session_slab` directly — which is what the socket does too, and for this reason.
+  ps = EditSession {};
+  laid = session_slab(ps, pose_footprint(0.0, 0.0, 0.0, HOUSE_W, HOUSE_D), 0);
+  assert(laid.sb_pad == SLAB_PAD,
+         "the slab reports a pad of {laid.sb_pad} where the shared footprint is "
+       + "{SLAB_PAD}");
+  cut = session_hole(ps, on_the_slab(ps, flat()));
+  assert(cut.hm_ok, "the pad row's own fixture refused a void: {cut.hm_say}");
+  assert(cut.hm_pad == SLAB_PAD,
+         "the void reports a pad of {cut.hm_pad} where the shared footprint is "
+       + "{SLAB_PAD} — the two have gone back to being two numbers");
 }
 
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
@@ -626,7 +736,7 @@ fn test_every_verb_the_definition_produces_is_bound() {
   // was not extended, so `annex` sat here unasserted — the same shape as *built and
   // never called*, one layer up. `E` and `Q` are added with them.
   for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
-             "R", "Y", "T", "J", "K", "V", "E", "Q", "Z"] {
+             "R", "Y", "T", "J", "K", "V", "E", "Q", "Z", "X"] {
     v = verb_of(bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);

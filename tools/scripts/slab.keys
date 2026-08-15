@@ -16,7 +16,7 @@ wait rebuilt
 
 echo --- a slab in the open, at storey height
 at 0 0 90
-key X
+verb slab
 wait rebuilt
 
 # ⚠ THE SLAB LANDS AHEAD OF THE AUTHOR — a footprint is placed where you are
@@ -24,9 +24,10 @@ wait rebuilt
 # position was refused for reaching past the slab's end by 4.87, correctly; the
 # gesture now reports where the slab went, which is what made this line writable.
 echo --- and a stairwell through it, where the slab actually is
-# ⚠ `hole`, NOT `slab` WITH A KIND — plan 22 `K3`. `X` lays the floor and `Z` cuts
-# through it: two ACTIONS on one message id, and the second cannot run until the first
-# has. `key X` above is still a key because `slab` has no verb yet.
+# ⚠ `hole`, NOT `slab` WITH A KIND — plan 22 `K3`. The two verbs above and here are
+# two ACTIONS on one message id, and the second cannot run until the first has. A
+# `select` between them would be the wrong tool: what separates them is not which thing
+# to make but whether there is anything to cut yet.
 at 0 6 90
 verb hole
 wait rebuilt
