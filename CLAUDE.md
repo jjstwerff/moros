@@ -73,14 +73,17 @@ hex_world::Chunk to say which``. **Grep first anyway**: a rename is still the on
 do once a package is published, and a qualifier only helps the sites that were written knowing
 they needed one.
 
-⚠ **AND ONE PAIR STILL SLIPS THROUGH THE AMBIGUITY CHECK: a METHOD in one package against a
-same-named FREE FUNCTION in another, when the receiver structs share a name.** The method wins,
-selected by the receiver struct's *name*, and the diagnostic is `expected T, got T` — the
-`Surface` sentence again, one layer down. Ours was `world_save`: a free function here, a method in
-the registry's `hex_world`, reported as `Too many parameters for t_5World_world_save`.
-[loft#850](https://github.com/loft-lang/loft/issues/850), with a two-package repro whose control
-is *rename one struct and the right function is chosen*. It never miscompiles — the two types
-never merge — so it costs diagnosis time, not correctness.
+✅ **AND THE PAIR THAT USED TO SLIP THROUGH THE AMBIGUITY CHECK IS FIXED — measured 2026-08-15.**
+A METHOD in one package against a same-named FREE FUNCTION in another, when the receiver structs
+share a name: the method used to win, selected by the receiver struct's *name*, reported as
+`Too many parameters for t_5World_world_save` — the `Surface` sentence again, one layer down.
+[loft#850](https://github.com/loft-lang/loft/issues/850). **Re-measured against the installed
+toolchain with a three-package repro** (`pa` with `World` + a `world_save` method, `pb` with
+`World` + a 3-parameter `world_save` free function, a consumer calling both): **both resolve
+correctly, on the interpreter and on `--native`.** ⚠ **The instrument was checked before the
+absence was believed** — the consumer calls *both*, so a green that came from one package never
+loading would have shown as the method's own test failing. It never miscompiled — the two types
+never merge — so what this cost was diagnosis time, and that bill is now paid.
 
 ⚠ **AND EVERY LINE ABOVE SAYS "NAME" WHEN A FILENAME IS ENOUGH.** A module's **basename** is
 global across the whole dependency graph, so adding `src/<x>.loft` to a package silently
@@ -94,6 +97,14 @@ changed. [loft#912](https://github.com/loft-lang/loft/issues/912). **So grep `li
 for the BASENAME too, not just for the names inside it** — and note that the same-name
 diagnostic for *declarations* is excellent (both sites and the fix in one line), which is
 exactly why the silence here reads as something else entirely.
+
+⛔ **AND THIS ONE IS STILL LIVE — re-measured 2026-08-15 against the installed toolchain**, on a
+two-package repro with a control: with no colliding basename the consumer's suite is `1 passed`;
+adding a `src/catalogue.loft` the consumer **never imports**, declaring something entirely
+different, turns it into `Unknown function part_list` reported at `dep/src/dep.loft:4:33`. Same on
+the interpreter and on `--native`. ⚠ **It is worth re-reading which way the pair went**: the
+neighbouring struct-name defect above was fixed in the same build, so *loft got better at names
+and no better at filenames* — and a reader who saw one ✅ could reasonably assume the other.
 
 ⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS DISABLED BY A NAME.** `tools/layering.sh` skipped
 every `moros_*` package, so a universal package wearing a Moros prefix was exempt from the one

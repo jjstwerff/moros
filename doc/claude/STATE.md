@@ -79,6 +79,16 @@ profile**, because `state.arm_profiler()` has one call site in `main.rs`'s progr
 [loft#860](https://github.com/loft-lang/loft/issues/860). ⚠ **The variable is accepted and
 ignored**, so an armed instrument reporting nothing reads as *there is nothing to see*.
 
+✅ **FIXED ON BOTH HALVES — measured 2026-08-15 against the installed toolchain**, and the second
+half is the one worth reading. `LOFT_PROFILE=1 loft test` now **arms**: it prints
+`════ loft CPU profile — 0 samples over 60 µs ════` on a package too small to sample, which is a
+report rather than a silence. And on a *program* the same variable now answers *"LOFT_PROFILE set,
+but the loft-level profiler is interpreter-only — this program runs native, so nothing will be
+sampled. Add `--interpret` …"* ⚠ **That is the exact complaint this entry was filed about**: an
+accepted-and-ignored variable is indistinguishable from a clean measurement, and the fix was to
+make the instrument say which it is. The `LOFT_NO_NATIVE_LIBS=1` note below is unaffected and
+still applies.
+
 ⚠ **AND A `use`d LIBRARY IS A NATIVE CDYLIB THE SAMPLER CANNOT SEE INTO.** The first profile was
 **172 samples naming three program functions**; the same run under `LOFT_NO_NATIVE_LIBS=1` was
 **33,245 samples naming the library**. Not wrong — blind. **Set it, or you photograph your own
@@ -936,6 +946,13 @@ hunting a shadowing binding that does not exist.
 [loft#921](https://github.com/loft-lang/loft/issues/921), with a control in the same file — the
 identical constant declared *before* its use is not advised. The fix here is the declaration
 order the shared constant wanted anyway.
+
+✅ **FIXED — measured 2026-08-15 against the installed toolchain.** A `pub const` used above its
+own declaration draws **no diagnostic**, as a bare program and as a package under `loft test`, and
+still resolves. ⚠ **The absence was checked against something the build SHOULD find first**: a
+9-parameter function in the same file, which reports `Advice[too-many-parameters]` — and note it
+prints indented as `  Advice[…]`, the shape a `^advice:` grep misses. `SLAB_PAD`'s declaration
+order stays where it is; it is what the shared constant wanted anyway, so nothing here reverts.
 
 ⏭ **TWO KEYS LEFT: `B` AND `C`** — a storey above and a cellar below. ⚠ They are the first pair
 whose scripts have a **real gate**: `deck.keys` and `cellar.keys` are driven by
