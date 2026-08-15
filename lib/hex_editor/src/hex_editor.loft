@@ -957,6 +957,106 @@ pub fn stair_ahead(w: VoxelWorld, a: Author, dir: integer) -> Ack {
 // gesture so a second driver cannot pick a different one.
 pub const STAIR_PAD = 3;
 
+// ── A STOREY ABOVE, A CELLAR BELOW — `12:`, plan 22 `K3` ────────────────────
+//
+// ⚠ **THE FIFTH SLICE, AND THE FIRST WHERE BOTH RULES POINT THE SAME WAY.** `B` and
+// `C` are two keys on one message (`12:1`, `12:-1`) — the shape that has now produced
+// four answers — and they stay two verbs twice over:
+//
+//   · by the DIRECTION rule (`raise`/`lower`, `stair_up`/`stair_down`): what separates
+//     them is a sign, and a sign belongs in the verb rather than in a selection;
+//   · and by the TWO ACTIONS rule (`slab`/`hole`): they are **not mirror images**. A
+//     cellar comes with its stair, because a room nothing can enter is not a room —
+//     see the `dir < 0` arm below. Digging is not raising with the sign flipped.
+//
+// ⚠ **AND THE NAMING RULE EARNS A SENTENCE HERE, BECAUSE THIS PAIR IS WHERE IT COULD
+// HAVE GONE WRONG.** `stair_up`/`stair_down` carry their direction IN THE NAME, and
+// the obvious symmetry would make these `storey_up`/`storey_down`. They are not: **a
+// verb takes the word the domain already has, and a direction suffix is what you fall
+// back to when there is none.** English has no word for a downward tread, so the stair
+// pair is named by its sign; it does have *cellar*, and `verb cellar` is what an author
+// means where `verb storey_down` is a coordinate. A verb is a published name a person
+// reads and writes — that is the whole reason this layer exists — so the person's word
+// wins.
+pub const VB_STOREY = "storey";
+pub const VB_CELLAR = "cellar";
+
+// The disc a storey covers, in cells — radius 2, which is the 19 cells every gate in
+// the tree reports. ⚠ It was a literal `2` at the socket, and a second driver picking
+// its own would build a different building with every test green.
+pub const STOREY_R = 2;
+
+// How far around a new storey the picture is stale…
+pub const STOREY_PAD = 3;
+// …and a cellar reaches further, because its stair is written along the facing and
+// runs out of the disc the room was dug in.
+//
+// ⚠ **THE SOCKET MARKED BOTH — 6 AND THEN 3 — AND ONE MARK IS EXACT**, because
+// `mark_dirty` stamps a DISC and radius 3's chunks are a subset of radius 6's. Said
+// out loud because the two-mark shape reads like two different regions.
+pub const CELLAR_PAD = 6;
+
+// ⚠ THE RESULT TRAVELS WHOLE, like the hole's and the seat's: a cellar has FOUR
+// outcomes, not two — refused, a plain storey, a cellar with its stair, and a cellar
+// whose stair was refused — and the socket prints a different line for each. A result
+// carrying only *ok* would make the driver re-derive which of the four it was.
+pub struct StoreyMade {
+  sy_ok:    boolean,            // the storey or cellar was made
+  sy_say:   text = "",          // the wire sentence, refusal and success alike
+  sy_dir:   integer = 0,
+  sy_cells: integer = 0,        // cells the disc covered, or the refusal code
+  sy_stair: integer = 0,        // treads cut, or the stair's own refusal code
+  sy_why:   text = "",          // whichever refusal fired
+  sy_q: integer = 0, sy_r: integer = 0,
+  sy_pad:   integer = 0,        // how far around it the picture is stale
+}
+
+// `12:±1` — a floor above where you stand, or a room below it with a way in.
+//
+// ⚠ **A CELLAR COMES WITH ITS STAIR, AND THAT IS THE GESTURE RATHER THAN THE
+// DRAWING.** A tread under an intact floor is refused the moment it comes within ε, so
+// the gesture that digs the room is the only one that can also open the way in.
+// Measured before this rule existed: `stair refused (-1) the world's floor is 0`,
+// because `stair_cut` cuts the GROUND down and walks into the reserve long before it
+// reaches a cellar.
+//
+// ⚠ **AND THE STRIDE IS THE WORLD'S, WHICH IS A FIX RATHER THAN A MOVE — THE THIRD
+// TIME.** The handler took it from the server's `cliff_step()`, which is
+// `walker_step(W_UNIT)`: a program constant, 0.25 on the landscape and **wrong on a
+// part world**, so a cellar's treads were half the height a walker can climb and no
+// fixture could have seen it. `author_on` had it at `J`, `stair_ahead` at `E`, and the
+// handler's own comment argued for keeping it at the caller because *"`cliff_step` is
+// `moros_sim`'s rule"* — it is not, and has not been since `B1c.2b`. A gesture that
+// asks the world it is writing to cannot be wrong about which world it is in.
+pub fn storey_here(w: VoxelWorld, a: Author, dir: integer) -> StoreyMade {
+  (sy_q, sy_r) = px_to_hex(a.au_x, a.au_z);
+  sy_why = "";
+  sy_n = storey_add(w, sy_q, sy_r, dir, STOREY_R, sy_why);
+  if sy_n < 0 {
+    return StoreyMade { sy_ok: false, sy_dir: dir, sy_cells: sy_n, sy_why: sy_why,
+      sy_q: sy_q, sy_r: sy_r, sy_say: say_refused_code("storey", sy_n, sy_why) };
+  }
+  if dir >= 0 {
+    return StoreyMade { sy_ok: true, sy_dir: dir, sy_cells: sy_n,
+      sy_q: sy_q, sy_r: sy_r, sy_pad: STOREY_PAD, sy_say: say_storey(dir, sy_n) };
+  }
+  sy_swhy = "";
+  sy_s = cellar_stair(w, a, walker_step(w.w_unit), sy_swhy);
+  // ⚠ **A CELLAR WITH NO WAY IN IS A SUCCESS WITH ITS OWN SENTENCE, NOT A REFUSAL.**
+  // The room WAS dug — reporting `sy_ok: false` here would tell a driver nothing
+  // happened while the world had already changed under it, which is the one thing a
+  // refusal must never mean. It is the defect this whole rung exists to close, so it
+  // is named rather than swallowed.
+  if sy_s < 0 {
+    return StoreyMade { sy_ok: true, sy_dir: dir, sy_cells: sy_n, sy_stair: sy_s,
+      sy_why: sy_swhy, sy_q: sy_q, sy_r: sy_r, sy_pad: STOREY_PAD,
+      sy_say: say_cellar_no_stair(sy_n, sy_s, sy_swhy) };
+  }
+  StoreyMade { sy_ok: true, sy_dir: dir, sy_cells: sy_n, sy_stair: sy_s,
+    sy_q: sy_q, sy_r: sy_r, sy_pad: CELLAR_PAD,
+    sy_say: say_storey_stair(dir, sy_n, sy_s) }
+}
+
 // What one key press does. `PR_NONE` in `ak_why` means *this key is not a gesture*
 // — a walk key, a camera key, or nothing at all — and is NOT a refusal: the caller
 // decides whether that is worth saying.
@@ -1116,6 +1216,8 @@ pub fn verb_of(key: text) -> text {
   if key == "Q" { return VB_STAIR_DOWN; }
   if key == "Z" { return VB_HOLE; }
   if key == "X" { return VB_SLAB; }
+  if key == "B" { return VB_STOREY; }
+  if key == "C" { return VB_CELLAR; }
   VB_NONE
 }
 
@@ -1195,6 +1297,22 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // families below.
   if verb == VB_STAIR_UP   { return stair_ahead(w, a, 1); }
   if verb == VB_STAIR_DOWN { return stair_ahead(w, a, 0 - 1); }
+  // ⚠ **THE SAME TWO LINES AGAIN, AND THE NAMES ARE THE ONLY DIFFERENCE THAT MATTERS.**
+  // `storey`/`cellar` reach one gesture with a signed argument exactly as the four
+  // rows above do — what changes is that the domain had a word for the downward one,
+  // so the verb is `cellar` rather than `storey_down`. See `storey_here`.
+  //
+  // ⚠ AND THE ACK CARRIES THE CELLS, NOT THE TREADS. A cellar reports the room it dug;
+  // its stair is in the sentence, because a driver counting *what happened* would
+  // otherwise report a two-tread cellar as smaller than a plain storey.
+  if verb == VB_STOREY || verb == VB_CELLAR {
+    vsy_dir = 1;
+    if verb == VB_CELLAR { vsy_dir = 0 - 1; }
+    vsy_made = storey_here(w, a, vsy_dir);
+    if !vsy_made.sy_ok { return ack_no(vsy_made.sy_say); }
+    return ack_at(ack_about(vsy_made.sy_cells, vsy_made.sy_say, 0),
+                  vsy_made.sy_q, vsy_made.sy_r);
+  }
   // ⚠ THE SELECTION DECIDES WHAT `place` PRODUCES — plan 22 `B2e`, and it is `S3`'s
   // collapse one family over. Nothing chosen builds the procedural house it always
   // did, so every existing driver and every baseline is untouched; a chosen part is

@@ -186,6 +186,13 @@ const RUN_CMD = "25:1";
 const STAIR_UP_CMD = "30:1";
 const STAIR_DOWN_CMD = "30:-1";
 
+// …and the storey pair, which was two bare literals at the key sites until plan 22
+// `K3` — the last raw `wire` sends in the input block. ⚠ NAMED HERE FOR THE SAME
+// REASON AS THE FOUR ABOVE: the message is what a verb resolves TO, so it belongs
+// where the other resolutions are and not where a finger happens to be read.
+const STOREY_UP_CMD = "12:1";
+const STOREY_DOWN_CMD = "12:-1";
+
 // ⚠ THESE STILL CARRY THEIR OWN PARAMETERS, AND `W4` TRIED TO MOVE THEM AND BACKED
 // OUT — plan 22, 2026-08-11. Routing them to `48:<key>` (`hex_editor::press`) would
 // have changed what the editor does, because `press` was written from
@@ -1716,6 +1723,12 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // with the sign coming from a selection.
   if verb == hex_editor::VB_STAIR_UP   { web::send(h, STAIR_UP_CMD);   return; }
   if verb == hex_editor::VB_STAIR_DOWN { web::send(h, STAIR_DOWN_CMD); return; }
+  // ⚠ THE PAIR THAT DID NOT COLLAPSE EITHER, AND FOR AN EXTRA REASON — plan 22 `K3`.
+  // A direction is part of the action, as two rows up; and these two are **not mirror
+  // images**, because a cellar comes with its stair. ⚠ The verb is `cellar` and not
+  // `storey_down` because the domain has the word — see `hex_editor::storey_here`.
+  if verb == hex_editor::VB_STOREY { web::send(h, STOREY_UP_CMD);   return; }
+  if verb == hex_editor::VB_CELLAR { web::send(h, STOREY_DOWN_CMD); return; }
   // ⚠ UNREACHABLE FROM THE FIVE SITES BELOW, AND KEPT ON PURPOSE. It becomes
   // load-bearing the moment a key is wired to a verb this socket has no message
   // for — and `VB_OPENING` is exactly that today. *Reason, offer, residual, never
@@ -1839,11 +1852,18 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   if kstepd && !st.was_step_down { act(h, st, sess, a, hex_editor::verb_of("Q")); }
   st.was_step_down = kstepd;
 
+  // ⚠ **THE LAST TWO RAW `wire` SENDS IN THIS BLOCK, AND THEY WERE THE DEAD ONES** —
+  // plan 22 `K3`. Every neighbour above and below went through `act(… verb_of(key))`
+  // at its own slice, and these kept sending `12:1`/`12:-1` down the socket — so in
+  // LOCAL mode, where there is no socket, `b` and `c` answered *"'12:1' is a server
+  // message and this page has no gesture for it yet"* and the demo could not build a
+  // storey or dig a cellar at all. `R`'s finding and `E`'s, still live on the one pair
+  // nobody had converted. Attached, `act` puts the same two messages on the wire.
   kstoru = graphics::gl_key_pressed(KEY_STOREY_UP);
-  if kstoru && !st.was_storey_up { wire(h, st, "12:1"); }
+  if kstoru && !st.was_storey_up { act(h, st, sess, a, hex_editor::verb_of("B")); }
   st.was_storey_up = kstoru;
   kstord = graphics::gl_key_pressed(KEY_STOREY_DOWN);
-  if kstord && !st.was_storey_down { wire(h, st, "12:-1"); }
+  if kstord && !st.was_storey_down { act(h, st, sess, a, hex_editor::verb_of("C")); }
   st.was_storey_down = kstord;
   // ⚠ A VERB NOW, NOT A WIRE MESSAGE — plan 22 `K3`, and `R` is the slice that pays:
   // 22 of the 40 non-arrow presses across `tools/scripts/*.keys` are this key. Local,

@@ -393,6 +393,73 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `K3` · `B`+`C` — THE LAST TWO KEYS, and two sweeps that could not fail, 2026-08-15
+
+**`B` names `storey` and `C` names `cellar`.** Every key the scripts press is a verb now.
+
+⚠ **THE FIFTH SLICE, AND THE FIRST WHERE BOTH RULES POINT THE SAME WAY.** They are two
+verbs by the DIRECTION rule (`raise`/`lower`, `stair_up`/`stair_down`) *and* by the TWO ACTIONS
+rule (`slab`/`hole`), because they are **not mirror images**: a cellar comes with its stair, since
+a room nothing can enter is not a room. ⚠ **And the naming rule earns a sentence here, because
+this is where it could have gone wrong**: the obvious symmetry would make them
+`storey_up`/`storey_down`. **A verb takes the word the domain already has, and a direction suffix
+is the fallback where there is none.** English has no word for a downward tread, so the stair pair
+is named by its sign; it does have *cellar*, and `verb cellar` is what an author means where
+`verb storey_down` is a coordinate.
+
+⛔ **AND THE CLIENT'S `b`/`c` WERE THE LAST RAW `wire` SENDS IN THE INPUT BLOCK, WHICH MADE THEM
+THE DEAD ONES.** Every neighbour — the arrows, `f`, `g`, `e`, `q`, `r`, `h` — went through
+`act(… verb_of(key))` at its own slice; these kept putting `12:1`/`12:-1` straight on the socket.
+Local, there is no socket: the page answered *"'12:' is a server message and this page has no
+gesture for it yet"*, so **the demo could not build a storey or dig a cellar at all**. `R`'s
+finding and `E`'s, still live on the one pair nobody had converted. `make probe-demo` has a `B`
+block now: **`local storey — 19 · storey +1 on 19 cells`**, with `DEMO_SABOTAGE=nostorey` red on
+all three checks.
+
+⛔ **THE STRIDE WAS A GLOBAL AGAIN — THE THIRD GESTURE.** `cellar_stair` took `cliff_step()`,
+which is `walker_step(W_UNIT)`: 0.25 on the landscape and **wrong on a part world**, so a cellar
+there got treads of half the height a walker can climb. The handler's own comment defended it —
+*"`cliff_step` is `moros_sim`'s rule"* — and that stopped being true at `B1c.2b`. Two more
+literals went with it: the disc radius was a bare `2` and the stale-region pads were `6` and `3`
+written at the socket.
+
+⛔ **AND TWO OF THIS SESSION'S OWN INSTRUMENTS COULD NOT FAIL.** Both were found by the sweep
+reporting rows that should have gone red:
+
+> **A sabotage that does not BUILD read exactly like a sabotage nothing noticed.** `loft test`
+> writes `FAIL  tests/verb.loft  (parse errors)` with **no `::`**, and every `row()` in
+> `probe/k2/sabotage-*.sh` counted `FAIL  tests/.*::` — so a broken edit scored 0 red and printed
+> *NOTHING went red*, the same sentence a suite with a hole in it produces. Found because a stride
+> row substituted `W_UNIT`, which is the SERVER's constant and invisible inside the library. **All
+> four sweeps had it**; all four have the guard now.
+
+> **And the disc assertion was a table checked against the table.** `cells == 1 + 3r(r+1)` moves
+> with `STOREY_R`, so the row aimed at a changed radius went **green** at 37 cells. The closed
+> form is kept — it says the gesture walks a hex disc rather than a square — and `== 19` is pinned
+> beside it, because 19 is the bare literal five browser gates read off the wire.
+
+⚠ **AND A CHECK'S ARMS HAVE AN ORDER.** `verb storey -1` matches neither `^verb storey$` nor
+`^verb cellar$`, so the counts fired first and reported *a floor changed direction* — true,
+useless, and pointing at the wrong file. The specific diagnosis has to be asked before the
+generic one or it is unreachable.
+
+⛔ **AND THE FIRST DEMO BLOCK MEASURED A REFUSAL WHILE BELIEVING IT MEASURED THE VERB.** It
+pressed `b` at boot; the page boots on the defaulted ground plane where nothing is stored, so a
+storey is honestly *"no cells here"*. ⚠ Nor does raising fix it on the spot — `raise_ahead` lands
+the brush **10 hexes ahead with a radius of 7**, so the author's own radius-2 disc is entirely
+outside what was raised. The walk is what puts the author on it.
+
+⏭ **A live wording defect, recorded not fixed**: a refused cellar says *"storey refused"*, because
+`say_refused_code` is given the verb `storey` for both directions. `tools/gates/world/ground.mjs`
+matches that string on purpose, so renaming it is a change to make with a gate in hand.
+
+⏭ **AND `part_place` IS LOAD-FLAKY ON `drawn`, FOUND BY RUNNING THE SUITE TWICE BACK TO BACK.**
+It came back `"drawn": false` with `sameCentre`, `sameEave`, `sameWalls` and `hasDoor` all true —
+so the placement was right and only the PICTURE was missing. Alone it is **5 of 5 green** in
+`make gate-rep` at 5.6 s a run, and the failing run was the second full suite in one pipeline.
+Nothing to do with `12:`; recorded because *a check that is sometimes false under load* is the
+`H2` finding again, and the next person to see this row should not go looking in the part code.
+
 ## ✅ `K3` · `X` — THE NAME THE PAIR WAS WAITING ON, and an instrument removed the hour it was built, 2026-08-15
 
 **`X` names `slab`.** `Z` bound `hole` a slice earlier and deliberately did not declare the

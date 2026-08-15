@@ -87,11 +87,7 @@ step 30
 feet 4.15 4.35
 
 echo --- dig, facing +x, and the stair goes in with it
-# ⚠ `cellar`, AND THAT IS THE POINT OF THE NAME — plan 22 `K3`. Its pair is `storey`,
-# not `storey_up`/`storey_down`: a verb takes the word the domain has, and a direction
-# suffix is the fallback where there is none. The line above says what this does, and
-# `verb storey_down` would have said which way a finger moved.
-verb cellar
+key C
 step 60
 # 19 cells dug. Each gets a floor-underside; each keeps a ceiling EXCEPT the two the
 # stair opens — so 36 fans of 18, not 38. A structural relation, and the two numbers

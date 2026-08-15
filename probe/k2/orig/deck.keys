@@ -27,10 +27,7 @@ echo --- the soffit BEFORE: no roof anywhere, so there is nothing to have one
 mesh soffit 0 0
 
 echo --- a storey over the level ground, with open sky above it
-# ⚠ `storey`, NOT `storey_up` — plan 22 `K3`. It is one of a PAIR that stays two verbs
-# (a direction belongs in the action), and the downward one is `cellar` rather than
-# `storey_down` because the domain has that word. See `cellar.keys`.
-verb storey
+key B
 step 60
 # ⚠ 342 IS 19 CELLS x 18 VERTICES — one six-triangle fan per cell of the disc the
 # storey wrote, which the ack reports as "storey +1 on 19 cells". A structural

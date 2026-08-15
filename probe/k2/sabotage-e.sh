@@ -35,6 +35,18 @@ row() {
   tag=$1; label=$2; want=$3
   verbs "$tag"
   got=$(grep -c 'FAIL  tests/.*::' "$OUT/$tag.log")
+  # ⛔ **A SABOTAGE THAT DOES NOT BUILD IS NOT A SABOTAGE NOTHING NOTICED, AND THIS
+  # HARNESS REPORTED THE TWO IDENTICALLY** — measured at `K3` · `B`. `loft test` writes
+  # `FAIL  tests/verb.loft  (parse errors)` with **no `::`**, so the count above is 0
+  # and the row printed *NOTHING went red* — the same sentence a suite with a hole in
+  # it produces. It cost a real diagnosis: a stride row substituted `W_UNIT`, which is
+  # the SERVER's constant and unknown inside the library, and the sweep read as missing
+  # coverage rather than as a typo. Every sweep in this directory had it.
+  if grep -q 'parse errors' "$OUT/$tag.log"; then
+    printf '    FAIL %s → THE SABOTAGE DOES NOT BUILD, so this row asked nothing:\n' "$label"
+    grep -m2 '^  Error' "$OUT/$tag.log" | sed 's/^/           /'
+    fails=$((fails + 1)); return
+  fi
   # The positive control on the pattern itself: a run that produced no result line at
   # all is a run that did not happen, and it reads as "nothing went red".
   if ! grep -q '^test result:' "$OUT/$tag.log"; then

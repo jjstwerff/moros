@@ -45,10 +45,17 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            right ELEMENTS and no editor in it. This is `B3`'s
 #                            own warning made runnable: a gate that reports `ok`
 #                            on an empty page is not a gate.
-#   DEMO_SABOTAGE=deadkey    press `z` — one of the twelve keys with no verb —
-#                            instead of a raise. The page runs, draws and writes
-#                            nothing, so a check that credits the mere passage of
-#                            time with a gesture stays green here.
+#   DEMO_SABOTAGE=deadkey    press `z` instead of a raise. The page runs, draws and
+#                            writes nothing, so a check that credits the mere passage
+#                            of time with a gesture stays green here.
+#                            ⚠ **THE REASON IT IS DEAD CHANGED, AND THE ROW READ AS
+#                            STALE.** It said *"one of the twelve keys with no verb"*;
+#                            `verb_of("Z")` names `hole` since `K3` · `Z`. What makes
+#                            `z` inert here is that **this CLIENT binds no key for it**
+#                            — there is no `KEY_` for 122 — so no verb is ever looked
+#                            up. Written down because the obvious repair is to pick a
+#                            different letter, and every letter the client DOES bind is
+#                            now a gesture.
 #   DEMO_SABOTAGE=noturn     the same five `h` attempts with nothing turning
 #                            between them. If `F3` were really about pressing the
 #                            key often enough rather than about the TURN, this
@@ -70,6 +77,9 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #   DEMO_SABOTAGE=norun      the same `R` walk with the run key removed. If `R1`–`R3`
 #                            were reading the WALK's own lines rather than the run's,
 #                            this would pass.
+#   DEMO_SABOTAGE=nostorey   the same `B` run with the storey keys replaced by walk
+#                            keys. If `B1`–`B3` were reading the boot's own lines
+#                            rather than the storey's, this would pass.
 #   DEMO_SABOTAGE=deadclock  a client built with a `ticks()` that never advances,
 #                            which is what a missing time bridge looks like from
 #                            inside loft. ⚠ COMPOSE IT WITH NOTHING: the guard it
@@ -597,6 +607,85 @@ elif [ -n "$r_k1" ]; then
   no "R3 the world is $r_k1 before and after — the second press reported $r_n2 and wrote nothing"
 else
   no "R3 no world key was printed beside either run press"
+fi
+
+# ── B  a STOREY above, and a CELLAR that gets a reason — plan 22 `K3` ──────
+#
+# ⚠ **THESE WERE THE LAST TWO RAW `wire` SENDS IN THE CLIENT'S INPUT BLOCK, AND THAT
+# MADE THEM THE DEAD ONES.** Every neighbour — the arrows, `f`, `g`, `e`, `q`, `r`,
+# `h` — went through `act(… verb_of(key))` at its own slice, and `b`/`c` kept putting
+# `12:1`/`12:-1` straight on the socket. Local, there is no socket: the page answered
+# *"'12:' is a server message and this page has no gesture for it yet"* and the demo
+# could not build a storey or dig a cellar at all. `R`'s finding and `E`'s, still live
+# on the one pair nobody had converted.
+#
+# ⛔ **AND THE WALK IS NOT DECORATION — THE FIRST VERSION OF THIS BLOCK PRESSED `b` AT
+# BOOT AND MEASURED A REFUSAL WHILE BELIEVING IT MEASURED THE VERB.** A storey needs
+# WRITTEN cells under it, and this page boots on the defaulted ground plane where
+# nothing is stored (`E1γ`), so `b` at the origin is *"storey refused (-1) no cells
+# here"* — correct, and it says nothing about whether the key works. ⚠ Nor does
+# raising fix it on the spot: `raise_ahead` lands the brush **10 hexes ahead** with a
+# radius of 7, so the patch spans hexes 3–17 and the author's own radius-2 disc is
+# entirely outside it. The walk is what puts the author ON what was raised.
+#
+# ⚠ **30 PRESSES, MEASURED, WITH THE MARGIN WRITTEN DOWN** — `H`'s flake is the reason
+# this row is not left at "some walking". It arrives at ~10.5 world units, and the
+# patch runs from about 4 to 22, so the disc sits well inside at either end of the
+# press-to-step jitter that made `H` 60 presses instead of 44.
+#
+# ⚠ **AND THE CELLAR HALF ASSERTS REACHING THE GESTURE, NOT DIGGING — SAID OUT LOUD
+# RATHER THAN LEFT TO LOOK LIKE COVERAGE.** One raise stands the ground at 1 and a
+# cellar wants 12 of headroom, so the honest outcome here is a refusal — and that is
+# still the whole claim: *"floor at 1 leaves no room for a storey of 12"* is a sentence
+# only `hex_editor` can produce, where the thing it replaces said the page had no
+# gesture at all. The digging itself is covered where a fixture can stand the ground
+# up: the library rows in `verb.loft`, and `cellar.keys` through a server and its gate.
+echo
+echo "── B   a storey above, and a cellar told why not ───────────────────"
+B_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*30 + ['b','c']))")
+case ",$SAB," in *,nostorey,*) B_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*30))"); echo "   SABOTAGE nostorey — the same raise and walk with the storey keys removed" ;; esac
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$B_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/storey.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/storey.raw" > "$OUT/storey.log" || true
+grep -E '^client: local (storey|cellar)|^client: local —' "$OUT/storey.log" | sed 's/^/   /'
+
+b_up=$(grep -m1 'client: local storey — ' "$OUT/storey.log" || true)
+b_dn=$(grep -m1 'client: local cellar' "$OUT/storey.log" || true)
+b_n=$(printf '%s' "$b_up" | sed -n 's/.*local storey — \([0-9]*\) .*/\1/p')
+b_k=$(printf '%s' "$b_up" | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
+
+# B1 — the storey key reached a gesture, rather than the page saying it has none.
+if [ -n "$b_up" ]; then
+  say "B1 the storey key reached a gesture: ${b_up#client: local }"
+else
+  no "B1 the page never built a storey — $(grep -m1 "no gesture for it yet" "$OUT/storey.log" || echo 'the key printed nothing')"
+fi
+
+# B2 — …and it WROTE. ⚠ THE DISC IS THE NUMBER, not merely non-zero: a storey is a
+# radius-2 disc, which is 19 cells in every gate in this tree, so a gesture that wrote
+# one cell or the whole neighbourhood would pass a `> 0` and fail this.
+if [ "$b_n" = "19" ] && [ -n "$b_k" ]; then
+  say "B2 and it wrote the disc: $b_n cells · world $b_k"
+elif [ -n "$b_n" ]; then
+  no "B2 the storey wrote $b_n cells where a radius-2 disc is 19"
+else
+  no "B2 no cell count was printed beside the storey"
+fi
+
+# B3 — and the cellar reached the SAME layer, which its refusal is the proof of: the
+# wording is the library's and names the height it wanted. ⚠ THREE OUTCOMES — a run
+# that printed nothing for `c` says nothing either way, and must not read as a pass.
+# ⚠ AND THE REFUSAL IS ACCEPTED ONLY IF IT IS THE LIBRARY'S. *"no gesture for it yet"*
+# is also a line about `c` not working, and it is the exact defect this block exists
+# to catch — so the wording is matched rather than the mere presence of a refusal.
+if [ -z "$b_dn" ]; then
+  no "B3 the cellar key printed nothing — $(grep -m1 "no gesture for it yet" "$OUT/storey.log" || echo 'it reached no layer at all')"
+elif printf '%s' "$b_dn" | grep -q 'leaves no room for a storey'; then
+  say "B3 and the cellar got the library's own reason: ${b_dn#client: local }"
+elif printf '%s' "$b_dn" | grep -q 'local cellar — '; then
+  say "B3 the cellar reached a gesture and dug: ${b_dn#client: local }"
+else
+  no "B3 the cellar printed '${b_dn#client: local }' — neither a dig nor the library's own refusal"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────

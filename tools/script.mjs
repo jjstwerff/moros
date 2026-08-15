@@ -214,6 +214,13 @@ const VERBMAP = {
   // nowhere precisely because that default belongs to this one, and a reader seeing
   // two bare `39:` rows could not tell which the default served. Written out.
   slab: '39:0',           // a floor with a thickness, over the pose you are in
+  // ⚠ TWO ROWS AND TWO NAMES, NOT `storey_up`/`storey_down` — plan 22 `K3`. A
+  // direction stays in the verb, as `stair_up`/`stair_down` two rows up; what is new
+  // here is that the domain already has a word for the downward one, so the verb takes
+  // the word. And they are not mirror images: `cellar` digs a room AND cuts the stair
+  // out of it, because a room nothing can enter is not a room.
+  storey: '12:1',         // a floor above the disc you stand in
+  cellar: '12:-1',        // …and a room below it, with its way in
 };
 const HELD = { W: 1, S: 2, A: 4, D: 8 };
 

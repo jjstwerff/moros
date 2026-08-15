@@ -112,7 +112,13 @@ OUT=probe/k2/out
 # the two saved worlds are byte-identical whether the script cut a stairwell, a coffer
 # or nothing. That is the seats' blindness exactly (check 8's ⚠), and check 11 plus the
 # sentences are what carry it.
-ALL="annex determinism door embrasure furnish house niche opening profiles slab"
+# ⚠ AND `cellar` AND `deck` JOINED AT `K3` · `B`, for `determinism`'s reason — they are
+# the only scripts that press `C` and `B` — but they are **unlike every other script in
+# this list in one way worth knowing**: they are the only two with a REAL GATE behind
+# them. `tools/gates/world/cellar_ceiling.mjs` and `deck_soffit.mjs` are thin wrappers
+# that run exactly these files, so `make gate` is a second, independent instrument on
+# this conversion where it says nothing at all about the other ten.
+ALL="annex cellar deck determinism door embrasure furnish house niche opening profiles slab"
 list=${*:-$ALL}
 rm -rf "$OUT" && mkdir -p "$OUT"
 fails=0
@@ -343,6 +349,42 @@ flattened onto one verb with a payload"
   else
     ok "and it lays $xconv slab(s) and cuts $zconv void(s), by two verbs where the \
 baseline pressed two keys"
+  fi
+
+  # 13 — the STOREY pair, plan 22 `K3` · `B`, and its shape is check 10's: two keys
+  # differing by a DIRECTION stay two verbs, so there is no `select` and no kind to
+  # compare — the difference has to be in the verb NAME. Each key is counted against
+  # its own verb, separately, because a transcription that swapped a storey for a
+  # cellar would leave the total right.
+  #
+  # ⚠ AND THE LAST `elif` IS THE ONE THAT MATTERS HERE, unlike at check 10. `storey`
+  # and `cellar` are two DIFFERENT WORDS rather than one word with a sign, so the
+  # collapse this refuses is not `verb storey` twice — it is anything that puts the
+  # direction back into a payload. A script saying `verb storey -1` would read as a
+  # cellar to a person and reach `12:1` on the wire, because `VERBMAP` has no argument.
+  ybase=$(grep -cE '^key B$' "probe/k2/orig/$s.keys")
+  yconv=$(grep -c '^verb storey$' "tools/scripts/$s.keys")
+  cbase=$(grep -cE '^key C$' "probe/k2/orig/$s.keys")
+  cconv=$(grep -c '^verb cellar$' "tools/scripts/$s.keys")
+  if [ "$ybase" -eq 0 ] && [ "$yconv" -eq 0 ] && [ "$cbase" -eq 0 ] && [ "$cconv" -eq 0 ]
+  then
+    ok "no storey in this script"
+  elif grep -qE '^key [BC]$' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys still presses a storey key — the conversion is half done"
+  # ⚠ **THIS ARM COMES BEFORE THE COUNTS, AND THE ORDER IS A MEASUREMENT.** A line
+  # reading `verb storey -1` matches neither `^verb storey$` nor `^verb cellar$`, so
+  # the counts see a press that vanished and report *a floor changed direction* —
+  # true, useless, and pointing at the wrong file. The specific diagnosis has to be
+  # asked first or it is unreachable.
+  elif grep -qE '^verb (storey|cellar) ' "tools/scripts/$s.keys"; then
+    bad "tools/scripts/$s.keys gives the storey verb an argument — the direction has \
+gone back into a payload the wire table cannot carry"
+  elif [ "$ybase" != "$yconv" ] || [ "$cbase" != "$cconv" ]; then
+    bad "the baseline presses \`B\` $ybase and \`C\` $cbase time(s) and the script says \
+\`verb storey\` $yconv and \`verb cellar\` $cconv — a floor changed direction"
+  else
+    ok "and it builds $yconv storey(s) and digs $cconv cellar(s), by two verbs where \
+the baseline pressed two keys"
   fi
 
   sed -n "s/^ *\([A-Z]\): '37:\([0-9]*\)',.*/\1 \2/p" tools/script.mjs > "$OUT/annexmap.txt"

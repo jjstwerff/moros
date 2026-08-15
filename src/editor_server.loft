@@ -4713,42 +4713,45 @@ fn main() {
           srv.send_to(ev.cid, "S:placed {px},{pz}");
         }
         } else if ev.msg_id == MSG_STOREY {
+          // ⚠ **WHAT IS LEFT HERE IS THE SOCKET AND NOTHING ELSE** — plan 22 `K3`, and
+          // the same shape `do_wall` and `MSG_STAIR` took at their own slices. The
+          // gesture is `hex_editor::storey_here`: which disc, at what radius, whether
+          // a stair goes in with it, how far the picture went stale, and all four
+          // sentences.
+          //
+          // ⚠ **AND THE STRIDE WENT WITH IT, WHICH IS A FIX RATHER THAN A MOVE.** It
+          // was `cliff_step()` — `walker_step(W_UNIT)`, a program constant — on the
+          // argument that *"what a walker can climb is the walker's rule … and
+          // `hex_editor` must not depend on `moros_sim`"*. That argument had expired:
+          // `cliff_step()` **is** `hex_editor::walker_step` and has been since
+          // `B1c.2b`. Both read 0.25 on the landscape and the global is wrong on a
+          // part world, so a cellar there got treads of half the height a walker can
+          // climb. `E` found the same substitution one gesture over.
+          //
+          // ⚠ **AND ONE `mark_dirty` WHERE THERE WERE TWO.** The cellar arm stamped
+          // radius 6 and then the tail stamped 3 over it; `mark_dirty` marks a DISC,
+          // so 3's chunks are a subset of 6's and the single `sy_pad` is the identical
+          // set.
           sdir = ev.payload as integer ?? 1;
-          shx = world_to_hex(px, pz);
-          swhy = "";
-          nb = storey_add(wld, shx.ha_q, shx.ha_r, sdir, 2, swhy);
-          if nb < 0 {
-            srv.send_to(ev.cid, "S:{say_refused_code(\"storey\", nb, swhy)}");
-            println("editor: storey refused ({nb}) at ({shx.ha_q},{shx.ha_r}) — {swhy}");
+          smade = hex_editor::storey_here(wld,
+                    hex_editor::author_at(px, pz, yaw, py), sdir);
+          srv.send_to(ev.cid, "S:{smade.sy_say}");
+          if !smade.sy_ok {
+            println("editor: storey refused ({smade.sy_cells}) at "
+                    + "({smade.sy_q},{smade.sy_r}) — {smade.sy_why}");
           } else {
-            // ⚠ A CELLAR COMES WITH ITS STAIR, because without one it is a room
-            // nothing can enter — and that is `F1`, not the drawing. A tread under
-            // an intact floor is refused the moment it comes within ε, so the
-            // gesture that digs the room is the only one that can also open the way
-            // in. Measured before this: `stair refused (-1) the world's floor is 0`,
-            // because `stair_cut` cuts the GROUND down and walks into the reserve
-            // long before it reaches a cellar.
-            //
-            // The stride is `cliff_step()` for the same reason `12:` STAIR takes it
-            // — what a walker can climb is the walker's rule, read from the consumer
-            // that owns the walker, and `hex_editor` must not depend on `moros_sim`.
+            mark_dirty(dirty, smade.sy_q, smade.sy_r, smade.sy_pad);
             if sdir < 0 {
-              st_why2 = "";
-              ns = hex_editor::cellar_stair(wld,
-                     hex_editor::author_at(px, pz, yaw, py), cliff_step(), st_why2);
-              if ns < 0 {
-                srv.send_to(ev.cid, "S:{say_cellar_no_stair(nb, ns, st_why2)}");
-                println("editor: cellar dug on {nb} cells, stair refused ({ns}) — {st_why2}");
+              if smade.sy_stair < 0 {
+                println("editor: cellar dug on {smade.sy_cells} cells, stair refused "
+                        + "({smade.sy_stair}) — {smade.sy_why}");
               } else {
-                mark_dirty(dirty, shx.ha_q, shx.ha_r, 6);
-                srv.send_to(ev.cid, "S:{say_storey_stair(sdir, nb, ns)}");
-                println("editor: cellar on {nb} cells with a stair of {ns} treads");
+                println("editor: cellar on {smade.sy_cells} cells with a stair of "
+                        + "{smade.sy_stair} treads");
               }
             } else {
-              srv.send_to(ev.cid, "S:{say_storey(sdir, nb)}");
-              println("editor: storey {sdir:+} on {nb} cells");
+              println("editor: storey {sdir:+} on {smade.sy_cells} cells");
             }
-            mark_dirty(dirty, shx.ha_q, shx.ha_r, 3);
           }
         } else if ev.msg_id == MSG_STAIR {
           // ⚠ **WHAT IS LEFT HERE IS THE SOCKET AND NOTHING ELSE** — plan 22 `K3`,

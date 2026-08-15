@@ -479,6 +479,19 @@ fn flat_at(unit: float) -> VoxelWorld {
   fw
 }
 
+// ⚠ **A CELLAR NEEDS SOMETHING TO DIG INTO, AND THE FIXTURES ABOVE HAVE NONE** — plan
+// 22 `K3` · `B`. They stand the ground at height 8, and the gesture refuses with
+// *"floor at 8 leaves no room for a storey of 12"* — correctly. A test that used one
+// would have measured that refusal while believing it measured the verb, which is the
+// trap `slabbed()` recorded one gesture over. 24 is two storeys of room.
+fn deep(unit: float) -> VoxelWorld {
+  dw = world_new(unit, W_RESERVE, 8, 3).wn_world;
+  for dq in 0 - 12..13 {
+    for dr in 0 - 12..13 { ground_set(dw, dq, dr, 24, SURFACE_MAT); }
+  }
+  dw
+}
+
 fn test_a_tread_is_the_same_height_in_a_world_authored_at_another_unit() {
   coarse = flat_at(0.25);
   fine   = flat_at(0.125);
@@ -690,6 +703,106 @@ fn test_the_slab_pad_is_the_footprint_the_library_cannot_read() {
        + "{SLAB_PAD} — the two have gone back to being two numbers");
 }
 
+// ── `B` AND `C` ARE TWO VERBS, AND FOR TWO REASONS AT ONCE — `K3` · `B` ─────
+//
+// ⚠ **THE FIRST PAIR WHERE BOTH RULES AGREE.** The DIRECTION rule alone would keep
+// them apart (`raise`/`lower`, `stair_up`/`stair_down`), and so would the TWO ACTIONS
+// rule (`slab`/`hole`), because they are not mirror images: a cellar comes with its
+// stair. The rows below assert the second — the first is only a naming decision, and
+// a naming decision cannot go red.
+fn test_the_storey_and_the_cellar_are_two_verbs_and_the_cellar_is_not_a_mirror() {
+  assert(verb_of("B") == VB_STOREY, "the storey key names '{verb_of(\"B\")}'");
+  assert(verb_of("C") == VB_CELLAR, "the cellar key names '{verb_of(\"C\")}'");
+  assert(VB_STOREY != VB_CELLAR, "the pair has collapsed onto one verb");
+
+  up = storey_here(deep(0.25), author_on(deep(0.25), 0.0, 0.0, 0.0), 1);
+  dw = deep(0.25);
+  dn = storey_here(dw, author_on(dw, 0.0, 0.0, 0.0), 0 - 1);
+  assert(up.sy_ok && dn.sy_ok,
+         "a fixture refused a floor: {up.sy_say} / {dn.sy_say}");
+
+  // ⚠ **THIS IS THE ASSERTION THAT SAYS THEY ARE NOT ONE VERB WITH A SIGN.** A storey
+  // writes a disc and stops; a cellar writes the disc AND cuts the way in, because a
+  // room nothing can enter is not a room. If the down arm ever stopped doing the
+  // second thing, `storey` with a negative argument would be a faithful spelling of
+  // it — and this row is what refuses that.
+  assert(up.sy_stair == 0,
+         "a storey came with {up.sy_stair} treads — it is the cellar that carries a "
+       + "stair, and a storey that cuts one is opening a floor nobody asked to open");
+  assert(dn.sy_stair > 0,
+         "the cellar dug {dn.sy_cells} cells and cut {dn.sy_stair} treads — a room "
+       + "with no way in is the defect this whole rung exists to close");
+  assert(dn.sy_say.contains("stair"),
+         "the cellar's sentence does not mention its stair: '{dn.sy_say}'");
+  assert(!up.sy_say.contains("stair"),
+         "the storey's sentence claims a stair: '{up.sy_say}'");
+
+  // ⚠ **THE DISC, AND IT TAKES TWO ASSERTIONS BECAUSE THE FIRST ONE ALONE IS A
+  // SELF-TEST.** The closed form says the gesture walks a HEX disc rather than a
+  // square or a ring — a real claim, and the one that would catch `storey_add`
+  // mis-stepping. It cannot catch a changed RADIUS: both sides move together, so
+  // `STOREY_R = 3` gives 37 on the left and 37 on the right and the row stays green.
+  // ⛔ Measured — the sabotage row aimed at the radius went green against this line
+  // alone, which is *a table checked against the table* exactly as CLAUDE.md has it.
+  assert(up.sy_cells == 1 + 3 * STOREY_R * (STOREY_R + 1),
+         "a storey covered {up.sy_cells} cells where the disc of radius {STOREY_R} is "
+       + "{1 + 3 * STOREY_R * (STOREY_R + 1)}");
+  // …so the radius itself is pinned to the number OTHER PEOPLE read. `19` is a bare
+  // literal on purpose: it is what `storey.mjs`, `surface.mjs`, `ground.mjs`,
+  // `deck_soffit.mjs` and `cellar_ceiling.mjs` all assert on the wire, and the whole
+  // point of this row is to be the one place that fails first when it moves. ⚠ The
+  // radius was a literal `2` at the socket until this slice, with nothing anywhere
+  // saying what depended on it.
+  assert(up.sy_cells == 19,
+         "a storey covered {up.sy_cells} cells — five browser gates read 19 on the "
+       + "wire, and a radius of {STOREY_R} is what decides it");
+  assert(dn.sy_cells == up.sy_cells,
+         "a cellar dug {dn.sy_cells} cells and a storey covered {up.sy_cells} — they "
+       + "are the same disc in opposite directions");
+
+  // ⚠ **AND THE CELLAR REACHES FURTHER THAN THE STOREY**, because its stair is written
+  // along the facing and runs out of the disc the room was dug in. The socket knew
+  // this — it stamped 6 for the cellar and 3 for everything else — and nothing said
+  // so anywhere a test could read.
+  assert(up.sy_pad == STOREY_PAD && dn.sy_pad == CELLAR_PAD,
+         "the pads are {up.sy_pad} up and {dn.sy_pad} down, where the constants are "
+       + "{STOREY_PAD} and {CELLAR_PAD}");
+  assert(CELLAR_PAD > STOREY_PAD,
+         "a cellar's stale region is {CELLAR_PAD} and a storey's is {STOREY_PAD} — "
+       + "the stair leaves the disc, so the cellar has to reach further");
+}
+
+// ⚠ **THE STRIDE IS THE WORLD'S, NOT A PROGRAM CONSTANT** — the third gesture to have
+// this fixed and the third to need its own row, because `W_UNIT` and a landscape's
+// `w_unit` are both 0.25 and **nothing on the landscape can go red**. This is
+// `test_a_tread_is_the_same_height_in_a_world_authored_at_another_unit` one gesture
+// over: two worlds at different units, and the same cellar in both.
+fn test_a_cellars_stair_takes_its_stride_from_the_world_it_digs_in() {
+  coarse = deep(0.25);
+  fine   = deep(0.125);
+  ca = storey_here(coarse, author_on(coarse, 0.0, 0.0, 0.0), 0 - 1);
+  fa = storey_here(fine,   author_on(fine,   0.0, 0.0, 0.0), 0 - 1);
+  assert(ca.sy_ok && fa.sy_ok, "a fixture refused a cellar: {ca.sy_say} / {fa.sy_say}");
+  // The control: no treads in either world would satisfy any equality below for the
+  // worst possible reason.
+  assert(ca.sy_stair > 0 && fa.sy_stair > 0,
+         "the cellars cut {ca.sy_stair} and {fa.sy_stair} treads — there is nothing "
+       + "here to compare");
+  // ⚠ **THE CLAIM IS THE TREAD COUNT, AND THE FROZEN STRIDE IS WHAT IT DISCRIMINATES
+  // AGAINST.** `STOREY_H` is a raw unit count, so a cellar is 12 units deep in both
+  // worlds; `walker_step` reads the world and answers 4 units at 0.25 and 8 at 0.125,
+  // because a stride of the same LENGTH is more units where a unit is smaller. So the
+  // same room takes 2 treads in one world and 1 in the other. ⚠ A stride frozen at
+  // `walker_step(W_UNIT)` would answer 4 in both and the two counts would be EQUAL —
+  // which is exactly the reading a landscape-only fixture gets, and why this row needs
+  // two worlds to exist at all.
+  assert(ca.sy_stair == fa.sy_stair * 2,
+         "the same cellar took {ca.sy_stair} treads at the editor's unit and "
+       + "{fa.sy_stair} at half of it, where twice the stride wants half the treads — "
+       + "a stride that does not scale with the world is a program constant standing "
+       + "in for it");
+}
+
 // A key that is not a gesture names no verb — the `PR_NONE` question one level up.
 // ⚠ A walk key answering a verb would be worse than answering nothing: `press_verb`
 // would run a gesture on every step of a walk.
@@ -736,7 +849,7 @@ fn test_every_verb_the_definition_produces_is_bound() {
   // was not extended, so `annex` sat here unasserted — the same shape as *built and
   // never called*, one layer up. `E` and `Q` are added with them.
   for bk in ["ArrowUp", "ArrowDown", "H", "O", "P", "I", "U", "N", "M", "F", "G",
-             "R", "Y", "T", "J", "K", "V", "E", "Q", "Z", "X"] {
+             "R", "Y", "T", "J", "K", "V", "E", "Q", "Z", "X", "B", "C"] {
     v = verb_of(bk);
     assert(v != VB_NONE, "key '{bk}' is a gesture and names no verb");
     ack = press_verb(s, w, pose_for(bk, w), v);
