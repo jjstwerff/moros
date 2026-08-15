@@ -350,6 +350,64 @@ for (const k of keysArg.split(',')) {
   // press. `Escape,@raise,5` is one sentence and splitting it across two arguments
   // would let a caller write it in an order the editor cannot answer.
   if (k.trim().startsWith('@')) { await clickSlot(k.trim().slice(1)); continue; }
+  // ⚠ `!reload` RE-OPENS THE PAGE MID-RUN — plan 22 `M5b`, and it is in the key list for
+  // `@verb`'s reason: *bind it, close the tab, come back* is ONE sentence, and a run
+  // that had to be split across two invocations of this driver would be two experiments
+  // with a browser restart between them.
+  //
+  // ⚠ **THE TRANSCRIPT IS DUMPED FIRST, because navigating DESTROYS it.** The page's
+  // `<pre id=out>` is part of the document, so the first half's evidence — the rebind
+  // that is supposed to be surviving — would be gone from the log the caller reads, and
+  // the check would be asserting a persistence claim with no proof that anything was
+  // ever saved.
+  if (k.trim() === '!reload') {
+    console.log('--- transcript before reload ---');
+    console.log(await out());
+    console.log('--- reloading ---');
+    await call('Page.navigate', { url });
+    let back = false;
+    for (let i = 0; i < Math.ceil(waitMs / 250); i++) {
+      if ((await out()).includes('moros editor client')) { back = true; break; }
+      await sleep(250);
+    }
+    if (!back) await bye(1, 'B1b FAIL — the page never booted after the reload');
+    if (awaitText) {
+      let seen2 = false;
+      for (let i = 0; i < Math.ceil(waitMs / 250); i++) {
+        if ((await out()).includes(awaitText)) { seen2 = true; break; }
+        await sleep(250);
+      }
+      if (!seen2) await bye(1, `B1b FAIL — after the reload the page never said '${awaitText}'`);
+    }
+    // ⚠ AND FOCUS AGAIN. The shell binds keydown to the CANVAS, and a freshly navigated
+    // page has never been clicked — so every key after this would go nowhere, which
+    // reads exactly like a binding that did not survive.
+    await call('Input.dispatchMouseEvent',
+      { type: 'mousePressed', x: clickX, y: clickY, button: 'left', clickCount: 1, buttons: 1 });
+    await call('Input.dispatchMouseEvent',
+      { type: 'mouseReleased', x: clickX, y: clickY, button: 'left', clickCount: 1, buttons: 0 });
+    await sleep(afterMs);
+    continue;
+  }
+  // ⚠ `+key` HOLDS AND `-key` LETS GO — plan 22 `M5`, and this driver could not say it
+  // before. Every press above is down-then-up inside one step, which cannot express the
+  // situation the fresh-press rule exists for: a key that was ALREADY DOWN when the
+  // slot was clicked. `+w,Escape,@raise,-w` is that sentence, and the whole run is one
+  // gesture — so the hold has to survive the click between them.
+  // ⚠ ONE `keyDown` IS ENOUGH: the page's shell keeps a SET (`keys.add(mapKey(e.code))`
+  // on keydown, delete on keyup), so a held key needs no auto-repeat — and sending
+  // repeats would be a different physical event than the one being modelled.
+  const held = k.trim().startsWith('+') || k.trim().startsWith('-');
+  if (held) {
+    const d = describe(k.trim().slice(1));
+    await call('Input.dispatchKeyEvent', {
+      type: k.trim().startsWith('+') ? (d.text ? 'keyDown' : 'rawKeyDown') : 'keyUp',
+      key: d.key, code: d.code, windowsVirtualKeyCode: d.vk, nativeVirtualKeyCode: d.vk,
+      ...(d.text && k.trim().startsWith('+') ? { text: d.text } : {}) });
+    console.log(`${k.trim().startsWith('+') ? 'hold' : 'release'} ${d.key}`);
+    await sleep(gapMs);
+    continue;
+  }
   const d = describe(k.trim());
   await call('Input.dispatchKeyEvent', { type: d.text ? 'keyDown' : 'rawKeyDown',
     key: d.key, code: d.code, windowsVirtualKeyCode: d.vk, nativeVirtualKeyCode: d.vk,

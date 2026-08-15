@@ -64,6 +64,19 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            gesture is unreachable, and M6 — whose evidence is an
 #                            ABSENCE — is caught by its vacuity guard rather than by
 #                            its count.
+#   DEMO_SABOTAGE=nopersist  `M5b`'s own row: the rebind is never written down, so the
+#                            reloaded page comes back on the default. Red on N2 and N3;
+#                            N1 stays green, which is what says the rebind itself worked
+#                            and only the WRITING was removed. ⛔ **It scored N3 GREEN the
+#                            first time it ran** — with one `5` and one `ArrowUp` after
+#                            the reload, survived and not-survived both produce exactly
+#                            one raise. See N3.
+#
+#   DEMO_SABOTAGE=nofresh    `M5a`'s own row: the scan binds whatever it finds DOWN
+#                            instead of what was just pressed, which is the client as
+#                            it stood before the step. Red on M7 and on nothing else —
+#                            the held `w` names the verb before anything was chosen.
+#
 #   DEMO_SABOTAGE=nobarsay   the bar is rebuilt and never re-reported. Red on M3
 #                            ALONE: the binding really moved, and the only line the
 #                            transcript carries is the boot one.
@@ -158,6 +171,38 @@ case ",$SAB," in
     mkdir -p _site && cp probe/b2/.loft/.noarm.html "$SITE" \
       || fail "the sabotaged page was not emitted where expected"
     ;;
+  # ⛔ `nofresh` IS `M5a`'s OWN ROW: the scan binds the first key it finds DOWN, which is
+  # exactly the client as it stood before the step. ⚠ It replaces the CALL rather than
+  # patching the library, because the claim being tested here is that the client asks —
+  # a sabotage inside `hex_editor` would be `probe/k2/sabotage-m5.sh`'s job and would
+  # tell this file nothing about whether anything calls it.
+  *,nofresh,*)
+    sed 's|^    fresh = hex_editor::rebind_scan(st.rb, downs);$|    fresh = downs[0] ?? hex_editor::KEY_NONE;   // SABOTAGE nofresh|' \
+      src/editor_client.loft > probe/b2/.nofresh.loft
+    grep -q 'SABOTAGE nofresh' probe/b2/.nofresh.loft \
+      || fail "the nofresh sabotage patched nothing: the scan call has been reshaped"
+    echo "   SABOTAGE nofresh — the scan binds whatever is DOWN, not what was pressed"
+    loft --html --lib lib/ probe/b2/.nofresh.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.nofresh.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
+  # ⛔ `nopersist` IS `M5b`'s OWN ROW: the rebind is never written down, so a reloaded
+  # page comes back on the default. ⚠ It patches the SAVE and not the load, because
+  # *nothing was written* and *nothing was read* look identical from the second page and
+  # only the first half of the run can tell them apart — which is why `N1` asks about the
+  # write in its own words.
+  *,nopersist,*)
+    sed 's|^        if !hex_editor::keymap_save(st.keys, hex_editor::keymap_default(), KEYMAP_PATH) {$|        if false {   // SABOTAGE nopersist|' \
+      src/editor_client.loft > probe/b2/.nopersist.loft
+    grep -q 'SABOTAGE nopersist' probe/b2/.nopersist.loft \
+      || fail "the nopersist sabotage patched nothing: the save call has been reshaped"
+    echo "   SABOTAGE nopersist — a rebind is never written down"
+    loft --html --lib lib/ probe/b2/.nopersist.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.nopersist.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
   # The INSTRUMENT rather than the subject: the bar is rebuilt and not re-reported, so
   # the only bar line in the transcript is the boot one. ⚠ It exists to prove `M3`
   # reads the REBUILT bar — a check that took the first line would call the starting
@@ -192,7 +237,7 @@ case ",$SAB," in
   # `$SITE` raw and carries **no part-library prelude**. The `P` rows therefore go red
   # in these runs for a reason that is not the subject — read the block the sabotage
   # names, not the exit code. (`deadclock` set this precedent; `M3`'s three follow it.)
-  *,deadclock,*|*,nosettle,*|*,noarm,*|*,nobarsay,*)
+  *,deadclock,*|*,nosettle,*|*,noarm,*|*,nobarsay,*|*,nofresh,*|*,nopersist,*)
     echo "   (the engine-identity check is skipped: this page is deliberately not it)"
     ;;
   *)
@@ -922,6 +967,132 @@ elif [ "$m6_raises" = "2" ]; then
   no "M6 ArrowUp raised twice after raise moved to 5 — the old binding is still live"
 else
   no "M6 $m6_raises raises where the run holds one 5 and two ArrowUp — the old key is live AND the bind fired"
+fi
+
+# ── M7/M8 — A KEY HELD FROM BEFORE THE PICK NAMES NOTHING — plan 22 `M5a` ───
+#
+# ⛔ **THE STORY IS ORDINARY AND THE OLD EDITOR GOT IT WRONG EVERY TIME.** Walk forward
+# on `w`, press `Escape` with the other hand, click a slot — and `w` was bound before the
+# person had chosen anything. `gl_key_pressed` answers *is it down*, never *did it just
+# go down*, so the scan could not tell the key they are leaning on from the key they
+# struck. `RB_SETTLE` is the same missing edge at the far end of the gesture, and `M3`
+# shipped that half alone.
+#
+# ⚠ **THE DRIVER COULD NOT SAY THIS SENTENCE BEFORE.** Every press it makes is
+# down-then-up inside one step, so *already down when the slot was clicked* was
+# unreachable — `+w` / `-w` (plan 22 `M5a`) is what holds a key across a click, and the
+# run is one gesture from the hold to the release.
+#
+# ⚠ **AND THE THIRD BRANCH IS THE VACUITY GUARD.** *`raise` was not bound to `W`* is
+# what a page that never armed, never picked and never scanned reports too — so the run
+# must also show the key struck AFTER the release taking it.
+echo
+M7_KEYS="+w,Escape,@raise,-w,5,5"
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$M7_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/rebind3.raw" 2>&1 || true
+grep -E '^(client|canvas|click|hold|release)' "$OUT/rebind3.raw" > "$OUT/rebind3.log" || true
+grep -E '^client: rebind' "$OUT/rebind3.log" | sed 's/^/   /'
+m7_onw=$(grep -c 'client: rebind — raise is on W' "$OUT/rebind3.log" || true)
+m7_said=$(grep -m1 'client: rebind — .*already down' "$OUT/rebind3.log" || true)
+m7_on5=$(grep -m1 'client: rebind — raise is on 5' "$OUT/rebind3.log" || true)
+m7_raises=$(grep -c '^client: local raise — ' "$OUT/rebind3.log" || true)
+
+if [ "$m7_onw" != "0" ]; then
+  no "M7 the key held from before the pick named the verb — 'raise is on W' with nothing chosen"
+elif [ -z "$m7_on5" ]; then
+  no "M7 vacuous — nothing was bound in this run at all, so 'W did not take it' says nothing: $(grep -m1 'client: rebind' "$OUT/rebind3.log" || echo 'the rebinder said nothing')"
+elif [ -z "$m7_said" ]; then
+  # ⚠ A SEPARATE BRANCH, because it is a separate failure. The binding is right and the
+  # person holding the key they meant is told nothing — which is the silence this step
+  # INTRODUCES, since before it that key bound itself: wrong, and visible.
+  no "M7 the held key was ignored in silence — the page never said it was already down"
+else
+  say "M7 the key held across the click named nothing, and the page said why: ${m7_said#client: rebind — }"
+  say "M8 …and the key struck after the release took it: ${m7_on5#client: rebind — }"
+fi
+# ⚠ THE SAME COUNT `M4` READS, on a run that also holds a walk key. Two presses of `5`:
+# the first binds and must not act, the second acts.
+if [ -n "$m7_on5" ] && [ "$m7_raises" != "1" ]; then
+  no "M8 2 presses of 5 after the release produced $m7_raises raises, not 1"
+fi
+
+# ── N — THE KEYBOARD SURVIVES A RELOAD — plan 22 `M5b` ─────────────────────
+#
+# **Bind it, close the tab, come back, and the key still works.** One run, because it is
+# one sentence: `!reload` re-opens the page mid-gesture rather than splitting the claim
+# across two invocations of the driver with a browser restart between them.
+#
+# ⚠ **THE FIRST HALF'S TRANSCRIPT IS DUMPED BEFORE THE NAVIGATE**, because the page's
+# `<pre id=out>` is part of the document and navigating destroys it — so without that
+# the evidence that anything was ever saved would be gone from the log this block reads,
+# and `N2` would be asserting persistence with nothing to persist.
+#
+# ⚠ **AND `N3` IS WHAT MAKES `N2` MORE THAN A SENTENCE.** *The page said it restored a
+# binding* is a `println`; *the key that was rebound before the reload raises ground
+# after it, and the key it displaced does not* is the binding actually working.
+echo
+N_KEYS="Escape,@raise,5,!reload,5,5,ArrowUp"
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$N_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/persist.raw" 2>&1 || true
+grep -E '^(client|canvas|click|hold|release|---)' "$OUT/persist.raw" > "$OUT/persist.log" || true
+sed -n '1,/^--- reloading ---/p' "$OUT/persist.log" > "$OUT/persist1.log"
+sed -n '/^--- reloading ---/,$p' "$OUT/persist.log" > "$OUT/persist2.log"
+grep -E '^client: (rebind|keymap)' "$OUT/persist.log" | sed 's/^/   /'
+
+n_bound=$(grep -m1 'client: rebind — raise is on 5' "$OUT/persist1.log" || true)
+n_wrote=$(grep -c 'client: keymap ⚠' "$OUT/persist1.log" || true)
+n_back=$(grep -m1 'client: keymap — ' "$OUT/persist2.log" || true)
+n_rebinds=$(grep -c 'client: rebind' "$OUT/persist2.log" || true)
+n_raises=$(grep -c '^client: local raise — ' "$OUT/persist2.log" || true)
+
+# N1 — the first half rebound something AND wrote it down. ⚠ Both, because a page that
+# bound the key and failed to save says so in its own words, and that is a different
+# fault from one that never bound anything.
+if [ -z "$n_bound" ]; then
+  no "N1 nothing was rebound before the reload — $(grep -m1 'client: rebind' "$OUT/persist1.log" || echo 'the rebinder said nothing at all')"
+elif [ "$n_wrote" != "0" ]; then
+  no "N1 the rebind happened and could not be written: $(grep -m1 'client: keymap ⚠' "$OUT/persist1.log")"
+else
+  say "N1 the rebind happened and was written: ${n_bound#client: rebind — }"
+fi
+
+# N2 — …and the reloaded page found it. ⚠ THE COUNT IS IN THE SENTENCE: *no saved key
+# map* is what a page with no persistence at all prints, and it is not an error — so a
+# presence test on `client: keymap —` would pass on exactly the failure being hunted.
+case "$n_back" in
+  *'1 binding(s) restored'*)
+    say "N2 the reloaded page read the keyboard back: ${n_back#client: keymap — }" ;;
+  *'no saved key map'*)
+    no "N2 the reloaded page found NO key map — the rebind did not survive" ;;
+  '') no "N2 the reloaded page never said what it did about a key map" ;;
+  *)  no "N2 the reloaded page said '${n_back#client: keymap — }'" ;;
+esac
+
+# N3 — and the restored binding WORKS, with the displaced key dead.
+#
+# ⛔ **TWO PRESSES OF `5` AND ONE OF `ArrowUp`, BECAUSE A TOTAL CANNOT SAY WHICH — and
+# the first version of this row could not, measured.** With one of each, *the map
+# survived* and *the map did not survive* BOTH produce exactly one raise: one from `5`,
+# one from `ArrowUp`, and no line in the transcript names the key. `DEMO_SABOTAGE=nopersist`
+# scored this row GREEN while its own N2 read *the reloaded page found NO key map* —
+# a true count under a false headline. ⚠ That is this plan's `M6` finding arriving in an
+# instrument written after it was recorded, which is why the counts are asymmetric now:
+# **2 is the restored key, 1 is the old one, 3 is both, 0 is neither.**
+#
+# ⚠ And the vacuity guard is that nothing rebound anything after the reload: a run where
+# `Escape` leaked through would raise for a reason that is not persistence.
+if [ "$n_rebinds" != "0" ]; then
+  no "N3 vacuous — something rebound a key AFTER the reload, so the raises say nothing about the saved map"
+elif [ "$n_raises" = "2" ]; then
+  say "N3 …and it works: after the reload 2 presses of 5 raise twice and ArrowUp does not"
+elif [ "$n_raises" = "1" ]; then
+  no "N3 one raise from two 5 and one ArrowUp — that is the OLD key still live and 5 dead: the map did not survive"
+elif [ "$n_raises" = "3" ]; then
+  no "N3 three raises — 5 works AND ArrowUp is still live, so the restored map added a row instead of moving one"
+elif [ "$n_raises" = "0" ]; then
+  no "N3 nothing raised after the reload — neither the restored key nor the old one"
+else
+  no "N3 $n_raises raises from two 5 and one ArrowUp after the reload"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────

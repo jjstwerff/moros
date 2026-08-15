@@ -16,6 +16,11 @@ tools/__pycache__/
 __pycache__/
 
 
+# The person's own keyboard (plan 22 `M5b`). `editor_client` writes it beside itself
+# on every rebind, so a desktop run leaves one here. It is a PREFERENCE — committing
+# one would hand everybody else whoever last rebound something on this box.
+keymap.txt
+
 # loft build artifacts inside the lib/ packages: `native-auto/` holds the
 # auto-compiled native cdylib (14 MB and machine-specific), `.loft/` the
 # resolver cache.  The committed `.loft/api/*.api` stubs are the exception —
@@ -143,9 +148,10 @@ probe/b2/.out/
 probe/b1c/.loft/
 probe/b1c/.origin.html
 probe/b1c/.chrome/
-probe/b2/.deadclock.loft
-# …and `M3`'s three, which build a sabotaged client the same way (plan 22).
-probe/b2/.nosettle.loft
-probe/b2/.noarm.loft
-probe/b2/.nobarsay.loft
+# …and every sabotaged client `probe/b2/run.sh` builds beside itself: a `sed` of
+# `src/editor_client.loft` with one line replaced, regenerated on the spot by the
+# run that needs it. ⚠ **A PATTERN AND NOT A LIST** — this was five hand-written
+# names (`deadclock`, `nosettle`, `noarm`, `nobarsay`) and plan 22 `M5` added two
+# more, which is a rule that needs editing every time somebody writes a sabotage.
+probe/b2/.*.loft
 probe/b2/.loft/

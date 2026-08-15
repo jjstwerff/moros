@@ -538,6 +538,184 @@ fn test_every_key_the_editor_can_read_is_in_the_scan_and_nothing_else_is() {
   assert(len(cs) == 43, "the scan asks for {len(cs)} codes where the editor reads 43");
 }
 
+// ── A FRESH PRESS — plan 22 `M5` ────────────────────────────────────────────
+//
+// ⛔ **THE ROW THIS STEP EXISTS FOR.** `gl_key_pressed` answers *is it down*, so a key
+// held from before the pick reads identically to one just struck — and the editor binds
+// it. Walk forward on `w`, press `Escape` with the other hand, click a slot: `w` names
+// the verb before the person has chosen anything.
+//
+// ⚠ **THE FIXTURE IS THE CLIENT'S SHAPE, NOT A CONVENIENT ONE.** Each call is one
+// FRAME's whole observation — the codes down at that instant — because that is the only
+// thing a poller can hand over, and a per-code question could not see a release.
+
+fn test_a_key_already_down_when_the_verb_is_picked_names_nothing() {
+  m = keymap_default();
+  rb = rebind_new();
+  w = key_code_of("W");
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  // Frame 1 — the seed. `w` has been down since before the gesture began.
+  assert(rebind_scan(rb, [w]) == KEY_NONE,
+         "the first look fired instead of seeding — a key held from before the pick "
+       + "named the verb");
+  // …and it stays stale for as long as it stays down, which is the half a one-frame
+  // guard would miss.
+  for _f in 0..8 {
+    assert(rebind_scan(rb, [w]) == KEY_NONE,
+           "a key that never moved read as freshly pressed");
+  }
+  assert(rb.rb_at == RB_PICKED, "the machine left RB_PICKED at state {rb.rb_at}");
+  assert(verb_in(m, "W") == VB_NONE, "'W' now names '{verb_in(m, \"W\")}'");
+}
+
+// ⚠ **AND THE SILENCE IS SAID.** Before this step a held key bound itself — wrong, and
+// visible; after it the key does nothing, and a person holding the one they meant needs
+// to be told why.
+fn test_a_key_already_down_is_named_rather_than_ignored_in_silence() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  quiet = rb.rb_say;
+  rebind_scan(rb, [key_code_of("W")]);
+  assert(rb.rb_say != quiet, "the seed found a key down and said nothing about it");
+  assert(rb.rb_say.contains("W"),
+         "the report does not name the key that is down: '{rb.rb_say}'");
+  assert(rb.rb_say.contains(VB_RAISE),
+         "the report forgot which verb is waiting: '{rb.rb_say}'");
+  // ⚠ AND AN EMPTY KEYBOARD SAYS NOTHING, or the prompt that names the verb's current
+  // key would be overwritten on the next frame by a sentence about nothing.
+  rb2 = rebind_new();
+  rebind_arm(rb2);
+  rebind_pick(rb2, m, VB_RAISE);
+  before = rb2.rb_say;
+  rebind_scan(rb2, []);
+  assert(rb2.rb_say == before,
+         "a seed with no key down replaced the prompt with '{rb2.rb_say}'");
+}
+
+// The other side of the same rule, and without it the row above is satisfied by a scan
+// that never answers at all.
+fn test_a_key_pressed_after_the_pick_names_the_verb() {
+  m = keymap_default();
+  rb = rebind_new();
+  five = key_code_of("5");
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  assert(rebind_scan(rb, []) == KEY_NONE, "the seed answered with nothing down");
+  assert(rebind_scan(rb, [five]) == five,
+         "a key struck after the pick did not name the verb");
+  r = rebind_press(rb, m, five);
+  assert(r.bm_ok, "the bind the scan found was refused: {r.bm_say}");
+  assert(verb_at_code(m, five) == VB_RAISE, "'5' reaches '{verb_at_code(m, five)}'");
+}
+
+// ⚠ **A RELEASE IS WHAT MAKES THE NEXT PRESS FRESH**, and this is the row that says the
+// staleness is not permanent — a guard that simply refused whatever was down at the
+// seed would pass every row above and lock the key out for the rest of the gesture.
+fn test_a_held_key_binds_once_it_is_released_and_pressed_again() {
+  m = keymap_default();
+  rb = rebind_new();
+  w = key_code_of("W");
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  assert(rebind_scan(rb, [w]) == KEY_NONE, "the seed bound the held key");
+  assert(rebind_scan(rb, []) == KEY_NONE, "an empty keyboard named a verb");
+  assert(rebind_scan(rb, [w]) == w,
+         "the key was released and pressed again and still did not count");
+  r = rebind_press(rb, m, w);
+  assert(r.bm_ok, "the second press was refused: {r.bm_say}");
+  assert(verb_at_code(m, w) == VB_RAISE, "'W' reaches '{verb_at_code(m, w)}'");
+}
+
+// ⚠ **A RE-PICK CARRIES THE SCAN'S MEMORY RATHER THAN RESEEDING IT**, and the obvious
+// symmetry — *every pick starts a fresh observation* — is what this row refuses.
+// `rb_down` has been watching the keyboard continuously since the first pick, so the key
+// held across a corrected mis-click is ALREADY known to be stale and nothing has to be
+// re-established.
+//
+// ⛔ **AND THE SECOND HALF IS THE FALSIFIABLE ONE, WHICH IS WHY IT IS HERE.** The first
+// is true under a reseed as well — reseeding makes the held key stale too — so a row
+// that asked only that could not see the difference it exists to state, and was green
+// under every sabotage in `probe/k2/sabotage-m5.sh` when it was written that way. What
+// a reseed actually costs is a key struck in the same frame as the second click.
+fn test_a_corrected_mis_click_keeps_the_held_key_stale_and_the_struck_one_fresh() {
+  m = keymap_default();
+  w = key_code_of("W");
+  five = key_code_of("5");
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  rebind_scan(rb, [w]);
+  rebind_scan(rb, [w]);
+  rebind_pick(rb, m, VB_LOWER);
+  assert(rb.rb_verb == VB_LOWER, "the second pick chose '{rb.rb_verb}'");
+  assert(rebind_scan(rb, [w]) == KEY_NONE,
+         "the key held across a re-pick named the second verb");
+  assert(verb_in(m, "W") == VB_NONE, "'W' now names '{verb_in(m, \"W\")}'");
+  // …and the half a reseed would break: the person clicks the right slot and strikes
+  // the key, and the press must not be eaten by the correction.
+  rb2 = rebind_new();
+  rebind_arm(rb2);
+  rebind_pick(rb2, m, VB_RAISE);
+  rebind_scan(rb2, []);
+  rebind_pick(rb2, m, VB_LOWER);
+  assert(rebind_scan(rb2, [five]) == five,
+         "a key struck in the same frame as a corrected mis-click was swallowed");
+}
+
+// ⛔ **ARMING IS WHERE THE MEMORY IS DROPPED, AND IT IS THE ONE GAP THE SCAN DOES NOT
+// WATCH.** Nothing observes the keyboard between a cancel and the next pick, so a
+// `rb_down` carried across that gap describes a keyboard the person has since changed —
+// and the key they took hold of in between reads as *already seen*, which is the rule
+// inverted. ⚠ **The fixture has to scan with NOTHING down before the cancel**, or the
+// stale memory happens to hold the right answer and the row cannot see the difference.
+fn test_a_key_taken_up_between_two_gestures_is_not_fresh_at_the_second() {
+  m = keymap_default();
+  rb = rebind_new();
+  w = key_code_of("W");
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  rebind_scan(rb, []);                   // nothing was down during the first gesture
+  rebind_arm(rb);                        // cancel
+  assert(rb.rb_at == RB_OFF, "cancelling reached state {rb.rb_at}");
+  // …and now the person goes back to walking, which nothing is watching.
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  assert(rebind_scan(rb, [w]) == KEY_NONE,
+         "a key taken up between two gestures read as freshly pressed at the second");
+  assert(verb_in(m, "W") == VB_NONE, "'W' now names '{verb_in(m, \"W\")}'");
+}
+
+// The scan is only ever the picked state's question. ⚠ It must not remember anything
+// outside it either, or the seed for the next pick was taken at the wrong moment.
+fn test_the_scan_answers_nothing_unless_a_verb_is_picked() {
+  rb = rebind_new();
+  five = key_code_of("5");
+  assert(rebind_scan(rb, [five]) == KEY_NONE, "a resting rebinder read the keyboard");
+  rebind_arm(rb);
+  assert(rebind_scan(rb, [five]) == KEY_NONE, "an armed rebinder named a verb");
+  assert(!rb.rb_seen, "the scan seeded itself outside RB_PICKED");
+}
+
+// ⚠ **THE SEED IS AN OBSERVATION AND NOT A KEY**, so more than one held key is stale and
+// a key struck beside them is still found. A machine that remembered one code would
+// pass every row above.
+fn test_one_fresh_key_is_found_among_several_that_were_already_down() {
+  m = keymap_default();
+  rb = rebind_new();
+  w = key_code_of("W");
+  a = key_code_of("A");
+  five = key_code_of("5");
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  assert(rebind_scan(rb, [w, a]) == KEY_NONE, "the seed with two keys down fired");
+  assert(rebind_scan(rb, [w, a]) == KEY_NONE, "two keys that never moved read as fresh");
+  assert(rebind_scan(rb, [w, a, five]) == five,
+         "the fresh key was missed among the two that were already down");
+}
+
 // ⚠ **A BAR HAS A SLOT'S WIDTH, AND TRUNCATION IS WHAT IT MUST NOT DO.** `stair_up`
 // and `stair_down` share five characters, so a truncating bar draws two identical
 // slots — which is the failure `client_panel_spec`'s hotkey column already had, where
@@ -566,6 +744,182 @@ fn test_a_short_label_fits_a_slot_and_an_unknown_verb_still_draws() {
   // correct — where a blank would read as a slot that does nothing.
   assert(verb_short("tunnel") == "tunnel",
          "an unlisted verb draws as '{verb_short(\"tunnel\")}'");
+}
+
+// ── THE MAP OUTLIVES THE PAGE — plan 22 `M5b` ───────────────────────────────
+//
+// ⚠ **THESE ROWS ARE ABOUT THE DOCUMENT, NOT THE DISK.** `keymap_delta` and
+// `keymap_apply` are pure, so the whole rule is testable with no filesystem — and the
+// one claim that needs a real page (*does a `--html` build have `fs_write_text`*) is a
+// probe rather than a test, because a loft suite runs on the interpreter.
+
+fn test_a_map_nobody_changed_writes_a_document_with_no_bindings_in_it() {
+  d = keymap_delta(keymap_default(), keymap_default());
+  assert(d.trim() == KEYMAP_DOC, "an untouched map wrote bindings: [{d}]");
+}
+
+fn test_a_rebound_map_round_trips_through_its_document() {
+  m = keymap_default();
+  keymap_bind(m, "5", VB_RAISE);
+  keymap_bind(m, "7", VB_CELLAR);
+  doc = keymap_delta(m, keymap_default());
+  back = keymap_default();
+  r = keymap_apply(back, doc);
+  assert(r.kd_ok, "the document was refused: {r.kd_say}");
+  // ⚠ EVERY ROW, not the two that were touched: a document that dropped an untouched
+  // binding would pass a check that only asked about its own subject.
+  for b in m.km_items {
+    assert(key_for(back, b.kb_verb) == b.kb_key,
+           "'{b.kb_verb}' came back on '{key_for(back, b.kb_verb)}' and was on "
+         + "'{b.kb_key}'");
+  }
+  assert(len(keymap_verbs(back)) == len(keymap_verbs(m)),
+         "the round trip changed the number of rows");
+}
+
+// ⛔ **THE ROW THE FORMAT WAS DESIGNED AROUND, worked on paper before it was written.**
+// Default `A=1 B=2 C=3`; bind `B` to `1`, then bind `B` to `3`. The map is
+// `A="" B=3 C=""`, and the only non-default row WITH a key is `B=3` — so a document
+// holding just that, replayed onto a default, leaves `A` on `1`, a key its owner lost
+// two gestures ago.
+fn test_a_verb_left_with_no_key_is_recorded_and_comes_back_with_none() {
+  m = keymap_default();
+  keymap_bind(m, key_for(m, VB_LOWER), VB_RAISE);      // raise takes lower's key
+  assert(key_for(m, VB_LOWER) == "", "the fixture did not displace lower");
+  doc = keymap_delta(m, keymap_default());
+  back = keymap_default();
+  r = keymap_apply(back, doc);
+  assert(r.kd_ok, "the document was refused: {r.kd_say}");
+  assert(key_for(back, VB_LOWER) == "",
+         "lower came back on '{key_for(back, VB_LOWER)}' — the absence was not recorded");
+  assert(key_for(back, VB_RAISE) == key_for(m, VB_RAISE),
+         "raise came back on '{key_for(back, VB_RAISE)}'");
+}
+
+// ⛔ **THE ROW THE DELTA ACTUALLY EARNS, and the first version of it was green for the
+// wrong reason.** *A verb the editor GAINED keeps its key* is true of a whole-table file
+// too, because applying assigns per named verb and an unmentioned one is simply left
+// alone — so that row could not see the difference it was written to state. What only a
+// delta gives is the other direction: **a verb the author never rebound follows the
+// editor's default, including when that default MOVES.** A whole table pins every verb
+// to the layout of the day it was written, forever, including the fourteen the author
+// never chose.
+fn test_a_verb_the_author_never_rebound_follows_the_editors_default() {
+  old = keymap_default();
+  keymap_bind(old, "5", VB_RAISE);
+  doc = keymap_delta(old, keymap_default());
+  // …and the editor's own layout later moves a verb this author never touched.
+  moved = keymap_default();
+  was = key_for(moved, VB_FENCE);
+  keymap_bind(moved, "9", VB_FENCE);
+  assert(was != "9", "the fixture's 'moved' default was already 9");
+  r = keymap_apply(moved, doc);
+  assert(r.kd_ok, "the older document was refused: {r.kd_say}");
+  assert(key_for(moved, VB_FENCE) == "9",
+         "fence came back on '{key_for(moved, VB_FENCE)}' — a document that never "
+       + "mentioned it overwrote the editor's new default");
+  assert(key_for(moved, VB_RAISE) == "5", "the author's own binding did not arrive");
+}
+
+// …and the vocabulary is not frozen either: a verb the editor gained since the document
+// was written keeps its own key. ⚠ **This one is NOT about the delta** — see above — it
+// is about applying onto today's map rather than replacing it, which is a different
+// mistake with the same symptom.
+fn test_a_verb_the_editor_gained_since_the_document_was_written_keeps_its_key() {
+  old = keymap_default();
+  keymap_bind(old, "5", VB_RAISE);
+  doc = keymap_delta(old, keymap_default());
+  grown = keymap_default();
+  grown.km_items += [bind_of("8", "tunnel")];
+  r = keymap_apply(grown, doc);
+  assert(r.kd_ok, "the older document was refused: {r.kd_say}");
+  assert(key_for(grown, "tunnel") == "8",
+         "the new verb came back on '{key_for(grown, \"tunnel\")}' — a document written "
+       + "before it existed took its key away");
+  assert(verb_is_known(grown, "tunnel"),
+         "the new verb was dropped from the map entirely");
+  assert(key_for(grown, VB_RAISE) == "5", "the saved binding did not arrive");
+}
+
+// …and the other direction: a verb this editor no longer has is DROPPED and named,
+// never refused, or one rename costs the author every other binding in the file.
+fn test_a_verb_the_editor_no_longer_has_is_dropped_and_said() {
+  back = keymap_default();
+  r = keymap_apply(back, KEYMAP_DOC + "\nraise 5\ntunnel 8\n");
+  assert(r.kd_ok, "one unknown verb refused the whole document: {r.kd_say}");
+  assert(r.kd_took == 1, "{r.kd_took} rows were taken, not 1");
+  assert(r.kd_unknown.contains("tunnel"),
+         "the dropped verb was not named: '{r.kd_unknown}'");
+  assert(key_for(back, VB_RAISE) == "5", "the row beside it did not arrive");
+}
+
+fn test_a_document_this_editor_did_not_write_is_refused_whole() {
+  back = keymap_default();
+  was = key_for(back, VB_RAISE);
+  r = keymap_apply(back, "some other program's file\nraise 5\n");
+  assert(!r.kd_ok, "a foreign document was accepted");
+  assert(key_for(back, VB_RAISE) == was,
+         "a refused document still moved raise to '{key_for(back, VB_RAISE)}'");
+}
+
+// ⚠ **A HAND-EDITED FILE IS THE ONLY WAY TO REACH THIS**, and the answer is to refuse
+// the whole document rather than load half of it: a person whose keyboard was reshaped
+// by a bad file cannot reach the gesture that would fix it.
+fn test_a_document_putting_two_verbs_on_one_key_is_refused_and_changes_nothing() {
+  back = keymap_default();
+  was = key_for(back, VB_RAISE);
+  r = keymap_apply(back, KEYMAP_DOC + "\nraise 5\nlower 5\n");
+  assert(!r.kd_ok, "a document with a collision was accepted: {r.kd_say}");
+  assert(key_for(back, VB_RAISE) == was,
+         "a refused document left raise on '{key_for(back, VB_RAISE)}'");
+  assert(key_for(back, VB_LOWER) != "5", "a refused document still bound lower to 5");
+}
+
+fn test_a_document_naming_a_key_the_editor_cannot_read_is_refused() {
+  back = keymap_default();
+  was = key_for(back, VB_RAISE);
+  r = keymap_apply(back, KEYMAP_DOC + "\nraise F13\n");
+  assert(!r.kd_ok, "a key this editor cannot read was accepted");
+  assert(key_for(back, VB_RAISE) == was, "a refused document still moved raise");
+}
+
+// ── AND THE DISK, which the interpreter has ─────────────────────────────────
+//
+// ⚠ **ABSENT IS NOT A FAILURE**, it is every first run — so `kd_ok` says *the map is
+// usable* and `kd_found` says *there was a document*. A caller reading one field for
+// both would report a fresh install as a broken one.
+fn test_a_map_that_was_never_saved_loads_as_the_default_without_complaint() {
+  back = keymap_default();
+  was = key_for(back, VB_RAISE);
+  r = keymap_load(back, "keymap_test_never_written.txt");
+  assert(r.kd_ok, "an absent key map was reported as a failure: {r.kd_say}");
+  assert(!r.kd_found, "an absent key map reported that a document was found");
+  assert(key_for(back, VB_RAISE) == was, "an absent key map moved raise");
+}
+
+fn test_a_saved_map_comes_back_off_the_disk() {
+  p = "keymap_test_roundtrip.txt";
+  if exists(p) { delete(p); }
+  m = keymap_default();
+  keymap_bind(m, "5", VB_RAISE);
+  assert(keymap_save(m, keymap_default(), p), "the save reported nothing written");
+  back = keymap_default();
+  r = keymap_load(back, p);
+  assert(r.kd_ok && r.kd_found, "the saved map did not load: {r.kd_say}");
+  assert(key_for(back, VB_RAISE) == "5",
+         "raise came off the disk on '{key_for(back, VB_RAISE)}'");
+  // ⚠ **SAVING TWICE OVER ONE PATH IS THE NORMAL CASE** — a rebind is written on every
+  // bind — and `f += …` APPENDS, which is `world_save_as`'s scar: a second save that
+  // left two documents in the file would read back the first and hide the rest.
+  keymap_bind(m, "7", VB_CELLAR);
+  assert(keymap_save(m, keymap_default(), p), "the second save reported nothing written");
+  again = keymap_default();
+  r2 = keymap_load(again, p);
+  assert(r2.kd_ok, "the twice-saved map did not load: {r2.kd_say}");
+  assert(r2.kd_took == 2, "the twice-saved map restored {r2.kd_took} bindings, not 2");
+  assert(key_for(again, VB_CELLAR) == "7",
+         "cellar came off the disk on '{key_for(again, VB_CELLAR)}'");
+  delete(p);
 }
 
 // The fixture: flat ground, so `press_verb` has somewhere to refuse or act. ⚠ The

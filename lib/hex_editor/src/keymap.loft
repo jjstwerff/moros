@@ -302,6 +302,161 @@ pub fn verb_is_known(m: KeyMap, verb: text) -> boolean {
   false
 }
 
+// ── THE MAP OUTLIVES THE PAGE — plan 22 `M5b` ───────────────────────────────
+//
+// A rebind that dies with the tab is a preference nobody would ever set. `P6` proved a
+// `--html` page has a filesystem — an immutable base tree plus a `localStorage` delta —
+// so this is the map written into it and read back.
+//
+// ⛔ **A SAVED WHOLE TABLE PINS EVERY VERB TO THE LAYOUT OF THE DAY IT WAS WRITTEN,
+// INCLUDING THE FOURTEEN THE AUTHOR NEVER CHOSE.** That is the defect, and it is worth
+// being exact about which one it is: *a verb the editor GAINED keeps its key* is true of
+// a whole table too, because `keymap_apply` assigns per named verb and leaves an
+// unmentioned one alone. The row a whole table actually loses is the EDITOR's own
+// freedom to move a default — change `raise` from `ArrowUp` in a release, and every
+// person with a saved table stays on the old key forever, having asked for nothing.
+//
+// > **THE INVARIANT: the file holds only what the author CHANGED, so a verb they never
+// > rebound follows the editor's default — including when that default moves.**
+//
+// ⚠ **AND THE BASE IS A PARAMETER RATHER THAN `keymap_default()`.** This file does not
+// know which verbs exist — that is its first rule, at the top — and a delta computed
+// against a default it reached for itself would be the layering broken for one
+// convenience.
+
+pub struct KeyLoad {
+  kd_ok:      boolean,          // the map is in a state the editor can use
+  kd_found:   boolean = false,  // …and there WAS a document; absent is not a failure
+  kd_say:     text    = "",
+  kd_took:    integer = 0,      // rows taken from the document
+  kd_unknown: text    = "",     // verbs it names and this editor does not have
+}
+
+// ⚠ A VERSION IN THE FIRST LINE, because what has to be refused is not a corrupt file
+// but a file some OTHER program wrote to the same name.
+pub const KEYMAP_DOC = "keymap 1";
+
+// The rows that differ from `base`, as the text that gets written down.
+//
+// ⛔ **A ROW WITH NO KEY IS RECORDED, AND LEAVING IT OUT IS NOT A SIMPLIFICATION.**
+// Worked on paper before this was written. Default `A=1 B=2 C=3`; bind `B` to `1`, then
+// bind `B` to `3`. The map is `A="" B=3 C=""`, and the only non-default row WITH a key
+// is `B=3` — so a document holding just that, replayed onto a default, leaves `A` on
+// `1`, a key its owner lost two gestures ago. The absences are what make the document
+// exact, and they are why applying is an ASSIGNMENT rather than a replay of binds.
+pub fn keymap_delta(m: KeyMap, base: KeyMap) -> text {
+  out = KEYMAP_DOC;
+  for b in m.km_items {
+    if key_for(base, b.kb_verb) == b.kb_key { continue; }
+    if b.kb_key == "" { out = out + "\n" + b.kb_verb; }
+    else { out = out + "\n" + b.kb_verb + " " + b.kb_key; }
+  }
+  out + "\n"
+}
+
+// …and back onto a map the caller has just built from the CURRENT default.
+//
+// ⚠ **IT BUILDS A NEW VECTOR AND ASSIGNS AT THE END**, so a document that turns out to
+// be illegal leaves the editor on its default rather than half-loaded. A person whose
+// keyboard was reshaped by a bad file cannot reach the gesture that would fix it.
+pub fn keymap_apply(m: KeyMap, doc: text) -> KeyLoad {
+  lines = doc.split('\n');
+  if len(lines) == 0 || (lines[0] ?? "").trim() != KEYMAP_DOC {
+    return KeyLoad { kd_ok: false, kd_found: true,
+      kd_say: "that file is not a key map this editor wrote" };
+  }
+  next: vector<KeyBind> = [];
+  for b in m.km_items { next += [b]; }
+  took = 0;
+  unknown = "";
+  for i in 1..len(lines) {
+    ln = (lines[i] ?? "").trim();
+    if ln == "" { continue; }
+    verb = ln;
+    key  = "";
+    sp = ln.find(" ");
+    if sp != null { verb = ln[..sp]; key = ln[sp + 1..].trim(); }
+    if key != "" && key_code_of(key) == KEY_NONE {
+      return KeyLoad { kd_ok: false, kd_found: true,
+        kd_say: "that file binds '{verb}' to '{key}', which is not a key this editor "
+              + "can read" };
+    }
+    hit = false;
+    put: vector<KeyBind> = [];
+    for b2 in next {
+      if b2.kb_verb == verb {
+        hit = true;
+        put += [KeyBind { kb_key: key, kb_code: key_code_of(key), kb_verb: verb }];
+      } else {
+        put += [b2];
+      }
+    }
+    // ⚠ **A VERB THIS EDITOR NO LONGER HAS IS DROPPED AND NAMED, never refused.** One
+    // renamed verb would otherwise cost the author every other binding in the file.
+    if !hit {
+      if unknown != "" { unknown = unknown + ","; }
+      unknown = unknown + verb;
+      continue;
+    }
+    next = put;
+    took = took + 1;
+  }
+  // ⚠ **ONE KEY PER VERB IS CHECKED RATHER THAN ASSUMED**, because this document is on a
+  // disk a person can edit. A well-formed delta cannot collide — the row that lost a key
+  // is recorded beside the row that took it — so a collision means the file was written
+  // by hand, or by something else.
+  for a in next {
+    if a.kb_key == "" { continue; }
+    n = 0;
+    for b3 in next { if b3.kb_key == a.kb_key { n = n + 1; } }
+    if n > 1 {
+      return KeyLoad { kd_ok: false, kd_found: true,
+        kd_say: "that file puts {n} verbs on '{a.kb_key}' — nothing was loaded" };
+    }
+  }
+  m.km_items = next;
+  if unknown != "" {
+    return KeyLoad { kd_ok: true, kd_found: true, kd_took: took, kd_unknown: unknown,
+      kd_say: "{took} binding(s) restored; '{unknown}' is not a verb this editor has" };
+  }
+  KeyLoad { kd_ok: true, kd_found: true, kd_took: took,
+    kd_say: "{took} binding(s) restored" }
+}
+
+// ── …AND THE FILE ───────────────────────────────────────────────────────────
+//
+// ⚠ **TEXT, AND NOT THE WORLD'S BYTE FORMAT.** A key map is fifteen short rows a person
+// may want to read, copy between machines or repair by hand, and there is no CRC to
+// protect because a wrong line costs one binding rather than a document. `f.lines()` is
+// loft's own reader, and `fs_read_text`/`fs_write_text` are both bound in an emitted
+// `--html` page — checked in the import table before this was designed around them, and
+// then measured in a running one.
+
+pub fn keymap_save(m: KeyMap, base: KeyMap, path: text) -> boolean {
+  // ⚠ A SAVE REPLACES. `f += …` on an existing file APPENDS — `world_save_as` carries
+  // the scar, where an ordinary second save produced a file holding two worlds back to
+  // back, the first of which read fine and the rest of which was unreachable.
+  if exists(path) { delete(path); }
+  f = file(path);
+  f += keymap_delta(m, base);
+  f.sync();
+  // …and then ask the disk, because nothing above can fail out loud.
+  file(path).size > 0
+}
+
+pub fn keymap_load(m: KeyMap, path: text) -> KeyLoad {
+  f = file(path);
+  // ⚠ **ABSENT IS NOT A FAILURE**, it is every first run — so `kd_ok` says *the map is
+  // usable* and `kd_found` says *there was a document*. A caller that read one field for
+  // both would report a fresh install as a broken one.
+  if f.format == Format.NotExists {
+    return KeyLoad { kd_ok: true, kd_say: "no saved key map — this is the default one" };
+  }
+  doc = "";
+  for ln in f.lines() { doc = doc + ln + "\n"; }
+  keymap_apply(m, doc)
+}
+
 // ── ARM, PICK, PRESS — rebinding as a state machine, plan 22 `M3` ────────────
 //
 // `keymap_bind` above is the EDIT; this is the gesture that reaches it from inside a
@@ -346,6 +501,11 @@ pub struct Rebind {
   // its sentence on finishing would wipe *cellar has no key now* off the screen in the
   // same frame it was earned — which is the one thing the person needs to read.
   rb_say:  text    = "",
+  // The scan's memory — see `rebind_scan`. `rb_down` is the codes observed down on the
+  // previous look; `rb_seen` says whether there HAS been a previous look, which is the
+  // difference between a seed and an edge.
+  rb_down: vector<integer> = [],
+  rb_seen: boolean = false,
 }
 
 pub fn rebind_new() -> Rebind { Rebind {} }
@@ -359,6 +519,11 @@ pub fn rebind_holds(rb: Rebind) -> boolean { rb.rb_at != RB_OFF }
 // including `RB_SETTLE`, where cancelling costs nothing because the bind already
 // happened and the machine is only waiting for a finger.
 pub fn rebind_arm(rb: Rebind) {
+  // ⚠ THE SCAN'S MEMORY GOES BOTH WAYS, because it is only ever read while `RB_PICKED`
+  // and a stale seed from a previous gesture would let a key that never moved read as
+  // freshly pressed.
+  rb.rb_down = [];
+  rb.rb_seen = false;
   if rb.rb_at == RB_OFF {
     rb.rb_at   = RB_ARMED;
     rb.rb_verb = "";
@@ -391,6 +556,13 @@ pub fn rebind_pick(rb: Rebind, m: KeyMap, verb: text) {
   had = key_for(m, verb);
   rb.rb_at   = RB_PICKED;
   rb.rb_verb = verb;
+  // ⚠ **AND A RE-PICK DELIBERATELY DOES NOT RESEED THE SCAN.** The obvious symmetry —
+  // every pick starts a fresh observation — is WRONG here, and measured on paper before
+  // it was written: `rb_down` has been tracking the keyboard continuously since the
+  // first pick, so a key held across a corrected mis-click is already known to be
+  // stale, and reseeding would additionally swallow a key the person struck in the same
+  // frame as the second click. Arming is where the memory is dropped, because that is
+  // the only gap the scan does not watch.
   if had == "" {
     rb.rb_say = "press a key for {verb} — it has none";
     return;
@@ -453,4 +625,61 @@ pub fn key_codes() -> vector<integer> {
   for i in 0..26 { cs += [97 + i]; }
   for d in 0..10 { cs += [48 + d]; }
   cs
+}
+
+fn code_among(cs: vector<integer>, c: integer) -> boolean {
+  for x in cs { if x == c { return true; } }
+  false
+}
+
+// …and WHICH of them was just pressed, out of a keyboard that can only be asked
+// *is it down* — plan 22 `M5`.
+//
+// ⛔ **A KEY HELD FROM BEFORE THE PICK BINDS ITSELF, AND `RB_SETTLE` CANNOT SEE IT.**
+// The settle above is the same missing edge at the other end of the gesture — the key
+// that COMPLETES a bind is still down on the next frame — and this is the beginning of
+// it: walk forward on `w`, press `Escape` with the other hand, click a slot, and `w` is
+// bound before the person has chosen anything. Both halves are one fact about this
+// editor, which is that `graphics` has no event queue.
+//
+// > **THE INVARIANT: only a key that has been observed UP since the pick, and is down
+// > now, can name a verb.**
+//
+// ⚠ **AN EDGE DETECTOR WHOSE FIRST LOOK SEEDS RATHER THAN FIRES**, which is the whole
+// mechanism and the only part of it that is not obvious. `st.was_arm` in the client
+// does this for one key with a `false` seed, and it is right to: the client starts
+// before any key can be down. This machine arrives in the MIDDLE of a keyboard whose
+// state it has never seen, so *unknown* has to read as *was already down* — which is
+// what makes a held key stale rather than fresh.
+//
+// ⚠ AND IT TAKES THE WHOLE OBSERVATION RATHER THAN ONE CODE AT A TIME, because *was
+// this key down last time* cannot be answered by a caller that only reports the keys
+// that are down NOW: a key that was released between two looks is invisible to it, and
+// that release is exactly what makes the next press fresh.
+pub fn rebind_scan(rb: Rebind, downs: vector<integer>) -> integer {
+  if rb.rb_at != RB_PICKED { return KEY_NONE; }
+  if !rb.rb_seen {
+    rb.rb_seen = true;
+    rb.rb_down = downs;
+    // ⚠ **AND THE SILENCE THIS STEP INTRODUCES IS SAID OUT LOUD.** Before it, a key
+    // held at the pick bound itself — wrong, and visible. After it, that key does
+    // nothing at all, which is the *blank no* this tree refuses everywhere else. A
+    // person who was holding the key they meant gets told why it did not take.
+    if len(downs) > 0 {
+      names = "";
+      for c in downs {
+        if names != "" { names = names + ","; }
+        names = names + key_name_of(c);
+      }
+      rb.rb_say = "press a key for {rb.rb_verb} — {names} already down, so press it "
+                + "again or use another";
+    }
+    return KEY_NONE;
+  }
+  fresh = KEY_NONE;
+  for c in downs {
+    if !code_among(rb.rb_down, c) { fresh = c; break; }
+  }
+  rb.rb_down = downs;
+  fresh
 }

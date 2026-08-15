@@ -831,10 +831,14 @@ rather than assumed safe.** Nothing in production resolved them: every `.keys` s
 | **`M2`** — the verb bar: `lavition_ui` lays out slots from data, the client draws it | the panel, unchanged | ⚠ a bar whose key glyphs come from anywhere but the map — the row-4 defect rebuilt one widget over |
 | ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | the default map | a collision reported as a refusal. ⚠ *Every* letter is taken, so **displacing is what rebinding IS**; refusing would make the feature useless. ⛔ **AND THE ROW THAT MATTERED WAS NOT THIS ONE** — see below |
 | **`M4`** — delete `verb_of` | — | ⚠ not "the suite is green" — a deletion makes tests pass by removing their subject. `V3`'s instrument: the **test-name diff**, with every retired claim named where it went |
+| ✅ **`M5a`** — a fresh-press requirement for the scan | the settle, which is the same edge at the other end | ⛔ **not *the held key stays stale*** — that is true under a reseed as well, and the row asking it was green under all five sabotages. What separates them is a key **struck in the same frame as a corrected mis-click**, which a reseed swallows |
 
-⚠ **`M1` DOES NOT PERSIST A REBIND, DELIBERATELY.** The map is `Client` state and a fresh page
-gets the default. Persisting it is a `LayeredFS` question (`P6` proved the page has a filesystem)
-and it belongs after `M3`, because *what* to persist is not settled until a person can make one.
+| ✅ **`M5b`** — the map outlives the page: a delta over the default, on a disk | the default, which is the BASE the delta is read against | ⛔ **not *a verb the editor gained keeps its key*** — a whole-table file passes that too, because applying assigns per named verb. What only a delta earns is the EDITOR's freedom to **move a default** under a verb the author never touched |
+
+⚠ **`M1` DID NOT PERSIST A REBIND, DELIBERATELY** — the map was `Client` state and a fresh page
+got the default, because *what* to persist was not settled until a person could make one. `M5b`
+is that question answered: the document holds only what the author CHANGED, so a verb they never
+rebound follows the editor's default, including when that default moves.
 
 ## ⛔ What `M3` measured: a POLLING editor fires the key it has just bound
 
@@ -872,17 +876,35 @@ useless-feature failure one layer down; what an author must not get is silence. 
 is to put them in the map**, which is `D1`'s neighbourhood: the walk is a HELD state where every
 verb here is an edge, so `press_verb` has no shape for it yet.
 
-## ⏭ And the open edge: the scan cannot tell HELD from PRESSED
+## ✅ The edge that was open: the scan could not tell HELD from PRESSED — closed at `M5a`
 
 `graphics` has no event queue, so *which key did they press* is 43 asks of `gl_key_pressed`. That
-answers **is it down**, not **did it just go down** — and `RB_SETTLE` is that distinction solved at
-one end only. At the other end it is still open: **a key held from before the arm binds itself the
-instant a slot is picked.** Walk forward, press `Escape` with the other hand, click a slot with the
-mouse, and `w` is bound before you have chosen anything.
+answers **is it down**, not **did it just go down** — and `RB_SETTLE` was that distinction solved at
+one end only. At the other end: **a key held from before the arm bound itself the instant a slot was
+picked.** Walk forward, press `Escape` with the other hand, click a slot with the mouse, and `w` was
+bound before you had chosen anything.
 
-⚠ **It is one gap with two faces, which is why it is a slice and not a patch.** The same missing
-edge means a *refused* press would reprint its refusal every frame; that path is unreachable today
-(every code the scan offers is readable, and the verb was checked at the pick), and it becomes
-reachable the moment either of those changes. The fix is a fresh-press requirement — the codes down
-at pick time, ignored until released — and it wants a driver that can hold a key across a click,
-which `probe/b1b/press.mjs` cannot do yet.
+`hex_editor::rebind_scan` is the missing edge, built out of two looks at the whole keyboard.
+
+> **THE INVARIANT: only a key that has been observed UP since the pick, and is down now, can name a
+> verb.**
+
+⚠ **AN EDGE DETECTOR WHOSE FIRST LOOK SEEDS RATHER THAN FIRES**, which is the whole mechanism.
+`st.was_arm` in the client does this for one key with a `false` seed and is right to — the client
+starts before any key can be down. The rebinder arrives in the MIDDLE of a keyboard it has never
+seen, so *unknown* has to read as *was already down*.
+
+⚠ **AND ARMING IS THE ONLY PLACE THE MEMORY IS DROPPED.** The symmetric-looking rule — *every pick
+starts a fresh observation* — is refused: the detector has been running continuously since the first
+pick, so a key held across a corrected mis-click is already stale, and reseeding would additionally
+swallow a key struck in the same frame as the second click. Nothing watches the keyboard between a
+cancel and the next pick, and that gap is the whole of what arming has to clear.
+
+⚠ **AND THE STEP INTRODUCED A SILENCE, SO IT SPEAKS.** Before it that key bound itself — wrong, and
+visible; after it, nothing happens at all. The seed names what it found: *press a key for `raise` —
+`W` already down, so press it again or use another*.
+
+⏭ **The second face of the gap is still unreached**: the same missing edge means a *refused* press
+would reprint its refusal every frame. That path stays unreachable today — every code the scan
+offers is readable and the verb was checked at the pick — and it becomes reachable the moment either
+premise moves.

@@ -293,6 +293,16 @@ const UI_FONT_GENERIC = "monospace";
 const WIN_W = 1200;
 const WIN_H = 660;
 
+// Where the person's keyboard lives — plan 22 `M5b`.
+//
+// ⚠ **A BARE NAME, SO IT LANDS BESIDE THE PROGRAM.** In a page that is `LayeredFS`'s
+// delta over the base tree (`P6`, which measured a world surviving a reload the same
+// way); on a desktop it is the working directory. ⚠ **And it is the CLIENT's rather
+// than `hex_editor`'s**: a scripted run must not read it, because `tools/scripts/*.keys`
+// says `verb <name>` for exactly this reason — a recording that depended on whoever's
+// keyboard last touched this box would replay differently for two people.
+const KEYMAP_PATH = "keymap.txt";
+
 // The reference look, ported verbatim from `html/editor.html`. Written as desktop
 // GLSL (`#version 330 core`) because loft's browser shell rewrites the version
 // directive to `#version 300 es` and injects the precision qualifiers — so ONE
@@ -1849,11 +1859,25 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // Which key did they just press? ⚠ ONLY WHILE PICKED, so the 43 asks cost nothing in
   // a normal frame — and `graphics` has no event queue, so *what was pressed* has no
   // cheaper spelling than asking each one.
+  //
+  // ⛔ **AND *DOWN* IS NOT *PRESSED* — plan 22 `M5`.** This block used to bind the first
+  // code it found down, so a key held from before the pick named the verb: walk forward
+  // on `w`, press `Escape` with the other hand, click a slot, and `w` is bound before
+  // anything was chosen. The rising edge is `hex_editor::rebind_scan`'s, built from the
+  // whole frame's observation — a per-code question cannot see the RELEASE that makes
+  // the next press fresh.
   if st.rb.rb_at == hex_editor::RB_PICKED {
+    downs: vector<integer> = [];
     for c in hex_editor::key_codes() {
+      // ⚠ THE ARM KEY IS THE CLIENT'S OWN and is handled above, so it never reaches the
+      // scan here. The library refuses it too, for a driver that has only a code.
       if c == hex_editor::KEY_REBIND { continue; }
-      if !graphics::gl_key_pressed(c) { continue; }
-      made = hex_editor::rebind_press(st.rb, st.keys, c);
+      if graphics::gl_key_pressed(c) { downs += [c]; }
+    }
+    was_say = st.rb.rb_say;
+    fresh = hex_editor::rebind_scan(st.rb, downs);
+    if fresh != hex_editor::KEY_NONE {
+      made = hex_editor::rebind_press(st.rb, st.keys, fresh);
       println("client: rebind — {st.rb.rb_say}");
       // ⚠ AND THE CLIENT'S OWN KEYS ARE OUTSIDE THE MAP, WHICH IS WHY THIS IS SAID
       // RATHER THAN REFUSED. `w a s d` walk, `l` levels, `Tab` cycles the catalogue —
@@ -1862,14 +1886,27 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
       // ⚠ ON A BIND THAT HAPPENED, never merely on a key that was pressed: warning
       // about a collision that was refused names a conflict which does not exist.
       if made.bm_ok {
-        taken = client_reserved(c);
+        taken = client_reserved(fresh);
         if taken != "" {
           println("client: rebind ⚠ that key also {taken} — this client binds it "
                 + "outside the map, so both happen");
         }
+        // ⚠ **ON EVERY BIND, AND THERE IS NO SAVE GESTURE** — plan 22 `M5b`. A keyboard
+        // is not a document a person composes and commits; it is a setting, and one
+        // that silently forgot the last change before a crash would be worse than none.
+        // The file is a delta over the default, so it is a hundred bytes.
+        if !hex_editor::keymap_save(st.keys, hex_editor::keymap_default(), KEYMAP_PATH) {
+          println("client: keymap ⚠ the rebind could not be written — it works now and "
+                + "will not survive a reload");
+        }
       }
       st.panel_dirty = true;
-      break;
+    } else if st.rb.rb_say != was_say {
+      // The seed frame found a key already down and said so. ⚠ **A STEP THAT
+      // INTRODUCES A SILENCE HAS TO SPEAK**: before `M5` a held key bound itself —
+      // wrong, and visible — and after it that key does nothing at all.
+      println("client: rebind — {st.rb.rb_say}");
+      st.panel_dirty = true;
     }
   }
   // …and the finger comes up. ⚠ `gl_key_pressed` IS THE OBSERVATION and not a timer:
@@ -2879,12 +2916,11 @@ fn main() {
   }
 
   st = Client {
+    // ⚠ **THE DEFAULT IS THE BASE, AND THE SAVED DOCUMENT IS A DELTA OVER IT** — plan
+    // 22 `M5b`. The map is built from `keymap_default()` here and the file is applied
+    // to it a few lines below, which is the whole reason a verb this editor gained
+    // since the file was written arrives with its own key.
     keys: hex_editor::keymap_default(),
-    // ⚠ **A FRESH PAGE GETS THE DEFAULT, DELIBERATELY — plan 22 `M1`/`M3`.** The map
-    // is `Client` state and a rebind does not survive a reload. Persisting it is a
-    // `LayeredFS` question (`P6` proved the page has a filesystem) and it belongs
-    // AFTER this step, because *what* to persist was not settled until a person could
-    // make one.
     rb: hex_editor::rebind_new(),
     was_arm: false,
     hud: "",
@@ -2937,6 +2973,20 @@ fn main() {
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
   };
+
+  // ── THE KEYBOARD THE PERSON LEFT BEHIND — plan 22 `M5b` ────────────────────
+  //
+  // ⚠ **APPLIED TO A MAP BUILT FROM TODAY'S DEFAULT**, which is the whole design: the
+  // document holds only the rows that DIFFER, so a verb this editor gained since it was
+  // written arrives on its own key rather than missing. A saved whole table would leave
+  // that verb out of the map — and `keymap_bind` refuses a verb the map does not have,
+  // so it would be both invisible in the bar and impossible to bind.
+  //
+  // ⚠ **AND IT IS SAID EVERY TIME, INCLUDING WHEN THERE IS NOTHING**, because *no saved
+  // key map* and *a key map that failed to load* are different situations and only one
+  // of them is fine. `kd_ok` is *the map is usable*; `kd_found` is *there was a file*.
+  kload = hex_editor::keymap_load(st.keys, KEYMAP_PATH);
+  println("client: keymap — {kload.kd_say}");
 
   // ── What local mode edits with (plan 22 `B1b.1b`) ──────────────────────────
   //

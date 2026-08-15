@@ -393,6 +393,107 @@ serves**, differing only in where a key press goes.
 | ✅ `B2b` | **CONNECTIONS TO POTENTIAL SERVERS** — the socket URL is a LIST, and the extra candidates are DATA the build writes (`--servers`), never a compiled-in host. A demo opened from a DISK attached to an editor; two controls say the connection is real and the candidate is given |
 | ⛔ but | **`B1b.1`'s BOOT SWITCH could not be asked for** — `host_input()` BLOCKS with no host (measured, `probe/b1b/ask.loft`, `timeout 20` → rc 124), so *the page asks which authority it is* cannot be written. [loft#891](https://github.com/loft-lang/loft/issues/891). **Route 3 was taken instead** — connect-or-local with the panel saying which — and it is built. ⏭ **`B1b.2` is next**: local mode DRAWS what it wrote, and `B1c` (the walk) is what stands between the page and a house — `place` is refused at the origin in both drivers. ⚠ `K3` is still blocked on **twelve keys with no verb** — `R E Q B C J K V Y T X Z` |
 
+## ✅ `M5b` — THE KEYBOARD SURVIVES A RELOAD, and a claim of mine that was too strong, 2026-08-15
+
+**`keymap_delta` writes the rows that DIFFER from the default**, `keymap_apply` puts them back
+onto a map built from *today's* default, and `keymap_save`/`keymap_load` are thin wrappers over
+loft's `f += text` / `f.lines()`. The client loads at boot and writes on every bind — there is no
+save gesture, because a keyboard is a setting rather than a document a person commits.
+
+⛔ **THE INVARIANT I WROTE FIRST WAS TOO STRONG, AND ITS TEST PASSED FOR THE WRONG REASON.** I
+claimed the delta is what stops a saved file freezing the vocabulary — *a verb the editor GAINED
+arrives with its own key*. **That is true of a whole-table file too**: `keymap_apply` assigns per
+named verb and leaves an unmentioned one alone, so the row could not see the delta at all.
+
+> **What a delta actually earns is the editor's freedom to MOVE a default.** Change `raise` off
+> `ArrowUp` in a release, and everyone holding a whole-table file stays on the old key forever,
+> having asked for nothing.
+
+Both rows are kept — *the file is a table* and *applying replaces instead of assigning* are
+different mistakes with the same symptom, and the second has its own sabotage.
+
+⛔ **THE ABSENCES ARE RECORDED, AND THE SWEEP FOUND THE RULE IS ENFORCED TWICE.** Worked on paper:
+default `A=1 B=2 C=3`, bind `B` to `1`, then `B` to `3` — the map is `A="" B=3 C=""` and the only
+keyed non-default row is `B=3`, which replayed onto a default leaves `A` on a key its owner lost
+two gestures ago. ⚠ **And the sabotage removing those absences goes red through the COLLISION
+guard**, not its own claim — *that file puts 2 verbs on 'ArrowDown' — nothing was loaded*. The
+one-key-per-verb check written for hand-edited files catches a malformed delta as well, which the
+paper argument did not predict.
+
+⛔ **AND `N3` COULD NOT FAIL — THE SABOTAGE IS WHAT SAID SO, AND IT IS `M6`'s FINDING AGAIN.**
+`nopersist` scored `N3` **green** while its own `N2` read *the reloaded page found NO key map*.
+With one `5` and one `ArrowUp` after the reload, *survived* and *did not survive* both produce
+exactly one raise, and no line in the transcript names the key. **A total cannot say WHICH** — a
+sentence already in this plan, written at `M6` about a count of the identical shape, and it turned
+up in an instrument built *after* it was recorded. The presses are asymmetric now (`5,5,ArrowUp`):
+**2 is the restored key, 1 is the old one, 3 is both, 0 is neither.** ⚠ Fourth instrument of mine
+this session that could not answer its own question, and all four were found by RUNNING rather
+than reading — `M5a`'s mis-click row, `M5b`'s delta claim, a grep whose `^ *M[0-9]` could not see
+`   ✗ M7`, and this.
+
+⚠ **`!reload` — THE DRIVER RE-OPENS THE PAGE MID-GESTURE.** *Bind it, close the tab, come back* is
+one sentence, so it is one run. ⚠ **The first half's transcript is dumped before the navigate**,
+because the page's `<pre id=out>` is part of the document — without that the evidence anything was
+*saved* is gone, and the check would assert persistence with nothing to persist. ⚠ And the page is
+clicked again afterwards: the shell binds keydown to the CANVAS, so a freshly navigated page is
+deaf, which reads exactly like a binding that did not survive.
+
+⚠ **AND THE STALENESS GUARD IN `build-pages` EARNED ITS KEEP TWICE IN ONE HOUR** — both times on a
+comment I edited in `lib/hex_editor/src/keymap.loft` while a probe was mid-run. *The client engine
+is OLDER than 1 of its sources* names the file; a demo assembled from a stale engine would have
+passed its own gate on last week's editor.
+
+✅ keymap **36 → 45 tests** · `sh probe/k2/sabotage-m5b.sh` **8 rows, 6 sabotages red on their own
+claim, 2 clean controls** · `make probe-demo` `N1`–`N3` over a page reloaded mid-run.
+
+## ✅ `M5a` — A KEY HELD FROM BEFORE THE PICK NAMES NOTHING, and a check of mine that could not fail, 2026-08-15
+
+**`hex_editor::rebind_scan` is the rising edge the hardware does not have.** `graphics` offers
+`gl_key_pressed(code)` and no event queue, so *did they just press it* is built out of two looks
+at the whole keyboard. Walk forward on `w`, press `Escape` with the other hand, click a slot —
+and the old editor bound `w` before the person had chosen anything. `RB_SETTLE` is the same
+missing edge at the far end of the gesture, and `M3` shipped that half alone.
+
+> **THE INVARIANT: only a key that has been observed UP since the pick, and is down now, can name
+> a verb.**
+
+⚠ **AN EDGE DETECTOR WHOSE FIRST LOOK SEEDS RATHER THAN FIRES.** `st.was_arm` in the client does
+this for one key with a `false` seed, and is right to — the client starts before any key can be
+down. The rebinder arrives in the MIDDLE of a keyboard it has never seen, so *unknown* has to read
+as *was already down*. ⚠ And it takes the whole observation rather than one code at a time: *was
+this key down last time* cannot be answered by a caller reporting only what is down NOW, and the
+release it would miss is exactly what makes the next press fresh.
+
+⛔ **A ROW I WROTE COULD NOT FAIL, AND RUNNING THE SWEEP IS WHAT SAID SO.** The mis-click row asked
+*the key held across a re-pick must not name the second verb* and was **green under all five**
+sabotages written for this step — because a reseed makes the held key stale too, so the claim is
+true either way. What a reseed actually costs is a key struck in the same frame as the second
+click, and that is the direction the row asks now, with a sixth sabotage that bites it. ⚠ **A row
+can be unfalsifiable without being wrong**, and only running the sweep says which.
+
+⛔ **AND THE OBVIOUS SYMMETRY WAS REFUSED BEFORE IT WAS WRITTEN.** *Every pick starts a fresh
+observation* reads like the rule and is wrong: `rb_down` has watched continuously since the FIRST
+pick, so a key held across a corrected mis-click is **already** stale — reseeding re-establishes
+nothing and swallows a genuine press. **Arming is the one gap nothing observes**, so arming is
+where the memory is dropped. ⚠ The row that sees it must scan with **nothing down** during the
+first gesture, or the stale memory happens to hold the right answer — the `faced_between` shape
+again: a guard is only visible where its answer varies.
+
+⚠ **THE DRIVER COULD NOT SAY THIS SENTENCE.** Every press `probe/b1b/press.mjs` makes is
+down-then-up inside one step, so *already down when the slot was clicked* was unreachable. `+key` /
+`-key` is the hold, and the run is one gesture: **`+w,Escape,@raise,-w,5,5`**. One `keyDown` is
+enough — the page's shell keeps a SET — and auto-repeats would model a different physical event.
+
+⚠ **AND THE STEP INTRODUCES A SILENCE, SO IT SPEAKS.** Before it a held key bound itself: wrong,
+and visible. After it that key does nothing, which is the *blank no* this tree refuses everywhere
+else — so the seed names what it found (*"press a key for raise — W already down, so press it again
+or use another"*), with its own test row and its own sabotage.
+
+✅ hex_editor keymap **28 → 36 tests**, suite 522 → **530** · `sh probe/k2/sabotage-m5.sh` **8 rows,
+6 sabotages red on their own claim, 2 clean controls** · `make probe-demo` PASS with `M7`+`M8`.
+
+⏭ **`M5b` FOLLOWED IT** — the section above.
+
 ## ✅ `M4` — `verb_of` IS DELETED, and a row that claimed to catch the tree's commonest defect never could, 2026-08-15
 
 **What a key means is `keymap_default()` and nothing else.** The `if` chain stood beside the
