@@ -247,11 +247,59 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // renderer in this program. A camera placed where nobody is looking is not a
   // refusal, it is a verb this driver has no use for — so one script still serves
   // both, which is the whole reason this skip list exists.
+  //
+  // ⛔ **THIS LIST WAS STALE AND THE STALENESS WAS INVISIBLE — plan 22 `K3a`.** It
+  // named nine words and MISSED nine more that real scripts use, and a missed word
+  // is reported in exactly the same sentence a typo is: `unknown command '<x>'`,
+  // printed, survived, **exit 0**. Measured over the whole corpus before this line
+  // moved — **25 of 55 scripts** printed at least one, `send` in 22 of them. So the
+  // driver could not tell *not my vocabulary* from *not a word*, and neither answer
+  // reached the exit code. That is what made plan 22 `K3` unsafe as written: delete
+  // the `key` branch above with this line as it was, and a stale `key H` becomes a
+  // silent no-op in a run that still says it succeeded.
+  //
+  // ⚠ **THE SIX BELOW ARE PICTURE AND TIMING, AND THAT IS WHY THEY ARE SAFE TO
+  // SKIP.** `mesh`/`meshr` count what a renderer built, `frame` judges the last
+  // `snap`, `cam` and `feet` read where the eye and the walker are, `last` reads a
+  // running tally off the wire and `until` waits for one. Not one of them writes a
+  // cell, so a script serves both drivers across them exactly as the design claims.
   if cmd == "wait" || cmd == "snap" || cmd == "hold" || cmd == "rate"
      || cmd == "step" || cmd == "turn" || cmd == "keys" || cmd == "save"
-     || cmd == "eye" {
+     || cmd == "eye" || cmd == "mesh" || cmd == "meshr" || cmd == "frame"
+     || cmd == "cam" || cmd == "feet" || cmd == "last" || cmd == "until" {
     return true;
   }
+
+  // ⛔ **`send` IS ON THIS LIST AND IT DOES NOT BELONG WITH THE SIX ABOVE — plan 22
+  // `K3a`, and it is left here DELIBERATELY as a known drop rather than an unnoticed
+  // one.** `send <id>:<payload>` is a raw wire frame, and
+  // [WIRE_PROTOCOL.md](../doc/claude/WIRE_PROTOCOL.md) sorts every id into **A**
+  // (authoring — *survives as a store write*), **V** (view) and **S** (session). The
+  // six words above are all V or S by construction. `send` is whatever it carries,
+  // and measured over the corpus **ten scripts send an A id this runner drops on the
+  // floor**: `6` LEVEL and `10` ROAD change what the gestures AFTER them build, `47`
+  // WATER lays cells, and `44` PART **swaps which store is being edited** — so
+  // `doorparts.keys` opens six parts that never open here, every edit between them
+  // lands in the main world, and each close discards nothing.
+  //
+  // ⚠ **AND `ground` IS ON THIS LINE RATHER THAN THE ONE ABOVE BECAUSE IT IS A
+  // `send` BY ANOTHER NAME.** `tools/script.mjs` compiles `ground <h> <mat>` to
+  // `50:<h>,<mat>` and `ground off` to a bare `50:` — the same frame a `send` would
+  // carry, with a friendlier spelling. It is an A: `world_set_ground` decides what
+  // every cell nobody wrote MEANS (`E1γ`), so skipping it builds a world on a
+  // different floor. One script says it, `tools/scripts/plane.keys`. Splitting the
+  // two words across the two lines would be arbitrary — it is one message.
+  //
+  // ⏭ **THAT IS A DEFECT OLDER THAN THIS STEP AND IT IS NOT THIS STEP'S TO FIX** —
+  // it wants `send` classified by id, refusing the A ones and giving the runner the
+  // handful it can honestly perform, which reds those ten scripts wherever they run
+  // headless and is a cost to pay on purpose. Plan 22 `K3c`. What this line buys
+  // today is that the drop is **named**, so the next reader does not measure it
+  // again — and `K3b` can delete the `key` branch without widening the silence.
+  if cmd == "send" || cmd == "ground" {
+    return true;
+  }
+
   said = "unknown command '{cmd}'";
   false
 }
@@ -299,11 +347,18 @@ fn main() {
   sess = hex_editor::EditSession {};
 
   n = 0;
+  // ⛔ **A LINE THIS RUNNER DID NOT UNDERSTAND USED TO PRINT AND SURVIVE — plan 22
+  // `K3a`.** `run_line` has said `false` since it was written and main threw the
+  // answer away: the complaint went to stdout, the loop carried on, and the process
+  // exited **0**. So a script could lose a gesture and still report success, which
+  // is the shape `CLAUDE.md` calls a grep whose default answer is *absent*. It is
+  // counted now, and the count is a premise rather than a diagnostic.
+  bad = 0;
   for line in text.split('\n') {
     said = "";
     ok = run_line(w, a, sess, line, said);
     if said != "" { println("  {said}"); }
-    if !ok { println("editor_run: {line}"); }
+    if !ok { println("editor_run: {line}"); bad = bad + 1; }
     n = n + 1;
   }
 
@@ -319,4 +374,18 @@ fn main() {
   path = "{source_dir()}/../worlds/{name}.hxw";
   code = world_save(w, path, []);
   println("editor_run: {n} lines, {len(w.w_chunks)} chunks, τ {w.w_tau} -> {name}.hxw (code {code})");
+
+  // ⚠ **AFTER THE SAVE AND AFTER EVERY DIAGNOSTIC, DELIBERATELY — plan 22 `K3a`.**
+  // Failing earlier would leave `worlds/{name}.hxw` holding *the previous run's*
+  // world, which is the worse artifact: it has no relationship to this run at all,
+  // and it reads as fresh. Saving first means the file, the digest and the world key
+  // above all describe the same run — the one that lost some lines — and the exit
+  // code is what says so. A caller that checks rc gets the truth; a caller that does
+  // not at least gets a file that matches the log it just read.
+  //
+  // ⚠ **AND IT REPORTS THE COUNT RATHER THAN THE FIRST OFFENDER.** Every bad line
+  // was already printed above with `editor_run: <line>`, so a person fixing a script
+  // sees all of them in one run instead of one per run — the loop is the diagnostic,
+  // this is only the verdict.
+  assert(bad == 0, "{bad} of {n} lines were not understood — each is printed above after `editor_run:`. A word this runner skips on purpose is on the skip list in `run_line`; anything else is a typo or a command only the server has.");
 }
