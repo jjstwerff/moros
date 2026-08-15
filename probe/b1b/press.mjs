@@ -45,10 +45,23 @@ const KEYS = {
   // heuristic (`'Key' + k.toUpperCase()`), and there is no `KeyTAB`. ⚠ And it takes
   // no `text` — a printable character would make the page insert one.
   Tab:       { key: 'Tab',       code: 'Tab',       vk: 9 },
+  // ⚠ `Escape` NEEDS ITS OWN ROW FOR THE ARROWS' REASON — the fallback is a LETTER
+  // heuristic and there is no `KeyESCAPE`. It arms rebinding (plan 22 `M3`), and it
+  // takes no `text`: a printable character would make the page insert one.
+  Escape:    { key: 'Escape',    code: 'Escape',    vk: 27 },
 };
-const describe = (k) => KEYS[k] ?? {
-  key: k, code: 'Key' + k.toUpperCase(), vk: k.toUpperCase().charCodeAt(0), text: k,
-};
+// ⛔ **DIGITS ARE NOT LETTERS, AND THE FALLBACK BELOW SILENTLY MADE THEM ONE** — found
+// at plan 22 `M3`, the first check in this tree that ever pressed one. `'Key' + '5'` is
+// `Key5`, which no keyboard sends; the page's `mapKey` takes the `Key` branch anyway
+// and computes `'Key5'.charCodeAt(3) + 32` = **85**, a code that names no key at all.
+// So the press was delivered, the client saw nothing, and the transcript read exactly
+// like a rebind that does not work. ⚠ Digits matter here specifically because they are
+// the only genuinely FREE keys — all 26 letters are taken — so they are what a person
+// rebinds ONTO.
+const digit = (k) => k.length === 1 && k >= '0' && k <= '9';
+const describe = (k) => KEYS[k] ?? (digit(k)
+  ? { key: k, code: 'Digit' + k, vk: k.charCodeAt(0), text: k }
+  : { key: k, code: 'Key' + k.toUpperCase(), vk: k.toUpperCase().charCodeAt(0), text: k });
 
 const chrome = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']
   .find((c) => spawnSync('which', [c]).status === 0);
@@ -276,11 +289,52 @@ await shot('steady');
 // viewport entirely, the canvas never takes focus, and every key press afterwards
 // goes nowhere. Measured: six keys, not one gesture, and a transcript that reads
 // exactly like a local mode that does not work.
+// ⚠ `bw`/`bh` ARE THE BACKING STORE AND THEY ARE NOT `w`/`h` BY DEFINITION — plan 22
+// `M3`. The page's `mousemove` reports `clientX - r.left`, which is CSS pixels, while
+// everything the client LAYS OUT (a verb slot's rect) is in backing-store pixels. The
+// two agree only while the canvas is displayed at its own size, and a slot click is
+// the first thing in this tree that depends on it — so the ratio is measured and
+// reported rather than assumed to be 1.
 const crect = (await call('Runtime.evaluate', {
   expression: `(() => { const c = document.getElementById('c'); if (!c) return null;
-    const r = c.getBoundingClientRect(); return {x: r.x, y: r.y, w: r.width, h: r.height}; })()`,
+    const r = c.getBoundingClientRect();
+    return {x: r.x, y: r.y, w: r.width, h: r.height, bw: c.width, bh: c.height}; })()`,
   returnByValue: true,
-}))?.result?.value ?? { x: 0, y: 0, w: 800, h: 600 };
+}))?.result?.value ?? { x: 0, y: 0, w: 800, h: 600, bw: 800, bh: 600 };
+const sx = crect.bw ? crect.w / crect.bw : 1, sy = crect.bh ? crect.h / crect.bh : 1;
+console.log(`canvas css ${Math.round(crect.w)}x${Math.round(crect.h)} `
+  + `backing ${crect.bw}x${crect.bh} scale ${sx.toFixed(3)},${sy.toFixed(3)}`);
+
+// Click a VERB SLOT, at the centre the CLIENT reported for it.
+//
+// ⚠ **READ OFF THE CLIENT'S OWN LINE, NEVER RE-DERIVED.** `client: verb slots — …`
+// carries each slot's centre out of the LAID-OUT bar. A driver that computed the
+// position from `VERB_SLOT_W` and `PANEL_WIDTH` would be a second copy of the layout,
+// green while clicking at the wrong pixel — and a mis-click reads as *rebinding does
+// not work*, which is the wrong bug to go looking for.
+//
+// ⚠ **AND IT IS THE LAST SUCH LINE**, because a rebind rebuilds the bar and reprints
+// it: taking the first would click where a slot USED to be after the first rebind.
+const clickSlot = async (verb) => {
+  const lines = (await out()).split('\n').filter((l) => l.includes('client: verb slots — '));
+  if (!lines.length) await bye(1, `M SLOT MISS — the client never reported its slots`);
+  const m = lines[lines.length - 1].match(new RegExp(`(?:^|[ —])${verb}@(-?\\d+),(-?\\d+)`));
+  if (!m) await bye(1, `M SLOT MISS — no slot for '${verb}' in: ${lines[lines.length - 1]}`);
+  const px = crect.x + Number(m[1]) * sx, py = crect.y + Number(m[2]) * sy;
+  console.log(`click ${verb} slot at client ${m[1]},${m[2]} → viewport ` +
+    `${Math.round(px)},${Math.round(py)}`);
+  // ⚠ A MOVE FIRST. `gl_mouse_x` is only ever written by `mousemove`, so a press with
+  // no motion in front of it is hit-tested against wherever the pointer was last —
+  // which, in this driver, is the focus click in the middle of the world.
+  await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: px, y: py, buttons: 0 });
+  await sleep(60);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mousePressed', x: px, y: py, button: 'left', clickCount: 1, buttons: 1 });
+  await sleep(holdMs);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mouseReleased', x: px, y: py, button: 'left', clickCount: 1, buttons: 0 });
+  await sleep(gapMs);
+};
 const clickX = Math.max(8, Math.min(crect.x + crect.w * 0.6, 1000));
 const clickY = Math.max(8, Math.min(crect.y + crect.h * 0.6, 700));
 await call('Input.dispatchMouseEvent',
@@ -291,6 +345,11 @@ await sleep(300);
 
 let first = true;
 for (const k of keysArg.split(',')) {
+  // ⚠ `@verb` IS A CLICK ON THAT VERB'S SLOT — plan 22 `M3`, and it is in the key list
+  // rather than a flag of its own because the ORDER is the whole gesture: arm, pick,
+  // press. `Escape,@raise,5` is one sentence and splitting it across two arguments
+  // would let a caller write it in an order the editor cannot answer.
+  if (k.trim().startsWith('@')) { await clickSlot(k.trim().slice(1)); continue; }
   const d = describe(k.trim());
   await call('Input.dispatchKeyEvent', { type: d.text ? 'keyDown' : 'rawKeyDown',
     key: d.key, code: d.code, windowsVirtualKeyCode: d.vk, nativeVirtualKeyCode: d.vk,

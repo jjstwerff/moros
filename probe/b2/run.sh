@@ -56,6 +56,17 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            up. Written down because the obvious repair is to pick a
 #                            different letter, and every letter the client DOES bind is
 #                            now a gesture.
+#   DEMO_SABOTAGE=nosettle   `M3`'s own row: the rebind fence in `act` removed, so the
+#                            key that COMPLETES a rebind fires the verb it has just
+#                            been bound to. Red on M4 and on nothing else — every
+#                            sentence, the bar and the old key are all correct.
+#   DEMO_SABOTAGE=noarm      Escape reaches the rebinder no more. Red on M1–M6: the
+#                            gesture is unreachable, and M6 — whose evidence is an
+#                            ABSENCE — is caught by its vacuity guard rather than by
+#                            its count.
+#   DEMO_SABOTAGE=nobarsay   the bar is rebuilt and never re-reported. Red on M3
+#                            ALONE: the binding really moved, and the only line the
+#                            transcript carries is the boot one.
 #   DEMO_SABOTAGE=noturn     the same five `h` attempts with nothing turning
 #                            between them. If `F3` were really about pressing the
 #                            key often enough rather than about the TURN, this
@@ -112,6 +123,56 @@ case ",$SAB," in
     mkdir -p _site && cp probe/b2/.loft/.deadclock.html "$SITE" \
       || fail "the sabotaged page was not emitted where expected"
     ;;
+  # ── `M3`'s three, all of which build a different client, `deadclock`'s pattern ──
+  #
+  # ⛔ `nosettle` IS THE ONE THIS STEP IS FOR: the fence in `act` removed, so the key
+  # that completes a rebind fires the verb it has just been bound to. ⚠ The SAME line
+  # stands in `wire` — two fences, one for verbs and one for everything with no verb —
+  # so the substitution is addressed to `act`'s body rather than matched by text. A
+  # sed that took both would be a broader sabotage wearing this one's name.
+  *,nosettle,*)
+    sed '/^fn act(h: web::WsHandler/,/^}/ s|^  if hex_editor::rebind_holds(st.rb) { return; }$|  // SABOTAGE nosettle|' \
+      src/editor_client.loft > probe/b2/.nosettle.loft
+    grep -q 'SABOTAGE nosettle' probe/b2/.nosettle.loft \
+      || fail "the nosettle sabotage patched nothing: act's fence has been reshaped"
+    grep -c 'rebind_holds(st.rb) { return; }' probe/b2/.nosettle.loft | grep -qx 1 \
+      || fail "the nosettle sabotage took the wrong number of fences"
+    echo "   SABOTAGE nosettle — act's rebind fence removed; the binding press acts"
+    loft --html --lib lib/ probe/b2/.nosettle.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.nosettle.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
+  # The arm key reaches nothing — the whole gesture is unreachable. ⚠ Its value is
+  # that it must be red in FIVE places: a run where nothing armed also cannot pick,
+  # cannot bind, and leaves `ArrowUp` live, so `M6` — whose evidence is an ABSENCE —
+  # has to catch it through its vacuity guard rather than through the count.
+  *,noarm,*)
+    sed 's|^    hex_editor::rebind_arm(st.rb);$|    // SABOTAGE noarm|' \
+      src/editor_client.loft > probe/b2/.noarm.loft
+    grep -q 'SABOTAGE noarm' probe/b2/.noarm.loft \
+      || fail "the noarm sabotage patched nothing: the arm handler has been reshaped"
+    echo "   SABOTAGE noarm — Escape no longer reaches the rebinder"
+    loft --html --lib lib/ probe/b2/.noarm.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.noarm.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
+  # The INSTRUMENT rather than the subject: the bar is rebuilt and not re-reported, so
+  # the only bar line in the transcript is the boot one. ⚠ It exists to prove `M3`
+  # reads the REBUILT bar — a check that took the first line would call the starting
+  # state a result, and this is the sabotage that would pass it.
+  *,nobarsay,*)
+    sed 's|^      say_verb_bar(ui_bar);$|      // SABOTAGE nobarsay|' \
+      src/editor_client.loft > probe/b2/.nobarsay.loft
+    grep -q 'SABOTAGE nobarsay' probe/b2/.nobarsay.loft \
+      || fail "the nobarsay sabotage patched nothing: the panel rebuild has been reshaped"
+    echo "   SABOTAGE nobarsay — the bar is rebuilt and never re-reported"
+    loft --html --lib lib/ probe/b2/.nobarsay.loft > /dev/null 2>&1 \
+      || fail "the sabotaged client did not build"
+    mkdir -p _site && cp probe/b2/.loft/.nobarsay.html "$SITE" \
+      || fail "the sabotaged page was not emitted where expected"
+    ;;
   *,noparts,*)
     node tools/build-pages.mjs --no-parts || fail "build-pages refused"
     echo "   SABOTAGE noparts — the demo is built without its part library"
@@ -126,7 +187,12 @@ case ",$SAB," in
     printf '%s' '<!doctype html><meta charset=utf8><canvas id=c width=1200 height=660></canvas><pre id=out></pre>' > "$SITE"
     echo "   SABOTAGE emptypage — _site/index.html has the elements and no editor"
     ;;
-  *,deadclock,*)
+  # ⚠ EVERY SOURCE SABOTAGE LANDS HERE, and they share one side effect worth stating
+  # once: `build-pages` reads a FIXED engine path, so a sabotaged client is copied over
+  # `$SITE` raw and carries **no part-library prelude**. The `P` rows therefore go red
+  # in these runs for a reason that is not the subject — read the block the sabotage
+  # names, not the exit code. (`deadclock` set this precedent; `M3`'s three follow it.)
+  *,deadclock,*|*,nosettle,*|*,noarm,*|*,nobarsay,*)
     echo "   (the engine-identity check is skipped: this page is deliberately not it)"
     ;;
   *)
@@ -733,6 +799,115 @@ elif [ "$k_h" = "0" ]; then
   say "K3 and all $k_n fit this window, with nothing hidden"
 else
   say "K3 and it says what it could not show: $k_h hidden"
+fi
+
+# ── M  the KEYBOARD IS THE PERSON'S — arm, pick a slot, press a key — `M3` ──
+#
+# The bar above says what the binding IS; this says a person can CHANGE it, in the
+# editor, with no toolchain and no file to edit. Two runs, because one number cannot
+# carry three claims.
+#
+# ⛔ **THE CLAIM THIS STEP EXISTS FOR IS `M4`, AND IT IS NOT THE OBVIOUS ONE.** The
+# client POLLS: `poll_input` asks `gl_key_pressed(code_for(map, verb))` every frame and
+# acts on the rising edge. So the key that COMPLETES a rebind is still physically down
+# on the very next frame, and the verb it has just been bound to sees an edge — **the
+# rebind performs the verb it was defining**. A raise fired that way is
+# indistinguishable from a correct one at every other instrument in this tree.
+# `RB_SETTLE` holds the keyboard until the finger comes up, and `M4` is the row that
+# would see it go.
+#
+# ⚠ **`5`, AND THE DIGIT IS NOT ARBITRARY.** All 26 letters are bound, so a digit is
+# the only genuinely free key — which is also why no probe in this tree had ever
+# pressed one, and why the driver's letter heuristic had been quietly turning `5` into
+# code 85 (`'Key5'.charCodeAt(3) + 32`) since it was written. Found here, because this
+# is the first check that needed a digit to arrive.
+#
+# ⚠ **AND THE CONTROL IS ALREADY IN THIS FILE, WHICH IS WHY THERE IS NO FOURTH RUN.**
+# `D5` presses `ArrowUp` at boot with the rebinder never armed and reads the raise out
+# of the picture. With the rebinder off not one byte of the input path changes, and
+# `D5` is what says so on every run.
+echo
+echo "── M   rebinding, from inside the editor ───────────────────────────"
+# Arm · click the `raise` slot · press `5` to bind it · press `5` again to USE it.
+M_KEYS="Escape,@raise,5,5"
+case ",$SAB," in *,noarm,*) echo "   SABOTAGE noarm — Escape reaches the rebinder no more" ;; esac
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$M_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/rebind.raw" 2>&1 || true
+grep -E '^(client|canvas|click)' "$OUT/rebind.raw" > "$OUT/rebind.log" || true
+grep -E '^client: rebind' "$OUT/rebind.log" | sed 's/^/   /'
+
+m_arm=$(grep -m1 'client: rebind — rebinding — pick a verb' "$OUT/rebind.log" || true)
+m_pick=$(grep -m1 'client: rebind — press a key for ' "$OUT/rebind.log" || true)
+m_bound=$(grep -m1 'client: rebind — raise is on ' "$OUT/rebind.log" || true)
+# ⚠ THE **LAST** BAR LINE, NOT THE FIRST. The bar is reprinted on every rebuild, and
+# the boot line necessarily says `Up:raise` — reading that one would report the
+# starting state as the result and pass whatever happened.
+m_bar=$(grep '^client: verb bar' "$OUT/rebind.log" | tail -1)
+m_raises=$(grep -c '^client: local raise — ' "$OUT/rebind.log" || true)
+
+# M1 — the arm key reached the rebinder at all.
+if [ -n "$m_arm" ]; then
+  say "M1 the arm key reached the rebinder: ${m_arm#client: rebind — }"
+else
+  no "M1 Escape reached nothing — the page never armed"
+fi
+
+# M2 — a CLICK picked a verb. ⚠ AND THE PROMPT MUST NAME THE KEY THE VERB HAS NOW:
+# a pick that answered a bare *press a key* would pass a presence test while having
+# hit-tested the wrong slot entirely.
+if printf '%s' "$m_pick" | grep -q 'for raise — it is on ArrowUp'; then
+  say "M2 the click picked a slot, and it named the binding: ${m_pick#client: rebind — }"
+elif [ -n "$m_pick" ]; then
+  no "M2 the click picked '${m_pick#client: rebind — }' — not raise on ArrowUp"
+else
+  no "M2 the click on the raise slot picked nothing — $(grep -m1 '^click ' "$OUT/rebind.log" || echo 'and the driver never reported a click')"
+fi
+
+# M3 — the BAR moved. ⚠ BOTH HALVES, because either alone is satisfied by a bug: a bar
+# showing `5:raise` AND `Up:raise` is `keymap_bind` adding a row instead of moving one,
+# which is exactly the defect that leaves the old key live.
+if printf '%s' "$m_bar" | grep -q '5:raise' && ! printf '%s' "$m_bar" | grep -q 'Up:raise'; then
+  say "M3 and the bar followed it: raise draws under 5, and Up is gone from the strip"
+else
+  no "M3 the bar reads '${m_bar#client: verb bar }' — raise did not move to 5 alone"
+fi
+
+# ⛔ M4/M5 — ONE COUNT, THREE DIAGNOSES, AND THE BRANCHES ARE WHY IT IS ONE RUN.
+# Two `5` presses: the first BINDS and must not act, the second ACTS. So 1 is the only
+# right answer, and 0 and 2 are different bugs — a total that could only say "not 1"
+# would send the next reader to the wrong half.
+if [ -z "$m_bound" ]; then
+  no "M4 nothing was ever bound — $(grep -m1 'client: rebind' "$OUT/rebind.log" || echo 'the rebinder said nothing at all')"
+elif [ "$m_raises" = "1" ]; then
+  say "M4 the press that BOUND the key did not fire the verb — 2 presses of 5, 1 raise"
+  say "M5 …and the new key does the verb: $(grep -m1 '^client: local raise — ' "$OUT/rebind.log" | sed 's/^client: local //')"
+elif [ "$m_raises" = "2" ]; then
+  no "M4 both presses of 5 raised — the key that completed the rebind fired the verb it had just bound"
+elif [ "$m_raises" = "0" ]; then
+  no "M5 the key was bound and does nothing — 2 presses of 5, no raise"
+else
+  no "M4 2 presses of 5 produced $m_raises raises"
+fi
+
+# ── M6 — and the OLD key is dead. A separate run, because *no raise happened* is
+# only evidence when nothing else in the sequence could have raised.
+echo
+M6_KEYS="Escape,@raise,5,ArrowUp,ArrowUp"
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$M6_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/rebind2.raw" 2>&1 || true
+grep -E '^(client|canvas|click)' "$OUT/rebind2.raw" > "$OUT/rebind2.log" || true
+m6_bound=$(grep -m1 'client: rebind — raise is on ' "$OUT/rebind2.log" || true)
+m6_raises=$(grep -c '^client: local raise — ' "$OUT/rebind2.log" || true)
+# ⚠ **THE BIND IS ASSERTED FIRST, AND THAT IS THE WHOLE GUARD ON THIS ROW.** *No raise
+# happened* is what a page that never armed, never picked and never bound reports too —
+# a run where the rebinding failed entirely would score this row green for the worst
+# possible reason. It is only evidence once the rebind is known to have happened.
+if [ -z "$m6_bound" ]; then
+  no "M6 vacuous — nothing was rebound in this run, so 'ArrowUp did nothing' says nothing"
+elif [ "$m6_raises" = "0" ]; then
+  say "M6 and the old key is dead: 2 presses of ArrowUp after the rebind, no raise"
+else
+  no "M6 ArrowUp still raised $m6_raises times after raise moved to 5 — the old binding is live"
 fi
 
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────

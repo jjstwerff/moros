@@ -299,3 +299,156 @@ pub fn verb_is_known(m: KeyMap, verb: text) -> boolean {
   for b in m.km_items { if b.kb_verb == verb { return true; } }
   false
 }
+
+// ── ARM, PICK, PRESS — rebinding as a state machine, plan 22 `M3` ────────────
+//
+// `keymap_bind` above is the EDIT; this is the gesture that reaches it from inside a
+// running editor. Three moves — arm, pick a slot, press a key — and the reason it is
+// a machine rather than three handlers is one sentence:
+//
+// > **THE INVARIANT: while a rebind is in progress the keyboard belongs to the
+// > rebinder, and the key that COMPLETES one does not fire the verb it just bound.**
+//
+// ⛔ **THE SECOND CLAUSE IS A REAL DEFECT AND NOT A NICETY, because the client polls
+// rather than listens.** `poll_input` asks `gl_key_pressed(code_for(m, verb))` every
+// frame and acts on the EDGE. Bind `raise` to `B` and the physical `B` is still down
+// on the very next frame: `verb_down(raise)` is suddenly true where it was false, so
+// the edge fires and the ground rises. **The rebind gesture performs the verb it was
+// defining** — and every instrument in the tree would report that as a correct raise.
+// `RB_SETTLE` is what stops it: the machine keeps the keyboard until the key that
+// completed the bind has come back up.
+//
+// ⚠ **AND `RB_ARMED` IS NOT DECORATION EITHER.** Without it a click on the bar would
+// eat whatever key came next, so a person who clicked a slot to READ it would have
+// silently rebound something. Arming is the deliberate act; the click is a choice
+// inside it.
+pub const RB_OFF    = 0;    // the keyboard is the editor's
+pub const RB_ARMED  = 1;    // …the rebinder's, waiting for a verb to be picked
+pub const RB_PICKED = 2;    // …and now waiting for the key that will name it
+pub const RB_SETTLE = 3;    // bound; held until the completing key comes up
+
+// The key that arms, and it is DELIBERATELY NOT IN THE MAP.
+//
+// ⚠ **A REBIND KEY YOU CAN REBIND AWAY IS A FEATURE YOU CAN LOCK YOURSELF OUT OF**,
+// and every letter is taken, so an author hunting for a free key would reach for this
+// one within the first minute. `Escape` is reachable everywhere the editor runs —
+// the browser bridge's `mapKey` carries it (`Escape: 27`) — it names no verb, and
+// *stop what you are doing* is what it already means to everyone.
+pub const KEY_REBIND = 27;
+
+pub struct Rebind {
+  rb_at:   integer = 0,
+  rb_verb: text    = "",     // the verb being rebound; "" unless RB_PICKED
+  rb_code: integer = 0,      // the key held through RB_SETTLE
+  // ⚠ **WHAT TO SAY, AND IT SURVIVES THE RETURN TO `RB_OFF`.** A machine that cleared
+  // its sentence on finishing would wipe *cellar has no key now* off the screen in the
+  // same frame it was earned — which is the one thing the person needs to read.
+  rb_say:  text    = "",
+}
+
+pub fn rebind_new() -> Rebind { Rebind {} }
+
+// Is the rebinder holding the keyboard? The client's ONE question — see `act`/`wire`
+// in `src/editor_client.loft`, where it is a fence at the two places a key becomes an
+// effect rather than a condition sprinkled over ten edge detectors.
+pub fn rebind_holds(rb: Rebind) -> boolean { rb.rb_at != RB_OFF }
+
+// The arm key, from any state. It arms when off and CANCELS from anywhere else —
+// including `RB_SETTLE`, where cancelling costs nothing because the bind already
+// happened and the machine is only waiting for a finger.
+pub fn rebind_arm(rb: Rebind) {
+  if rb.rb_at == RB_OFF {
+    rb.rb_at   = RB_ARMED;
+    rb.rb_verb = "";
+    rb.rb_code = KEY_NONE;
+    rb.rb_say  = "rebinding — pick a verb";
+    return;
+  }
+  rb.rb_at   = RB_OFF;
+  rb.rb_verb = "";
+  rb.rb_code = KEY_NONE;
+  rb.rb_say  = "rebinding cancelled";
+}
+
+// Choose the verb a key is about to name.
+//
+// ⚠ **RE-PICKING IS LEGAL AND REFUSING IT WOULD BE WRONG**: clicking a second slot is
+// how a person corrects a mis-click, and the alternative is cancelling and arming
+// again to fix a click.
+//
+// ⚠ **AND IT SAYS WHICH KEY THE VERB HAS NOW**, because *press a key for `cellar`* to
+// somebody who cannot remember whether `cellar` is on `C` is half a prompt.
+pub fn rebind_pick(rb: Rebind, m: KeyMap, verb: text) {
+  if rb.rb_at != RB_ARMED && rb.rb_at != RB_PICKED { return; }
+  // The same rule `keymap_bind` keeps, kept one move earlier so the prompt cannot
+  // name a verb the bind would then refuse.
+  if !verb_is_known(m, verb) {
+    rb.rb_say = "'{verb}' is not a verb this editor has";
+    return;
+  }
+  had = key_for(m, verb);
+  rb.rb_at   = RB_PICKED;
+  rb.rb_verb = verb;
+  if had == "" {
+    rb.rb_say = "press a key for {verb} — it has none";
+    return;
+  }
+  rb.rb_say = "press a key for {verb} — it is on {had} now";
+}
+
+// The key that names it. Answers what `keymap_bind` answered, so a caller that wants
+// to know what was displaced reads it here rather than asking the map afterwards.
+//
+// ⚠ **A REFUSAL LEAVES THE PICK STANDING**, which is the difference between *that key
+// cannot be read, try another* and *rebinding is over, start again*. Only a bind that
+// happened moves the machine on.
+pub fn rebind_press(rb: Rebind, m: KeyMap, code: integer) -> BindMade {
+  if rb.rb_at != RB_PICKED {
+    return BindMade { bm_ok: false, bm_say: "nothing is picked — nothing to rebind" };
+  }
+  // ⚠ **THE WAY OUT IS NOT BINDABLE.** In the client this is unreachable, because the
+  // arm key is handled before the scan and means *cancel*; it is here because the
+  // machine must be safe for a driver that has only a code, and because binding a verb
+  // onto `Escape` is exactly the mistake that leaves an author with no way to arm.
+  if code == KEY_REBIND {
+    rb.rb_say = "that key arms rebinding — it cannot name a verb";
+    return BindMade { bm_ok: false, bm_say: rb.rb_say };
+  }
+  name = key_name_of(code);
+  if name == "" {
+    rb.rb_say = "that key cannot be read here — press another";
+    return BindMade { bm_ok: false, bm_say: rb.rb_say };
+  }
+  r = keymap_bind(m, name, rb.rb_verb);
+  rb.rb_say = r.bm_say;
+  if !r.bm_ok { return r; }
+  rb.rb_at   = RB_SETTLE;
+  rb.rb_code = code;
+  r
+}
+
+// The finger came up — hand the keyboard back.
+//
+// ⚠ **`down` IS THE CALLER'S OBSERVATION AND NOT A CLOCK**, because that is the only
+// honest form of *is it still held*: a machine that released after N frames would
+// hand the keyboard back under a key somebody was leaning on, which is the defect
+// `RB_SETTLE` exists to prevent, arriving a few milliseconds later.
+pub fn rebind_release(rb: Rebind, down: boolean) {
+  if rb.rb_at != RB_SETTLE || down { return; }
+  rb.rb_at   = RB_OFF;
+  rb.rb_code = KEY_NONE;
+}
+
+// Every code this editor can read, for a driver that must ask *which key is down*
+// rather than *is this key down*.
+//
+// ⚠ **A SCAN AND NOT AN EVENT, BECAUSE THE CLIENT HAS NO EVENTS** — `graphics` offers
+// `gl_key_pressed(code)` and nothing else, so *what did they just press* is 43 asks.
+// It runs only while `RB_PICKED`, which is the handful of frames between a click and
+// a keystroke.
+pub fn key_codes() -> vector<integer> {
+  cs: vector<integer> = [128, 129, 130, 131, 9, 32, KEY_REBIND];
+  for i in 0..26 { cs += [97 + i]; }
+  for d in 0..10 { cs += [48 + d]; }
+  cs
+}

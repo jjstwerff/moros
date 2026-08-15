@@ -111,7 +111,11 @@ if [ -n "$SAB" ]; then
     # The client exactly as it was before this step: a literal, and a true one
     # only by luck. ⚠ Caught by run A as well as run B — a panel that claims a
     # connection at boot is wrong before the socket has had a chance to open.
-    literal) sed -i 's/^    ps_status: authority_line(st),$/    ps_status: "moros editor — edits go to the server",/' "$SRC" ;;
+    # ⚠ THE TARGET MOVED AT `M3` — it was `authority_line(st)` until a modal rebind
+    # prompt went in front of it. A sabotage whose `sed` no longer matches edits
+    # nothing and reports a clean run, which is the *NOTHING went red* sentence a
+    # useless control produces; the guard below is what refuses to run one.
+    literal) sed -i 's/^    ps_status: status_line(st),$/    ps_status: "moros editor — edits go to the server",/' "$SRC" ;;
     # The fact moves and nothing tells the panel. ⚠ INVISIBLE TO A AND B BOTH,
     # measured — A's server marks the panel a frame later with `N:`/`H:` for its
     # own reasons, and B has no change to miss. Run C exists because of this one.

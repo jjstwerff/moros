@@ -285,7 +285,230 @@ fn test_a_rebind_refuses_a_key_the_editor_cannot_read() {
          "the cellar moved to '{key_for(m, VB_CELLAR)}' through a refused rebind");
 }
 
-// ── THE SHORT LABEL ─────────────────────────────────────────────────────────
+// ── ARM, PICK, PRESS — plan 22 `M3` ─────────────────────────────────────────
+//
+// The rows above test the EDIT; these test the gesture that reaches it from inside a
+// running editor. ⚠ **The one they exist for is the settle**, and it is worth saying
+// why it is not obvious: the client POLLS, so the key that completes a rebind is still
+// physically down on the next frame, and the freshly-bound verb sees a rising edge.
+// Without `RB_SETTLE` the rebind performs the verb it was defining — and a raise fired
+// that way is indistinguishable from a correct one at every instrument in this tree.
+
+fn test_arming_takes_the_keyboard_and_the_arm_key_gives_it_back() {
+  rb = rebind_new();
+  assert(!rebind_holds(rb), "a fresh rebinder already holds the keyboard");
+  assert(rb.rb_at == RB_OFF, "a fresh rebinder is in state {rb.rb_at}");
+  rebind_arm(rb);
+  assert(rebind_holds(rb), "arming did not take the keyboard");
+  assert(rb.rb_at == RB_ARMED, "arming reached state {rb.rb_at}");
+  assert(rb.rb_say != "", "arming said nothing — the person has no way to know");
+  rebind_arm(rb);
+  assert(!rebind_holds(rb), "the arm key did not hand the keyboard back");
+  assert(rb.rb_at == RB_OFF, "cancelling reached state {rb.rb_at}");
+}
+
+// ⚠ **THE ARM KEY MUST NAME NO VERB, or arming IS a gesture.** This is the row that
+// would go red the day somebody adds `bind_of("Escape", …)` to the default layout,
+// which is otherwise a perfectly reasonable-looking edit.
+fn test_the_arm_key_names_no_verb_in_the_definition() {
+  m = keymap_default();
+  assert(verb_at_code(m, KEY_REBIND) == VB_NONE,
+         "the arm key reaches verb '{verb_at_code(m, KEY_REBIND)}' — arming it would "
+       + "fire a gesture");
+  assert(key_name_of(KEY_REBIND) == "Escape",
+         "the arm key is code {KEY_REBIND}, which names '{key_name_of(KEY_REBIND)}'");
+}
+
+// A key pressed while merely ARMED has no verb to name, so it must bind nothing —
+// and it must not end the rebinding either, or a stray keystroke cancels the gesture.
+fn test_a_key_pressed_before_a_verb_is_picked_binds_nothing() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  r = rebind_press(rb, m, key_code_of("5"));
+  assert(!r.bm_ok, "a key pressed with nothing picked reported a bind: {r.bm_say}");
+  assert(verb_in(m, "5") == VB_NONE, "'5' now names '{verb_in(m, \"5\")}'");
+  assert(rb.rb_at == RB_ARMED,
+         "a key pressed with nothing picked moved the machine to {rb.rb_at}");
+}
+
+// ── THE WHOLE GESTURE ───────────────────────────────────────────────────────
+
+fn test_arm_pick_press_moves_the_verb_and_the_old_key_goes_dead() {
+  m = keymap_default();
+  rb = rebind_new();
+  assert(verb_at_code(m, key_code_of("ArrowUp")) == VB_RAISE,
+         "the fixture starts with raise somewhere else");
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  assert(rb.rb_at == RB_PICKED, "picking a verb reached state {rb.rb_at}");
+  assert(rb.rb_verb == VB_RAISE, "the machine picked '{rb.rb_verb}'");
+  // ⚠ THE PROMPT NAMES THE KEY THE VERB HAS NOW, which is half of what the person
+  // needs before they choose a new one.
+  assert(rb.rb_say.contains("ArrowUp"),
+         "the prompt does not say where raise is now: '{rb.rb_say}'");
+  r = rebind_press(rb, m, key_code_of("5"));
+  assert(r.bm_ok, "the rebind was refused: {r.bm_say}");
+  // The claim, asked the way the CLIENT asks it — by code, because a GL driver never
+  // sees a name.
+  assert(verb_at_code(m, key_code_of("5")) == VB_RAISE,
+         "'5' reaches '{verb_at_code(m, key_code_of(\"5\"))}'");
+  assert(verb_at_code(m, key_code_of("ArrowUp")) == VB_NONE,
+         "the old key still reaches '{verb_at_code(m, key_code_of(\"ArrowUp\"))}' — a "
+       + "rebind that adds a row instead of moving one leaves both live");
+  assert(len(keymap_verbs(m)) == 15,
+         "the definition has {len(keymap_verbs(m))} rows after a rebind through the "
+       + "machine");
+}
+
+// ⛔ **THE ROW THIS STEP EXISTS FOR.** The completing key is still down, and the verb
+// it now names must not fire.
+fn test_the_key_that_completed_the_rebind_is_held_until_it_comes_up() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  code = key_code_of("5");
+  rebind_press(rb, m, code);
+  assert(rb.rb_at == RB_SETTLE, "a completed bind reached state {rb.rb_at}");
+  assert(rb.rb_code == code, "the machine is holding code {rb.rb_code}, not {code}");
+  // ⚠ **STILL HOLDING, WHICH IS THE WHOLE POINT** — the client's fence reads exactly
+  // this, so a machine that answered `false` here would let the edge through.
+  assert(rebind_holds(rb),
+         "the keyboard was handed back with the completing key still down — the verb "
+       + "just bound fires on the next frame");
+  rebind_release(rb, true);
+  assert(rebind_holds(rb) && rb.rb_at == RB_SETTLE,
+         "the machine let go while the key was still reported down");
+  rebind_release(rb, false);
+  assert(!rebind_holds(rb), "the machine kept the keyboard after the key came up");
+  assert(rb.rb_at == RB_OFF, "a released rebinder is in state {rb.rb_at}");
+  // …and the sentence survives, because it is what the person is reading.
+  assert(rb.rb_say != "", "the report was cleared when the key came up");
+}
+
+// ⚠ A COLLISION IS THE NORMAL CASE — every letter is taken — so the gesture's job is
+// to SAY what it displaced rather than to refuse.
+fn test_a_rebind_from_the_editor_reports_what_it_displaced() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_STOREY);
+  r = rebind_press(rb, m, key_code_of("C"));
+  assert(r.bm_ok, "a collision was refused: {r.bm_say}");
+  assert(r.bm_took == VB_CELLAR, "'C' displaced '{r.bm_took}'");
+  assert(rb.rb_say.contains(VB_CELLAR),
+         "what the person reads does not name what lost its key: '{rb.rb_say}'");
+  assert(key_for(m, VB_CELLAR) == "",
+         "the cellar kept key '{key_for(m, VB_CELLAR)}'");
+  assert(verb_is_known(m, VB_CELLAR),
+         "the displaced verb was dropped — its slot must stay, blank");
+}
+
+// ── WHAT MUST NOT HAPPEN ────────────────────────────────────────────────────
+
+fn test_a_pick_can_be_changed_and_only_the_second_verb_moves() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_RAISE);
+  rebind_pick(rb, m, VB_LOWER);        // the mis-click, corrected
+  assert(rb.rb_verb == VB_LOWER, "the machine still holds '{rb.rb_verb}'");
+  rebind_press(rb, m, key_code_of("5"));
+  assert(verb_in(m, "5") == VB_LOWER, "'5' names '{verb_in(m, \"5\")}'");
+  assert(key_for(m, VB_RAISE) == "ArrowUp",
+         "raise moved to '{key_for(m, VB_RAISE)}' and it was never the pick");
+}
+
+fn test_a_key_the_editor_cannot_read_leaves_the_pick_standing() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_CELLAR);
+  for bad in [13, 132, 133, 999, KEY_NONE] {
+    r = rebind_press(rb, m, bad);
+    assert(!r.bm_ok, "code {bad} is not a key and reported a bind");
+    // ⚠ **STILL PICKED**, which is the difference between *try another key* and
+    // *rebinding is over*. A machine that dropped the pick here would make an
+    // unmapped keystroke feel like the feature breaking.
+    assert(rb.rb_at == RB_PICKED,
+           "code {bad} moved the machine to {rb.rb_at} instead of leaving the pick");
+  }
+  assert(key_for(m, VB_CELLAR) == "C",
+         "the cellar moved to '{key_for(m, VB_CELLAR)}' through refused presses");
+}
+
+// ⚠ **YOU CANNOT BIND AWAY YOUR OWN WAY OUT.** In the client the arm key is handled
+// before the scan and means cancel, so this is the guard for a driver that has only a
+// code — and for the day somebody adds a second one.
+fn test_the_arm_key_cannot_be_bound_to_a_verb() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_CELLAR);
+  r = rebind_press(rb, m, KEY_REBIND);
+  assert(!r.bm_ok, "the arm key was bound to a verb");
+  assert(verb_at_code(m, KEY_REBIND) == VB_NONE,
+         "the arm key now reaches '{verb_at_code(m, KEY_REBIND)}'");
+  assert(rb.rb_at == RB_PICKED, "refusing the arm key moved the machine to {rb.rb_at}");
+}
+
+fn test_cancelling_a_pick_binds_nothing() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, VB_CELLAR);
+  rebind_arm(rb);                       // Escape again
+  assert(!rebind_holds(rb), "cancelling left the keyboard with the rebinder");
+  assert(rb.rb_verb == "", "a cancelled machine still holds '{rb.rb_verb}'");
+  r = rebind_press(rb, m, key_code_of("5"));
+  assert(!r.bm_ok, "a key after a cancel reported a bind: {r.bm_say}");
+  assert(key_for(m, VB_CELLAR) == "C",
+         "the cellar moved to '{key_for(m, VB_CELLAR)}' across a cancel");
+}
+
+fn test_a_pick_refuses_a_verb_the_editor_does_not_have() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_arm(rb);
+  rebind_pick(rb, m, "tunnel");
+  assert(rb.rb_at == RB_ARMED, "an unknown verb was picked — state {rb.rb_at}");
+  assert(rb.rb_verb == "", "the machine picked '{rb.rb_verb}'");
+  assert(rb.rb_say.contains("tunnel"), "the refusal does not name it: '{rb.rb_say}'");
+}
+
+// A pick with nothing armed must not arm, or a stray click on the bar starts a
+// rebinding nobody asked for.
+fn test_a_pick_with_nothing_armed_does_nothing() {
+  m = keymap_default();
+  rb = rebind_new();
+  rebind_pick(rb, m, VB_CELLAR);
+  assert(rb.rb_at == RB_OFF, "picking with nothing armed reached state {rb.rb_at}");
+  assert(!rebind_holds(rb), "a stray pick took the keyboard");
+}
+
+// ── THE SCAN ────────────────────────────────────────────────────────────────
+//
+// ⚠ **BOTH DIRECTIONS, because either alone is satisfied by a mistake.** A scan
+// missing the digits still passes *every code names a key*; a scan of every integer
+// still passes *every key is in the scan*.
+fn test_every_key_the_editor_can_read_is_in_the_scan_and_nothing_else_is() {
+  cs = key_codes();
+  for k in key_universe() {
+    c = key_code_of(k);
+    if c == KEY_NONE { continue; }
+    found = false;
+    for s in cs { if s == c { found = true; } }
+    assert(found, "'{k}' is code {c} and the scan would never ask for it");
+  }
+  for s2 in cs {
+    assert(key_name_of(s2) != "",
+           "the scan asks for code {s2}, which names no key");
+  }
+  // The count closes it — 26 letters, 10 digits, 7 named — and it is the same 43 the
+  // round-trip row counts from the other side.
+  assert(len(cs) == 43, "the scan asks for {len(cs)} codes where the editor reads 43");
+}
 
 // ⚠ **A BAR HAS A SLOT'S WIDTH, AND TRUNCATION IS WHAT IT MUST NOT DO.** `stair_up`
 // and `stair_down` share five characters, so a truncating bar draws two identical

@@ -444,6 +444,14 @@ struct Client {
   // VERB and asks this map for the code, which is what deletes the `KEY_*` constants
   // and the second spelling beside them.
   keys: hex_editor::KeyMap,
+  // ⚠ **AND THE GESTURE THAT EDITS IT — plan 22 `M3`.** Arm, pick a slot, press a
+  // key. It is a state machine rather than three flags because of one rule the flags
+  // cannot express: while it holds the keyboard, no key may reach a gesture — see
+  // `act` and `wire`, where the fence is, and `hex_editor::rebind_holds`.
+  rb: hex_editor::Rebind,
+  // The arm key's edge. ⚠ Its own field rather than `verb_down`'s business: the arm
+  // key is deliberately NOT in the map, so nothing in `st.keys` can answer for it.
+  was_arm: boolean,
   // ⚠ THE SUBJECT LINE, AS THE SERVER SENT IT — never composed here. §C1's whole
   // point is that this is what the server SAYS, so the client keeps the string
   // verbatim and has no way to phrase one of its own.
@@ -1705,6 +1713,13 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
 // one message per pump, so a per-press notice would bury the console — and a notice
 // nobody can read is the silence it was meant to replace.
 fn wire(h: web::WsHandler, st: Client, msg: text) {
+  // ⚠ **THE REBINDER HOLDS THE KEYBOARD — plan 22 `M3`, and this is one of the two
+  // places the fence belongs.** *A guard belongs where the thing arrives, and a fence
+  // where the value is USED*: `act` below is where a VERB becomes a gesture, and this
+  // is where everything with no verb — levelling, the part cycler, the walk bits —
+  // becomes a message. Guarding the ten edge detectors instead would put the same
+  // condition in ten places, one of which the next person forgets.
+  if hex_editor::rebind_holds(st.rb) { return; }
   if !st.local { web::send(h, msg); return; }
   id = msg[..msg.find(":") ?? len(msg)];
   for said in st.said_local {
@@ -1713,6 +1728,35 @@ fn wire(h: web::WsHandler, st: Client, msg: text) {
   st.said_local += [id];
   println("client: local — '{id}:' is a server message and this page has no "
           + "gesture for it yet");
+}
+
+// ⛔ **THE MAP IS NOT THE WHOLE KEYBOARD, AND NOTHING BUT THIS COULD SAY SO** — plan
+// 22 `M3`. Eight keys are bound in this file and in no `KeyMap`: `w a s d` walk, `l`
+// toggles levelling, `Tab` cycles the catalogue, `o`/`p` cut an opening straight on
+// the wire. So `keymap_bind` binding `raise` onto `w` reports a perfectly clean
+// rebind — it cannot see a collision with a table it is not in — and the author gets
+// a key that walks AND raises, with no instrument anywhere that would report it.
+//
+// ⚠ **SAID, NOT REFUSED.** *Reason, offer, residual, never a blank no*: they asked for
+// that key and every letter is taken, so refusing would be the useless-feature failure
+// `keymap_bind` already decided against one layer down. What they must not get is
+// silence.
+//
+// ⏭ **THE REAL FIX IS TO PUT THESE IN THE MAP**, which is `D1`'s neighbourhood rather
+// than this step's: the walk is a HELD state where every verb here is an edge, so
+// `press_verb` has no shape for it yet. Until then this function is the whole of the
+// editor's knowledge that its keyboard is bigger than its map, and it is deliberately
+// one list in one place.
+fn client_reserved(code: integer) -> text {
+  if code == KEY_FORWARD    { return "walks forward"; }
+  if code == KEY_BACK       { return "walks back"; }
+  if code == KEY_LEFT_TURN  { return "turns left"; }
+  if code == KEY_RIGHT_TURN { return "turns right"; }
+  if code == KEY_LEVEL      { return "toggles levelling"; }
+  if code == KEY_PART       { return "cycles the catalogue"; }
+  if code == KEY_DOOR       { return "chooses a door profile"; }
+  if code == KEY_WINDOW     { return "chooses a window profile"; }
+  ""
 }
 
 // Is the key this person has bound to `verb` down right now?
@@ -1735,6 +1779,14 @@ fn verb_down(st: Client, verb: text) -> boolean {
 
 fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
        a: hex_editor::Author, verb: text) {
+  // ⛔ **AND THIS IS THE FENCE THAT MAKES REBINDING SAFE AT ALL — plan 22 `M3`.**
+  // Without it the key that COMPLETES a rebind fires the verb it just bound: the
+  // client polls, so the physical key is still down on the next frame and the freshly
+  // bound verb sees a rising edge. `RB_SETTLE` keeps `rebind_holds` true until the
+  // finger comes up, and this line is what reads it. ⚠ The edge flags above are still
+  // updated — only the ACT is withheld — so a key held across a rebind does not fire
+  // a phantom gesture when the keyboard comes back either.
+  if hex_editor::rebind_holds(st.rb) { return; }
   if st.local { local_act(sess, st, a, verb); return; }
   if verb == hex_editor::VB_RAISE { web::send(h, "5:1");     return; }
   if verb == hex_editor::VB_LOWER { web::send(h, "5:-1");    return; }
@@ -1775,7 +1827,55 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
 }
 
 fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
-              a: hex_editor::Author) {
+              a: hex_editor::Author, bar: VerbBar) {
+  // ── REBINDING — arm, pick a slot, press a key (plan 22 `M3`) ───────────────
+  //
+  // ⚠ **THE ARM KEY IS HANDLED FIRST AND IT OWNS `Escape` OUTRIGHT.** The scan below
+  // asks every code the editor can read, and `Escape` is one of them; handling it here
+  // is what makes it mean *cancel* rather than *bind Escape to the picked verb*. The
+  // library refuses that bind as well, for a driver that has only a code — two answers
+  // to one mistake, and the reachable one is this.
+  karm = graphics::gl_key_pressed(hex_editor::KEY_REBIND);
+  if karm && !st.was_arm {
+    hex_editor::rebind_arm(st.rb);
+    println("client: rebind — {st.rb.rb_say}");
+    st.panel_dirty = true;
+  }
+  st.was_arm = karm;
+
+  // Which key did they just press? ⚠ ONLY WHILE PICKED, so the 43 asks cost nothing in
+  // a normal frame — and `graphics` has no event queue, so *what was pressed* has no
+  // cheaper spelling than asking each one.
+  if st.rb.rb_at == hex_editor::RB_PICKED {
+    for c in hex_editor::key_codes() {
+      if c == hex_editor::KEY_REBIND { continue; }
+      if !graphics::gl_key_pressed(c) { continue; }
+      made = hex_editor::rebind_press(st.rb, st.keys, c);
+      println("client: rebind — {st.rb.rb_say}");
+      // ⚠ AND THE CLIENT'S OWN KEYS ARE OUTSIDE THE MAP, WHICH IS WHY THIS IS SAID
+      // RATHER THAN REFUSED. `w a s d` walk, `l` levels, `Tab` cycles the catalogue —
+      // none is a verb, so `keymap_bind` cannot see the collision and reports a clean
+      // bind. The person asked for it and gets it; what they must not get is silence.
+      // ⚠ ON A BIND THAT HAPPENED, never merely on a key that was pressed: warning
+      // about a collision that was refused names a conflict which does not exist.
+      if made.bm_ok {
+        taken = client_reserved(c);
+        if taken != "" {
+          println("client: rebind ⚠ that key also {taken} — this client binds it "
+                + "outside the map, so both happen");
+        }
+      }
+      st.panel_dirty = true;
+      break;
+    }
+  }
+  // …and the finger comes up. ⚠ `gl_key_pressed` IS THE OBSERVATION and not a timer:
+  // the machine must hold for exactly as long as the key is down, however long that is.
+  if st.rb.rb_at == hex_editor::RB_SETTLE {
+    hex_editor::rebind_release(st.rb, graphics::gl_key_pressed(st.rb.rb_code));
+    if !hex_editor::rebind_holds(st.rb) { st.panel_dirty = true; }
+  }
+
   // ⚠ THE BIT MEANINGS ARE `hex_editor`'s NOW — plan 22 `B1c.1`. This composed
   // `1/2/4/8` as literals while the server tested the same four with its own, which
   // is one table spelled twice: the wire's `4:<keybits>` had a sender and a receiver
@@ -1785,6 +1885,14 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   if graphics::gl_key_pressed(KEY_BACK) { bits = bits | hex_editor::HELD_BACK; }
   if graphics::gl_key_pressed(KEY_LEFT_TURN) { bits = bits | hex_editor::HELD_LEFT; }
   if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | hex_editor::HELD_RIGHT; }
+  // ⛔ **ARMING STOPS THE WALK, AND LEAVING THIS OUT STRANDS THE WALKER.** The walk is
+  // a HELD state, not an edge: `local_tick` integrates `st.held` every frame and the
+  // server integrates the last `4:` it was sent. So a person walking who presses
+  // `Escape` would keep walking for the whole rebinding — and `wire`'s fence makes it
+  // worse rather than better, because the `4:0` that would have stopped them is
+  // exactly what the fence withholds. Zeroing at the SOURCE is the honest fix: while
+  // the rebinder holds the keyboard, no key is held.
+  if hex_editor::rebind_holds(st.rb) { bits = 0; }
   if bits != st.held {
     st.held = bits;
     // ── WHERE HELD INPUT GOES — the same fork `act` is, one layer down ────────
@@ -1797,7 +1905,15 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
     // message and this page has no gesture for it yet"*, which was true until this
     // step and is now a lie the page tells about itself. A stale apology is worse
     // than none — it is the `ps_status` literal again, one message down.
-    if !st.local { wire(h, st, "4:{bits}"); }
+    //
+    // ⛔ **AND NOT THROUGH `wire()` WHILE ATTACHED EITHER — plan 22 `M3`, and the
+    // reason is the opposite of a saving.** This message is the WITHDRAWAL of input
+    // rather than an input, and `wire`'s rebind fence cannot tell the two apart: it
+    // would swallow the `4:0` that arming produces one line above and leave the SERVER
+    // walking for the whole rebinding. The fence would cause the exact bug the zeroing
+    // exists to fix. ⚠ Nothing else changes — this branch is already `!st.local`, so
+    // `wire`'s local apology was unreachable from here anyway.
+    if !st.local { web::send(h, "4:{bits}"); }
     // ⚠ THE NOTICE THAT W/S DO NOTHING IS GONE — plan 22 `B1c.2c`, and removing it
     // is as load-bearing as adding it was. It was true for exactly one step, and a
     // page that went on apologising for a key that now works is the `ps_status`
@@ -1953,6 +2069,35 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   mbtn = graphics::gl_mouse_button();
   mx = graphics::gl_mouse_x();
   my = graphics::gl_mouse_y();
+  // ── …OR PICK A SLOT, WHILE ARMED (plan 22 `M3`) ────────────────────────────
+  //
+  // ⚠ **ARMED ONLY, WHICH IS WHAT MAKES THIS STEP SAFE.** With the rebinder off not
+  // one byte of behaviour changes here — a click is the look-drag it has always been,
+  // and every gate that drags to look is comparing against an unchanged path. The bar
+  // is not a permanently live surface; it becomes clickable when a person says so.
+  //
+  // ⚠ **AND IT IS THE PRESS EDGE, NOT THE HELD BUTTON.** `verbbar_hit` on every frame
+  // the button is down would re-pick the slot under a stationary cursor forever, which
+  // is harmless — and would re-pick a DIFFERENT slot the moment the cursor moved with
+  // the button still down, which is a drag silently changing the person's choice.
+  if hex_editor::rebind_holds(st.rb) {
+    down = (mbtn & 1) != 0;
+    if down && !st.dragging {
+      // ⚠ **THE FIRST HIT-TEST IN THIS TREE WITH A CALLER.** `verbbar_hit` and
+      // `panel_hit_test` were both built, tested green and invoked by nothing — the
+      // commonest defect here — and this is `verbbar_hit`'s consumer.
+      slot = verbbar_hit(bar, mx as integer, my as integer);
+      if slot >= 0 {
+        hex_editor::rebind_pick(st.rb, st.keys, verbbar_verb(bar, slot));
+        println("client: rebind — {st.rb.rb_say}");
+        st.panel_dirty = true;
+      }
+    }
+    // ⚠ NO DRAG WHILE REBINDING. A click on the bar that also turned the camera would
+    // move the view under a person whose eyes are on a strip of slots.
+    st.dragging = down;
+    return;
+  }
   if (mbtn & 1) != 0 {
     if st.dragging {
       ddx = (mx - st.last_x) as integer;
@@ -2477,6 +2622,25 @@ fn authority_line(st: Client) -> text {
   AUTH_CONNECTING
 }
 
+// What the status strip says — plan 22 `M3`.
+//
+// ⚠ **REBINDING IS MODAL, SO IT TAKES THE LINE RATHER THAN SHARING IT.** While the
+// rebinder holds the keyboard, *what the editor is waiting for* is the only status
+// worth a strip; the authority is a standing fact that has not changed and will still
+// be there in a second. Appending both would put the urgent half at the end of a line
+// long enough for `fit_text` to start deciding which half survives.
+//
+// ⚠ **AND THE RESULT IS NOT LEFT ON THIS LINE, DELIBERATELY.** A sentence that stayed
+// would replace a standing fact with a stale one — this file's own `ps_status` defect,
+// which said `connected` with the server down. The outcome of a rebind is on screen
+// permanently and in a better place: the slot's glyph moves from `Up` to `5`, and the
+// verb that was displaced goes blank. **The bar IS the result**, which is what it is
+// for; the sentence is in the transcript for the record.
+fn status_line(st: Client) -> text {
+  if hex_editor::rebind_holds(st.rb) { return st.rb.rb_say; }
+  authority_line(st)
+}
+
 // What the VERB BAR shows: every verb this person can press, with the key they have
 // bound to it — plan 22 `M2`.
 //
@@ -2497,10 +2661,43 @@ fn client_verb_specs(st: Client) -> vector<SpecVerb> {
     // at an 8px advance — the bar truncates as a backstop, and `ArrowUp`/`ArrowDown`
     // truncate to the SAME five characters, which is two identical glyphs on two
     // different keys. Shortening on purpose is what keeps them distinguishable.
-    vs += [spec_verb(v, hex_editor::verb_short(v),
-                     hex_editor::key_glyph(hex_editor::key_for(st.keys, v)))];
+    // ⚠ **AND THE PICKED SLOT LIGHTS UP — plan 22 `M3`.** `spec_verb_on` was built at
+    // `M2` and called by nothing; this is its consumer, and it is the only thing on
+    // screen that says WHICH verb the next keystroke is about to name. A prompt in the
+    // console is invisible to the person actually rebinding.
+    vs += [spec_verb_on(v, hex_editor::verb_short(v),
+                        hex_editor::key_glyph(hex_editor::key_for(st.keys, v)),
+                        st.rb.rb_at == hex_editor::RB_PICKED && st.rb.rb_verb == v)];
   }
   vs
+}
+
+// ⚠ **THE BAR SAYS WHICH KEY IS IN WHICH SLOT, AND A PICTURE CANNOT** — plan 22 `M2`.
+// A screenshot can show that a strip of squares reached the canvas; it cannot show
+// that the glyph in slot 12 is the key `cellar` is actually bound to, which is the
+// exact claim the toolbar failed silently for months. So the pairs are printed, read
+// out of the BUILT bar rather than re-composed from the map — a line that re-derived
+// them would agree with itself however the layout had gone.
+//
+// ⚠ **AND IT IS A FUNCTION BECAUSE `M3` MADE THE BAR MOVE.** It was one block run once
+// before the loop, when a binding could not change; a rebind rebuilds the bar, and a
+// report printed only at boot would describe the keyboard the person no longer has.
+//
+// ⚠ **THE CENTRES ARE HERE FOR A DRIVER TO CLICK — the same argument one step on.** A
+// probe that computed a slot's position from `VERB_SLOT_W` and `PANEL_WIDTH` would be
+// a second copy of the layout, green while clicking at the wrong pixel; `vt_rect` is
+// what was laid out, so a click on what this line reports is a click on what was drawn.
+fn say_verb_bar(b: VerbBar) {
+  bar_s = "";
+  pos_s = "";
+  for bs in b.vb_slots {
+    if bar_s != "" { bar_s += " "; pos_s += " "; }
+    bar_s += "{if bs.vt_key == \"\" { \"-\" } else { bs.vt_key }}:{bs.vt_verb}";
+    pos_s += "{bs.vt_verb}@{bs.vt_rect.r_x + bs.vt_rect.r_w / 2 ?? 0},"
+           + "{bs.vt_rect.r_y + bs.vt_rect.r_h / 2 ?? 0}";
+  }
+  println("client: verb bar {len(b.vb_slots)} slots, {b.vb_hidden} hidden — {bar_s}");
+  println("client: verb slots — {pos_s}");
 }
 
 fn client_panel_spec(st: Client) -> PanelSpec {
@@ -2538,7 +2735,10 @@ fn client_panel_spec(st: Client) -> PanelSpec {
     ps_selected_button: -1,          // the SERVER owns this; nothing to claim yet
     ps_items: parse_entries(st.mats),
     ps_selected_item: -1,          // the SERVER owns this too
-    ps_status: authority_line(st),
+    // ⚠ `status_line`, NOT `authority_line` — plan 22 `M3` put a modal prompt in front
+    // of the standing fact. `probe/b1b/auth.sh`'s `literal` sabotage rewrites THIS
+    // line, so the two move together on purpose.
+    ps_status: status_line(st),
     ps_subject: subject_line(st.hud),
   }
 }
@@ -2677,6 +2877,13 @@ fn main() {
 
   st = Client {
     keys: hex_editor::keymap_default(),
+    // ⚠ **A FRESH PAGE GETS THE DEFAULT, DELIBERATELY — plan 22 `M1`/`M3`.** The map
+    // is `Client` state and a rebind does not survive a reload. Persisting it is a
+    // `LayeredFS` question (`P6` proved the page has a filesystem) and it belongs
+    // AFTER this step, because *what* to persist was not settled until a person could
+    // make one.
+    rb: hex_editor::rebind_new(),
+    was_arm: false,
     hud: "",
     mats: "",
     panel_dirty: false,
@@ -2916,12 +3123,7 @@ fn main() {
   // the exact claim the toolbar failed silently for months. So the pairs are printed,
   // read out of the BUILT bar rather than re-composed from the map — a line that
   // re-derived them would agree with itself however the layout had gone.
-  bar_s = "";
-  for bs in ui_bar.vb_slots {
-    if bar_s != "" { bar_s += " "; }
-    bar_s += "{if bs.vt_key == \"\" { \"-\" } else { bs.vt_key }}:{bs.vt_verb}";
-  }
-  println("client: verb bar {len(ui_bar.vb_slots)} slots, {ui_bar.vb_hidden} hidden — {bar_s}");
+  say_verb_bar(ui_bar);
   // ⚠ READ OUT OF THE BUILT PANEL, NEVER RE-COMPOSED. `authority_line(st)` here
   // would agree with itself for as long as it was copied correctly and say
   // nothing about what the panel holds — the `K1` shape. `ss_text` is what
@@ -3033,6 +3235,11 @@ fn main() {
       // every frame. The list arrives once, so in practice this runs once.
       ui_swatches = render_row_images(st, ui_panel.p_list.lb_items);
       st.panel_dirty = false;
+      // ⚠ **RE-REPORTED, BECAUSE A REBIND MOVES IT — plan 22 `M3`.** This line at boot
+      // alone described a keyboard that could not change; it can now, and the whole
+      // claim of the step is that the bar follows the map. Read out of the REBUILT bar,
+      // so a rebind that moved the binding and not the picture is visible here.
+      say_verb_bar(ui_bar);
       println("client: subject line ← {st.hud}");
       println("client: status ← {ui_panel.p_status.ss_text}");
       // ⚠ THE TWO FAMILIES ARE COUNTED APART, because one number cannot say which
@@ -3057,7 +3264,11 @@ fn main() {
             + "with the world shader ({st.c_thumb} thumbnail meshes arrived, "
             + "{len(st.thumbs)} held, {len(st.tcams)} cameras)");
     }
-    poll_input(h, st, sess, author);
+    // ⚠ THE BAR GOES IN BECAUSE A CLICK PICKS A SLOT — plan 22 `M3`. It is the LAID-OUT
+    // bar rather than the specs: where a slot is on screen is the only thing that can
+    // answer *which one did they click*, and re-deriving that from `VERB_SLOT_W` at the
+    // input site would be a second layout to keep in step with the drawn one.
+    poll_input(h, st, sess, author, ui_bar);
     // ── THE PAGE'S OWN TICK — plan 22 `B1c.1` ─────────────────────────────
     //
     // Attached, the pose is the SERVER's: it integrates the walk on its tick and
