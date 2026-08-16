@@ -1,0 +1,4 @@
+use dep;
+fn test_the_dependency_is_green_on_its_own() {
+  assert(dep::dep_answer() == 42, "got {dep::dep_answer()}");
+}

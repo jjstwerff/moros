@@ -22,6 +22,39 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ⚠ THE TOOLCHAIN CHANGED UNDER TODAY'S WORK — inspected 2026-08-17
+
+`/usr/local/bin/loft` was replaced at **2026-08-16 23:08**, and the version string did not
+move — still `loft 2026.8.0`. Every measurement behind the `T1` and `T2` commits ran on the
+**previous** binary: both worlds byte-identical, 49 gates, `make lib-test` on both backends.
+Re-checked on the new one, `make fast` is **157 test files, exit 0**, layering, `walk-exact`,
+`probe-k3c` and `probe-k3e` all green — so the two steps stand.
+
+**The tracker, snapshotted** (labels move on someone else's schedule; the measurements are in
+[LOFT_HANDOFF](LOFT_HANDOFF.md), which is where they belong):
+
+| | | |
+|---|---|---|
+| [#891](https://github.com/loft-lang/loft/issues/891) | `host_input()` blocks with no host | CLOSED — ✅ **verified fixed**, `got [] len 0` at rc 0 on both backends, was rc 124 |
+| [#913](https://github.com/loft-lang/loft/issues/913) | `loft test` refuses the path it prints | CLOSED — ✅ **verified fixed**, with the bare-name form as the control |
+| [#912](https://github.com/loft-lang/loft/issues/912) | a module basename is global | CLOSED — ⚠ **half of it is left**, see below |
+| [#948](https://github.com/loft-lang/loft/issues/948) · [#949](https://github.com/loft-lang/loft/issues/949) | its two residues | **filed 2026-08-17** |
+
+⛔ **AND #912 IS THE ONE TO READ, BECAUSE THE FIX IS REAL AND LANDS ON THE WRONG SIDE.** loft
+gained an `Advice[module-name-shadowed]` that names both files, the `use` site and which one
+binds. Measured on a two-package repro kept at `probe/loft/basename/`:
+
+- the shadowing file declares something that **resolves** → the advice fires, **and the
+  dependency's own answer silently changes** (`dep_answer` 100 where its own module says 42);
+- the shadowing file declares **anything else** → `Unknown function part_list` against
+  *the dependency's* source, a spurious `missing argument … of OpAddInt` beside it, and **no
+  advice at all**.
+
+So the diagnostic exists and is absent exactly where the build goes red — which is the case
+that cost this tree a diagnosis by elimination. **CLAUDE.md's *grep the basename too* rule does
+not relax**, and the reason is now that the warning you would lean on is the one that does not
+appear.
+
 ## ✅ GROUND_DEFAULT IS CLOSED — [#23](https://github.com/jjstwerff/moros/issues/23), 2026-08-13
 
 All eight steps built. **The rule is normative now** — [WORLD_MODEL § `E1γ`](WORLD_MODEL.md),

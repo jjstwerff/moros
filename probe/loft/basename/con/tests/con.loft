@@ -1,0 +1,5 @@
+use con;
+fn test_which_catalogue_won() {
+  println("dep_answer = {con::con_answer()}  (42 = the dependency's own, 100 = the consumer's shadowed it)");
+  assert(con::con_answer() == 42, "the consumer's file shadowed the dependency's: {con::con_answer()}");
+}

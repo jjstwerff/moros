@@ -1,0 +1,10 @@
+[package]
+name    = "con"
+version = "0.1.0"
+loft    = ">=0.8"
+
+[library]
+entry = "src/con.loft"
+
+[dependencies]
+dep = { path = "../dep" }

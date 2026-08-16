@@ -1,0 +1,5 @@
+use catalogue;
+
+// 41 + 1 = 42 if this binds the DEPENDENCY's catalogue; 99 + 1 = 100 if the
+// consumer's file shadows it.
+pub fn dep_answer() -> integer { part_list() + 1 }

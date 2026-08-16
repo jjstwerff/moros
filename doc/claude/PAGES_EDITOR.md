@@ -44,9 +44,14 @@ word.** LAVITION_SPLIT's own plan once said *"one chokepoint that 18 sites route
 shipped as 18 bypasses. So the count is taken **before** any code, below, and it is not 1 today.
 
 ⚠ **AND THE ONE DIFFERENCE THE INVARIANT ALLOWS IS THE ONE THAT MUST BE VISIBLE.** *Where bytes go*
-is exactly what an author needs told, because the page cannot ask which mode it is —
-[loft#891](https://github.com/loft-lang/loft/issues/891): `host_input()` **blocks** with no host,
-so the boot switch this design named cannot be written. The mode is inferred from whether the
+is exactly what an author needs told, because the page could not ask which mode it is —
+[loft#891](https://github.com/loft-lang/loft/issues/891): `host_input()` **blocked** with no host,
+so the boot switch this design named could not be written. ✅ **#891 IS FIXED — re-measured
+2026-08-17**, `probe/b1b/ask.loft` answers `got [] len 0` at rc 0 on both backends. ⏭ That does
+**not** put the boot switch back: what is built is route 3 (connect-or-local, with the panel
+saying which), it is `B1b.1a`, and it is the better answer anyway — *inference is silent* is an
+argument about the AUTHOR being told, not about how the mode is decided. The ask is now available
+if a future mode needs one. The mode is inferred from whether the
 socket connects, and inference is silent: a transient network failure would move an author into a
 different authority with their edits landing somewhere else and nothing said. **So the panel's
 STATUS line names the live authority** — the client's own fact about its socket, never the

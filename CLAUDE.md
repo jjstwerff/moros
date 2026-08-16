@@ -98,13 +98,21 @@ for the BASENAME too, not just for the names inside it** — and note that the s
 diagnostic for *declarations* is excellent (both sites and the fix in one line), which is
 exactly why the silence here reads as something else entirely.
 
-⛔ **AND THIS ONE IS STILL LIVE — re-measured 2026-08-15 against the installed toolchain**, on a
-two-package repro with a control: with no colliding basename the consumer's suite is `1 passed`;
-adding a `src/catalogue.loft` the consumer **never imports**, declaring something entirely
-different, turns it into `Unknown function part_list` reported at `dep/src/dep.loft:4:33`. Same on
-the interpreter and on `--native`. ⚠ **It is worth re-reading which way the pair went**: the
-neighbouring struct-name defect above was fixed in the same build, so *loft got better at names
-and no better at filenames* — and a reader who saw one ✅ could reasonably assume the other.
+⚠ **HALF FIXED, AND THE HALF YOU GET IS DECIDED BY LUCK — re-measured 2026-08-17 against the
+toolchain installed 2026-08-16 23:08.** loft gained an `Advice[module-name-shadowed]` that names
+both files, the `use` site and which one binds. **It fires when the collision is harmless and is
+silent when it is fatal**, which is the case that costs a diagnosis:
+
+| the shadowing file declares… | what you get |
+|---|---|
+| a function the dependency's call RESOLVES to | ✅ the advice, both filenames — **and the dependency's own answer silently changes**: 100 where its own module says 42 ([#949](https://github.com/loft-lang/loft/issues/949)) |
+| anything else | ⛔ `Unknown function part_list` at **`dep/src/dep.loft`**, plus a spurious `missing argument … of OpAddInt`, and **no advice at all** ([#948](https://github.com/loft-lang/loft/issues/948)) |
+
+Same on the interpreter and on `--native`; control green with the file absent. **So the rule below
+does not relax**: the diagnostic you would rely on is the one that does not appear when the build
+goes red. ⚠ And it is worth re-reading which way the pair went — the struct-name defect was fixed
+outright while this one got a warning, so *a reader who saw one ✅ could reasonably assume the
+other*.
 
 ⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS DISABLED BY A NAME.** `tools/layering.sh` skipped
 every `moros_*` package, so a universal package wearing a Moros prefix was exempt from the one
