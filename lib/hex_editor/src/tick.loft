@@ -52,6 +52,18 @@ use hex_field;
 use hex_grid;
 use hex_voxel;
 
+// How far the level stamp reaches, in hexes.
+//
+// ⚠ IT IS THE GESTURE'S NUMBER, NOT A DRIVER'S — plan 22 `T2`. It was
+// `src/editor_server.loft`'s `const LEVEL_R = 5`, and the page was about to declare
+// its own the moment it started levelling: two drivers with two radii write two
+// different pads from the same walk, which is exactly the divergence this module
+// exists to close. The disc is what LEVELLING means; when it fires is the driver's.
+//
+// It is self-limiting at any radius: once a cell has been brought to the level the
+// difference is zero, so walking the same path twice cannot deepen it.
+pub const LEVEL_R = 5;
+
 // Everything one tick reads and writes about the person. A driver OWNS one of
 // these and hands it over; it does not reach inside between ticks.
 //

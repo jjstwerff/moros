@@ -64,6 +64,16 @@ fail() { echo "demo FAIL — $1"; exit 1; }
 #                            gesture is unreachable, and M6 — whose evidence is an
 #                            ABSENCE — is caught by its vacuity guard rather than by
 #                            its count.
+#   DEMO_SABOTAGE=nolevel    the `l` presses are removed from the `L` walk, so the same
+#                            ground is walked with the mode off. Red on L1–L3.
+#                            ⚠ ITS SUBJECT IS THE WIRING, NOT THE STAMP — it proves the
+#                            three rows are not vacuous (they report an ABSENCE, and an
+#                            absent sentence must fail them). The stamp's own falsification
+#                            is `lib/hex_editor/tests/tick.loft`, where deleting it turns
+#                            the level test red with a green control. Two checks, because
+#                            *the key reached the machine* and *the machine wrote* are two
+#                            claims and this page has been in exactly the state where the
+#                            first held and the second did not.
 #   DEMO_SABOTAGE=nopersist  `M5b`'s own row: the rebind is never written down, so the
 #                            reloaded page comes back on the default. Red on N2 and N3;
 #                            N1 stays green, which is what says the rebind itself worked
@@ -736,6 +746,56 @@ if [ "$g_feet" = "0" ] && [ "$g_landed" = "0" ]; then
   say "H3 control: the same walk over FLAT ground kept feet 0 and landed 0"
 else
   no "H3 the flat-ground walk reported feet '$g_feet' landed '$g_landed' — it should have neither, so H1/H2 prove nothing"
+fi
+
+# ── L  the demo can LEVEL as it walks — plan 22 `T2` ───────────────────────
+#
+# ⛔ **THIS KEY DID NOTHING HERE AND SAID IT HAD.** `l` flipped a page-local flag and
+# called `wire`, which in local mode sends nothing — and there was no `brush_level`
+# anywhere in `src/editor_client.loft`, so an author levelling on their own page walked
+# over ground that never moved and got a success line for it. `T2` gave the page the
+# library's tick, which is where the stamp lives.
+#
+# ⚠ TWO INSTRUMENTS, BECAUSE ONE CANNOT ANSWER. The COUNT says the stamp fired at all;
+# the WORLD KEY says it wrote something the store can see. A page that levelled flat
+# ground would print a count and an unchanged key, which is the state this was in.
+#
+# ⚠ AND THE RAISE COMES FIRST FOR THE REASON `H` DOES: on ground already at the frozen
+# height `cur_h != level_h` is false at every cell, and levelling correctly writes
+# NOTHING. The walk has to meet ground that differs, which is what `ArrowUp` makes.
+echo
+echo "── L   level while walking, and cut the raised ground ──────────────"
+L_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['l'] + ['w']*60 + ['l']))")
+case ",$SAB," in *,nolevel,*) L_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*60))"); echo "   SABOTAGE nolevel — the same walk with the level key removed" ;; esac
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$L_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/level.raw" 2>&1 || true
+grep -E '^(client|moros editor client)' "$OUT/level.raw" > "$OUT/level.log" || true
+grep -E '^client: local level' "$OUT/level.log" | sed 's/^/   /'
+
+l_on=$(grep -c 'local level on' "$OUT/level.log" || true)
+l_off=$(grep 'local level off' "$OUT/level.log" | tail -1 || true)
+l_cells=$(printf '%s' "$l_off" | sed -n 's/.*off — \([0-9]*\) cell.*/\1/p')
+l_world=$(printf '%s' "$l_off" | sed -n 's/.*world \([0-9:]*\) .*/\1/p')
+# The control world: the same raise and the same walk with no levelling at all. It is
+# taken out of the H run above, which is exactly that key sequence.
+h_world=$(grep -oE 'world [0-9]+:[0-9]+' "$OUT/fall.log" | tail -1 | sed 's/world //' || true)
+
+if [ "$l_on" -ge 1 ] 2>/dev/null; then
+  say "L1 the page took the key and froze a grade: $(grep 'local level on' "$OUT/level.log" | tail -1 | sed 's/^client: //')"
+else
+  no "L1 the page never said it levelled — the key reached no state machine"
+fi
+
+if [ -n "$l_cells" ] && [ "$l_cells" -gt 0 ] 2>/dev/null; then
+  say "L2 the stamp FIRED $l_cells time(s) while walking — the clause this page never had"
+else
+  no "L2 levelling was on and stamped '$l_cells' cells. The mode being on is not the mode working: this page reported success for months while writing nothing"
+fi
+
+if [ -n "$l_world" ] && [ -n "$h_world" ] && [ "$l_world" != "$h_world" ]; then
+  say "L3 …and the STORE moved: $l_world against $h_world for the same walk unlevelled"
+else
+  no "L3 the levelled walk keyed '$l_world' and the unlevelled one '$h_world' — a count with no world behind it is a report about a call, not about the ground"
 fi
 
 # ── R  the demo can lay a WALL RUN — plan 22 `K3` ──────────────────────────

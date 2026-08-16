@@ -122,10 +122,11 @@ const FADE_FROM = 0.55;        // fade begins at this fraction of the distance
 // feathers the edge, so a ridge meets the plain tangentially instead of standing
 // on a wall.
 //
-// It is also self-limiting: once a cell has been brought to the level, the
-// difference is zero and re-entering it changes nothing. Walking the same path
-// twice cannot deepen it.
-const LEVEL_R = 5;
+// ⚠ THE REACH ITSELF IS `hex_editor::LEVEL_R` — plan 22 `T2`. It was declared here,
+// and a page that levels needs the same number: two drivers with two radii write two
+// different pads from one walk. It is self-limiting at any radius — once a cell has
+// been brought to the level the difference is zero, so walking the same path twice
+// cannot deepen it.
 
 // The ground's colour is a RAMP over height, sent as data: green at the bottom,
 // brown at the top. The rule is the model's, the interpolation is the client's
@@ -6435,7 +6436,7 @@ fn main() {
       // ⚠ AND THIS SERVER STILL OWNS THE CLOCK. `walk_tick` fires when it is called;
       // that it is called here, once per `TICK_US` of simulated time, is the one thing
       // about the tick that is a fact about this driver rather than about the walker.
-      tk = hex_editor::walk_tick(wk, wld, sess.es_runs, COLL_R, cliff_step(), LEVEL_R,
+      tk = hex_editor::walk_tick(wk, wld, sess.es_runs, COLL_R, cliff_step(), hex_editor::LEVEL_R,
                                  fn(gx: float, gz: float, gref: float) -> float {
                                    hex_mesh::ground_under(wld, gx, gz, gref) });
       if tk.tk_moved { moved = true; }

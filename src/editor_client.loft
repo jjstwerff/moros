@@ -614,37 +614,29 @@ struct Client {
   part_pick: integer,
   was_part: boolean,
   tick_begun: boolean,
-  // ── The page's own collision proxy (plan 22 `B1c.2c`) ──────────────────────
+  // ── THE WALKER — plan 22 `T2`, and it is the LIBRARY's ─────────────────────
   //
-  // ⚠ THE SET IS THE LIBRARY'S, THE CACHE IS THE DRIVER'S — and that division is
-  // why `edges_walk` moved and this did not. What blocks a walker is a fact about
-  // the world; *when may I reuse the answer* is a fact about a tick, and the
-  // server's is keyed on its own. Same three terms as the server's: the cell, the
-  // world's EDIT CLOCK, and the walker's LEVEL — the third is not belt and braces,
-  // because stepping off a deck changes the level without changing the cell.
-  coll: EdgeSet,
-  coll_sf: Surfaces,
-  coll_rt: Track,
-  coll_have: boolean,
-  coll_q: integer,
-  coll_r: integer,
-  coll_tau: integer,
-  coll_surf: integer,
-  walked: float,
-  // ── The feet, between ticks (plan 22 `B1c.3`) ──────────────────────────────
+  // Position, feet, fall speed, facing, held keys, gait, the level state machine and
+  // the collision proxy, in one `hex_editor::Walker`. This page held eleven separate
+  // fields for them and sequenced its own tick over them, beside the server's copy of
+  // the same sequence — and *this* copy was missing the level stamp entirely, so
+  // pressing `l` locally flipped a flag and levelled nothing.
   //
-  // ⚠ A STATE, NOT A LOOKUP, and the server learned that the expensive way: its
-  // feet were `terrain_y` every tick, "which is why stepping off a ledge
-  // teleported you down — and why every reading taken while standing still was
-  // STALE." `py` is the height and `vy` its only evolution.
+  // ⚠ THE CACHE WAS THE ARGUMENT FOR KEEPING THEM APART, and it did not survive being
+  // measured. *What blocks a walker is a fact about the world; when may I reuse the
+  // answer is a fact about a tick* — but both drivers keyed it on the same three
+  // terms, so it was one fact written twice. `walk_proxy` owns the key now.
   //
-  // ⚠ AND `au_y` CANNOT BE IT. The pose carries the ground under the feet for the
-  // GESTURES — which layer a ring lands on (`R1a`) — and a falling walker is
-  // between layers by definition. So the fall owns `py`, and the pose is built
-  // from it.
-  py: float,
-  vy: float,
-  fell: integer,
+  // ⚠ AND `au_y` IS STILL NOT THE FEET. The pose carries the ground under the feet
+  // for the GESTURES — which layer a ring lands on (`R1a`) — and a falling walker is
+  // between layers by definition. So `wk_y` is the feet and the pose is built from it.
+  wk: hex_editor::Walker,
+  // How many cells this levelling run has stamped. ⚠ A COUNT PER RUN, NOT A SENTENCE
+  // PER FOOTFALL — levelling writes on every hex entered, so a line each would be a
+  // flood, and it is the same *once per run* shape the server's two level reports
+  // have. It is also the only thing that can say the stamp FIRED: a page that
+  // levelled nothing and a page that levelled flat ground print the same world key.
+  lv_stamped: integer,
   // Which of `ws_candidates()` this page is dialling — plan 22 `B2b`. ⚠ IT ONLY
   // EVER RISES, and that is `local`'s one-way rule one level down: a page that
   // wandered back to an earlier candidate could attach to a server it had already
@@ -655,7 +647,9 @@ struct Client {
   // per frame (the mouse drag sends one per pump) is a flood.
   said_local: vector<text>,
   // Input, as EDGES rather than states: the socket carries a change, not a poll.
-  held: integer,
+  // ⚠ THE HELD BITS THEMSELVES ARE THE WALKER'S (`wk_held`) — plan 22 `T2` — because
+  // the tick reads them and the tick is the library's. What is left here is the EDGE
+  // detection, which is this driver's keyboard rather than anybody's walker.
   was_up: boolean,
   was_down: boolean,
   was_level: boolean,
@@ -1060,9 +1054,9 @@ const LOCAL_PARTS = "/data/parts";
 // under them is re-derived: a load does not teleport anybody, which is
 // `session_scene_clear`'s own rule about this same event.
 //
-// ⛔ **AND THE FEET NEEDED NOTHING — I SEEDED `st.py` TOO, AND THE SABOTAGE IS WHAT
+// ⛔ **AND THE FEET NEEDED NOTHING — I SEEDED THE FEET TOO, AND THE SABOTAGE IS WHAT
 // SAID SO.** The story I wrote first was that an unseeded `py` leaves the author
-// buried, since `local_fall` writes the pose FROM `st.py` every tick. Removing that
+// buried, since the pose is built FROM the feet every tick. Removing that
 // seed left **every check green**, because `fall_step`'s first branch is
 // `if y <= gnd { stand on it }` — and its own comment names this exact case:
 // *"This is also the CLIMB case — the ground rose past the feet."* A restored world
@@ -1126,9 +1120,9 @@ fn local_restore(st: Client, a: hex_editor::Author) -> hex_editor::Author {
   }
   st.cache = ld.wl_world;
   st.saved_tau = st.cache.w_tau;
-  // The ground under the author, on the world that just arrived. ⚠ `st.py` is
-  // deliberately NOT touched — see the ⛔ above: the fall owns it, with a library test
-  // of its own.
+  // The ground under the author, on the world that just arrived. ⚠ THE WALKER'S FEET
+  // (`wk_y`) are deliberately NOT touched — see the ⛔ above: the fall owns them, with a
+  // library test of its own.
   ra = hex_editor::author_on(st.cache, a.au_x, a.au_z, a.au_yaw);
   // ⚠ **THE GROUND IS IN THE SENTENCE**, because the world key cannot carry it: a page
   // that restored every cell and solved its camera against the height the ground used
@@ -1756,69 +1750,35 @@ fn local_act(sess: hex_editor::EditSession, st: Client, a: hex_editor::Author,
   }
 }
 
-// ── WHERE ONE STEP OF W/S PUTS THE AUTHOR — plan 22 `B1c.2c` ────────────────
+// ── ONE STEP OF THE PERSON, IN THE PAGE — plan 22 `T2` ──────────────────────
 //
-// The same `hex_editor::walk_to` the server calls, over a collision set built by
-// the same `hex_editor::edges_walk`. Nothing about the walk is written twice; what
-// this page owns is WHEN to rebuild the set, which is a fact about its own tick.
+// ⛔ **THREE FUNCTIONS WERE DELETED HERE — `local_walk`, `local_fall` AND THE TURN —
+// AND WHAT THEY HELD WAS NEVER THE WALK.** Every primitive they called was already
+// `hex_editor`'s: `walk_dir`, `walk_h`, `edges_walk`, `walk_to`, `fall_step`,
+// `author_turn`. What was written twice was the SEQUENCE, and the sequence is what
+// decides the world — which is why this copy could be missing a clause for weeks with
+// every check green: **it had no level stamp at all**, so `l` in local mode flipped a
+// flag, sent nothing, wrote nothing, and reported success.
 //
-// ⚠ NO FALL, AND THAT IS COHERENT RATHER THAN CRIPPLED — plan 22 `B1c.3`. The feet
-// take the ground under them from `author_on`, which is the cell's stored height;
-// the server integrates a fall instead. The difference is invisible here because
-// **cliff edges BLOCK**: a walker cannot leave a plateau on foot, which is
-// `cliff.loft`'s own recorded cost ("a character PLACED on a plateau is fenced in
-// by its own cliffs"). What is missing is falling, not walking.
-fn local_walk(st: Client, sess: hex_editor::EditSession,
-              a: hex_editor::Author) -> hex_editor::Author {
-  fwd = hex_editor::walk_dir(st.held);
-  if fwd == 0.0 { return a; }
-  (wq, wr) = hex_grid::px_to_hex(a.au_x, a.au_z);
-  // The walker's own surface, resolved once and used as the reference for every
-  // other cell — `walk_h`'s ⚠ is why this is not the feet themselves.
-  surf = hex_editor::walk_h(wq, wr, st.cache, a.au_y / st.cache.w_unit ?? 0.0);
-  if !st.coll_have || st.coll_q != wq || st.coll_r != wr
-     || st.coll_tau != st.cache.w_tau || st.coll_surf != surf {
-    st.coll_sf = hex_edge::surfaces_new();
-    st.coll_rt = hex_editor::runs_track(sess.es_runs);
-    st.coll = hex_editor::edges_walk(st.cache, wq, wr, LOCAL_COLL_R, sess.es_runs,
-                                     st.coll_sf, surf as float,
-                                     hex_editor::walker_step(st.cache.w_unit));
-    st.coll_q = wq; st.coll_r = wr; st.coll_tau = st.cache.w_tau;
-    st.coll_surf = surf; st.coll_have = true;
-  }
-  step = hex_editor::walk_step_len(hex_editor::tick_dt());
-  ky = cos(a.au_yaw); sy = sin(a.au_yaw);
-  (nx, nz) = hex_editor::walk_to(st.coll, st.coll_sf, st.coll_rt, st.cache,
-                                 a.au_x, a.au_z,
-                                 a.au_x + ky * step * fwd, a.au_z + sy * step * fwd,
-                                 surf as float);
-  gone = sqrt((nx - a.au_x) * (nx - a.au_x) + (nz - a.au_z) * (nz - a.au_z)) ?? 0.0;
-  st.walked = st.walked + gone;
-  // ⚠ THE POSE IS BUILT FROM THE FALLING FEET — plan 22 `B1c.3`, and it was
-  // `author_on` here until the fall existed. `author_on` reads the CELL's stored
-  // height, so a walker who had just stepped off a ledge was teleported down by
-  // the next gesture's pose — the server's own recorded defect, one driver over.
-  hex_editor::author_at(nx, nz, a.au_yaw, st.py)
+// The page still owns the two things that are genuinely a page's: WHEN a tick fires
+// (its own accumulator, in fixed steps) and what to REDRAW when one writes.
+fn local_step(st: Client, sess: hex_editor::EditSession) -> hex_editor::TickOut {
+  // ⚠ THE GROUND GOES IN AS A FUNCTION, because `hex_mesh` depends on `hex_editor`
+  // and the library therefore cannot ask what is under the feet. The page has a
+  // mesher, so the page hands one in — the same seam `cliff_edges` takes its terrain
+  // by, and the same call `local_fall` used to make inline.
+  hex_editor::walk_tick(st.wk, st.cache, sess.es_runs, LOCAL_COLL_R,
+                        hex_editor::walker_step(st.cache.w_unit), hex_editor::LEVEL_R,
+                        fn(gx: float, gz: float, gref: float) -> float {
+                          hex_mesh::ground_under(st.cache, gx, gz, gref) })
 }
 
-// ── THE FALL — plan 22 `B1c.3` ──────────────────────────────────────────────
-//
-// Once per fixed step, and the ONLY thing that evolves the feet. It runs whether
-// or not the walker moved: ground taken out from under someone standing still has
-// to drop them, and a fall that ran only inside the walk would leave them hanging
-// — the server's rule, in the server's words, because it is the same function.
-//
-// ⚠ THE REFERENCE IS THE SURFACE THE WALKER STOOD ON, NEVER THE FEET. `ground_under`
-// takes a reference to decide WHICH level it is being asked about, and feet that
-// are mid-fall are between levels. The server passes the surface the tick began on;
-// so does this.
-fn local_fall(st: Client, a: hex_editor::Author) -> hex_editor::Author {
-  gnd = hex_mesh::ground_under(st.cache, a.au_x, a.au_z, st.py);
-  fs = hex_editor::fall_step(st.py, st.vy, gnd, hex_editor::tick_dt());
-  st.py = fs.fl_y;
-  st.vy = fs.fl_vy;
-  if fs.fl_landed { st.fell = st.fell + 1; }
-  hex_editor::author_at(a.au_x, a.au_z, a.au_yaw, st.py)
+// The pose the gestures see, built from the walker. ⚠ IT IS `wk_y` AND NOT
+// `author_on`: `author_on` reads the CELL's stored height, so a walker who had just
+// stepped off a ledge was teleported down by the next gesture's pose — the server's
+// own recorded defect, one driver over.
+fn local_pose(st: Client) -> hex_editor::Author {
+  hex_editor::author_at(st.wk.wk_x, st.wk.wk_z, st.wk.wk_yaw, st.wk.wk_y)
 }
 
 // ── THE PAGE'S WALKER — plan 22 `B1c.1` ─────────────────────────────────────
@@ -1826,7 +1786,7 @@ fn local_fall(st: Client, a: hex_editor::Author) -> hex_editor::Author {
 // One pass of the frame loop, in local mode: consume however much real time has
 // passed in FIXED steps, and turn the author by what the held keys asked for.
 //
-// ⚠ THE HELD BITS ARE ALREADY COMPOSED — `poll_input` built `st.held` for the wire
+// ⚠ THE HELD BITS ARE ALREADY COMPOSED — `poll_input` built `wk_held` for the wire
 // and this reads the same integer, so the page cannot come to disagree with the
 // message it sends. What those bits MEAN is `hex_editor::turn_dir`, which the
 // server decodes with too: the wire's `4:<keybits>` had a sender and a receiver and
@@ -1855,17 +1815,20 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
   // situation it could never reach. The first pass is a fact about passes, not a
   // value the clock happens to have.
   if !st.tick_begun { st.tick_begun = true; st.tick_at = now; return a; }
-  turned = a;
   steps = 0;
+  wrote = false;
   // ⚠ ONE STEP PER ITERATION, AND THE CLOCK IS ADVANCED BY THE STEP rather than
   // set to `now`. Setting it to `now` would silently swallow the remainder and make
   // the turn rate depend on the frame rate again — the exact defect the server's
   // own comment records paying for.
   while now - st.tick_at >= hex_editor::TICK_US {
     st.tick_at = st.tick_at + hex_editor::TICK_US;
-    turned = hex_editor::author_turn(turned, st.held, hex_editor::tick_dt());
-    turned = local_walk(st, sess, turned);
-    turned = local_fall(st, turned);
+    tk = local_step(st, sess);
+    // ⚠ THE STAMP IS WHAT MAKES LEVELLING REAL HERE — plan 22 `T2`, and it is the
+    // capability this page has never had. A tick that WRITES has to be redrawn, or
+    // the ground moves and the picture does not, which is *the swap-and-look this
+    // plan refuses* wearing a renderer's clothes.
+    if tk.tk_dirty { wrote = true; st.lv_stamped = st.lv_stamped + 1; }
     steps = steps + 1;
     // A guard on the BACKLOG, not on the walk: a tab restored after ten minutes in
     // the background would otherwise work off eighteen thousand steps in one frame.
@@ -1873,6 +1836,7 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
     // variable-step bug wearing a bound's clothes.
     if steps >= LOCAL_TICK_MAX { st.tick_at = now; }
   }
+  turned = local_pose(st);
   if steps > 0 {
     st.ticked = st.ticked + steps;
     // The camera is DERIVED from the pose, so it is re-solved on any tick that
@@ -1886,7 +1850,13 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
       // cost that comment says a keystroke can afford and a frame cannot.
       st.turned_by = st.turned_by + (turned.au_yaw - a.au_yaw);
     }
-  } else if st.ticked == 0 && st.held != 0 && !st.said_still {
+    // ⚠ AND A WRITE *IS* WORTH THAT COST, WHICH IS THE DISTINCTION THE LINE ABOVE
+    // DRAWS. A turn moves no cell; a level stamp moves a disc of them. ⏭ It redraws
+    // the whole neighbourhood because `local_surfaces` takes one — `TickOut` carries
+    // the disc (`tk_dq`, `tk_dr`, `tk_drad`) and nothing here can yet ask for less,
+    // which is probe 6's answer: the report is sufficient and the MESHER is not.
+    if wrote { local_surfaces(st, sess, turned); }
+  } else if st.ticked == 0 && st.wk.wk_held != 0 && !st.said_still {
     // ⚠ SAID ONCE, AND ONLY WITH A KEY HELD. Keys held and not one step consumed
     // is the shape a dead clock takes, and it is indistinguishable on screen from
     // a page that is simply working.
@@ -2106,19 +2076,19 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   if graphics::gl_key_pressed(KEY_LEFT_TURN) { bits = bits | hex_editor::HELD_LEFT; }
   if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | hex_editor::HELD_RIGHT; }
   // ⛔ **ARMING STOPS THE WALK, AND LEAVING THIS OUT STRANDS THE WALKER.** The walk is
-  // a HELD state, not an edge: `local_tick` integrates `st.held` every frame and the
+  // a HELD state, not an edge: `local_tick` integrates `wk_held` every frame and the
   // server integrates the last `4:` it was sent. So a person walking who presses
   // `Escape` would keep walking for the whole rebinding — and `wire`'s fence makes it
   // worse rather than better, because the `4:0` that would have stopped them is
   // exactly what the fence withholds. Zeroing at the SOURCE is the honest fix: while
   // the rebinder holds the keyboard, no key is held.
   if hex_editor::rebind_holds(st.rb) { bits = 0; }
-  if bits != st.held {
-    st.held = bits;
+  if bits != st.wk.wk_held {
+    st.wk.wk_held = bits;
     // ── WHERE HELD INPUT GOES — the same fork `act` is, one layer down ────────
     //
     // Attached, the bits go on the wire and the SERVER integrates them. Local,
-    // `local_tick` reads `st.held` directly and this page integrates them.
+    // `local_tick` reads `wk_held` directly and this page integrates them.
     //
     // ⚠ IT MUST NOT GO THROUGH `wire()` IN LOCAL MODE ANY MORE, and that is a
     // correctness point rather than a saving: `wire` says *"'4:' is a server
@@ -2157,8 +2127,33 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
 
   klevel = graphics::gl_key_pressed(KEY_LEVEL);
   if klevel && !st.was_level {
-    st.levelling = !st.levelling;
-    if st.levelling { wire(h, st, "6:1"); } else { wire(h, st, "6:0"); }
+    // ⛔ **THIS KEY DID NOTHING IN LOCAL MODE, AND SAID IT HAD — plan 22 `T2`.** It
+    // flipped a page-local flag and called `wire`, which in local mode SENDS NOTHING;
+    // there was no `brush_level` anywhere in this file, so an author levelling on
+    // their own page walked over ground that never moved. The state machine is
+    // `hex_editor`'s now and the page drives it, so `l` levels here exactly as it
+    // does on the server.
+    if st.local {
+      if st.wk.wk_levelling {
+        hex_editor::level_off(st.wk, fn(gx: float, gz: float, gref: float) -> float {
+                                hex_mesh::ground_under(st.cache, gx, gz, gref) });
+        // ⚠ THE COUNT IS THE CLAIM. *Levelling on* and *levelling on and writing* say
+        // the same thing on a page whose ground already matched, and this page spent
+        // months in the first state while reporting success.
+        println("client: local level off — {st.lv_stamped} cell(s) stamped · world "
+                + "{world_key(st.cache)} · feet back on the ground at {st.wk.wk_y}");
+      } else {
+        lres = 0.0;
+        st.lv_stamped = 0;
+        hex_editor::level_on(st.wk, st.cache, lres);
+        println("client: local level on at height {st.wk.wk_level_h} "
+                + "(feet {st.wk.wk_y}, residual {lres})");
+      }
+      st.panel_dirty = true;
+    } else {
+      st.wk.wk_levelling = !st.wk.wk_levelling;
+      if st.wk.wk_levelling { wire(h, st, "6:1"); } else { wire(h, st, "6:0"); }
+    }
   }
   st.was_level = klevel;
 
@@ -3135,21 +3130,22 @@ fn main() {
     fog_x: 0.0, fog_y: 0.0, fog_z: 0.0,
     fog_from: 1000000000.0, fog_to: 1000000000.0,
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,
-    held: 0,
     was_up: false, was_down: false, was_level: false,
     was_fence: false, was_wall: false,
     was_step_up: false, was_step_down: false,
     was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
-    levelling: false,
     dragging: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
     tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false,
-    coll: hex_field::edgeset_new(0, 0, 1, 1), coll_sf: hex_edge::surfaces_new(),
-    coll_rt: hex_way::track_new(),
-    tick_begun: false, coll_have: false, coll_q: 0, coll_r: 0, coll_tau: 0 - 1,
-    coll_surf: 0, walked: 0.0, py: 0.0, vy: 0.0, fell: 0,
+    // ⚠ AT THE ORIGIN WITH AN EMPTY PROXY, and the first tick builds it. A page that
+    // goes local seeds the POSE from the author it already had — see `st.local = true`
+    // — and deliberately does not seed the feet: `fall_step`'s first branch is the
+    // climb case, so a restored world with higher ground lifts them on the first tick.
+    wk: hex_editor::walker_new(0.0, 0.0, 0.0),
+    lv_stamped: 0,
+    tick_begun: false,
     part_pick: 0, was_part: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
     c_staging: false, c_pending: [],
@@ -3426,6 +3422,27 @@ fn main() {
           // DERIVED from the world, and a camera solved against flat ground with a
           // hill in the file is the *swap-and-look* this plan refuses.
           author = local_restore(st, author);
+          // ⚠ **THE WALKER IS SEEDED HERE AND NOWHERE EARLIER — plan 22 `T2`, and it
+          // is probe 5's answer.** Up to this frame the pose came from the server and
+          // nothing ticked; from here the walker is the truth and the author is derived
+          // from it. A page that ticked while ATTACHED would level its own copy of a
+          // world it does not own and diverge from the authority silently — so the
+          // walker exists on every page and is only ever driven on this side of this
+          // line (`if st.local { author = local_tick(...) }`, one screen down).
+          //
+          // ⚠ AND THE FEET *ARE* SEEDED, WHICH REVERSES A RECORDED FINDING — read the
+          // ⛔ above first, because it is still true and no longer sufficient. Seeding
+          // them was measured to be unnecessary: `fall_step`'s first branch is the
+          // CLIMB case, so a restored world with higher ground lifts them on the first
+          // tick, and removing the seed left every check green. **What changed is who
+          // derives the pose.** `T2` builds the author from the walker on EVERY frame,
+          // not only on a frame that ticked — so between this line and the first tick,
+          // an unseeded walker publishes a pose at y = 0 through ground the page has
+          // just restored. The old reason expired; the line came back for a new one.
+          st.wk.wk_x = author.au_x;
+          st.wk.wk_z = author.au_z;
+          st.wk.wk_yaw = author.au_yaw;
+          st.wk.wk_y = author.au_y;
           local_camera(st, author);
           // ⚠ THE SAME FIELD THE `N:` HANDLER WRITES, so the panel cannot tell
           // which authority filled it — that is what makes one catalogue rather
@@ -3579,8 +3596,8 @@ fn main() {
         // `walked` says the WALK keys did, which the yaw cannot — and it is the
         // one a wall makes zero while everything else keeps moving.
         println("client: local walker — {st.ticked} steps, yaw {author.au_yaw} "
-                + "(turned {st.turned_by}), walked {st.walked} at "
-                + "({author.au_x},{author.au_z}) feet {st.py} landed {st.fell}");
+                + "(turned {st.turned_by}), walked {st.wk.wk_walked} at "
+                + "({author.au_x},{author.au_z}) feet {st.wk.wk_y} landed {st.wk.wk_fell}");
       }
     }
   }

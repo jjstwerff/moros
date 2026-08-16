@@ -36,13 +36,13 @@ noticing that two drivers already agreed on one and never shared the body.
 
 ## Where the invariant is re-asserted today, and that is the whole problem
 
-**N = 2 when this was written, and omission is silent. `T1` made it 1 for the server.**
+**N = 2 when this was written, and omission is silent. `T1` and `T2` made it 1.**
 
 | site | what it holds | lines |
 |---|---|---|
 | ✅ `lib/hex_editor/src/tick.loft` | **all of it, since `T1`** — turn → walk → level stamp → fall, and the proxy's key | — |
 | ✅ `src/editor_server.loft` | one `Walker` and one `walk_tick` call. It kept its clock, its camera, its dirty set and its sentences | — |
-| ⏭ `src/editor_client.loft` | `local_turn`, `local_walk`, `local_fall` — the same library calls, sequenced again, **still with no levelling**. `T2` | ~1755–1880 |
+| ✅ `src/editor_client.loft` | one `Walker` and one `walk_tick` call, since `T2`. It kept its accumulator and its redraw — **and it can level now**, which it never could | — |
 | ⏭ `src/editor_run.loft` | **nothing.** It teleports. `T3` | — |
 
 Both existing sites call the *same* `hex_editor` primitives — `walk_dir`, `turn_dir`,
@@ -241,7 +241,7 @@ wrong. Falsification: level in local mode and read the page's own surface line.
 |---|---|---|
 | ✅ **`T0`** | the scripts that walk say `rate 0`, and `tools/walk-exact.sh` keeps it true | **DONE 2026-08-16.** `deck.keys` and `cellar.keys` converted, worlds unchanged (`cea971a0…`, `c96b2ce7…`), `deck_soffit` / `cellar_ceiling` / `deck` all PASS. ⛔ **`determinism.keys` was NOT converted and that is the finding** — see below. ⛔ **And the speedup I predicted is refuted**: 19.9 s without, 22.5 s with, 26.6 s in a parallel run — `rate 0` buys exactness, not time |
 | ✅ **`T1`** | `Walker` + `walk_tick` in `hex_editor`; **the server is its only caller** | **DONE 2026-08-16.** Both worlds byte-identical — `cea971a0…` and `c96b2ce7…` — `make fast` 157 files green, `make gate` unmoved, `lib/hex_editor/tests/tick.loft` 15 tests with 7 of 8 sabotages red. The server is **89 lines smaller** and the level stamp left the streaming block. ⛔ **Probe 4 is answered and `deck.keys` could not have answered it** — see below |
-| **`T2`** | the page calls `walk_tick`; `local_turn`/`local_walk`/`local_fall` **deleted** | `make probe-demo` G/H unmoved (`walked 2.454`, the fall completing) — **and levelling starts working in local mode**, which is a capability the page never had. ⚠ Remote mode must NOT tick (probe 5) |
+| ✅ **`T2`** | the page calls `walk_tick`; `local_walk`/`local_fall` **deleted** | **DONE 2026-08-16.** `make probe-demo` G/H unmoved — `walked 2.4539695841635853`, world `32920:1885399240`, 23 landings — and **levelling works in local mode**, checked by a new `L` block with a `nolevel` control. ⛔ `LEVEL_R` moved into the library on the way: the page was about to declare its own |
 | **`T3`** | `editor_run`'s `step <n>` becomes n ticks; `keys`/`hold`/`turn` are **performed** | `deck.keys` headless == the server's md5. ⚠ **This retires `K3e`** — there is no skipped movement left to remember. **Move before you remove**: the `walked` fence and `probe/k3e` come out only once the equality holds, never before |
 | **`T4`** | `send 6:` becomes a performed message, like `ground` | `K3c`'s `send_why` loses a row. The runner's floor and the server's must agree, which is `probe/k3c` row D's shape one message over |
 
@@ -250,6 +250,74 @@ because the step before it left a proven artifact to compare against — `T1` ag
 server's own world, `T2` against the demo's recorded numbers, `T3` against `T1`'s
 output. Reordered, the middle two have nothing exact to be measured by, which is the
 failure `W4` was reverted for.
+
+## ✅ What `T2` turned up (2026-08-16) — the key that did nothing and said it had
+
+`src/editor_client.loft` holds one `hex_editor::Walker` and calls `walk_tick`;
+`local_walk` and `local_fall` are deleted, and the turn is inside the tick with them.
+`make probe-demo` is green with its recorded numbers unmoved — the house at
+`32920:1885399240`, the fall completing **23** and **24** times over two runs against a
+flat-ground control of 0.
+
+⚠ **AND `walked` IS A THREE-VALUED NUMBER, WHICH IS WHY "UNMOVED" HAD TO BE READ
+CAREFULLY.** Two runs of the same six presses gave `2.4539695841635853` and
+`2.2405809246710997` — both members of the set STATE.md already records for this
+fixture (*2.2406, 2.3473, 2.4540*), because a key press covers 3 OR 4 fixed steps
+depending on where the frame boundary falls. A reader who took the design table's
+`walked 2.454` for a pin would have called the second run a regression. The stable
+numbers here are the WORLD KEY and the landing count, and those are what the rows read.
+
+### ⛔ `l` in local mode flipped a flag, sent nothing, wrote nothing, and reported success
+
+The page had no `brush_level` anywhere in it. The key toggled `st.levelling` and called
+`wire`, which in local mode **sends nothing by design** — so an author levelling on
+their own page walked over ground that never moved, and got a sentence for it. That is
+the divergence this design was written about, found by reading rather than by any check,
+and it survived because *the mode being on* and *the mode working* print the same thing.
+
+✅ **It works now, and it is checked by two instruments with a control.**
+`probe/b2/run.sh`'s new `L` block:
+
+    L1 the page took the key and froze a grade: local level on at height 0 …
+    L2 the stamp FIRED 1 time(s) while walking — the clause this page never had
+    L3 …and the STORE moved: 16502:2452530279 against 16502:374721773 unlevelled
+
+⚠ **The COUNT and the WORLD KEY are two claims, not one.** A page that levelled flat
+ground would print a count and an unchanged key — and *that* is the state a first
+version of this row was in, because on ground already at the frozen height
+`cur_h != level_h` is false at every cell and levelling correctly writes **nothing**.
+The `L` walk raises ground first for the same reason `H` does. `DEMO_SABOTAGE=nolevel`
+reds all three rows; its subject is the WIRING, and the stamp's own falsification is
+`lib/hex_editor/tests/tick.loft`.
+
+### ⛔ `LEVEL_R` was a driver's constant, and the second driver was about to declare one
+
+The stamp's radius was `const LEVEL_R = 5` in `src/editor_server.loft`. The page needed
+it the moment it started levelling — and **two drivers with two radii write two
+different pads from one walk**, which is the exact class this whole design closes. It is
+`hex_editor::LEVEL_R` now: *the disc is what levelling MEANS; when it fires is the
+driver's*. Found by writing `LOCAL_LEVEL_R` and stopping.
+
+### ✅ Probe 6 — is `mark_dirty` reporting, or effect? **Reporting, and it is sufficient**
+
+`TickOut` carries `tk_dq`, `tk_dr`, `tk_drad`, which is exactly the disc. The page
+redraws its whole neighbourhood anyway — 338,688 floats — **because `local_surfaces`
+takes a neighbourhood and not a disc**, which is a limit of the page's mesher rather
+than of the report. Worth stating precisely: the split is right, and the cheap version
+is a mesher change.
+
+### ⏭ Probe 5 is NOT run, and the guard it is about was not weakened
+
+*A page in REMOTE mode must not tick.* The guard is one line — `if st.local { author =
+local_tick(…) }` — and `T2` left it alone. What `T2` adds is that the walker is **seeded
+only on the frame the authority moves**, beside `local_restore`, so an attached page's
+walker never holds a pose at all.
+
+⚠ **That is an argument, not a measurement.** The falsification the design asks for —
+drive a walk through a page attached to a REAL server and compare its world against the
+server's — needs a harness that `probe/b2` deliberately does not have (its listener is
+`static.mjs --ws-silent`, a socket that never answers). It stays open, and it is the
+first thing `T3` should not assume.
 
 ## ✅ What `T1` turned up (2026-08-16) — three instruments were blind before one answered
 
@@ -298,6 +366,16 @@ the walker's now, which changes exactly one case — **an `at` teleport into a n
 while levelling stamped a pad on arrival with no tick at all; the tick after it does.**
 `cellar.keys` is the measurement rather than the argument: four teleports with levelling
 ON, five `feet` stations, and `c96b2ce7a569fa2dd88577a71a507f48` either way.
+
+### ⚠ One substitution was made on purpose, and it was checked rather than assumed
+
+The server converted feet to height units with `hex_proj::HEIGHT_SCALE`; `tick.loft` uses
+**`w.w_unit`**, the world's own. That is `walk.loft`'s stated rule — *the global is wrong
+on a part world* — and it is a change of expression, so it had to be shown to be no
+change of behaviour. Measured: every world the walker can walk in here is authored at
+0.25, including the parts (`src/part_build.loft` and `src/prop_build.loft` both declare
+`W_UNIT = 0.25`), so the two agree everywhere today and the library's version is the one
+that survives a world that does not.
 
 ### What `T1` deliberately did NOT do
 
@@ -392,6 +470,7 @@ softened.
   reason `6:` LEVEL is, and it is the same shape — but it is a second stamp with its own
   settle rule (`slope_settle`), and folding it in before the level one is measured is
   the over-reach this document exists to avoid.
-- ✅ **`T0` and `T1` are built**, and probe 4 is run. Probes 5 and 6 are not, and probe 5
-  — *a page in REMOTE mode must not tick* — is still the one most likely to move the
-  design, because it is `T2`'s first line.
+- ✅ **`T0`, `T1` and `T2` are built**, and probes 4 and 6 are run. **Probe 5 is not** —
+  *a page in REMOTE mode must not tick* — and it is now the only unmeasured claim in
+  the design: the guard is one line that `T2` did not weaken, which is an argument and
+  not a measurement.

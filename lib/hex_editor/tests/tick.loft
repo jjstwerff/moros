@@ -20,7 +20,6 @@ use hex_form;   // fabs
 const GROUND_H = 8;              // height units; the world's unit is 0.25 below
 const REACH    = 8;              // hexes of collision proxy — the editor's `COLL_R`
 const STEP_MAX = 4;              // the walker's stride, `walker_step(0.25)`
-const LEVEL_R  = 5;              // the level stamp's disc, the server's own
 
 fn flat_world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
@@ -38,7 +37,7 @@ fn stander(w: VoxelWorld) -> hex_editor::Walker {
 // One tick, with the CELL's own height as the ground under the feet. A driver hands
 // in `hex_mesh::ground_under`, which smooths; a test wants the exact step.
 fn tick(wk: hex_editor::Walker, w: VoxelWorld, runs: WallRuns) -> hex_editor::TickOut {
-  hex_editor::walk_tick(wk, w, runs, REACH, STEP_MAX, LEVEL_R,
+  hex_editor::walk_tick(wk, w, runs, REACH, STEP_MAX, hex_editor::LEVEL_R,
                         fn(gx: float, gz: float, gref: float) -> float {
                           (gq, gr) = hex_grid::px_to_hex(gx, gz);
                           (hex_editor::terrain_h(gq, gr, w) as float) * w.w_unit
@@ -186,7 +185,7 @@ fn test_levelling_stamps_the_ground_it_walks_into() {
     out = tick(wk, w, runs);
     if out.tk_dirty {
       stamps = stamps + 1;
-      assert(out.tk_drad == LEVEL_R, "the disc is reported: {out.tk_drad}");
+      assert(out.tk_drad == hex_editor::LEVEL_R, "the disc is reported: {out.tk_drad}");
       (rq, rr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
       assert(out.tk_dq == rq && out.tk_dr == rr,
              "and it is the cell entered: ({out.tk_dq},{out.tk_dr}) against ({rq},{rr})");

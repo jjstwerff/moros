@@ -369,12 +369,14 @@ address (or the hostname `make browser` prints) cannot connect.
   copies, a test that measured the wrong thing and passed, a probe that sampled its own output
 - [Walk tick](doc/claude/WALK_TICK.md) — **one step of the person, wherever the person is**: the
   tick body was written **twice** (server and client) while every primitive under it was shared, and the
-  second copy is *still* missing a clause — the page cannot level at all. `T0` and `T1` are **built**:
-  `lib/hex_editor/src/tick.loft` is the body, the server is its only caller, and both acceptance worlds
-  are byte-identical. ⚠ Read its **probe 4** for the finding that outlives the step: asked whether the
-  collision proxy is a cache, `deck.keys` gives the SAME world for the cache, for rebuilding every tick
-  and for never rebuilding at all — *a sabotage that leaves the world identical can mean the fixture
-  cannot see it*, and three instruments were blind here before one answered
+  second copy was missing a clause — **`l` on the page flipped a flag, wrote nothing, and said it had.**
+  `T0`–`T2` are **built**: `lib/hex_editor/src/tick.loft` is the body, the server's two acceptance worlds
+  are byte-identical, the page's recorded numbers are unmoved, and levelling works locally with a control.
+  ⚠ Read its **probe 4** for the finding that outlives the steps: asked whether the collision proxy is a
+  cache, `deck.keys` gives the SAME world for the cache, for rebuilding every tick and for never
+  rebuilding at all — *a sabotage that leaves the world identical can mean the fixture cannot see it*,
+  and three instruments were blind before one answered. ⏭ Probe 5 — *a remote page must not tick* — is
+  the one claim still unmeasured
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
 - [Ground default](doc/claude/GROUND_DEFAULT.md) — ✅ **CLOSED, and now a closure record.** The
   rule it established is normative in [WORLD_MODEL § `E1γ`](doc/claude/WORLD_MODEL.md) — *a world
