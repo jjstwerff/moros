@@ -105,7 +105,7 @@ tools/scripts/floorprobe.keys tools/scripts/indoors.keys"
 
 # The fixtures rows C, D and E read. Written before anything is launched, so the
 # pool below is one wave rather than four.
-printf 'at 0 0 0\nsend 40:1\nsend 7:1,2,0\nverb raise\n'  > "$OUT/deny7.keys"
+printf 'at 0 0 0\nsend 40:1\nsend 9:someworld\nverb raise\n' > "$OUT/deny9.keys"
 printf 'at 0 0 0\nsend 99:xyz\nverb raise\n'              > "$OUT/deny99.keys"
 printf 'at 0 0 0\nverb raise\n'                           > "$OUT/g-none.keys"
 printf 'at 0 0 0\nground 60 2\nverb raise\n'              > "$OUT/g-word.keys"
@@ -117,7 +117,7 @@ for pair in $AUTHORS; do
   launch "$s" "k3c-a-$(basename "$s" .keys)"
 done
 for s in $QUIET; do launch "$s" "k3c-b-$(basename "$s" .keys)"; done
-launch "$PWD/$OUT/deny7.keys"  k3c-deny7
+launch "$PWD/$OUT/deny9.keys"  k3c-deny9
 launch "$PWD/$OUT/deny99.keys" k3c-deny99
 for v in none word wire off; do launch "$PWD/$OUT/g-$v.keys" "k3c-g$v" 0; done
 wait
@@ -158,14 +158,24 @@ done
 
 say ""
 say "C  the default is DENY — an unclassified id and an id that does not exist"
-# ⚠ `7` IS THE ONE THAT MATTERS. It is filed **X** in the protocol — a character pose,
-# not world — so a classifier that whitelisted by class LETTER would wave it through,
-# and it moves the datum every gesture reads. `99` is nothing at all.
-rc=$(rc_of k3c-deny7)
-if [ "$rc" -ne 0 ] && grep -q 'send 7: is not something' "$OUT/k3c-deny7.log"; then
-  ok "\`send 7:\` (filed X, and it moves the author) is refused: rc=$rc"
+# ⚠ `9` IS THE ONE THAT MATTERS. It is filed **R** in the protocol — a read-back — and
+# it REPLACES THE WHOLE STORE, so a classifier that whitelisted by class LETTER would
+# wave it through. `99` is nothing at all.
+#
+# ⛔ **THIS ROW ASKED ABOUT `7` UNTIL PLAN 22 `T3`, AND THE EXAMPLE MOVED BECAUSE THE
+# ANSWER DID.** `7:` PLACE was the illustration of the same rule from the other side —
+# filed **X**, *a character pose, not world*, and it moves the datum every gesture
+# reads. That is exactly why it is PERFORMED now: this runner walks, so it can move the
+# author correctly rather than having to refuse. The claim the row exists for is
+# untouched — a class letter is a hint and not the rule — and `9` is the instance of it
+# that survives. ⚠ Row A is what keeps the pair honest: if `7:` had merely been dropped
+# from the deny list without being performed, nothing here would say so, which is why
+# `probe/t3` row E compares the world it builds against the server's.
+rc=$(rc_of k3c-deny9)
+if [ "$rc" -ne 0 ] && grep -q 'send 9: is not something' "$OUT/k3c-deny9.log"; then
+  ok "\`send 9:\` (filed R, and it replaces the store) is refused: rc=$rc"
 else
-  bad "\`send 7:\` left rc=$rc — a pose message reads as harmless"
+  bad "\`send 9:\` left rc=$rc — a store-replacing message reads as harmless"
 fi
 rc=$(rc_of k3c-deny99)
 if [ "$rc" -ne 0 ] && grep -q 'send 99: is not something' "$OUT/k3c-deny99.log"; then
@@ -175,7 +185,7 @@ else
 fi
 # ⚠ AND THE SAME FIXTURE'S QUIET LINE MUST STILL BE QUIET, or `C` is passing because
 # the runner refuses everything with a colon in it.
-if grep -q 'send 40: is not something' "$OUT/k3c-deny7.log"; then
+if grep -q 'send 40: is not something' "$OUT/k3c-deny9.log"; then
   bad "\`send 40:\` was refused in the same script — the whitelist is not being read"
 else
   ok "…and \`send 40:\` in the same script is not"

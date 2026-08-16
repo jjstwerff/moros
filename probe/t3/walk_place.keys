@@ -1,0 +1,42 @@
+# `T3`'s ACCEPTANCE — a walk that the WORLD can see, with no levelling anywhere.
+#
+# ⛔ WALK_TICK.md's step table gives `T3` the surprise *"`deck.keys` headless == the
+# server's md5"*, and `deck.keys` CANNOT RUN AT `T3`: it says `send 6:1`, and making
+# `6:` LEVEL a performed message is `T4`. Every walking fixture in `probe/t1/` levels,
+# and probe 4 already recorded the reason — **a walk that does not level writes
+# nothing**, so a saved world cannot see one.
+#
+# ⚠ SO THIS ASKS THE OTHER HALF OF WHAT A WALK DOES: IT POSITIONS. A `verb` is applied
+# AT the author, and after 90 ticks the author is 9.6 wu from where a teleport left
+# them — which is world-visible with no stamp of any kind. That is `K3e`'s own
+# predicate, asked as a measurement instead of as a refusal.
+#
+# The pieces, and each is here for one reason:
+#
+#   verb raise   the ground is not flat, so the feet are a real height and the fall
+#                has something to do. On flat ground `author_on` and `ground_under`
+#                agree and the height change this step makes would be invisible.
+#   step 90      the same walk `deck.keys` takes, so it sits on the plateau `T0`
+#                measured (86, 88 -> one world; 90 … 98 -> another) rather than on
+#                its cliff.
+#   step 30      the walk is released and the fall settles, exactly as `deck.keys`
+#                does before it builds.
+#   verb place   a house, at wherever the walk ended. THIS is the assertion: 27 cells
+#                and 84 wall edges land 9.6 wu away, or they land at the origin.
+#
+# ⚠ `30`, NOT `0`, AND THAT IS THE FIXTURE'S OWN FIRST FINDING. At yaw 0 the house is
+# refused — *"a footprint at this facing has no mitred corners; turn one step"* — and a
+# refusal writes nothing, so the run exits 0 with a world that cannot see the walk. The
+# six mitre facings are what `tools/scripts/house.keys` says `30` for, and a fixture
+# whose subject is a POSITION has to survive its own gesture before it can measure one.
+rate 0
+at 0 0 30
+verb raise
+wait rebuilt
+keys 1
+step 90
+keys 0
+step 30
+feet
+verb place
+save t3walk

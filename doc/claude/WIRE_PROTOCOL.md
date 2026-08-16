@@ -40,13 +40,23 @@ fields are comma-separated; sub-records are semicolon-separated.
 
 ⚠ **THESE LETTERS ANSWER *WHAT BECOMES OF THIS MESSAGE*, NOT *DOES IT CHANGE WHAT I
 BUILD* — and a driver asking the second question must not whitelist by the first.**
-Plan 22 `K3c` needed exactly that: `editor_run` has no walk and no part mode, so it has
+Plan 22 `K3c` needed exactly that: `editor_run` had no walk and no part mode, so it has
 to decide which `send <id>:` lines it may skip. Two ids cross the two questions in
 opposite directions — **`9` LOAD is filed `R`** because the client will hold the store
 and query it locally, and it *replaces the whole store*; **`7` PLACE is filed `X`**,
 explicitly *"a character pose is dynamic state, not world"*, and it moves the datum
 every gesture reads. A letter whitelist waves both through. So `editor_run`'s
 `send_quiet` enumerates **ids**, with a reason each, and its default is **deny**.
+
+⚠ **AND ONE OF THAT PAIR HAS BEEN PAID OFF — plan 22 `T3`.** `editor_run` walks now:
+`step <n>` is exactly n `hex_editor::walk_tick` calls, so **`4:` KEYS and `7:` PLACE are
+PERFORMED** rather than refused, in `run_send` beside `50:` GROUND. The rule the pair
+illustrated is untouched and `9` LOAD is the instance that survives — what changed is
+that a driver which can do a thing correctly should do it, and a spelling must never
+decide: `keys 1` and `send 4:1` are one operation with two names. ⏭ `6:` LEVEL is still
+refused, and that is `T4`; `10:` ROAD and `47:` WATER are refused for a different reason
+worth knowing — their stamps hang off the SERVER's place handler and are in no shared
+tick, so they are the gestures still written once, in a driver.
 
 ---
 

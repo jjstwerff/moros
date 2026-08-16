@@ -16,9 +16,20 @@
 // this. That is the claim worth having — one format for authoring, replay and bug
 // reports — and it is testable: build a scene both ways and the worlds must match.
 //
-// What it deliberately does NOT do is walk. `at` teleports and every gesture reads
-// the author's position, so nothing here needs a tick; the walk is the server's,
-// and a script that wanted one would be asking for a game rather than a scene.
+// ⛔ AND IT WALKS NOW — plan 22 `T3`, [WALK_TICK.md](../doc/claude/WALK_TICK.md).
+// The paragraph here used to say *"what it deliberately does NOT do is walk … a
+// script that wanted one would be asking for a game rather than a scene"*, and the
+// argument under it was sound and about the wrong thing: what a walking script wants
+// is not a game, it is the **pad the footfalls lay**. There is no *flatten this area*
+// message anywhere in the protocol, so `tools/scripts/deck.keys` cannot be built by
+// any spelling that does not walk.
+//
+// ⚠ **A TICK, AND STILL NO CLOCK — THAT IS THE WHOLE LINE.** `step <n>` is exactly n
+// `hex_editor::walk_tick` calls, and nothing else in this program can produce one.
+// The server paces itself off the wall at `sim_rate` and the page off its own
+// accumulator; this runner's answer stays a function of the script and of nothing
+// else, which is its entire value. `rate` is still skipped, and there is nothing for
+// it to set.
 //
 //   SCRIPT=tools/scripts/house.keys loft --lib lib/ src/editor_run.loft
 //
@@ -28,6 +39,11 @@
 use hex_editor;
 use hex_voxel;
 use hex_grid;
+// ⚠ FOR THE FALL, AND FOR NOTHING ELSE — plan 22 `T3`. `walk_tick` takes the ground
+// as a FUNCTION because `hex_mesh` depends on `hex_editor` and the library cannot
+// ask what is under the feet; the driver that has a mesher hands one in. This runner
+// has no renderer and still needs the sampler, which is the seam working as designed.
+use hex_mesh;
 
 // ⚠ `HOUSE_W` / `HOUSE_D` WERE HERE AND ARE NOW `hex_editor`'s — plan 22 `W4`.
 // This file and `src/editor_server.loft` each carried a copy; they agreed at 5×4
@@ -51,6 +67,72 @@ fn seed_ground(w: VoxelWorld, half: integer) {
       hex_editor::ground_set(w, q, r, 0, hex_editor::SURFACE_MAT);
     }
   }
+}
+
+// ── THE WALK — plan 22 `T3` ──────────────────────────────────────────────────
+//
+// How wide a window the collision proxy is built over, in hexes.
+//
+// ⚠ **IT IS THE SERVER'S 8 BECAUSE THE ACCEPTANCE IS BYTE-EQUALITY, AND THE SERVER'S
+// 8 IS SIZED FOR A CAMERA THIS PROGRAM DOES NOT HAVE.** `editor_server.loft` says so
+// itself — *"the walk needs one, the camera's boom needs four"* — so a runner picking
+// its own number would be reasonable and would also be a second driver deciding what
+// collision MEANS, which is the `LEVEL_R` finding one constant over. Copying the
+// server's is the answer that cannot differ; whether a smaller one COULD is a
+// measurement, and it is in `probe/t3/README.md` rather than in this comment.
+const COLL_R = 8;
+
+// A tick, and the only thing in this program that can produce one.
+//
+// ⚠ THE GROUND GOES IN AS A FUNCTION — the same closure the server hands over, for
+// the cycle `tick.loft` records. ⚠ AND THE STRIDE IS `hex_editor::walker_step` OF THE
+// WORLD'S OWN UNIT, not of a global: a part world is authored at 0.125, and what a
+// walker can climb is a property of the figure against the world it stands in.
+fn run_ticks(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, n: integer) {
+  for _t in 0..n {
+    hex_editor::walk_tick(wk, w, sess.es_runs, COLL_R,
+                          hex_editor::walker_step(w.w_unit), hex_editor::LEVEL_R,
+                          fn(gx: float, gz: float, gref: float) -> float {
+                            hex_mesh::ground_under(w, gx, gz, gref) });
+  }
+}
+
+// Put the person at an exact pose — `at`, and the wire's `7:` PLACE.
+//
+// ⚠ **THE SERVER'S OWN TAIL, CLAUSE FOR CLAUSE** (`MSG_PLACE`): the feet are re-read
+// from the ground unless levelling holds them at the frozen height, and the fall is
+// cleared because a teleport is authoritative. ⏭ What the server does here and this
+// does not is the ROAD and the WATER stamp, which hang off `7:` rather than off the
+// tick — the one place a gesture still lives in a driver, and the reason `10:` and
+// `47:` are still refused below.
+fn walk_place(w: VoxelWorld, wk: hex_editor::Walker, x: float, z: float, yaw: float) {
+  wk.wk_x = x;
+  wk.wk_z = z;
+  wk.wk_yaw = yaw;
+  if wk.wk_levelling { wk.wk_y = (wk.wk_level_h as float) * w.w_unit; }
+  else { wk.wk_y = hex_mesh::ground_under(w, wk.wk_x, wk.wk_z, wk.wk_y); }
+  wk.wk_vy = 0.0;
+}
+
+// Where a gesture is applied.
+//
+// ⚠ **AND IT USED TO BE `author_on`, WHICH IS A DIFFERENT HEIGHT — plan 22 `T3`.**
+// `author_on` reads the CELL's stored height; the server builds its author from the
+// walker, whose feet are `hex_mesh::ground_under`, interpolated across the cell.
+// `gesture.loft` says what that difference is for: *a driver with no mesher cannot do
+// better* — so it was never a bug, it was this runner being the coarse driver. It has a
+// mesher now, for the fall, so it can give the same answer the server does.
+//
+// ⚠ **AND THE EFFECT IS MEASURED RATHER THAN CLAIMED, BECAUSE IT IS SMALLER THAN IT
+// SOUNDS.** `probe/t3/height.loft`: the two functions differ over a raised cone at 726
+// of 14641 samples, worst **0.166 wu** — and `fence`, `wall` and `stair_up`, the three
+// verbs that read `au_y` at all, key the SAME world either way. The control is what
+// makes that mean something: a whole STOREY apart does not move them either, because
+// `au_y` chooses WHICH SURFACE you stand on and the fixture has one. So this is the
+// runner agreeing with the server rather than a defect being closed, and the world that
+// could tell them apart — a deck over the ground — is not one anything here builds yet.
+fn walk_author(wk: hex_editor::Walker) -> Author {
+  hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y)
 }
 
 // What a gesture did, in a driver's words — shared by `key` and `verb` so the two
@@ -99,8 +181,14 @@ fn said_ack(ack: Ack, what: text, said: &text) -> boolean {
 // reasoning is at the `send` branch in `run_line`, and the short version is that a
 // classifier which answers *harmless* to an id it has never seen is not a classifier.
 //
-// ⚠ **ENUMERATED, NOT DERIVED FROM THE CLASS LETTER.** `9` LOAD is filed **R** and
-// replaces the store; `7` PLACE is filed **X** and moves the author. Neither is here.
+// ⚠ **ENUMERATED, NOT DERIVED FROM THE CLASS LETTER.** `9` LOAD is filed **R** — a
+// read-back — and replaces the whole store, so it is not here.
+//
+// ⚠ **AND `7` PLACE USED TO BE THE SECOND HALF OF THAT SENTENCE — plan 22 `T3`.** It is
+// filed **X**, *a character pose, not world*, and it moves the datum every gesture
+// reads, so it was refused for the same reason. It is PERFORMED now, in `run_send`
+// beside `50:`: this runner walks, so it can move the author exactly rather than having
+// to decline. The rule is unchanged and one of its two examples has been paid off.
 fn send_quiet(id: integer) -> boolean {
   // **V** — the eye. Aspect, look, the rest report, the mode, and the placed eye.
   // Nothing here is read by a gesture; the runner has no renderer to point anyway.
@@ -121,21 +209,28 @@ fn send_quiet(id: integer) -> boolean {
 // four named first are the ones the live corpus actually sends**; the rest of the
 // protocol falls to the last line, which is the honest answer for an id nobody here
 // has thought about.
+//
+// ⛔ **THREE OF THESE SENTENCES SAID *"AND THIS RUNNER DOES NOT WALK"* AND THAT STOPPED
+// BEING TRUE AT `T3`.** They are rewritten rather than deleted, because the refusals
+// are still right and the REASON changed underneath them: what this runner lacks is no
+// longer the walk, it is the stamp that hangs off the walk. Two of the three lack it
+// for a reason that is worth the reader's attention — `road_lay` and `water_lay` are
+// called from the SERVER's `7:` PLACE handler and are in no shared tick at all, so they
+// are the gestures still written once, in a driver. `WALK_TICK.md` says exactly that in
+// *what this design does NOT claim*, and this is where a script meets it.
 fn send_why(id: integer) -> text {
   if id == 6 {
-    return "`6:` LEVEL freezes a floor that only a WALK then lays, and this runner does not walk";
+    return "`6:` LEVEL freezes a floor the walk then lays, and the freezing is not wired here yet (plan 22 `T4`) — the walk itself is";
   }
   if id == 10 {
-    return "`10:` ROAD freezes a grade that only a WALK then lays, and this runner does not walk";
+    return "`10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing";
   }
   if id == 47 {
-    return "`47:` WATER lays a stream along a WALK, and this runner does not walk";
+    return "`47:` WATER lays its stream from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing";
   }
   if id == 44 {
     return "`44:` PART swaps which store is edited, and this runner holds one world — so every gesture after it would land in the wrong one";
   }
-  if id == 4 { return "`4:` KEYS moves the character; this runner teleports, with `at <x> <z> [yaw]`"; }
-  if id == 7 { return "`7:` PLACE moves the character; say `at <x> <z> [yaw]` instead"; }
   if id == 9 { return "`9:` LOAD replaces the store, and this runner builds the world it is given"; }
   "it writes, or nothing here has classified it; `send_quiet` is the list of ids known to change nothing"
 }
@@ -212,11 +307,32 @@ fn run_ground(w: VoxelWorld, rest: text, said: &text) -> boolean {
 // nobody has classified, including one this tree has not invented — **fails the run**.
 // A classifier whose default answer is *harmless* is `CLAUDE.md`'s grep whose default
 // answer is *absent*: it reports a clean result for every case it has never seen.
-fn run_send(w: VoxelWorld, rest: text, said: &text) -> boolean {
+fn run_send(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> boolean {
   ci = rest.find(":");
   if ci == null { said = "send needs `<id>:<payload>`"; return false; }
   sid = rest[..ci].trim() as integer ?? 0 - 1;
   pay = rest[ci + 1..].trim();
+  // ── THE TWO MOVEMENT IDS ARE PERFORMED NOW — plan 22 `T3` ──────────────────
+  //
+  // ⚠ **BECAUSE THE WORD IS, AND A SPELLING MUST NOT DECIDE.** `keys 1` and
+  // `send 4:1` are one operation with two names; performing one and refusing the
+  // other is the four-site divergence rebuilt inside a single file. `50:` set the
+  // precedent at `K3c` — an id this runner can genuinely do is done here, in
+  // `run_send`, rather than whitelisted as harmless in `send_quiet`.
+  if sid == 4 { wk.wk_held = pay as integer ?? 0; said = "keys {wk.wk_held}"; return true; }
+  if sid == 7 {
+    // The server's own parse of `<x>,<z>,<yaw>`, and its own refusal: a payload
+    // missing either comma moves nobody and says so.
+    qi = pay.find(",");
+    if qi == null { said = "place refused — say <x>,<z>,<yaw>"; return true; }
+    ptail = pay[qi + 1..];
+    qj = ptail.find(",");
+    if qj == null { said = "place refused — say <x>,<z>,<yaw>"; return true; }
+    walk_place(w, wk, pay[..qi] as float ?? wk.wk_x, ptail[..qj] as float ?? wk.wk_z,
+               ptail[qj + 1..] as float ?? wk.wk_yaw);
+    said = "placed {wk.wk_x},{wk.wk_z}";
+    return true;
+  }
   // ⚠ THE SAME PARSE THE SERVER'S `MSG_PLANE` BRANCH MAKES, deliberately — a comma,
   // and an empty payload meaning *clear*. A script may say either spelling of this one
   // message and must get the same floor; `probe/k3c` row D is what holds them together.
@@ -239,13 +355,15 @@ fn run_send(w: VoxelWorld, rest: text, said: &text) -> boolean {
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
 //
-// ⚠ `walked` IS THE ONE PIECE OF STATE THAT OUTLIVES A LINE — plan 22 `K3e`. It holds
-// the FIRST movement command this driver skipped since the last `at`, and `""` once an
-// `at` has fixed the author again. Everything else a line needs is in the world, the
-// author or the session; this is the runner's own bookkeeping about a thing it
-// deliberately does not do, so it lives here rather than in a library struct.
-fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &text,
-            walked: &text) -> boolean {
+// ⛔ **`walked` IS GONE, AND THAT IS THE POINT OF `T3` RATHER THAN A TIDY-UP.** It held
+// the first movement command this driver had SKIPPED since the last `at`, so that the
+// `verb` which would have been applied at a stale author could refuse instead of
+// landing somewhere wrong (plan 22 `K3e`). There is no skipped movement left: `keys`
+// and `step` are performed, `hold` and `turn` are refused where they arrive, and a
+// fence over an empty set is a fence over nothing. `probe/t3` is what checks that the
+// thing the fence was protecting is now simply true.
+fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text,
+            said: &text) -> boolean {
   t = line.trim();
   if t == "" || t[..1] == "#" { return true; }
   sp = t.find(" ");
@@ -256,7 +374,10 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   if cmd == "echo" { said = rest; return true; }
 
   if cmd == "at" {
-    // `at <x> <z> [yawdeg]` — the workhorse, and the reason no tick is needed.
+    // `at <x> <z> [yawdeg]` — the workhorse, and until `T3` the only way to be
+    // anywhere. It is `7:` PLACE in friendly spelling, and it moves the WALKER now:
+    // there is one datum for where the person is, and a teleport is a driver setting
+    // it rather than a second answer beside it.
     p1 = rest.find(" ");
     if p1 == null { said = "at needs an x and a z"; return false; }
     xs = rest[..p1];
@@ -268,13 +389,8 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
       zs = tail[..p2];
       yaw = (tail[p2 + 1..].trim() as float ?? 0.0) * PI / 180.0 ?? 0.0;
     }
-    a = hex_editor::author_on(w, xs as float ?? 0.0, zs as float ?? 0.0, yaw);
-    // ⚠ AND IT CLEARS A SKIPPED WALK — plan 22 `K3e`. A teleport fixes the author at
-    // an exact pose, so whatever the walk before it did is no longer readable in what
-    // a gesture sees: the drop stops mattering the moment the value is overwritten.
-    // This is the half that keeps the fence from costing anything a walking script had.
-    walked = "";
-    said = "placed {a.au_x},{a.au_z}";
+    walk_place(w, wk, xs as float ?? 0.0, zs as float ?? 0.0, yaw);
+    said = "placed {wk.wk_x},{wk.wk_z}";
     return true;
   }
 
@@ -308,23 +424,20 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // door. `lib/hex_editor/tests/opening.loft` holds the half of that rule the gates
   // used to: a gesture does not move the standing selection.
   if cmd == "verb" {
-    // ⛔ **AND HERE IS WHERE A SKIPPED WALK IS PAID FOR — plan 22 `K3e`.** A gesture
-    // is applied AT the author: `press_verb` takes `a`, and every verb in the
-    // vocabulary reads its position and its yaw. If a movement was skipped since the
-    // last `at`, the author this line is about to use is not the one the script
-    // means — so the gesture is refused rather than performed somewhere else, which
-    // is `send_why`'s answer for `4:` and `7:` said at the place it can be detected.
-    if walked != "" {
-      said = "`verb {rest}` is applied AT the author, and `{walked}` moved them where "
-           + "this runner cannot follow — it teleports rather than walks. "
-           + "Say `at <x> <z> [yaw]` after the walk, or run this script through a server.";
-      return false;
-    }
+    // ⛔ **THIS IS WHERE A SKIPPED WALK USED TO BE PAID FOR, AND THE DEBT IS GONE —
+    // plan 22 `T3`.** A gesture is applied AT the author, and until this step the
+    // author was whatever the last `at` had said: a `verb` after a walk landed at the
+    // teleport, so `K3e` refused it rather than let it build the wrong world quietly.
+    // The walk is performed now, `walk_author` reads it off the walker, and the
+    // refusal has nothing left to refuse. `probe/t3` row A is the same claim as
+    // `probe/k3e` row A with its sign flipped — the gesture must land where the WALK
+    // put the person, byte for byte with the server that walked it.
+    //
     // ⚠ THE LIBRARY ROOT IS THIS RUNNER'S OWN — plan 22 `B2e`. It reads the same
     // `data/parts/` the server does, so a script that chooses a part and places it
     // builds what the editor would. ⚠ Resolved through `source_dir()` for loft#712's
     // reason, exactly as the SCRIPT path above is.
-    return said_ack(hex_editor::press_verb(sess, w, a, rest,
+    return said_ack(hex_editor::press_verb(sess, w, walk_author(wk), rest,
                                            "{source_dir()}/../data/parts"), rest, said);
   }
 
@@ -368,9 +481,15 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     return true;
   }
 
-  // `wait`, `snap`, `hold`, `rate`, `step` are the SERVER's vocabulary: they wait
-  // for an acknowledgement, photograph a renderer, or drive a tick, and none of
-  // those exists here. Skipped rather than refused, so one script serves both.
+  // `wait`, `snap` and `rate` are the SERVER's vocabulary: they wait for an
+  // acknowledgement, photograph a renderer, or set a clock, and none of those exists
+  // here. Skipped rather than refused, so one script serves both.
+  //
+  // ⚠ **`rate` STAYS ON THIS LIST AND `step` HAS LEFT IT — plan 22 `T3`, and the pair
+  // is the design in one line.** A tick is what a script asks for; a RATE is how a
+  // driver decides to give it, and this one has no clock to set. `rate 0` is exactly
+  // what this runner already is, which is why `T0` converting the walking scripts to
+  // it is what made them expressible here at all.
   // ⚠ `eye` IS HERE FOR THE SAME REASON `snap` IS: it photographs, and there is no
   // renderer in this program. A camera placed where nobody is looking is not a
   // refusal, it is a verb this driver has no use for — so one script still serves
@@ -392,47 +511,96 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // running tally off the wire and `until` waits for one. Not one of them writes a
   // cell, so a script serves both drivers across them exactly as the design claims.
   //
-  // ⛔ **AND `hold` / `keys` / `turn` WERE AMONG THEM AND DID NOT BELONG — plan 22
-  // `K3e`, and it is the same defect `send` had, one word over.** They write no cell
-  // either, and that was never the question: they MOVE THE CHARACTER, and the
-  // character is the datum every gesture reads. `tools/script.mjs` compiles
-  // `hold W 3`, `turn 90` and `keys 1` all to `4:<bits>` and the server walks; this
-  // runner skipped them and the next gesture landed wherever the last `at` put the
-  // author. They are remembered below instead, and the fence is at the gesture.
-  if cmd == "wait" || cmd == "snap" || cmd == "rate"
-     || cmd == "step" || cmd == "save"
+  if cmd == "wait" || cmd == "snap" || cmd == "rate" || cmd == "save"
      || cmd == "eye" || cmd == "mesh" || cmd == "meshr" || cmd == "frame"
-     || cmd == "cam" || cmd == "feet" || cmd == "last" || cmd == "until" {
+     || cmd == "cam" || cmd == "last" || cmd == "until" {
     return true;
   }
 
-  // ── A MOVEMENT IS REMEMBERED, NOT REFUSED — plan 22 `K3e` ───────────────────
+  // ── `feet` IS PERFORMED, AND IT IS AN INSTRUMENT RATHER THAN A GESTURE ──────
   //
-  // ⚠ **THE FENCE BELONGS WHERE THE VALUE IS USED, WHICH IS THE GESTURE.**
-  // `CLAUDE.md`: *a guard where the thing arrives, a fence where the value is USED.*
-  // Refusing `hold` on the line it appears on would red every walking script in the
-  // corpus — and measured, **three of the four walk and then say `at`**, where the
-  // drop is provably harmless because the teleport re-fixes the author exactly.
-  // `cellar.keys` walks four times and says `at` after every one; refusing at the
-  // movement would cost it eight complaints for nothing.
+  // ⛔ **IT WAS ON THE SKIP LIST ABOVE, DEFENDED AS *IT ONLY READS WHERE THE WALKER
+  // IS* — and that stopped being harmless the moment the walker moved.** Where the
+  // person ENDED is the only thing that can tell a walk which was blocked from one
+  // that ran free, and a saved world cannot: measured, a fence ring changes the world
+  // whether or not it stops anybody, because the fence's own 42 cells are in it. Asked
+  // whether the collision proxy's reach matters, the world answered *no* at every reach
+  // from 8 down to 1 — and it answers exactly the same to a walk that never met the
+  // fence at all. That is `probe/t1`'s probe 4 arriving one step later: **a fixture
+  // that cannot see its subject says what a subject that does not exist says.**
   //
-  // So the line is skipped exactly as before and the runner writes down THAT it was
-  // skipped. Only a `verb` cares, because only a `verb` reads the author.
+  // With `feet` the question is answerable, and the answer is a number: the fence
+  // stops the walk at `4.32,2.5` against `8.32,4.8` free, and it stops it there at
+  // reach 8, 4, 2 and 1 alike.
   //
-  // ⚠ **THE FIRST SINCE THE LAST `at` IS THE ONE NAMED, NOT THE LAST.** A walk is a
-  // block — `keys 1`, `step 90`, `keys 0` — and the line a person needs is where the
-  // author started diverging, not the one that stopped it. Naming the last would
-  // point `deck.keys` at its `keys 0` and say nothing about the 90 units before it.
-  if cmd == "hold" || cmd == "keys" || cmd == "turn" {
-    if walked == "" { walked = t; }
+  // ⚠ THE SENTENCE IS `script.mjs`'s, TO THE DECIMAL, so one script's transcript reads
+  // the same through either driver. It reads the body's model matrix there and the
+  // walker here, which is the same number by construction now that the walker IS the
+  // pose. ⏭ Its judging form — `feet <lo> <hi>`, which fails a run — is not here; this
+  // reports, and nothing in the corpus judges through this driver yet.
+  if cmd == "feet" {
+    said = "feet {round(wk.wk_y * 1000.0) / 1000.0 ?? 0.0} "
+         + "at {round(wk.wk_x * 100.0) / 100.0 ?? 0.0},{round(wk.wk_z * 100.0) / 100.0 ?? 0.0}";
     return true;
+  }
+
+  // ── THE WALK — plan 22 `T3` ─────────────────────────────────────────────────
+  //
+  // `keys <bits>` holds W=1 S=2 A=4 D=8, `step <n>` advances exactly n ticks. Those
+  // two words are the whole of walking, and between them they are what `deck.keys`
+  // needs: a held key changes nothing on its own, and every tick this program takes
+  // is asked for by a line of the script.
+  //
+  // ⚠ **`keys` PRODUCES NO TICK, AND THAT IS THE SERVER'S BEHAVIOUR RATHER THAN A
+  // SIMPLIFICATION.** `tools/script.mjs` sends `4:<bits>` and sleeps 60 ms; at
+  // `rate 0` the server's `may_tick` is `sim_pending > 0`, so that sleep produces no
+  // ticks at all. `T0` measured it — the walk in `deck.keys` is exactly 90 ticks *by
+  // construction* — and it is the reason a `rate 0` script can be exact here.
+  if cmd == "keys" {
+    wk.wk_held = rest as integer ?? 0;
+    said = "keys {wk.wk_held}";
+    return true;
+  }
+  if cmd == "step" {
+    run_ticks(w, wk, sess, rest as integer ?? 0);
+    said = "stepped {rest as integer ?? 0}";
+    return true;
+  }
+
+  // ── ⛔ `hold` AND `turn` ARE REFUSED, AND THE REASON IS A MEASUREMENT ────────
+  //
+  // Both are FEEDBACK LOOPS ON A LIVE POSE, not commands. `tools/script.mjs` sends
+  // `4:<bit>`, then awaits ticks one at a time and reads the character's model matrix
+  // off the wire after each, stopping when the distance covered or the angle
+  // accumulated passes what was asked. So what they mean is *keep going until the
+  // server says you have arrived* — and this runner is the server, which makes the
+  // loop a thing it would be inventing rather than reproducing.
+  //
+  // ⛔ **AND AT `rate 0` THEY ARE NO-OPS ON THE SERVER, WHICH IS WHAT SETTLES IT.**
+  // `nextT()` returns false when no tick arrives inside its limit, and at `rate 0` no
+  // tick ever arrives unasked — so both loops break on their first iteration and the
+  // whole command is `4:<bit>` followed by `4:0`. A runner that performed them as
+  // exact loops would walk where the driver it is compared against stood still, and
+  // `T0` has just pinned every walking script to `rate 0`. Refusing is the only
+  // answer that does not manufacture a divergence.
+  //
+  // ⚠ **AND IT COSTS NOTHING TODAY, WHICH IS ALSO MEASURED**: `hold` and `turn` have
+  // **zero** callers in the whole corpus — `tools/scripts/*.keys` and `probe/*/*.keys`
+  // between them say `keys` 32 times and neither of these words once. `script.mjs`'s
+  // own comment already records that it keeps them with no callers.
+  if cmd == "hold" || cmd == "turn" {
+    said = "`{t}` is a feedback loop on a live pose — it holds a key and reads the "
+         + "character's matrix off the wire until the distance or the angle is met, "
+         + "which needs a server to read back from. At `rate 0` it is a no-op even "
+         + "there. Say `keys <bits>` and `step <n>`, which is exact on both drivers.";
+    return false;
   }
 
   // ── `send` AND `ground` ARE CLASSIFIED — plan 22 `K3c` ──────────────────────
   // Both are one line here and a function below, because the reasoning is long and
   // `run_line` is already at the complexity the compiler nudges at.
   if cmd == "ground" { return run_ground(w, rest, said); }
-  if cmd == "send"   { return run_send(w, rest, said); }
+  if cmd == "send"   { return run_send(w, wk, rest, said); }
 
   said = "unknown command '{cmd}'";
   false
@@ -473,7 +641,15 @@ fn main() {
   gh = env_variable("GROUND");
   half = if gh == "" { 30 } else { gh as integer ?? 30 };
   if half > 0 { seed_ground(w, half); }
-  a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
+  // ⚠ ONE WALKER, AND THE AUTHOR IS DERIVED FROM IT — plan 22 `T3`. It is the third
+  // driver to hold a `hex_editor::Walker`, after the server and the page, and the
+  // first for which the walker is the ONLY record of where the person is: there is no
+  // camera here to disagree with it and no wire to re-send it over.
+  wk = hex_editor::walker_new(0.0, 0.0, 0.0);
+  // The feet start on the ground rather than at zero, which is `walk_place`'s own
+  // clause — a runner whose first line is `verb` rather than `at` must still be
+  // standing on something.
+  walk_place(w, wk, 0.0, 0.0, 0.0);
   // ⚠ AN `EditSession`, NOT A BARE `WallRuns` — plan 22 `W4`. A key press is a
   // gesture applied to a SESSION, and the server has held one since the headless
   // thread landed. A runner holding only the wall runs could never call `press`
@@ -488,13 +664,9 @@ fn main() {
   // is the shape `CLAUDE.md` calls a grep whose default answer is *absent*. It is
   // counted now, and the count is a premise rather than a diagnostic.
   bad = 0;
-  // ⚠ DECLARED OUTSIDE THE LOOP BECAUSE IT IS THE ONLY THING THAT SPANS LINES — plan
-  // 22 `K3e`. A skipped `hold` is a fact about the author that survives until an `at`
-  // replaces it, so a per-line variable could never carry it to the gesture that pays.
-  walked = "";
   for line in text.split('\n') {
     said = "";
-    ok = run_line(w, a, sess, line, said, walked);
+    ok = run_line(w, wk, sess, line, said);
     if said != "" { println("  {said}"); }
     if !ok { println("editor_run: {line}"); bad = bad + 1; }
     n = n + 1;

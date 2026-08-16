@@ -1,0 +1,31 @@
+# ⛔ THE WITNESS THAT FAILED TO WITNESS — kept as the record of it. Plan 22 `T3`.
+#
+# `at` used to build its author with `hex_editor::author_on` — the CELL's stored
+# height — while the server builds one from its walker, whose feet are
+# `hex_mesh::ground_under`, interpolated across the cell. They agree at a cell's centre
+# and on flat ground, and differ everywhere on a slope, so a script standing on a slope
+# and gesturing there should have shown the change. **It does not**, and three tries at
+# it are why `probe/t3/height.loft` exists:
+#
+#   at 1.3 0.7 / verb place   identical — that point is in the region where the two
+#                             functions agree; picked by eye rather than measured
+#   at 5.2 4   / verb place   identical — the WORST disagreement (0.166 wu), and
+#                             `place` turns out not to read `au_y` in any way a world
+#                             can see
+#   at 6 4.6   / verb fence   identical — `fence` DOES read `au_y`, and still cannot
+#                             see it: the control in `height.loft` shows a whole
+#                             STOREY apart does not move it either, because `au_y`
+#                             chooses which SURFACE you stand on and this world has one
+#
+# ⚠ **A WORLD KEY IS A COARSE INSTRUMENT FOR A FLOAT, AND THAT IS THE FINDING.** Every
+# run above is a correct measurement of the wrong quantity: a gesture seats on integer
+# height units, so two thirds of a unit is below what any saved world can carry. The
+# question had to be asked of the two FUNCTIONS, in floats, which is what `height.loft`
+# does — and the answer is that they differ and that nothing here can tell.
+rate 0
+at 0 0 30
+verb raise
+wait rebuilt
+at 6 4.6 30
+verb fence
+save t3slope

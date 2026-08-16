@@ -1,0 +1,146 @@
+// ⚠ IS THE AUTHOR'S HEIGHT ACTUALLY DIFFERENT? — plan 22 `T3`.
+//
+// ── WHAT IT MEASURED, SO A READER NEED NOT RUN IT ─────────────────────────────
+//
+//   726 of 14641 samples over a raised cone differ, worst **0.166 wu** at (5.2, 4)
+//   — so the two functions really do disagree, by two thirds of a height unit.
+//
+//   And NO gesture turns that into a different world. `fence`, `wall` and `stair_up`
+//   all read `au_y`, all write (42 cells, checked), and all key the SAME world with
+//   0.25 against 0.084. ⚠ **The control says why that is not "the argument is dead":
+//   a whole STOREY apart — 0.25 against 3.0 — does not move them either.** `au_y`
+//   selects WHICH SURFACE you are standing on, and this fixture has exactly one, so
+//   there is nothing for it to choose between. ⏭ The case where it decides is a world
+//   with a DECK over the ground, which is not built here.
+//
+//   ⚠ Two instruments were blind before those rows meant anything: the first compared
+//   strings that had the height appended, so every row read `SEES it` over identical
+//   worlds; and `stair` is not a verb (`stair_up`/`stair_down` are), so a refusal that
+//   wrote nothing twice was about to be read as an equality.
+//
+// ── WHY IT WAS ASKED ──────────────────────────────────────────────────────────
+//
+// `at` built its author with `hex_editor::author_on` (the CELL's stored height); it
+// builds one from the walker now, whose feet are `hex_mesh::ground_under`
+// (interpolated across the cell). The world-key comparison could not tell them apart —
+// three live scripts byte-unmoved, and a hand-built slope fixture unmoved too — and an
+// equal md5 is the same sentence a blind instrument produces. So this asks the two
+// functions directly, in floats, instead of asking a world that quantises them.
+use hex_editor;
+use hex_voxel;
+use hex_mesh;
+
+fn main() {
+  w = world_new(0.25, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  a0 = hex_editor::author_at(0.0, 0.0, PI / 6.0, 0.0);
+  sess = hex_editor::EditSession {};
+  rk = hex_editor::press_verb(sess, w, a0, "raise", "{source_dir()}/../../data/parts");
+  println("t3/height: raise ok={rk.ak_ok} n={rk.ak_n} tau={w.w_tau} chunks={len(w.w_chunks)}");
+
+  worst = 0.0;
+  wx = 0.0;
+  wz = 0.0;
+  n = 0;
+  diff = 0;
+  qdiff = 0;
+  qx = 0.0;
+  qz = 0.0;
+  // A grid over the raised cone at a tenth of a world unit, which is finer than a cell.
+  for i in 0 - 60..61 {
+    for j in 0 - 60..61 {
+      x = (i as float) * 0.1;
+      z = (j as float) * 0.1;
+      cell = hex_editor::author_on(w, x, z, 0.0).au_y;
+      feet = hex_mesh::ground_under(w, x, z, 0.0);
+      d = cell - feet;
+      if d < 0.0 { d = 0.0 - d; }
+      n = n + 1;
+      if d > 0.0000001 { diff = diff + 1; }
+      if d > worst { worst = d; wx = x; wz = z; }
+      // ⚠ AND THE QUESTION THE WORLD ACTUALLY ASKS IS THE QUANTISED ONE. A gesture
+      // seats on an integer number of height units, so a float disagreement below one
+      // unit is invisible to every world this runner can save. Counting the floats
+      // answers *do they differ*; counting these answers *can it ever show*.
+      if (cell / 0.25 ?? 0.0) as integer != (feet / 0.25 ?? 0.0) as integer {
+        qdiff = qdiff + 1;
+        qx = x;
+        qz = z;
+      }
+    }
+  }
+  // ⚠ THE CONTROL, BECAUSE A ZERO IS THE SAME SENTENCE A FLAT WORLD PRODUCES. Two
+  // functions agreeing over a plateau says nothing about a slope, so the spread of the
+  // heights sampled is reported beside the disagreement.
+  lo = 9999.0;
+  hi = 0.0 - 9999.0;
+  for i2 in 0 - 60..61 {
+    for j2 in 0 - 60..61 {
+      h = hex_mesh::ground_under(w, (i2 as float) * 0.1, (j2 as float) * 0.1, 0.0);
+      if h < lo { lo = h; }
+      if h > hi { hi = h; }
+    }
+  }
+  println("t3/height: {diff} of {n} samples differ; worst {worst} at {wx},{wz}");
+  println("t3/height: {qdiff} of {n} differ once QUANTISED to height units; last at {qx},{qz}");
+  println("t3/height: control — the ground sampled spans {lo} .. {hi}");
+
+  // ── AND CAN ANY GESTURE SEE IT? — the question the world actually asks ──────
+  //
+  // ⚠ THE FLOAT DISAGREEMENT ABOVE IS NOT THE FINDING; whether a GESTURE turns it into
+  // a different world is. Three of the vocabulary read `au_y` at all — `fence`, `wall`
+  // and `stair` — so each is run twice at the worst quantised point, once with the
+  // author each function builds, and the two worlds are compared.
+  for verb in ["fence", "wall", "stair_up", "stair_down"] {
+    ka = "";
+    kb = "";
+    ha = 0.0;
+    hb = 0.0;
+    for which in 0..2 {
+      w2 = world_new(0.25, hex_editor::W_RESERVE,
+                     hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+      s2 = hex_editor::EditSession {};
+      hex_editor::press_verb(s2, w2, hex_editor::author_at(0.0, 0.0, PI / 6.0, 0.0),
+                             "raise", "{source_dir()}/../../data/parts");
+      ay = hex_editor::author_on(w2, wx, wz, PI / 6.0).au_y;
+      if which == 1 { ay = hex_mesh::ground_under(w2, wx, wz, 0.0); }
+      // ⚠ THE ACK IS CARRIED OUT, BECAUSE *CANNOT SEE IT* AND *BOTH WERE REFUSED* ARE
+      // THE SAME SENTENCE. A verb that writes nothing twice keys two equal worlds.
+      vk = hex_editor::press_verb(s2, w2, hex_editor::author_at(wx, wz, PI / 6.0, ay),
+                                  verb, "{source_dir()}/../../data/parts");
+      if !vk.ak_ok || vk.ak_n == 0 {
+        println("t3/height: ⚠ `{verb}` wrote nothing (ok={vk.ak_ok} n={vk.ak_n} {vk.ak_why}) — the row below is blind");
+      }
+      // ⚠ THE KEY ALONE IS THE COMPARISON. A first version appended the height to each
+      // string and then compared the strings, so every row read `SEES it` over two
+      // IDENTICAL worlds — the instrument was reporting its own label.
+      if which == 0 { ka = hex_voxel::world_key(w2); ha = ay; }
+      else { kb = hex_voxel::world_key(w2); hb = ay; }
+    }
+    if ka == kb { println("t3/height: `{verb}` cannot see it — {ka}, au_y {ha} against {hb}"); }
+    else { println("t3/height: `{verb}` SEES it — cell {ka} (au_y {ha}) against feet {kb} (au_y {hb})"); }
+
+    // ⚠ THE CONTROL THAT DECIDES WHAT *CANNOT SEE IT* MEANS. A verb that ignored
+    // `au_y` outright and one that reads it as a STOREY both answer *equal* to a
+    // difference of two thirds of a unit. So the same pair is run a storey apart, and
+    // only if THAT moves the world is the row above about the size of the gap rather
+    // than about the argument being dead.
+    kc = "";
+    for far in 0..2 {
+      w3 = world_new(0.25, hex_editor::W_RESERVE,
+                     hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+      s3 = hex_editor::EditSession {};
+      hex_editor::press_verb(s3, w3, hex_editor::author_at(0.0, 0.0, PI / 6.0, 0.0),
+                             "raise", "{source_dir()}/../../data/parts");
+      hex_editor::press_verb(s3, w3, hex_editor::author_at(wx, wz, PI / 6.0,
+                                       if far == 1 { 3.0 } else { 0.25 }),
+                             verb, "{source_dir()}/../../data/parts");
+      if far == 0 { kc = hex_voxel::world_key(w3); }
+      else if kc == hex_voxel::world_key(w3) {
+        println("t3/height:   control — `{verb}` is the same world a STOREY apart too ({kc}): it does not read the height at all");
+      } else {
+        println("t3/height:   control — a STOREY apart `{verb}` moves ({kc} -> {hex_voxel::world_key(w3)}): the height IS read, and 0.17 wu is below what it can carry");
+      }
+    }
+  }
+}

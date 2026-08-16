@@ -43,7 +43,7 @@ noticing that two drivers already agreed on one and never shared the body.
 | ✅ `lib/hex_editor/src/tick.loft` | **all of it, since `T1`** — turn → walk → level stamp → fall, and the proxy's key | — |
 | ✅ `src/editor_server.loft` | one `Walker` and one `walk_tick` call. It kept its clock, its camera, its dirty set and its sentences | — |
 | ✅ `src/editor_client.loft` | one `Walker` and one `walk_tick` call, since `T2`. It kept its accumulator and its redraw — **and it can level now**, which it never could | — |
-| ⏭ `src/editor_run.loft` | **nothing.** It teleports. `T3` | — |
+| ✅ `src/editor_run.loft` | one `Walker` and one `walk_tick` call, since `T3`. It kept **no clock at all**: `step <n>` is the only thing in the program that can produce a tick | — |
 
 Both existing sites call the *same* `hex_editor` primitives — `walk_dir`, `turn_dir`,
 `yaw_turn`, `walk_step_len`, `walk_to`, `fall_step`, `edges_walk`. **What is written
@@ -119,7 +119,7 @@ And each driver keeps only the thing that is genuinely its own — **when a tick
 |---|---|---|
 | `editor_server` | the wall clock at `sim_rate`, or `sim_pending` when `rate 0` | `mark_dirty`, broadcast, camera |
 | the page, **local only** | its own accumulator, in fixed steps | re-mesh the dirty disc |
-| `editor_run` | **`step <n>` and nothing else — no wall clock, ever** | nothing |
+| `editor_run` | **`step <n>` and nothing else — no wall clock, ever** (`T3`, built) | nothing |
 
 ⚠ **THE RUNNER GETS NO WALL CLOCK, AND THAT IS THE SHARPEST LINE IN THIS DESIGN.**
 `editor_run`'s entire value is that its answer is a function of the script and of
@@ -242,7 +242,7 @@ wrong. Falsification: level in local mode and read the page's own surface line.
 | ✅ **`T0`** | the scripts that walk say `rate 0`, and `tools/walk-exact.sh` keeps it true | **DONE 2026-08-16.** `deck.keys` and `cellar.keys` converted, worlds unchanged (`cea971a0…`, `c96b2ce7…`), `deck_soffit` / `cellar_ceiling` / `deck` all PASS. ⛔ **`determinism.keys` was NOT converted and that is the finding** — see below. ⛔ **And the speedup I predicted is refuted**: 19.9 s without, 22.5 s with, 26.6 s in a parallel run — `rate 0` buys exactness, not time |
 | ✅ **`T1`** | `Walker` + `walk_tick` in `hex_editor`; **the server is its only caller** | **DONE 2026-08-16.** Both worlds byte-identical — `cea971a0…` and `c96b2ce7…` — `make fast` 157 files green, `make gate` unmoved, `lib/hex_editor/tests/tick.loft` 15 tests with 7 of 8 sabotages red. The server is **89 lines smaller** and the level stamp left the streaming block. ⛔ **Probe 4 is answered and `deck.keys` could not have answered it** — see below |
 | ✅ **`T2`** | the page calls `walk_tick`; `local_walk`/`local_fall` **deleted** | **DONE 2026-08-16.** `make probe-demo` G/H unmoved — `walked 2.4539695841635853`, world `32920:1885399240`, 23 landings — and **levelling works in local mode**, checked by a new `L` block with a `nolevel` control. ⛔ `LEVEL_R` moved into the library on the way: the page was about to declare its own |
-| **`T3`** | `editor_run`'s `step <n>` becomes n ticks; `keys`/`hold`/`turn` are **performed** | `deck.keys` headless == the server's md5. ⚠ **This retires `K3e`** — there is no skipped movement left to remember. **Move before you remove**: the `walked` fence and `probe/k3e` come out only once the equality holds, never before |
+| ✅ **`T3`** | `editor_run`'s `step <n>` becomes n ticks; `keys` is **performed**, `hold`/`turn` are **refused** | **DONE 2026-08-17.** One script through both drivers, byte-identical on the first comparison ever run between them — `639586c2c98f95c1908a9a0e1de62481` — `make fast` green over 157 files, `probe/k3e` retired into `probe/t3` with its rows moved. ⛔ **Its acceptance as written here could not run, and that is the finding** — see below |
 | **`T4`** | `send 6:` becomes a performed message, like `ground` | `K3c`'s `send_why` loses a row. The runner's floor and the server's must agree, which is `probe/k3c` row D's shape one message over |
 
 ⚠ **`T1` before `T2` before `T3` is not taste.** Each step's comparison exists only
@@ -250,6 +250,96 @@ because the step before it left a proven artifact to compare against — `T1` ag
 server's own world, `T2` against the demo's recorded numbers, `T3` against `T1`'s
 output. Reordered, the middle two have nothing exact to be measured by, which is the
 failure `W4` was reverted for.
+
+## ✅ What `T3` turned up (2026-08-17) — a step whose acceptance could not run at it
+
+`src/editor_run.loft` holds one `hex_editor::Walker`. `step <n>` is exactly n
+`walk_tick` calls and is the only thing in the program that can produce one; `keys
+<bits>` holds the wire's own bits; `at` and the wire's `7:` PLACE move the walker; and
+the author every gesture is applied at is `author_at` off that walker. The `walked`
+fence is deleted, `probe/k3e` is retired into `probe/t3`, and `make fast` is green over
+157 files. Everything is in [probe/t3/README.md](../../probe/t3/README.md).
+
+### ⛔ The acceptance in the table above cannot be run at `T3`, and nothing said so
+
+*"`deck.keys` headless == the server's md5"* — and `deck.keys` says `send 6:1`, which is
+`T4`'s message. It is not a slip in one row: **every walking fixture in `probe/t1/`
+levels**, because probe 4 had already established that *a walk which does not level
+writes nothing*. There is no world-visible walk without a stamp, so no acceptance built
+on a saved world could have belonged to this step.
+
+What `T3` gets instead is the OTHER half of what a walk does — **it positions**. A
+`verb` after 90 ticks lands 9.6 wu from where an unwalked run puts it, which needs no
+stamp anywhere. That is `K3e`'s own predicate asked as a measurement rather than as a
+refusal, and it is exact:
+
+> **`probe/t3/walk_place.keys` through a native server and through `editor_run` at
+> `GROUND=0`: `639586c2c98f95c1908a9a0e1de62481` both ways**, with the gesture's
+> sentence matching word for word.
+
+⚠ **Byte-identical on the FIRST comparison ever run between these two drivers**, which
+was not the prediction — `probe/t3/PREDICTION.md` expected it to fail and named four
+candidate residues. Two of its four calls are refuted.
+
+### ⚠ The server ticked 92 times for a script that asks for 120
+
+`stepped to 92` after `step 90`, at `rate 0`: two ticks land during the connection burst
+before `rate 0` arrives. They are **inert** — nobody is holding a key, so only the fall
+runs and it writes nothing — and that is *why* the equality holds rather than a detail
+beside it. ⏭ A script that wrote something before its `rate 0` landed would have no such
+protection, and nothing checks for one.
+
+### ⛔ `hold` and `turn` are refused, and the reason is a measurement rather than a taste
+
+The step table said *performed*. They cannot be: both are **feedback loops on a live
+pose** — `script.mjs` sends `4:<bit>`, then awaits ticks one at a time and reads the
+character's model matrix off the wire after each — and **at `rate 0` they are no-ops on
+the server**, because `nextT()` returns false when no tick arrives and at `rate 0` none
+arrives unasked. `T0` has just pinned every walking script to `rate 0`. So a runner
+performing them as exact loops would walk where the driver it is compared against stood
+still: *faking them manufactures the divergence this whole design exists to close.*
+
+⚠ **And it costs nothing, which is also measured**: `hold` and `turn` have **zero**
+callers across `tools/scripts/*.keys` and `probe/*/*.keys`, which say `keys` 32 times
+between them. `script.mjs`'s own comment already recorded that it keeps them with no
+callers.
+
+### ⛔ `feet` was on the skip list, and the reach question could not be asked without it
+
+Asked whether the collision proxy's window matters — the runner copies the server's
+`COLL_R = 8`, a number the server sizes for a **camera this program does not have** —
+the saved world answers *no* at reach 8, 4, 2 and 1. ⚠ **And it answers exactly the same
+to a walk that never met anything**, which is probe 4 arriving one step later. Adding a
+fence ring did not rescue it either: a ring changes the world whether or not it stops
+anybody, because its own 42 cells are in there.
+
+Where the walk ENDED is the only instrument that can tell those apart, and `feet` was
+skipped as *it only reads where the walker is* — harmless until the walker moved.
+Performed, it settles it in one line: the fence stops the walk at `4.32,2.5` against
+`8.32,4.8` free, **at every reach from 8 down to 1**.
+
+### ⚠ The author's height changed, three verbs read it, and none of them can see it
+
+`at` built its author with `author_on` — the CELL's stored height — where the server
+builds one from the walker's feet (`ground_under`, interpolated). `probe/t3/height.loft`
+priced it: the two differ at **726 of 14641** samples over a raised cone, worst **0.166
+wu** — and `fence`, `wall` and `stair_up`, the only verbs that read `au_y`, key the same
+world either way. ⚠ **The control is what makes that mean something: a whole STOREY
+apart does not move them either**, because `au_y` chooses which SURFACE you stand on and
+the fixture has one. So this is the runner ceasing to be the coarse driver — which
+`gesture.loft` already named as the difference's purpose — and not a defect closed. ⏭
+The world that could tell them apart is a deck over the ground.
+
+### And the sabotage sweep missed two, for two different reasons
+
+Seven sabotages, five red on the first pass. **One miss was the delimiter trap
+`probe/k3e`'s own sweep had already written down** — a pattern containing `||` ends an
+`s|…|` expression mid-word — repeated verbatim here, and caught only by the row's
+did-it-apply guard rather than by having read the warning. **The other was the sweep's
+aim and not the probe's blindness**: `deadfeet` replaced the first of `feet`'s two lines
+and left `at {x},{z}` live, so the two walks still read differently and row F was right
+to stay green. *A miss is a question about the edit before it is a question about the
+test.*
 
 ## ✅ What `T2` turned up (2026-08-16) — the key that did nothing and said it had
 
@@ -463,14 +553,18 @@ softened.
 
 - ⏭ **It does not make `editor_run` a server.** No camera, no proxy timing, no HUD, no
   broadcast, no clock. One function and a step count.
-- ⏭ **It does not decide whether `hold <dir> <wu>` is worth performing.** `script.mjs`
-  implements it as a feedback loop on the pose; the runner could do the same exactly,
-  and nothing here needs it.
+- ⛔ **It does not decide whether `hold <dir> <wu>` is worth performing** — and `T3`
+  decided, the other way from the sentence that used to stand here. *"The runner could
+  do the same exactly"* is false at `rate 0`, which is where every walking script now
+  lives: `script.mjs`'s loop awaits a tick that never comes and the command becomes a
+  no-op on the server. Refused, with zero callers to pay for it.
 - ⏭ **It says nothing about the ROAD.** `10:` ROAD is refused by `K3c` for the same
   reason `6:` LEVEL is, and it is the same shape — but it is a second stamp with its own
   settle rule (`slope_settle`), and folding it in before the level one is measured is
   the over-reach this document exists to avoid.
-- ✅ **`T0`, `T1` and `T2` are built**, and probes 4 and 6 are run. **Probe 5 is not** —
-  *a page in REMOTE mode must not tick* — and it is now the only unmeasured claim in
-  the design: the guard is one line that `T2` did not weaken, which is an argument and
-  not a measurement.
+- ✅ **`T0`, `T1`, `T2` and `T3` are built**, and probes 4 and 6 are run. **Probe 5 is
+  not** — *a page in REMOTE mode must not tick* — and it is now the only unmeasured
+  claim in the design: the guard is one line that `T2` did not weaken, which is an
+  argument and not a measurement. ⏭ `T4` is what remains of the build: `send 6:` LEVEL
+  performed, which is what `deck.keys` needs and therefore what the design's own
+  acceptance number has been waiting for.
