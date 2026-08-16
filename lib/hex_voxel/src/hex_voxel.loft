@@ -1852,6 +1852,11 @@ pub const SZ_HEADER = 52;                     // 9 i32 + tau (8) + owner + chunk
 pub const SZ_CHUNK  = 16;                     // cx, cz, base, layer count
 pub const SZ_CELL   = 8;                      // u16 + 6 * u8 — the voxel, exactly
 pub const SZ_SECTION_HEAD = 8;                // tag i32 + length i32
+// The `GRND` section's payload: height u16 + material, item, rotation and three
+// wall bytes. ⚠ **NAMED BECAUSE IT WAS A LITERAL IN THE WRITER AND ABSENT FROM THE
+// SIZER** — plan 22 `K3c`, and that is how `world_file_size` came to disagree with
+// `world_to_bytes` about every world with a ground. One number, one name.
+pub const SZ_GROUND = 8;
 // The DIRECTORY and the PAYLOAD are separate regions, which the contract calls
 // structural rather than an optimisation: validating a cache must cost a
 // directory read and never an 8 KB one. Every layer's id, kind and version live
@@ -2132,12 +2137,33 @@ pub const WS_IO         = 3;   // the bytes did not reach the disk — see below
 // The format's length is a closed form — `SZ_*` are already public *"so gates
 // assert against these rather than against whatever the writer happens to
 // produce"* — so the writer can be held to the same numbers a reader is.
+// ⛔ **AND IT MISSED THE GROUND FOR AS LONG AS THERE WAS ONE — found 2026-08-16,
+// plan 22 `K3c`.** `world_to_bytes` writes `GRND` from the **field** `w_ground`, not
+// from `w_sections` (`G4` decided that deliberately, and says why at the reader), so
+// this closed form was short by exactly `SZ_SECTION_HEAD + SZ_GROUND` for every world
+// that had set one — and `world_save` answered **`WS_IO`, the bytes did not reach the
+// disk**, over a file that was perfectly correct. Measured with a control: the same
+// world without a ground predicted 8277 and wrote 8277; with one it predicted 8277
+// and wrote **8293**, and `world_load` read the ground back as 60/2.
+//
+// ⚠ **THE GUARD FIRED THE OTHER WAY ROUND FROM THE FAULT IT WAS BUILT FOR.** The
+// note above is about a save that reported success over nothing; this was a save
+// reporting failure over everything it wrote — and a consumer that believes the code
+// tells an author their work is lost while it sits on disk.
+//
+// ⚠ **NOTHING COULD SEE IT, AND THAT IS THE PART TO KEEP.** All three ground tests —
+// `ground_default`, `ground_read`, `fill` — round-trip through `world_to_bytes` /
+// `world_from_bytes`, which is the half that was right; **not one calls
+// `world_save`**, so the only path with a size guard on it was never asked about a
+// ground. `E1γ` shipped, was made normative, and the file path was never exercised.
 pub fn world_file_size(w: VoxelWorld, palette: vector<integer>) -> integer {
   n = SZ_HEADER + len(palette);
   for ch in w.w_chunks {
     n = n + SZ_CHUNK + len(ch.ck_layers) * (SZ_LAYER_DIR + SZ_LAYER);
   }
-  n + sections_size(w.w_sections)
+  n = n + sections_size(w.w_sections);
+  if hex_present(w.w_ground) { n = n + SZ_SECTION_HEAD + SZ_GROUND; }
+  n
 }
 
 // `X2` — MANY AUTHORS ARE NORMAL; A SECOND WRITER TO ONE STORE IS A BUG.
@@ -2354,7 +2380,7 @@ pub fn world_to_bytes(w: VoxelWorld, palette: vector<integer>,
   // because a default belongs to no chunk and so has no base to be relative to.
   if hex_present(w.w_ground) {
     bw_i32(wtb, ground_tag());
-    bw_i32(wtb, 8);
+    bw_i32(wtb, SZ_GROUND);
     bw_u16(wtb, w.w_ground.h_height);
     bw_u8(wtb, w.w_ground.h_material);
     bw_u8(wtb, w.w_ground.h_item);
@@ -2750,7 +2776,7 @@ pub fn world_from_bytes(b: vector<u8>) -> WorldLoad {
     // section AND a field could disagree with itself across a save. A file that has
     // no such section simply leaves the default absent, which is a world exactly as
     // this library read it before the tag existed.
-    if stag == ground_tag() && slen == 8 {
+    if stag == ground_tag() && slen == SZ_GROUND {
       w.w_ground = Hex { h_height: ((sb[0] ?? 0) | ((sb[1] ?? 0) << 8)) as u16? ?? 0,
                          h_material: sb[2] ?? 0, h_item: sb[3] ?? 0,
                          h_item_rotation: sb[4] ?? 0, h_wall_nw: sb[5] ?? 0,

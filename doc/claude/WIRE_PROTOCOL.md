@@ -38,6 +38,16 @@ fields are comma-separated; sub-records are semicolon-separated.
 | **X** | **dynamic state** — stays on a socket. This is the residue §3 says a server is actually for |
 | **S** | **session plumbing** — survives as transport, whatever the transport becomes |
 
+⚠ **THESE LETTERS ANSWER *WHAT BECOMES OF THIS MESSAGE*, NOT *DOES IT CHANGE WHAT I
+BUILD* — and a driver asking the second question must not whitelist by the first.**
+Plan 22 `K3c` needed exactly that: `editor_run` has no walk and no part mode, so it has
+to decide which `send <id>:` lines it may skip. Two ids cross the two questions in
+opposite directions — **`9` LOAD is filed `R`** because the client will hold the store
+and query it locally, and it *replaces the whole store*; **`7` PLACE is filed `X`**,
+explicitly *"a character pose is dynamic state, not world"*, and it moves the datum
+every gesture reads. A letter whitelist waves both through. So `editor_run`'s
+`send_quiet` enumerates **ids**, with a reason each, and its default is **deny**.
+
 ---
 
 ## Client → server

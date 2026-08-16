@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth pages probe-demo plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c pages probe-demo plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -414,6 +414,7 @@ gate-rep:
 fast:
 	@sh tools/layering.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
+	@$(MAKE) -s probe-k3c
 
 check:
 	@sh tools/layering.sh
@@ -616,6 +617,16 @@ probe-split:
 # `K1_WIRE=0` skips the server half and needs no port.
 probe-verbs:
 	@sh probe/k1/run.sh
+
+# K3C (plan 22) — IS A `send` STILL ONE WORD TO `editor_run`, OR IS IT WHATEVER IT
+# CARRIES? An authoring id must FAIL the run rather than go on the floor, a quiet one
+# must not, an id nobody classified must be refused, and `ground` — the one authoring
+# message this runner can honestly perform — must build the floor it names.
+# ⚠ IN `make fast` ON PURPOSE, and its runs are pooled to make that affordable: 38 s
+# in series, 7 s at `K3C_JOBS=6`, almost all of it loft starting up. A probe outside
+# `make fast` is an instrument nobody reads, and this tree has paid for that twice.
+probe-k3c:
+	@sh probe/k3c/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \

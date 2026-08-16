@@ -19,6 +19,27 @@ declaring a ground. Seven steps shipped, every suite green, and the document tha
 be right by definition disagreed with all of it. **A plan is not closed while its rule lives only
 in the plan.**
 
+⛔ **AND THREE DAYS AFTER CLOSING IT, THE SAVE PATH TURNED OUT NEVER TO HAVE BEEN RUN — found
+2026-08-16 by plan 22 `K3c`.** `world_file_size` did not count the `GRND` section, because
+`world_to_bytes` writes it from the **field** `w_ground` and the sizer only walked `w_sections`.
+So `world_save` returned **`WS_IO` — *the bytes did not reach the disk*** for every world that
+had ever set a ground, over a file that was **perfectly correct**: measured with a control, the
+same world without a ground predicted 8277 and wrote 8277; with one it predicted 8277 and wrote
+**8293**, and `world_load` read the ground back as 60/2. ⚠ **The guard fired the opposite way
+round from the fault it was built for** — `WS_IO` exists because plan 17 `A7.3e` found a save
+reporting *success* over a file it never created, and here a consumer that believed the code
+would tell an author their scene was lost while it sat on disk.
+
+⚠ **AND THE REASON NOTHING SAW IT IS THE PART WORTH KEEPING.** All three ground tests —
+`ground_default`, `ground_read`, `fill` — round-trip through `world_to_bytes` /
+`world_from_bytes`, the half that was always right. **Not one of them calls `world_save`.** The
+feature shipped, was closed, was made normative in `WORLD_MODEL § E1γ`, and the only path with a
+size guard on it was never once asked about a ground — because until `K3c` no *driver* both set a
+ground and saved. The rule is `lib/hex_voxel/tests/file.loft` now, as a pair with the
+no-ground control, and the `8` is `SZ_GROUND` in writer, reader and sizer alike. **A round-trip
+test and a file test are not the same test**, and a format with two encoders' worth of surface
+needs both.
+
 ⚠ **`G2` (`world_fill`) LANDED LAST, OUT OF ORDER, AND ITS OWN ROW SAID IT SHOULD NOT EXIST** —
 `G1` had measured its speed argument away and `G5` had removed its consumer. Built anyway, on the
 plan's own terms (*"measure it before claiming a number"*), and both halves came back: the hoisted

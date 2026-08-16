@@ -75,10 +75,19 @@ whose scripts are in the key spelling, so the deletion made it unrunnable and it
 guard said so out loud (*"the label map rewrote NOTHING over 31 script(s)"*). ⛔ **And it was not
 safe as written**: `tools/script.mjs` had `K3a`'s defect untouched, so `K3b.1` had to land first.
 
-**Next:** **`K3c`** (`send` of an authoring id must not be dropped, found by `K3a`), then
-**`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done. **`K3d`** is the debt `K3b`
-created and is the one to weigh against them: ten scripts no gate runs lost their only
-regression check.
+✅ **AND A `send` IS WHATEVER IT CARRIES NOW — `K3c`, 2026-08-16.** An authoring id fails the
+run; `ground` is **performed**; the default is deny, so an id nobody has classified fails too.
+⛔ **The drop had been visible as a collision the whole time** — six scripts keyed one world
+`32952:3318286153`, and `plane.keys`, whose subject is the floor, was byte-identical to a bare
+raise. ⛔ **And performing `ground` found a defect two layers down**: `world_file_size` never
+counted the `GRND` section, so `world_save` answered **`WS_IO` — the bytes did not reach the
+disk** over a file it had written perfectly, and **not one of the three ground tests calls
+`world_save`**. `make probe-k3c` is in `make fast`.
+
+**Next:** **`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done. Two debts sit
+beside them, each created by the step that found it: **`K3d`** (ten scripts no gate runs lost
+their only regression check, `K3b`) and **`K3e`** (`hold`/`keys`/`turn` move the author and are
+still skipped — `K3c`'s defect one word over, live in `deck.keys`).
 
 ✅ **AND THE TWO INSTRUMENTS THAT WERE RED BEFORE ANY OF IT STARTED ARE GONE.** `probe/k1` checks
 `A`/`B` had failed since `S3` collapsed the opening keys — measured on HEAD, not caused by
@@ -178,7 +187,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K3b.1`** — `tools/script.mjs` fails a run on a line it could not send | XS | ⚠ the exit code, **not** the complaint — the check that existed was written against the wording | **DONE 2026-08-16.** ⛔ **`K3a` on the OTHER reader, and nobody had looked.** `!! no verb 'hoist'` and `!! unknown command 'hoist'` both printed and exited **0**, measured against a real server before the change and **101** after, with a clean script and a `key ArrowUp` still 0. ⛔ **It had to land before `K3b`, not with it** — the deletion turns every missed `key H` into a silent no-op otherwise. ⚠ **`probe/k1` `E` could not have seen it**: it grepped for the complaint, which a driver that exits 0 prints perfectly. Both halves assert rc now. ⚠ **What it deliberately does not count**: a gesture the SERVER refuses — `editor_run` sees that through an ack struct, this driver has only a status line that LAGS and TRUNCATES. Control: every first word and every `verb <name>` in the live corpus already resolves, so **0 of 41 scripts moved** | ✅ Done |
 | ✅ **`K3b`** — drop the key spelling from both readers | S | the test-name and script-vocabulary diff, **not** a green suite | **DONE 2026-08-16.** `key <K>` gone from `src/editor_run.loft` and `tools/script.mjs`; `KEYMAP`'s 22 rows gone with it, and this file's last opinion about a keyboard. ⛔ **THE PRICE WAS THREE PROBES, NOT TWO** — this row predicted `probe/k1` and `probe/k2`, and `probe/k2b` died too: it baselines on `git show 0e2d48a:<path>`, so its baseline side is in the deleted spelling and builds **nothing** (`runs 0` against the converted side's real world). Its own vacuity guard reported it — *the label map rewrote NOTHING over 31 script(s)* — which is what an instrument that can see its own emptiness is worth. ⛔ **AND A CLAIM WAS ABOUT TO GO OUT WITH THEM**: *a gesture does not move the standing selection* was held by `probe/k1` `D` and relied on as `probe/k2` check 5's premise, and **every test in `opening.loft` chose once and cut once** — so all 17 were satisfied by a gesture that CONSUMES its choice. Moved first, then seen red on a sabotage that resets the kind after each cut, **with the other 17 green**, which is what proved the gap real. ⚠ **Move before you remove.** ⏭ The genuine loss is named rather than absorbed: `K3d`. Retired the scripted half of four sabotage sweeps and kept every library row (`sabotage-x` 6 rows red on their own claims, control green, tree restored) · `probe/k1` **4 FAILED → green**, and it now asserts the deletion directly (*a stale `key H` is an unknown word and fails: rc=101*) | ✅ Done |
 | **`K3d`** — the ten un-gated scripts get a regression check that is not a second spelling | S | ⚠ it must go red on a press DELETED from a live script — the failure `probe/k2` caught and nothing does now | ⛔ **Created by `K3b`, and it is a real coverage cut rather than a tidy-up's leftovers.** `probe/k2`'s own reason for existing was that `annex` `door` `embrasure` `furnish` `house` `niche` `opening` `profiles` `determinism` `slab` are driven by **nobody automatically** — `make gate` runs `cache`, `indoors`, `cellar`, `clientmesh` and `deck`. `cellar.keys` and `deck.keys` keep their gates; the other ten now have no check that they still build what they built. ⏭ Wants a committed world-key + session-digest baseline per script, regenerable on purpose — **not** a diff against a second spelling, which is what just retired |
-| **`K3c`** — `send` of an **authoring** id must not be silently dropped | S | ⚠ the ten scripts must go RED where they run headless — that is the deliverable, not a regression | ⛔ **Found by `K3a` and older than it.** `send <id>:` is a raw wire frame and [WIRE_PROTOCOL](../../doc/claude/WIRE_PROTOCOL.md) sorts every id into **A** (*survives as a store write*), **V** and **S**. `editor_run` drops all of them. Measured: **ten scripts send an A id** — `6` LEVEL and `10` ROAD change what every gesture after them builds, `47` WATER lays cells, and `44` PART **swaps which store is edited**, so `doorparts.keys` opens six parts that never open, every edit lands in the main world and each close discards nothing. `ground` is the same message under a friendlier name (`50:`). ⏭ Wants `send` classified by id, refusing the A ones — a cost to pay on purpose |
+| ✅ **`K3c`** — `send` of an **authoring** id must not be silently dropped | S | ⚠ the ten scripts must go RED where they run headless — that is the deliverable, not a regression | **DONE 2026-08-16.** Default **deny**: `send_quiet` names the ids known to change nothing and everything else fails the run; `ground` — the one authoring message this runner can honestly perform — is performed on both spellings. ⛔ **The drop was visible as a COLLISION and nobody had looked**: six scripts keyed **`32952:3318286153` at τ 3813**, and `plane.keys`, whose whole subject is the floor it stands on, was byte-identical to a script that does nothing but raise a hill. ⛔ **This row's own claim about `44:` was too strong** — measured over the corpus, **no live script performs an authoring gesture inside part mode**, so the corruption is *latent* and the live loss is that five part scripts become one world. ⛔ **The class letter is a hint, not the rule**: `9` LOAD is filed **R** and replaces the store, `7` PLACE is filed **X** and moves the datum every gesture reads — a letter whitelist waves both through, which is why the list is ids. ⛔ **AND PERFORMING `ground` FOUND A LIBRARY DEFECT TWO LAYERS DOWN**: `world_file_size` never counted the `GRND` section, so `world_save` answered **`WS_IO` — the bytes did not reach the disk** over a file it had written perfectly · `make probe-k3c`, **in `make fast`** · 6 sabotages red on their own claims, control green · corpus diff exact: 8 scripts 0 → 101, `plane` moved, **30 of 38 unmoved** |
+| **`K3e`** — a line that MOVES THE AUTHOR must not be silently dropped either | S | ⚠ it must go red on `deck.keys` — a walk, then a gesture with no `at` between — and stay green on every script that walks and then says `at` | ⛔ **`K3c`'s defect one word over, and `K3a`'s comment said the wrong thing about it.** `hold`, `keys` and `turn` are on the skip list under *"not one of them writes a cell"* — true, and never the question: they compile to `4:<bits>`, the server WALKS, and the character is the datum every gesture reads. Measured over the live corpus, **one script is hit today**: `tools/scripts/deck.keys` walks 90 units under `send 6:1` and then says `verb storey` with nothing between, so the deck this runner builds is at the origin on unlevelled ground. ⏭ **The fence belongs at the GESTURE, not at the movement** — `CLAUDE.md`'s *a guard where the thing arrives, a fence where the value is USED*: refusing `hold` outright reds every walking script for a drop that is provably harmless the moment an `at` follows |
 | ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
 | ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | S | **DONE 2026-08-15.** `hex_editor::Rebind`, two fences in the client, `make probe-demo` `M1`–`M6`. ⛔ **The row it turned out to be about was not the collision one**: a POLLING editor fires the verb it has just bound, because the completing key is still down on the next frame — and that raise is correct in every particular. ⛔ **The map is not the whole keyboard** (8 client keys outside it, invisible to `keymap_bind`). ⛔ **The driver had been turning `5` into code 85** since it was written, and digits are the only free keys there are. ⛔ **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`** — measured on the pre-`M3` commit before it was blamed on anything · hex_editor keymap 15 → 28 tests · 4 library + 3 demo sabotages red · `make probe-auth` 36 → **37 PASS** | ✅ Done |
 | ✅ **`M4`** — delete `verb_of` | XS | **DONE 2026-08-15.** The suite reads **522 → 522** and that is the wrong instrument: the **test-name diff** is 6 lines, 1 deleted, 1 added, 4 renamed with the claim change written on each. ⛔ **The row that said it caught *built and never called* never could** — measured on the pre-`M4` tree, an arm in `press_verb` reachable from no key left the suite at 522 passed. `the_vocabulary()` replaces it, **with the case it still cannot see written into the test**. ⛔ **The deletion silently disarmed four sibling sweeps** — all four sed'd the deleted chain, and only the two whose subject guard happened to NAME the binding said so; the other two printed *NOTHING went red*. ⛔ **And a sweep piped through `head` left its sabotage in the tree**, because the trap had no `PIPE` · `sh probe/k2/sabotage-m4.sh` 5 red + 2 controls · `make lib-test` **3624 both backends** · `make fast` 156 files · `make gate` 49 · `make parts` byte-identical | ✅ Done |
@@ -377,6 +387,139 @@ four sabotage rows across four sweeps, each catching one script that still press
 `key <K>` line now fails in **every** driver on **every** script, because it is not vocabulary
 and an unknown word fails the run. The library halves of all four sweeps are untouched — six
 rows red on their own claims in `sabotage-x`, control green, tree restored.
+
+## ✅ What `K3c` turned up (2026-08-16) — a `send` is whatever it carries, and the drop was a collision nobody had looked at
+
+`send` sat on `editor_run`'s skip list beside `snap` and `wait`. Those words are one
+thing each; this one is as many things as there are message ids, and the runner
+skipped all of them alike.
+
+### ⛔ The loss was already visible in the world keys, for anyone who ran the corpus
+
+Before anything moved, every live script through `editor_run`, keyed:
+
+| world key | τ | scripts |
+|---|---|---|
+| `32952:3318286153` | 3813 | `doorparts`, `doorway`, `cache`, `slab`, `early_late`, `leaf_field` |
+| `32952:115861739` | 3722 | **`plane`**, `probe/b1a/save` |
+| `65788:1633256589` | 3909 | `ceiling`, `cutaway`, `eyes`, `floorprobe`, `indoors`, `lamp` |
+
+**The third row is honest and the first two are the defect.** Six camera scripts over
+one house really do build one world — that is what a camera script is. But six part
+scripts collapse because everything that made them different was inside a `44:` that
+never opened, and `plane.keys`, whose entire subject is the floor the world stands on,
+was **byte-identical to a script that does nothing but raise a hill**.
+
+⚠ **AND THAT MATTERS FOR `K3d` RATHER THAN JUST FOR THIS ROW.** A world-key baseline
+taken over the ten un-gated scripts a day earlier would have committed *one identical
+world for four different scripts* and read as coverage.
+
+### ⛔ This plan's own claim about `44:` was too strong, and measuring it is what said so
+
+`K3a` wrote, and the `K3c` row repeated: *"`doorparts.keys` opens six parts that never
+open, **every edit between them lands in the main world** and each close discards
+nothing."* Measured — a scan of every live script for an authoring line between an
+opening `44:<name>` and a closing `44:` — **there is not one.** The only in-part `send`
+in the corpus is `40:` (camera mode). The five part scripts are photograph scripts:
+they open a part, move the eye, `snap`, and close.
+
+So the live loss is the collision above, and **the corruption is latent**: the first
+edit anybody writes inside part mode lands in the wrong store, silently, and no
+instrument in the tree would say so. That is still worth refusing — but it is a
+different sentence from the one this plan had been carrying, and the difference is
+between a measured fact and a plausible one.
+
+### ⛔ The class letter is a hint and not the rule — two ids cross it in opposite directions
+
+The obvious implementation is *whitelist the non-A classes*. It is wrong twice:
+
+| id | filed | what it actually does |
+|---|---|---|
+| `9` LOAD | **R** | replaces the whole store — the letter is about *map rather than read*, not about harmlessness |
+| `7` PLACE | **X** | a character pose, *"not world"* — and it moves the datum every gesture reads |
+
+So the whitelist is **ids**, enumerated with a reason each, and **the default is deny**:
+an id nobody has classified — including one this tree has not invented — fails the run.
+A classifier whose default answer is *harmless* is `CLAUDE.md`'s grep whose default
+answer is *absent*, and it reports a clean result for every case it has never seen.
+
+### ⛔ And performing `ground` found a library defect two layers down
+
+`ground` is the one authoring message this runner can honestly perform —
+`world_set_ground` is a call, not a tick — so it is performed rather than refused. The
+first run said `code 3` on its save. `WS_IO`: **the bytes did not reach the disk.**
+
+| | predicted | written | code |
+|---|---|---|---|
+| control, no ground default | 8277 | 8277 | 0 |
+| subject, one ground default | **8277** | **8293** | **3** |
+
+`world_to_bytes` writes `GRND` from the **field** `w_ground` (`G4` decided that
+deliberately, so a default cannot be both a section and a field and disagree with
+itself); `world_file_size` counted only `w_sections`. Sixteen bytes — one section
+header and eight of payload — and the file was **perfectly correct**: `world_load`
+read the ground back as 60/2.
+
+⛔ **THE GUARD FIRED THE OPPOSITE WAY ROUND FROM THE FAULT IT WAS BUILT FOR.** `WS_IO`
+exists because plan 17 `A7.3e` found a save reporting success over a file it never
+created. This was a save reporting failure over everything it wrote — and a consumer
+that believes the code tells an author their scene is lost while it sits on disk.
+
+⚠ **NOTHING COULD SEE IT, AND THAT IS THE PART TO KEEP.** All three ground tests —
+`ground_default`, `ground_read`, `fill` — round-trip through `world_to_bytes` /
+`world_from_bytes`, which is the half that was always right. **Not one of them calls
+`world_save`.** So `E1γ` shipped, was closed, was made normative in `WORLD_MODEL.md` —
+and the only path with a size guard on it was never once asked about a ground. The rule
+is `lib/hex_voxel/tests/file.loft` now, as a pair: the save, and the same world without
+a ground as the control, because a test asserting only *both save* is green on a sizer
+that ignores the ground in both directions. ⚠ **And the `8` is `SZ_GROUND` in all three
+places now** — writer, reader and sizer — which is `SLAB_PAD`'s finding again: one
+number under two names is how two of them come to disagree.
+
+### ⛔ And `hold` / `keys` / `turn` are the same defect one word over — `K3e`
+
+The skip list defends itself with *"not one of them writes a cell"*. True, and it was
+never the question. They compile to `4:<bits>`, the server **walks**, and the character
+is the datum every gesture reads — which is the exact argument that refuses `6:` LEVEL
+two lines below them.
+
+Measured over the live corpus, asking *is there a gesture after a movement with no `at`
+between*: **one script is hit today.** `tools/scripts/deck.keys` walks 90 units under
+`send 6:1` and then says `verb storey`, so the deck this runner builds is at the origin
+on unlevelled ground — two drops at once, and only one of them is this step's.
+
+⏭ **Left skipped on purpose, and the reason is where the fence goes.** Refusing `hold`
+at the line reds every walking script, including the many where an `at` follows and the
+drop is provably harmless. `CLAUDE.md`'s rule — *a guard where the thing arrives, a
+fence where the value is USED* — puts it at the **gesture**: the runner knows the author
+has moved in a way it did not model, and says so when something reads the author. That
+is a different mechanism from this step's, so it is a row.
+
+### ⏭ The probe is in `make fast`, and pooling is what made that affordable
+
+`probe/k1` was red for days and `probe/b1b` `B9` since `B1c.1`, both because
+`make fast` and `make gate` ran neither. So `make probe-k3c` is in `make fast` — and it
+had to get cheap first: eighteen runs in series is **38 s of which 29 s is loft starting
+up eighteen times** (a one-line script costs 1.8 s, a real one 2.1 s). Launched as a
+pool of six it is **7.5 s**, and `make fast` went 32.6 s → 49 s. ⚠ Every run owns its
+own world name, which is `probe/k2b`'s finding: two copies of one probe shared
+`worlds/k2b-a.hxw` and a byte comparison could have passed on a world the other process
+built.
+
+### What it does NOT claim
+
+- ⏭ **No server is started, said rather than left quiet.** The runner's floor is not
+  compared against the SERVER's floor. Both call `hex_voxel::world_set_ground` and the
+  only thing that could differ is the parse, so the probe compares the **two spellings**
+  against each other and the **sentence** against the server's own literal by grepping
+  both sources. A `plane.keys` run through both drivers would settle it outright and
+  costs a server start; that is not worth one for a four-line parse.
+- ⏭ **The un-refused scripts' worlds are checked once here, not standingly.** The corpus
+  diff was exact — 8 scripts `0 → 101`, `plane` moved, **30 of 38 lines unmoved** — and
+  making that standing is `K3d`'s deliverable, not a second half-done copy of it.
+- ⏭ **`probe/a83/leaf_visible/switch.sh` is untouched**, because its script is a heredoc
+  driven only through a server. It is the tenth script and it never meets this runner —
+  `K2b` found the same file the same way.
 
 ## ✅ What `B4` turned up (2026-08-15) — the milestone was three finished parts and no wire between them
 

@@ -92,6 +92,150 @@ fn said_ack(ack: Ack, what: text, said: &text) -> boolean {
 // about a format. The reasons it prints the geometry rather than the kind, and the
 // standing selection on its own line, are at the function.
 
+// ── WHAT A `send` CARRIES — plan 22 `K3c` ────────────────────────────────────
+//
+// Which wire ids change nothing this runner builds, so that skipping one really does
+// let a script serve both drivers. ⚠ **A WHITELIST, AND THE DEFAULT IS DENY** — the
+// reasoning is at the `send` branch in `run_line`, and the short version is that a
+// classifier which answers *harmless* to an id it has never seen is not a classifier.
+//
+// ⚠ **ENUMERATED, NOT DERIVED FROM THE CLASS LETTER.** `9` LOAD is filed **R** and
+// replaces the store; `7` PLACE is filed **X** and moves the author. Neither is here.
+fn send_quiet(id: integer) -> boolean {
+  // **V** — the eye. Aspect, look, the rest report, the mode, and the placed eye.
+  // Nothing here is read by a gesture; the runner has no renderer to point anyway.
+  if id == 2 || id == 3 || id == 28 || id == 40 || id == 48 { return true; }
+  // **R** — questions. A column, its walls, its dressing, one cell, the layer
+  // labels, a part's sockets. The server answers them; nobody answers them here,
+  // and an unanswered question writes nothing.
+  if id == 15 || id == 16 || id == 20 || id == 26 || id == 29 || id == 45 {
+    return true;
+  }
+  // **S**/**K** — the connection's own bookkeeping: the opening burst, the trace
+  // switch, and the client saying it draws its own ground.
+  if id == 1 || id == 27 || id == 43 { return true; }
+  false
+}
+
+// Why a refused id is refused, in the words a person fixing a script needs. ⚠ **The
+// four named first are the ones the live corpus actually sends**; the rest of the
+// protocol falls to the last line, which is the honest answer for an id nobody here
+// has thought about.
+fn send_why(id: integer) -> text {
+  if id == 6 {
+    return "`6:` LEVEL freezes a floor that only a WALK then lays, and this runner does not walk";
+  }
+  if id == 10 {
+    return "`10:` ROAD freezes a grade that only a WALK then lays, and this runner does not walk";
+  }
+  if id == 47 {
+    return "`47:` WATER lays a stream along a WALK, and this runner does not walk";
+  }
+  if id == 44 {
+    return "`44:` PART swaps which store is edited, and this runner holds one world — so every gesture after it would land in the wrong one";
+  }
+  if id == 4 { return "`4:` KEYS moves the character; this runner teleports, with `at <x> <z> [yaw]`"; }
+  if id == 7 { return "`7:` PLACE moves the character; say `at <x> <z> [yaw]` instead"; }
+  if id == 9 { return "`9:` LOAD replaces the store, and this runner builds the world it is given"; }
+  "it writes, or nothing here has classified it; `send_quiet` is the list of ids known to change nothing"
+}
+
+// The plane every unwritten cell stands on — `E1γ` — and the one authoring message
+// this runner performs rather than refuses.
+//
+// ⚠ **A REFUSAL RETURNS `true`, AS `said_ack` DOES.** The two answers this driver
+// gives are not *good* and *bad*: they are *I did what the line asked* and *I could
+// not read the line*. A ground below the reserve is the world declining a legal
+// request, which is a result and belongs in the transcript — the same distinction
+// `said_ack` draws between `PR_NONE` and a gesture that refused.
+fn set_plane(w: VoxelWorld, clear: boolean, gh: integer, gm: integer, said: &text) -> boolean {
+  cell = hex_voxel::Hex {};
+  if !clear {
+    cell = hex_voxel::Hex { h_height: gh as u16? ?? 0, h_material: gm as u8? ?? 0 };
+  }
+  gset = world_set_ground(w, cell);
+  if gset.cw_code != CW_OK {
+    said = "ground refused — {gset.cw_detail}";
+    return true;
+  }
+  // ⚠ THE SERVER'S OWN SENTENCE, WORD FOR WORD (`MSG_PLANE`), and it is asked of the
+  // WORLD rather than of the argument: `world_has_ground_default` is what knows
+  // whether a ground is standing, so a cleared plane cannot report itself as set.
+  if world_has_ground_default(w) { said = "ground {gh} material {gm}"; }
+  else { said = "ground cleared"; }
+  true
+}
+
+// `ground <height> <material>`, and `ground off` — the friendly spelling of `50:`.
+//
+// ⚠ **IT IS AN AUTHORING MESSAGE AND IT IS PERFORMED RATHER THAN REFUSED**, which
+// makes it the only one of its class here. `world_set_ground` is a call and not a
+// tick, so this runner can do it exactly as the server does — and `E1γ` says what is
+// at stake: the ground decides what every cell nobody wrote MEANS, so skipping it
+// builds the whole scene on a different floor. Before `K3c` it was skipped, and
+// `tools/scripts/plane.keys` — a script whose entire subject is the ground — keyed a
+// world **byte-identical to one that does nothing but raise a hill**.
+fn run_ground(w: VoxelWorld, rest: text, said: &text) -> boolean {
+  // `ground off` and a bare `ground` clear it, which is `script.mjs`'s bare `50:`.
+  if rest == "" || rest == "off" { return set_plane(w, true, 0, 0, said); }
+  gsp = rest.find(" ");
+  if gsp == null {
+    said = "ground refused — say <height> <material>, or `off` to clear";
+    return true;
+  }
+  set_plane(w, false, rest[..gsp] as integer ?? 0,
+            rest[gsp + 1..].trim() as integer ?? 0, said)
+}
+
+// ── `send` IS WHATEVER IT CARRIES — plan 22 `K3c` ────────────────────────────
+//
+// ⛔ **`send` USED TO SIT ON THE SKIP LIST AND IT NEVER BELONGED THERE.** Those words
+// are one thing each; `send <id>:<payload>` is a raw wire frame and is as many things
+// as there are message ids. [WIRE_PROTOCOL.md](../doc/claude/WIRE_PROTOCOL.md) sorts
+// every id into **A** (authoring — *survives as a store write*), **V** (view), **S**
+// (session), **R** (read-back), **X** (dynamic state) and **D**/**K**; the skip list's
+// words are V or S by construction and this is not.
+//
+// ⛔ **AND THE DROP WAS VISIBLE AS A COLLISION.** Measured over the live corpus on the
+// commit before this: `doorparts`, `doorway`, `cache`, `slab` and the two `a83` probes
+// all keyed **`32952:3318286153` at τ 3813** — six scripts, one world, because
+// everything that made them different was inside a `44:` that never opened.
+//
+// ⚠ **THE CLASS LETTER IS A HINT AND NOT THE RULE, WHICH IS WHY `send_quiet` LISTS IDS
+// AND NOT LETTERS.** The doc answers *what becomes of this message*; a driver asks
+// *can this change what I build*, and two ids cross the two questions in opposite
+// directions — `9` LOAD is filed **R** and replaces the whole store, `7` PLACE is filed
+// **X**, explicitly *a character pose, not world*, and moves the datum every gesture
+// reads. Whitelisting a letter waves both through.
+//
+// ⚠ **SO THE DEFAULT IS DENY.** Everything `send_quiet` does not name — including an id
+// nobody has classified, including one this tree has not invented — **fails the run**.
+// A classifier whose default answer is *harmless* is `CLAUDE.md`'s grep whose default
+// answer is *absent*: it reports a clean result for every case it has never seen.
+fn run_send(w: VoxelWorld, rest: text, said: &text) -> boolean {
+  ci = rest.find(":");
+  if ci == null { said = "send needs `<id>:<payload>`"; return false; }
+  sid = rest[..ci].trim() as integer ?? 0 - 1;
+  pay = rest[ci + 1..].trim();
+  // ⚠ THE SAME PARSE THE SERVER'S `MSG_PLANE` BRANCH MAKES, deliberately — a comma,
+  // and an empty payload meaning *clear*. A script may say either spelling of this one
+  // message and must get the same floor; `probe/k3c` row D is what holds them together.
+  if sid == 50 {
+    if pay == "" { return set_plane(w, true, 0, 0, said); }
+    pi = pay.find(",");
+    if pi == null {
+      said = "ground refused — say <height>,<material> or nothing to clear";
+      return true;
+    }
+    return set_plane(w, false, pay[..pi] as integer ?? 0,
+                     pay[pi + 1..].trim() as integer ?? 0, said);
+  }
+  if send_quiet(sid) { return true; }
+  said = "send {sid}: is not something this runner can do — {send_why(sid)}. "
+       + "Run this script through a server, or take the line out.";
+  false
+}
+
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
 fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &text) -> boolean {
@@ -223,6 +367,19 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // `snap`, `cam` and `feet` read where the eye and the walker are, `last` reads a
   // running tally off the wire and `until` waits for one. Not one of them writes a
   // cell, so a script serves both drivers across them exactly as the design claims.
+  //
+  // ⛔ **AND `hold` / `keys` / `turn` ARE NOT AMONG THOSE SIX — plan 22 `K3c`, and
+  // this is the same defect `send` had, one word over.** They write no cell either,
+  // and that was never the question: they MOVE THE CHARACTER, and the character is
+  // the datum every gesture reads. `tools/script.mjs` compiles `hold W 3` and
+  // `keys 1` to `4:<bits>` and the server walks; this runner skips them and the next
+  // gesture lands wherever the last `at` put the author. Measured over the whole live
+  // corpus, **one script is hit today** — `tools/scripts/deck.keys` walks 90 units
+  // under `send 6:1` and then says `verb storey` with no `at` between, so the deck
+  // this runner builds is at the origin on unlevelled ground. Left skipped in this
+  // step **on purpose**: the fence belongs at the GESTURE rather than at the
+  // movement, because a `hold` with an `at` after it is provably harmless and
+  // refusing it would red every walking script for nothing. Plan 22 `K3e`.
   if cmd == "wait" || cmd == "snap" || cmd == "hold" || cmd == "rate"
      || cmd == "step" || cmd == "turn" || cmd == "keys" || cmd == "save"
      || cmd == "eye" || cmd == "mesh" || cmd == "meshr" || cmd == "frame"
@@ -230,35 +387,11 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
     return true;
   }
 
-  // ⛔ **`send` IS ON THIS LIST AND IT DOES NOT BELONG WITH THE SIX ABOVE — plan 22
-  // `K3a`, and it is left here DELIBERATELY as a known drop rather than an unnoticed
-  // one.** `send <id>:<payload>` is a raw wire frame, and
-  // [WIRE_PROTOCOL.md](../doc/claude/WIRE_PROTOCOL.md) sorts every id into **A**
-  // (authoring — *survives as a store write*), **V** (view) and **S** (session). The
-  // six words above are all V or S by construction. `send` is whatever it carries,
-  // and measured over the corpus **ten scripts send an A id this runner drops on the
-  // floor**: `6` LEVEL and `10` ROAD change what the gestures AFTER them build, `47`
-  // WATER lays cells, and `44` PART **swaps which store is being edited** — so
-  // `doorparts.keys` opens six parts that never open here, every edit between them
-  // lands in the main world, and each close discards nothing.
-  //
-  // ⚠ **AND `ground` IS ON THIS LINE RATHER THAN THE ONE ABOVE BECAUSE IT IS A
-  // `send` BY ANOTHER NAME.** `tools/script.mjs` compiles `ground <h> <mat>` to
-  // `50:<h>,<mat>` and `ground off` to a bare `50:` — the same frame a `send` would
-  // carry, with a friendlier spelling. It is an A: `world_set_ground` decides what
-  // every cell nobody wrote MEANS (`E1γ`), so skipping it builds a world on a
-  // different floor. One script says it, `tools/scripts/plane.keys`. Splitting the
-  // two words across the two lines would be arbitrary — it is one message.
-  //
-  // ⏭ **THAT IS A DEFECT OLDER THAN THIS STEP AND IT IS NOT THIS STEP'S TO FIX** —
-  // it wants `send` classified by id, refusing the A ones and giving the runner the
-  // handful it can honestly perform, which reds those ten scripts wherever they run
-  // headless and is a cost to pay on purpose. Plan 22 `K3c`. What this line buys
-  // today is that the drop is **named**, so the next reader does not measure it
-  // again — and `K3b` can delete the `key` branch without widening the silence.
-  if cmd == "send" || cmd == "ground" {
-    return true;
-  }
+  // ── `send` AND `ground` ARE CLASSIFIED — plan 22 `K3c` ──────────────────────
+  // Both are one line here and a function below, because the reasoning is long and
+  // `run_line` is already at the complexity the compiler nudges at.
+  if cmd == "ground" { return run_ground(w, rest, said); }
+  if cmd == "send"   { return run_send(w, rest, said); }
 
   said = "unknown command '{cmd}'";
   false

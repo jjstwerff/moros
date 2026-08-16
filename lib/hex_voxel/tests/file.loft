@@ -136,6 +136,57 @@ fn test_the_length_check_lets_a_real_save_through() {
   delete(p);
 }
 
+// ── AND A GROUND IS PART OF THAT LENGTH — plan 22 `K3c` ─────────────────────
+//
+// ⛔ **`world_save` ANSWERED `WS_IO` OVER A FILE IT HAD WRITTEN PERFECTLY**, for
+// every world that had set a ground default. `world_to_bytes` writes `GRND` from the
+// FIELD `w_ground` (`G4`'s decision, so a default cannot be both a section and a
+// field and disagree with itself), and `world_file_size` counted only `w_sections` —
+// so the closed form was 16 bytes short and the guard called a sound save a lost one.
+//
+// ⚠ **THE PAIR IS THE TEST.** The control below is the same world with no ground,
+// which is what separates *the sizer forgot the ground* from *the sizer is broken*;
+// on the unfixed library the control passes and this fails.
+//
+// ⚠ **AND IT HAD TO BE HERE RATHER THAN BESIDE THE GROUND TESTS.** `ground_default`,
+// `ground_read` and `fill` all round-trip through `world_to_bytes` /
+// `world_from_bytes` — the half that was always right — and **not one of them calls
+// `world_save`**, which is exactly why `E1γ` could ship, be made normative, and leave
+// the only path with a size guard on it never asked about a ground.
+fn test_a_ground_default_is_in_the_length_the_save_checks() {
+  w = built();
+  world_set_ground(w, Hex { h_height: 40000 as u16? ?? 0, h_material: 2 as u8? ?? 0 });
+  p = "hexworld_ground_len.bin";
+  assert(world_save(w, p, []) == WS_OK,
+         "a save of a world with a ground was refused — the bytes are on disk and "
+         + "the caller is told they are not");
+  assert(file(p).size == world_file_size(w, []),
+         "the file is {file(p).size} bytes and the format says {world_file_size(w, [])}");
+  // ⚠ The size alone would pass on a sizer that over-counted by the same 16, so the
+  // ground itself is read back: the bytes are the claim, not the arithmetic.
+  ld = world_load(p);
+  assert(ld.wl_code == WL_OK, "and it loads: {ld.wl_code} {ld.wl_detail}");
+  assert(world_has_ground_default(ld.wl_world)
+         && world_ground_default(ld.wl_world).h_height == 40000
+         && world_ground_default(ld.wl_world).h_material == 2,
+         "and the ground came back");
+  delete(p);
+}
+
+fn test_the_same_world_without_a_ground_is_shorter_by_exactly_the_section() {
+  // The control, and the exact difference — `SZ_SECTION_HEAD + SZ_GROUND`. A test
+  // that only asserted *both save* would be green on a sizer that ignored the
+  // ground in both directions.
+  bare = built();
+  gnd = built();
+  world_set_ground(gnd, Hex { h_height: 40000 as u16? ?? 0, h_material: 2 as u8? ?? 0 });
+  assert(world_save(bare, "hexworld_ground_bare.bin", []) == WS_OK, "the control saved");
+  assert(world_file_size(gnd, []) - world_file_size(bare, []) == SZ_SECTION_HEAD + SZ_GROUND,
+         "a ground costs {world_file_size(gnd, []) - world_file_size(bare, [])} bytes, "
+         + "not {SZ_SECTION_HEAD + SZ_GROUND}");
+  delete("hexworld_ground_bare.bin");
+}
+
 // The incremental writer answers the same way — it falls back to the full writer
 // when the shape does not match, and a missing directory has no shape at all.
 fn test_the_incremental_writer_refuses_a_missing_directory_too() {
