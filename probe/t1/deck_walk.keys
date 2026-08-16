@@ -1,0 +1,17 @@
+# T1 BASELINE — the walk half of `deck.keys`, saved. Plan 22 `T1`.
+#
+# The acceptance artifact for the walk tick: `deck.keys`'s levelled pad, walked at
+# `rate 0` so the tick count is the script's and not the box's. Probe 1 recorded
+# `cea971a07899e420b344c0054567f4e1`; probe 2 checked the instrument is not blind
+# (`step 45` -> `5775ad1d…`).
+rate 0
+at 0 0 0
+verb raise
+wait rebuilt
+send 6:1
+keys 1
+step 90
+keys 0
+send 6:0
+step 30
+save t1deck

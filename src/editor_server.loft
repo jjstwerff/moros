@@ -3278,15 +3278,17 @@ fn main() {
   println("editor: {len(part_thumbs)} part thumbnails, "
         + "{len(thumbs_wire(part_thumbs))} messages, from {parts_root()}");
 
-  // The character's state — the whole of it. It starts at the origin because an
-  // infinite world has no middle.
+  // ── THE CHARACTER'S STATE — THE WHOLE OF IT, AND IT IS THE LIBRARY'S NOW ────
+  //
+  // Plan 22 `T1`. Position, feet, fall speed, facing, held keys, gait, the level
+  // state machine and the collision proxy are one `hex_editor::Walker`, because the
+  // TICK that evolves them is one function that this server, the page and the runner
+  // all call. What is left out here is what is genuinely this driver's: the camera,
+  // the pitch, the dirty set and every sentence it says.
+  //
+  // It starts at the origin because an infinite world has no middle.
   start = hex_to_world(0, 0, 0);
-  px = start.x;
-  py = start.y;
-  // `py` is a STATE now. The fall in the tick is its only evolution.
-  vy = 0.0;
-  pz = start.z;
-  yaw = 0.0;
+  wk = hex_editor::walker_new(start.x, start.y, start.z);
   pitch = 0.35;
   // The boom's CURRENT length. Pulls in instantly when the ground intrudes —
   // any lag there means a frame spent inside the hill — and extends only at
@@ -3320,7 +3322,6 @@ fn main() {
   // travel, never accumulated per frame — and it buys the same property: the
   // feet cannot skate, because the swing is a function of how far the character
   // has actually gone.
-  walked = 0.0;
 
   // The cart's own frame, and the ONE number its wheels are derived from.
   cart_x = 3.0;
@@ -3466,16 +3467,10 @@ fn main() {
 
   // The collision proxy and its validity, keyed on the cell, the edit clock and
   // the LEVEL the walker is on.
-  coll_sf = surfaces_new();
-  coll_rt = runs_track(sess.es_runs);
-  coll_move = hex_editor::edges_walk(wld, 0, 0, COLL_R, sess.es_runs, coll_sf, 0.0,
-                                     cliff_step());
+  // ⚠ THE WALK'S SET IS THE WALKER'S NOW — plan 22 `T1`, and only the CAMERA's is
+  // left here. They are keyed identically and were built in one block; what kept them
+  // together was the key, and the key moved into `walk_proxy` with the walker.
   coll_view = hex_editor::edges_around(wld, 0, 0, COLL_R, true, sess.es_runs, surfaces_new(), 0.0);
-  coll_q = 0;
-  coll_r = 0;
-  coll_tau = 0 - 1;                   // never a real clock value, so the first
-  coll_surf = 0 - 1;                  // tick always builds
-  coll_have = false;
 
   sn_n = 0;                    // snapshots taken this session — `$` on the client
   // ── THE RECORDER — every run, timed ────────────────────────────────────────
@@ -3503,14 +3498,12 @@ fn main() {
   rec_buf = "";
   rec_path = "../recordings/run-{ticks()}.rec";
   rec_n = 0;
-  levelling = false;
   level_warned = false;        // one residual report per levelling run, not per step
   // ⚠ ITS OWN FLAG, NOT `level_warned`. A stroke can clamp against the floor without
   // stalling and stall without clamping, so one flag would let whichever happened
   // first silence the other — and the two sentences say different things to the
   // author. Same shape as the pair itself: two questions, two answers.
   level_stalled = false;
-  level_h = 0;                 // the frozen foot height, in height units
   roading = false;             // laying road as the character walks
   // ⚠ WATER IS A MODE LIKE ROAD AND ITS ROUTE IS NOT — plan 20 `A10`. *When there are
   // hills already it takes the lowest path, but without them we still have to draw them
@@ -3633,7 +3626,6 @@ fn main() {
   // verdict arrives whenever there is ground to have an opinion about, which is
   // exactly when this accounting is worth reading.
 
-  keys = 0;
   last_us = ticks();
 
   println("moros editor — W0 (an infinite plane, a character, the camera behind it)");
@@ -3717,7 +3709,7 @@ fn main() {
         // client was in the list and reached nobody. A client that connects and is
         // told nothing shows an empty subject line for as long as no toggle moves —
         // which on a quiet session is forever.
-        srv.send_to(ev.cid, hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+        srv.send_to(ev.cid, hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
         // ⚠ IT GOES OUT HERE **AND AGAIN WHENEVER THE LIBRARY MOVES** — plan 17
         // `A7.1`. This comment used to read *"the catalogue does not change during
         // a session, so it goes out once"*, which was false the whole time: the
@@ -3747,7 +3739,7 @@ fn main() {
           srv.send_to(ev.cid, wire_arm_r);
           srv.send_to(ev.cid, "S:build {build_id()}");
           srv.send_to(ev.cid, "E:");
-          srv.send_to(ev.cid, fog_wire(px, py, pz));
+          srv.send_to(ev.cid, fog_wire(wk.wk_x, wk.wk_y, wk.wk_z));
           srv.send_to(ev.cid, ramp_wire());
           // A new client holds no chunks, so the stream has to start over for
           // everyone. Correct rather than clever: W0's job is to be right about
@@ -3793,7 +3785,7 @@ fn main() {
               if cl.cid == ev.cid { cl.aspect = asp; known = true; }
             }
             if !known { clients += [Client { cid: ev.cid, aspect: asp, derives: false }]; }
-            srv.send_to(ev.cid, cam_wire(px, py, pz, yaw, cam_pitch, asp, cam_dist, cam_slide, cam_mode, wld,
+            srv.send_to(ev.cid, cam_wire(wk.wk_x, wk.wk_y, wk.wk_z, wk.wk_yaw, cam_pitch, asp, cam_dist, cam_slide, cam_mode, wld,
                                           PlacedEye { pe_on: eye_on, pe_x: eye_x, pe_y: eye_y, pe_z: eye_z }));
             // ⚠ AND ITS `V:`, HERE, BECAUSE THIS IS WHERE A CLIENT ARRIVES. The tick
             // sends on CHANGE, so a viewer that joins while the mode is already set
@@ -3819,7 +3811,7 @@ fn main() {
           // from it, so they cannot drift apart.
           di = ev.payload.find(",");
           if di != null {
-            yaw = yaw + (ev.payload[..di] as float ?? 0.0) * LOOK_PER_PX;
+            wk.wk_yaw = wk.wk_yaw + (ev.payload[..di] as float ?? 0.0) * LOOK_PER_PX;
             pitch = pitch + (ev.payload[di + 1..] as float ?? 0.0) * LOOK_PER_PX;
             // ⚠ THE FENCE BELONGS TO THE MODE THAT NEEDS IT. FOLLOW clamps because
             // past vertical a boom stops meaning anything; EYES has no boom.
@@ -3827,7 +3819,7 @@ fn main() {
             moved = true;
           }
         } else if ev.msg_id == MSG_KEYS {
-          keys = ev.payload as integer ?? 0;
+          wk.wk_held = ev.payload as integer ?? 0;
         } else if ev.msg_id == MSG_SAVE {
           // ⚠ THE ONE GESTURE THAT CAN LOSE SOMETHING WHILE A PART IS OPEN, so its
           // guard comes with the mode rather than with the fence (`A7.3b`). In part
@@ -4093,7 +4085,7 @@ fn main() {
                 part_tau0 = wld.w_tau;
                 part_sig0 = hex_voxel::world_sections_key(wld);
                 srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                       levelling, roading, tracing, sess.es_open_kind));
+                                       wk.wk_levelling, roading, tracing, sess.es_open_kind));
                 srv.send_to(ev.cid, "S:part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
                                   + "{len(wld.w_sections)} sections");
                 println("editor: part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
@@ -4107,7 +4099,7 @@ fn main() {
             nch = len(wld.w_chunks);
             if scode == 0 { world_name = ev.payload; }
             srv.send_to(ev.cid, "S:saved {nch} chunks to {ev.payload} (code {scode})");
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
             println("editor: saved {nch} chunks -> {ev.payload} (code {scode})");
           }
         } else if ev.msg_id == MSG_LOAD && in_part {
@@ -4385,9 +4377,9 @@ fn main() {
               pt_shown = part_name;
               wld = held_world;
               sess = held_sess;
-              px = held_px;
-              pz = held_pz;
-              py = hex_mesh::ground_under(wld, px, pz, held_py);
+              wk.wk_x = held_px;
+              wk.wk_z = held_pz;
+              wk.wk_y = hex_mesh::ground_under(wld, wk.wk_x, wk.wk_z, held_py);
               in_part = false;
               part_name = "";
               // ⚠ FORCE A REBUILD RATHER THAN TRUST A CLOCK COMPARISON. `w_tau` is
@@ -4404,10 +4396,10 @@ fn main() {
               // without a word and would leave the cart stuck at the origin.
               for cml in cart_mesh_lines() { srv.broadcast(cml); }
               cart_send(srv, cart_asm, cart_x, cart_z, cart_yaw, 0.0, wld);
-              vy = 0.0;
+              wk.wk_vy = 0.0;
               moved = true;
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                     levelling, roading, tracing, sess.es_open_kind));
+                                     wk.wk_levelling, roading, tracing, sess.es_open_kind));
               srv.send_to(ev.cid, "S:part '{pt_shown}' closed — {pt_edits} edits "
                                 + "discarded{pt_secs}, world restored "
                                 + "({len(wld.w_chunks)} chunks)");
@@ -4439,9 +4431,9 @@ fn main() {
             } else {
               held_world = wld;
               held_sess = sess;
-              held_px = px;
-              held_py = py;
-              held_pz = pz;
+              held_px = wk.wk_x;
+              held_py = wk.wk_y;
+              held_pz = wk.wk_z;
 
               // ⚠ THROUGH A LOCAL, AND THAT IS NOT A STYLE CHOICE — loft#774.
               // `wld = pt_ld.wl_world` reads a struct FIELD, which ALIASES: `wld`
@@ -4476,10 +4468,10 @@ fn main() {
               // A part is authored around its own origin, so that is where the feet
               // go. Staying put would open a cottage from across the valley and show
               // the author empty ground with the subject line insisting otherwise.
-              px = 0.0;
-              pz = 0.0;
-              py = hex_mesh::ground_under(wld, px, pz, 0.0);
-              vy = 0.0;
+              wk.wk_x = 0.0;
+              wk.wk_z = 0.0;
+              wk.wk_y = hex_mesh::ground_under(wld, wk.wk_x, wk.wk_z, 0.0);
+              wk.wk_vy = 0.0;
               for pod in loaded { mark_dirty_id(dirty, pod); }
               // ⚠ AND THE CART GOES WITH THE WORLD — plan 17 `A8.9b`. The eight
               // registries above are emptied because *a part has no runs, roofs,
@@ -4491,7 +4483,7 @@ fn main() {
               cart_hide(srv);
               moved = true;
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                     levelling, roading, tracing, sess.es_open_kind));
+                                     wk.wk_levelling, roading, tracing, sess.es_open_kind));
               pt_meta = part_meta(wld);
               pt_named = part_name;
               if pt_meta.mr_code == MR_OK && pt_meta.mr_meta.pm_name != "" {
@@ -4541,7 +4533,7 @@ fn main() {
             // not happen is the exact lie B2.3's control is aimed at, one message
             // over from the mode it was written for.
             world_name = ev.payload;
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
             // Everything visible is derived from the world, so a load invalidates
             // all of it — the one case where the whole loaded set really is dirty,
             // and saying so through the same routine keeps one path.
@@ -4549,7 +4541,7 @@ fn main() {
             println("editor: load marked {len(dirty.items)} of {len(loaded)} chunks dirty");
             // The FEET, so the feet's rule — a load must not drop someone
             // standing on a deck through to the ground under it.
-            py = hex_mesh::ground_under(wld, px, pz, py);
+            wk.wk_y = hex_mesh::ground_under(wld, wk.wk_x, wk.wk_z, wk.wk_y);
             moved = true;
             srv.send_to(ev.cid, "S:loaded {len(wld.w_chunks)} chunks from {ev.payload}");
             println("editor: loaded {len(wld.w_chunks)} chunks <- {ev.payload}");
@@ -4565,9 +4557,9 @@ fn main() {
             rest2 = ev.payload[pi + 1..];
             pj = rest2.find(",");
             if pj != null {
-              px = ev.payload[..pi] as float ?? px;
-              pz = rest2[..pj] as float ?? pz;
-              yaw = rest2[pj + 1..] as float ?? yaw;
+              wk.wk_x = ev.payload[..pi] as float ?? wk.wk_x;
+              wk.wk_z = rest2[..pj] as float ?? wk.wk_z;
+              wk.wk_yaw = rest2[pj + 1..] as float ?? wk.wk_yaw;
               // ⚠ The road goes where the character NOW IS, from px/pz. It used
               // `last_hq`/`last_hr`, which only the WALK TICK updates — so every
               // placement laid road at the same stale hex and a placed path made a
@@ -4585,13 +4577,13 @@ fn main() {
                 // the road above. `road_lay` stamps where the author is; this
                 // FOLLOWS THE GROUND and uses the facing only to break a tie — which
                 // on a plain is every step and on a hillside is none of them.
-                whx = world_to_hex(px, pz);
+                whx = world_to_hex(wk.wk_x, wk.wk_z);
                 wsteps = 6;
                 wcl = 0;
                 wrs = 0;
                 wwhy = "";
                 wn = hex_editor::water_lay(wld, whx.ha_q, whx.ha_r,
-                       hex_editor::snap_dir(cos(yaw), sin(yaw)), wsteps, water_run,
+                       hex_editor::snap_dir(cos(wk.wk_yaw), sin(wk.wk_yaw)), wsteps, water_run,
                        wcl, wrs, wwhy);
                 water_run = water_run + wn;
                 // ⚠ THE RUN MAY LEAVE THE DISC ENTIRELY, because its length is the
@@ -4604,7 +4596,7 @@ fn main() {
                 }
               }
               if roading {
-                rhx = world_to_hex(px, pz);
+                rhx = world_to_hex(wk.wk_x, wk.wk_z);
                 // ── A ROAD FOLLOWS THE LANDSCAPE — plan 20 ────────────────────────
                 //
                 // > *"A road will follow the landscape the way a road builder works,
@@ -4649,8 +4641,8 @@ fn main() {
                 // strip where it is still natural, and the pair gives a gradient.
                 rd_look = ((hex_editor::ROAD_HALF + 1) as float) * hex_grid::HEX_LEN;
                 rd_far = rd_look + hex_grid::HEX_LEN;
-                rd_h1 = py_of(wld, px + cos(yaw) * rd_look, pz + sin(yaw) * rd_look);
-                rd_h2 = py_of(wld, px + cos(yaw) * rd_far, pz + sin(yaw) * rd_far);
+                rd_h1 = py_of(wld, wk.wk_x + cos(wk.wk_yaw) * rd_look, wk.wk_z + sin(wk.wk_yaw) * rd_look);
+                rd_h2 = py_of(wld, wk.wk_x + cos(wk.wk_yaw) * rd_far, wk.wk_z + sin(wk.wk_yaw) * rd_far);
                 rd_slope = ((rd_h2 - rd_h1) as float) / hex_grid::HEX_LEN;
                 // ⚠ AND THE AUTHOR'S OWN GRADE IS EXTRAPOLATED BACK, NEVER SAMPLED.
                 // *Re-freezing from the FEET changes nothing* — the author RIDES the
@@ -4663,8 +4655,8 @@ fn main() {
                 rd_clamp = 0;
                 rd_res = 0;
                 hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h,
-                                     hex_editor::ROAD_HALF, py,
-                                     cos(yaw) * rd_slope, sin(yaw) * rd_slope,
+                                     hex_editor::ROAD_HALF, wk.wk_y,
+                                     cos(wk.wk_yaw) * rd_slope, sin(wk.wk_yaw) * rd_slope,
                                      rd_clamp, rd_res, road_grades);
                 // ⚠ A ROAD THAT COULD NOT BE CUT AS DEEP AS ITS GRADE ASKED SAYS SO.
                 // `road_lay` used to throw `surface_set`'s verdict away, so a grade
@@ -4685,7 +4677,7 @@ fn main() {
                 // chunks holding the mesh they had before the cut.
                 mark_dirty(dirty, rhx.ha_q, rhx.ha_r,
                            hex_editor::ROAD_HALF + hex_editor::PEAK_R);
-                py = (road_h as float) * HEIGHT_SCALE;
+                wk.wk_y = (road_h as float) * HEIGHT_SCALE;
                 // ⚠ AND WHETHER THE RUN COULD BE HELD TO ITS LIMIT AT ALL — `A4`'s
                 // refusal, on the gesture that can now reach it.
                 rd_owed = hex_editor::slope_owed(wld, rhx.ha_q, rhx.ha_r);
@@ -4696,13 +4688,13 @@ fn main() {
                   println("editor: road did not settle — owed {rd_owed}");
                 }
               }
-              if levelling {
-                py = (level_h as float) * HEIGHT_SCALE;
+              if wk.wk_levelling {
+                wk.wk_y = (wk.wk_level_h as float) * HEIGHT_SCALE;
               } else {
-                py = hex_mesh::ground_under(wld, px, pz, py);
+                wk.wk_y = hex_mesh::ground_under(wld, wk.wk_x, wk.wk_z, wk.wk_y);
               }
               // A teleport is authoritative, so it also clears the fall.
-              vy = 0.0;
+              wk.wk_vy = 0.0;
               moved = true;
             }
             // Acknowledge it. A gate that walks a path — laying a road ring, say — has
@@ -4710,7 +4702,7 @@ fn main() {
           // LEAKS the moment the box is busy. Measured: the field gate laid an open
           // ring under load and then reported the fill refusing, which looks exactly
           // like the feature being broken.
-          srv.send_to(ev.cid, "S:placed {px},{pz}");
+          srv.send_to(ev.cid, "S:placed {wk.wk_x},{wk.wk_z}");
         }
         } else if ev.msg_id == MSG_STOREY {
           // ⚠ **WHAT IS LEFT HERE IS THE SOCKET AND NOTHING ELSE** — plan 22 `K3`, and
@@ -4734,7 +4726,7 @@ fn main() {
           // set.
           sdir = ev.payload as integer ?? 1;
           smade = hex_editor::storey_here(wld,
-                    hex_editor::author_at(px, pz, yaw, py), sdir);
+                    hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y), sdir);
           srv.send_to(ev.cid, "S:{smade.sy_say}");
           if !smade.sy_ok {
             println("editor: storey refused ({smade.sy_cells}) at "
@@ -4767,7 +4759,7 @@ fn main() {
           // seen it. `stair_ahead` asks the world it is writing to.
           st_dir = ev.payload as integer ?? 1;
           stack = hex_editor::stair_ahead(wld,
-                    hex_editor::author_at(px, pz, yaw, py), st_dir);
+                    hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y), st_dir);
           srv.send_to(ev.cid, "S:{stack.ak_why}");
           if !stack.ak_ok {
             println("editor: {stack.ak_why}");
@@ -4781,12 +4773,12 @@ fn main() {
           // that produced it. Splitting them across two messages would report a
           // pose from a later tick, which is the whole failure this replaces.
           sn_n = sn_n + 1;
-          sn_hx = world_to_hex(px, pz);
-          sn_ref = hex_editor::walk_h(sn_hx.ha_q, sn_hx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
+          sn_hx = world_to_hex(wk.wk_x, wk.wk_z);
+          sn_ref = hex_editor::walk_h(sn_hx.ha_q, sn_hx.ha_r, wld, wk.wk_y / HEIGHT_SCALE ?? 0.0);
           sn_sf = hex_voxel::world_surface(wld, sn_hx.ha_q, sn_hx.ha_r,
-                                           py / HEIGHT_SCALE ?? 0.0);
+                                           wk.wk_y / HEIGHT_SCALE ?? 0.0);
           sn_txt = "snapshot {sn_n}\n"
-            + "character  x {px}  z {pz}  y {py}  yaw {yaw}\n"
+            + "character  x {wk.wk_x}  z {wk.wk_z}  y {wk.wk_y}  yaw {wk.wk_yaw}\n"
             + "cell       {sn_hx.ha_q},{sn_hx.ha_r}\n"
             + "surface    height {sn_sf.sf_units} units ({(sn_sf.sf_units as float) * HEIGHT_SCALE} wu)"
             + "  layer {sn_sf.sf_layer}  occupied {sn_sf.sf_occ}  smooth {sn_sf.sf_smooth}\n"
@@ -4794,7 +4786,7 @@ fn main() {
             + "outdoors   {terrain_h(sn_hx.ha_q, sn_hx.ha_r, wld)} units (the GROUND label)\n"
             + "camera     boom {cam_dist}  free {cam_free_last}  pitch {cam_pitch}"
             + "  rested {cam_rested}  residual {cam_res_d},{cam_res_p}\n"
-            + "modes      levelling {levelling} (grade {level_h})  roading {roading}"
+            + "modes      levelling {wk.wk_levelling} (grade {wk.wk_level_h})  roading {roading}"
             + " (grade {road_h})\n"
             + "wall runs  {len(sess.es_runs.items)}\n";
           for sn_run in sess.es_runs.items {
@@ -5030,7 +5022,7 @@ fn main() {
                 "S:import refused ({gr.gr_code}) {gr.gr_detail}");
               println("editor: import refused ({gr.gr_code}) {gr.gr_detail}");
             } else {
-              ihx = world_to_hex(px, pz);
+              ihx = world_to_hex(wk.wk_x, wk.wk_z);
               icol = world_column(wld, ihx.ha_q, ihx.ha_r);
               itop = 0;
               for ie in icol.co_cells {
@@ -5067,7 +5059,7 @@ fn main() {
           // author stands and saying the sentence. The prop gate asked for this move
           // in its own header, and `tests/session.loft` holds the accumulation claim
           // that came with it.
-          phx = world_to_hex(px, pz);
+          phx = world_to_hex(wk.wk_x, wk.wk_z);
           pdr = hex_editor::prop_at(wld, phx.ha_q, phx.ha_r,
                                     ev.payload as integer ?? 1);
           if pdr.dr_code == hex_editor::DR_ITEM {
@@ -5121,7 +5113,7 @@ fn main() {
           println("editor: trigger refused — in part mode ('{part_name}')");
           } else {
           tname = ev.payload;
-          thx = world_to_hex(px, pz);
+          thx = world_to_hex(wk.wk_x, wk.wk_z);
           tcol = world_column(wld, thx.ha_q, thx.ha_r);
           ttop = 0;
           for te in tcol.co_cells {
@@ -5184,9 +5176,9 @@ fn main() {
           // phantom trunk (this ran after `do_fence` had returned on the refusal),
           // and a payload with no radius records the ring it actually laid rather
           // than none at all.
-          do_fence(srv, ev.cid, ev.payload, px, pz, py, wld, dirty, sess);
+          do_fence(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wk.wk_y, wld, dirty, sess);
         } else if ev.msg_id == MSG_EDGE {
-          do_edge(srv, ev.cid, ev.payload, px, pz, py, wld, dirty);
+          do_edge(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wk.wk_y, wld, dirty);
         } else if ev.msg_id == MSG_TRACE {
           // ⚠ THREE VERBS ON ONE ID, because they answer three different questions.
           //   `27:0`  off          `27:1`  the tick's phases, once a second
@@ -5222,7 +5214,7 @@ fn main() {
           } else {
             tracing = twant != 0;
             srv.send_to(ev.cid, "S:trace {tracing}");
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
             println("editor: trace {tracing}");
           }
         } else if ev.msg_id == MSG_MODE {
@@ -5251,7 +5243,7 @@ fn main() {
             // control. The refusal above sends no `H:`, so a mode the server
             // declines leaves every client's subject line exactly as it was — the
             // one behaviour that separates a HUD from an echo of the keystroke.
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
             println("editor: camera mode {cam_mode}");
           }
         } else if ev.msg_id == MSG_PLANE {
@@ -5312,7 +5304,7 @@ fn main() {
             // every client's subject line exactly as it was, or the HUD is an echo
             // of the keystroke rather than a report of the state.
             srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                   levelling, roading, tracing, sess.es_open_kind));
+                                   wk.wk_levelling, roading, tracing, sess.es_open_kind));
             println("editor: opening {sess.es_open_kind} selected");
           }
         } else if ev.msg_id == MSG_SELECT_PART {
@@ -5403,8 +5395,8 @@ fn main() {
               // `DRAW_HEXES` of the CHARACTER and the fog is centred there too, so
               // an eye beyond that photographs the inside of the fog and reports a
               // successful picture of nothing.
-              eydx = eyx - px;
-              eydz = eyz - pz;
+              eydx = eyx - wk.wk_x;
+              eydz = eyz - wk.wk_z;
               eyd = sqrt(eydx * eydx + eydz * eydz) ?? 0.0;
               eymax = (DRAW_HEXES as float) * hex_grid::HEX_LEN;
               if eyd > eymax {
@@ -5480,7 +5472,7 @@ fn main() {
           // profile branches and the niche host were eighty lines here, and none of
           // them needed a port — but none of them could be reached without one
           // either. What stays is the store write, the dirty mark and the sentences.
-          oack = hex_editor::open_ahead(wld, hex_editor::author_at(px, pz, yaw, py),
+          oack = hex_editor::open_ahead(wld, hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y),
                                         hex_editor::DOOR_MAT, 1);
           if !oack.ak_ok {
             srv.send_to(ev.cid, "S:opening refused — {oack.ak_why}");
@@ -5494,7 +5486,7 @@ fn main() {
             okind = sess.es_open_kind;
             if ev.payload != "" { okind = ev.payload as integer ?? hex_editor::OP_ROUND; }
             omade = hex_editor::opening_make(
-              sess.es_runs, sess.es_open, px, pz, okind, hex_mesh::WALL_UP, HEIGHT_SCALE);
+              sess.es_runs, sess.es_open, wk.wk_x, wk.wk_z, okind, hex_mesh::WALL_UP, HEIGHT_SCALE);
             if omade.om_back {
               if omade.om_code == hex_editor::OM_NO_HOST {
                 srv.send_to(ev.cid, "S:no niche to cut into — make one with N first");
@@ -5546,8 +5538,8 @@ fn main() {
             // screen down asked `hm_pad` for the same footprint. One number, two
             // spellings, no instrument between them — it is `SLAB_PAD` for both now.
             ssl = hex_editor::session_slab(sess,
-                    hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
-                    py_of(wld, px, pz));
+                    hex_editor::pose_footprint(wk.wk_x, wk.wk_z, wk.wk_yaw, HOUSE_W, HOUSE_D),
+                    py_of(wld, wk.wk_x, wk.wk_z));
             mark_dirty(dirty, ssl.sb_q, ssl.sb_r, ssl.sb_pad);
             sslab = ssl.sb_slab;
             // ⚠ AND WHERE IT LANDED. A footprint is placed AHEAD of the author —
@@ -5558,7 +5550,7 @@ fn main() {
             srv.send_to(ev.cid, "S:{ssl.sb_say}");
             println("editor: slab at ({sslab.sl_x},{sslab.sl_z}) "
                     + "{sslab.sl_lo}..{sslab.sl_hi}, clear "
-                    + "{hex_editor::slab_clear(py_of(wld, px, pz), sslab)} of {STOREY_H}");
+                    + "{hex_editor::slab_clear(py_of(wld, wk.wk_x, wk.wk_z), sslab)} of {STOREY_H}");
           } else {
             // ⚠ THE HOST, THE KIND AND THE REFUSAL WERE `hex_editor::slab_hole`
             // ALREADY; **THE ASSEMBLY WAS NOT** — plan 22 `K3`. The `es_holes`
@@ -5572,7 +5564,7 @@ fn main() {
             // `hex_editor::HOLE_HALF`, for the reason `WORLD_EPS` was moved: a
             // second driver would have picked its own with every test green.
             shl = hex_editor::session_hole_kind(
-                    sess, hex_editor::author_at(px, pz, yaw, py), skind);
+                    sess, hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y), skind);
             srv.send_to(ev.cid, "S:{shl.hm_say}");
             if !shl.hm_ok {
               println("editor: {shl.hm_say}");
@@ -5599,10 +5591,10 @@ fn main() {
           // append and the two sentences were not, so the middle one — the only thing
           // a mesher can see — existed at exactly one driver.
           pseat = if ev.payload == "" {
-                    hex_editor::session_seat(sess, hex_editor::author_at(px, pz, yaw, py))
+                    hex_editor::session_seat(sess, hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y))
                   } else {
                     hex_editor::session_seat_kind(
-                      sess, hex_editor::author_at(px, pz, yaw, py),
+                      sess, hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y),
                       ev.payload as integer ?? hex_editor::PROP_BED)
                   };
           if !pseat.sm_ok {
@@ -5642,10 +5634,10 @@ fn main() {
           // family; `37:<kind>` says which this time and does not re-choose.
           abuilt = if ev.payload == "" {
                      hex_editor::session_annex(sess, wld,
-                       hex_editor::author_at(px, pz, yaw, py))
+                       hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y))
                    } else {
                      hex_editor::session_annex_kind(sess, wld,
-                       hex_editor::author_at(px, pz, yaw, py),
+                       hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y),
                        ev.payload as integer ?? hex_editor::AN_BOX)
                    };
           if !abuilt.ax_ok {
@@ -5700,7 +5692,7 @@ fn main() {
           // `51:` chose, and this is the only thing that lets it: without a root the
           // gesture refuses a chosen part rather than reading one. The page passes
           // its own baked tree at the same call.
-          hack = hex_editor::press_verb(sess, wld, hex_editor::author_at(px, pz, yaw, py),
+          hack = hex_editor::press_verb(sess, wld, hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y),
                                         hex_editor::VB_PLACE, parts_root());
           if !hack.ak_ok {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
@@ -5719,7 +5711,7 @@ fn main() {
             // a floor cell by construction.
             hseat = hex_editor::terrain_h(hack.ak_q, hack.ak_r, wld);
             sess.es_roofs.items += [hex_editor::roof_plan_of(
-              hex_editor::pose_footprint(px, pz, yaw, HOUSE_W, HOUSE_D),
+              hex_editor::pose_footprint(wk.wk_x, wk.wk_z, wk.wk_yaw, HOUSE_W, HOUSE_D),
               ((hseat + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
               hex_editor::ROOF_PITCH_DEFAULT)];
             mark_dirty(dirty, hack.ak_q, hack.ak_r, HOUSE_W + HOUSE_D + 4);
@@ -5727,7 +5719,7 @@ fn main() {
             println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");
           }
         } else if ev.msg_id == MSG_WALL {
-          do_wall(srv, ev.cid, ev.payload, px, pz, wld, dirty, sess);
+          do_wall(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wld, dirty, sess);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: `<roof_up>` — the roof height above the floor, in height
           // units — or `<roof_up>,<part>`, which places a SAVED part instead of
@@ -5760,8 +5752,8 @@ fn main() {
             srv.send_to(ev.cid, "S:stencil refused — {fit_why(rfit)}");
             println("editor: stencil refused — {fit_why(rfit)}");
           } else {
-          shx2 = world_to_hex(px, pz);
-          anch = (py / HEIGHT_SCALE + 0.5) as integer ?? 0;
+          shx2 = world_to_hex(wk.wk_x, wk.wk_z);
+          anch = (wk.wk_y / HEIGHT_SCALE + 0.5) as integer ?? 0;
           if stamp_part != "" && in_part {
             // ── THE GESTURE THAT MAKES A REFERENCE — plan 17 `A7.3f` ────────
             //
@@ -5888,13 +5880,13 @@ fn main() {
             println("editor: scatter refused — {fit_why(sfit)}");
             continue;
           }
-          vhx = world_to_hex(px, pz);
+          vhx = world_to_hex(wk.wk_x, wk.wk_z);
           nv = scatter(wld, vhx.ha_q, vhx.ha_r, SCATTER_R, sc_sp, sc_dn);
           mark_dirty(dirty, vhx.ha_q, vhx.ha_r, SCATTER_R + 1);
           srv.send_to(ev.cid, "S:{say_scattered(nv, sc_sp, sc_dn)}");
           println("editor: scattered {nv} of species {sc_sp} at density {sc_dn}");
         } else if ev.msg_id == MSG_FIELD {
-          fhx = world_to_hex(px, pz);
+          fhx = world_to_hex(wk.wk_x, wk.wk_z);
           nfilled = field_fill(wld, fhx.ha_q, fhx.ha_r);
           if nfilled == 0 - 2 {
             // The cap is its own refusal, and unlike the open-enclosure one it
@@ -5932,7 +5924,7 @@ fn main() {
             // as levelling freezes its floor: a road laid while walking uphill
             // should CUT into the hill rather than ride up it, which is what
             // makes it a road and not a painted stripe.
-            rvf = py / HEIGHT_SCALE ?? 0.0;
+            rvf = wk.wk_y / HEIGHT_SCALE ?? 0.0;
             rres0 = 0.0;
             road_h = hex_editor::freeze_grade(rvf, rres0);
             road_stalled = false;
@@ -5957,7 +5949,7 @@ fn main() {
             srv.send_to(ev.cid, "S:road false at grade {road_h}");
             println("editor: road off at grade {road_h}");
           }
-          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
         } else if ev.msg_id == MSG_WATER {
           watering = (ev.payload as integer ?? 0) != 0;
           if watering { water_run = 0; }
@@ -5969,41 +5961,27 @@ fn main() {
             println("editor: water off");
           }
         } else if ev.msg_id == MSG_LEVEL {
-          levelling = (ev.payload as integer ?? 0) != 0;
-          if levelling { level_warned = false; }
-          if levelling {
-            // Freeze the height you are standing at — read from THE FEET, not
-            // from the cell.
-            //
-            // ⚠ Measured: taking `terrain_h(cell)` instead jumped the character
-            // 2.22 → 3.25 wu the instant levelling came on. The feet stand on
-            // the INTERPOLATED surface, which equals the cell height only at the
-            // cell's centre; anywhere on a slope the two differ. Freezing from
-            // the cell froze a level the character was not actually at — the
-            // same two-derivations-of-one-surface class as everything else here.
-            lvf = py / HEIGHT_SCALE ?? 0.0;
+          // ⚠ THE FREEZE AND THE RELEASE ARE THE LIBRARY'S — plan 22 `T1`. Both are
+          // moves of the level STATE MACHINE, and the page has the same key with no
+          // machine behind it at all. What is left here is the sentence, which is
+          // this driver's: `level_on` answers the residual it quantised away.
+          lvf = wk.wk_y / HEIGHT_SCALE ?? 0.0;
+          if (ev.payload as integer ?? 0) != 0 {
+            level_warned = false;
             lres0 = 0.0;
-            level_h = hex_editor::freeze_grade(lvf, lres0);
-            // The same quantisation as the road's, and owed the same report:
-            // the floor you froze is not quite the floor you were standing on.
-            lres2 = lvf - (level_h as float);
-            if lres2 < 0.0 { lres2 = 0.0 - lres2; }
+            hex_editor::level_on(wk, wld, lres0);
+            // The same quantisation as the road's, and owed the same report: the
+            // floor you froze is not quite the floor you were standing on.
             srv.send_to(ev.cid,
-              "S:level true at height {level_h} (quantised from {lvf}, residual {lres2})");
-            println("editor: levelling ON at height {level_h} (feet {py}), residual {lres2}");
+              "S:level true at height {wk.wk_level_h} (quantised from {lvf}, residual {lres0})");
+            println("editor: levelling ON at height {wk.wk_level_h} (feet {wk.wk_y}), residual {lres0}");
           } else {
-            // Releasing must put the feet back ON the ground immediately.
-            // Without this they keep the frozen height until the next step,
-            // because `terrain_y` is only read inside the walk tick — so you
-            // could stand in the air over a crevice you just cut and not know
-            // until you moved. Measured: it also made the levelling gate
-            // unfalsifiable, since the released height was the frozen one in
-            // both the real run and its control.
-            py = hex_mesh::ground_under(wld, px, pz, py);
+            hex_editor::level_off(wk, fn(gx: float, gz: float, gref: float) -> float {
+                                    hex_mesh::ground_under(wld, gx, gz, gref) });
             moved = true;
-            println("editor: levelling off — feet back on the ground at {py}");
+            println("editor: levelling off — feet back on the ground at {wk.wk_y}");
           }
-          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, levelling, roading, tracing, sess.es_open_kind));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
         } else if ev.msg_id == MSG_RAISE {
           // ⚠ THE GESTURE IS `hex_editor`'s NOW — `SCRIPTED_EDITOR.md` §2. Ninety
           // lines of ray-walk, brush and clamp lived here, reachable only through
@@ -6020,7 +5998,7 @@ fn main() {
           // knowing which chunks to rebuild. The Ack carries the cell precisely so
           // this does not re-derive it — the stale-hex bug was exactly that.
           rack = hex_editor::raise_ahead(wld,
-                   hex_editor::author_at(px, pz, yaw, py), ev.payload as integer ?? 0);
+                   hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y), ev.payload as integer ?? 0);
           if !rack.ak_ok {
             println("editor: raise refused — {rack.ak_why}");
           } else {
@@ -6152,53 +6130,38 @@ fn main() {
       last_us = last_us + tick_wait;
       dt = hex_editor::tick_dt();
 
-      // The collision proxy, refreshed when it can no longer be right: when the
-      // character has changed cell, when the world's EDIT CLOCK has moved, or when
-      // the walker has changed LEVEL. `τ` is what makes the second one exact — a
-      // cache is valid while nothing has been written, which is a fact about what
-      // happened rather than a guess about how long ago (`T1`). Building it every
-      // tick would be a 289-cell scan at 30Hz for a world that mostly does not
-      // change.
-      //
-      // ⚠ THE THIRD TERM IS NOT BELT AND BRACES. The cliff edges are derived from
-      // the surface under the FEET, so the set is a function of the walker's level
-      // as well as of the world. Almost every level change is also a cell change
-      // and would be caught anyway — but a fall is not: step off a deck and the
-      // ground arrives from underneath without the cell moving, and a proxy keyed
-      // on the cell alone would still be holding the deck's edges. The height is an
-      // integer, so it invalidates on a real change of level and on nothing else.
+      // The collision proxy, refreshed when it can no longer be right. The KEY and
+      // why each of its three terms is there are `walk_proxy`'s own, in
+      // `lib/hex_editor/src/tick.loft`; what is left here is the one thing that is
+      // this driver's — a second set, over the same key, for the camera.
       tph = ticks();
-      chx = world_to_hex(px, pz);
-      // The walker's own surface, resolved once and then used as the reference for
-      // every other cell — `walk_h`'s ⚠ is why it is not `py` itself.
-      surf_u = hex_editor::walk_h(chx.ha_q, chx.ha_r, wld, py / HEIGHT_SCALE ?? 0.0);
-      ref_u = surf_u as float;
-      if !coll_have || coll_q != chx.ha_q || coll_r != chx.ha_r
-         || coll_tau != wld.w_tau || coll_surf != surf_u {
+      // ⚠ THE KEY IS THE LIBRARY'S, AND IT IS ASKED HERE BECAUSE THE CAMERA RUNS
+      // BEFORE THE WALK — plan 22 `T1`. `walk_tick` refreshes the proxy itself, and
+      // this call is what lets the camera below see THIS tick's set rather than the
+      // last one's. It is idempotent by construction: nothing between here and the
+      // walk moves the walker or writes the world, so the tick's own call finds the
+      // key unchanged and returns at the first comparison.
+      //
+      // ⚠ The camera's set takes the WALKER's level, not the eye's. The eye orbits a
+      // character who is on one storey, and the walls that can swallow it are that
+      // storey's; an eye-height reference would pick the deck above whenever the boom
+      // rose. Same reference, two predicates — so it follows the walker's own key
+      // rather than restating it.
+      if hex_editor::walk_proxy(wk, wld, sess.es_runs, COLL_R, cliff_step()) {
         nrebuild = nrebuild + 1;
-        coll_sf = surfaces_new();
-        coll_rt = runs_track(sess.es_runs);
-        coll_move = hex_editor::edges_walk(wld, chx.ha_q, chx.ha_r, COLL_R, sess.es_runs,
-                                           coll_sf, ref_u, cliff_step());
-        // ⚠ The camera's set takes the WALKER's level, not the eye's. The eye
-        // orbits a character who is on one storey, and the walls that can swallow
-        // it are that storey's; an eye-height reference would pick the deck above
-        // whenever the boom rose. Same reference, two predicates.
-        coll_view = hex_editor::edges_around(wld, chx.ha_q, chx.ha_r, COLL_R, true,
-                                 sess.es_runs, surfaces_new(), ref_u);
-        coll_q = chx.ha_q; coll_r = chx.ha_r; coll_tau = wld.w_tau;
-        coll_surf = surf_u; coll_have = true;
+        coll_view = hex_editor::edges_around(wld, wk.wk_cq, wk.wk_cr, COLL_R, true,
+                                 sess.es_runs, surfaces_new(), wk.wk_csurf as float);
       }
       cam_want = cam_boom();
       cut_now = cam_mode == MODE_CUTAWAY;
       if cut_now { cam_want = cut_boom(); }
       eyes_now = cam_mode == MODE_EYES;
       if eyes_now { cam_want = 0.0; }
-      cpx = cam_pivot_x(px, yaw); cpy = cam_pivot_y(py); cpz = cam_pivot_z(pz, yaw);
+      cpx = cam_pivot_x(wk.wk_x, wk.wk_yaw); cpy = cam_pivot_y(wk.wk_y); cpz = cam_pivot_z(wk.wk_z, wk.wk_yaw);
       // Angular velocity, lightly smoothed so one jittery drag frame does not
       // throw the prediction. This is the "we are already turning" signal.
-      cam_rate = cam_rate * 0.6 + ((yaw - cam_yaw_prev) / dt ?? 0.0) * 0.4;
-      cam_yaw_prev = yaw;
+      cam_rate = cam_rate * 0.6 + ((wk.wk_yaw - cam_yaw_prev) / dt ?? 0.0) * 0.4;
+      cam_yaw_prev = wk.wk_yaw;
 
       // 1. Pitch drifts toward the smallest lift that clears — bounded rate BOTH
       //    ways, so it never snaps and always settles back on the player's own.
@@ -6218,8 +6181,8 @@ fn main() {
       // a "no input for N ms" rule would miss. `cam_rested` keeps it solving
       // through the ease after a change, because the boom is still moving then
       // even though nothing else is.
-      cam_moved = px != cam_lx || py != cam_ly || pz != cam_lz
-               || yaw != cam_lyaw || pitch != cam_lpitch || wld.w_tau != cam_ltau;
+      cam_moved = wk.wk_x != cam_lx || wk.wk_y != cam_ly || wk.wk_z != cam_lz
+               || wk.wk_yaw != cam_lyaw || pitch != cam_lpitch || wld.w_tau != cam_ltau;
       // ⚠ WHAT THE EYE WAS BEFORE THIS SOLVE, so the publish below can be driven by
       // the camera's own change rather than the character's. The three fields are
       // exactly `cam_wire`'s arguments that are not the pose, so "the drawn camera
@@ -6265,7 +6228,7 @@ fn main() {
       // Straight behind the subject — the boom's own direction, level. This is the
       // one `sh_room` cannot stand in for: a room can be tight all round and still
       // have the one direction the camera actually wants.
-      cam_back = cam_free_dist(cpx, cpy, cpz, yaw, 0.0, cam_want, wld, coll_view);
+      cam_back = cam_free_dist(cpx, cpy, cpz, wk.wk_yaw, 0.0, cam_want, wld, coll_view);
       cam_shelter = hex_editor::shelter_room(cam_shelter, cam_room, cam_back);
       // ── AUTO DEGRADES HERE, AND ONLY HERE ────────────────────────────────────
       //
@@ -6289,7 +6252,7 @@ fn main() {
       } else if cam_shelter.sh_inside {
         cam_pt = pitch;
       } else {
-        cam_pt = cam_pitch_target(cpx, cpy, cpz, yaw, pitch, cam_want, wld, coll_view);
+        cam_pt = cam_pitch_target(cpx, cpy, cpz, wk.wk_yaw, pitch, cam_want, wld, coll_view);
       }
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
@@ -6332,7 +6295,7 @@ fn main() {
       } else {
       cam_free = hex_editor::boom_take(
         cam_want,
-        cam_free_arc(px, py, pz, yaw, cam_rate, cam_pitch, cam_want, wld, coll_view),
+        cam_free_arc(wk.wk_x, wk.wk_y, wk.wk_z, wk.wk_yaw, cam_rate, cam_pitch, cam_want, wld, coll_view),
         CAM_SKIN);
       }
       // ⚠ THE SHOULDER CREEP, SOLVED WHERE THE COLLISION SET LIVES. A boom that
@@ -6350,13 +6313,13 @@ fn main() {
       if cut_now { cam_creep = 0.0; }
       cam_slide = 0.0;
       if cam_creep > 0.0 {
-        cam_px = cam_pivot_x(px, yaw);
-        cam_pz = cam_pivot_z(pz, yaw);
-        cam_py = cam_pivot_y(py);
+        cam_px = cam_pivot_x(wk.wk_x, wk.wk_yaw);
+        cam_pz = cam_pivot_z(wk.wk_z, wk.wk_yaw);
+        cam_py = cam_pivot_y(wk.wk_y);
         cam_reach = CAM_SHOULDER + CAM_SKIN;
-        cam_lf = cam_free_side(cam_px, cam_py, cam_pz, yaw, cam_reach, wld,
+        cam_lf = cam_free_side(cam_px, cam_py, cam_pz, wk.wk_yaw, cam_reach, wld,
                                coll_view, 1.0);
-        cam_rf = cam_free_side(cam_px, cam_py, cam_pz, yaw, cam_reach, wld,
+        cam_rf = cam_free_side(cam_px, cam_py, cam_pz, wk.wk_yaw, cam_reach, wld,
                                coll_view, 0.0 - 1.0);
         cam_slide = hex_editor::shoulder_take(cam_creep, cam_lf, cam_rf,
                                               CAM_SKIN);
@@ -6432,8 +6395,8 @@ fn main() {
         cam_amb = cam_amb_want;
         cam_lamp = cam_lamp_want;
       }
-      cam_lx = px; cam_ly = py; cam_lz = pz;
-      cam_lyaw = yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
+      cam_lx = wk.wk_x; cam_ly = wk.wk_y; cam_lz = wk.wk_z;
+      cam_lyaw = wk.wk_yaw; cam_lpitch = pitch; cam_ltau = wld.w_tau;
       }
       // Exact rather than tolerant, and it takes the SNAP with it: the tick that
       // declares rest is the one that closes the last 0.001, and a `!cam_rested`
@@ -6457,75 +6420,51 @@ fn main() {
       acc_cam = acc_cam + (ticks() - tph);
       tph = ticks();
 
-      // A/D turn. Same yaw the mouse drives, so the two steering inputs cannot
-      // disagree — there is one facing and everything else is derived from it.
-      turn = hex_editor::turn_dir(keys);
-      if turn != 0.0 {
-        yaw = hex_editor::yaw_turn(yaw, turn, dt);
-        moved = true;
-      }
-
-      // W/S walk along the facing. One axis, so there is no diagonal to
-      // normalise — turning replaced the strafe that made that necessary.
-      fwd = hex_editor::walk_dir(keys);
-      if fwd != 0.0 {
-        step = hex_editor::walk_step_len(dt);
-        ky = cos(yaw); sy = sin(yaw);
-        // WALLS STOP THE WALK (rung W2). The intended position goes through
-        // `walk_to`, which asks `hex_edge` about the whole SEGMENT — so the step
-        // is not a step size to tune and a slow tick cannot cross a fence.
-        (wpx, wpz) = hex_editor::walk_to(coll_move, coll_sf, coll_rt, wld, px, pz,
-                             px + ky * step * fwd, pz + sy * step * fwd, ref_u);
-        gone = sqrt((wpx - px) * (wpx - px) + (wpz - pz) * (wpz - pz)) ?? 0.0;
-        px = wpx;
-        pz = wpz;
-        // The gait advances by what was actually TRAVELLED, not by what was
-        // asked for: legs that keep striding into a wall you are not moving
-        // along is the tell that collision was bolted on outside the walk.
-        // `gone` is unsigned, so walking BACKWARD still advances it — the legs
-        // move either way, and a phase that ran backwards would unwind the
-        // stride instead of taking one.
-        walked = walked + gone;
-        // CLIMB. The feet follow the surface every tick, so walking into a
-        // slope walks UP it. No jump, no fall, no step limit yet — this is the
-        // ground being followed, not physics.
-        //
-        // While LEVELLING the relationship inverts: the feet hold their frozen
-        // height and the GROUND is brought to them. Following the surface here
-        // would be circular — the ground is being set from the feet, so reading
-        // the feet back off the ground would erase the very difference the level
-        // is meant to carry.
-        // ⚠ THE FEET ARE NOT SET HERE. They were `terrain_y` every tick, which is
-        // why stepping off a ledge teleported you down — and why every reading taken
-        // while standing still was STALE. `py` is a state; the fall below is its only
-        // evolution. Levelling still writes, because there the feet are authoritative
-        // and the ground follows them: the one inversion in the model.
-        if levelling {
-          py = (level_h as float) * HEIGHT_SCALE;
-          vy = 0.0;
-        }
-        moved = true;
-      }
-      // ── THE FALL ──────────────────────────────────────────────────────────
-      // Once per tick, and the ONLY thing that evolves `py`. It runs whether or not
-      // the walker moved: ground taken out from under someone standing still has to
-      // drop them, and a fall that ran only inside the walk would leave them hanging.
+      // ── ONE STEP OF THE PERSON — plan 22 `T1` ────────────────────────────
       //
-      // ⚠ THE LEVEL IS A STATE, LIKE THE FEET THEMSELVES. The reference is the
-      // surface the walker stood on when this tick BEGAN — one answer for the whole
-      // tick, the same one the cliff edges were derived from — and never `py`. Ask
-      // with `py` and the level is re-decided at every sub-step from a height that
-      // sags between cells: measured, the walker climbed the stair, crossed onto
-      // the platform, and fell a full storey THROUGH the deck to the ground below,
-      // because at the rim of the last step its feet read 6.7 units against a deck
-      // at 12 and a ground at 0. This is `fall.loft`'s own lesson one level up —
-      // it made the FEET a state, and the level is a state for the same reason.
-      if !levelling {
-        fs_st = hex_editor::fall_step(py, vy,
-                                hex_mesh::ground_under(wld, px, pz, ref_u * HEIGHT_SCALE), dt);
-        py = fs_st.fl_y;
-        vy = fs_st.fl_vy;
-        if fs_st.fl_airborne || fs_st.fl_landed { moved = true; }
+      // Turn, walk, stamp the level, fall. Every one of those was already a
+      // `hex_editor` call and the ORDER they run in was this file's own — written a
+      // second time in `src/editor_client.loft`, where the level stamp is missing
+      // altogether. The sequencing is the half that decides the world, so it is the
+      // half that had to stop being written twice.
+      //
+      // ⚠ THE GROUND GOES IN AS A FUNCTION. `hex_mesh` depends on `hex_editor`, so
+      // the library cannot ask what is under the feet — the driver that HAS a mesher
+      // hands one in, the same seam `cliff_edges` takes its terrain by.
+      //
+      // ⚠ AND THIS SERVER STILL OWNS THE CLOCK. `walk_tick` fires when it is called;
+      // that it is called here, once per `TICK_US` of simulated time, is the one thing
+      // about the tick that is a fact about this driver rather than about the walker.
+      tk = hex_editor::walk_tick(wk, wld, sess.es_runs, COLL_R, cliff_step(), LEVEL_R,
+                                 fn(gx: float, gz: float, gref: float) -> float {
+                                   hex_mesh::ground_under(wld, gx, gz, gref) });
+      if tk.tk_moved { moved = true; }
+      // ── WHAT THE LEVEL STAMP LEFT FOR THIS DRIVER TO DO ──────────────────
+      //
+      // Mesh the disc, and say the two things the author is owed. Both reports are
+      // ONCE PER RUN rather than per footfall — levelling stamps on every step, so a
+      // per-cell sentence is a stream of noise — and they are two flags rather than
+      // one because a stroke can clamp against the floor without stalling and stall
+      // without clamping, so a single flag would let whichever happened first silence
+      // the other.
+      if tk.tk_dirty {
+        mark_dirty(dirty, tk.tk_dq, tk.tk_dr, tk.tk_drad);
+        if tk.tk_clamped != 0 && !level_warned {
+          level_warned = true;
+          srv.broadcast("S:level approximated — {tk.tk_clamped} cells hit the floor "
+                        + "(residual {tk.tk_residual})");
+          println("editor: level approximated — {tk.tk_clamped} clamped, residual {tk.tk_residual}");
+        }
+        // ⚠ A DIFFERENT QUESTION FROM THE CLAMP COUNT — plan 20 `A4`. A big clamp
+        // count is what a big stroke looks like; running out of `SLOPE_PASSES` is the
+        // stroke handing back a world that still breaks its own rules, and the two
+        // were indistinguishable because nothing asked.
+        if tk.tk_owed > 0 && !level_stalled {
+          level_stalled = true;
+          srv.broadcast("S:level did not settle — the run is still {tk.tk_owed} "
+                      + "per hex over its limit");
+          println("editor: level did not settle — owed {tk.tk_owed}");
+        }
       }
       acc_rest = acc_rest + (ticks() - tph);
       nticks = nticks + 1;
@@ -6874,67 +6813,23 @@ fn main() {
     // is a function of the cell you stand in, so re-deriving it per frame would
     // be work with no observable effect. This is the bounded, incremental
     // re-derivation `L3` asks for, at the granularity the field itself has.
-    hxa = world_to_hex(px, pz);
+    hxa = world_to_hex(wk.wk_x, wk.wk_z);
     if !have_hex || hxa.ha_q != last_hq || hxa.ha_r != last_hr {
       have_hex = true;
       last_hq = hxa.ha_q;
       last_hr = hxa.ha_r;
 
-      // Levelling drops its counter-peak on entering a cell — once per hex, not
-      // per tick, so how fast you walk cannot change the shape of the ground you
-      // leave behind.
-      if levelling {
-        cur_h = terrain_h(last_hq, last_hr, wld);
-        // ⚠ IT SETS THE DISC NOW, IT DOES NOT BLEND TOWARD IT. This passed a
-        // DIFFERENCE to `brush` — positive to build the ground up to you, negative
-        // to cut it down — and took the hill's `(1 - t²)²` falloff with it. A hill
-        // wants that shape and a PAD cannot have it: measured
-        // (`probe/house/levelpad.loft`), walking a disc closed only the cells the
-        // walker stepped on, `2 4 4 4 4 4 2` along the path and `2 4 4 4 2` across
-        // it, because the gap is scaled by `f²` and truncated. `cellar.keys` walks
-        // a CROSS for exactly that reason and still could not flatten the 19 cells
-        // a deck covers.
-        //
-        // ⚠ AND IT IS STILL ZERO WHERE THE GROUND ALREADY MATCHES, which is what
-        // keeps it from doing anything where you switched it on and from deepening
-        // a path walked twice — the guard just asks the question one level up.
-        if cur_h != level_h {
-          lclamp = 0;
-          lvres = 0;
-          brush_level(wld, last_hq, last_hr, level_h, LEVEL_R, lclamp, lvres);
-          mark_dirty(dirty, last_hq, last_hr, LEVEL_R);
-          // Levelling runs per STEP as the character walks, so a per-cell report
-          // here would be a stream of noise. It is still an approximation and
-          // still owed a residual — reported once, when the stroke first cannot
-          // deliver what was asked, rather than on every footfall.
-          if lclamp != 0 && !level_warned {
-            level_warned = true;
-            srv.broadcast("S:level approximated — {lclamp} cells hit the floor "
-                          + "(residual {lvres})");
-            println("editor: level approximated — {lclamp} clamped, residual {lvres}");
-          }
-          // ⚠ AND WHETHER THE RELAXATION FINISHED AT ALL — plan 20 `A4`, and it is a
-          // DIFFERENT question from `lclamp`. A big clamp count is what a big stroke
-          // looks like; running out of `SLOPE_PASSES` is the stroke handing back a
-          // world that still breaks its own rules, and the two were indistinguishable
-          // because nothing asked. Measured (`probe/house/passes.loft`): a road
-          // falling away from the seed settles one unit a pass, so a 12-cell run
-          // finishes and a 14-cell one does not — and the 40-cell case came back
-          // `clamped 1184, residual 4` with 27 cells still 2 units a hex too steep.
-          //
-          // ⚠ ASKED OF THE WORLD, NOT CARRIED OUT OF THE GESTURE. `slope_owed` reads
-          // the heights that are already there, so it cannot disagree with them, and
-          // it costs the 54 `brush` call sites no new argument.
-          owed = hex_editor::slope_owed(wld, last_hq, last_hr);
-          if owed > 0 && !level_stalled {
-            level_stalled = true;
-            srv.broadcast("S:level did not settle — the run is still {owed} "
-                          + "per hex over its limit");
-            println("editor: level did not settle — owed {owed}");
-          }
-        }
-        py = (level_h as float) * HEIGHT_SCALE;
-      }
+      // ⚠ THE LEVEL STAMP USED TO BE HERE, AND ONLY BECAUSE `last_hq`/`last_hr`
+      // WERE — plan 22 `T1`. It is the walker's business, not the streamer's: it is
+      // keyed on the hex the WALKER entered, and this block is keyed on the hex the
+      // streaming set is a function of. They were the same integer pair and that is
+      // the whole of why they shared a block.
+      //
+      // ⚠ WHAT MOVED WITH IT IS ONE BEHAVIOUR: an `at` teleport into a new cell while
+      // levelling stamped a pad on arrival, with no tick at all. The tick after it
+      // does now. `cellar.keys` teleports four times with levelling ON and its world
+      // is `c96b2ce7a569fa2dd88577a71a507f48` either way — which is what says the
+      // difference is a pass of the pump and not a pad.
       home = gm::chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
       // ⚠ THE COORDS BESIDE THE IDS, because `enc_coord` packs and nothing unpacks.
@@ -7031,10 +6926,10 @@ fn main() {
     // ── publish, only when something actually changed ──────────────────────
     if moved {
       // One stride is half a cycle, so the phase advances by π per stride.
-      phase = walked / (STRIDE_M / WU_PER_M ?? 1.0) ?? 0.0;
+      phase = wk.wk_walked / (STRIDE_M / WU_PER_M ?? 1.0) ?? 0.0;
       swing = sin(phase * PI) * LEG_SWING;
       aswing = sin(phase * PI) * ARM_SWING;
-      bmat = body_at(px, py, pz, yaw);
+      bmat = body_at(wk.wk_x, wk.wk_y, wk.wk_z, wk.wk_yaw);
       hipz = hd * 0.42;
       shz = hd * 2.0 * 0.5 + hd * 0.16;
       t_body = "T:{PART_BODY};{hex_mesh::mat_wire(bmat)}";
@@ -7042,7 +6937,7 @@ fn main() {
       t_leg_r = "T:{PART_LEG_R};{hex_mesh::mat_wire(limb_at(bmat, 0.0, hip_wu(), hipz, 0.0 - swing))}";
       t_arm_l = "T:{PART_ARM_L};{hex_mesh::mat_wire(limb_at(bmat, 0.0, shoulder_wu(), 0.0 - shz, 0.0 - aswing))}";
       t_arm_r = "T:{PART_ARM_R};{hex_mesh::mat_wire(limb_at(bmat, 0.0, shoulder_wu(), shz, aswing))}";
-      fogw = fog_wire(px, py, pz);
+      fogw = fog_wire(wk.wk_x, wk.wk_y, wk.wk_z);
       // ⚠ A CLOSED TAB IS INVISIBLE TO THIS LOOP. `server`'s own docs say it:
       // disconnect events (kind 2) are "skipped internally", so `poll_event`
       // never reports one, and `send_to`'s boolean is "true on success" —
@@ -7091,7 +6986,7 @@ fn main() {
     // that evolves per tick has to say so itself.
     if moved || cam_pub {
       for pc in clients {
-        srv.send_to(pc.cid, cam_wire(px, py, pz, yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, cam_mode, wld,
+        srv.send_to(pc.cid, cam_wire(wk.wk_x, wk.wk_y, wk.wk_z, wk.wk_yaw, cam_pitch, pc.aspect, cam_dist, cam_slide, cam_mode, wld,
                                      PlacedEye { pe_on: eye_on, pe_x: eye_x, pe_y: eye_y, pe_z: eye_z }));
       }
     }

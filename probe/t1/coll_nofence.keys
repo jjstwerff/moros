@@ -1,0 +1,22 @@
+# PROBE 4's INSTRUMENT — a walk the COLLISION PROXY decides. Plan 22 `T1`.
+#
+# ⚠ `deck.keys` CANNOT ANSWER PROBE 4, and that is what this file is for. Asked
+# whether the proxy is a cache, `deck.keys` says *rebuilding it every tick changes
+# nothing* — and it says exactly the same when the proxy is built ONCE and never
+# refreshed again, which is a sabotage that should have moved the world. Its walk
+# meets nothing that blocks, so the instrument was blind to its own subject.
+#
+# Here the walk runs into a fence ring three hexes out, with levelling ON — so the
+# ground carries where the walker STOPPED, and a proxy that cannot see the fence
+# walks through it and stamps a longer pad.
+rate 0
+at 0 0 0
+wait rebuilt
+send 6:1
+keys 1
+step 90
+keys 0
+send 6:0
+step 30
+feet
+save t1nofence

@@ -36,13 +36,14 @@ noticing that two drivers already agreed on one and never shared the body.
 
 ## Where the invariant is re-asserted today, and that is the whole problem
 
-**N = 2, and omission is silent.**
+**N = 2 when this was written, and omission is silent. `T1` made it 1 for the server.**
 
 | site | what it holds | lines |
 |---|---|---|
-| `src/editor_server.loft` | turn → walk → level-hold → fall, the per-hex level stamp, the collision-proxy refresh | ~6440–6910 |
-| `src/editor_client.loft` | `local_turn`, `local_walk`, `local_fall` — the same library calls, sequenced again | ~1755–1880 |
-| `src/editor_run.loft` | **nothing.** It teleports | — |
+| ✅ `lib/hex_editor/src/tick.loft` | **all of it, since `T1`** — turn → walk → level stamp → fall, and the proxy's key | — |
+| ✅ `src/editor_server.loft` | one `Walker` and one `walk_tick` call. It kept its clock, its camera, its dirty set and its sentences | — |
+| ⏭ `src/editor_client.loft` | `local_turn`, `local_walk`, `local_fall` — the same library calls, sequenced again, **still with no levelling**. `T2` | ~1755–1880 |
+| ⏭ `src/editor_run.loft` | **nothing.** It teleports. `T3` | — |
 
 Both existing sites call the *same* `hex_editor` primitives — `walk_dir`, `turn_dir`,
 `yaw_turn`, `walk_step_len`, `walk_to`, `fall_step`, `edges_walk`. **What is written
@@ -85,6 +86,32 @@ pub fn walk_tick(wk: &Walker, w: VoxelWorld, sess: EditSession) -> TickOut
 pub fn level_on(wk: &Walker, w: VoxelWorld)      // freeze the grade from the FEET
 pub fn level_off(wk: &Walker)
 ```
+
+⚠ **AND THE BUILT SIGNATURES DIFFER FROM THAT SKETCH IN THREE PLACES, EACH FOR A REASON
+THE SKETCH DID NOT KNOW:**
+
+```loft
+pub fn walk_proxy(wk: Walker, w: VoxelWorld, runs: WallRuns,
+                  reach: integer, step_max: integer) -> boolean
+pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
+                 reach: integer, step_max: integer, level_r: integer,
+                 gnd: fn(float, float, float) -> float) -> TickOut
+pub fn level_on(wk: Walker, w: VoxelWorld, residual: &float)
+pub fn level_off(wk: Walker, gnd: fn(float, float, float) -> float)
+```
+
+1. ⚠ **The ground arrives as a FUNCTION.** The fall asks `hex_mesh::ground_under`, and
+   **`hex_mesh` depends on `hex_editor`** — the cycle `walk.loft` recorded when the walk
+   moved and left the fall behind for it. The driver hands in the sampler, the same seam
+   `cliff_edges` takes its terrain by, and the library's tests then need no mesher at all.
+2. ⚠ **`walk_proxy` is public and answers whether it REBUILT.** The server's camera keeps
+   its own `edges_around` set over the *same* key, and the camera solves before the walk —
+   so it calls `walk_proxy` at the top of the tick and refreshes its set on the answer.
+   `walk_tick` calls it again and finds the key unchanged: **idempotent by construction**,
+   because nothing between the two calls moves the walker or writes the world. That is what
+   keeps the key in one place instead of beside every set derived from it.
+3. ⚠ **`runs: WallRuns`, not `sess: EditSession`.** A tick needs the wall runs and nothing
+   else a session carries, and `edges_walk` already takes them that way.
 
 And each driver keeps only the thing that is genuinely its own — **when a tick fires**:
 
@@ -158,12 +185,33 @@ the default rate happens to reach. So:
 Exact, reproducible on any box, and **the target side already exists** — which is the
 whole reason to prefer it to any claim about the design reading correctly.
 
-### ⏭ Probe 4 — is the collision proxy really a cache?
+### ✅ Probe 4 — is the collision proxy really a cache? **It is — and the obvious instrument said so while blind.**
 
-`walk_to` is given an `EdgeSet` rebuilt on `(hex, τ, surface)`. Both drivers already
-key it identically, so the design folds it into `Walker`. **The claim is that it cannot
-change the answer.** Cheapest falsification: rebuild it *every* tick and compare the
-`deck` world. If it moves, it is not a cache and it does not belong in the struct.
+`walk_to` is given an `EdgeSet` rebuilt on `(hex, τ, surface)`. The claim was that
+rebuilding it more often cannot change the answer. Run as designed — rebuild every tick,
+compare the `deck` world — it came back `cea971a0…`, unmoved.
+
+⛔ **AND THE CONTROL SAID THE SAME THING, WHICH IS WHAT MADE THE GREEN WORTHLESS.**
+Building the proxy **once and never refreshing it** — a sabotage that should ruin a walk
+— also returned `cea971a0…`. Nothing in `deck.keys` blocks: no wall, no fence, and its
+cliffs are never met, so *the proxy cannot reach the world in that script at all*. A pair
+of identical md5s meant **this fixture cannot tell**, and reading the first one as an
+answer would have put a measured claim in the design that was never measured.
+
+✅ **The instrument that can see it is `probe/t1/coll_pad.keys`**, and it took two goes:
+
+| | feet | world |
+|---|---|---|
+| the cache as designed | 6.05 | `b8d2ef6f…` |
+| rebuilt **every** tick | 6.05 | `b8d2ef6f…` — the proxy is a cache |
+| built once, **never** refreshed | **9.60** | `6a66ef59…` — walked straight through the fence |
+
+⚠ **The first version of that fixture was blind too, for a different reason.** A fence on
+flat ground stops the walk — `feet 6.05` against `9.60` — and the world still cannot see
+it: levelling writes nothing where the ground already matches the frozen height, so the
+run saved **0 chunks**. It needs a fence AND ground that differs, which is why the file
+raises a hill first. *Two blind instruments before one that answers* is the cost of asking
+a question of a script that was written for something else.
 
 ### ⏭ Probe 5 — the cleanest claim, and the one to attack
 
@@ -192,7 +240,7 @@ wrong. Falsification: level in local mode and read the page's own surface line.
 | step | what it does | what would surprise it |
 |---|---|---|
 | ✅ **`T0`** | the scripts that walk say `rate 0`, and `tools/walk-exact.sh` keeps it true | **DONE 2026-08-16.** `deck.keys` and `cellar.keys` converted, worlds unchanged (`cea971a0…`, `c96b2ce7…`), `deck_soffit` / `cellar_ceiling` / `deck` all PASS. ⛔ **`determinism.keys` was NOT converted and that is the finding** — see below. ⛔ **And the speedup I predicted is refuted**: 19.9 s without, 22.5 s with, 26.6 s in a parallel run — `rate 0` buys exactness, not time |
-| **`T1`** | `Walker` + `walk_tick` in `hex_editor`; **the server is its only caller** | the `deck` world at `rate 0` must be **byte-identical**, and `make gate` unmoved. A pure extraction whose comparison is exact — the upper bound satisfied, and it can fail on its own |
+| ✅ **`T1`** | `Walker` + `walk_tick` in `hex_editor`; **the server is its only caller** | **DONE 2026-08-16.** Both worlds byte-identical — `cea971a0…` and `c96b2ce7…` — `make fast` 157 files green, `make gate` unmoved, `lib/hex_editor/tests/tick.loft` 15 tests with 7 of 8 sabotages red. The server is **89 lines smaller** and the level stamp left the streaming block. ⛔ **Probe 4 is answered and `deck.keys` could not have answered it** — see below |
 | **`T2`** | the page calls `walk_tick`; `local_turn`/`local_walk`/`local_fall` **deleted** | `make probe-demo` G/H unmoved (`walked 2.454`, the fall completing) — **and levelling starts working in local mode**, which is a capability the page never had. ⚠ Remote mode must NOT tick (probe 5) |
 | **`T3`** | `editor_run`'s `step <n>` becomes n ticks; `keys`/`hold`/`turn` are **performed** | `deck.keys` headless == the server's md5. ⚠ **This retires `K3e`** — there is no skipped movement left to remember. **Move before you remove**: the `walked` fence and `probe/k3e` come out only once the equality holds, never before |
 | **`T4`** | `send 6:` becomes a performed message, like `ground` | `K3c`'s `send_why` loses a row. The runner's floor and the server's must agree, which is `probe/k3c` row D's shape one message over |
@@ -202,6 +250,64 @@ because the step before it left a proven artifact to compare against — `T1` ag
 server's own world, `T2` against the demo's recorded numbers, `T3` against `T1`'s
 output. Reordered, the middle two have nothing exact to be measured by, which is the
 failure `W4` was reverted for.
+
+## ✅ What `T1` turned up (2026-08-16) — three instruments were blind before one answered
+
+`lib/hex_editor/src/tick.loft` holds `Walker`, `TickOut`, `walk_proxy`, `walk_tick`,
+`level_on` and `level_off`. The server declares one `hex_editor::Walker` and its 266
+references to `px`/`pz`/`py`/`vy`/`yaw`/`keys`/`walked`/`levelling`/`level_h` are that
+walker's fields; the turn, the walk, the level stamp and the fall are **one library
+call**. Both acceptance worlds are byte-identical, `make fast` is green over 157 files,
+`make gate` is unmoved, and `src/editor_server.loft` is **89 lines shorter**.
+
+### ⛔ A sabotage that leaves the world identical is not a green — it can be a blind fixture
+
+Probe 4 above is the long version. In one line: **`deck.keys` answers `cea971a0…` to the
+cache policy, to rebuilding every tick, and to never rebuilding at all.** The question
+needed a walk something can block AND ground the level stamp actually writes; neither of
+the first two fixtures had both.
+
+### ⛔ And the SABOTAGE SWEEP said the same thing about four of the new tests
+
+Eight sabotages of `tick.loft`, each with the control green. The first pass came back
+**four red, four green**, and the four green ones are what the sweep is for:
+
+| sabotage | first pass | why it could not be seen |
+|---|---|---|
+| the proxy key loses `τ` | green | the test WALKED, so the **cell** term rebuilt anyway. A fence blocks a hex EDGE, so meeting one always changes cell — `τ` can only be seen by a walker standing still while the world changes elsewhere |
+| the stamp fires every tick | green | **and it stays green, on purpose.** The stamp SETS its disc, so a second firing finds the ground already there. Once-per-hex is a COST property; the load-bearing clause is `cur_h != level_h`, which is what the test asks now |
+| the fall runs while levelling | green | ⚠ **the test repaired its own subject** — its first tick ENTERS the hex, the level stamp fires, and the stamp puts back exactly the ground the walker was about to fall into. Entering the hex before cutting the ground is the whole fixture |
+| levelling does not hold the feet in the walk | green | the walker held no keys, so the walk branch never ran |
+
+Rewritten, seven of eight go red. The second row is left green **with its reason written
+down**, because a sabotage that is genuinely equivalent is a finding and not a gap.
+
+### ⚠ A golden world cannot see a sentence
+
+The 266-site rename was applied to the code half of every line — and it reached inside
+string literals. The editor printed `editor: wk.wk_levelling off — feet back on the
+ground at 0` while the `deck` world came back **byte-identical**, because the md5 is of
+the store and a sentence is not in it. Four sentences were corrupted; the exact
+comparison that this whole step rests on was blind to all four. *What the instrument
+measures is what it can see, and a rename touches more than the world.*
+
+### The level stamp left the streaming block, and one behaviour moved with it
+
+It sat in the chunk-streaming pass for one reason: `last_hq`/`last_hr` lived there. It is
+the walker's now, which changes exactly one case — **an `at` teleport into a new cell
+while levelling stamped a pad on arrival with no tick at all; the tick after it does.**
+`cellar.keys` is the measurement rather than the argument: four teleports with levelling
+ON, five `feet` stations, and `c96b2ce7a569fa2dd88577a71a507f48` either way.
+
+### What `T1` deliberately did NOT do
+
+- ⏭ **The page is untouched.** `local_turn`/`local_walk`/`local_fall` are still there and
+  still have no levelling. That is `T2`, and it is a step precisely because the page's
+  comparison is `make probe-demo`'s recorded numbers rather than a world file.
+- ⏭ **The runner still teleports.** `T3`.
+- ⏭ **`tk_clamped` / `tk_residual` / `tk_owed` are reported and untested.** The stamp
+  reports them, the server says them, and no test yet builds a world where levelling
+  cannot deliver what it was asked. It is a fixture, not a design question.
 
 ## ✅ What `T0` turned up (2026-08-16) — the clock-independence check that could not see the clock-dependence
 
@@ -286,5 +392,6 @@ softened.
   reason `6:` LEVEL is, and it is the same shape — but it is a second stamp with its own
   settle rule (`slope_settle`), and folding it in before the level one is measured is
   the over-reach this document exists to avoid.
-- ⏭ **It has not been built.** Probes 1–3 are run; 4, 5 and 6 are not, and probe 5 is
-  the one most likely to move the design again.
+- ✅ **`T0` and `T1` are built**, and probe 4 is run. Probes 5 and 6 are not, and probe 5
+  — *a page in REMOTE mode must not tick* — is still the one most likely to move the
+  design, because it is `T2`'s first line.

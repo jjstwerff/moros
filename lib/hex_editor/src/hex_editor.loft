@@ -56,6 +56,11 @@ use walk;
 // only for reading order: a fall takes floats and a ground height and knows nothing
 // about edges.
 use fall;
+// ⚠ LAST, BECAUSE IT SEQUENCES EVERYTHING ABOVE IT. One tick of the person — plan 22
+// `T1`. The primitives were all already here and the ORDER they run in was written
+// twice, in `src/editor_server.loft` and `src/editor_client.loft`, with the second
+// copy already missing the level stamp entirely.
+use tick;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the

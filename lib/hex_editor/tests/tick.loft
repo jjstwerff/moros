@@ -1,0 +1,343 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// ONE TICK OF THE PERSON — plan 22 `T1`.
+//
+// ⚠ WHAT IS TESTED HERE IS THE SEQUENCING, because every primitive under it already
+// has its own file: `pose.loft`'s keys, `walk.loft`'s collision, `fall.loft`'s feet,
+// `gesture.loft`'s brush. What NOTHING tested until now is the ORDER they run in —
+// which is precisely the half that was written twice, in `src/editor_server.loft` and
+// `src/editor_client.loft`, with the second copy missing the level stamp entirely.
+//
+// ⚠ AND THE GROUND COMES IN AS A FUNCTION, so these tests need no mesher. That is not
+// a convenience: `hex_mesh::ground_under` is the driver's sampler and `hex_mesh`
+// depends on this package, so a test that reached for it could not exist at all.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+use hex_form;   // fabs
+
+const GROUND_H = 8;              // height units; the world's unit is 0.25 below
+const REACH    = 8;              // hexes of collision proxy — the editor's `COLL_R`
+const STEP_MAX = 4;              // the walker's stride, `walker_step(0.25)`
+const LEVEL_R  = 5;              // the level stamp's disc, the server's own
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 20, 0 - 20, 21, 21, GROUND_H, hex_editor::SURFACE_MAT);
+  w
+}
+
+fn no_runs() -> WallRuns { hex_editor::WallRuns { items: [] } }
+
+// A walker standing on the flat world's surface, facing +x, holding nothing.
+fn stander(w: VoxelWorld) -> hex_editor::Walker {
+  hex_editor::walker_new(0.0, (GROUND_H as float) * w.w_unit, 0.0)
+}
+
+// One tick, with the CELL's own height as the ground under the feet. A driver hands
+// in `hex_mesh::ground_under`, which smooths; a test wants the exact step.
+fn tick(wk: hex_editor::Walker, w: VoxelWorld, runs: WallRuns) -> hex_editor::TickOut {
+  hex_editor::walk_tick(wk, w, runs, REACH, STEP_MAX, LEVEL_R,
+                        fn(gx: float, gz: float, gref: float) -> float {
+                          (gq, gr) = hex_grid::px_to_hex(gx, gz);
+                          (hex_editor::terrain_h(gq, gr, w) as float) * w.w_unit
+                        })
+}
+
+// A fence across the path at x = `at`, running north-south so a walk along +x meets
+// it square. It goes into the STORE (the edge bytes the proxy reads) and into the
+// run list (the track the standoff measures against), exactly as the gesture does.
+fn fence_at(w: VoxelWorld, runs: WallRuns, at: float) -> integer {
+  marked = 0;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                           wr_x0: at, wr_z0: 0.0 - 6.0, wr_x1: at, wr_z1: 6.0,
+                           wr_mat: hex_editor::FENCE_MAT, wr_step: 0 },
+                         hex_editor::FENCE_MAT, GROUND_H, runs, marked);
+  marked
+}
+
+fn test_a_held_key_walks_exactly_one_step() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD;
+  out = tick(wk, w, runs);
+  // The step is `walk_step_len(tick_dt())` and nothing else — not a frame time, not
+  // a distance the driver chose. This is the number both authorities must integrate.
+  want = hex_editor::walk_step_len(hex_editor::tick_dt());
+  assert(hex_form::fabs(wk.wk_x - want) < 0.000001,
+         "one tick facing +x carries {want}, got {wk.wk_x}");
+  assert(hex_form::fabs(wk.wk_z) < 0.000001, "and nothing sideways, got {wk.wk_z}");
+  assert(out.tk_moved, "and it says something moved");
+  assert(hex_form::fabs(wk.wk_walked - want) < 0.000001,
+         "the gait advanced by what was travelled: {wk.wk_walked}");
+}
+
+fn test_holding_nothing_moves_nothing() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  out = tick(wk, w, runs);
+  assert(wk.wk_x == 0.0 && wk.wk_z == 0.0, "no key held, no walk");
+  assert(!out.tk_moved, "and nothing to report");
+  assert(!out.tk_dirty, "and nothing written");
+}
+
+fn test_both_keys_cancel() {
+  // `pose.loft`'s rule, asserted where it reaches the world: a person holding W and
+  // S has asked for two opposite things, and the honest answer is neither.
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD + hex_editor::HELD_BACK;
+  tick(wk, w, runs);
+  assert(wk.wk_x == 0.0, "W and S together stand still, got {wk.wk_x}");
+}
+
+fn test_the_tick_is_a_function_of_the_walker() {
+  // The invariant, stated as an experiment: two walkers in the same state, given the
+  // same world and the same held keys, land in the same place. Nothing about WHEN
+  // the tick fired can reach the answer, because nothing here reads a clock.
+  wa = flat_world();
+  wb = flat_world();
+  ra = no_runs();
+  rb = no_runs();
+  ka = stander(wa);
+  kb = stander(wb);
+  ka.wk_held = hex_editor::HELD_FWD + hex_editor::HELD_RIGHT;
+  kb.wk_held = hex_editor::HELD_FWD + hex_editor::HELD_RIGHT;
+  for i in 0..40 { tick(ka, wa, ra); }
+  for i in 0..40 { tick(kb, wb, rb); }
+  assert(ka.wk_x == kb.wk_x && ka.wk_z == kb.wk_z && ka.wk_yaw == kb.wk_yaw,
+         "40 ticks twice: ({ka.wk_x},{ka.wk_z},{ka.wk_yaw}) "
+       + "against ({kb.wk_x},{kb.wk_z},{kb.wk_yaw})");
+  assert(ka.wk_yaw > 0.0, "and D actually turned it, yaw {ka.wk_yaw}");
+}
+
+fn test_a_fence_stops_the_walk() {
+  w = flat_world();
+  runs = no_runs();
+  marked = fence_at(w, runs, 2.0);
+  assert(marked > 0, "the fence marked {marked} edges");
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD;
+  for i in 0..60 { tick(wk, w, runs); }
+  // 60 ticks is 6.4 wu of walking against a fence 2.0 out.
+  assert(wk.wk_x < 2.0, "the fence held at {wk.wk_x}");
+  assert(wk.wk_x > 1.5, "and it was reached rather than never approached: {wk.wk_x}");
+}
+
+fn test_a_fence_built_after_the_walk_started_still_stops_it() {
+  // ⚠ AND IT IS THE **CELL** TERM THAT CATCHES THIS ONE, NOT `τ` — measured, not
+  // assumed. Written as the `τ` term's test, this stayed GREEN with `τ` deleted from
+  // the key: a fence blocks a hex EDGE, so meeting one always means changing cell,
+  // and the cell term rebuilds anyway. The `τ` term's own test is the next one down,
+  // and it had to stop moving the walker to see it. *A guard that works in one
+  // direction reads exactly like a guard.*
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD;
+  // Walk first, so the proxy is built and cached over ground with no fence in it.
+  for i in 0..5 { tick(wk, w, runs); }
+  before = wk.wk_x;
+  assert(before > 0.0, "the walker set off, {before}");
+  fence_at(w, runs, 2.0);
+  for i in 0..60 { tick(wk, w, runs); }
+  assert(wk.wk_x < 2.0,
+         "a fence built after the proxy was cached still stops the walk, got {wk.wk_x}");
+}
+
+fn test_the_gait_does_not_advance_into_a_wall() {
+  // Legs that keep striding into a wall you are not moving along is the tell that
+  // collision was bolted on outside the walk.
+  w = flat_world();
+  runs = no_runs();
+  fence_at(w, runs, 2.0);
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD;
+  for i in 0..60 { tick(wk, w, runs); }
+  stopped = wk.wk_walked;
+  for i in 0..20 { tick(wk, w, runs); }
+  assert(hex_form::fabs(wk.wk_walked - stopped) < 0.0001,
+         "pressed against the fence the gait stands still: {stopped} -> {wk.wk_walked}");
+}
+
+fn test_levelling_stamps_the_ground_it_walks_into() {
+  // The clause the page never had. A bank two hexes east, a walker frozen at the
+  // flat ground's own height, and the walk cuts it down to the pad.
+  //
+  // ⚠ THE BANK IS THREE UNITS AND NOT SIX, AND THE FIRST VERSION OF THIS FIXTURE WAS
+  // SIX. A rise over `STEP_MAX` is a CLIFF, so the walker never got onto it and the
+  // test read `stamped it 0 times` — the fixture measuring its own collision rule
+  // instead of the stamp. A pad is levelled by walking ON it.
+  w = flat_world();
+  runs = no_runs();
+  hex_editor::ground_fill(w, 2, 0 - 3, 9, 3, GROUND_H + 3, hex_editor::SURFACE_MAT);
+  assert(hex_editor::ground_h(w, 3, 0) == GROUND_H + 3, "the bank is there to cut");
+  wk = stander(w);
+  res = 0.0;
+  hex_editor::level_on(wk, w, res);
+  assert(wk.wk_level_h == GROUND_H, "froze the grade from the feet: {wk.wk_level_h}");
+  wk.wk_held = hex_editor::HELD_FWD;
+  stamps = 0;
+  for i in 0..60 {
+    out = tick(wk, w, runs);
+    if out.tk_dirty {
+      stamps = stamps + 1;
+      assert(out.tk_drad == LEVEL_R, "the disc is reported: {out.tk_drad}");
+      (rq, rr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+      assert(out.tk_dq == rq && out.tk_dr == rr,
+             "and it is the cell entered: ({out.tk_dq},{out.tk_dr}) against ({rq},{rr})");
+    }
+  }
+  assert(stamps > 0, "walking into the bank stamped it {stamps} times");
+  assert(hex_editor::ground_h(w, 3, 0) == GROUND_H,
+         "the bank was cut to the pad, got {hex_editor::ground_h(w, 3, 0)}");
+}
+
+fn test_ground_already_at_the_frozen_height_is_not_written_again() {
+  // ⚠ THIS WAS `test_the_stamp_is_once_per_hex_and_not_once_per_tick` AND IT COULD
+  // NOT FAIL. Stamping on every tick instead of on every hex ENTERED leaves the world
+  // identical, because the stamp SETS its disc: the second firing finds the ground
+  // already there and the guard below stops it. So the once-per-hex rule is a cost
+  // property, and what is actually load-bearing is this guard — it is what keeps
+  // levelling from doing anything where you switched it on, and from deepening a path
+  // walked twice.
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  res = 0.0;
+  hex_editor::level_on(wk, w, res);
+  wk.wk_held = hex_editor::HELD_FWD;
+  wrote = 0;
+  for i in 0..60 {
+    out = tick(wk, w, runs);
+    if out.tk_dirty { wrote = wrote + 1; }
+  }
+  assert(wrote == 0,
+         "walking level ground at the frozen height writes nothing, got {wrote} stamps");
+  // The control: the same walk over ground that DOES differ writes.
+  w2 = flat_world();
+  r2 = no_runs();
+  hex_editor::ground_fill(w2, 2, 0 - 3, 9, 3, GROUND_H + 3, hex_editor::SURFACE_MAT);
+  k2 = stander(w2);
+  res2 = 0.0;
+  hex_editor::level_on(k2, w2, res2);
+  k2.wk_held = hex_editor::HELD_FWD;
+  wrote2 = 0;
+  for i in 0..60 {
+    out2 = tick(k2, w2, r2);
+    if out2.tk_dirty { wrote2 = wrote2 + 1; }
+  }
+  assert(wrote2 > 0, "and the instrument can see a stamp at all: {wrote2}");
+}
+
+fn test_levelling_holds_the_feet_and_the_fall_does_not_run() {
+  // The one inversion in the model: the feet are authoritative and the ground follows
+  // them. A walker levelling over ground that has been cut away does not drop.
+  //
+  // ⚠ THE FIRST TICK COMES BEFORE THE CUT, AND THAT IS THE WHOLE FIXTURE. Written the
+  // other way round this test was BLIND — running the fall while levelling left it
+  // green, because the walker's first tick ENTERS its hex, the level stamp fires, and
+  // the stamp puts back exactly the ground the walker was about to fall into. *A test
+  // that performs the repair cannot see that the repair was needed.* With the hex
+  // already entered no stamp fires, and the cut stands.
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  res = 0.0;
+  hex_editor::level_on(wk, w, res);
+  tick(wk, w, runs);
+  hex_editor::ground_fill(w, 0 - 2, 0 - 2, 3, 3, 0, hex_editor::SURFACE_MAT);
+  for i in 0..20 { tick(wk, w, runs); }
+  assert(hex_form::fabs(wk.wk_y - (GROUND_H as float) * w.w_unit) < 0.000001,
+         "the feet hold the frozen height, got {wk.wk_y}");
+  assert(wk.wk_fell == 0, "and nothing fell");
+}
+
+fn test_levelling_and_then_walking_clears_the_fall_speed() {
+  // A walker can be levelling with a speed only if the mode came on mid-fall, and the
+  // first step is what clears it. Nothing else does: the fall is skipped while the
+  // mode is on, so a speed left here survives until the mode is released and then
+  // resumes a fall the walker is no longer in.
+  w = flat_world();
+  runs = no_runs();
+  wk = hex_editor::walker_new(0.0, (GROUND_H as float) * w.w_unit + 3.0, 0.0);
+  tick(wk, w, runs);
+  assert(wk.wk_vy < 0.0, "the walker is falling, {wk.wk_vy}");
+  res = 0.0;
+  hex_editor::level_on(wk, w, res);
+  wk.wk_held = hex_editor::HELD_FWD;
+  tick(wk, w, runs);
+  assert(wk.wk_vy == 0.0, "the step cleared the fall speed, got {wk.wk_vy}");
+  assert(hex_form::fabs(wk.wk_y - (wk.wk_level_h as float) * w.w_unit) < 0.000001,
+         "and the feet are at the frozen grade, got {wk.wk_y}");
+}
+
+fn test_release_puts_the_feet_back_on_the_ground() {
+  // Without this they keep the frozen height until the next step — you stand in the
+  // air over a crevice you just cut and do not know until you move.
+  w = flat_world();
+  wk = stander(w);
+  res = 0.0;
+  hex_editor::level_on(wk, w, res);
+  hex_editor::ground_fill(w, 0 - 2, 0 - 2, 3, 3, 0, hex_editor::SURFACE_MAT);
+  hex_editor::level_off(wk, fn(gx: float, gz: float, gref: float) -> float {
+                          (gq, gr) = hex_grid::px_to_hex(gx, gz);
+                          (hex_editor::terrain_h(gq, gr, w) as float) * w.w_unit
+                        });
+  assert(wk.wk_y == 0.0, "the feet came back to the cut ground, got {wk.wk_y}");
+  assert(!wk.wk_levelling, "and the mode is off");
+}
+
+fn test_the_ground_taken_away_drops_a_walker_who_is_standing_still() {
+  // The fall runs whether or not the walker moved: a fall that ran only inside the
+  // walk would leave someone hanging over ground that was removed under them.
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  hex_editor::ground_fill(w, 0 - 2, 0 - 2, 3, 3, 0, hex_editor::SURFACE_MAT);
+  landed = false;
+  for i in 0..60 {
+    out = tick(wk, w, runs);
+    if out.tk_moved { landed = true; }
+  }
+  assert(landed, "standing over removed ground reports movement");
+  assert(wk.wk_y == 0.0, "and the feet arrive on what is left, got {wk.wk_y}");
+  assert(wk.wk_fell == 1, "the landing is counted once, got {wk.wk_fell}");
+}
+
+fn test_the_proxy_is_rebuilt_only_when_its_key_moves() {
+  // The report a driver keeps its own derived sets on. Ticking in place over an
+  // unchanged world rebuilds once — the first time — and then never.
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  first = tick(wk, w, runs);
+  assert(first.tk_rebuilt, "the first tick has no proxy to keep");
+  rebuilds = 0;
+  for i in 0..20 {
+    out = tick(wk, w, runs);
+    if out.tk_rebuilt { rebuilds = rebuilds + 1; }
+  }
+  assert(rebuilds == 0, "a still walker over a still world rebuilds nothing, got {rebuilds}");
+}
+
+fn test_the_edit_clock_is_the_term_that_sees_a_write_it_is_not_standing_on() {
+  // ⚠ THE `τ` TERM, ISOLATED — and isolating it took two tries. Edit the cell the
+  // walker is standing on and the SURFACE term catches it; walk into a fence and the
+  // CELL term does. `τ` is the only one that can see a write somewhere else, which is
+  // the case a second client makes on every keystroke.
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  tick(wk, w, runs);
+  assert(!tick(wk, w, runs).tk_rebuilt, "the proxy is being kept");
+  // Ten hexes out — outside the proxy's own radius-8 window, and nowhere near the
+  // walker's cell or its surface.
+  hex_editor::ground_fill(w, 10, 10, 14, 14, GROUND_H + 2, hex_editor::SURFACE_MAT);
+  assert(tick(wk, w, runs).tk_rebuilt,
+         "a write anywhere moves the world's clock, and the proxy follows it");
+}

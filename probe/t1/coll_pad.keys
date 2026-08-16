@@ -1,0 +1,31 @@
+# PROBE 4's INSTRUMENT — a walk whose STAMPED GROUND depends on the collision proxy.
+# Plan 22 `T1`.
+#
+# ⚠ TWO EARLIER VERSIONS OF THIS FILE WERE BLIND, EACH FOR ITS OWN REASON, AND THAT
+# IS THE FINDING RATHER THAN A NOTE ABOUT THE FILE:
+#
+#   `deck.keys`        — nothing blocks its walk, so the proxy cannot reach the world.
+#                        Rebuilding every tick and never rebuilding at all BOTH give
+#                        `cea971a0…`, which reads as *the proxy is a cache* and is
+#                        really *this script cannot tell*.
+#   a fence on FLAT     — the fence stops the walk (`feet 6.05` against `9.60` free)
+#   ground              — and the world still cannot see it: on ground already at the
+#                        frozen height `cur_h != level_h` is false at every cell, so
+#                        `brush_level` writes nothing. `saved 0 chunks`.
+#
+# So the ground must DIFFER from the level height for the stamp to write, and
+# something must stop the walk for the proxy to matter. `verb raise` supplies the
+# first, the fence ring the second.
+rate 0
+at 0 0 0
+verb raise
+wait rebuilt
+verb fence
+send 6:1
+keys 1
+step 90
+keys 0
+send 6:0
+step 30
+feet
+save t1pad

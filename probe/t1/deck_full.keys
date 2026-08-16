@@ -1,0 +1,70 @@
+# A DECK'S UNDERSIDE — the roof's soffit, one axis over.
+#
+# ⚠ THE ROOF'S FIX DID NOT REACH A FLOOR, and the EYES work named it as the one thing
+# still owed: *"a DECK is a sheet, so EYES under an upper storey looks through it
+# exactly as it once looked through a roof."* `emit_floor_slab` has drawn a RIM down
+# the side of every deck since the layers were first drawn, so a deck has LOOKED like
+# it had a thickness — with no face across the bottom of it.
+#
+# ⚠ AND A PICTURE CANNOT SEE IT INSIDE A HOUSE. A roof's soffit and a floor's soffit
+# are one colour and one surface, so standing under an upper storey photographs
+# `soffit 0.997` whether the deck has an underside or you are seeing the ROOF through
+# it. Two instruments are needed and this file uses both: the COUNT on the wire, and
+# a picture taken where a deck is the only thing overhead.
+
+echo --- ground to stand on, made by levelling as we walk
+# ⚠ `rate 0` IS LOAD-BEARING HERE, NOT TIDINESS — plan 22 `T0`. At the default rate
+# `step 90` means *wait for 90 more ticks*, and the ticks are paced by the WALL CLOCK,
+# so the walk is 90 plus whatever `keys 1`'s sleep and the `4:0` round-trip add.
+# Measured, exact stepping, one run per tick count:
+#
+#     86, 88 ticks -> 3e7ef3b5f47649025b54ccac77244af4
+#     90 … 98      -> cea971a07899e420b344c0054567f4e1
+#
+# **The world is a STEP FUNCTION of the tick count and this script sat one to two
+# ticks above the cliff** — reproducible only because every source of jitter ADDS
+# ticks, so the run drifted up into a plateau nine ticks wide and never down over the
+# edge. At `rate 0` nothing ticks except a `step`, so the walk is exactly 90 by
+# construction and the world is the same `cea971a0…` on any box.
+#
+# ⚠ AND THE CLIFF IS THIS WALK'S LENGTH, NOT LEVELLING'S. `cellar.keys` levels too and
+# has margin either way, because its arms are 2.67 wu — inside `LEVEL_R`'s disc, where
+# two more ticks reach no new hex. This walk is 9.60 wu, so its END lands on a cell
+# boundary and two ticks can cross one.
+rate 0
+at 0 0 0
+verb raise
+wait rebuilt
+send 6:1
+keys 1
+step 90
+keys 0
+send 6:0
+step 30
+
+echo --- the soffit BEFORE: no roof anywhere, so there is nothing to have one
+mesh soffit 0 0
+
+echo --- a storey over the level ground, with open sky above it
+# ⚠ `storey`, NOT `storey_up` — plan 22 `K3`. It is one of a PAIR that stays two verbs
+# (a direction belongs in the action), and the downward one is `cellar` rather than
+# `storey_down` because the domain has that word. See `cellar.keys`.
+verb storey
+step 60
+# ⚠ 342 IS 19 CELLS x 18 VERTICES — one six-triangle fan per cell of the disc the
+# storey wrote, which the ack reports as "storey +1 on 19 cells". A structural
+# relation, not a magic number: every deck cell that gets a top gets an underside.
+mesh soffit 342 342
+mesh floor
+
+echo --- EYES, under the deck, looking STRAIGHT UP
+send 40:4
+send 3:0,-20000
+step 120
+snap s16-under-deck
+# ⚠ `floor` IS THE ROW, NOT `sky`. Nothing culls backfaces here, so a deck with no
+# underside is not a hole — it is its own TOP FAN seen from below, in the floor's
+# timber. So the question is which of the two surfaces is overhead, and the pair is
+# disjoint: with the underside it is soffit and not floor.
+frame 0 1.0 soffit 0.90 1.0 floor 0 0.05 sky 0 0.001
+save t1deckfull

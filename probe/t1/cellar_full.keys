@@ -1,0 +1,327 @@
+# A CELLAR IS SOMEWHERE YOU CAN BE — a ceiling over it, and a stair into it.
+#
+# ⚠ THE ROOF HAD NO UNDERSIDE. THE DECK HAD THE SAME DEFECT ONE AXIS OVER AND
+# SURVIVED THE ROOF'S FIX. The ground was the third: a cellar's ceiling IS the
+# ground, and the ground is the one layer the underside clause excludes — drawn by
+# `chunk_mesh_mat`, which answers *the outdoors* by definition and so never had a
+# reason to ask what was dug beneath it.
+#
+# ⚠ AND `mesh soffit` IS BLIND TO IT, which is why `meshy` exists. Digging a cellar
+# puts 342 vertices into the soffit surface whether or not a ceiling is drawn — that
+# is the cellar FLOOR's own underside, in the same surface and the same colour. Seen
+# red before the fix: 342, every one of them 3.0 wu BELOW the ground. A count cannot
+# see a colour, a colour cannot see a count, and NEITHER can see a height.
+#
+# ⚠ AND THE ROOM WAS UNREACHABLE, WHICH IS `F1` AND NOT THE DRAWING. A tread written
+# into the cellar layer under an intact floor is refused the moment it comes within
+# ε: measured, ground−8 accepted and ground−6 `CW_FOLD`. Eight units is two and a
+# half strides, so no stair could ever arrive while the floor stayed whole. So the
+# cellar gesture opens the ground over its own stair, and `feet` below is the row
+# that says a walker actually gets down there.
+
+# ⚠ `rate 0` — THE WALK'S LENGTH IS THE SCRIPT'S, NOT THE BOX'S. Plan 22 `T0`. This
+# file levels as it walks, so every footfall writes and the tick count is part of the
+# result. Measured: the world is `c96b2ce7a569fa2dd88577a71a507f48` at the default
+# rate AND at `rate 0`, so nothing moved — what changed is that it can no longer move.
+#
+# ⚠ AND THIS SCRIPT HAD MARGIN WHERE `deck.keys` DID NOT, which is worth knowing before
+# copying either idiom. Its arms are `step 25` = 2.67 wu, inside the radius-5 disc
+# `brush_level` stamps, so 23, 25 and 27 ticks all key one world (5 and 60 do not — that
+# is the control saying the instrument can see an arm at all). `deck.keys` walks 9.60 wu
+# and sat one tick above a cliff. **A long walk is where the clock gets into the world.**
+rate 0
+
+echo --- a hill, because a cellar needs a storey of room beneath the ground
+at 0 0 0
+verb raise
+verb raise
+verb raise
+wait rebuilt
+step 10
+
+# ⚠ THE BASELINE IS A CLAIM, NOT A WARM-UP, and it guards the expensive half. The
+# ground's underside is CONDITIONAL where a deck's is not: a deck can be walked under
+# wherever it is, so it owes one always; the ground owes one only where something is
+# dug beneath it. Emitting it unconditionally would be a second fan under every cell
+# in the world for a face nothing can ever see, and this row is what catches that.
+echo --- BASELINE: nothing dug anywhere, so the ground owes no underside
+mesh soffit 0 0
+# ⚠ AND THE SAME CONTROL FOR `meshr` BELOW, which is what makes its 306 mean
+# something. A band that has never been seen empty cannot be trusted to report a
+# ceiling: this is the row that says the instrument answers 0 when there is nothing
+# there, taken before anything is dug.
+meshr soffit -0.6 -0.4 0 0 
+# ⚠ AND NO WALLS EITHER, which is the control for the room wall below: it is owed
+# only where a void has earth beside it, and open country is neither.
+mesh wall 0 0
+
+echo --- stand on the hill and level a plateau by walking a CROSS through it
+# ⚠ A CROSS, NOT A LINE, AND THE REASON IS THE LEVELLING BRUSH'S ARITHMETIC. `brush`
+# scales the gap by `f²` and truncates to an integer, so only the cell the walker
+# STEPS ON closes exactly; a cell one hex off the path takes 0.92 of a gap of 1,
+# which is 0 — it stalls a unit short and no number of passes moves it.
+#
+# ⚠ AND IT RETURNS TO THE CENTRE BY TELEPORT, NOT BY WALKING BACK. Walking out and
+# back does not land where it started — the arms came back 8 hexes adrift and the dig
+# was refused on ground the levelling never reached. While levelling is ON a teleport
+# takes `level_h` directly rather than asking the ground, so it cannot drift.
+#
+# ⚠ AND EVERY ARM IS AIMED BY `at`'s OWN YAW, NOT BY `turn`. This used `turn 180` /
+# `turn 90`, and it passed alone and failed in the SUITE every single time — the
+# plateau levelling to 4.469 instead of 4.593, and the gate finishing FASTER than it
+# did alone, which is the tell that something bailed early rather than ran slowly.
+# `turn` paces itself off ticks, so under ten parallel servers it stops short and
+# every arm after it points somewhere else. A teleport carries the heading exactly,
+# on any load, which is what "exact, repeatable, the workhorse" is worth.
+at 17 0 0
+step 20
+send 6:1
+keys 1
+step 25
+keys 0
+at 17 0 180
+keys 1
+step 25
+keys 0
+at 17 0 90
+keys 1
+step 25
+keys 0
+at 17 0 270
+keys 1
+step 25
+keys 0
+# ⚠ FACING +x AGAIN BEFORE THE DIG, because the stair runs along the author's facing
+# and the stations below are written for it.
+at 17 0 0
+send 6:0
+step 30
+feet 4.15 4.35
+
+echo --- dig, facing +x, and the stair goes in with it
+# ⚠ `cellar`, AND THAT IS THE POINT OF THE NAME — plan 22 `K3`. Its pair is `storey`,
+# not `storey_up`/`storey_down`: a verb takes the word the domain has, and a direction
+# suffix is the fallback where there is none. The line above says what this does, and
+# `verb storey_down` would have said which way a finger moved.
+verb cellar
+step 60
+# 19 cells dug. Each gets a floor-underside; each keeps a ceiling EXCEPT the two the
+# stair opens — so 36 fans of 18, not 38. A structural relation, and the two numbers
+# move in opposite directions: a gesture that opened the whole disc would still be
+# "684 minus something" to a looser row.
+mesh soffit 648 648
+# ⚠ THIS NUMBER IS THE ONE THAT MOVED TWICE, and each move is a finding.
+#
+# `emit_floor_slab` puts a rim on every edge where the floor does not continue. It
+# used to ask BY LABEL, so while one cellar across a chunk seam carried two labels it
+# drew a skirt down the middle of its own floor: A/B'd by backing the writer fix out,
+# 618 with the labels split against 522 with them joined — 96 vertices, sixteen quads
+# along a seam that is not an edge of anything.
+#
+# ⚠ THEN IT MOVED TWICE MORE WHILE THE RULE STOPPED BEING ABOUT LAYERS AT ALL. Asked
+# by label it could draw no riser at any step of any size — a tread and the room it
+# serves share a layer, so "is the neighbour occupied in my layer" always said yes.
+# Asked with a tolerance it drew them at some strides and not others: 588 under ε/2,
+# 564 under θ, because ε/2 happened to equal the walker's stride and θ, once the
+# constants were made to agree, WAS the stride. Neither constant was about it.
+#
+# The rule is `solid_at` now — is the neighbour solid at this height — which has no
+# slack in it and no opinion about layers. 564 is 342 of top fan (19 cells at 18) and
+# 222 of rim and riser. ⚠ THE RISERS ARE NOT PINNED BY THIS TOTAL: the structural
+# claim is `lib/hex_editor/tests/storey.loft`, which sweeps the stride from 2 to 5 and
+# requires one at every value. This row would pass on a build that drew none.
+#
+# ⚠ AND `mesh wall` READ 174 THROUGH ALL OF IT, which is the same measurement making
+# the opposite point: the room wall asked §5's geometric question from the start, so
+# it was never sensitive to any of this. That is the argument that converged the two.
+# ⚠ 564 → 390 WHEN LEVELLING STARTED SETTING ITS DISC. The rim-and-riser half of
+# this number is a fact about how BUMPY the dug floor is: a riser is drawn wherever
+# a neighbour is not solid at this height, and a cellar floor follows each column's
+# own top. The plateau this fixture levels was never flat — `brush`'s falloff closed
+# only the cells the walker stepped on — so the floor under it stepped too, and every
+# one of those steps was a riser. A flat pad has none of them. 390 is 342 of top fan
+# (19 cells at 18) and 48 of rim.
+mesh floor 390 390
+
+echo --- and the room's own floor is a storey under everything else
+# The cellar floor sits `STOREY_H` (12 units, 3.0 wu) under the ground and each
+# underside is `SLAB_THICK` below its own layer. So the surface carries two things a
+# fixed distance apart, and ONE ROW SEPARATES THEM — banded on height above the
+# ground at each vertex's own x,z rather than on world y:
+#
+#   306 = 17 fans of 18, each exactly SLAB_THICK under its own ground
+#   SLAB_THICK 2 units x HEIGHT_SCALE 0.25 = 0.50 wu, which is where they measure
+#
+# ⚠ AND WITH `mesh soffit 648` ABOVE, BOTH POPULATIONS ARE PINNED EXACTLY: the
+# undersides are 648 − 306 = 342, which is 19 fans. That is why the two `meshy` rows
+# that used to sit here are GONE rather than kept as a second opinion — they read
+# 310/338, which are not fan counts at all, so they claimed less than these two rows
+# already prove and would have broken again on any terrain change.
+#
+# ⚠ THE HISTORY IS WHY THIS ROW IS NOT A `meshy`, and it is worth the lines because
+# the obvious repair is the wrong one:
+#
+#   · 306/342 USED TO COME OUT OF A WORLD-y BAND AT 1.75, and that was resting on a
+#     BUG. An unwritten cell read back its chunk's window base, so every cell the
+#     raise brush's falloff rounded to zero sat at one constant height and the two
+#     populations clustered. With that fixed the disc is the dome's real curve, they
+#     interleave, and no threshold in world y reads a multiple of 18.
+#   · LEVELLING THE FIXTURE WAS BUILT AND BACKED OUT. A teleport sweep of the 19 dig
+#     cells, three passes, does flatten them (a six-unit spread, 14..19, to all
+#     exactly 17) and widens a world-y boundary six-fold — and the count still is not
+#     a fan count. THE TREADS ARE WHY: a tread is a STEP, so its own fan has corners
+#     at different heights by construction and four of its vertices hang below any
+#     world-y split whatever the ground under them does.
+#   · FLATTENING WIDER IS REFUTED OUTRIGHT. A ground fan's corners average THREE
+#     cells, so the disc's outer ring is pulled by terrain outside it — and levelling
+#     radius 3 changes what the gesture DIGS (`mesh soffit` 648 → 666) and destroys
+#     the plateau. A fixture cannot flatten past the dig without changing the dig.
+#
+# The datum was the problem, not the terrain. `meshr` measures against the datum, so
+# it reads 306 on the BUMPY fixture, unchanged — across the whole band -0.75..-0.45,
+# and widening to -1.0..-0.45 adds exactly 12, so the population is localised and not
+# a match-anything. OPEN_ISSUES carries the measurements.
+#
+# ⚠ AND THE 12 IT REPORTS AS "OVER OPEN GROUND" ARE NOT A ROUNDING ERROR — they are
+# the stairwell. A vertex over a cell whose ground has been opened has no datum at
+# all, so it is counted by no band and said out loud instead: 306 + 314 + 16 under
+# the ground, plus those 12, is the 648 above. A verb that silently dropped them
+# would report a clean number about a set it had quietly shrunk.
+#
+# ⚠ ITS CONTROL IS THE `meshr … 0 0` ROW BEFORE THE DIG. A band never seen empty
+# cannot be trusted to report a ceiling.
+# 306 = 17 fans of 18, each exactly SLAB_THICK under its own ground.
+# SLAB_THICK 2 units x HEIGHT_SCALE 0.25 = 0.50 wu, which is where they measure.
+#
+# ⚠ AND WITH `mesh soffit 648` ABOVE, BOTH POPULATIONS ARE PINNED EXACTLY: the
+# undersides are 648 − 306 = 342, which is 19 fans. That relation is the whole
+# reason these two rows are kept together.
+#
+# ⚠ IT READ 298 FOR ONE DAY, AND THE CAUSE IS WORTH KEEPING. Plan 20 `A5` made the
+# drawn ground part where it is too steep to hold, so one (x, z) can carry two or
+# three ground heights — and this verb's datum takes the highest. Eight ceiling
+# vertices were then measured against a cliff top they do not hang from, and the
+# row was re-baselined to 298 with that written down. Levelling then started SETTING
+# its disc instead of blending toward it, the plateau became genuinely flat, the
+# parted corners over the dug cells went away, and the structural number came back
+# on its own. **The 298 was never a fact about ceilings; it was a fact about a
+# plateau that was never level.** The `at a parted corner` count the verb now prints
+# is what made that legible.
+meshr soffit -0.6 -0.4 306 306
+# ⚠ THE FACES THE FIXTURE NOW GROWS, COUNTED — plan 20 `A5`. Without this row the
+# `meshr` number above is 298 for no stated reason, and the next reader would take it
+# for a ceiling defect. A rock face is DERIVED from the ground's own heights, so this
+# is also the row that catches the face rule firing where it should not: it was 0 for
+# every scene in this suite until a plateau was cut into a hill.
+# ⚠ 84 → 384 WHEN THE PLATEAU BECAME FLAT. A pad that steps down to the hill in
+# ones has nothing steep enough to face; a pad with a real EDGE has a rim all the way
+# round it that grass cannot stand at. That is `A5` reading a sharper world, not a
+# different rule — and it is the other half of why `mesh floor` fell: the risers that
+# were inside the floor are now one clean face outside it.
+mesh rock 384 384
+
+echo --- WALK DOWN IT. Four stations, each exactly one stride below the last.
+# ⚠ THIS IS THE ROW THE WHOLE THING EXISTS FOR, and nothing else can stand in for it:
+# the store can hold a perfect stair that the walker climbs straight back out of.
+# It did. `world_surface` takes the highest occupied layer at or below `feet + ε/2`,
+# and ε/2 is 4 — the same as a stride — so with the floor left intact over the
+# deepest tread the query answered "the floor" and the descent bounced. The gesture
+# opens every tread now, and these four numbers are what says so.
+#
+# ⚠ AND THEY ARE EXACTLY 1.0 wu APART. A stride is `cliff_step()` = 4 height units,
+# a storey is 12, so a cellar is three steps and there is no room for a fourth. A
+# gate that only asked "did the feet go down" would pass on a two-metre drop.
+#
+# ⚠ ALL FOUR BANDS CAME DOWN 0.25 wu, AND THE RELATION IS WHAT SURVIVED. The hill
+# these stand on used to be built one height unit too tall — an unwritten cell read
+# back its chunk's window base, and `brush` adds its delta to `ground_h`, so a stroke
+# read that base back as existing ground. The three tread stations now read 3.250,
+# 2.250 and 1.250: still exactly 1.0 apart, and now exactly on the quarter-unit grid
+# a cell top actually sits on. It is the SPACING that is the claim; the absolute
+# numbers were only ever where the arithmetic happened to land.
+echo --- on the plateau, beside the stairwell
+# ⚠ 2.500 → 4.250 WHEN LEVELLING STARTED SETTING ITS DISC, AND THE ROW GOT ITS OWN
+# CLAIM BACK. This station stands on the PLATEAU, outside the dig — and the plateau
+# was never level: `brush`'s falloff closed only the cells the walker stepped on, so
+# a station one hex off the path sat 1.75 wu low. The four numbers below then read
+# 2.500, 3.250, 2.250, 1.250 — which is not a descent at all, the first station being
+# BELOW the second, and the header's claim that each is "exactly one stride below the
+# last" was true of three of them. On a flat pad they are 4.250, 3.250, 2.250, 1.250:
+# one stride apart, all the way down.
+at 22.5 0 180
+step 20
+feet 4.15 4.35
+echo --- the top tread
+at 20.8 0 180
+step 20
+feet 3.15 3.35
+echo --- the lower tread, and this one is UNDER the floor
+at 19.0 0 180
+step 20
+feet 2.15 2.35
+echo --- and the cellar floor itself, three metres under the ground
+at 17 0 180
+step 20
+feet 1.15 1.35
+
+echo --- EYES, standing in the cellar, looking LEVEL at the room's side
+# ⚠ SEEN RED, AND IT WAS THE LOUDEST NUMBER IN ANY OF THIS: standing on the cellar
+# floor and looking level read `sky 0.2360` and `grass 0.1033` — a QUARTER of the
+# frame was daylight, from inside a room twelve units underground — with `mesh wall`
+# at 0. The model drew a layer's top, its rim and its underside, and nothing whatever
+# between two layers, so a cellar was a floor and a ceiling with the country visible
+# out of both sides.
+#
+# ⚠ `sky` AND `grass` ARE BOTH ROWS, because they fail differently. `sky` catches the
+# wall missing above the horizon and `grass` catches it missing below — and it was
+# the ground outside that a first version let through, by reading a hillside lying
+# under the room's ceiling as an open void rather than as the earth the wall holds
+# back. That mistake took the wall from 174 vertices to 12 and only `grass` moved.
+#
+# ⚠ AND THIS ROW COMES FIRST, BEFORE THE PITCH IS TOUCHED. `3:` is a look DELTA, not
+# a heading: the ceiling row below drives the pitch to vertical, where EYES lets it
+# saturate, so the same delta back does NOT return to level — it carried on to
+# straight down and photographed the floor. Taking the level picture while the pitch
+# is still level needs no arithmetic at all.
+send 40:4
+step 90
+snap s16-cellar-wall
+frame 0 1.0 masonry 0.40 1.0 sky 0 0.001 grass 0 0.001
+
+# 29 exposed edges of the dug disc's perimeter, at 6 vertices a quad. A hexagonal
+# disc of radius 2 has 30, and the stairwell accounts for the difference: a tread
+# with its ceiling opened is not walled, because the room there runs up to daylight.
+# ⚠ 174 → 162 WHEN THE PLATEAU BECAME FLAT: 29 exposed edges became 27, at 6
+# vertices a quad. A hexagonal disc of radius 2 has 30 of them and the stairwell
+# accounts for the rest — a tread with its ceiling opened is not walled, because the
+# room there runs up to daylight. On a pad that was never level the stair's treads
+# fell on ground of three different heights and only one cell opened; on a flat one
+# they fall together and three do. The relation is *30 minus what the stair opens*,
+# and it is the stair that moved, not the wall.
+mesh wall 162 162
+
+echo --- and STRAIGHT UP, at the ceiling
+# ⚠ THE PICTURE THAT COULD NOT BE TAKEN BEFORE ANY OF THIS. Nothing could stand in a
+# cellar, so the ceiling was gateable only on the wire. `sky 0` is the other half of
+# the claim and it is not redundant: a ceiling that was drawn but in the wrong place
+# would leave daylight over the room, and the count cannot see where a face is.
+send 3:0,-20000
+step 120
+snap s16-cellar-ceiling
+frame 0 1.0 soffit 0.95 1.0 sky 0 0.001
+
+echo --- THE CONTROL, from outside: the ceiling must stay UNDER the ground
+# ⚠ THIS ROW REFUTED THE FIRST FIX. A flat fan at the ground's STORED height read
+# well — every other underside in the renderer is exactly that, and a cellar is
+# built. But the ground is DRAWN SMOOTHED, so the drawn surface falls away from the
+# stored height wherever the terrain does, and a flat ceiling two units under it
+# stood proud of the hillside as a ring of dark wedges: `soffit 0.0187` of a frame
+# that must hold none. It is the ground's own corner heights minus one constant now,
+# so "under the ground" holds by subtraction rather than by tolerance.
+at 12 0 0
+send 40:1
+send 3:0,9000
+step 60
+snap s16-cellar-hillside
+frame 0 1.0 soffit 0 0.01
+save t1cellar

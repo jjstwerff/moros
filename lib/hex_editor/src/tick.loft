@@ -1,0 +1,322 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// ONE TICK OF THE PERSON — plan 22 `T1`, and [WALK_TICK.md](../../../doc/claude/WALK_TICK.md).
+//
+// ── the invariant ───────────────────────────────────────────────────────────
+//
+// > **One tick is a pure function of `(world, walker, held keys)` at a constant
+// > `dt`. A driver decides only WHEN it fires — never what it does.**
+//
+// ⚠ **EVERY PRIMITIVE UNDER THIS WAS ALREADY SHARED AND THE SEQUENCING WAS NOT**,
+// which is the whole finding. `walk_dir`, `turn_dir`, `yaw_turn`, `walk_step_len`,
+// `walk_to`, `edges_walk`, `fall_step` and `brush_level` are all this package's, and
+// `src/editor_server.loft` and `src/editor_client.loft` each ordered them again —
+// the half that decides the world. **And the second copy was already missing a
+// clause**: the page has no `brush_level` anywhere, so pressing `l` in local mode
+// levelled nothing and reported success. Porting the order into `editor_run` by
+// copying would have made N = 3.
+//
+// ⚠ **THE CONSTANT `dt` IS ALREADY LAW AND ALREADY PAID FOR.** `tick_dt()` is
+// `TICK_US / 1e6`, and the server's own comment records what it cost: integrating
+// `steps * TICK_US` in one pass made *"a loaded box take ONE tick that moved the
+// walker as far as five, and the trajectory depended on the machine."* Nothing here
+// introduces a fixed step — it notices that two drivers already agreed on one and
+// never shared the body.
+//
+// ── ⚠ THE GROUND ARRIVES AS A FUNCTION, AND THAT IS NOT A STYLE CHOICE ───────
+//
+// The fall asks what is under the feet, which is `hex_mesh::ground_under` — and
+// **`hex_mesh` depends on THIS package**, so importing it is a cycle. `walk.loft`
+// recorded that constraint when the walk moved here and left the fall behind for it.
+// So the driver supplies the sampler, exactly as `cliff_edges` takes its terrain by
+// a function: the derivation stays pure, and it can be tested without a mesher.
+//
+// ── ⚠ WHAT IS DELIBERATELY NOT HERE ─────────────────────────────────────────
+//
+// **No clock.** `walk_tick` fires when it is called. The server paces itself off the
+// wall at `sim_rate`, the page off its own accumulator, and `editor_run` off `step
+// <n>` and nothing else — a runner whose answer is a function of the script and of
+// nothing else is its entire value.
+//
+// **No camera, no broadcast, no dirty set.** `TickOut` reports what happened so a
+// driver can mesh, mark and speak; it never decides anything.
+use gesture;
+use pose;
+use walk;
+use fall;
+
+use hex_edge;
+use hex_way;
+use hex_field;
+use hex_grid;
+use hex_voxel;
+
+// Everything one tick reads and writes about the person. A driver OWNS one of
+// these and hands it over; it does not reach inside between ticks.
+//
+// ⚠ THE COLLISION PROXY IS IN HERE BECAUSE IT IS A CACHE, AND THAT WAS MEASURED
+// RATHER THAN ASSUMED — plan 22 `T1`, probe 4. Its key is `(hex, τ, surface)`;
+// rebuilding it on EVERY tick leaves the world byte-identical, and building it once
+// and never refreshing it moves the world — a walker whose proxy predates a fence
+// walks through the fence, `feet 9.60` against `6.05`, `b8d2ef6f…` against
+// `6a66ef59…`. ⚠ `deck.keys` could not answer either question: nothing blocks its
+// walk, so both sabotages returned `cea971a0…` and the green meant *this script
+// cannot tell*. See `probe/t1/coll_pad.keys`, which is the instrument with a control.
+pub struct Walker {
+  wk_x: float,
+  wk_z: float,
+  // ⚠ THE FEET ARE A STATE, NOT A SAMPLE OF THE GROUND. `fall.loft`'s rule, and the
+  // editor had NINE writers of this before it: a *teleport* may set them, a *tick*
+  // may only ever call `fall_step`.
+  wk_y: float,
+  wk_vy: float,
+  wk_yaw: float,
+  // W=1 S=2 A=4 D=8 — the wire's own bits, declared in `pose.loft`.
+  wk_held: integer,
+  // ── the level state machine ───────────────────────────────────────────────
+  //
+  // ⚠ WHILE LEVELLING THE RELATIONSHIP INVERTS: the feet hold their frozen height
+  // and the GROUND is brought to them. It is the one inversion in the model, and it
+  // is why the fall is skipped here — reading the feet back off ground that is being
+  // set from the feet would erase the difference the level exists to carry.
+  wk_levelling: boolean,
+  wk_level_h: integer,
+  // The last hex ENTERED, which is the level stamp's trigger. Once per hex, never
+  // per tick, so how fast you walk cannot change the shape of the ground you leave.
+  wk_hq: integer,
+  wk_hr: integer,
+  wk_have_hex: boolean,
+  // The gait and the landings — for reporting, and for nothing else. `wk_walked`
+  // advances by what was TRAVELLED rather than by what was asked for, so legs that
+  // stride into a wall are the tell that collision was bolted on outside the walk.
+  wk_walked: float,
+  wk_fell: integer,
+  // ── the collision proxy, and its key ──────────────────────────────────────
+  wk_coll: hex_field::EdgeSet,
+  wk_sf: hex_edge::Surfaces,
+  wk_rt: hex_way::Track,
+  wk_cq: integer,
+  wk_cr: integer,
+  wk_ctau: integer,
+  wk_csurf: integer,
+  wk_chave: boolean
+}
+
+// What a driver may need to REPORT. Never what it needs to decide.
+pub struct TickOut {
+  // Anything a viewer could see move — the pose, or a fall in progress.
+  tk_moved: boolean,
+  // The level stamp wrote, and where. A driver meshes this disc and marks it.
+  tk_dirty: boolean,
+  tk_dq: integer,
+  tk_dr: integer,
+  tk_drad: integer,
+  // What the stamp could not deliver: cells that hit the floor, the residual, and
+  // whether the relaxation finished at all. ⚠ THE LAST IS A DIFFERENT QUESTION FROM
+  // THE FIRST TWO — a big clamp count is what a big stroke looks like, while running
+  // out of `SLOPE_PASSES` is the stroke handing back a world that breaks its own
+  // rules, and the two were indistinguishable because nothing asked.
+  tk_clamped: integer,
+  tk_residual: integer,
+  tk_owed: integer,
+  // The proxy was rebuilt this tick. A driver that keeps its OWN derived set over
+  // the same key — the server's camera set is the one — refreshes it on this rather
+  // than writing the key out a second time.
+  tk_rebuilt: boolean
+}
+
+// A walker standing at a point, with an empty proxy that the first tick builds.
+//
+// ⚠ `wk_ctau` AND `wk_csurf` START AT −1 BECAUSE NEITHER IS EVER A REAL VALUE, so
+// the first tick always builds. `wk_chave` says the same thing and is kept because a
+// world's clock could in principle be −1 on a store that has not been written to.
+pub fn walker_new(x: float, y: float, z: float) -> Walker {
+  Walker { wk_x: x, wk_y: y, wk_z: z, wk_vy: 0.0, wk_yaw: 0.0,
+           wk_held: 0, wk_levelling: false, wk_level_h: 0,
+           wk_hq: 0, wk_hr: 0, wk_have_hex: false,
+           wk_walked: 0.0, wk_fell: 0,
+           wk_coll: hex_field::edgeset_new(0, 0, 1, 1),
+           wk_sf: hex_edge::surfaces_new(),
+           wk_rt: hex_way::track_new(),
+           wk_cq: 0, wk_cr: 0, wk_ctau: 0 - 1, wk_csurf: 0 - 1, wk_chave: false }
+}
+
+// The collision proxy, refreshed when it can no longer be right: when the walker has
+// changed cell, when the world's EDIT CLOCK has moved, or when the walker has changed
+// LEVEL. Answers whether it rebuilt.
+//
+// `τ` is what makes the second term exact — a cache is valid while nothing has been
+// written, which is a fact about what happened rather than a guess about how long
+// ago. Building it every tick is a 289-cell scan at 30 Hz for a world that mostly
+// does not change.
+//
+// ⚠ THE THIRD TERM IS NOT BELT AND BRACES. The cliff edges are derived from the
+// surface under the FEET, so the set is a function of the walker's level as well as
+// of the world. Almost every level change is also a cell change and would be caught
+// anyway — but a FALL is not: step off a deck and the ground arrives from underneath
+// without the cell moving, and a proxy keyed on the cell alone would still be holding
+// the deck's edges.
+//
+// ⚠ AND IT LEAVES `wk_csurf` HOLDING THE CURRENT SURFACE EITHER WAY, which is what
+// lets `walk_tick` take its reference from the key instead of asking the world a
+// second time. When nothing was rebuilt the two are equal BY THE TEST ITSELF.
+pub fn walk_proxy(wk: Walker, w: VoxelWorld, runs: WallRuns,
+                  reach: integer, step_max: integer) -> boolean {
+  (pq, pr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+  // The walker's own surface, resolved once and then used as the reference for every
+  // other cell — `walk_h`'s ⚠ is why it is not the feet themselves.
+  surf_u = walk_h(pq, pr, w, wk.wk_y / w.w_unit ?? 0.0);
+  if wk.wk_chave && wk.wk_cq == pq && wk.wk_cr == pr
+     && wk.wk_ctau == w.w_tau && wk.wk_csurf == surf_u {
+    return false;
+  }
+  wk.wk_sf = hex_edge::surfaces_new();
+  wk.wk_rt = runs_track(runs);
+  wk.wk_coll = edges_walk(w, pq, pr, reach, runs, wk.wk_sf, surf_u as float, step_max);
+  wk.wk_cq = pq;
+  wk.wk_cr = pr;
+  wk.wk_ctau = w.w_tau;
+  wk.wk_csurf = surf_u;
+  wk.wk_chave = true;
+  true
+}
+
+// One step of the person: turn, walk, stamp the level if a new hex was entered, fall.
+//
+// ⚠ THE STAMP AND THE FALL ARE MUTUALLY EXCLUSIVE, which is what makes their order
+// here free: the fall runs only when not levelling, and the stamp only when
+// levelling. The server ran the stamp a whole pump-pass later, in its streaming
+// block, for no reason other than that `last_hq`/`last_hr` lived there.
+//
+// ⚠ AND A TELEPORT DOES NOT STAMP ANY MORE, WHICH IS THE ONE BEHAVIOUR THIS MOVES.
+// The server's stamp hung off the streaming pass, so an `at` into a new cell while
+// levelling stamped a pad on arrival with no tick at all; now the tick after it does.
+// `cellar.keys` is where that is measured — four teleports with levelling ON, and the
+// world is `c96b2ce7a569fa2dd88577a71a507f48` either way.
+pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
+                 reach: integer, step_max: integer, level_r: integer,
+                 gnd: fn(float, float, float) -> float) -> TickOut {
+  out = TickOut { tk_moved: false, tk_dirty: false, tk_dq: 0, tk_dr: 0, tk_drad: 0,
+                  tk_clamped: 0, tk_residual: 0, tk_owed: 0, tk_rebuilt: false };
+  out.tk_rebuilt = walk_proxy(wk, w, runs, reach, step_max);
+  ref_u = wk.wk_csurf as float;
+  dt = tick_dt();
+
+  // A/D turn. The same yaw the mouse drives, so the two steering inputs cannot
+  // disagree — there is one facing and everything else is derived from it.
+  turn = turn_dir(wk.wk_held);
+  if turn != 0.0 {
+    wk.wk_yaw = yaw_turn(wk.wk_yaw, turn, dt);
+    out.tk_moved = true;
+  }
+
+  // W/S walk along the facing. One axis, so there is no diagonal to normalise —
+  // turning replaced the strafe that made that necessary.
+  fwd = walk_dir(wk.wk_held);
+  if fwd != 0.0 {
+    step = walk_step_len(dt);
+    ky = cos(wk.wk_yaw);
+    sy = sin(wk.wk_yaw);
+    // WALLS STOP THE WALK. The intended position goes through `walk_to`, which asks
+    // `hex_edge` about the whole SEGMENT — so the step is not a size to tune and a
+    // slow tick cannot cross a fence.
+    (wpx, wpz) = walk_to(wk.wk_coll, wk.wk_sf, wk.wk_rt, w, wk.wk_x, wk.wk_z,
+                         wk.wk_x + ky * step * fwd, wk.wk_z + sy * step * fwd, ref_u);
+    gone = sqrt((wpx - wk.wk_x) * (wpx - wk.wk_x)
+              + (wpz - wk.wk_z) * (wpz - wk.wk_z)) ?? 0.0;
+    wk.wk_x = wpx;
+    wk.wk_z = wpz;
+    // ⚠ `gone` IS UNSIGNED, so walking BACKWARD still advances the gait — the legs
+    // move either way, and a phase that ran backwards would unwind the stride.
+    wk.wk_walked = wk.wk_walked + gone;
+    if wk.wk_levelling {
+      wk.wk_y = (wk.wk_level_h as float) * w.w_unit;
+      wk.wk_vy = 0.0;
+    }
+    out.tk_moved = true;
+  }
+
+  // ── THE LEVEL STAMP — once per hex ENTERED ──────────────────────────────
+  //
+  // ⚠ IT SETS THE DISC NOW, IT DOES NOT BLEND TOWARD IT. This passed a DIFFERENCE to
+  // `brush` and took the hill's `(1 - t²)²` falloff with it — measured, walking a
+  // disc closed only the cells the walker stepped on, `2 4 4 4 4 4 2` along the path
+  // and `2 4 4 4 2` across it, because the gap is scaled by `f²` and truncated.
+  //
+  // ⚠ AND IT IS STILL ZERO WHERE THE GROUND ALREADY MATCHES, which is what keeps it
+  // from doing anything where you switched it on and from deepening a path walked
+  // twice — the guard just asks the question one level up.
+  (nq, nr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+  if !wk.wk_have_hex || nq != wk.wk_hq || nr != wk.wk_hr {
+    wk.wk_have_hex = true;
+    wk.wk_hq = nq;
+    wk.wk_hr = nr;
+    if wk.wk_levelling {
+      cur_h = terrain_h(nq, nr, w);
+      if cur_h != wk.wk_level_h {
+        lclamp = 0;
+        lvres = 0;
+        brush_level(w, nq, nr, wk.wk_level_h, level_r, lclamp, lvres);
+        out.tk_dirty = true;
+        out.tk_dq = nq;
+        out.tk_dr = nr;
+        out.tk_drad = level_r;
+        out.tk_clamped = lclamp;
+        out.tk_residual = lvres;
+        // ⚠ ASKED OF THE WORLD, NOT CARRIED OUT OF THE GESTURE. `slope_owed` reads
+        // the heights that are already there, so it cannot disagree with them.
+        out.tk_owed = slope_owed(w, nq, nr);
+      }
+      wk.wk_y = (wk.wk_level_h as float) * w.w_unit;
+    }
+  }
+
+  // ── THE FALL ────────────────────────────────────────────────────────────
+  //
+  // Once per tick, and the ONLY thing that evolves the feet. It runs whether or not
+  // the walker moved: ground taken out from under someone standing still has to drop
+  // them, and a fall that ran only inside the walk would leave them hanging.
+  //
+  // ⚠ THE REFERENCE IS THE SURFACE THE TICK BEGAN ON, NEVER THE FEET. Ask with the
+  // feet and the level is re-decided at every sub-step from a height that sags
+  // between cells: measured, the walker climbed a stair, crossed onto the platform
+  // and fell a full storey THROUGH the deck, because at the rim of the last step the
+  // feet read 6.7 units against a deck at 12 and a ground at 0.
+  if !wk.wk_levelling {
+    fs = fall_step(wk.wk_y, wk.wk_vy, gnd(wk.wk_x, wk.wk_z, ref_u * w.w_unit), dt);
+    wk.wk_y = fs.fl_y;
+    wk.wk_vy = fs.fl_vy;
+    if fs.fl_landed { wk.wk_fell = wk.wk_fell + 1; }
+    if fs.fl_airborne || fs.fl_landed { out.tk_moved = true; }
+  }
+  out
+}
+
+// Freeze the grade the walker is standing at, from THE FEET. Answers the residual —
+// the floor you froze is not quite the floor you were standing on.
+//
+// ⚠ MEASURED: taking `terrain_h(cell)` instead jumped the character 2.22 → 3.25 wu
+// the instant levelling came on. The feet stand on the INTERPOLATED surface, which
+// equals the cell height only at the cell's centre; anywhere on a slope the two
+// differ, and freezing from the cell froze a level the character was not at.
+pub fn level_on(wk: Walker, w: VoxelWorld, residual: &float) {
+  wk.wk_levelling = true;
+  wk.wk_level_h = freeze_grade(wk.wk_y / w.w_unit ?? 0.0, residual);
+}
+
+// Release, and put the feet back ON the ground immediately.
+//
+// ⚠ WITHOUT THIS THEY KEEP THE FROZEN HEIGHT UNTIL THE NEXT STEP, because the ground
+// is only read inside the tick — so you could stand in the air over a crevice you had
+// just cut and not know until you moved. Measured: it also made the levelling gate
+// unfalsifiable, since the released height was the frozen one in the run AND in its
+// control.
+// ⚠ AND IT LEAVES `wk_vy` ALONE. A walker can only be levelling with a velocity if
+// the mode came on mid-fall — the fall is skipped while it is on, so nothing zeroes
+// it except a step — and inventing a zero here would be a physics change smuggled in
+// as a tidy-up. It is the server's behaviour exactly.
+pub fn level_off(wk: Walker, gnd: fn(float, float, float) -> float) {
+  wk.wk_levelling = false;
+  wk.wk_y = gnd(wk.wk_x, wk.wk_z, wk.wk_y);
+}
