@@ -238,7 +238,14 @@ fn run_send(w: VoxelWorld, rest: text, said: &text) -> boolean {
 
 // One line of a script. Returns false only when the line asks for something this
 // runner cannot do, which it says out loud rather than skipping.
-fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &text) -> boolean {
+//
+// ⚠ `walked` IS THE ONE PIECE OF STATE THAT OUTLIVES A LINE — plan 22 `K3e`. It holds
+// the FIRST movement command this driver skipped since the last `at`, and `""` once an
+// `at` has fixed the author again. Everything else a line needs is in the world, the
+// author or the session; this is the runner's own bookkeeping about a thing it
+// deliberately does not do, so it lives here rather than in a library struct.
+fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &text,
+            walked: &text) -> boolean {
   t = line.trim();
   if t == "" || t[..1] == "#" { return true; }
   sp = t.find(" ");
@@ -262,6 +269,11 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
       yaw = (tail[p2 + 1..].trim() as float ?? 0.0) * PI / 180.0 ?? 0.0;
     }
     a = hex_editor::author_on(w, xs as float ?? 0.0, zs as float ?? 0.0, yaw);
+    // ⚠ AND IT CLEARS A SKIPPED WALK — plan 22 `K3e`. A teleport fixes the author at
+    // an exact pose, so whatever the walk before it did is no longer readable in what
+    // a gesture sees: the drop stops mattering the moment the value is overwritten.
+    // This is the half that keeps the fence from costing anything a walking script had.
+    walked = "";
     said = "placed {a.au_x},{a.au_z}";
     return true;
   }
@@ -296,6 +308,18 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // door. `lib/hex_editor/tests/opening.loft` holds the half of that rule the gates
   // used to: a gesture does not move the standing selection.
   if cmd == "verb" {
+    // ⛔ **AND HERE IS WHERE A SKIPPED WALK IS PAID FOR — plan 22 `K3e`.** A gesture
+    // is applied AT the author: `press_verb` takes `a`, and every verb in the
+    // vocabulary reads its position and its yaw. If a movement was skipped since the
+    // last `at`, the author this line is about to use is not the one the script
+    // means — so the gesture is refused rather than performed somewhere else, which
+    // is `send_why`'s answer for `4:` and `7:` said at the place it can be detected.
+    if walked != "" {
+      said = "`verb {rest}` is applied AT the author, and `{walked}` moved them where "
+           + "this runner cannot follow — it teleports rather than walks. "
+           + "Say `at <x> <z> [yaw]` after the walk, or run this script through a server.";
+      return false;
+    }
     // ⚠ THE LIBRARY ROOT IS THIS RUNNER'S OWN — plan 22 `B2e`. It reads the same
     // `data/parts/` the server does, so a script that chooses a part and places it
     // builds what the editor would. ⚠ Resolved through `source_dir()` for loft#712's
@@ -368,22 +392,39 @@ fn run_line(w: VoxelWorld, a: &Author, sess: EditSession, line: text, said: &tex
   // running tally off the wire and `until` waits for one. Not one of them writes a
   // cell, so a script serves both drivers across them exactly as the design claims.
   //
-  // ⛔ **AND `hold` / `keys` / `turn` ARE NOT AMONG THOSE SIX — plan 22 `K3c`, and
-  // this is the same defect `send` had, one word over.** They write no cell either,
-  // and that was never the question: they MOVE THE CHARACTER, and the character is
-  // the datum every gesture reads. `tools/script.mjs` compiles `hold W 3` and
-  // `keys 1` to `4:<bits>` and the server walks; this runner skips them and the next
-  // gesture lands wherever the last `at` put the author. Measured over the whole live
-  // corpus, **one script is hit today** — `tools/scripts/deck.keys` walks 90 units
-  // under `send 6:1` and then says `verb storey` with no `at` between, so the deck
-  // this runner builds is at the origin on unlevelled ground. Left skipped in this
-  // step **on purpose**: the fence belongs at the GESTURE rather than at the
-  // movement, because a `hold` with an `at` after it is provably harmless and
-  // refusing it would red every walking script for nothing. Plan 22 `K3e`.
-  if cmd == "wait" || cmd == "snap" || cmd == "hold" || cmd == "rate"
-     || cmd == "step" || cmd == "turn" || cmd == "keys" || cmd == "save"
+  // ⛔ **AND `hold` / `keys` / `turn` WERE AMONG THEM AND DID NOT BELONG — plan 22
+  // `K3e`, and it is the same defect `send` had, one word over.** They write no cell
+  // either, and that was never the question: they MOVE THE CHARACTER, and the
+  // character is the datum every gesture reads. `tools/script.mjs` compiles
+  // `hold W 3`, `turn 90` and `keys 1` all to `4:<bits>` and the server walks; this
+  // runner skipped them and the next gesture landed wherever the last `at` put the
+  // author. They are remembered below instead, and the fence is at the gesture.
+  if cmd == "wait" || cmd == "snap" || cmd == "rate"
+     || cmd == "step" || cmd == "save"
      || cmd == "eye" || cmd == "mesh" || cmd == "meshr" || cmd == "frame"
      || cmd == "cam" || cmd == "feet" || cmd == "last" || cmd == "until" {
+    return true;
+  }
+
+  // ── A MOVEMENT IS REMEMBERED, NOT REFUSED — plan 22 `K3e` ───────────────────
+  //
+  // ⚠ **THE FENCE BELONGS WHERE THE VALUE IS USED, WHICH IS THE GESTURE.**
+  // `CLAUDE.md`: *a guard where the thing arrives, a fence where the value is USED.*
+  // Refusing `hold` on the line it appears on would red every walking script in the
+  // corpus — and measured, **three of the four walk and then say `at`**, where the
+  // drop is provably harmless because the teleport re-fixes the author exactly.
+  // `cellar.keys` walks four times and says `at` after every one; refusing at the
+  // movement would cost it eight complaints for nothing.
+  //
+  // So the line is skipped exactly as before and the runner writes down THAT it was
+  // skipped. Only a `verb` cares, because only a `verb` reads the author.
+  //
+  // ⚠ **THE FIRST SINCE THE LAST `at` IS THE ONE NAMED, NOT THE LAST.** A walk is a
+  // block — `keys 1`, `step 90`, `keys 0` — and the line a person needs is where the
+  // author started diverging, not the one that stopped it. Naming the last would
+  // point `deck.keys` at its `keys 0` and say nothing about the 90 units before it.
+  if cmd == "hold" || cmd == "keys" || cmd == "turn" {
+    if walked == "" { walked = t; }
     return true;
   }
 
@@ -447,9 +488,13 @@ fn main() {
   // is the shape `CLAUDE.md` calls a grep whose default answer is *absent*. It is
   // counted now, and the count is a premise rather than a diagnostic.
   bad = 0;
+  // ⚠ DECLARED OUTSIDE THE LOOP BECAUSE IT IS THE ONLY THING THAT SPANS LINES — plan
+  // 22 `K3e`. A skipped `hold` is a fact about the author that survives until an `at`
+  // replaces it, so a per-line variable could never carry it to the gesture that pays.
+  walked = "";
   for line in text.split('\n') {
     said = "";
-    ok = run_line(w, a, sess, line, said);
+    ok = run_line(w, a, sess, line, said, walked);
     if said != "" { println("  {said}"); }
     if !ok { println("editor_run: {line}"); bad = bad + 1; }
     n = n + 1;

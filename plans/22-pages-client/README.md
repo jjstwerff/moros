@@ -84,10 +84,18 @@ counted the `GRND` section, so `world_save` answered **`WS_IO` — the bytes did
 disk** over a file it had written perfectly, and **not one of the three ground tests calls
 `world_save`**. `make probe-k3c` is in `make fast`.
 
-**Next:** **`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done. Two debts sit
-beside them, each created by the step that found it: **`K3d`** (ten scripts no gate runs lost
-their only regression check, `K3b`) and **`K3e`** (`hold`/`keys`/`turn` move the author and are
-still skipped — `K3c`'s defect one word over, live in `deck.keys`).
+✅ **AND A MOVEMENT IS NO LONGER DROPPED SILENTLY EITHER — `K3e`, 2026-08-16.** `hold`,
+`keys` and `turn` are remembered instead of skipped, and the fence is at the **gesture**: a `verb`
+whose author was moved by a walk this runner cannot follow fails the run, and an `at` clears it.
+⛔ **The row's own verify could not have failed as written** — it said *go red on `deck.keys`*,
+and `deck.keys` has exited 101 since `K3c` refused its `send 6:`. What is asserted is the
+complaint **count, 2 → 3**, and which line the third names. ⛔ **And the fence position is
+measured rather than argued**: putting it where the movement arrives costs `cellar.keys`
+**2 complaints → 10**. `make probe-k3e` is in `make fast`.
+
+**Next:** **`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done. One debt sits
+beside them, created by the step that found it: **`K3d`** — ten scripts no gate runs lost their
+only regression check (`K3b`).
 
 ✅ **AND THE TWO INSTRUMENTS THAT WERE RED BEFORE ANY OF IT STARTED ARE GONE.** `probe/k1` checks
 `A`/`B` had failed since `S3` collapsed the opening keys — measured on HEAD, not caused by
@@ -188,7 +196,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K3b`** — drop the key spelling from both readers | S | the test-name and script-vocabulary diff, **not** a green suite | **DONE 2026-08-16.** `key <K>` gone from `src/editor_run.loft` and `tools/script.mjs`; `KEYMAP`'s 22 rows gone with it, and this file's last opinion about a keyboard. ⛔ **THE PRICE WAS THREE PROBES, NOT TWO** — this row predicted `probe/k1` and `probe/k2`, and `probe/k2b` died too: it baselines on `git show 0e2d48a:<path>`, so its baseline side is in the deleted spelling and builds **nothing** (`runs 0` against the converted side's real world). Its own vacuity guard reported it — *the label map rewrote NOTHING over 31 script(s)* — which is what an instrument that can see its own emptiness is worth. ⛔ **AND A CLAIM WAS ABOUT TO GO OUT WITH THEM**: *a gesture does not move the standing selection* was held by `probe/k1` `D` and relied on as `probe/k2` check 5's premise, and **every test in `opening.loft` chose once and cut once** — so all 17 were satisfied by a gesture that CONSUMES its choice. Moved first, then seen red on a sabotage that resets the kind after each cut, **with the other 17 green**, which is what proved the gap real. ⚠ **Move before you remove.** ⏭ The genuine loss is named rather than absorbed: `K3d`. Retired the scripted half of four sabotage sweeps and kept every library row (`sabotage-x` 6 rows red on their own claims, control green, tree restored) · `probe/k1` **4 FAILED → green**, and it now asserts the deletion directly (*a stale `key H` is an unknown word and fails: rc=101*) | ✅ Done |
 | **`K3d`** — the ten un-gated scripts get a regression check that is not a second spelling | S | ⚠ it must go red on a press DELETED from a live script — the failure `probe/k2` caught and nothing does now | ⛔ **Created by `K3b`, and it is a real coverage cut rather than a tidy-up's leftovers.** `probe/k2`'s own reason for existing was that `annex` `door` `embrasure` `furnish` `house` `niche` `opening` `profiles` `determinism` `slab` are driven by **nobody automatically** — `make gate` runs `cache`, `indoors`, `cellar`, `clientmesh` and `deck`. `cellar.keys` and `deck.keys` keep their gates; the other ten now have no check that they still build what they built. ⏭ Wants a committed world-key + session-digest baseline per script, regenerable on purpose — **not** a diff against a second spelling, which is what just retired |
 | ✅ **`K3c`** — `send` of an **authoring** id must not be silently dropped | S | ⚠ the ten scripts must go RED where they run headless — that is the deliverable, not a regression | **DONE 2026-08-16.** Default **deny**: `send_quiet` names the ids known to change nothing and everything else fails the run; `ground` — the one authoring message this runner can honestly perform — is performed on both spellings. ⛔ **The drop was visible as a COLLISION and nobody had looked**: six scripts keyed **`32952:3318286153` at τ 3813**, and `plane.keys`, whose whole subject is the floor it stands on, was byte-identical to a script that does nothing but raise a hill. ⛔ **This row's own claim about `44:` was too strong** — measured over the corpus, **no live script performs an authoring gesture inside part mode**, so the corruption is *latent* and the live loss is that five part scripts become one world. ⛔ **The class letter is a hint, not the rule**: `9` LOAD is filed **R** and replaces the store, `7` PLACE is filed **X** and moves the datum every gesture reads — a letter whitelist waves both through, which is why the list is ids. ⛔ **AND PERFORMING `ground` FOUND A LIBRARY DEFECT TWO LAYERS DOWN**: `world_file_size` never counted the `GRND` section, so `world_save` answered **`WS_IO` — the bytes did not reach the disk** over a file it had written perfectly · `make probe-k3c`, **in `make fast`** · 6 sabotages red on their own claims, control green · corpus diff exact: 8 scripts 0 → 101, `plane` moved, **30 of 38 unmoved** |
-| **`K3e`** — a line that MOVES THE AUTHOR must not be silently dropped either | S | ⚠ it must go red on `deck.keys` — a walk, then a gesture with no `at` between — and stay green on every script that walks and then says `at` | ⛔ **`K3c`'s defect one word over, and `K3a`'s comment said the wrong thing about it.** `hold`, `keys` and `turn` are on the skip list under *"not one of them writes a cell"* — true, and never the question: they compile to `4:<bits>`, the server WALKS, and the character is the datum every gesture reads. Measured over the live corpus, **one script is hit today**: `tools/scripts/deck.keys` walks 90 units under `send 6:1` and then says `verb storey` with nothing between, so the deck this runner builds is at the origin on unlevelled ground. ⏭ **The fence belongs at the GESTURE, not at the movement** — `CLAUDE.md`'s *a guard where the thing arrives, a fence where the value is USED*: refusing `hold` outright reds every walking script for a drop that is provably harmless the moment an `at` follows |
+| ✅ **`K3e`** — a line that MOVES THE AUTHOR must not be silently dropped either | S | ⚠ **the count, not the failure** — `deck.keys` has exited 101 since `K3c`, so *deck fails* was already true | **DONE 2026-08-16.** `hold`, `keys` and `turn` are remembered rather than skipped, and `verb` — the one word applied AT the author — refuses when a movement has not been cleared by an `at`. ⛔ **THE OBVIOUS ROW COULD NOT HAVE FAILED.** This row's own verify said *it must go red on `deck.keys`*, and `deck.keys` was already red: `K3c` refuses its `send 6:`. The assertion is the **complaint count, 2 → 3**, and which line the third names. ⛔ **AND THE FENCE POSITION IS PRICED RATHER THAN ARGUED.** The sweep's `atarrival` row builds the cheaper design — refuse the movement where it arrives — and it passes A, B and E: what it costs is `cellar.keys` **2 complaints → 10** and `fall`/`determinism` failing outright, because three of the four live walkers teleport afterwards. ⛔ **The line named is the FIRST since the last `at`, not the last** — a walk is a block (`keys 1`, `step 90`, `keys 0`) and naming the last points at what STOPPED a 90-unit walk; `lastnotfirst` keeps the exit code and destroys the diagnostic. ⛔ **My own probe's count was off by two and said so in its own words** — `editor_run: ` is the prefix of a complaint *and* of both summary lines, so the arithmetic form printed `printed 3 complaints, not 3`. ⛔ **And the sweep's `|` delimiter collided with the `||` in the line it was sabotaging** — caught by the row's own did-it-apply guard rather than scored as a miss · corpus diff exact: **35 of 36 scripts unmoved**, `deck` alone moved · `make probe-k3e`, **in `make fast`** (49 s) · 6 sabotages red, 0 missed, control green · `make parts` byte-identical · `make headless-same` rc=0 · `probe/k1` green |
 | ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
 | ✅ **`M3`** — rebinding from the editor: arm, pick a slot, press a key | S | **DONE 2026-08-15.** `hex_editor::Rebind`, two fences in the client, `make probe-demo` `M1`–`M6`. ⛔ **The row it turned out to be about was not the collision one**: a POLLING editor fires the verb it has just bound, because the completing key is still down on the next frame — and that raise is correct in every particular. ⛔ **The map is not the whole keyboard** (8 client keys outside it, invisible to `keymap_bind`). ⛔ **The driver had been turning `5` into code 85** since it was written, and digits are the only free keys there are. ⛔ **`probe/b1b/auth.sh` B9 had been RED since `B1c.1`** — measured on the pre-`M3` commit before it was blamed on anything · hex_editor keymap 15 → 28 tests · 4 library + 3 demo sabotages red · `make probe-auth` 36 → **37 PASS** | ✅ Done |
 | ✅ **`M4`** — delete `verb_of` | XS | **DONE 2026-08-15.** The suite reads **522 → 522** and that is the wrong instrument: the **test-name diff** is 6 lines, 1 deleted, 1 added, 4 renamed with the claim change written on each. ⛔ **The row that said it caught *built and never called* never could** — measured on the pre-`M4` tree, an arm in `press_verb` reachable from no key left the suite at 522 passed. `the_vocabulary()` replaces it, **with the case it still cannot see written into the test**. ⛔ **The deletion silently disarmed four sibling sweeps** — all four sed'd the deleted chain, and only the two whose subject guard happened to NAME the binding said so; the other two printed *NOTHING went red*. ⛔ **And a sweep piped through `head` left its sabotage in the tree**, because the trap had no `PIPE` · `sh probe/k2/sabotage-m4.sh` 5 red + 2 controls · `make lib-test` **3624 both backends** · `make fast` 156 files · `make gate` 49 · `make parts` byte-identical | ✅ Done |
@@ -495,6 +503,10 @@ fence where the value is USED* — puts it at the **gesture**: the runner knows 
 has moved in a way it did not model, and says so when something reads the author. That
 is a different mechanism from this step's, so it is a row.
 
+✅ **BUILT THE SAME DAY — see [*What `K3e` turned up*](#-what-k3e-turned-up-2026-08-16--the-rows-own-verify-could-not-have-failed).**
+The guess above held and the price of the other design is now a number: a fence at the
+movement costs `cellar.keys` **2 complaints → 10**.
+
 ### ⏭ The probe is in `make fast`, and pooling is what made that affordable
 
 `probe/k1` was red for days and `probe/b1b` `B9` since `B1c.1`, both because
@@ -520,6 +532,101 @@ built.
 - ⏭ **`probe/a83/leaf_visible/switch.sh` is untouched**, because its script is a heredoc
   driven only through a server. It is the tenth script and it never meets this runner —
   `K2b` found the same file the same way.
+
+## ✅ What `K3e` turned up (2026-08-16) — the row's own verify could not have failed
+
+`hold`, `keys` and `turn` sat on the skip list under *"not one of them writes a cell"*.
+True, and never the question: `tools/script.mjs` compiles all three to `4:<bits>`, the
+server WALKS, and the character is the datum every gesture reads — the exact argument
+`K3c` used to refuse `6:` LEVEL two lines above them.
+
+### ⛔ The verify this row was written with could not have gone red
+
+The row said: *it must go red on `deck.keys`*. Measured before anything moved,
+`deck.keys` **already exits 101** — `K3c` refuses its two `send 6:` lines. So a check
+spelling *deck fails* would have passed on the previous commit, with the walk still
+going quietly on the floor, and it could never have distinguished the two.
+
+What is asserted instead is the **complaint count and the line named**: `deck.keys`
+printed 2 complaints before and prints 3 now, and the third names `keys 1`. Row E of
+`probe/k3e/run.sh` carries that reasoning in its own header, because the next person to
+read it will otherwise simplify it back to the exit code.
+
+⚠ **And `deck.keys` is now correctly declared un-runnable headless, which is a result
+rather than a regression.** Its subject is *level the ground while walking*, so it needs
+a server; the fix is not an `at` — that would teleport the walk away and destroy what
+the script is for. It said the wrong thing silently before and says the right thing
+loudly now.
+
+### ⛔ The fence position is priced rather than argued
+
+`CLAUDE.md`'s rule — *a guard where the thing arrives, a fence where the value is USED* —
+picks the gesture, and the sweep is what makes that a measurement. `atarrival` builds the
+other design (refuse `hold` where it lands) and it **passes rows A, B and E**. What it
+costs, run:
+
+| script | walks | complaints, fence at the gesture | fence at the movement |
+|---|---|---|---|
+| `cellar.keys` | 4, each followed by `at` | **2** (`K3c`'s two `send 6:`) | **10** |
+| `determinism.keys` | 1, then `at`, then two `verb run` | rc **0** | rc **101** |
+| `fall.keys` | 1, no gesture after | rc **0** | rc **101** |
+| `deck.keys` | 1, then `verb storey` | rc 101, **3** complaints | rc 101, 4 |
+
+Three of the four live walkers teleport afterwards, where the drop is provably harmless
+because a teleport overwrites the author outright. **Row C exists for this and nothing
+else** — a walk with no gesture after it must not be refused — and it is the only row the
+cheaper design reds that the design taken does not.
+
+### ⛔ The line NAMED is the first since the last `at`, not the last
+
+A walk is a block: `keys 1`, `step 90`, `keys 0`. Naming the most recent movement points
+`deck.keys` at its `keys 0` — the line that **stopped** a 90-unit walk — and says nothing
+about the 90 units. `lastnotfirst` is the sabotage for it, and it is the shape worth
+noticing: **the run still fails, so every check on an exit code stays green**, and what
+is destroyed is the one thing a person fixing the script needs.
+
+### ⛔ Two instruments were wrong before the subject was, and both said so themselves
+
+- **The probe's complaint count was off by two.** `editor_run: ` prefixes a complaint
+  *and* both summary lines (`editor_run: world …`, `editor_run: N lines, …`), so the
+  arithmetic form printed **`deck.keys printed 3 complaints, not 3`** — which is what an
+  off-by-two looks like when the number in the message and the number in the test come
+  from different expressions. Counted by excluding the two summaries by name now.
+- **The sweep's `sed` delimiter collided with the line it was sabotaging.** The subject
+  is `if cmd == "hold" || cmd == "keys" || cmd == "turn" {` and the row was written
+  `s|…|…|`, so the `||` ended the expression mid-word. ⚠ **The row's own did-it-apply
+  guard is what reported it** — `??? onlykeys — THE SABOTAGE DID NOT APPLY` — instead of
+  running the unmodified tree and scoring *the probe cannot see this*. That guard was
+  written for `probe/k3c` after an extraction moved a line by two columns; this is the
+  second time it has paid.
+
+### The equality that is the argument for skipping a movement at all
+
+Row B runs the same walk three ways at `GROUND=30`: walked-then-`at 5 0 0`, never walked
+at `at 5 0 0`, and never walked at the origin.
+
+    at 0 0 0 / keys 1 / step 90 / keys 0 / at 5 0 0 / verb raise   32952:2499485856
+    at 5 0 0 / verb raise                                          32952:2499485856
+    at 0 0 0 / verb raise                                          32952:3318286153
+
+The first two agree and the third does not, which is both halves at once: the teleport
+really does erase the walk, **and** the fixture can tell two poses apart — without the
+third row the equality is satisfied by two empty worlds agreeing, which is `probe/k3c`
+row D's guard one probe over.
+
+### ⏭ What it does NOT claim
+
+- ⏭ **The runner still cannot walk, and this step does not make it able to.** It makes
+  the absence loud. Whether a headless walk is worth building is a separate question and
+  nothing here answers it.
+- ⏭ **No server is started.** The claim is about one driver's own bookkeeping; the
+  server's walk is not compared against anything here.
+- ⏭ **`step` is not a movement word.** It advances ticks, and ticks move the character
+  only while a `keys` bitmask is held — which the `keys` line already records. A `step`
+  with nothing held moves nobody, so fencing it would red `determinism.keys` and
+  `cellar.keys` for nothing.
+- ⏭ **`part` and `select` are not fenced**, because neither reads the author: they choose
+  what the *next* gesture uses. Only `verb` is applied AT a pose.
 
 ## ✅ What `B4` turned up (2026-08-15) — the milestone was three finished parts and no wire between them
 
