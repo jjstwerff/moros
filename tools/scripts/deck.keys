@@ -13,6 +13,25 @@
 # a picture taken where a deck is the only thing overhead.
 
 echo --- ground to stand on, made by levelling as we walk
+# ⚠ `rate 0` IS LOAD-BEARING HERE, NOT TIDINESS — plan 22 `T0`. At the default rate
+# `step 90` means *wait for 90 more ticks*, and the ticks are paced by the WALL CLOCK,
+# so the walk is 90 plus whatever `keys 1`'s sleep and the `4:0` round-trip add.
+# Measured, exact stepping, one run per tick count:
+#
+#     86, 88 ticks -> 3e7ef3b5f47649025b54ccac77244af4
+#     90 … 98      -> cea971a07899e420b344c0054567f4e1
+#
+# **The world is a STEP FUNCTION of the tick count and this script sat one to two
+# ticks above the cliff** — reproducible only because every source of jitter ADDS
+# ticks, so the run drifted up into a plateau nine ticks wide and never down over the
+# edge. At `rate 0` nothing ticks except a `step`, so the walk is exactly 90 by
+# construction and the world is the same `cea971a0…` on any box.
+#
+# ⚠ AND THE CLIFF IS THIS WALK'S LENGTH, NOT LEVELLING'S. `cellar.keys` levels too and
+# has margin either way, because its arms are 2.67 wu — inside `LEVEL_R`'s disc, where
+# two more ticks reach no new hex. This walk is 9.60 wu, so its END lands on a cell
+# boundary and two ticks can cross one.
+rate 0
 at 0 0 0
 verb raise
 wait rebuilt

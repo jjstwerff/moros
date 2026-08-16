@@ -140,9 +140,11 @@ least nine ticks wide. It is reproducible today only because the jitter is
 **one-directional** — every source of it *adds* ticks, so the run drifts up into the
 wide plateau and never down over the edge.
 
-⚠ **That is a live fragility in a gate, found by designing something else.** `deck` is
-`tools/gates/character/deck.mjs` and it is resting on ~1 tick of margin on the side that
-has none.
+⚠ **That is a live fragility in a gate, found by designing something else.**
+`tools/gates/world/deck_soffit.mjs` is a thin wrapper on `tools/script.mjs
+tools/scripts/deck.keys`, so it was resting on ~1 tick of margin on the side that has
+none. (`tools/gates/character/deck.mjs` shares the name and not the script — it builds
+its own scene and only mentions `cellar.keys` in a comment.)
 
 ✅ **And the same probe supplies the cure and the acceptance test.** At `rate 0` the walk
 is exactly 90 ticks **by construction** — `may_tick = sim_pending > 0`, so the `sleep(60)`
@@ -189,7 +191,7 @@ wrong. Falsification: level in local mode and read the page's own surface line.
 
 | step | what it does | what would surprise it |
 |---|---|---|
-| **`T0`** | the scripts that walk say `rate 0` | ⚠ **independent of everything below, and worth doing whatever happens to this design.** The `deck` gate stops resting on one tick. Verify: the gate's world is `cea971a0…` and `step 88` still differs — the cliff must stay visible, or the check went blind rather than stable |
+| ✅ **`T0`** | the scripts that walk say `rate 0`, and `tools/walk-exact.sh` keeps it true | **DONE 2026-08-16.** `deck.keys` and `cellar.keys` converted, worlds unchanged (`cea971a0…`, `c96b2ce7…`), `deck_soffit` / `cellar_ceiling` / `deck` all PASS. ⛔ **`determinism.keys` was NOT converted and that is the finding** — see below. ⛔ **And the speedup I predicted is refuted**: 19.9 s without, 22.5 s with, 26.6 s in a parallel run — `rate 0` buys exactness, not time |
 | **`T1`** | `Walker` + `walk_tick` in `hex_editor`; **the server is its only caller** | the `deck` world at `rate 0` must be **byte-identical**, and `make gate` unmoved. A pure extraction whose comparison is exact — the upper bound satisfied, and it can fail on its own |
 | **`T2`** | the page calls `walk_tick`; `local_turn`/`local_walk`/`local_fall` **deleted** | `make probe-demo` G/H unmoved (`walked 2.454`, the fall completing) — **and levelling starts working in local mode**, which is a capability the page never had. ⚠ Remote mode must NOT tick (probe 5) |
 | **`T3`** | `editor_run`'s `step <n>` becomes n ticks; `keys`/`hold`/`turn` are **performed** | `deck.keys` headless == the server's md5. ⚠ **This retires `K3e`** — there is no skipped movement left to remember. **Move before you remove**: the `walked` fence and `probe/k3e` come out only once the equality holds, never before |
@@ -200,6 +202,78 @@ because the step before it left a proven artifact to compare against — `T1` ag
 server's own world, `T2` against the demo's recorded numbers, `T3` against `T1`'s
 output. Reordered, the middle two have nothing exact to be measured by, which is the
 failure `W4` was reverted for.
+
+## ✅ What `T0` turned up (2026-08-16) — the clock-independence check that could not see the clock-dependence
+
+`deck.keys` and `cellar.keys` say `rate 0` now, both worlds byte-unchanged, and
+`tools/walk-exact.sh` is in `make fast` so a new walking script cannot quietly leave the
+tick count to the box.
+
+### ⛔ `determinism.keys` claims exactly this property, has never been asked, and could not have answered
+
+Its header: *"Run this at rate 1 and at rate 0 and the two world files must be
+byte-identical — that is what 'reproducible even with clocks that change speed' means,
+and it is the property every golden image rests on."* It ends in a `save` written for
+that comparison.
+
+**Nothing performs it.** Its gate list is empty; `probe/k2` retired with `K3b`. Performed
+by hand for the first time on 2026-08-16 — `23d3f79779eb8177a6353e169d07f9ab` both ways,
+so the claim holds.
+
+⛔ **And it holds for a reason that makes the script blind to its own subject.** Its only
+walk is `keys 1 / step 90 / keys 0` — the same 90 ticks `deck.keys` walks — followed by
+`at -3 -3 0`. A teleport overwrites the walker outright, so **the walk contributes
+nothing its saved world can see.** The one case where a clock *does* reach the world is
+the case the clock-independence script does not contain. *A guard that works in one
+direction reads exactly like a guard* — the third time this tree has written that
+sentence, after `faced_between` and `stroke_over_limit`.
+
+✅ **So it is deliberately left at no rate**, because it is the control: a script pinned
+to `rate 0` can no longer be run at both. What replaces the missing coverage is the
+rule, not a second copy of the file.
+
+### The rule, and why it is not a list of filenames
+
+`tools/layering.sh` skipped every `moros_*` package for months — the one check written to
+catch a mis-homed package exempted the packages that were mis-homed. So `walk-exact` asks
+a question of each script instead: **can the world see where this walk ended?** Two ways,
+either one demanding `rate 0`:
+
+1. the walk **writes** — a movement while `6:` LEVEL, `10:` ROAD or `47:` WATER is on
+2. the walk **positions** — a `verb` after a movement with no `at` between, which is
+   `K3e`'s predicate asked of the file rather than of the run
+
+✅ **The exemption then falls out of the rule.** `determinism.keys` is not flagged because
+it says `at` afterwards — no name is written down anywhere, so nothing is exempt by
+accident.
+
+### The cliff is the walk's LENGTH, not levelling
+
+| script | arm | plateau, exact stepping | margin |
+|---|---|---|---|
+| `cellar.keys` | `step 25` = 2.67 wu, **inside** `LEVEL_R`'s radius-5 disc | 23 = 25 = 27 (5 ≠, 60 ≠ — the control) | ≥2 ticks each side |
+| `deck.keys` | `step 90` = 9.60 wu, well beyond it | 86 = 88 ≠ **90** = 92 = 94 = 98 | ≤2 ticks on the low side |
+
+Two more ticks inside the brush disc reach no new hex; two more at 9.6 wu cross a cell
+boundary. **A long walk is where the clock gets into the world.**
+
+### ⛔ And the speedup was predicted, measured and refuted
+
+`deck.keys` spends 300 ticks = 9.9 s of wall clock at rate 1, so `rate 0` looked like it
+should pay for itself. Measured on `deck_soffit`, same tree, same gate: **19.9 s without,
+22.5 s with**, against 26.6 s for the same gate inside a three-gate run. The run-to-run
+spread is larger than the effect. ⚠ `CLAUDE.md`'s own rule, on a box shared with other
+agents' work: *a wall clock measures the machine.* The claim is dropped rather than
+softened.
+
+### ⏭ What `T0` does NOT cover
+
+- ⏭ **Pictures.** The rule asks what the *world* can see. A camera script's frame
+  thresholds also move with the tick count — `fall.keys` already says `rate 0` for
+  exactly that reason — and nothing here checks it.
+- ⏭ **`determinism.keys` is still run by nobody.** Performing its comparison standingly
+  is `K3d`'s shape, not this step's, and it is now one of the named gaps rather than an
+  assumption.
 
 ## What this design does NOT claim
 

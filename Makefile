@@ -413,6 +413,7 @@ gate-rep:
 #   TEST_VERBOSE=1 make fast      per-file seconds
 fast:
 	@sh tools/layering.sh
+	@sh tools/walk-exact.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 	@$(MAKE) -s probe-k3c
 	@$(MAKE) -s probe-k3e

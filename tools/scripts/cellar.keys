@@ -19,6 +19,18 @@
 # cellar gesture opens the ground over its own stair, and `feet` below is the row
 # that says a walker actually gets down there.
 
+# ⚠ `rate 0` — THE WALK'S LENGTH IS THE SCRIPT'S, NOT THE BOX'S. Plan 22 `T0`. This
+# file levels as it walks, so every footfall writes and the tick count is part of the
+# result. Measured: the world is `c96b2ce7a569fa2dd88577a71a507f48` at the default
+# rate AND at `rate 0`, so nothing moved — what changed is that it can no longer move.
+#
+# ⚠ AND THIS SCRIPT HAD MARGIN WHERE `deck.keys` DID NOT, which is worth knowing before
+# copying either idiom. Its arms are `step 25` = 2.67 wu, inside the radius-5 disc
+# `brush_level` stamps, so 23, 25 and 27 ticks all key one world (5 and 60 do not — that
+# is the control saying the instrument can see an arm at all). `deck.keys` walks 9.60 wu
+# and sat one tick above a cliff. **A long walk is where the clock gets into the world.**
+rate 0
+
 echo --- a hill, because a cellar needs a storey of room beneath the ground
 at 0 0 0
 verb raise
