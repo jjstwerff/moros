@@ -53,10 +53,11 @@ every gesture reads. A letter whitelist waves both through. So `editor_run`'s
 PERFORMED** rather than refused, in `run_send` beside `50:` GROUND. The rule the pair
 illustrated is untouched and `9` LOAD is the instance that survives — what changed is
 that a driver which can do a thing correctly should do it, and a spelling must never
-decide: `keys 1` and `send 4:1` are one operation with two names. ⏭ `6:` LEVEL is still
-refused, and that is `T4`; `10:` ROAD and `47:` WATER are refused for a different reason
-worth knowing — their stamps hang off the SERVER's place handler and are in no shared
-tick, so they are the gestures still written once, in a driver.
+decide: `keys 1` and `send 4:1` are one operation with two names. ✅ **And `6:` LEVEL
+joined them at `T4`**, which is what let `deck.keys` build the server's world headless —
+`cea971a07899e420b344c0054567f4e1`, byte for byte. ⏭ `10:` ROAD and `47:` WATER are still
+refused, for a reason worth knowing: their stamps hang off the SERVER's place handler and
+are in no shared tick, so they are the gestures still written once, in a driver.
 
 ---
 

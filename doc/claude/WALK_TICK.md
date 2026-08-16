@@ -243,13 +243,81 @@ wrong. Falsification: level in local mode and read the page's own surface line.
 | ✅ **`T1`** | `Walker` + `walk_tick` in `hex_editor`; **the server is its only caller** | **DONE 2026-08-16.** Both worlds byte-identical — `cea971a0…` and `c96b2ce7…` — `make fast` 157 files green, `make gate` unmoved, `lib/hex_editor/tests/tick.loft` 15 tests with 7 of 8 sabotages red. The server is **89 lines smaller** and the level stamp left the streaming block. ⛔ **Probe 4 is answered and `deck.keys` could not have answered it** — see below |
 | ✅ **`T2`** | the page calls `walk_tick`; `local_walk`/`local_fall` **deleted** | **DONE 2026-08-16.** `make probe-demo` G/H unmoved — `walked 2.4539695841635853`, world `32920:1885399240`, 23 landings — and **levelling works in local mode**, checked by a new `L` block with a `nolevel` control. ⛔ `LEVEL_R` moved into the library on the way: the page was about to declare its own |
 | ✅ **`T3`** | `editor_run`'s `step <n>` becomes n ticks; `keys` is **performed**, `hold`/`turn` are **refused** | **DONE 2026-08-17.** One script through both drivers, byte-identical on the first comparison ever run between them — `639586c2c98f95c1908a9a0e1de62481` — `make fast` green over 157 files, `probe/k3e` retired into `probe/t3` with its rows moved. ⛔ **Its acceptance as written here could not run, and that is the finding** — see below |
-| **`T4`** | `send 6:` becomes a performed message, like `ground` | `K3c`'s `send_why` loses a row. The runner's floor and the server's must agree, which is `probe/k3c` row D's shape one message over |
+| ✅ **`T4`** | `send 6:` becomes a performed message, like `ground` | **DONE 2026-08-17.** ⛔ **`deck.keys` headless is `cea971a07899e420b344c0054567f4e1`** — the server's own world, to the byte, with no server, no socket, no browser and no clock — and `cellar.keys` is `c96b2ce7a569fa2dd88577a71a507f48`. ⚠ And `step 45` lands on `5775ad1d45a35ef966bb22c60e016795`, which is the number `probe/t1` recorded for the SERVER at that count: **the two drivers agree at a second tick count, not just at one** |
 
 ⚠ **`T1` before `T2` before `T3` is not taste.** Each step's comparison exists only
 because the step before it left a proven artifact to compare against — `T1` against the
 server's own world, `T2` against the demo's recorded numbers, `T3` against `T1`'s
 output. Reordered, the middle two have nothing exact to be measured by, which is the
 failure `W4` was reverted for.
+
+## ✅ What `T4` turned up (2026-08-17) — the acceptance, hit exactly, and what it cost
+
+`send 6:` LEVEL is two library calls and two sentences in `run_send`: `level_on` freezes
+the grade from the FEET and answers the residual it quantised away, `level_off` puts them
+back on the ground, and **the stamp itself is inside `walk_tick` where a footfall reaches
+it**. That split is `T1`'s, and it is why this step is small enough to be a step at all.
+
+> `deck.keys` through `editor_run` at `GROUND=0`:
+> **`cea971a07899e420b344c0054567f4e1`** — the server's own world, byte for byte.
+> `cellar.keys`: **`c96b2ce7a569fa2dd88577a71a507f48`**, with its five `feet` stations.
+
+⚠ **AND `step 45` LANDS ON `5775ad1d45a35ef966bb22c60e016795`, WHICH IS THE NUMBER
+`probe/t1` RECORDED FOR THE SERVER.** That row was written as a blindness control — *does
+a shorter walk move the world at all* — and it answers a second question nobody asked:
+the two drivers agree at **two** tick counts, so the equality is about the walk rather
+than about one lucky plateau.
+
+### What the controls are for, and why two constants alone would not do
+
+`probe/t4` rows A and B compare against md5s a **native server** produced, recorded in
+[probe/t1/README.md](../../probe/t1/README.md). A constant compared against a program
+that writes nothing is satisfied the day the world stops being written, so:
+
+- **row C** shortens the walk — `5775ad1d…`, so the fixture can see the walk;
+- **row D** removes both `send 6:` lines — `89cf1a3b…`, so the pad really is the
+  levelling's and not the raise's or the storey's. ⛔ **This is the control probe 4
+  earned**: `deck.keys` answers `cea971a0…` to three different collision-proxy policies
+  because nothing in it blocks, and the one thing it CAN see is the stamp.
+
+### What it cost elsewhere, which is the part to check before believing it
+
+`deck.keys` and `cellar.keys` had exited **101** since `K3c` refused their `send 6:`, and
+both run clean now. Two probes encoded that refusal as a claim:
+
+- `probe/k3c`'s `AUTHORS` list loses its two `:6` entries — what remains is `47` WATER,
+  `10` ROAD and four `44` PART, every one still genuinely beyond this driver;
+- `probe/t3` row D flips from *2 complaints each* to *0*, and keeps asserting the COUNT
+  rather than the exit code, because a runner that stopped counting bad lines would exit
+  0 for every script in the tree.
+
+⚠ **Neither row evaporated.** They moved to `probe/t4` A, B and E, where the claim is
+strictly stronger than a refusal: not *this driver declines* but *this driver builds the
+server's world*.
+
+### ⛔ And the sweep found three green rows sitting over an untested clause
+
+`level_off` does two things — it clears the mode **and** puts the feet back on the
+ground — and dropping the second left **both acceptance worlds byte-identical, and all
+five of `cellar.keys`'s `feet` stations unmoved.** Two reasons, both about what levelling
+*is*: levelling brings the ground **to** the feet, so where a walk has just levelled the
+release is a no-op; and every `feet` in `cellar.keys` follows a **teleport**, which
+re-reads the ground itself.
+
+So `probe/t4` has a row F and a fixture of its own — freeze on the flat, teleport onto a
+hill, release — where the two heights differ and nothing has re-read them: `feet 0.084`
+against `feet 0`, *standing inside the hill and saying so calmly*. **The defect that
+clause exists for is written down at `tick.loft` and nothing tested it until a sabotage
+asked.** Four red, zero missed, after that.
+
+### ⚠ `feet` agrees with the server by VALUE, and the comment claiming otherwise is fixed
+
+`script.mjs` pads — `toFixed(3)`, `toFixed(2)` — so `cellar.keys` reads `feet 4.250 at
+17.00,0.00` there and `feet 4.25 at 17,0` here. Measured against a native server, all
+five stations agree to every digit either side prints. The runner's comment said *the
+sentence is `script.mjs`'s, to the decimal*, which was written before anyone compared
+the two; it now says what is true, which is that a transcript is comparable by value and
+not by `diff`.
 
 ## ✅ What `T3` turned up (2026-08-17) — a step whose acceptance could not run at it
 
@@ -562,9 +630,8 @@ softened.
   reason `6:` LEVEL is, and it is the same shape — but it is a second stamp with its own
   settle rule (`slope_settle`), and folding it in before the level one is measured is
   the over-reach this document exists to avoid.
-- ✅ **`T0`, `T1`, `T2` and `T3` are built**, and probes 4 and 6 are run. **Probe 5 is
-  not** — *a page in REMOTE mode must not tick* — and it is now the only unmeasured
+- ✅ **EVERY STEP IS BUILT — `T0` through `T4`** — and probes 4 and 6 are run. The
+  acceptance holds: `deck.keys` headless is the server's world to the byte. **Probe 5 is
+  not run** — *a page in REMOTE mode must not tick* — and it is now the only unmeasured
   claim in the design: the guard is one line that `T2` did not weaken, which is an
-  argument and not a measurement. ⏭ `T4` is what remains of the build: `send 6:` LEVEL
-  performed, which is what `deck.keys` needs and therefore what the design's own
-  acceptance number has been waiting for.
+  argument and not a measurement.

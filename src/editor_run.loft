@@ -219,9 +219,6 @@ fn send_quiet(id: integer) -> boolean {
 // are the gestures still written once, in a driver. `WALK_TICK.md` says exactly that in
 // *what this design does NOT claim*, and this is where a script meets it.
 fn send_why(id: integer) -> text {
-  if id == 6 {
-    return "`6:` LEVEL freezes a floor the walk then lays, and the freezing is not wired here yet (plan 22 `T4`) — the walk itself is";
-  }
   if id == 10 {
     return "`10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing";
   }
@@ -320,6 +317,32 @@ fn run_send(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
   // precedent at `K3c` — an id this runner can genuinely do is done here, in
   // `run_send`, rather than whitelisted as harmless in `send_quiet`.
   if sid == 4 { wk.wk_held = pay as integer ?? 0; said = "keys {wk.wk_held}"; return true; }
+  // ── `6:` LEVEL — plan 22 `T4`, and it is the last message `deck.keys` needed ──
+  //
+  // ⚠ **THE FREEZE AND THE RELEASE ARE THE LIBRARY'S, AND THE SENTENCE IS THE
+  // DRIVER'S.** That split is `T1`'s: `level_on` answers the residual it quantised
+  // away, `level_off` puts the feet back on the ground, and the STAMP is inside
+  // `walk_tick` where a footfall reaches it. So this branch is two calls and two
+  // sentences, and the pad `deck.keys` walks is laid by the tick rather than here.
+  //
+  // ⚠ **IT IS THE WORLD'S UNIT IN THE SENTENCE, NOT `hex_proj::HEIGHT_SCALE`.** The
+  // server says `wk.wk_y / HEIGHT_SCALE` there; both read 0.25 on the landscape, and
+  // `walk.loft`'s rule is that the global is wrong on a part world. A sentence is not
+  // in the store, so this cannot move a world — which is exactly why it is the safe
+  // place to prefer the right expression.
+  if sid == 6 {
+    if (pay as integer ?? 0) != 0 {
+      lvres = 0.0;
+      hex_editor::level_on(wk, w, lvres);
+      said = "level true at height {wk.wk_level_h} "
+           + "(quantised from {wk.wk_y / w.w_unit ?? 0.0}, residual {lvres})";
+      return true;
+    }
+    hex_editor::level_off(wk, fn(gx: float, gz: float, gref: float) -> float {
+                                hex_mesh::ground_under(w, gx, gz, gref) });
+    said = "level false — feet back on the ground at {wk.wk_y}";
+    return true;
+  }
   if sid == 7 {
     // The server's own parse of `<x>,<z>,<yaw>`, and its own refusal: a payload
     // missing either comma moves nobody and says so.
@@ -533,10 +556,16 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   // stops the walk at `4.32,2.5` against `8.32,4.8` free, and it stops it there at
   // reach 8, 4, 2 and 1 alike.
   //
-  // ⚠ THE SENTENCE IS `script.mjs`'s, TO THE DECIMAL, so one script's transcript reads
-  // the same through either driver. It reads the body's model matrix there and the
-  // walker here, which is the same number by construction now that the walker IS the
-  // pose. ⏭ Its judging form — `feet <lo> <hi>`, which fails a run — is not here; this
+  // ⚠ **THE VALUES AGREE WITH THE SERVER'S AND THE RENDERING DOES NOT, WHICH IS WORTH
+  // SAYING PRECISELY RATHER THAN CLAIMING A MATCH.** `script.mjs` pads — `toFixed(3)`
+  // and `toFixed(2)` — so `cellar.keys`'s five stations read `feet 4.250 at 17.00,0.00`
+  // there and `feet 4.25 at 17,0` here. Measured against a native server, all five
+  // agree to every digit either side prints: 4.25, 4.25, 3.25, 2.25, 1.25 at 17, 22.5,
+  // 20.8, 19, 17. It reads the body's model matrix there and the walker here, which is
+  // the same number by construction now that the walker IS the pose — so a transcript
+  // is comparable by VALUE and not by `diff`.
+  //
+  // ⏭ Its judging form — `feet <lo> <hi>`, which fails a run — is not here; this
   // reports, and nothing in the corpus judges through this driver yet.
   if cmd == "feet" {
     said = "feet {round(wk.wk_y * 1000.0) / 1000.0 ?? 0.0} "

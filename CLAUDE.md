@@ -378,9 +378,10 @@ address (or the hostname `make browser` prints) cannot connect.
 - [Walk tick](doc/claude/WALK_TICK.md) — **one step of the person, wherever the person is**: the
   tick body was written **twice** (server and client) while every primitive under it was shared, and the
   second copy was missing a clause — **`l` on the page flipped a flag, wrote nothing, and said it had.**
-  `T0`–`T3` are **built**: `lib/hex_editor/src/tick.loft` is the body, and all three drivers call it —
-  the server, the page, and now `editor_run`, whose `step <n>` is n ticks and whose only clock is the
-  script. One file through the runner and through a native server is **byte-identical**.
+  **EVERY STEP IS BUILT, `T0`–`T4`**: `lib/hex_editor/src/tick.loft` is the body, and all three drivers
+  call it — the server, the page, and `editor_run`, whose `step <n>` is n ticks and whose only clock is
+  the script. ✅ **The acceptance holds: `deck.keys` headless is `cea971a0…`, the server's own world to
+  the byte, with no server, no socket, no browser and no clock.**
   ⚠ Read its **probe 4** for the finding that outlives the steps: asked whether the collision proxy is a
   cache, `deck.keys` gives the SAME world for the cache, for rebuilding every tick and for never
   rebuilding at all — *a sabotage that leaves the world identical can mean the fixture cannot see it*,

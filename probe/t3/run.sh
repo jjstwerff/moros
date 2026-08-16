@@ -202,24 +202,20 @@ for pair in determinism:23d3f79779eb8177a6353e169d07f9ab fall:- ; do
     bad "$s.keys exited $rc — a script that walks and then teleports lost a line"
   fi
 done
-nc=$(bads_of t3-live-cellar)
-if [ "$nc" -eq 2 ]; then
-  ok "cellar.keys: four walks, four teleports, and its complaints are still 2 x \`send 6:\`"
-else
-  bad "cellar.keys printed $nc complaints, not 2 — its two \`send 6:\` are \`K3c\`'s and \
-this step must not have touched them"
-fi
-# ⛔ **AND `deck.keys` LOSES ONE, WHICH IS THE COUNT `k3e` ADDED.** It printed 3 — two
-# `send 6:` and the walk its `verb storey` was standing on — and the third is what `T3`
-# retires. It still exits 101, and it still will until `T4` performs `6:`.
-nd=$(bads_of t3-live-deck)
-if [ "$nd" -eq 2 ] && [ "$(grep -c '^editor_run: send' "$OUT/t3-live-deck.log")" -eq 2 ]; then
-  ok "deck.keys: 3 complaints down to 2, and both are \`send 6:\` — \`T4\` is what takes those"
-else
-  bad "deck.keys printed $nd complaints, of which \
-$(grep -c '^editor_run: send' "$OUT/t3-live-deck.log") are \`send\` — it should be 2 and 2, \
-the walk having stopped being one of them"
-fi
+# ⛔ **`cellar` AND `deck` PRINTED 2 COMPLAINTS EACH AT `T3` AND PRINT NONE AT `T4`.**
+# The two were their `send 6:` refusals, and `6:` LEVEL is performed now. ⚠ **THE COUNT
+# IS STILL THE ASSERTION AND NOT THE EXIT CODE** — a runner that stopped counting bad
+# lines would exit 0 for every script in the tree. What their WORLDS are is `probe/t4`
+# rows A and B, which is a stronger claim than either could make here.
+for s in cellar deck; do
+  n=$(bads_of "t3-live-$s")
+  if [ "$(rc_of "t3-live-$s")" -eq 0 ] && [ "$n" -eq 0 ]; then
+    ok "$s.keys: rc=0, 0 complaints — it printed 2 \`send 6:\` at \`T3\`"
+  else
+    bad "$s.keys: rc=$(rc_of "t3-live-$s"), $n complaints — \
+$(grep -m1 '^editor_run: ' "$OUT/t3-live-$s.log" | cut -c1-80)"
+  fi
+done
 
 say ""
 say "E  \`hold\` and \`turn\` are refused where they arrive, and say why"

@@ -92,10 +92,15 @@ launch() {       # launch <script-path> <world-name> [GROUND]
 rc_of()  { cat "$OUT/$1.rc"; }
 key_of() { cat "$OUT/$1.key"; }
 
+# ⛔ **`cellar.keys:6` AND `deck.keys:6` WERE HERE AND ARE GONE — plan 22 `T4`.** `6:`
+# LEVEL is a performed message now: the runner walks, so the pad those two scripts lay by
+# WALKING can be laid here, and both run clean. They were the two entries whose id was
+# `6`, so what is left is `47` WATER, `10` ROAD and four `44` PART — every one of them
+# still genuinely beyond this driver. ⚠ **The rows they used to hold did not evaporate**:
+# `probe/t4` rows A, B and E are where they went, and they assert something stronger than
+# a refusal — the world those scripts build headless is the SERVER's, to the byte.
 AUTHORS="tools/scripts/bridge.keys:47 \
 tools/scripts/cave.keys:10 \
-tools/scripts/cellar.keys:6 \
-tools/scripts/deck.keys:6 \
 tools/scripts/doorparts.keys:44 \
 tools/scripts/doorway.keys:44 \
 probe/a83/leaf_visible/early_late.keys:44 \

@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-t3 pages probe-demo plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-t3 probe-t4 pages probe-demo plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -417,6 +417,7 @@ fast:
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 	@$(MAKE) -s probe-k3c
 	@$(MAKE) -s probe-t3
+	@$(MAKE) -s probe-t4
 
 check:
 	@sh tools/layering.sh
@@ -632,6 +633,9 @@ probe-k3c:
 
 probe-t3:
 	@sh probe/t3/run.sh
+
+probe-t4:
+	@sh probe/t4/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \

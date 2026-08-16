@@ -1,0 +1,31 @@
+# ⛔ THE RELEASE HALF OF `6:`, WHICH BOTH ACCEPTANCE SCRIPTS ARE BLIND TO. Plan 22 `T4`.
+#
+# `level_off` does two things: it clears the mode AND puts the feet back on the ground.
+# The second is the one with a defect behind it — `tick.loft` records it: *without this
+# they keep the frozen height until the next step, so you could stand in the air over a
+# crevice you had just cut and not know until you moved.*
+#
+# ⚠ **AND NEITHER `deck.keys` NOR `cellar.keys` CAN SEE IT.** Measured: dropping the
+# second half leaves BOTH acceptance worlds byte-identical and all five of `cellar`'s
+# `feet` stations unmoved. Two reasons, and both are about what levelling IS:
+#
+#   · levelling brings the ground TO the feet, so where a walk just levelled, the
+#     ground already equals the frozen height and putting the feet back is a no-op;
+#   · every `feet` in `cellar.keys` follows a teleport, and a teleport re-reads the
+#     ground itself — so the height is fixed before anything asks.
+#
+# So the release has to be asked somewhere the ground DIFFERS from the frozen height and
+# nothing has re-read it: freeze on the flat, teleport onto a hill (levelling holds the
+# feet at the frozen height across a teleport, by design), then release.
+#
+#   with `level_off`      feet 0.084   — the hill's surface, read through the mesher
+#   without its second half feet 0     — standing inside the hill, and saying so calmly
+rate 0
+at 0 0 30
+verb raise
+wait rebuilt
+send 6:1
+at 5.2 4 30
+send 6:0
+feet
+save t4release
