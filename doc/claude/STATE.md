@@ -38,6 +38,32 @@ the previous binary attaches, runs 300 frames and answers 8 digests.
 [loft#950](https://github.com/loft-lang/loft/issues/950), `sev:high` `wa:none`, with the
 control pair and five ruled-out measurements in [probe/t5/README.md](../../probe/t5/README.md).
 
+⛔ **AND IT IS MEMORY CORRUPTION — `unreachable` IS THE SECOND SYMPTOM.** Narrowed to one
+statement of `add_thumb_mesh`, in a traced copy of the client driven off `file://`:
+`st.prog` is a plain `integer` field that reads **0** immediately before
+`yverts = parse_singles(body[y3 + 1..body.size()])` and **the f64 bits of -31.4965**
+immediately after. The trap arrives one statement later, when a *vector* field is followed
+through the now-bogus reference — so **a scalar read returns the wrong number silently**,
+and only a vector read dies. Eleven things are ruled out with controls, and **four
+source-level workarounds were tried and all four stay red**, which is what `wa:none` is
+recording.
+
+⚠ **THE REDUCTION DID NOT CONVERGE, AND THAT IS THE FINDING.** A 3.1 MB module doing the
+same parse, holding a struct with the same **90 fields**, linking the same libraries and
+running both handlers over the same 20 parts is **green**. The client's 5.8 MB module is
+not. Padding a small page with 2,000 lines of *called* code moved it **36 KB** — an
+`--html` module's size is its libraries, not its source — so a probe cannot cheaply be
+grown to the client's scale.
+
+⚠ **AND THE BISECT SHOULD NEVER HAVE BEEN NEEDED.** Chrome hands the trap ten
+`wasm-function[N]` frames and `press.mjs` has been recording them verbatim the whole time;
+they name the failing function and its call chain. They cannot be read: an `--html` build
+carries **no name section** — 58 named imports, **0** named module functions, measured with
+[`probe/t5/wasmname.py`](../../probe/t5/wasmname.py), which will resolve them the day a
+build ships one. [loft#954](https://github.com/loft-lang/loft/issues/954). ⚠ **The evidence
+was in the transcript from the first run and nobody read it** — a stack trace that is
+printed but unreadable reads exactly like no stack trace at all.
+
 ⚠ **THE LESSON IS THE SCHEDULING, NOT THE DEFECT.** Every check in the list above is
 green **and none of them builds or drives the page** — `make probe-demo` and
 `make probe-auth` are the two that do, and both sit outside `make fast`. So a
@@ -54,6 +80,8 @@ run is used to clear a change, ask what it does not run.
 | [#913](https://github.com/loft-lang/loft/issues/913) | `loft test` refuses the path it prints | CLOSED — ✅ **verified fixed**, with the bare-name form as the control |
 | [#912](https://github.com/loft-lang/loft/issues/912) | a module basename is global | CLOSED — ⚠ **half of it is left**, see below |
 | [#948](https://github.com/loft-lang/loft/issues/948) · [#949](https://github.com/loft-lang/loft/issues/949) | its two residues | **filed 2026-08-17** |
+| [#950](https://github.com/loft-lang/loft/issues/950) | `--html` clobbers a struct parameter | **filed 2026-08-17**, narrowed to one statement the same day |
+| [#954](https://github.com/loft-lang/loft/issues/954) | `--html` ships no wasm name section | **filed 2026-08-17** — why #950 cost a bisect |
 
 ⛔ **AND #912 IS THE ONE TO READ, BECAUSE THE FIX IS REAL AND LANDS ON THE WRONG SIDE.** loft
 gained an `Advice[module-name-shadowed]` that names both files, the `use` site and which one

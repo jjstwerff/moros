@@ -1,0 +1,132 @@
+// THE CLIENT'S TWO THUMBNAIL HANDLERS, LIFTED OUT OF THE CLIENT — plan 22, probe 5.
+//
+//   loft --html src/.loft/editor_client.html --lib lib/ probe/t5/t5_handlers.loft
+//   make pages && node probe/b1b/press.mjs "file://$PWD/_site/index.html" …
+//
+// `t5_pagethumb.loft` showed the LIBRARY half is green in a browser — 69 messages over
+// 20 parts, the same number the interpreter and both wasm backends give. So what traps
+// is on the consumer's side of that seam, and this is that side: `add_thumb_cam` and
+// `add_thumb_mesh` copied out of `src/editor_client.loft` with their four helpers,
+// driven by the real bodies `part_thumb_wire` produces.
+//
+// ⚠ COPIED, NOT CALLED, AND THAT IS THE ONE THING TO WATCH. The client's versions take
+// a `Client` — a struct with ~90 fields — and these take a small `Store`. If this page
+// is GREEN the difference is exactly that context, which is a finding of its own: the
+// handlers are innocent and the trap is about the shape they sit in.
+use hex_mesh;
+use graphics;
+
+struct ThumbMesh {
+  tb_row: integer, tb_vao: integer, tb_n: integer,
+  tb_r: float, tb_g: float, tb_b: float, tb_ramp: float,
+}
+struct ThumbCam { tc_row: integer, tc_view: vector<float>, tc_proj: vector<float> }
+
+struct Store {
+  thumbs: vector<ThumbMesh>,
+  tcams: vector<ThumbCam>,
+  tstale: vector<integer>,
+}
+
+fn semi_from(src: text, from: integer) -> integer {
+  si = from;
+  sn = src.size();
+  while si < sn {
+    if src[si..si + 1] == ";" { return si; }
+    si = si + 1;
+  }
+  -1
+}
+
+fn parse_floats(src: text) -> vector<float> {
+  fout: vector<float> = [];
+  for ftok in src.split(',') {
+    if ftok.size() > 0 { fout += [ftok as float ?? 0.0]; }
+  }
+  fout
+}
+
+fn parse_singles(src: text) -> vector<single> {
+  sout: vector<single> = [];
+  for stok in src.split(',') {
+    if stok.size() > 0 { sout += [stok as single ?? 0.0f]; }
+  }
+  sout
+}
+
+fn drop_thumb_row(st: Store, row: integer) {
+  keep: vector<ThumbMesh> = [];
+  for dt in st.thumbs {
+    if dt.tb_row == row { graphics::gl_delete_vao(dt.tb_vao); }
+    else { keep += [dt]; }
+  }
+  st.thumbs = keep;
+}
+
+fn add_thumb_cam(st: Store, body: text) {
+  w1 = semi_from(body, 0);
+  if w1 < 0 { return; }
+  w2 = semi_from(body, w1 + 1);
+  if w2 < 0 { return; }
+  wrow = body[0..w1] as integer ?? -1;
+  if wrow < 0 { return; }
+  wv = parse_floats(body[w1 + 1..w2]);
+  wp = parse_floats(body[w2 + 1..body.size()]);
+  if len(wv) != 16 || len(wp) != 16 { return; }
+  st.tstale += [wrow];
+  for wc in st.tcams {
+    if wc.tc_row == wrow { wc.tc_view = wv; wc.tc_proj = wp; return; }
+  }
+  st.tcams += [ThumbCam { tc_row: wrow, tc_view: wv, tc_proj: wp }];
+}
+
+fn add_thumb_mesh(st: Store, body: text) {
+  y1 = semi_from(body, 0);
+  if y1 < 0 { return; }
+  y2 = semi_from(body, y1 + 1);
+  if y2 < 0 { return; }
+  y3 = semi_from(body, y2 + 1);
+  if y3 < 0 { return; }
+  yrow = body[0..y1] as integer ?? -1;
+  if yrow < 0 { return; }
+  yramp = body[y1 + 1..y2] as float ?? 0.0;
+  ycol = parse_floats(body[y2 + 1..y3]);
+  if len(ycol) < 3 { return; }
+  yverts = parse_singles(body[y3 + 1..body.size()]);
+  if len(yverts) < 6 { return; }
+  ykeep: vector<integer> = [];
+  ystale = false;
+  for ys in st.tstale {
+    if ys == yrow { ystale = true; } else { ykeep += [ys]; }
+  }
+  if ystale { drop_thumb_row(st, yrow); st.tstale = ykeep; }
+  st.thumbs += [ThumbMesh {
+    tb_row: yrow,
+    tb_vao: graphics::gl_upload_vertices(yverts, 6),
+    tb_n: len(yverts) / 6 ?? 0,
+    tb_r: ycol[0] ?? 1.0, tb_g: ycol[1] ?? 1.0, tb_b: ycol[2] ?? 1.0,
+    tb_ramp: yramp,
+  }];
+}
+
+fn main() {
+  graphics::gl_create_window(320, 240, "t5 handlers");
+  st = Store { thumbs: [], tcams: [], tstale: [] };
+  root = "/data/parts";
+  avail = hex_mesh::part_availability(root);
+  println("t5: {len(avail)} parts under '{root}'");
+  for i in 0..len(avail) {
+    name = (avail[i] ?? hex_mesh::PartAvail {}).av_name;
+    // ⚠ SAID BEFORE THE CALL. A trap prints nothing of its own, so the last line on
+    // screen has to name what was about to run.
+    println("t5: about to handle '{name}'…");
+    for m in hex_mesh::part_thumb_wire(root, hex_mesh::surface_count() + i, name) {
+      body = m[2..];
+      if m[0..2] == "W:" { add_thumb_cam(st, body); }
+      else { add_thumb_mesh(st, body); }
+    }
+    println("t5: '{name}' — {len(st.thumbs)} mesh(es), {len(st.tcams)} camera(s) held");
+  }
+  println("t5: {len(st.thumbs)} meshes and {len(st.tcams)} cameras — the handlers survived");
+  graphics::gl_destroy_window();
+}

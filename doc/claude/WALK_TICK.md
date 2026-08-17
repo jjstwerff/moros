@@ -236,6 +236,16 @@ traps with `RuntimeError: unreachable` the moment it has a part thumbnail to bui
 produce must not be read as an answer**: every row is red and the transcript says *the
 page never attached*, which is a fact about the page and not about the guard.
 
+⛔ **AND THE BLOCKER IS NOW NARROWED TO ONE STATEMENT, WHICH DID NOT UNBLOCK IT.** The
+trap is memory corruption: a `Client` field reads `0` before `parse_singles` and the f64
+bits of `-31.4965` after, and only the *next* vector-field read dies — so a scalar read
+returns the wrong number in silence. Eleven things are ruled out with controls and **all
+four workarounds tried stay red**, so probe 5 waits on the fix rather than on a
+rewrite. ⚠ **The reduction below the client did not converge**, and that is worth
+knowing before anyone tries again: the same parse, the same 90-field struct and the same
+libraries in a 3.1 MB module are **green**. [probe/t5/README.md](../../probe/t5/README.md)
+has the table.
+
 ⚠ **THE INSTRUMENT IS THE DIGEST, NOT A WORLD KEY**, and that is the design decision
 worth keeping. A page holds a *cache*, which legitimately differs from the world by
 whatever has not streamed to it — so an md5 comparison would be meaningless either

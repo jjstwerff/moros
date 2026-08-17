@@ -396,7 +396,13 @@ address (or the hostname `make browser` prints) cannot connect.
   finding: nothing in `make fast` builds the page**, so a toolchain swap was cleared by a green re-check
   that could not see the browser editor at all — `make probe-demo` and `make probe-auth` are the only two
   checks that drive one, and both sit outside the fast loop. **When a green run is used to clear a change,
-  ask what it does not run**
+  ask what it does not run**. ⚠ **And read its bisect for the instrument lesson**: the trap is memory
+  corruption, so a scalar field reads the wrong number *in silence* and only the next vector read dies —
+  while the browser had printed a ten-frame wasm backtrace naming the failing function from the very
+  first run. It could not be read, because an `--html` build carries **no name section**
+  ([loft#954](https://github.com/loft-lang/loft/issues/954)). **A stack trace that is printed and
+  unreadable reads exactly like no stack trace at all**, and the whole statement-by-statement bisect was
+  the price of not checking
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
 - [Ground default](doc/claude/GROUND_DEFAULT.md) — ✅ **CLOSED, and now a closure record.** The
   rule it established is normative in [WORLD_MODEL § `E1γ`](doc/claude/WORLD_MODEL.md) — *a world

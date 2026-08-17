@@ -12,6 +12,13 @@ could come back blind.
 > [loft#950](https://github.com/loft-lang/loft/issues/950). Probe 5 answers nothing
 > until that is fixed, and **it must not be answered from the run it did produce** —
 > the transcript says *the page never attached*, which is a fact about the page.
+>
+> ⛔ **AND THE TRAP IS MEMORY CORRUPTION, not a clean abort** — narrowed to one
+> statement, where a `Client` field reads `0` before and the f64 bits of `-31.4965`
+> after. Eleven things are ruled out with controls, **no source-level workaround
+> survived four attempts**, and the reduction below the whole client **did not
+> converge**: the same parse, the same 90-field struct and the same libraries in a
+> 3.1 MB module are green. See *The trap is memory corruption* below.
 
 ## What is here
 
@@ -23,6 +30,19 @@ could come back blind.
 | `t5_thumb.loft` | the suspect call on the interpreter, `--native` and `--native-wasm` |
 | `t5_pagethumb.loft` | the same call inside an `--html` page with a baked filesystem |
 | `t5_upload.loft` | `gl_upload_vertices` in an `--html` page, at seven sizes |
+| `t5_handlers.loft` | the client's two thumbnail handlers, lifted out under a 3-field struct |
+| `t5_bigstruct.loft` | the same, under a **90-field** struct — the client's shape |
+| `wasmname.py` | resolves a trap's `wasm-function[N]` frames against the module's name section |
+
+Each `--html` page is driven the same way, because `tools/build-pages.mjs` bakes
+`data/parts` into whatever engine sits at `src/.loft/editor_client.html`:
+
+```
+loft --html probe/t5/out/big.html --lib lib/ probe/t5/t5_bigstruct.loft
+cp probe/t5/out/big.html src/.loft/editor_client.html && make pages
+node probe/b1b/press.mjs "file://$PWD/_site/index.html" ArrowUp --wait-ms 90000
+make client && make pages      # ⚠ PUT THE REAL CLIENT BACK
+```
 
 ## The instrument, and why it is not a world key
 
@@ -86,9 +106,65 @@ and a count after:
 | …the same call inside an **`--html` page** with the identical baked filesystem | ✅ 69 messages. So neither `world_load` over the virtual FS nor the meshing is at fault |
 | `gl_upload_vertices` in an **`--html` page** at 1…4096 vertices | ✅ every one |
 
-What is left is the client's own two handlers — `add_thumb_cam` / `add_thumb_mesh` —
-inside an 8 MB page rather than a 4 MB one. Reducing below the whole client is the
-next step and is not done.
+## ⛔ The trap is memory corruption, and `unreachable` is its SECOND symptom
+
+Narrowed statement by statement **inside the client**, by building a traced copy at
+`out/step_client.loft` and driving it off `file://`. `st.prog` is a plain `integer`
+field of the `Client`, and it is the instrument: on entry to `add_thumb_mesh` it reads
+**0**, and one statement later it reads **-4593813329683836086** — which is the f64 bit
+pattern of **-31.4965**. The `RuntimeError: unreachable` arrives one statement after
+*that*, when a vector field is followed through the now-bogus reference.
+
+```
+T5  atm: E0 — on entry, tstale 1 prog 0
+T5  atm: Q3 — prog 0                      ← immediately before the parse
+    yverts = parse_singles(body[y3 + 1..body.size()]);
+T5  atm: Q4 — prog -4593813329683836086   ← immediately after it
+T5  atm: C0 — a scalar field, prog -4593813329683836086
+    len(st.tstale)                        ⛔ RuntimeError: unreachable
+```
+
+⚠ **SO THE STACK IN THE TRANSCRIPT WAS NEVER THE QUESTION.** Chrome hands the trap ten
+`wasm-function[…]` frames and `press.mjs` records them verbatim; `wasmname.py` resolves
+them against the module's name section, and the answer is that **an `--html` build
+carries no name section** — 58 named imports, 0 named module functions. The frames are
+unreadable by construction, which is why this was bisected in the source instead.
+
+The subject is one `Y:` body: **8,934 characters, 972 singles, part 0 `door/doorway`**.
+`add_thumb_cam` has already run and `st.tstale` holds one row.
+
+### What was ruled out, each by measurement, with a control
+
+| | |
+|---|---|
+| the two handlers alone, lifted out under a 3-field struct (`t5_handlers.loft`) | ✅ **49 meshes, 20 cameras** — the same counts the working client printed |
+| allocation VOLUME — 8,448 singles appended in place inside the same function | ✅ `prog` 0 at every one of nine sizes |
+| `.split(',')` over the same 8,913-char slice, counting only | ✅ `prog` 0 — measured twice |
+| `parse_floats` over that slice — 972 floats, result dead after | ✅ `prog` 0 |
+| `parse_singles` over that slice — 972 singles, result dead after | ✅ `prog` 0 |
+| binding the slice to a local instead of passing it inline | ⛔ still red |
+| the parse AND the upload moved into a helper with no `Client` in scope | ⛔ still red |
+| the parse written inline as a loop, result kept live | ⛔ red — `prog` garbage |
+| the result passed straight to `gl_upload_vertices` as a temporary | ⛔ red — traps inside the call |
+| a **90-field** struct in a small page, both handlers, the stale/drop path | ✅ green |
+| …**plus the client's whole library set** and library-typed fields (`t5_libs`) | ✅ **49 meshes, 20 cameras** |
+
+⚠ **THE ONE PATTERN THAT FITS EVERY ROW IS LIVENESS, AND IT IS NOT ENOUGH.** Every
+measurement that left `st` intact had its big vector **dead** immediately after; every
+one that clobbered `st` kept it **live** across later code. That is a coherent story
+about a slot being reused — and the same shape in a small page is **green**, so it is
+not the shape alone.
+
+### ⛔ So the reduction below the whole client did NOT converge, and that is the finding
+
+A 3.1 MB module doing the same parse, holding the same 90 fields, linking the same
+libraries and running both handlers over the same 20 parts is **green**. The client's
+5.8 MB module is not. Padding the small page with 2,000 lines of called code moved it
+**36 KB** — a `--html` module's size is its libraries, not its source — so growing one
+to the client's scale is not something a probe can do cheaply.
+
+**No source-level workaround survived**: four were tried and each is a row above. The
+browser editor stays broken until loft#950 is fixed, which is what `wa:none` says.
 
 ## ⛔ And the finding that outlives the defect: nothing in `make fast` builds the page
 
