@@ -88,12 +88,40 @@ const COLL_R = 8;
 // the cycle `tick.loft` records. ⚠ AND THE STRIDE IS `hex_editor::walker_step` OF THE
 // WORLD'S OWN UNIT, not of a global: a part world is authored at 0.125, and what a
 // walker can climb is a property of the figure against the world it stands in.
-fn run_ticks(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, n: integer) {
+fn run_ticks(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, n: integer,
+             last: &integer) {
   for _t in 0..n {
     hex_editor::walk_tick(wk, w, sess.es_runs, COLL_R,
                           hex_editor::walker_step(w.w_unit), hex_editor::LEVEL_R,
                           fn(gx: float, gz: float, gref: float) -> float {
                             hex_mesh::ground_under(w, gx, gz, gref) });
+    say_mode(w, wk, sess, last);
+  }
+}
+
+// ── THE MODE, LOGGED AND CONSULTED BY NOBODY — plan 22 `D1` ──────────────────
+//
+// [EDITING_MODES](../../doc/claude/EDITING_MODES.md)' `D1` in as many words: *computed,
+// consulted by nobody, and a gate logs it every frame of an existing run.* This is that
+// gate — `probe/k3d` keeps a committed record of every indented line of every live
+// script, so the transitions below are baselined over the whole corpus the moment they
+// exist, and a derivation that starts answering differently shows up as a diff.
+//
+// ⚠ **ON CHANGE, NOT EVERY TICK, AND THAT IS THE INSTRUMENT RATHER THAN TIDINESS.** A
+// line per tick would put 90 identical words in the record for one `step 90` and drown
+// the transition; a line per CHANGE makes the record say where the author crossed a
+// threshold, which is the only thing a mode is about. The count is data — a script that
+// walks in and out prints twice.
+//
+// ⚠ **AND IT IS CALLED FROM TWO PLACES BECAUSE THE AUTHOR MOVES IN TWO WAYS.** A tick
+// walks; `at` and `send 7:` teleport. A log wired only to the tick would report nothing
+// for the seven scripts that never walk at all, and would have read as *no script in
+// this corpus is ever indoors*.
+fn say_mode(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, last: &integer) {
+  m = hex_editor::mode_at(sess, w, walk_author(wk));
+  if m != last {
+    println("  mode {hex_editor::mode_name(m)}");
+    last = m;
   }
 }
 
@@ -386,7 +414,7 @@ fn run_send(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
 // fence over an empty set is a fence over nothing. `probe/t3` is what checks that the
 // thing the fence was protecting is now simply true.
 fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text,
-            said: &text) -> boolean {
+            said: &text, last: &integer) -> boolean {
   t = line.trim();
   if t == "" || t[..1] == "#" { return true; }
   sp = t.find(" ");
@@ -591,7 +619,7 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
     return true;
   }
   if cmd == "step" {
-    run_ticks(w, wk, sess, rest as integer ?? 0);
+    run_ticks(w, wk, sess, rest as integer ?? 0, last);
     said = "stepped {rest as integer ?? 0}";
     return true;
   }
@@ -693,10 +721,21 @@ fn main() {
   // is the shape `CLAUDE.md` calls a grep whose default answer is *absent*. It is
   // counted now, and the count is a premise rather than a diagnostic.
   bad = 0;
+  // ⚠ **SEEDED FROM THE MODE THE RUN STARTS IN, NOT FROM A SENTINEL — plan 22 `D1`.**
+  // A `-1` would make every script announce `mode outside` on its first line, which is
+  // 30 identical lines saying *the editor starts in a field*: true, and not news. What
+  // the record is for is the CROSSINGS, so the opening state is the baseline rather
+  // than the first event. ⚠ It also means a script that is never anything but outside
+  // prints nothing at all, and that silence is the honest report.
+  mode_last = hex_editor::mode_at(sess, w, walk_author(wk));
   for line in text.split('\n') {
     said = "";
-    ok = run_line(w, wk, sess, line, said);
+    ok = run_line(w, wk, sess, line, said, mode_last);
     if said != "" { println("  {said}"); }
+    // ⚠ AFTER THE LINE'S OWN SENTENCE, so the record reads *what was done* and then
+    // *where that left the author* — a gesture can move the mode without moving the
+    // person: placing a house around yourself is the case.
+    say_mode(w, wk, sess, mode_last);
     if !ok { println("editor_run: {line}"); bad = bad + 1; }
     n = n + 1;
   }

@@ -46,10 +46,12 @@ chosen: opening 1
   stepped 20
   feet 2.25 at 19,0
   placed 17,0
+  mode underground
   stepped 20
   feet 1.25 at 17,0
   stepped 90
   stepped 120
   placed 12,0
+  mode outside
   stepped 60
 --- what the runner refused

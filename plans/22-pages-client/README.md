@@ -110,7 +110,18 @@ the seat and the scale**, the last off a global that is wrong on a part world by
 ⚠ **A green suite was the wrong instrument** — nine k3d records move on the `roofs` field and on
 nothing else, which is what says the step did exactly one thing.
 
-**Next:** **`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done.
+✅ **AND THE MODE IS DERIVED — `D1`, 2026-08-17.** `mode_at` answers outside · inside ·
+underground off **one** reading of the world, and nothing consults it yet. ⛔ **The row's own
+verify could not have failed** — *never contradicts `shelter_at`* is unreachable once the design's
+*do not add a second enclosure test* is honoured — so what is asserted is **which** of the two
+sheltered modes, in pairs that differ by one fact. ✅ **Open question 2 is answered by measurement**:
+underground is what is OVERHEAD, and `tr_fabric` had held the classification since plan 20 `A1`, so
+a cellar under a house is `inside` and the same gesture in a meadow is `underground` with nothing
+arbitrating. ⛔ **The corpus caught the first derivation, not a test** (`mode underground` on a
+hillside in the open air), and ⛔ **the tick call was observed by nothing** until
+`tools/scripts/threshold.keys` walked across a threshold.
+
+**Next:** **`T1`**/**`D2`**.
 
 ✅ **AND THE TWO INSTRUMENTS THAT WERE RED BEFORE ANY OF IT STARTED ARE GONE.** `probe/k1` checks
 `A`/`B` had failed since `S3` collapsed the opening keys — measured on HEAD, not caused by
@@ -196,7 +207,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`V2b`** — `editor_run` resolves through `verb_of`; the **last production caller of `press(key)`** | S | **DONE.** ⚠ no equality can see this step — `probe/k1` check `G` (choose pointed, press `O`, the selection decides), seen red on the old line · `make headless-same` · `make probe-verbs` · `make probe-convert` | ✅ Done |
 | ✅ **`V3`** — delete `press(key)` | S | **DONE.** ⚠ a green suite is the wrong instrument for a deletion — the **test-name diff** is, 40 → 36 with every change accounted for, and three sabotages proving the retired claims are held where they were said to go | ✅ Done |
 | ✅ **`D0`** — the roof PLAN is the gesture's, not the socket's | S | ⚠ the count, **not** a green suite — the registry had one writer and every headless world was already green without it | **DONE 2026-08-17.** ⛔ **FOUND WHILE MEASURING `D1`'s PREMISE, and it is the tree's commonest defect one layer over**: `es_roofs` had exactly one writer and it sat at the SOCKET, five lines *after* `press_verb` returned — so `editor_run` and the page placed houses that entered no registry at all, and the registry is what `hex_mesh` draws a gable from. ⛔ **The page had been drawing the sawtooth `S6b` exists to suppress**: one house, meshed both ways, **189 vertices / 162 triangles** against **18 / 6**, with the ridge 0.5 wu low and the eave 0.25 high. ⛔ **And the socket re-derived all three arguments** — the footprint by calling `pose_footprint` a second time, the eave off a read-back of the seat, and the scale off `HEIGHT_SCALE`, a global that is 0.25 here and **0.125 on a part world**, where the same house's plan sits at 13.0 and its cells at 6.5 (measured; latent, because no live script places a house in part mode). `roof_eave_y` is now the one derivation and `roof_over` and the plan are its two readers · `roofs` is a **required** parameter of `place_house` for `author_at`'s reason — a default is how the next driver forgets · `probe/k3d` **9 scripts moved, every one on the `roofs` field alone** and no world, τ, chunk count or sentence with it, with the count tracking the houses (`runs 8` → `roofs 2`) · `make headless-same` rc 0 · `make parts` byte-identical · `sh probe/k2/sabotage-roof.sh` **5 rows red on their own claims, 3 controls green** · ⛔ **and the sweep's first run scored all five as *nothing went red*** — `loft test` takes one target per run and was handed three, so every row ran nothing, which is the sentence an untested feature produces. The vacuity guard counts result lines now. ⚠ **A row was also mislabelled and running it is what said so** — `early` adds an append rather than moving one, so it reds the COUNT and not the ordering it claimed; renamed `twice`, and the ordering claim is a **declared blind spot** that must stay green, because no fixture makes a roof refuse. ⏭ **And grepping for callers found two that had been red since `R1a`**: `probe/house/shear.loft` and `probe/house/pads.loft` do not compile and have not since `author_at` gained a required `y` — measured against the PRE-change library before it was blamed on this step. They take the new argument mechanically; the `y` is **not** guessed, because picking it decides what the probe measures. ⚠ `pads.loft` is cited by `place_house`'s own comment as the measurement behind the seated pad, so this is a dead reference in a live doc |
-| **`D1`**–**`D2`** — `mode_at` measured beside everything, then consulted | S | ⚠ the derived mode must never contradict `shelter_at` over a whole scripted scene, house-in-a-cave included | ⏭ **Unblocked** (`V2` is done), and `D0` is its prerequisite paid: the roof plan is what separates *inside* from *underground*, and it was empty in two of the three drivers |
+| ✅ **`D1`** — `mode_at` derived, logged, and consulted by nobody | S | ⛔ **the row's own verify could not have failed** — see below; the assertion is WHICH sheltered mode, in pairs | **DONE 2026-08-17.** `mode_at(sess, w, a)` answers outside · inside · underground off ONE reading — `Shelter` gains `sh_fabric`, *what the nearest cover is made of*, filled by the sweep that already picks the innermost, because [EDITING_MODES](../../doc/claude/EDITING_MODES.md)' rule is **do not add a second enclosure test**. ⛔ **THE VERIFY THIS ROW WAS WRITTEN WITH IS UNREACHABLE**: *never contradicts `shelter_at`* cannot fail once `mode_at` reads `shelter_at`, which the same design demands — so the rows are **pairs differing by one fact**, and a cellar under a house (`inside`) against the same gesture in a bare meadow (`underground`) is the one that answers the design's open question 2. ✅ **And the doc's own *"inside wins"* sentence needs no arbitration now** — the cellar's ceiling is either a `FLOOR_MAT` floor or earth, and `tr_fabric` has said which since plan 20 `A1`. ⛔ **The first derivation counted the author's OWN GROUND as cover, and the corpus said so rather than a test**: `profiles.keys` reported `mode underground` for an author on a hillside in the open air, because interpolated feet truncate below their own cell — `walk.loft` had written that finding down for the stair, so `mode_at` takes `walk_h`. ⛔ **The tick call was built and observed by NOTHING**: `notick` moved 0 of 30 records, because every mode crossing in the corpus is a **teleport** — `tools/scripts/threshold.keys` is the walk that fixes it, and `notick` is now red on that script alone. ⛔ **`mode_name` collided with the server's camera `mode_name` and `make fast` was green through it** — nothing in that tier builds either `src/` program, and the failure presented as `make headless-same` hanging on a `listening on port` that never came; the server's is `cam_mode_name` now. · `make lib-test` **1856 → 1865 green on BOTH backends** (hex_editor 564 → 573) · `make fast` green · `make parts` byte-identical · `make headless-same` rc 0 · `probe/k3d` 31 scripts, **8 records moved and every one on `mode` lines alone** · `sh probe/k2/sabotage-mode.sh` **5 derivation rows + 2 corpus rows red on their own claims, 4 controls green** |
+| **`D2`** — verbs consult the mode: a verb with no binding here **says why** | S | a verb silently doing nothing. ⚠ *reason, offer, residual, never a blank no* | ⏭ **Unblocked, and `D1` handed it a fact it has to answer**: `house.keys` cuts its two openings from two DIFFERENT modes — its own comment describes both as *"stand ON the wall's own cells"*, and the log says the first station is `inside` and the second `outside`. Under `D2` one of those two lines stops working |
 | ✅ **`K1`** — scripts accept both spellings: `key H` and `verb place`, plus `select <kind>` | S | **DONE.** Both drivers, twin scripts, compared on the world AND on the session · `make probe-verbs` · ⚠ the row's own control was blind — see below | ✅ Done |
 | ✅ **`K2a`** — convert the presses that LOSE information: 18 opening keys in 8 scripts | S | **DONE.** Each script beside a committed baseline of itself, through a server: sentences, saved world **and** kinds · `make probe-convert` · ⚠ the first two are blind to a niche's depth — measured | ✅ Done |
 | ✅ **`K3` · `R`** — the wall run becomes the verb `run` | S | **DONE 2026-08-14.** All 22 `key R` lines converted; `probe/k2` drives both spellings on 8 scripts: **identical sentences, byte-identical worlds**. `session_wall` had 4 callers and all 4 were tests — the stamping half was never in the library · `sh probe/k2/run.sh` · `make probe-demo` `R1`–`R3` · 5 sabotages seen red | ✅ Done |
@@ -272,6 +284,125 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `D1` turned up (2026-08-17) — the verify was a self-test, and the corpus caught what the tests could not
+
+**Built:** `hex_editor::mode_at(sess, w, a)` → `MODE_OUTSIDE` · `MODE_INSIDE` ·
+`MODE_UNDERGROUND`, derived from one reading of the world and **consulted by no gesture**;
+`Shelter` gains `sh_fabric`; `src/editor_run.loft` logs the mode **on change**, from two places;
+`lib/hex_editor/tests/mode.loft` (9 rows); `probe/k2/sabotage-mode.sh`;
+`tools/scripts/threshold.keys`.
+
+### ⛔ The row's own verify could not have failed, and the design is what made it unreachable
+
+The phase table asked for *"the derived mode never contradicts `shelter_at` over a whole scripted
+scene"*. [EDITING_MODES](../../doc/claude/EDITING_MODES.md)' own rule, four sections above that
+row, is **do not add a second enclosure test** — *"a camera that thinks it is indoors while the
+verbs think it is out is the disagreement this rule exists to prevent."* Honour it and `mode_at`
+*reads* `shelter_at`; the contradiction is then unreachable by construction, and the parallel run
+the row promised is a tautology.
+
+**This is `K3e`'s finding one phase over**, and it arrived the same way: the obvious verify was
+written against the shape of the change rather than against what the change could get wrong. What
+is actually falsifiable is the half the row never named — **a cave and a room BOTH answer
+`sh_inside`**, so the question is which of the two sheltered modes, and nothing in the original
+verify touches it.
+
+### ✅ Open question 2 answered, and the classification already existed
+
+*What is "underground"?* was left open in the design — *"a real boundary and it is not decided
+here."* The elevation reading (*below the surface*) needs a datum that does not exist for the case
+it has to judge: an author at a tunnel mouth is standing **on** the surface. So the rule is what is
+**overhead**, and `ground_kinds()` has carried the classification since plan 20 `A1`:
+
+> no cover → `outside` · the nearest cover is `tr_fabric` → `inside` · otherwise → `underground`
+
+⚠ **NOTHING NEW CLASSIFIES ANYTHING**, which is what keeps the mode from becoming a second opinion
+about the world — the same reason it reads `shelter_at` rather than sweeping again.
+
+✅ **AND THE DOC'S OWN *"inside wins"* SENTENCE STOPPED NEEDING A RULE.** It says an author in a
+cellar is under a roof AND below grade and that `inside` wins — a precedence the elevation reading
+would have had to encode. Under this one there is nothing to arbitrate, and the pair is the
+strongest row in the suite: **a cellar under a house is `inside`, the same `storey -1` in a bare
+meadow is `underground`**, and the only difference between the two worlds is what the ceiling is
+made of. A mode that read *below grade* answers `underground` for both; a mode that read *sheltered*
+answers `inside` for both.
+
+### ⛔ The first derivation counted the author's own ground as cover — and the CORPUS said so
+
+Not a test. `probe/k3d`'s record over the live scripts, on the first run after the log existed:
+**`profiles.keys` reported `mode underground` for an author teleported onto the flank of a raised
+dome, in the open air.** Fifteen records moved and seven of them were this.
+
+The feet ride the interpolated heightfield, so on any slope they sit below their own cell's stored
+height; truncated to units they are strictly under it, and the cell they are standing on satisfies
+*is there a cell above me*. ⚠ **`walk.loft` had already written this down, for the stair** — *"the
+reference is the surface the walker stands on, never its feet … the difference cost this rung a
+working stair."* `mode_at` takes `walk_h` now, which is also what stops the mode disagreeing with
+the walk about which storey a person is on. With it, the 15 moved records became **8, every one a
+real crossing**.
+
+### ⛔ The tick call was built, reachable, correct — and observed by nothing
+
+`sabotage-mode`'s two corpus rows disable each call site in turn against all thirty scripts:
+
+| row | records moved |
+|---|---|
+| `noline` — the mode is not read after a script line | **1** — `house.keys`, the only script that teleports with no `step` after it |
+| `notick` — the mode is not read inside a tick | ⛔ **0** |
+
+**Every mode crossing in the corpus is a teleport.** The branch written for a person *walking* into
+a building was this tree's commonest defect, manufactured inside the step that built it — and the
+sweep is the only thing that could have said so, because both call sites print the identical line
+and the record cannot tell which one produced it.
+
+`tools/scripts/threshold.keys` is the walk: a deck, a station outside it, in on `keys 1` and back
+out on `keys 2`. `notick` is red on that script alone now. ⚠ **A deck rather than a house, and that
+was measured** — walking at a house stops the feet at its own wall (`0,-2.26`), and cutting an
+opening in that wall first does not let the walker through either.
+
+### ⛔ `mode_name` collided with the server's, and `make fast` was green for the whole hour
+
+`src/editor_server.loft` has had a private `fn mode_name` for the CAMERA settings since
+`CAMERA_INDOORS`; a package's public name shares one namespace with a consumer's private ones, so
+adding `hex_editor::mode_name` stopped the server compiling — *"Cannot redefine 'mode_name'"*.
+
+⚠ **What it cost is the schedule, not the name.** `make lib-test` (both backends), `make fast`,
+`make parts` and `probe/k3d` were all green with the server unbuildable, because **nothing in those
+tiers compiles either program under `src/`**. The one check that noticed was `make headless-same`,
+and it **presented as a 30-minute hang**: the target waits for `listening on port` in a log that a
+build failure never writes. *A build failure that presents as a hang is not a build failure anyone
+reads*, and it is the `make fast` blind-spot finding from 2026-08-16 in a second location — that
+one was the browser, this one is the server.
+
+The camera's is `cam_mode_name` now: it is the more specific fact, this file already prefixes
+camera state `cam_`, and the rename is one line and one call site.
+
+### ⛔ And the sweep reproduced two of this tree's own instrument defects inside an hour
+
+| what happened | the guard that exists now |
+|---|---|
+| `sed -i 's\|…\|\|…'` on a line containing `\|\|` — the delimiter collides, sed answers *unknown option to `s'*, the file is **untouched**, and the row prints **NOTHING went red**. `K3e` recorded this exact failure on 2026-08-16 | `applied_in` — every row that edits a file asserts the file **changed** before it is scored |
+| the `notick` row deleted the call, which left `last: &integer` unused; **loft refuses that**, so `editor_run` did not build and **all thirty records moved by tens of lines**. Over a corpus instrument a broken build reads as *the strongest possible catch* | `corpus()` compiles the runner against one script first, and the sabotage is `if false { … }` rather than a deletion |
+
+⚠ Both were caught by the sweep's own bookkeeping rather than by reading the output — which is the
+argument for a sweep having bookkeeping at all. A row that reads *nothing went red* and a row that
+reads *everything went red* are both silent about whether anything was asked.
+
+### What it does NOT claim
+
+⛔ **`sh_fabric` reaches no consumer.** `shelter_room` carries it through for the server's camera and
+nothing reads it — the `blindroom` sabotage drops the field and **every row stays green**, which is
+recorded as a required-to-pass row rather than left as an absence. `D2` is what gives it a reader.
+
+⛔ **The tunnel-mouth boundary is placed, not proven.** A cave open to the sky reads `outside` until
+rock is actually overhead. Whether the tunnel verbs should reach a hex further out than the rock
+does is a `D2` question.
+
+⏭ **And `D1` handed `D2` a fact it has to answer.** `house.keys` cuts its two openings from two
+different modes — its own comment describes both stations as *"stand ON the wall's own cells"*, and
+the log says the first is `inside` and the second `outside`, straddling the roof plan's rectangle.
+Under `D2`, where `inside` is what grants the opening verb, **one of those two lines stops working.**
 
 ## ✅ What `K3d` turned up (2026-08-17) — the debt's own list was stale, and the baseline it asked for was blind
 

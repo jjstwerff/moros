@@ -530,12 +530,40 @@ parts:
 	       rm -f .parts.err; exit 1; }
 	@rm -f .parts.err
 
+# ⛔ **THE WAIT IS BOUNDED, AND IT IS BOUNDED BECAUSE IT WAS NOT — plan 22 `D1`.** A
+# name added to `hex_editor` collided with a private one in `src/editor_server.loft`
+# (*"Cannot redefine 'mode_name'"*), so the server never reached `listening on port` —
+# and this loop spun for **thirty minutes** until an outer timeout killed it, with the
+# compiler's own two-line diagnostic sitting in `.editor.log` the whole time. ⚠ **A
+# build failure that presents as a hang is not a build failure anyone reads**, and it
+# was the only check in the tree that noticed at all: `make fast`, `make lib-test`,
+# `make parts` and `probe/k3d` compile neither program under `src/`.
+#
+# ⚠ THE BOUND IS GENEROUS ON PURPOSE — this box carries other agents' work and a cold
+# server build has been minutes. What matters is that it ENDS and says what it saw.
+#
+# ⚠ AND THE FAST PATH IS THE PID, NOT THE CLOCK: a build failure kills the process in
+# seconds, so waiting out the timeout would still bury the diagnostic under ten minutes
+# of nothing. ✅ **Checked against the failure it was written for** — the collision put
+# back deliberately, this target now reports loft's own two lines in **3.2 s**.
 headless-same:
 	@SCRIPT=tools/scripts/house.keys WORLD=headless $(LOFT) --lib lib/ src/editor_run.loft 2>/dev/null \
 	  | grep -oE 'house placed [0-9]+ cells, [0-9]+ wall edges, ridge at [0-9]+' > .headless.txt || true
 	@$(MAKE) -s port-free >/dev/null 2>&1; : > .editor.log
 	@nohup $(LOFT) --interpret --lib lib/ src/editor_server.loft > .editor.log 2>&1 & \
-	 until grep -q 'listening on port' .editor.log; do sleep 0.3; done; \
+	 srv=$$!; waited=0; \
+	 until grep -q 'listening on port' .editor.log; do \
+	   sleep 0.3; waited=$$((waited + 1)); \
+	   if ! kill -0 $$srv 2>/dev/null; then \
+	     echo "HEADLESS: the server EXITED without listening — it did not build:"; \
+	     grep -E '^error' -A4 .editor.log | head -12; exit 1; \
+	   fi; \
+	   if [ "$$waited" -gt 2000 ]; then \
+	     echo "HEADLESS: the server is alive and never said 'listening on port' in 600s:"; \
+	     tail -6 .editor.log; \
+	     $(MAKE) -s stop-editor >/dev/null; exit 1; \
+	   fi; \
+	 done; \
 	 node tools/script.mjs tools/scripts/house.keys >/dev/null 2>&1; \
 	 grep -oE 'house [0-9]+ cells' .editor.log | head -1 > /dev/null; \
 	 grep -oE 'house placed [0-9]+ cells, [0-9]+ wall edges, ridge at [0-9]+' .editor.log \

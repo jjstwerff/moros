@@ -1,0 +1,28 @@
+rc: 0
+world: 32920:3111059416
+md5: 34fa81e08bf8e9c8943ddeb391993c71
+tau: 111
+chunks: 2
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  placed 17,0
+  storey +1 on 19 cells
+  mode inside
+  placed 17,-8
+  mode outside
+  feet 0.167 at 17,-8
+  keys 1
+  mode inside
+  stepped 75
+  keys 0
+  feet 1.438 at 17,0
+  keys 2
+  mode outside
+  stepped 75
+  keys 0
+  feet 0.171 at 17,-8
+--- what the runner refused

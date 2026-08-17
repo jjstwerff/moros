@@ -598,13 +598,80 @@ verb the table can name being bound.
 
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
-| **`D1`** — `mode_at(sess, w, a)` computed and **consulted by nobody**; a gate logs it every frame of an existing run | every current verb, unchanged | ⚠ **the parallel run for a derived VALUE**: assert the derived mode never contradicts `shelter_at` over a whole scripted scene — including the house-in-a-cave case, which is the one the user named and the one a set mode gets wrong |
+| ✅ **`D1`** — `mode_at(sess, w, a)` computed and **consulted by nobody**; a gate logs it every frame of an existing run | every current verb, unchanged | ⛔ **THE ROW AS WRITTEN COULD NOT HAVE FAILED — see below.** What is asserted instead is **WHICH of the two sheltered modes**, in pairs that differ by one fact |
 | **`D2`** — verbs consult the mode: a verb with no binding here **says why** | `D1`'s log, now an assertion | a verb silently doing nothing. ⚠ *Reason, offer, residual, never a blank no* — the doorstep rule, applied to a keystroke |
 
 ⚠ **`D1` IS UNCALLED CODE ON PURPOSE AND STILL PASSES THE LOWER BOUND**, which is worth being
 precise about: it can go red for a real reason (the mode disagreeing with `shelter_at` on a real
 scene), so it is a measurement rather than a declaration. **If its assertion were "the function
 returns one of three values", it would be a self-test and it would have to merge into `D2`.**
+
+### ⛔ …and that verify was a self-test anyway, which building it is what said
+
+**Built 2026-08-17.** *"Assert the derived mode never contradicts `shelter_at`"* is unreachable:
+this document's own rule four sections up is **do not add a second enclosure test**, so `mode_at`
+*reads* `shelter_at` and the two cannot disagree by construction. The row named the one comparison
+its own design had already ruled out.
+
+**What is left falsifiable is the half it never named — WHICH of the two sheltered modes**, because
+a cave and a room both answer `sh_inside`. `lib/hex_editor/tests/mode.loft` asks that in pairs that
+differ by exactly one fact, and `probe/k2/sabotage-mode.sh` is what says the pairs can fail:
+
+| the pair | what only this can see |
+|---|---|
+| a cellar under a house · **the same gesture in a bare meadow** | `inside` against `underground`, decided by what is over your head and by nothing else |
+| a house under rock · **one step out of it, same cave** | the INNERMOST cover won — *a house in a cave switches to houses again* |
+| the middle of a room · **twelve units off the ridge** | that `inside` is not simply what the function always says |
+
+### ✅ Open question 2 is answered: underground is what is OVERHEAD, not an elevation
+
+The question was *"below the surface is not the same as inside a carved space … whether a tunnel
+mouth is inside or underground is a real boundary and is not decided here."* It is decided now, and
+the deciding argument is that **the elevation reading needs a datum that does not exist for the case
+it has to judge**: an author at a tunnel mouth is standing *on* the surface, because standing on it
+is what a surface is.
+
+So the rule is one line, and the library already held both halves of it:
+
+> **No cover → `outside`. The nearest cover is FABRIC → `inside`. The nearest cover is ground →
+> `underground`.**
+
+`ground_kinds()` has carried `tr_fabric` since plan 20 `A1` — the line between what moves rigidly
+with a building and what is ground — so a floor and a roof are fabric and grass, road, field and
+water are not. **Nothing new classifies anything**, which is what keeps the mode from becoming a
+second opinion about the world.
+
+⚠ **AND THE CELLAR FALLS OUT WITH NO RULE ARBITRATING IT.** This document says *"an author standing
+in a cellar is under a roof AND below grade, and the table says `inside` wins"* — a sentence that
+would have needed a precedence rule under the elevation reading. Under this one there is nothing to
+arbitrate: a cellar under a house has the house's `FLOOR_MAT` floor over it and reads `inside`;
+**the same gesture in a bare meadow has earth over it and reads `underground`**, and both are right.
+
+⚠ **What it costs, said rather than left quiet:** a cave whose mouth is open to the sky reads
+`outside` for the first steps in, until rock is actually overhead. That is a `D2` question — whether
+the tunnel verbs should reach a hex further out than the rock does — and not a defect in the
+reading.
+
+### ⛔ The first derivation counted the author's own ground as cover, and the CORPUS said so
+
+Not a test: `probe/k3d`'s committed record of the live corpus, on the first run after the log
+existed. `profiles.keys` reported **`mode underground` for an author standing on a hillside in the
+open air.** The feet ride the interpolated heightfield, so on any slope they sit below their own
+cell's stored height; truncated to units they are strictly under it, and the cell they are standing
+on satisfies *is there something above me*.
+
+⚠ **`walk.loft` had written this finding down already, for the stair** — *"the reference is the
+surface the walker stands on, never its feet … the difference cost this rung a working stair."*
+`mode_at` takes `walk_h` now, which is also what stops the mode disagreeing with the walk about
+which storey a person is on.
+
+### ⏭ What `D1` hands `D2`: `house.keys` cuts its two openings from two different modes
+
+The script's own comment says *"a door and a window in its near wall (stand ON the wall's own
+cells)"* — one situation, described once, for both lines. The log says the first station is
+**`inside`** and the second is **`outside`**: they straddle the roof plan's rectangle. Under `D2`,
+where `inside` is what grants the opening verb, **one of those two lines stops working.** That is
+the first thing `D2` has to answer, and it was invisible until something printed the mode.
 
 ## Phase 5 — the scripts, and the types
 

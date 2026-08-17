@@ -16,6 +16,7 @@ chosen: opening 1
   level false — feet back on the ground at 0
   stepped 30
   storey +1 on 19 cells
+  mode inside
   stepped 60
   stepped 120
 --- what the runner refused

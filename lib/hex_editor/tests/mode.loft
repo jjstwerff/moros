@@ -1,0 +1,237 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE MODE, DERIVED — plan 22 `D1`, [EDITING_MODES](../../../doc/claude/EDITING_MODES.md).
+//
+// > *"outside a house there are different verbs, as is under ground
+// > tunnelling/caves creation. A house in a cave will switch to houses again."*
+//
+// The author never sets a mode; it is a reading of where the author is standing, so
+// it cannot disagree with the world. `D1` derives it and NOTHING CONSULTS IT — `D2`
+// is where a verb asks — which is what makes these rows a measurement rather than a
+// declaration: every one of them is about a scene, and none about a signature.
+//
+// ⚠ **THE ROW THIS STEP WAS WRITTEN WITH CANNOT FAIL, AND SAYING SO IS THE POINT.**
+// The phase table asks for *the derived mode never contradicts `shelter_at`* — and
+// the design's own rule is **do not add a second enclosure test**, so `mode_at` reads
+// `shelter_at` and the contradiction is unreachable by construction. What is left
+// falsifiable is the half the contradiction row never named: **WHICH of the two
+// sheltered modes**, and that is what every pair below asks.
+//
+// ⚠ **THE PAIRS ARE THE INSTRUMENT.** Each mode is claimed beside a scene that
+// differs in ONE fact and answers differently — a cellar under a house against the
+// same gesture in a bare meadow, a house under rock against the rock one step away.
+// A single-sided claim here would be satisfied by a function that answers `inside`
+// for everything sheltered, which is exactly the version this step replaces.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const W     = 5;
+const D     = 4;
+const YAW   = 0.5235987755982988;    // 30°, the one facing a mitred footprint has
+// High enough that a house's whole roof fits under it with fold room to spare —
+// asserted in the cave fixture rather than trusted, because a ceiling that refused
+// the roof would leave every cave row testing an empty world.
+const CEIL  = FLOOR + 60;
+
+fn flat() -> VoxelWorld {
+  w = world_new(U, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+// A NATURAL ceiling: the same material the ground is made of, a second occupied cell
+// in every column. This is the tunnel — nothing built, rock overhead.
+fn roof_the_world_in_rock(w: VoxelWorld) {
+  for r in 0 - 20..21 {
+    for q in 0 - 20..21 {
+      band: vector<hex_voxel::Hex> = [
+        hex_voxel::Hex { h_height: (FLOOR as u16? ?? 0),
+                         h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) },
+        hex_voxel::Hex { h_height: (CEIL as u16? ?? 0),
+                         h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) }
+      ];
+      wr = hex_voxel::world_merge_band(w, q, r, FLOOR, CEIL, band);
+      assert(wr.cw_code == 0, "the rock ceiling was refused at ({q},{r}): {wr.cw_detail}");
+    }
+  }
+}
+
+fn house_on(w: VoxelWorld, sess: EditSession) -> Ack {
+  a = hex_editor::author_on(w, 0.0, 0.0, YAW);
+  hex_editor::place_house(w, a, W, D, hex_editor::grade_under(w, a),
+                          sess.es_runs, sess.es_roofs)
+}
+
+// The middle of the room, taken from THE PLAN THE GESTURE FILED rather than from the
+// author's pose — `place_house` puts the house AHEAD of the author, so the pose is
+// outdoors by construction and a fixture standing there would measure the doorstep.
+fn ridge_mid(sess: EditSession) -> (float, float) {
+  rp = sess.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+  ((hex_editor::roof_point_x(rp, 4) + hex_editor::roof_point_x(rp, 5)) * 0.5,
+   (hex_editor::roof_point_z(rp, 4) + hex_editor::roof_point_z(rp, 5)) * 0.5)
+}
+
+// The author standing at a point, feet on whatever the store says is there.
+fn feet_at(x: float, z: float, h: integer) -> Author {
+  hex_editor::author_at(x, z, YAW, (h as float) * U)
+}
+
+fn mode_here(sess: EditSession, w: VoxelWorld, x: float, z: float, h: integer) -> text {
+  hex_editor::mode_name(hex_editor::mode_at(sess, w, feet_at(x, z, h)))
+}
+
+// ── the three modes, each beside the scene that differs by one fact ──────────
+
+fn test_a_meadow_is_outside() {
+  w = flat();
+  sess = EditSession {};
+  assert(mode_here(sess, w, 0.0, 0.0, FLOOR) == "outside",
+         "open sky reads {mode_here(sess, w, 0.0, 0.0, FLOOR)}");
+}
+
+fn test_under_a_placed_house_the_author_is_inside() {
+  w = flat();
+  sess = EditSession {};
+  ack = house_on(w, sess);
+  assert(ack.ak_ok, "the fixture refused the house: {ack.ak_why}");
+  (rx, rz) = ridge_mid(sess);
+  assert(mode_here(sess, w, rx, rz, FLOOR) == "inside",
+         "the middle of a room reads {mode_here(sess, w, rx, rz, FLOOR)}");
+}
+
+// ⚠ THE CONTROL THAT MAKES THE ROW ABOVE MEAN SOMETHING: one step out of the same
+// house, on the same ground, in the same world. Without it *inside* is satisfied by
+// a function that never says anything else.
+fn test_and_one_step_out_of_it_is_outside_again() {
+  w = flat();
+  sess = EditSession {};
+  assert(house_on(w, sess).ak_ok, "the fixture refused the house");
+  (rx, rz) = ridge_mid(sess);
+  assert(mode_here(sess, w, rx + 12.0, rz, FLOOR) == "outside",
+         "twelve units off the ridge reads "
+       + "{mode_here(sess, w, rx + 12.0, rz, FLOOR)}");
+}
+
+fn test_rock_overhead_is_underground() {
+  w = flat();
+  roof_the_world_in_rock(w);
+  sess = EditSession {};
+  assert(mode_here(sess, w, 0.0, 0.0, FLOOR) == "underground",
+         "a tunnel reads {mode_here(sess, w, 0.0, 0.0, FLOOR)}");
+}
+
+// ⚠ **THE USER'S OWN CLAUSE, AND IT IS THE ONE A SET MODE GETS WRONG.** A derived
+// mode needs no rule for the nesting: `shelter_at` already takes the INNERMOST
+// cover, and the house's roof plan is nearer than the rock over it.
+fn test_a_house_in_a_cave_switches_to_houses_again() {
+  w = flat();
+  roof_the_world_in_rock(w);
+  sess = EditSession {};
+  ack = house_on(w, sess);
+  assert(ack.ak_ok, "the cave refused the house: {ack.ak_why}");
+  (rx, rz) = ridge_mid(sess);
+  // ⚠ THE FIXTURE'S OWN PRECONDITION, ASSERTED. If the ridge reached the rock there
+  // would be no nesting here at all and the row would pass for the wrong reason —
+  // *inside* with nothing above the house to be inside OF.
+  (pq, pr) = hex_grid::px_to_hex(rx, rz);
+  assert(hex_editor::col_top(world_column(w, pq, pr)) == CEIL,
+         "the rock is not the top of this column: "
+       + "{hex_editor::col_top(world_column(w, pq, pr))} against {CEIL}");
+  assert(mode_here(sess, w, rx, rz, FLOOR) == "inside",
+         "a house in a cave reads {mode_here(sess, w, rx, rz, FLOOR)}");
+  // ⚠ AND THE SAME WORLD, ONE STEP OUT OF THE HOUSE, IS STILL A CAVE. This is what
+  // separates *the innermost cover won* from *a roof plan anywhere makes you
+  // indoors*: the second would read `inside` here too.
+  assert(mode_here(sess, w, rx + 12.0, rz, FLOOR) == "underground",
+         "outside the house in the same cave reads "
+       + "{mode_here(sess, w, rx + 12.0, rz, FLOOR)}");
+}
+
+// ── the cellar pair: ONE gesture, two answers, decided by what is over your head ──
+
+fn test_a_cellar_under_a_house_is_inside() {
+  // The design's own sentence: *an author in a cellar is under a roof AND below
+  // grade, and inside wins.* Nothing here arbitrates that — the ceiling of this
+  // cellar is the house's `FLOOR_MAT` floor, and a floor is fabric.
+  w = flat();
+  sess = EditSession {};
+  assert(house_on(w, sess).ak_ok, "the fixture refused the house");
+  (rx, rz) = ridge_mid(sess);
+  (cq, cr) = hex_grid::px_to_hex(rx, rz);
+  why = "";
+  n = hex_editor::storey_add(w, cq, cr, 0 - 1, 2, why);
+  assert(n > 0, "the cellar went under {n} cells: {why}");
+  down = hex_editor::col_low(world_column(w, cq, cr));
+  assert(down == FLOOR - hex_editor::STOREY_H,
+         "the cellar floor is at {down}, not one storey down");
+  assert(mode_here(sess, w, rx, rz, down) == "inside",
+         "a cellar under a house reads {mode_here(sess, w, rx, rz, down)}");
+}
+
+fn test_and_the_same_cellar_dug_in_a_meadow_is_underground() {
+  // ⚠ **THE PAIR IS THE MEASUREMENT.** Same gesture, same depth, same clearance —
+  // the only difference is that what is over your head is earth rather than a
+  // floor. A mode that read *below grade* would answer `underground` for both, and
+  // a mode that read *sheltered* would answer `inside` for both; only what the
+  // cover is MADE OF separates them.
+  w = flat();
+  sess = EditSession {};
+  why = "";
+  n = hex_editor::storey_add(w, 0, 0, 0 - 1, 2, why);
+  assert(n > 0, "the cellar went under {n} cells: {why}");
+  (mx, mz) = hex_grid::hex_to_px(0, 0);
+  down = hex_editor::col_low(world_column(w, 0, 0));
+  assert(down == FLOOR - hex_editor::STOREY_H,
+         "the cellar floor is at {down}, not one storey down");
+  assert(mode_here(sess, w, mx, mz, down) == "underground",
+         "a hole dug in a field reads {mode_here(sess, w, mx, mz, down)}");
+}
+
+// ── the datum ───────────────────────────────────────────────────────────────
+
+// ⛔ **THE ROW THE CORPUS FOUND, AND THE FIRST DERIVATION FAILED IT.** The feet ride
+// the interpolated heightfield, so on any slope they sit BELOW their own cell's
+// stored height; truncated to units they are strictly under it, and the ground the
+// author is standing on satisfies *is there a cell above me*. `profiles.keys` said
+// so out loud — `mode underground` where the author teleports onto the flank of a
+// raised dome, in the open air.
+//
+// ⚠ IT IS WRITTEN WITH THE FEET A FRACTION LOW RATHER THAN WITH A REAL SLOPE,
+// because a real slope needs `hex_mesh::ground_under` and `hex_mesh` depends on this
+// package. The fraction is exactly what the interpolation produces, and the control
+// below is the same point with the feet exactly on the cell.
+fn test_the_authors_own_ground_is_never_cover() {
+  w = flat();
+  sess = EditSession {};
+  low = hex_editor::author_at(0.0, 0.0, YAW, (FLOOR as float) * U - 0.01);
+  assert(hex_editor::mode_name(hex_editor::mode_at(sess, w, low)) == "outside",
+         "feet a hundredth below their own cell read "
+       + "{hex_editor::mode_name(hex_editor::mode_at(sess, w, low))}");
+  assert(mode_here(sess, w, 0.0, 0.0, FLOOR) == "outside",
+         "and the control — feet exactly on the cell — reads "
+       + "{mode_here(sess, w, 0.0, 0.0, FLOOR)}");
+}
+
+fn test_the_mode_is_read_at_the_feet_so_standing_on_the_roof_is_outside() {
+  // ⚠ THE FEET, NOT THE EYE — the camera asks the same query at the eye, and this
+  // is the row that says which datum this consumer uses. A mode taken from a fixed
+  // ground height would answer `inside` here, for someone standing in the open air
+  // on top of the house.
+  w = flat();
+  sess = EditSession {};
+  ack = house_on(w, sess);
+  assert(ack.ak_ok, "the fixture refused the house");
+  (rx, rz) = ridge_mid(sess);
+  // ⚠ THE STORE'S OWN TOP, NOT `ak_residual` — that field is the cut and fill now
+  // (plan 22 `D0`), which is 0 on flat ground and would have put the feet at the
+  // origin. The first version of this row read it and passed the wrong height.
+  (rq, rr) = hex_grid::px_to_hex(rx, rz);
+  ridge = hex_editor::col_top(world_column(w, rq, rr));
+  assert(ridge > FLOOR, "the fixture has no ridge above the floor: {ridge}");
+  assert(mode_here(sess, w, rx, rz, ridge + 1) == "outside",
+         "standing on the ridge reads {mode_here(sess, w, rx, rz, ridge + 1)}");
+}

@@ -1,0 +1,58 @@
+# WALKING ACROSS THE DOORSTEP — plan 22 `D1`.
+#
+# ⛔ **THIS SCRIPT EXISTS BECAUSE A SABOTAGE FOUND NOTHING.** `D1` reads the derived
+# mode in two places — after every script line, and inside every tick — and
+# `probe/k2/sabotage-mode.sh` disabled each in turn against the whole corpus. The
+# per-line call moved one record. **The per-tick call moved NONE**: every mode
+# crossing in the thirty scripts is a TELEPORT, so the branch written for a person
+# walking into a building was correct and observed by nothing, which is this tree's
+# commonest defect wearing its usual clothes.
+#
+# So this is the walk. No `snap`, no `frame`, no camera: what it is for is the pair of
+# `mode` lines in `probe/k3d`'s record, printed from inside `run_ticks` and from
+# nowhere else — the `notick` row of `sabotage-mode` is red on this script alone.
+#
+# ⚠ **A DECK, NOT A HOUSE, AND THAT WAS MEASURED RATHER THAN PREFERRED.** Walking at a
+# house stops the feet at `0,-2.26` — its own near wall — and cutting an opening in
+# that wall first does not let the walker through either. A storey has no walls, so the
+# only thing between the author and the shelter is distance, which is what a threshold
+# has to be for this to be testing a WALK.
+#
+# ⚠ IT WALKS BOTH WAYS ON PURPOSE. A guard that is right entering and blind leaving is
+# a bug this tree has now written twice (`faced_between`, `stroke_over_limit`), and the
+# only shape that can see it is the incremental one — which is what a walk is.
+
+echo --- ground to stand on
+# ⚠ THE RAISE LANDS AHEAD OF THE AUTHOR, NOT UNDER THEM — `raise_ahead` puts its dome
+# ten hexes along the facing with radius 7, so a `verb storey` pressed here is refused
+# with *no cells here* at `GROUND=0`. Measured, then the pose moved onto the dome.
+at 0 0 0
+verb raise
+wait rebuilt
+
+echo --- a deck over the middle of it
+at 17 0 90
+verb storey
+wait rebuilt
+
+echo --- out from under it, into the open
+at 17 -8 90
+feet
+
+echo --- and walk back under, stopping beneath it
+# ⚠ 75 TICKS IS MEASURED, NOT ROUND: this walk covers 0.1067 wu a tick, so 200 carried
+# the author straight through the disc and out the far side — two crossings in one
+# direction, which is a weaker row than one crossing in each.
+keys 1
+step 75
+keys 0
+feet
+
+echo --- and out again, WALKING BACKWARD along the same facing
+# ⚠ `turn 180` is refused by this runner — it is a feedback loop on a live pose and
+# needs a server to read back from. `keys 2` is S, which walks the same line the other
+# way and keeps the crossing incremental, which is the whole point of the row.
+keys 2
+step 75
+keys 0
+feet

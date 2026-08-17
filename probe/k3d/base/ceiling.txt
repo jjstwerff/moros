@@ -14,6 +14,7 @@ chosen: opening 1
   placed 0,-10
   stepped 90
   placed 0,0
+  mode inside
   stepped 90
   placed 0,2
   stepped 90

@@ -12,11 +12,14 @@ chosen: opening 1
   placed 0,-4
   house placed 27 cells, 84 wall edges, ridge at 21, seated at 0 (0 from your feet, cut and fill 0)
   placed 0,0
+  mode inside
   stepped 150
   placed 0,0
   stepped 150
   placed 0,-10
+  mode outside
   stepped 150
   placed 0,0
+  mode inside
   stepped 150
 --- what the runner refused

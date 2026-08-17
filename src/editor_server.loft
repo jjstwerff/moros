@@ -2152,7 +2152,17 @@ const CAM_FAR        = 400.0;
 // claim untrue of the line as a whole.
 fn on_off(b: boolean) -> text { if b { "ON" } else { "off" } }
 
-fn mode_name(m: integer) -> text {
+// ⚠ **`cam_mode_name`, AND THE RENAME IS A COLLISION PAID RATHER THAN DODGED — plan
+// 22 `D1`.** `hex_editor` gained a `mode_name` for the EDITING mode (outside · inside ·
+// underground), and a package's public name shares one namespace with this program's
+// private ones: the server stopped compiling with *Cannot redefine 'mode_name'*. The
+// camera's is the more specific fact and this file already prefixes camera state
+// `cam_`, so it takes the qualifier. ⛔ **And `make fast` was green through all of it** —
+// nothing in that tier builds `src/editor_server.loft`, so the only thing that noticed
+// was `make headless-same`, which waits for a `listening on port` that never arrives and
+// hangs until its timeout. A build failure that presents as a hang is not a build
+// failure anyone reads.
+fn cam_mode_name(m: integer) -> text {
   if m == MODE_AUTO    { return "AUTO"; }
   if m == MODE_FOLLOW  { return "FOLLOW"; }
   if m == MODE_SNUG    { return "SNUG"; }
@@ -2522,7 +2532,7 @@ fn hud_wire(in_part: boolean, wname: text, pname: text, mode: integer,
             lev: boolean, rd: boolean, tr: boolean, opk: integer) -> text {
   subject = "world {wname}";
   if in_part { subject = "part {pname}"; }
-  "H:{subject} · {mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
+  "H:{subject} · {cam_mode_name(mode)} · level {on_off(lev)} · road {on_off(rd)} · trace {on_off(tr)}"
     + " · opening {opk}"
 }
 

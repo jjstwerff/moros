@@ -852,6 +852,18 @@ pub fn roof_plan_over(rp: RoofPlan, x: float, z: float) -> boolean {
 pub struct Shelter {
   sh_inside: boolean,
   sh_head:   integer,     // clear height above the eye, in units; -1 under open sky
+  // ⚠ WHAT THE NEAREST COVER IS MADE OF, AND IT IS A FIELD RATHER THAN A SECOND
+  // SWEEP — plan 22 `D1`. `mode_at` has to tell a room from a tunnel, and both
+  // answer `sh_inside`; the design's own rule is *do not add a second enclosure
+  // test*, because a camera that thinks it is indoors while the verbs think it is
+  // out is the disagreement a derived mode exists to prevent. So the one sweep
+  // that already picks the INNERMOST cover reports what won, and every consumer
+  // reads the same reading.
+  //
+  // ⚠ A ROOF PLAN IS FABRIC BY CONSTRUCTION — it is filed by `place_house`. A cell
+  // answers `ground_kind_at(…).tr_fabric`, which is the line `A1` already draws
+  // between what moves rigidly with a building and what is ground.
+  sh_fabric: boolean,
   // ⚠ THESE TWO ARE MEASURED, NOT DERIVED, and that is why `shelter_at` leaves them
   // at -1. A clear RADIUS needs a march against the view-blocking edge set, which is
   // the same sweep the boom uses — `cam_free_dist` and its proxy live where the
@@ -866,11 +878,12 @@ pub struct Shelter {
 pub fn shelter_at(w: VoxelWorld, roofs: RoofPlans, x: float, z: float,
                   eye_units: integer, unit: float) -> Shelter {
   best = 0 - 1;
+  fab = false;
   for rp in roofs.items {
     if roof_plan_over(rp, x, z) {
       h = ((roof_plan_y(rp, x, z) / unit ?? 0.0) as integer);
       if h > eye_units {
-        if best < 0 || h - eye_units < best { best = h - eye_units; }
+        if best < 0 || h - eye_units < best { best = h - eye_units; fab = true; }
       }
     }
   }
@@ -882,11 +895,19 @@ pub fn shelter_at(w: VoxelWorld, roofs: RoofPlans, x: float, z: float,
     if hex_voxel::hex_occupied(c) {
       ch = c.h_height as integer ?? 0;
       if ch > eye_units {
-        if best < 0 || ch - eye_units < best { best = ch - eye_units; }
+        // ⚠ STRICTLY NEARER, so a cell level with a roof plan does not displace it:
+        // a house's own roof writes `ROOF_MAT` over the very cells its plan covers,
+        // and on a tie the answer is the same either way — but the tie-break is
+        // written down rather than left to loop order.
+        if best < 0 || ch - eye_units < best {
+          best = ch - eye_units;
+          fab = ground_kind_at(w, q, r, c.h_material as integer ?? 0).tr_fabric;
+        }
       }
     }
   }
-  Shelter { sh_inside: best >= 0, sh_head: best, sh_room: 0.0 - 1.0, sh_back: 0.0 - 1.0 }
+  Shelter { sh_inside: best >= 0, sh_head: best, sh_fabric: fab,
+            sh_room: 0.0 - 1.0, sh_back: 0.0 - 1.0 }
 }
 
 // The two measured fields, filled where the sweep lives. Separate from the
@@ -894,7 +915,73 @@ pub fn shelter_at(w: VoxelWorld, roofs: RoofPlans, x: float, z: float,
 // forgets is left holding -1 rather than a plausible zero — an unmeasured radius
 // that read 0 would say "no room at all" and degrade every camera on the box.
 pub fn shelter_room(s: Shelter, room: float, back: float) -> Shelter {
-  Shelter { sh_inside: s.sh_inside, sh_head: s.sh_head, sh_room: room, sh_back: back }
+  Shelter { sh_inside: s.sh_inside, sh_head: s.sh_head, sh_fabric: s.sh_fabric,
+            sh_room: room, sh_back: back }
+}
+
+// ── THE MODE, DERIVED — plan 22 `D1`, [EDITING_MODES](../../../doc/claude/EDITING_MODES.md)
+//
+// > **WHERE you are decides which VERBS exist. What you have CHOSEN decides what
+// > those verbs produce.** The author does not pick a mode; the mode is a reading
+// > of where the author is standing, so it cannot disagree with the world.
+//
+// ⚠ **NOTHING CONSULTS THIS YET, ON PURPOSE.** `D1` computes it and logs it beside
+// every existing run; `D2` is where a verb asks. Splitting them is what makes the
+// derivation falsifiable on its own: a mode that is already deciding keystrokes can
+// only be measured through the keystrokes it changed.
+pub const MODE_OUTSIDE     = 0;
+pub const MODE_INSIDE      = 1;
+pub const MODE_UNDERGROUND = 2;
+
+pub fn mode_name(m: integer) -> text {
+  if m == MODE_INSIDE { return "inside"; }
+  if m == MODE_UNDERGROUND { return "underground"; }
+  "outside"
+}
+
+// ⚠ **UNDERGROUND IS DECIDED BY WHAT IS OVERHEAD, NOT BY ELEVATION**, which is
+// [EDITING_MODES](../../../doc/claude/EDITING_MODES.md)' open question 2 answered.
+// The alternative reading — *below the surface* — needs a datum that does not exist
+// for the case it has to judge: an author standing at a tunnel MOUTH is standing on
+// the surface, because standing on it is what a surface is. Overhead cover has one
+// answer everywhere, needs no second test, and it is the reading that makes the
+// user's own clause fall out for free: **a house in a cave switches to houses
+// again**, because `shelter_at` already takes the INNERMOST cover and a roof plan is
+// nearer than the rock over it.
+//
+// ⚠ What it costs, said rather than left quiet: a cave with its mouth open to the
+// sky reads `outside` for the first few steps in, until rock is overhead. That is a
+// boundary the design called *a real boundary and not decided here*; this puts it at
+// the rock rather than at the contour, and it is a `D2` question whether the tunnel
+// verbs should reach one hex further out than the rock does.
+//
+// ⚠ **AT THE SURFACE THE AUTHOR STANDS ON — the camera asks the same query at the
+// EYE.** The two are the same reading of the same world at two heights, and that is
+// the honest relationship: a mode is about where a person is standing, and an eye is
+// the camera's business.
+//
+// ⛔ **AND IT IS `walk_h`, NOT `au_y`, BECAUSE THE FIRST VERSION COUNTED THE
+// AUTHOR'S OWN GROUND AS COVER.** The feet ride the INTERPOLATED heightfield, so on
+// any slope they sit below their own cell's stored height; truncating that to units
+// puts them strictly under it, and the cell they are standing on then satisfies
+// `ch > eye_units` — grass overhead, which reads `underground`. It was not
+// theoretical: the corpus baseline moved on `profiles.keys`, where the author
+// teleports onto the flank of a raised dome, and the record said **`mode
+// underground` on a hillside in the open air**.
+//
+// ⚠ **`walk.loft` HAD ALREADY WRITTEN THIS FINDING DOWN, FOR THE STAIR** — *"the
+// reference is the surface the walker stands on, never its feet … the difference
+// cost this rung a working stair"*. Using the same resolver is also what keeps the
+// mode from disagreeing with the walk about which storey the person is on: a deck
+// and the ground under it are one column, and `world_surface` is the one thing that
+// picks between them.
+pub fn mode_at(sess: EditSession, w: VoxelWorld, a: Author) -> integer {
+  (mq, mr) = px_to_hex(a.au_x, a.au_z);
+  s = shelter_at(w, sess.es_roofs, a.au_x, a.au_z,
+                 walk_h(mq, mr, w, a.au_y / w.w_unit ?? 0.0), w.w_unit);
+  if !s.sh_inside { return MODE_OUTSIDE; }
+  if s.sh_fabric { return MODE_INSIDE; }
+  MODE_UNDERGROUND
 }
 
 //
