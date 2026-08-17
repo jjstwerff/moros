@@ -111,6 +111,57 @@ centreline, or let an opening fall back to the EDGE it was found on when there i
 project onto. The first makes one rule; the second keeps a gesture working where the first would
 change five fixtures' worlds.
 
+## ✅ 4. `fence_disc` has runs now — and what that changed in the picture, measured
+
+The user's call: **give `fence_disc` a run.** `ring.loft` measures the shape first, because
+the obvious answer is wrong — *six runs, one per lattice direction* is refuted by the dump,
+since at radius 2 direction 1 carries three collinear midpoints **and** two on a different line.
+
+> **A flat side of a hex region is a ZIGZAG of two alternating edge directions whose MIDPOINTS
+> are collinear** — the same sentence `hex_form::side_edges` already makes about a rectangle.
+
+Sorted by that line the boundary is six straight sides of `2·rad + 1` midpoints — 18, 30, 42 at
+radii 1, 2, 3, which is what `fence_count` answers — with corners at **√3 · (rad + ½)** from the
+centre at 0°, 60°, … 300°. Read off three radii and then asserted against all of them: **every
+stamped midpoint lies on one of the six segments at worst miss 0**, and the control — the same
+midpoints against a hexagon one radius smaller — places **0 of 30**.
+
+### ✅ The drawing changed, the store did not, and the third row is what says which
+
+`ringmesh.loft`. ⚠ **No gate could have answered this**: `fence.mjs` reads *fenced 30 edges, 15
+stored outside* — counts against the store, which this step leaves byte-identical on purpose.
+
+| radius | edges only | both | runs only | bare ground |
+|---|---|---|---|---|
+| 1 | 508 / 404 | **688 / 464** | **688 / 464** | 448 / 384 |
+| 2 | 556 / 420 | **760 / 488** | **760 / 488** | 448 / 384 |
+| 3 | 580 / 428 | **868 / 524** | **868 / 524** | 448 / 384 |
+
+⚠ **THE MESH GOT BIGGER, AND THE THIRD COLUMN IS THE ONLY THING THAT SAYS WHY.** Two
+explanations fit a bigger mesh: the analytic wall costs more than the panels it replaces, or the
+panels were never suppressed and a ring is drawn twice — *a staircase inside a wall*, the one
+thing `hex_mesh`'s own comment forbids. **`both` equals `runs only` exactly at all three radii**,
+so the ring's per-edge panels contribute nothing at all: suppression is total. The ring's own
+geometry goes from **60 verts** of flat panel to **240** of a wall with thickness and ends.
+
+⚠ **AND THE CORPUS FOUND WHAT A GREP MISSED.** `grep '^verb '` over the corpus reported no ring
+anywhere, and `annex.keys` lays one — its verb is `wall`, and reading the tally too quickly is how
+*this corpus is blind to the change* nearly went into a commit message. `probe/k3d` moved exactly
+one record, on exactly one field: `runs 1 → 7`, with the world md5, τ, chunks, the annex count and
+every printed sentence unmoved.
+
+### ⛔ And `annex_host`'s trunk clause was never comparing like with like
+
+`press.loft`'s balcony went **`round false`** the moment a ring had runs: it hung on a flat side of
+the cylinder it was standing against. The clause read `ah_best > ah_dr` — the distance to the
+nearest straight WALL against the distance to the ring's **centre** — which is only ever true
+because a ring registered nothing, so `ah_best` was some other wall or 1000000.
+
+`R1b`'s sentence — *a ring of wall is a cylinder and a cylinder is a host* — was true by the
+accident of an empty registry. It is a condition now: **a live trunk within reach IS the host.**
+⚠ What that costs is stated rather than left quiet — an author near both a ring and a house wall
+gets the ring, where before they got whichever the broken comparison happened to prefer.
+
 ### ⏭ What follows for `D2`
 
 **The `inside` mode is unreachable by walking, in every driver.** So `D2` cannot bind the

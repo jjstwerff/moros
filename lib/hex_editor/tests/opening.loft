@@ -24,7 +24,7 @@ fn world() -> VoxelWorld {
 // A ring of wall around the origin, and an author standing on it.
 fn walled() -> VoxelWorld {
   w = world();
-  hex_editor::fence_disc(w, 0, 0, 2, hex_editor::WALL_MAT, 2.0);
+  hex_editor::fence_disc(w, 0, 0, 2, hex_editor::WALL_MAT, 2.0, WallRuns { items: [] });
   w
 }
 

@@ -1,0 +1,190 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT SHAPE IS A FENCE RING? — plan 22 `D1a`, measured before a run is written for it.
+//
+//     loft --lib lib/ probe/d2/ring.loft
+//
+// `D1a` is blocked because a ring registers no wall RUN, so `run_point_near` has no
+// centreline to project an opening onto and the opening's centre stays at the author's
+// cell centre — 0.866 from every edge, against a half of 0.65. The decision taken is
+// **give `fence_disc` a run**.
+//
+// ⚠ **WHICH RUNS, THOUGH, IS GEOMETRY AND NOT A GUESS.** A `WallRun` is a straight
+// SEGMENT. The boundary of a hex disc looks like a hexagon, so *six runs* is the
+// obvious answer — and obvious is exactly what this tree measures before believing.
+// So: every boundary edge `fence_disc` stamps, its midpoint, and which of the six
+// lattice directions its own normal takes. If the sides are straight, the midpoints of
+// one direction are collinear and the count per side is `rad`.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U   = 0.25;
+const REF = 2.0;
+
+fn ringed(rad: integer) -> VoxelWorld {
+  w = world_new(U, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 12, 0 - 12, 25, 25, 8, hex_editor::SURFACE_MAT);
+  hex_editor::fence_disc(w, 0, 0, rad, hex_editor::WALL_MAT, REF, WallRuns { items: [] });
+  w
+}
+
+// ⚠ THE EDGE IS REPORTED FROM THE CELL INSIDE THE DISC, never from its owner. An edge
+// is owned by one of its two cells and `edge_owner` may hand back the one OUTSIDE the
+// ring — so a dump keyed on the owner would report the boundary from both sides and
+// with the normals reversed.
+fn dump(rad: integer) {
+  w = ringed(rad);
+  println("--- radius {rad}");
+  n = 0;
+  for d in 0..6 {
+    side = "";
+    cnt = 0;
+    for q in (0 - rad)..(rad + 1) {
+      for r in (0 - rad)..(rad + 1) {
+        if hex_grid::hex_distance(q, r, 0, 0) <= rad {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          if hex_grid::hex_distance(nq, nr, 0, 0) > rad
+             && hex_editor::wall_of(w, q, r, d, REF) == hex_editor::WALL_MAT {
+            (ax, az) = hex_grid::hex_to_px(q, r);
+            (bx, bz) = hex_grid::hex_to_px(nq, nr);
+            side = side + " ({round((ax + bx) * 50.0) / 100.0 ?? 0.0},"
+                        + "{round((az + bz) * 50.0) / 100.0 ?? 0.0})";
+            cnt = cnt + 1;
+            n = n + 1;
+          }
+        }
+      }
+    }
+    println("  dir {d}: {cnt} edge(s) —{side}");
+  }
+  out = 0;
+  println("  total {n}, and `fence_count` says "
+        + "{hex_editor::fence_count(w, 0, 0, rad, hex_editor::WALL_MAT, REF, out)} "
+        + "({out} stored outside the disc)");
+}
+
+// ── THE HEXAGON, READ OFF THE DUMP AND THEN CHECKED AGAINST IT ──────────────
+//
+// The dump above refutes the obvious answer. A side is NOT one lattice direction: at
+// radius 2 direction 1 carries `(-1.3,-3.75) (0.43,-3.75) (2.17,-3.75)` — collinear —
+// and also `(3.03,-2.25) (3.9,-0.75)`, which are on a different line entirely. **A
+// flat side of a hex region is a ZIGZAG of two alternating edge directions whose
+// MIDPOINTS are collinear**, which is the same sentence `hex_form::side_edges` makes
+// about a rectangle: *the shared edge bisects the line between the two cell centres,
+// so no corner table is needed.*
+//
+// Sorted by that line instead of by direction, the boundary is six straight sides of
+// `2·rad + 1` midpoints each — 18, 30, 42 for radii 1, 2, 3, which is what
+// `fence_count` answers. The corners are at
+//
+//     √3 · (rad + ½)   from the centre, at 0°, 60°, … 300°
+//
+// — 2.598, 4.330, 6.062, all three present in the dump as the outermost midpoint of a
+// direction. ⚠ **READ OFF THE DATA AND THEN ASSERTED AGAINST IT**, which is the only
+// reason to trust a closed form derived from three cases: the check below puts every
+// stamped edge midpoint on exactly one of the six segments, or says which one it
+// could not place.
+fn corner(rad: integer, k: integer) -> (float, float) {
+  d = sqrt(3.0) ?? 0.0;
+  rr = d * ((rad as float) + 0.5);
+  ang = (k as float) * PI / 3.0 ?? 0.0;
+  (rr * cos(ang), rr * sin(ang))
+}
+
+// Distance from `(px,pz)` to the SEGMENT `a`->`b`, not to its infinite line — a
+// midpoint beyond a corner has to fail, or the six sides would accept everything.
+fn seg_dist(ax: float, az: float, bx: float, bz: float, px: float, pz: float) -> float {
+  vx = bx - ax;
+  vz = bz - az;
+  ln2 = vx * vx + vz * vz;
+  t = ((px - ax) * vx + (pz - az) * vz) / ln2 ?? 0.0;
+  if t < 0.0 { t = 0.0; }
+  if t > 1.0 { t = 1.0; }
+  dx = px - (ax + t * vx);
+  dz = pz - (az + t * vz);
+  sqrt(dx * dx + dz * dz) ?? 0.0
+}
+
+fn check(rad: integer) {
+  w = ringed(rad);
+  worst = 0.0;
+  n = 0;
+  placed = 0;
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) {
+      if hex_grid::hex_distance(q, r, 0, 0) <= rad {
+        for d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          if hex_grid::hex_distance(nq, nr, 0, 0) > rad
+             && hex_editor::wall_of(w, q, r, d, REF) == hex_editor::WALL_MAT {
+            (ax, az) = hex_grid::hex_to_px(q, r);
+            (bx, bz) = hex_grid::hex_to_px(nq, nr);
+            mx = (ax + bx) * 0.5;
+            mz = (az + bz) * 0.5;
+            n = n + 1;
+            best = 1000000.0;
+            for k in 0..6 {
+              (c0x, c0z) = corner(rad, k);
+              (c1x, c1z) = corner(rad, k + 1);
+              dd = seg_dist(c0x, c0z, c1x, c1z, mx, mz);
+              if dd < best { best = dd; }
+            }
+            if best > worst { worst = best; }
+            if best < 0.000001 { placed = placed + 1; }
+          }
+        }
+      }
+    }
+  }
+  println("  radius {rad}: {placed} of {n} midpoints on a side, worst miss "
+        + "{round(worst * 1000000.0) / 1000000.0 ?? 0.0}");
+}
+
+fn main() {
+  dump(1);
+  dump(2);
+  dump(3);
+  println("--- every stamped edge midpoint against the six segments");
+  check(1);
+  check(2);
+  check(3);
+  // ⚠ THE NEGATIVE CONTROL. A hexagon one step too small must NOT accept them, or
+  // *every midpoint is on a side* is a sentence this check would print for any
+  // formula that returns a big enough shape.
+  println("--- the control: the same midpoints against a hexagon one radius small");
+  wrong(2);
+}
+
+fn wrong(rad: integer) {
+  w = ringed(rad);
+  n = 0;
+  placed = 0;
+  for q in (0 - rad)..(rad + 1) {
+    for r in (0 - rad)..(rad + 1) {
+      if hex_grid::hex_distance(q, r, 0, 0) <= rad {
+        for d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          if hex_grid::hex_distance(nq, nr, 0, 0) > rad
+             && hex_editor::wall_of(w, q, r, d, REF) == hex_editor::WALL_MAT {
+            (ax, az) = hex_grid::hex_to_px(q, r);
+            (bx, bz) = hex_grid::hex_to_px(nq, nr);
+            mx = (ax + bx) * 0.5;
+            mz = (az + bz) * 0.5;
+            n = n + 1;
+            best = 1000000.0;
+            for k in 0..6 {
+              (c0x, c0z) = corner(rad - 1, k);
+              (c1x, c1z) = corner(rad - 1, k + 1);
+              dd = seg_dist(c0x, c0z, c1x, c1z, mx, mz);
+              if dd < best { best = dd; }
+            }
+            if best < 0.000001 { placed = placed + 1; }
+          }
+        }
+      }
+    }
+  }
+  println("  radius {rad} against radius {rad - 1}'s hexagon: {placed} of {n} placed");
+}

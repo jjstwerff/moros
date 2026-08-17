@@ -1,0 +1,87 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT A RING'S RUNS CHANGE IN THE PICTURE — plan 22 `D1a`.
+//
+//     loft --lib lib/ probe/d2/ringmesh.loft
+//
+// ⚠ **THE GATES CANNOT SEE THIS AND SAY SO.** `fence.mjs` reads *fenced 30 edges, 15
+// stored outside* — counts against the STORE, which this step deliberately leaves
+// byte-identical. The change is in what gets DRAWN: `hex_mesh`'s per-edge panel is a
+// fallback *"for edges nobody has a line for … where a run carries the edge the run is
+// drawn instead, once, straight — drawing both would put a staircase inside a wall."*
+// So registering six runs moves a ring from thirty per-hex panels to six analytic
+// surfaces, and nothing in `make gate` measures a vertex.
+//
+// This is `D0`'s instrument one gesture over — that step measured **189 vertices and
+// 162 triangles** of hex staircase against **18 and 6** of gable. Same question here,
+// same answer shape: mesh the identical world twice, once with the ring's runs in hand
+// and once without, and count.
+use hex_editor;
+use hex_voxel;
+use hex_mesh;
+use hex_grid;
+
+const U   = 0.25;
+const REF = 1.0;
+
+fn ringed(rad: integer, runs: WallRuns) -> VoxelWorld {
+  w = world_new(U, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 14, 0 - 14, 29, 29, 4, hex_editor::SURFACE_MAT);
+  hex_editor::fence_disc(w, 0, 0, rad, hex_editor::WALL_MAT, REF, runs);
+  w
+}
+
+// Every surface of the chunk at the origin, totalled. ⚠ ALL ELEVEN, not the wall
+// alone: a change that moved geometry from one surface to another would otherwise
+// read as a loss.
+fn totals(w: VoxelWorld, runs: WallRuns, v: &integer, t: &integer, n: &integer) {
+  v = 0;
+  t = 0;
+  n = 0;
+  for m in hex_mesh::chunk_meshes_all(0, 0, w, false, runs,
+                                      RoofPlans { items: [] }, DoorLeaves { items: [] },
+                                      Openings { items: [] }, Annexes { items: [] },
+                                      WallRuns { items: [] }, Props { items: [] },
+                                      Slabs { items: [] }, Holes { items: [] }) {
+    mv = m.vertices.len();
+    mt = m.triangles.len();
+    v = v + mv;
+    t = t + mt;
+    if mv > 0 { n = n + 1; }
+  }
+}
+
+fn main() {
+  for rad in 1..4 {
+    // ⚠ ONE WORLD, TWO REGISTRIES — the store is identical by construction, so a
+    // difference below is the DRAWING and cannot be anything else. The `without` side
+    // is what every ring looked like before this step.
+    with = WallRuns { items: [] };
+    w = ringed(rad, with);
+    none = WallRuns { items: [] };
+
+    av = 0; at = 0; an = 0;
+    bv = 0; bt = 0; bn = 0;
+    totals(w, none, av, at, an);
+    totals(w, with, bv, bt, bn);
+    // ⚠ **THE THIRD ROW IS WHAT SEPARATES THE TWO EXPLANATIONS**, and without it the
+    // pair above cannot say which happened. A bigger mesh WITH runs means either the
+    // analytic wall costs more than the panels it replaces, or the panels were never
+    // suppressed and a ring is now drawn twice — *a staircase inside a wall*, which
+    // is the one thing `hex_mesh`'s own comment says must not happen. Mesh the same
+    // runs over a world with NO ring edges in it: if `runs only` plus `edges only`
+    // comes to `both`, nothing was suppressed.
+    bare = world_new(U, 0, 8, 3).wn_world;
+    hex_editor::ground_fill(bare, 0 - 14, 0 - 14, 29, 29, 4, hex_editor::SURFACE_MAT);
+    cv = 0; ct = 0; cn = 0;
+    dv = 0; dt = 0; dn = 0;
+    totals(bare, none, cv, ct, cn);
+    totals(bare, with, dv, dt, dn);
+    println("radius {rad}: edges only {av} verts / {at} tris");
+    println("            both       {bv} verts / {bt} tris");
+    println("            runs only  {dv} verts / {dt} tris  (bare ground {cv} / {ct})");
+    println("            suppressed? both - runs-only = {bv - dv} verts against "
+          + "edges-alone {av - cv}");
+  }
+}

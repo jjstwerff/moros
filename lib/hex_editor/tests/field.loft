@@ -22,7 +22,7 @@ fn world() -> VoxelWorld {
 fn ringed(rad: integer) -> VoxelWorld {
   w = world();
   hex_editor::fence_ring(w, hex_editor::author_on(w, 0.0, 0.0, 0.0),
-                         hex_editor::FENCE_MAT, rad, 10.0);
+                         hex_editor::FENCE_MAT, rad, 10.0, WallRuns { items: [] });
   w
 }
 

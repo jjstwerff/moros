@@ -46,7 +46,7 @@ fn flat() -> VoxelWorld {
 // `press.loft`'s fixture, restated here because a test file is its own scope.
 fn walled() -> VoxelWorld {
   ww = walled_ground();
-  fence_disc(ww, 0, 0, 2, WALL_MAT, 2.0);
+  fence_disc(ww, 0, 0, 2, WALL_MAT, 2.0, WallRuns { items: [] });
   ww
 }
 

@@ -55,7 +55,7 @@ fn main() {
     hex_editor::session_ground(gw, HALF, 8, hex_editor::SURFACE_MAT);
     gs = hex_editor::session_new();
     hex_editor::session_at(gs, gw, 0.0, 0.0, 0.0);
-    hex_editor::fence_ring(gw, gs.es_author, hex_editor::FENCE_MAT, 3, 2.0);
+    hex_editor::fence_ring(gw, gs.es_author, hex_editor::FENCE_MAT, 3, 2.0, gs.es_runs);
   }
   t2 = now();
 

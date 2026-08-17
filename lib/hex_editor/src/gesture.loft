@@ -586,8 +586,62 @@ pub fn wall_of(wld: VoxelWorld, q: integer, r: integer, dir: integer, ref: float
 // be: "ring the disc you stand in" is a claim about where you are standing. The
 // fallback height `h` stays the OUTDOORS, because it is only consulted for a cell
 // that holds nothing at all — there is no surface there to take a height from.
+// ── A RING IS A HEXAGON, AND ITS SIX SIDES ARE ITS RUNS — plan 22 `D1a` ─────
+//
+// ⛔ **A RING USED TO REGISTER NOTHING, AND THAT MADE A DOORWAY UNDRAWABLE.**
+// `run_point_near` projects an opening onto the nearest run's centreline; with no run
+// the centre stays where the author is STANDING — a cell centre, `√3/2` from every
+// edge of that cell, against a door's half-width of 0.65. So by `opening_cuts`'s own
+// test no point of the boundary is inside the opening: the store said `DOOR` on an
+// edge and the picture had no hole in it. [`probe/d2`](../../../probe/d2/README.md).
+//
+// ⚠ **AND THE SHAPE WAS MEASURED, BECAUSE THE OBVIOUS ANSWER IS WRONG.** *Six runs,
+// one per lattice direction* is what a reader expects and the dump refutes it: at
+// radius 2 direction 1 carries three collinear midpoints AND two on a different line.
+// **A flat side of a hex region is a ZIGZAG of two alternating edge directions whose
+// MIDPOINTS are collinear** — which is the sentence `hex_form::side_edges` already
+// makes about a rectangle, *the shared edge bisects the line between the two cell
+// centres, so no corner table is needed.*
+//
+// Sorted by that line the boundary is six straight sides of `2·rad + 1` midpoints —
+// 18, 30, 42 at radii 1, 2, 3, which is what `fence_count` answers — with corners at
+//
+//     √3 · (rad + ½)   from the centre, at 0°, 60°, … 300°
+//
+// ⚠ **READ OFF THE DATA AND THEN ASSERTED AGAINST IT.** `probe/d2/ring.loft` puts
+// every stamped midpoint on one of the six segments at **worst miss 0** for three
+// radii, and its control — the same midpoints against a hexagon one radius smaller —
+// places **0 of 30**. A closed form derived from three cases is worth exactly what
+// the check that could refute it is worth.
+pub fn ring_runs(cq: integer, cr: integer, rad: integer, mat: integer, runs: WallRuns) {
+  (rgx, rgz) = hex_to_px(cq, cr);
+  rg_d = (sqrt(3.0) ?? 0.0) * ((rad as float) + 0.5);
+  for k in 0..6 {
+    a0 = (k as float) * PI / 3.0 ?? 0.0;
+    a1 = ((k + 1) as float) * PI / 3.0 ?? 0.0;
+    x0 = rgx + rg_d * cos(a0);
+    z0 = rgz + rg_d * sin(a0);
+    x1 = rgx + rg_d * cos(a1);
+    z1 = rgz + rg_d * sin(a1);
+    rg_step = 0;
+    rg_res = 0.0;
+    snap_heading(x1 - x0, z1 - z0, rg_step, rg_res);
+    // ⚠ `wr_base` AND `wr_up` OF 0 MEAN *from the ground, by the material* — the
+    // struct's own words, and the behaviour every run that does not ask for a base
+    // already had. A ring stands on the ground like any other wall.
+    runs.items += [WallRun { wr_base: 0, wr_up: 0, wr_x0: x0, wr_z0: z0,
+                             wr_x1: x1, wr_z1: z1, wr_mat: mat, wr_step: rg_step }];
+  }
+}
+
+// ⚠ **`runs` IS REQUIRED, FOR `author_at`'s AND `place_house`'s REASON** — a default
+// is how the next driver forgets, and forgetting is the whole defect this closes.
+//
+// ⚠ **WHAT IT STAMPS IS UNCHANGED, DELIBERATELY.** The edges below are written exactly
+// as before; the six runs are a RECORD laid beside them. That split is what makes the
+// step checkable: the world stays byte-identical and only the session gains something.
 pub fn fence_disc(wld: VoxelWorld, cq: integer, cr: integer, rad: integer, mat: integer,
-              ref: float) {
+              ref: float, runs: WallRuns) {
   for dq in (0 - rad)..(rad + 1) {
     for dr in (0 - rad)..(rad + 1) {
       q = cq + dq;
@@ -603,6 +657,7 @@ pub fn fence_disc(wld: VoxelWorld, cq: integer, cr: integer, rad: integer, mat: 
       }
     }
   }
+  ring_runs(cq, cr, rad, mat, runs);
 }
 
 // What is standing there now, read back: how many boundary edges carry `mat`, and
@@ -641,13 +696,17 @@ pub fn fence_count(wld: VoxelWorld, cq: integer, cr: integer, rad: integer, mat:
 // cell. The material is NOMINAL: 9 is not "nearly" a fence, it is not a wall
 // material at all, so it is refused without an offer. The radius is ordinal and
 // gets one.
-pub fn fence_ring(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: float) -> Ack {
+// ⚠ `runs` THREADED RATHER THAN DEFAULTED — plan 22 `D1a`, and the refusals above are
+// why the order matters: a ring that is refused for its material or its radius must
+// register nothing, so the registry is only reached after both fits pass.
+pub fn fence_ring(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: float,
+                  runs: WallRuns) -> Ack {
   mfit = fit_nominal(mat, FENCE_MAT, "wall material");
   if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
   rfit = fit_ordinal(rad, 1, 12, "radius");
   if !rfit.ft_ok { return ack_no(fit_why(rfit)); }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
-  fence_disc(w, cq, cr, rad, mat, ref);
+  fence_disc(w, cq, cr, rad, mat, ref, runs);
   outside = 0;
   n = fence_count(w, cq, cr, rad, mat, ref, outside);
   ack_at(ack_ok(n), cq, cr)
@@ -5661,11 +5720,25 @@ pub fn annex_host(runs: WallRuns, x: float, z: float, yaw: float,
       if ah_l > 0.001 { ah_nx = ah_nx / ah_l ?? 0.0; ah_nz = ah_nz / ah_l ?? 0.0; }
     }
   }
+  // ⛔ **THIS CLAUSE WAS WRITTEN AGAINST A WORLD WHERE A RING HAD NO RUNS, AND ITS
+  // COMPARISON WAS NEVER BETWEEN LIKE THINGS — plan 22 `D1a`.** It read
+  // `ah_best > ah_dr`: the distance to the nearest straight WALL against the distance
+  // to the ring's CENTRE. That is only ever true because a ring registered nothing, so
+  // `ah_best` was the distance to some *other* wall or 1000000. The moment `fence_disc`
+  // records the ring's six sides, the ring's own wall is nearer than its centre and the
+  // trunk loses to itself — measured, `press.loft`'s balcony went `round false` and hung
+  // on a flat side of the cylinder it was standing against.
+  //
+  // ⚠ **SO THE RULE IS SAID RATHER THAN EMERGENT: a live trunk within reach IS the
+  // host.** `R1b`'s sentence — *a ring of wall is a cylinder and a cylinder is a host* —
+  // was true only by the accident of an empty registry; it is a condition now. What it
+  // costs is stated: an author standing near both a ring and a house wall gets the ring,
+  // where before they got whichever the broken comparison happened to prefer.
   if ring.tk_live {
     ah_dx = x - ring.tk_x;
     ah_dz = z - ring.tk_z;
     ah_dr = sqrt(ah_dx * ah_dx + ah_dz * ah_dz) ?? 0.0;
-    if ah_dr < ring.tk_r + 4.0 && (ah_best > ah_dr || ah_best > 900000.0) {
+    if ah_dr < ring.tk_r + 4.0 {
       // The circumference is the run it hangs on, and it has no ends — so *how much
       // room is there* is answered by the whole way round.
       ah_ang = atan2(ah_dz, ah_dx);

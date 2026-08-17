@@ -288,6 +288,11 @@ fn test_pressing_the_fence_key_rings_at_the_authors_feet_and_not_on_the_ground()
   by_key  = upstairs();
   by_hand = upstairs();
   ks = EditSession {};
+  // ⚠ A SECOND SESSION, AND IT IS NOT BOOKKEEPING — plan 22 `D1a`. A ring registers
+  // its six wall RUNS now, and a run reaches no store: `w_tau`, `ak_n` and the byte
+  // count below are all blind to it by construction, exactly as they were to the roof
+  // plan at `D0`. So the two paths are compared on the SESSION as well.
+  hs = EditSession {};
   (ax, az) = hex_to_px(6, 6);
   // ⚠ `author_at`, NOT `author_on`. The pose is a DECK's, and `author_on` reads the
   // ground cell — which is the yard. This is precisely the case where the driver
@@ -298,7 +303,7 @@ fn test_pressing_the_fence_key_rings_at_the_authors_feet_and_not_on_the_ground()
          + "— this test cannot see the difference it exists for");
 
   ka = press_verb(ks, by_key, up, verb_in(keymap_default(), "F"));
-  ha = fence_ring(by_hand, up, FENCE_MAT, FENCE_R, up.au_y);
+  ha = fence_ring(by_hand, up, FENCE_MAT, FENCE_R, up.au_y, hs.es_runs);
   assert(ka.ak_ok && ha.ak_ok, "the fixture refused the ring: {ka.ak_why} / {ha.ak_why}");
   assert(ka.ak_n == ha.ak_n, "{ka.ak_n} edges by key, {ha.ak_n} by hand");
   assert(by_key.w_tau == by_hand.w_tau,
@@ -317,6 +322,18 @@ fn test_pressing_the_fence_key_rings_at_the_authors_feet_and_not_on_the_ground()
   assert(ring_bytes(by_key, 6, 6, FENCE_MAT, 0.0) == 0,
          "{ring_bytes(by_key, 6, 6, FENCE_MAT, 0.0)} fence edges are in the yard "
          + "below — this is the `0.0` reference `press` used to pass");
+
+  // ⚠ THE HALF NO WORLD READ CAN SEE. Six runs per ring, and the same six whichever
+  // way the gesture was reached — a key that registered nothing would leave every
+  // assertion above green.
+  assert(len(ks.es_runs.items) == 6,
+         "pressing F registered {len(ks.es_runs.items)} runs, not the ring's six sides");
+  // ⚠ THE RUNS, NOT THE WHOLE DIGEST. The key reaches `ring_set`, which also records
+  // the TRUNK; the by-hand side calls `fence_ring`, which does not — so a digest
+  // comparison here would be asserting that two different functions are one, which is
+  // not this test's claim. What both do is register the ring's sides.
+  assert(len(ks.es_runs.items) == len(hs.es_runs.items),
+         "{len(ks.es_runs.items)} runs by key against {len(hs.es_runs.items)} by hand");
 }
 
 // ⚠ THE SERVER FORCES THE YAW TO ZERO (`author_at(px, pz, 0.0, py)`) AND `press`
@@ -444,7 +461,7 @@ fn test_the_height_is_in_the_worlds_own_unit() {
 fn ring_world() -> VoxelWorld {
   rw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
   ground_fill(rw, 0 - 12, 0 - 12, 13, 13, 8, SURFACE_MAT);
-  fence_disc(rw, 0, 0, 2, WALL_MAT, 2.0);
+  fence_disc(rw, 0, 0, 2, WALL_MAT, 2.0, WallRuns { items: [] });
   rw
 }
 

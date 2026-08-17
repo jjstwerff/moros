@@ -265,7 +265,7 @@ pub fn session_raise(s: EditSession, w: VoxelWorld, dir: integer) -> Ack {
 // `session_fence` below is the same call for a driver whose pose IS the session's.
 pub fn ring_set(s: EditSession, w: VoxelWorld, a: Author, mat: integer, rad: integer,
                 ref: float) -> Ack {
-  rs_ack = fence_ring(w, a, mat, rad, ref);
+  rs_ack = fence_ring(w, a, mat, rad, ref, s.es_runs);
   if rs_ack.ak_ok { s.es_trunk = trunk_of(a, rad); }
   rs_ack
 }
