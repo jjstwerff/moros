@@ -1,0 +1,267 @@
+// THE FULL LIBRARY SET, INCLUDING `lavition_ui` — plan 22, probe 5, loft#950.
+//
+//   loft --interpret --lib lib/ probe/t5/t5_libsui.loft          # the desktop seat
+//   loft --html probe/t5/out/libsui.html --lib lib/ probe/t5/t5_libsui.loft
+//
+// ⚠ **THIS IS THE ONE AXIS THE MATRIX NEVER VARIED**, and loft's maintainer named it
+// as the cheapest remaining cell (#950, 2026-08-17 16:47): the green `t5_libs` row
+// links every library `src/editor_client.loft` does **except `lavition_ui`**, and that
+// library is most of the 4.3 MB -> 8.0 MB gap between the green page and the red one.
+//
+// ⚠ **AND `t5_libs.loft` IS NOT IN THE TREE.** Only its OUTPUT was committed
+// (`out/libs.html`, `out/libs.raw`) and the README row citing it, so the instrument
+// behind a load-bearing green is unreproducible. This file is that row rebuilt from
+// `t5_bigstruct.loft`, plus the one library it was missing.
+//
+// So this is `t5_bigstruct.loft` — the 90-field struct, the same two handlers, the
+// same 20 real parts — with the client's whole `use` list and library-typed fields
+// under it. `pr` is still the instrument: a plain integer field set to 4242, read
+// before and after each parse. A wrong number is the finding; the trap is its second
+// symptom, and on a 64-bit target there may be no trap at all.
+use hex_mesh;
+use graphics;
+use hex_edge;
+use hex_editor;
+use hex_field;
+use hex_grid;
+use hex_voxel;
+use hex_way;
+use lavition_ui;
+
+struct ThumbMesh {
+  tb_row: integer, tb_vao: integer, tb_n: integer,
+  tb_r: float, tb_g: float, tb_b: float, tb_ramp: float,
+}
+struct ThumbCam { tc_row: integer, tc_view: vector<float>, tc_proj: vector<float> }
+
+struct Store {
+  thumbs: vector<ThumbMesh>,
+  tcams: vector<ThumbCam>,
+  tstale: vector<integer>,
+  pr: integer,
+  f0: float,
+  f1: float,
+  f2: float,
+  f3: float,
+  f4: float,
+  f5: float,
+  f6: float,
+  f7: float,
+  f8: float,
+  f9: float,
+  f10: float,
+  f11: float,
+  f12: float,
+  f13: float,
+  f14: float,
+  f15: float,
+  f16: float,
+  f17: float,
+  f18: float,
+  f19: float,
+  f20: float,
+  f21: float,
+  f22: float,
+  f23: float,
+  f24: float,
+  f25: float,
+  f26: float,
+  f27: float,
+  f28: float,
+  f29: float,
+  f30: float,
+  f31: float,
+  f32: float,
+  f33: float,
+  f34: float,
+  f35: float,
+  f36: float,
+  f37: float,
+  f38: float,
+  f39: float,
+  f40: float,
+  f41: float,
+  f42: float,
+  f43: float,
+  f44: float,
+  f45: float,
+  f46: float,
+  f47: float,
+  n0: integer,
+  n1: integer,
+  n2: integer,
+  n3: integer,
+  n4: integer,
+  n5: integer,
+  n6: integer,
+  n7: integer,
+  n8: integer,
+  n9: integer,
+  n10: integer,
+  n11: integer,
+  n12: integer,
+  n13: integer,
+  n14: integer,
+  n15: integer,
+  n16: integer,
+  n17: integer,
+  b0: boolean,
+  b1: boolean,
+  b2: boolean,
+  b3: boolean,
+  b4: boolean,
+  b5: boolean,
+  b6: boolean,
+  b7: boolean,
+  b8: boolean,
+  b9: boolean,
+  b10: boolean,
+  b11: boolean,
+  t0: text,
+  t1: text,
+  t2: text,
+  t3: text,
+  v0: vector<integer>,
+  v1: vector<integer>,
+  v2: vector<integer>,
+  // ⚠ LIBRARY-TYPED FIELDS, because the green row had them too — a `use` that only
+  // appears in the manifest may be dropped before it reaches the module.
+  lw: hex_voxel::VoxelWorld,
+  lk: hex_editor::KeyMap,
+  lb: lavition_ui::VerbBar,
+  lp: lavition_ui::Panel,
+  lm: lavition_ui::Metrics,
+  v3: vector<integer>,
+}
+
+fn semi_from(src: text, from: integer) -> integer {
+  si = from;
+  sn = src.size();
+  while si < sn {
+    if src[si..si + 1] == ";" { return si; }
+    si = si + 1;
+  }
+  -1
+}
+
+fn parse_floats(src: text) -> vector<float> {
+  fout: vector<float> = [];
+  for ftok in src.split(',') {
+    if ftok.size() > 0 { fout += [ftok as float ?? 0.0]; }
+  }
+  fout
+}
+
+fn parse_singles(src: text) -> vector<single> {
+  sout: vector<single> = [];
+  for stok in src.split(',') {
+    if stok.size() > 0 { sout += [stok as single ?? 0.0f]; }
+  }
+  sout
+}
+
+fn drop_thumb_row(st: Store, row: integer) {
+  keep: vector<ThumbMesh> = [];
+  for dt in st.thumbs {
+    if dt.tb_row == row { graphics::gl_delete_vao(dt.tb_vao); }
+    else { keep += [dt]; }
+  }
+  st.thumbs = keep;
+}
+
+fn add_thumb_cam(st: Store, body: text) {
+  w1 = semi_from(body, 0);
+  if w1 < 0 { return; }
+  w2 = semi_from(body, w1 + 1);
+  if w2 < 0 { return; }
+  wrow = body[0..w1] as integer ?? -1;
+  if wrow < 0 { return; }
+  wv = parse_floats(body[w1 + 1..w2]);
+  wp = parse_floats(body[w2 + 1..body.size()]);
+  if len(wv) != 16 || len(wp) != 16 { return; }
+  st.tstale += [wrow];
+  for wc in st.tcams {
+    if wc.tc_row == wrow { wc.tc_view = wv; wc.tc_proj = wp; return; }
+  }
+  st.tcams += [ThumbCam { tc_row: wrow, tc_view: wv, tc_proj: wp }];
+}
+
+fn add_thumb_mesh(st: Store, body: text) {
+  y1 = semi_from(body, 0);
+  if y1 < 0 { return; }
+  y2 = semi_from(body, y1 + 1);
+  if y2 < 0 { return; }
+  y3 = semi_from(body, y2 + 1);
+  if y3 < 0 { return; }
+  yrow = body[0..y1] as integer ?? -1;
+  if yrow < 0 { return; }
+  yramp = body[y1 + 1..y2] as float ?? 0.0;
+  ycol = parse_floats(body[y2 + 1..y3]);
+  if len(ycol) < 3 { return; }
+  println("t5:   atm before parse_singles — pr {st.pr}");
+  yverts = parse_singles(body[y3 + 1..body.size()]);
+  println("t5:   atm after  parse_singles — pr {st.pr}, {len(yverts)} single(s)");
+  if len(yverts) < 6 { return; }
+  ykeep: vector<integer> = [];
+  ystale = false;
+  for ys in st.tstale {
+    if ys == yrow { ystale = true; } else { ykeep += [ys]; }
+  }
+  if ystale { drop_thumb_row(st, yrow); st.tstale = ykeep; }
+  st.thumbs += [ThumbMesh {
+    tb_row: yrow,
+    tb_vao: graphics::gl_upload_vertices(yverts, 6),
+    tb_n: len(yverts) / 6 ?? 0,
+    tb_r: ycol[0] ?? 1.0, tb_g: ycol[1] ?? 1.0, tb_b: ycol[2] ?? 1.0,
+    tb_ramp: yramp,
+  }];
+}
+
+fn main() {
+  graphics::gl_create_window(320, 240, "t5 bigstruct");
+  st = Store { thumbs: [], tcams: [], tstale: [], pr: 4242 };
+  // ⚠ TOUCHED, NOT MERELY DECLARED. A library whose symbols are never reached can be
+  // stripped, and then this file is `t5_bigstruct` wearing a longer `use` list — which
+  // would make a green here mean nothing at all.
+  st.lk = hex_editor::keymap_default();
+  st.lm = lavition_ui::Metrics { m_adv64: 512 };
+  st.lb = lavition_ui::VerbBar {};
+  st.lp = lavition_ui::Panel {};
+  th = lavition_ui::theme_default();
+  println("t5: libraries touched — keymap {st.lk.km_items.len()} bind(s), "
+        + "advance {lavition_ui::metrics_advance(st.lm)}, "
+        + "width {lavition_ui::text_width(\"abc\", st.lm)}, "
+        + "panel bg {th.th_panel_bg}");
+  // ⚠ `/data/parts` IS THE BROWSER'S MOUNT, and on the desktop it is empty — the first
+  // interpreter run of this probe reported `0 parts` and `the handlers survived`, which
+  // is the vacuous green a page-shaped path produces off a page. So the root is chosen
+  // by what is actually there, and the count is printed for the reader to check.
+  root = "/data/parts";
+  avail = hex_mesh::part_availability(root);
+  if avail.len() == 0 {
+    root = "data/parts";
+    avail = hex_mesh::part_availability(root);
+  }
+  if avail.len() == 0 {
+    root = env_variable("T5_PARTS") ?? "data/parts";
+    avail = hex_mesh::part_availability(root);
+  }
+  if avail.len() == 0 { println("t5: NO PARTS ANYWHERE — this run measures nothing"); }
+  println("t5: {len(avail)} parts under '{root}', pr {st.pr}");
+  for i in 0..len(avail) {
+    name = (avail[i] ?? hex_mesh::PartAvail {}).av_name;
+    println("t5: about to handle '{name}'…");
+    for m in hex_mesh::part_thumb_wire(root, hex_mesh::surface_count() + i, name) {
+      body = m[2..];
+      // ⚠ THE KIND IS ON THE MESSAGE, NOT ON THE BODY — `body` is `m[2..]`, so
+      // `body[0..2]` never equals "W:" and every message lands in the mesh handler.
+      // That is one dispatch bug away from a page that reports 49 meshes, 0 cameras
+      // and never runs `add_thumb_cam` at all, which is half the subject.
+      if m[0..2] == "W:" { add_thumb_cam(st, body); }
+      else { add_thumb_mesh(st, body); }
+    }
+    println("t5: '{name}' — {len(st.thumbs)} mesh(es), pr {st.pr}");
+  }
+  println("t5: {len(st.thumbs)} meshes and {len(st.tcams)} cameras — the handlers survived");
+  graphics::gl_destroy_window();
+}

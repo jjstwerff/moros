@@ -159,6 +159,7 @@ The subject is one `Y:` body: **8,934 characters, 972 singles, part 0 `door/door
 | the result passed straight to `gl_upload_vertices` as a temporary | ⛔ red — traps inside the call |
 | a **90-field** struct in a small page, both handlers, the stale/drop path | ✅ green |
 | …**plus the client's whole library set** and library-typed fields (`t5_libs`) | ✅ **49 meshes, 20 cameras** |
+| …**and `lavition_ui` too** — the one library `t5_libs` was missing (`t5_libsui`) | ✅ **49 meshes, 20 cameras**, `pr 4242`, on BOTH seats |
 
 ⚠ **THE ONE PATTERN THAT FITS EVERY ROW IS LIVENESS, AND IT IS NOT ENOUGH.** Every
 measurement that left `st` intact had its big vector **dead** immediately after; every
@@ -176,6 +177,54 @@ to the client's scale is not something a probe can do cheaply.
 
 **No source-level workaround survived**: four were tried and each is a row above. The
 browser editor stays broken until loft#950 is fixed, which is what `wa:none` says.
+
+### ⚠ `t5_libs.loft` WAS NEVER COMMITTED, AND THE ROW ABOVE CITED IT FOR A MONTH
+
+Only its OUTPUT reached the tree (`out/libs.html`, `out/libs.raw`). So the instrument behind
+a load-bearing green — *the whole library set is not the trigger* — was unreproducible, and
+loft's maintainer reasoned from it to name `lavition_ui` as the cheapest remaining cell.
+`t5_libsui.loft` is that row rebuilt from `t5_bigstruct.loft` **plus the missing library**,
+and it is committed.
+
+⛔ **THE CELL IS GREEN AND THE SIZE MODEL BEHIND IT IS REFUTED.** Measured 2026-08-17:
+
+| page | libraries linked | size | |
+|---|---|---|---|
+| `t5_bigstruct` | 2 | 4076 KB | ✅ |
+| **`t5_libsui`** | **9, incl. `lavition_ui`** | **4172 KB** | ✅ |
+| `src/editor_client.loft` | 10 | **7856 KB** | ⛔ |
+
+**Linking every library costs +96 KB, not 3.7 MB.** So this file's own sentence — *an
+`--html` module's size is its libraries, not its source* — does not hold: with the same
+libraries linked the client is still 3.7 MB bigger. What separates them is how much of each
+library is **reachable**; a probe calling a handful of entry points has the rest stripped.
+That is also why padding with 2,000 called lines moved the page 36 KB. **Growing a probe to
+the client's scale means growing the reachable surface, not the `use` list.**
+
+✅ **AND THE DESKTOP SEAT REACHES THE SUBJECT NOW — it is clean.** The client attached to a
+real server on `--interpret` with loft's new `LOFT_STRICT_STORES=1`: **49 thumbnail meshes
+arrived, 49 held, 20 cameras**, still rendering at 600 frames, no trap and no
+`Store access out of bounds`. With the store bound real on every target that makes a desktop
+green evidence rather than a shrug: **the corruption looks `--html`-specific, not merely
+`--html`-detectable.**
+
+⚠ **Three things that seat needs, each of which cost a round trip:**
+
+1. a display — `xvfb-run -a`, else `client: no window`;
+2. **a server** — standing alone it ran 12,900 frames at `meshes 0`, because `add_thumb_mesh`
+   runs on an arriving `Y:` body and nothing sends one. That run exits clean and reads
+   exactly like a green;
+3. ⛔ **`file()` resolves a relative path against the PROGRAM's directory, not the cwd.**
+   The client is `src/editor_client.loft` and its `SERVERS_FILE` is `"servers.txt"`, so the
+   file must be **`src/servers.txt`** — one at the repo root is never read. Measured with a
+   control (the same program in `/tmp` finds `/tmp/servers.txt`). Same rule is why
+   `part_availability("data/parts")` answered 0.
+
+⚠ **A store-lifetime signal, offered rather than claimed**: that otherwise-clean interpreter
+run still exits rc=1 with `NEVER FREED: kt=215 PartOpen×17, kt=29 main_vector<text>×1,
+kt=65535 ?×1` — on the part-reading path the thumbnails come from. `pr` is intact and the
+page is green, so this is **not** claimed as #950; it may be ours, since `hex_part` is ours.
+Raised on the issue with that stated.
 
 ## ✅ The panic had a sentence, and nobody was told — 2026-08-17
 

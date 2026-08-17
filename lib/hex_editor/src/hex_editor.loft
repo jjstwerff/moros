@@ -479,6 +479,39 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
   roof_id = hex_voxel::world_fresh_label(w);
   n = 0;
   ridge = 0;
+
+  // ── ⛔ THE BAND STARTS AT THE EAVE, NOT AT THE FLOOR — plan 22 `D2c` ────────
+  //
+  // ⛔ **THIS FUNCTION USED TO DESTROY TWO OF THE HOUSE'S FOUR WALLS**, and every
+  // suite was green through it. The band was `[floor_h, hu]` and carried a
+  // `FLOOR_MAT` cell at `floor_h` — so it rewrote the whole column from the ground
+  // up, and `band_column` keeps what is below `lo` and above `hi` and REPLACES
+  // everything between. A wall is not a cell of its own: it lives in
+  // `sv_wall_nw`/`sv_wall_ne`/`sv_wall_e` on the cell at the floor, which was
+  // exactly `lo`. Measured in [`probe/d2`](../../../probe/d2/README.md) § 10–11:
+  // `place_house` printed `84 wall edges` and the store held **23** — the far wall
+  // reduced to its two corner posts, so an author inside their own house, facing it,
+  // was told *no wall here to open — stand against one*.
+  //
+  // ⚠ **AND THE ASYMMETRY IS WHY IT SURVIVED SO LONG.** An edge is stored ONCE, on
+  // one of its two cells, and read back from both. The footprint's own cells own the
+  // FAR wall's edges and not the NEAR wall's, so one wall died and the opposite one
+  // did not — from a single symmetric loop. A total would have read as healthy;
+  // `tests/house_walls.loft` asserts the four walls separately for that reason.
+  //
+  // ⚠ **THE FIX IS A SUBTRACTION, AND THAT IS THE POINT.** `place_house` has already
+  // laid the floor with `ground_set(…, FLOOR_MAT)` four lines earlier, so the band's
+  // floor cell was a SECOND assertion of a fact that already had a home — and the
+  // second assertion is what did the damage. The two other `world_merge_band_as`
+  // callers in this tree put the wall fields INTO their band (`h_wall_nw` and its
+  // pair, in `gesture.loft`'s stencil and in `hex_part`'s stamp), which is what says
+  // the API is not at fault and this caller was.
+  //
+  // ⚠ loft had been saying so on every run: `advice[omitted-field-zero]` named
+  // `h_wall_nw`, `h_wall_ne`, `h_wall_e` on the deleted literal — *nothing in the
+  // declaration chose that value*. A roof is not the authority on a wall, so the
+  // answer is for it to stop writing the cell rather than to fill the fields in.
+  eave_u = (rp.rp_eave / w.w_unit ?? 0.0) as integer;
   for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
     for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
       if hexset_get(cells, q, r) {
@@ -490,12 +523,10 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
         hu = (roof_plan_y(rp, rpx, rpz) / w.w_unit ?? 0.0) as integer;
         if hu > ridge { ridge = hu; }
         band: vector<hex_voxel::Hex> = [
-          hex_voxel::Hex { h_height: (floor_h as u16? ?? 0),
-                           h_material: (FLOOR_MAT as u8? ?? 0) },
           hex_voxel::Hex { h_height: (hu as u16? ?? 0),
                            h_material: (ROOF_MAT as u8? ?? 0) }
         ];
-        wr = world_merge_band_as(w, q, r, floor_h, hu, band, roof_id);
+        wr = world_merge_band_as(w, q, r, eave_u, hu, band, roof_id);
         if wr.cw_code != 0 {
           return ack_no("the roof was refused at ({q},{r}): {wr.cw_detail}");
         }

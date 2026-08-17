@@ -1,0 +1,214 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A PLACED HOUSE KEEPS ALL FOUR OF ITS WALLS — plan 22 `D2c`.
+//
+// ⛔ **IT DID NOT, AND NOTHING IN THE TREE WAS LOOKING.** Measured in
+// [`probe/d2`](../../../probe/d2/README.md) § 10–11: `place_house` prints
+// `84 wall edges` and the store held **23**. The near wall was complete at 12 edges
+// and the left at 9, while the right had 4 of ~9 and **the far wall was its two
+// corner posts with nothing between** — so an author standing inside their own
+// house, facing the far wall, was refused *no wall here to open — stand against one*.
+//
+// The cause is not the stamping: all four sides stamp completely and every write
+// survives (22 + 20 + 22 + 20 = the 84 the sentence prints). It is `roof_over`,
+// which merged a band from **the floor** to the ridge and so rewrote the whole wall
+// height of every column inside the house. `band_column` keeps what is below `lo`
+// and above `hi` and replaces everything between — and a wall lives in
+// `sv_wall_nw`/`sv_wall_ne`/`sv_wall_e` on the cell at the floor, which is exactly
+// `lo`. An edge is stored once, on one of its two cells, and read back from both, so
+// the footprint's own cells owning the far wall's edges is why one wall died and the
+// opposite one did not.
+//
+// ⚠ **THE STRUCTURAL ROW ALONE WOULD NOT HAVE CAUGHT IT HONESTLY.** The near wall
+// survived this defect by luck of which side owns its edges, so a change that moved
+// the erase one row would swap the two walls and still leave a count of 46. That is
+// why the four walls are asserted SEPARATELY and why the gesture row exists: what a
+// person does is cut a door, and the far wall is the one that could not take one.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;    // 90°, facing +z
+
+fn meadow() -> VoxelWorld {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+// One house on flat ground, from the pose the whole of `probe/d2` uses.
+fn housed(s: EditSession) -> VoxelWorld {
+  w = meadow();
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(w, a), s.es_runs, s.es_roofs);
+  w
+}
+
+// Wall-edge sightings whose midpoint lies within a third of a unit of the horizontal
+// line `zc`, or of the vertical line `xc` when `use_x`. Each edge is visited from
+// both of its cells, so these are sightings and not distinct edges — which is the
+// same footing `wall_stamp`'s own `marked` count is on.
+fn on_line(w: VoxelWorld, use_x: boolean, at: float) -> integer {
+  ref = (FLOOR as float) * U;
+  n = 0;
+  for q in 0 - 12..12 {
+    for r in 0 - 12..12 {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d, ref) != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (ax, az) = hex_grid::hex_to_px(q, r);
+          (bx, bz) = hex_grid::hex_to_px(nq, nr);
+          v = (az + bz) * 0.5;
+          if use_x { v = (ax + bx) * 0.5; }
+          dv = v - at;
+          if dv < 0.0 { dv = 0.0 - dv; }
+          if dv < 0.34 { n = n + 1; }
+        }
+      }
+    }
+  }
+  n
+}
+
+// ── THE FOUR WALLS, ONE ROW EACH ────────────────────────────────────────────
+//
+// ⚠ SEPARATELY, NEVER AS A TOTAL. A total of 84 is reachable by a house with three
+// long walls and no fourth, and this defect is exactly the shape that would satisfy
+// it — 24 + 24 + 24 + 12 reads as healthy and one wall is still missing.
+
+fn test_the_near_wall_is_whole() {
+  s = hex_editor::EditSession {};
+  w = housed(s);
+  n = on_line(w, false, 0.0 - 2.25);
+  assert(n == 24, "the near wall is 12 edges, seen from both cells: got {n}");
+}
+
+fn test_the_far_wall_is_whole() {
+  // ⛔ THE ROW THIS FILE EXISTS FOR. Before `D2c` this was **4** — the two corner
+  // posts — while the near wall above was a healthy 24 in the same house.
+  s = hex_editor::EditSession {};
+  w = housed(s);
+  n = on_line(w, false, 5.25);
+  assert(n == 24, "the far wall is 12 edges, seen from both cells: got {n}");
+}
+
+fn test_the_two_side_walls_are_whole() {
+  // The sides ZIGZAG over three x columns — `D1a.1`'s finding one gesture over — so
+  // a window around the run's own line catches one column of three. These count the
+  // whole span instead, which is what makes 18 the number rather than 8.
+  s = hex_editor::EditSession {};
+  w = housed(s);
+  ref = (FLOOR as float) * U;
+  left = 0;
+  right = 0;
+  for q in 0 - 12..12 {
+    for r in 0 - 12..12 {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d, ref) != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (ax, az) = hex_grid::hex_to_px(q, r);
+          (bx, bz) = hex_grid::hex_to_px(nq, nr);
+          mx = (ax + bx) * 0.5;
+          mz = (az + bz) * 0.5;
+          // Strictly between the two end walls, so a corner is counted once and by
+          // the wall it belongs to.
+          if mz > 0.0 - 2.0 && mz < 5.0 {
+            if mx < 0.0 { left = left + 1; }
+            if mx > 0.0 { right = right + 1; }
+          }
+        }
+      }
+    }
+  }
+  assert(left == right,
+         "the two sides of one rectangle hold the same wall: left {left}, right {right}");
+  assert(left > 0, "the left wall exists at all: {left}");
+}
+
+// ── AND WHAT A PERSON ACTUALLY DOES ─────────────────────────────────────────
+
+// An opening cut from just inside one wall, facing it. Returns the gesture's own
+// verdict — the real `session_open_kind`, never a reproduction of its precondition,
+// because a reproduction of exactly this got 8 of 49 stations wrong in `probe/d2`.
+fn can_open(x: float, z: float, yaw: float) -> boolean {
+  s = hex_editor::EditSession {};
+  w = housed(s);
+  st = hex_editor::author_at(x, z, yaw, (FLOOR as float) * U);
+  made = hex_editor::session_open_kind(s, w, st, 1, hex_editor::STOREY_H);
+  made.om_ok
+}
+
+fn test_a_door_goes_in_any_of_the_four_walls() {
+  // ⛔ THE FAR WALL ANSWERED `false` HERE — *no wall here to open — stand against
+  // one* — with the author 0.75 units inside their own house, facing the wall.
+  assert(can_open(0.0, 0.0 - 1.5, 0.0 - 1.5707963267948966), "a door in the near wall");
+  assert(can_open(0.0, 4.5, 1.5707963267948966), "a door in the far wall");
+  assert(can_open(0.0 - 3.0, 1.5, 3.141592653589793), "a door in the left wall");
+  assert(can_open(4.8, 1.5, 0.0), "a door in the right wall");
+}
+
+// ── AND THE ROOF IS STILL A ROOF ────────────────────────────────────────────
+
+// The topmost cell of `ROOF_MAT` in a column, or −1 — `tests/roof.loft`'s own
+// `roof_at`, deliberately the same body: this file must read a roof the way the roof
+// suite reads one, or a green here and a red there would be about two different
+// questions. ⚠ `ground_h` is NOT this and the first version of the test used it: it
+// answers the GROUND, so it read 40 under a finished roof and the row went red on
+// its own instrument rather than on the subject.
+fn roof_at(w: VoxelWorld, q: integer, r: integer) -> integer {
+  h = 0 - 1;
+  for c in world_column(w, q, r).co_cells {
+    if hex_voxel::hex_occupied(c)
+       && (c.h_material as integer ?? 0) == hex_editor::ROOF_MAT {
+      h = c.h_height as integer ?? 0;
+    }
+  }
+  h
+}
+
+fn floor_at(w: VoxelWorld, q: integer, r: integer) -> integer {
+  h = 0 - 1;
+  for c in world_column(w, q, r).co_cells {
+    if hex_voxel::hex_occupied(c)
+       && (c.h_material as integer ?? 0) == hex_editor::FLOOR_MAT {
+      h = c.h_height as integer ?? 0;
+    }
+  }
+  h
+}
+
+fn test_the_house_still_has_its_roof_and_its_floor() {
+  // ⚠ THE FIX IS A SUBTRACTION — `roof_over` stops writing the floor a second time —
+  // so the two things it could plausibly break are asserted here rather than left to
+  // the roof suite. The floor is `place_house`'s own `ground_set`; the roof is the
+  // band that remains. **The floor row is the one that would catch the subtraction
+  // going too far**, and it is why the fix is not simply *narrow the band and move on*.
+  s = hex_editor::EditSession {};
+  w = housed(s);
+  rp = s.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+  eave = (rp.rp_eave / U ?? 0.0) as integer;
+  hi = 0;
+  floors = 0;
+  cells = hexset_chunk(rp.rp_cq - 20, rp.rp_cr - 20, 41, 41);
+  n = hex_editor::footprint_fill(
+        hex_editor::pose_footprint(0.0, 0.0 - 4.0, YAW,
+                                   hex_editor::HOUSE_W, hex_editor::HOUSE_D), cells);
+  for r in rp.rp_cr - 12..rp.rp_cr + 13 {
+    for q in rp.rp_cq - 12..rp.rp_cq + 13 {
+      if hexset_get(cells, q, r) {
+        rh = roof_at(w, q, r);
+        if rh > hi { hi = rh; }
+        if floor_at(w, q, r) == FLOOR { floors = floors + 1; }
+      }
+    }
+  }
+  assert(hi >= eave, "the ridge is at or above the eave: ridge {hi}, eave {eave}");
+  assert(hi > FLOOR, "the roof stands above the floor it was seated on: {hi}");
+  assert(floors == n,
+         "every one of the {n} footprint cells still has its floor: got {floors}");
+}

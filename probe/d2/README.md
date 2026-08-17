@@ -833,3 +833,68 @@ which is the ground, when what it is writing starts at the eave; the wall height
 is not the roof's to rewrite. ⚠ The fix must be measured on **all four walls** — the near
 wall has survived this defect by luck of which side owns its edges, so a change that fixes
 the far wall by moving the erase one row would swap the two and still read as progress.
+
+## ✅ 12. `D2c` — the fix is a subtraction, and all four walls are checked
+
+    cd lib/hex_editor && loft test --lib .. tests/house_walls.loft
+
+`roof_over`'s band was `[floor_h, hu]` and carried a `FLOOR_MAT` cell at `floor_h`. It is
+now `[eave_u, hu]` and carries only the roof:
+
+```loft
+eave_u = (rp.rp_eave / w.w_unit ?? 0.0) as integer;
+band = [ hex_voxel::Hex { h_height: hu, h_material: ROOF_MAT } ];
+world_merge_band_as(w, q, r, eave_u, hu, band, roof_id)
+```
+
+**Three lines, and the floor cell was the whole defect.** `place_house` lays the floor with
+`ground_set(…, FLOOR_MAT)` four lines earlier, so the band's floor cell was a **second
+assertion of a fact that already had a home** — and because `band_column` keeps what is
+below `lo` and above `hi` and replaces everything between, that second assertion took the
+`sv_wall_*` fields with it.
+
+### ⚠ Why the fix is here and not in `hex_voxel`, decided by a probe rather than by taste
+
+The other two `world_merge_band_as` callers in this tree — `gesture.loft`'s stencil hut and
+`hex_part`'s stamp — **put the wall fields into their band** (`h_wall_nw`, `h_wall_ne`,
+`h_wall_e`). The API is built for a band to declare the column's edges; `roof_over` was the
+one caller writing a cell that declared none. So the invariant is not *`band_column` must
+preserve edges* — it is *a roof is not the authority on a wall*, and the proportionate move
+is for it to stop writing the cell at all.
+
+⚠ **loft had been saying so on every run.** `advice[omitted-field-zero]` named
+`h_wall_nw`, `h_wall_ne`, `h_wall_e` on the deleted literal — *nothing in the declaration
+chose that value*. The advice was correct and pointed straight at the defect.
+
+⚠ **And the mesher's own comment is the control on the subtraction**: *"`place_house` writes
+its floor into the ground layer as `FLOOR_MAT`"* — the floor's single home is that pass, not
+this band, so removing the duplicate cannot cost the mesher its floor.
+
+### The test, seen red first, with the four walls asserted separately
+
+`lib/hex_editor/tests/house_walls.loft` — **3 of 5 red before the change, 5 green after**:
+
+| row | before | after |
+|---|---|---|
+| the near wall is whole | ✅ 24 — the control that had to stay green | 24 |
+| **the far wall is whole** | ⛔ **4** — its two corner posts | **24** |
+| the two sides are equal | ⛔ left 14, right 4 | equal |
+| **a door goes in any of the four walls** | ⛔ the far wall refused | all four cut |
+| the roof and floor survive | ✅ green before too — the guard on the subtraction | green |
+
+⚠ **SEPARATELY, NEVER AS A TOTAL.** A total of 84 is reachable by a house with three long
+walls and no fourth — 24 + 24 + 24 + 12 reads as healthy — and the near wall survived the
+original defect purely by which side owned its edges, so a change that moved the erase one
+row would swap the two walls and still satisfy a total.
+
+⚠ **And one red row was my own instrument, not the subject**: the roof/floor guard first
+read the ridge with `ground_h`, which answers the GROUND and returned 40 under a finished
+roof. It uses `tests/roof.loft`'s own `roof_at` body now, deliberately the same one, so a
+green here and a red there cannot be about two different questions.
+
+### What it moved
+
+    place_house's sentence:  84 wall edges   (unchanged — it always counted the stamps)
+    the store after a roof:  46 -> 84 sightings, matching that sentence for the first time
+    the far wall from inside: REFUSED -> cut at (0, 5.25)
+    make lib-test:           1874 -> 1879 on BOTH backends (hex_editor 587)
