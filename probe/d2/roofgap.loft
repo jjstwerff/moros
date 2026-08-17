@@ -1,0 +1,138 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// IS THE ROOF'S GAP VISIBLE? — plan 22 `D2a`, measured before the fix is written.
+//
+//     loft --lib lib/ probe/d2/roofgap.loft
+//
+// `gate.loft` measured that `place_house` files a roof plan whose rectangle is
+// **0.385 short in x and 0.286 short in z on every side** of the wall runs the same
+// gesture files, and that the drawn gable's eave corners sit at exactly that
+// rectangle. That is a fact about two registries. What it does not say is what a
+// person SEES, and there are two candidates that photograph completely differently:
+//
+//   1. a HOLE — the band between the plan's eave and the wall is open to the sky;
+//   2. a COLLAR of per-cell hex staircase — because `place_house` also writes ROOF
+//      cells over its footprint, and `hex_mesh` draws a roof cell only where no plan
+//      covers it. Then the gap is filled by exactly the sawtooth `S6b` exists to
+//      suppress, and `D0`'s *189 vertices against 18* would be **partly still true**
+//      on every house in the tree.
+//
+// ⚠ **THE TWO NEED DIFFERENT FIXES AND A PICTURE CANNOT TELL THEM APART FROM ABOVE**,
+// which is why this counts rather than renders: a collar reads as a roof.
+//
+// ⚠ THREE PACKAGES PLUS THE MESHER — `probe/d2/door.loft`'s note about the registry.
+use hex_editor;
+use hex_voxel;
+use hex_mesh;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;
+
+// Every surface of a chunk, totalled — all eleven, so geometry moving from one
+// surface to another does not read as a loss.
+fn totals(w: VoxelWorld, cq: integer, cr: integer, runs: WallRuns, roofs: RoofPlans,
+          v: &integer, t: &integer) {
+  v = 0;
+  t = 0;
+  for m in hex_mesh::chunk_meshes_all(cq, cr, w, false, runs, roofs,
+                                      DoorLeaves { items: [] }, Openings { items: [] },
+                                      Annexes { items: [] }, WallRuns { items: [] },
+                                      Props { items: [] }, Slabs { items: [] },
+                                      Holes { items: [] }) {
+    v = v + m.vertices.len();
+    t = t + m.triangles.len();
+  }
+}
+
+fn main() {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  sess = hex_editor::EditSession {};
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  ack = hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                                hex_editor::grade_under(w, a),
+                                sess.es_runs, sess.es_roofs);
+  println("house: ok={ack.ak_ok}");
+  if !ack.ak_ok { return; }
+
+  // ⚠ **CHUNK INDICES, NOT HEX COORDINATES — AND THE FIRST VERSION GOT IT WRONG IN
+  // THE ONE WAY THAT READS AS AN ANSWER.** It passed `hex + n · CHUNK_W` and every
+  // one of its 25 chunks came back **448 verts / 384 tris**, which is `ringmesh`'s
+  // *bare ground* row: since `GROUND_DEFAULT`, a chunk with nothing in it still
+  // meshes a defaulted ground, so a scan aimed nowhere near the house reports a full
+  // set of plausible numbers and `with plan == without plan` — *the plan saves 0*.
+  // **A wrong number is worse than a guess, because a number gets believed.**
+  seen = 0;
+  gv = 0; gt = 0;     // with the plan in hand — what the editor draws today
+  nv = 0; nt = 0;     // with no plan at all — every roof cell drawing itself
+  for cq in (0 - 1)..2 {
+    for cr in (0 - 1)..2 {
+      av = 0; at = 0; bv = 0; bt = 0;
+      totals(w, cq, cr, sess.es_runs, sess.es_roofs, av, at);
+      totals(w, cq, cr, sess.es_runs, RoofPlans { items: [] }, bv, bt);
+      seen = seen + 1;
+      gv = gv + av; gt = gt + at;
+      nv = nv + bv; nt = nt + bt;
+      println("  chunk ({cq},{cr})  with plan {av}/{at}   without {bv}/{bt}");
+    }
+  }
+  println("chunks scanned: {seen}");
+  println("  with the plan   {gv} verts / {gt} tris   <- what the editor draws today");
+  println("  with NO plan    {nv} verts / {nt} tris   <- every roof cell drawing itself");
+  println("  the plan saves  {nv - gv} verts / {nt - gt} tris");
+
+  // ⚠ **THE ROW THAT DECIDES BETWEEN HOLE AND COLLAR.** If the plan suppressed every
+  // roof cell, then a world whose roof cells were never written would draw the same
+  // as this one does with the plan — the difference is exactly the cells the plan
+  // does NOT cover, and those are the collar.
+  //
+  // It is asked cell by cell rather than by meshing a third world, because removing
+  // the roof cells means rebuilding the house without them and `place_house` has no
+  // such argument. `roof_plan_over` is the same test the mesher's suppression uses.
+  // ⛔ **AND THE TREE ALREADY HOLDS TWO TESTS OF THIS ONE RECTANGLE, HALF A HEX
+  // APART** — which is what the first version of this row got wrong, by asking the
+  // camera's question about the mesher's business:
+  //
+  //   `roof_plan_covers(rp, q, r)`   au <= hw + HEX_LEN*0.5   — the MESHER's, per CELL
+  //   `roof_plan_over(rp, x, z)`     au <= hw                 — `shelter_at`'s, per POINT
+  //
+  // Each is right about what it asks: a cell reaches half a hex past its centre, and
+  // a point does not. **But the mesher suppresses out to `hw + 0.866` while the gable
+  // is only drawn out to `hw`**, so the band between them has its cells removed and
+  // nothing drawn over it. Both counts are printed, because the difference IS the band.
+  println("--- the two predicates over the same 27 roof cells");
+  rp = sess.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+  (fq, fr) = hex_grid::px_to_hex(0.87, 1.5);
+  roofcells = 0;
+  past_gable = 0;      // outside the drawn gable — `roof_plan_over`, the camera's test
+  drawn = 0;           // and still drawn as a cell — outside the mesher's test too
+  for q in (fq - 6)..(fq + 7) {
+    for r in (fr - 6)..(fr + 7) {
+      col = hex_voxel::world_column(w, q, r);
+      for c in col.co_cells {
+        if hex_voxel::hex_occupied(c) {
+          if (c.h_material as integer ?? 0) == hex_editor::ROOF_MAT {
+            roofcells = roofcells + 1;
+            (px, pz) = hex_grid::hex_to_px(q, r);
+            over = hex_editor::roof_plan_over(rp, px, pz);
+            covers = hex_editor::roof_plan_covers(rp, q, r);
+            if !over { past_gable = past_gable + 1; }
+            if !covers { drawn = drawn + 1; }
+            if !over && covers {
+              println("  ({q},{r}) at ({round(px * 100.0) / 100.0 ?? 0.0},"
+                    + "{round(pz * 100.0) / 100.0 ?? 0.0}) — suppressed as a cell, "
+                    + "and the gable does not reach it");
+            }
+          }
+        }
+      }
+    }
+  }
+  println("  {roofcells} roof cell(s): {past_gable} beyond the drawn gable, "
+        + "{drawn} still drawn as cells");
+  println("  so {past_gable - drawn} cell(s) are removed with nothing drawn over them");
+}

@@ -438,3 +438,60 @@ is where it was measured.
 3. **The verbs that genuinely have no gate are `place` and `storey`**, and what they want is
    *is there a building here* — a question the roof-plan registry can answer exactly and the
    shelter reading only approximates.
+
+## ⛔ 8. `D2a`'s cost, and the two tests of one rectangle
+
+    loft --lib lib/ probe/d2/roofgap.loft
+
+§ 7 measured that the roof plan's rectangle is 0.385 (x) and 0.286 (z) short of the wall
+runs on every side. That is a fact about two registries; **what a person sees is a
+different question**, and two answers fit it and want opposite fixes — a *hole* open to
+the sky, or a *collar* of per-cell hex staircase, because `place_house` writes ROOF cells
+too and `hex_mesh` draws one only where no plan covers it. A collar reads as a roof, which
+is why this counts rather than renders.
+
+### The house, meshed twice over the four chunks it occupies
+
+| | verts | tris |
+|---|---|---|
+| with the plan — what the editor draws today | **5340** | 3892 |
+| with no plan — every roof cell drawing itself | 5493 | 4042 |
+| the plan saves | **153** | 150 |
+
+### ⛔ And the tree already holds TWO tests of this one rectangle, half a hex apart
+
+    roof_plan_covers(rp, q, r)    au <= hw + HEX_LEN*0.5    the MESHER's, asked per CELL
+    roof_plan_over(rp, x, z)      au <= hw                  `shelter_at`'s, asked per POINT
+
+**Each is right about what it asks** — a cell reaches half a hex past its centre and a point
+does not — and the pair still leaves a band with nothing in it, because the mesher
+suppresses out to `hw + 0.866` while the **gable is only drawn out to `hw`**:
+
+    27 roof cell(s): 2 beyond the drawn gable, 0 still drawn as cells
+    so 2 cell(s) are removed with nothing drawn over them   — (3,0) and (3,2), both at x 5.2
+
+> **So it is not a collar. All 27 roof cells are suppressed, and the drawn gable stops
+> 0.29–0.39 short of the wall line on every side** — a band all round the house that the
+> plan removed cells from and does not itself cover. ⚠ Whether a viewer sees sky through it
+> depends on the wall's own top, which this probe does not measure and does not claim.
+
+⚠ **AND TWO OF TWENTY-SEVEN IS A FLOATING-POINT KNIFE EDGE**, not a shape: those cells' centres
+are at x 5.196 against a rectangle edge of 5.196. An equality decides whether a hex staircase
+appears beside a gable.
+
+### ⛔ The probe's own first run reported a full set of plausible numbers and was aimed nowhere
+
+`chunk_meshes_all` takes **chunk indices**; the first version passed `hex + n · CHUNK_W`. All
+25 chunks came back **448 verts / 384 tris** — `ringmesh`'s *bare ground* row — because since
+`GROUND_DEFAULT` a chunk with nothing in it still meshes a defaulted ground. So the scan
+printed `with plan == without plan` and **the plan saves 0**, which is a conclusion, not a
+miss. ⚠ **A wrong number is worse than a guess, because a number gets believed.**
+
+### ⏭ So `D2a` is: the plan's rectangle is the footprint's own, not a second derivation of it
+
+`roof_plan_of` copies `fp_wid`/`fp_dep` and `plan_hw` reads them back as `n · HEX_LEN / 2`;
+the walls come from `footprint_walls` mitring on the footprint's boundary. **The correction
+is not one constant** — 0.385 in x against 0.286 in z — which is what says it must come from
+the footprint rather than from a fudge. ⚠ **And the cost is real**: `roof_ridge_y` is
+`eave + pitch · plan_hd`, so a roof that reaches its walls is wider **and taller**, and every
+gate that photographs a house moves.
