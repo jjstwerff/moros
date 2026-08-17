@@ -324,6 +324,44 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
   n = footprint_fill(f, cells);
 
+  // ── ⛔ A HOUSE DOES NOT GO INSIDE A HOUSE — plan 22 `D2b` ──────────────────
+  //
+  // Measured in [`probe/d2`](../../../probe/d2/README.md) § 7 row C: `place` from
+  // inside a finished room stamped **a second whole house — 84 writes, roofs 1 → 2**
+  // — with nothing in the tree refusing it. `es_roofs` is the registry that can
+  // answer it exactly, and `D0` made it a required parameter of this function, so the
+  // answer is already in hand.
+  //
+  // ⚠ **IT ASKS ABOUT THE FOOTPRINT, NOT ABOUT THE AUTHOR, AND THAT IS THE WHOLE
+  // DESIGN.** *Am I standing in a building* is the tempting spelling and it is wrong:
+  // `pose_footprint` puts the house AHEAD of the author, so a person standing in their
+  // own doorway placing a house on the open ground outside is a real gesture that the
+  // author-position test refuses. The exact question is whether the NEW footprint
+  // overlaps a plan that is already filed.
+  //
+  // ⚠ **AND THE PREDICATE IS THE MESHER'S, NOT A SECOND ONE.** `roof_plan_covers` is
+  // what `hex_mesh` uses to decide which cells a plan draws over, so this refuses
+  // exactly the cells that would end up under two roofs. A private *is it inside*
+  // written here would be the same fact with two bodies, which is the defect `D2a.1`
+  // and `D0` were both about.
+  //
+  // ⚠ **BEFORE ANY WRITE.** `probe/d2` § 7 row C2b found a refusal in this same
+  // function that had already stamped 55 cells and filed 8 runs — *the walls stand but
+  // the roof was refused* — so a gate placed after the seat would be that shape again.
+  // Nothing above this line touches the world: `footprint_fill` fills a `HexSet`.
+  for rp_r in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for rp_q in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, rp_q, rp_r) {
+        for held in roofs.items {
+          if roof_plan_covers(held, rp_q, rp_r) {
+            return ack_no("there is already a building here — step outside it, or "
+                        + "turn so the footprint lands clear");
+          }
+        }
+      }
+    }
+  }
+
   // ── A PAD IS SEATED ON ITS OWN FOOTPRINT — plan 20 `A4` ───────────────────
   //
   // ⚠ IT USED TO TAKE THE CALLER'S `grade`, WHICH IS THE AUTHOR'S FEET, and the

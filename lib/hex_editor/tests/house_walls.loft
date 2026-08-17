@@ -212,3 +212,58 @@ fn test_the_house_still_has_its_roof_and_its_floor() {
   assert(floors == n,
          "every one of the {n} footprint cells still has its floor: got {floors}");
 }
+
+// ── `D2b` — A HOUSE DOES NOT GO INSIDE A HOUSE ──────────────────────────────
+//
+// ⛔ **THE ROW THIS CAME FROM WAS SELF-CONTRADICTORY AND THE CORPUS SAID SO.** `D2b`
+// was written as *`place` and `storey` ask "is there a building here"*, verified by
+// *"the meadow must refuse and the corpus's own two storeys must still build"*. Those
+// are the same case: measured, **all three live storeys — `deck`, `cellar` and
+// `threshold` — run over bare raised ground with zero `verb place` between them**, so
+// a building gate on `storey` refuses every use the editor actually has. The storey
+// half is dropped and recorded rather than built; what survives is `place`.
+//
+// ⚠ **AND THE GATE IS THE FOOTPRINT'S, NOT THE AUTHOR'S.** *Am I standing in a
+// building* would refuse a house placed from a doorway onto open ground, which is a
+// real gesture — `pose_footprint` puts the house AHEAD of the author, so the exact
+// question is whether the NEW footprint overlaps a filed plan. `roof_plan_covers` is
+// the predicate the mesher already uses to decide which cells a plan covers, so this
+// asks the same question the drawing does rather than a second one.
+
+fn place_at(w: VoxelWorld, s: EditSession, x: float, z: float, yaw: float) -> Ack {
+  a = hex_editor::author_at(x, z, yaw, (FLOOR as float) * U);
+  hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(w, a), s.es_runs, s.es_roofs)
+}
+
+fn test_a_second_house_on_top_of_the_first_is_refused() {
+  w = meadow();
+  s = hex_editor::EditSession {};
+  first = place_at(w, s, 0.0, 0.0 - 4.0, YAW);
+  assert(first.ak_ok, "the first house stands: {first.ak_why}");
+  before = w.w_tau;
+  // The same pose again — the same footprint, exactly on top of itself.
+  again = place_at(w, s, 0.0, 0.0 - 4.0, YAW);
+  assert(!again.ak_ok, "a house on top of a house is refused, got: {again.ak_why}");
+  // ⚠ AND IT WRITES NOTHING, which is the half `D2p`'s row C2b found missing
+  // elsewhere: a refusal that has already stamped 55 cells is not a refusal.
+  assert(w.w_tau == before,
+         "the refusal wrote nothing: w_tau {before} -> {w.w_tau}");
+  assert(len(s.es_roofs.items) == 1,
+         "and filed no second plan: {len(s.es_roofs.items)} roof(s)");
+}
+
+fn test_a_second_house_beside_the_first_still_stands() {
+  // ⚠ **THE ROW THAT STOPS THIS BEING *REFUSE EVERYTHING*.** `tools/scripts/seat.keys`
+  // places two houses 46 units apart and is a live script; a gate that only ever says
+  // no is `D2p`'s row C with the sign flipped. The distance here is the one that
+  // script uses.
+  w = meadow();
+  s = hex_editor::EditSession {};
+  first = place_at(w, s, 0.0, 0.0 - 4.0, YAW);
+  assert(first.ak_ok, "the first house stands: {first.ak_why}");
+  second = place_at(w, s, 46.0, 0.0 - 4.0, YAW);
+  assert(second.ak_ok, "a house 46 units away still stands: {second.ak_why}");
+  assert(len(s.es_roofs.items) == 2,
+         "and both are filed: {len(s.es_roofs.items)} roof(s)");
+}
