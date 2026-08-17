@@ -91,6 +91,26 @@ fn main() {
     println("  run {k}: ({r2(rk.wr_x0)},{r2(rk.wr_z0)}) -> ({r2(rk.wr_x1)},{r2(rk.wr_z1)})");
   }
 
+  // ⚠ THE PLAN'S OWN RECTANGLE, PRINTED BESIDE THE RUNS ABOVE. The two describe the
+  // same house and are filed by the same gesture, so if they disagree the mode's
+  // line is not where the wall is — and that is a fact about `place_house` rather
+  // than about the mode.
+  rpa = sa.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+  (pcx, pcz) = hex_grid::hex_to_px(rpa.rp_cq, rpa.rp_cr);
+  println("  plan: centre ({r2(pcx)},{r2(pcz)}) wid {rpa.rp_wid} dep {rpa.rp_dep} "
+        + "rot {rpa.rp_rot} eave {r2(rpa.rp_eave)}");
+
+  // ⚠ **AND THE GABLE'S OWN CORNERS, BECAUSE THE PLAN IS NOT ONLY THE MODE'S.**
+  // `roof_point_x`/`roof_point_z` put the four eave corners at exactly ±`plan_hw`,
+  // ±`plan_hd` — the same rectangle `roof_plan_over` tests — so a plan that does not
+  // reach the wall is a DRAWN roof that does not reach it either, and widening it
+  // moves the picture and the ridge (`roof_ridge_y` is `eave + pitch * hd`). That
+  // cost belongs in the measurement rather than in the step that discovers it.
+  for e in 0..4 {
+    println("  gable eave corner {e}: ({r2(hex_editor::roof_point_x(rpa, e))},"
+          + "{r2(hex_editor::roof_point_z(rpa, e))})");
+  }
+
   prev = "";
   for i in 0..49 {
     z = 0.0 - 6.0 + (i as float) * 0.25;
@@ -101,7 +121,20 @@ fn main() {
     flip = "";
     if prev != "" && prev != m { flip = "   <- the mode FLIPS here"; }
     prev = m;
-    println("  z={r2(z)}  mode {m}  store {wl}{flip}");
+    // ⚠ **THE FLIP'S CAUSE, NOT JUST ITS COORDINATE.** *The plan's rectangle ends
+    // here* and *the author is standing on top of the wall, above the eave* both
+    // produce `outside` at the same station and want opposite fixes, so the two
+    // inputs `mode_at` actually reads are printed beside its answer: whether the
+    // plan covers the point at all, and the height the walk resolves the feet to
+    // against the roof's own surface there.
+    (mq, mr) = hex_grid::px_to_hex(0.0, z);
+    feet = hex_editor::walk_h(mq, mr, wa, ref / U);
+    rp0 = sa.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+    over = hex_editor::roof_plan_over(rp0, 0.0, z);
+    roofy = 0;
+    if over { roofy = (hex_editor::roof_plan_y(rp0, 0.0, z) / U ?? 0.0) as integer; }
+    println("  z={r2(z)}  mode {m}  store {wl}  plan_over {over}  roof_units "
+          + "{roofy}  feet {feet}{flip}");
   }
 
   // ── B. THE MODE AGAINST THE VERB'S OWN PRECONDITION ────────────────────────

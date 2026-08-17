@@ -314,6 +314,36 @@ flip is read against a measured line rather than a remembered one.
 *inside* the wall's line, and 8 of the 12 walled stations are on the wrong side of it.
 The far wall repeats it: the run is at z = 5.25 and the mode is `outside` from 5.25 on.
 
+### ⛔ AND THE CAUSE IS NOT THE MODE'S — THE ROOF DOES NOT REACH ITS OWN WALLS
+
+Two hypotheses produce that flip and they want opposite fixes, so the two inputs `mode_at`
+actually reads were printed beside its answer. **`feet` is `40` at every station**, so *the
+author is standing on top of the wall, above the eave* is refuted — the walk resolves them
+to the floor throughout. What is left is `plan_over`, and it is **`false` at the wall's own
+line**. `place_house` files both the runs and the plan, and they disagree:
+
+| | x | z |
+|---|---|---|
+| the four **wall runs**, as filed | −3.85 … **5.58** | −2.25 … **5.25** |
+| the **gable's four eave corners** | −3.46 … 5.20 | −1.96 … 4.96 |
+| short by, **each side** | **0.385** | **0.286** |
+
+> **The drawn roof stops short of its own walls on all four sides.** `roof_point_x`/`_z`
+> put the eave corners at exactly ±`plan_hw`, ±`plan_hd` — the same rectangle
+> `roof_plan_over` tests — so this is one defect wearing two faces: the picture's eave and
+> the mode's line are the same rectangle, and it is the wrong one.
+
+The mechanism is `D1a.3`'s class one gesture over. `roof_plan_of` copies the footprint's
+**cell counts** into the plan (`rp_wid: f.fp_wid`, `rp_dep: f.fp_dep`) and `plan_hw` reads
+them back as `n · HEX_LEN / 2` — while the walls come from `footprint_walls`, which mitres
+on the footprint's own boundary. **Two conversions of one footprint into one rectangle, and
+they differ by a fraction of a hex.** ⚠ And `D1a.3` measured the masonry at ±0.433 about its
+run, so the eave lands *within the wall's own thickness* rather than at or past its outer face.
+
+⚠ **WHAT THE FIX COSTS, MEASURED RATHER THAN DISCOVERED LATER**: the same rectangle sets the
+ridge — `roof_ridge_y` is `eave + pitch · plan_hd` — so a plan that reaches its walls is a
+roof that is both wider and **taller**, and every gate that photographs a house moves.
+
 Row B then asks both authorities at each of 25 stations, on a **fresh world per station**
 because a cut changes the world a later station would read:
 

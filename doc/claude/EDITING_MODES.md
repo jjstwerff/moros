@@ -744,6 +744,28 @@ no wall to open**. ⚠ And every working station cuts at exactly the same `(0, �
 verb projects onto the run: **it is position-independent within reach of the wall and the mode is
 not.** Two candidate authorities, and only one of them is stable where the verb is used.
 
+⛔ **AND THE FLIP'S CAUSE IS NOT THE MODE'S AT ALL — THE ROOF DOES NOT REACH ITS OWN WALLS.** Two
+hypotheses fit *outside at the wall* and they want opposite fixes, so `mode_at`'s own two inputs
+were printed beside its answer. **`feet` reads `40` at every station**, which refutes *the author is
+standing on top of the wall, above the eave*; what is left is `plan_over`, and it is **false at the
+wall's own line**. `place_house` files the runs and the plan, and the two disagree:
+
+| | x | z |
+|---|---|---|
+| the four **wall runs**, as filed | −3.85 … 5.58 | −2.25 … 5.25 |
+| the **gable's four eave corners** | −3.46 … 5.20 | −1.96 … 4.96 |
+| short by, **each side** | **0.385** | **0.286** |
+
+> **The drawn roof stops short of its own walls on all four sides**, and it is one defect wearing
+> two faces: `roof_point_x`/`_z` put the eave corners at exactly the rectangle `roof_plan_over`
+> tests, so the picture's eave and the mode's line are the same wrong rectangle.
+
+It is `D1a.3`'s class one gesture over — `roof_plan_of` copies the footprint's **cell counts** and
+`plan_hw` reads them back as `n · HEX_LEN / 2`, while the walls come from `footprint_walls` mitring
+on the footprint's own boundary. ⚠ **And the fix's cost is stated up front**: `roof_ridge_y` is
+`eave + pitch · plan_hd`, so a roof that reaches its walls is wider **and taller**, and every gate
+that photographs a house moves. That is `D2a`.
+
 ⛔ **AND *THE LINE IS SIMPLY MISPLACED* WAS GIVEN ITS OWN ROW AND SURVIVES ONLY HALFWAY.** Inflating
 the roof plan by one cell each way moves the flip **−2.00 → −3.50**, which puts the wall inside and
 would end `house.keys`'s two-modes-one-comment. It rescues nothing for the verb: a roof plan is
