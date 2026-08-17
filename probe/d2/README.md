@@ -589,3 +589,52 @@ WAS THE WRONG INSTRUMENT FOR THIS ONE.** The gable is six points however big the
 is, and the two stray cells were already suppressed by `roof_plan_covers`' half-hex; what
 changed is which cells the drawn surface *covers*, and a vertex total cannot see coverage.
 `fence.mjs` reading counts against a store was the same shape at `D1a.1`, one registry over.
+
+### ⛔ And the gate suite cannot see this change — 44 PASS is not verification
+
+`GATE_JOBS=1 make gate`, all 49 serially (parallel is worthless here — `D0` measured two
+suites fighting over port base 18200 and producing six false reds):
+
+    44 PASS   5 FAIL — cache · camera_indoors · cellar_ceiling · client_mesh · deck_soffit
+
+**All five are loft#950**, each with the recorded signature — `parts -1`, `cam false`,
+`sky 1` over 33,600 samples, or a bare *"(no cache report)"* / *"(no ground report)"*. Four
+are in [STATE](../../doc/claude/STATE.md)'s list; **`deck_soffit` is a fifth that list did
+not have**, which is the third time this file has recorded a browser-gate grep coming back
+short.
+
+⚠ **`deck_soffit` WAS CONTROLLED RATHER THAN ASSUMED.** A worktree at the pre-`D2a` commit
+runs it too: **it fails there as well**, on the same row (`soffit 0 outside 0.9..1`), with
+`mesh soffit = 342 vertices PASS` **identical on both sides**. So the geometry this change
+touches is unmoved in that gate, and the failure is pre-existing. ⚠ The two runs' *frames*
+differ — one rendered `other 0.9957`, the other pure sky — and both are broken pictures;
+nothing more than that is claimed.
+
+> ⛔ **AND HERE IS THE PART THAT MATTERS: NOTHING IN `make gate` COULD HAVE SEEN THE TALLER
+> ROOF.** Every gate that renders a house is among the five that are down. `part_mode`, the
+> one gate that compares the roof-plan registry, does it as a **save-and-restore round
+> trip** — both sides move together, so it catches *restored except for its roof* and is
+> blind by construction to *the roof is a different size*. And no gate asserts the ridge at
+> all: `level.mjs` and `stencil.mjs` are the only files that say the word, and both mean a
+> hill.
+
+**So `44 PASS` is 44 gates that could not see it**, not 44 confirmations — STATE's own rule,
+*when a green run is used to clear a change, ask what it does not run*, applied to this one.
+What DOES measure the geometry is `lib/hex_editor/tests/roof_plan.loft`: the plan covers every
+roofed column at nine sizes with the nominal rectangle as the failing control, and the drawn
+surface equals the stored heights exactly over all 27 columns.
+
+⛔ **What is genuinely unverified is the PICTURE**, and it cannot be verified today: the
+`--html` client traps before it draws, so neither a gate nor `make probe-demo` can photograph
+a house. That is loft#950's blast radius reaching this step, and it is recorded rather than
+worked around.
+
+### ⚠ And `make lib-test` failed once, transiently, in a way that reads as a broken package
+
+`hex_mesh` came back **10 files, all parse errors** — *"Library `hex_edge` not found"* against
+`hex_way`'s own source, plus *"Undefined type Plan"* against `hex_draw`'s. It reads as a
+dependency graph that has come apart. It had not: two worktrees, one at the pre-`D2a` commit
+and one at HEAD, both answer **73 passed**, and the main tree passes on a retry with nothing
+else running. **Two `loft` builds at once is the cause** — this file's own closing note says
+*one `loft` at a time on this box*, and what it did not say is that the failure mode is a
+resolution error pointing at a registry package rather than a slow build.

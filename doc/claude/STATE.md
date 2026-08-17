@@ -206,6 +206,30 @@ coordinates where `chunk_meshes_all` takes CHUNK INDICES — all 25 chunks answe
 `ringmesh`'s *bare ground* row, because since `GROUND_DEFAULT` an empty chunk still meshes a
 defaulted ground, so it concluded *the plan saves 0*.
 
+⛔ **AND THE GATE SUITE CANNOT SEE THIS CHANGE — `44 PASS` IS 44 GATES THAT COULD NOT.**
+`GATE_JOBS=1 make gate`, all 49 serially: **44 PASS, 5 FAIL**, every failure loft#950 —
+`cache`, `camera_indoors`, `cellar_ceiling`, `client_mesh` and **`deck_soffit`, a fifth this
+file's own list did not have**. ⚠ It was **controlled rather than assumed**: a worktree at the
+pre-`D2a` commit fails it too, on the same row, with `mesh soffit = 342 vertices PASS`
+identical on both sides. ⛔ **Every gate that renders a house is among the five that are
+down**; `part_mode`, the one gate comparing the roof-plan registry, does it as a
+**save-and-restore round trip** and is blind by construction to a roof that changed size on
+both sides; and **no gate asserts the ridge** — `level.mjs` and `stencil.mjs` are the only
+files that say the word and both mean a hill. **So the geometry is measured by
+`roof_plan.loft` and the PICTURE is measured by nothing**, and cannot be today: the `--html`
+client traps before it draws, so neither a gate nor `make probe-demo` can photograph a house.
+That is *when a green run is used to clear a change, ask what it does not run*, applied to
+this one.
+
+⚠ **AND `make lib-test` FAILED ONCE, TRANSIENTLY, IN A WAY THAT READS AS A BROKEN PACKAGE.**
+`hex_mesh` came back **10 files, all parse errors** — *"Library `hex_edge` not found"* against
+`hex_way`'s **own source**, plus *"Undefined type Plan"* against `hex_draw`'s — which reads as
+a dependency graph that has come apart. It had not: two worktrees, at the pre-`D2a` commit and
+at HEAD, both answer **73 passed**, and the main tree passes on a retry with nothing else
+running. **Two `loft` builds at once**, and what `probe/d2`'s *one `loft` at a time* note did
+not say is that the failure mode is a RESOLUTION error pointing at a registry package rather
+than a slow build.
+
 ⏭ **WHAT IS OPEN:** `D2b` — the *is there a building here* gate `place` and `storey` lack —
 and a defect this session found and did not fix: **`place_house` answers `ak_ok: false` after
 57 writes and 4 filed runs** (*"the walls stand but the roof was refused"*), which is the shape
