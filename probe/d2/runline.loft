@@ -1,0 +1,191 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// IS A WALL DRAWN WHERE IT IS STORED? — plan 22 `D1a.3`.
+//
+//     loft --lib lib/ probe/d2/runline.loft
+//
+// `D1a.2` found that `session_wall`'s run is registered through the author's CELL
+// CENTRES while `wall_stamp` marks the lattice edges nearest that line — which sit
+// **half a row off**, because a row of centres has no lattice edge on it. That was
+// measured against the STORE. This asks the other half, and it is the half that
+// decides how big `D1a.3` is:
+//
+//   · where are the stamped edges, exactly — the store's answer
+//   · where are the wall's VERTICES — `emit_run_wall` builds from the run's line and
+//     never reads an edge, so if the two disagree the picture is off the wall
+//   · and the control: `place_house`, whose runs come from `footprint_walls`'
+//     mitred corners rather than from a walked line
+use hex_editor;
+use hex_voxel;
+use hex_mesh;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+
+// The mean z of every stamped edge midpoint carrying `mat`, and how far the extremes
+// spread — a wall that straddled its line would show as a spread rather than a mean.
+fn edge_line(w: VoxelWorld, mat: integer, ref: float, lo: &float, hi: &float) -> integer {
+  n = 0;
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  for q in 0 - 10..11 {
+    for r in 0 - 10..11 {
+      for d in 0..6 {
+        (oq, orr, _s) = hex_editor::edge_owner(q, r, d);
+        if oq == q && orr == r && hex_editor::wall_of(w, q, r, d, ref) == mat {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (ax, az) = hex_grid::hex_to_px(q, r);
+          (bx, bz) = hex_grid::hex_to_px(nq, nr);
+          mz = (az + bz) * 0.5;
+          if mz < lo { lo = mz; }
+          if mz > hi { hi = mz; }
+          n = n + 1;
+        }
+      }
+    }
+  }
+  n
+}
+
+// The z extent of every vertex in the wall surface — `chunk_meshes_all`'s wall mesh.
+// ⚠ ASKED OF WHAT WAS EMITTED, never of the run it was emitted from: the whole point
+// is whether those two agree.
+fn wall_z(w: VoxelWorld, runs: WallRuns, lo: &float, hi: &float) -> integer {
+  n = 0;
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  ms = hex_mesh::chunk_meshes_all(0, 0, w, false, runs,
+                                  RoofPlans { items: [] }, DoorLeaves { items: [] },
+                                  Openings { items: [] }, Annexes { items: [] },
+                                  WallRuns { items: [] }, Props { items: [] },
+                                  Slabs { items: [] }, Holes { items: [] });
+  for m in ms {
+    if m.name.contains("wall") || m.name.contains("masonry") {
+      for v in m.vertices {
+        vz = v.pos.z as float ?? 0.0;
+        if vz < lo { lo = vz; }
+        if vz > hi { hi = vz; }
+        n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 20, 0 - 20, 41, 41, FLOOR, hex_editor::SURFACE_MAT);
+  s = hex_editor::EditSession {};
+  ref = (FLOOR as float) * U;
+
+  // `door.keys`'s wall, exactly: two presses at (-6,0) and (6,0).
+  hex_editor::press_verb(s, w, hex_editor::author_at(0.0 - 6.0, 0.0, 0.0,
+                                                     (FLOOR as float) * U), "run");
+  hex_editor::press_verb(s, w, hex_editor::author_at(6.0, 0.0, 0.0,
+                                                     (FLOOR as float) * U), "run");
+  println("runs {len(s.es_runs.items)}");
+  for rr in s.es_runs.items {
+    println("  the RUN says   z0 {rr.wr_z0}  z1 {rr.wr_z1}  (x {rr.wr_x0} -> {rr.wr_x1})");
+  }
+  elo = 0.0;
+  ehi = 0.0;
+  en = edge_line(w, hex_editor::WALL_MAT, ref, elo, ehi);
+  println("  the STORE says {en} edges, midpoints z from {elo} to {ehi}");
+  vlo = 0.0;
+  vhi = 0.0;
+  vn = wall_z(w, s.es_runs, vlo, vhi);
+  println("  the PICTURE says {vn} wall vertices, z from {vlo} to {vhi}");
+  // ⚠ **AND THE COUNT IS SPLIT, BECAUSE A TOTAL CANNOT SAY WHICH HALF MOVED.** The run
+  // wall and the per-edge fallback land in the same surface, so a vertex total is a
+  // number two different things could produce. Measured: the panels alone are **0**, so
+  // every vertex here is the run's.
+  //
+  // ⛔ **AND THAT MAKES THE COUNT USELESS ACROSS THIS CHANGE, WHICH IS WORTH SAYING
+  // RATHER THAN QUIETLY DROPPING.** It reads 258 before the run moves and 126 after —
+  // and both are pure run geometry from ONE run of unchanged length. `emit_run_wall`
+  // takes the chunk (`q0`, `r0`) and this probe meshes chunk (0,0) alone, so moving the
+  // wall 0.75 moves part of it into a neighbour's chunk. **The Z RANGE is the claim
+  // here; the count is chunk-local and not comparable across a geometry move.**
+  plo = 0.0;
+  phi = 0.0;
+  pn = wall_z(w, WallRuns { items: [] }, plo, phi);
+  println("  …of which the per-edge panels alone are {pn}, z {plo} to {phi}");
+
+  // ── IS THE OFFSET ONE NUMBER, OR A SPREAD? ─────────────────────────────────
+  //
+  // ⚠ **THE FIX'S SHAPE TURNS ON THIS AND ONE HEADING CANNOT ANSWER IT.** `wall_stamp`
+  // marks an edge when the half-plane crosses it AND its perpendicular foot lies inside
+  // the segment — which says nothing about how far off the line it is. If every marked
+  // edge shares one perpendicular offset the run can simply be SHIFTED by it, exactly;
+  // if they spread, the run's line is a best fit through a zigzag and a shift would be
+  // an approximation wearing a correction's clothes. Asked of eight headings.
+  println("--- the perpendicular offset, over the headings a run can snap to");
+  for k in 0..8 {
+    ang = (k as float) * PI / 8.0 ?? 0.0;
+    hx = cos(ang) * 6.0;
+    hz = sin(ang) * 6.0;
+    hw2 = world_new(U, hex_editor::W_RESERVE,
+                    hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+    hex_editor::ground_fill(hw2, 0 - 20, 0 - 20, 41, 41, FLOOR, hex_editor::SURFACE_MAT);
+    hs2 = hex_editor::EditSession {};
+    hex_editor::press_verb(hs2, hw2,
+      hex_editor::author_at(0.0 - hx, 0.0 - hz, 0.0, (FLOOR as float) * U), "run");
+    hex_editor::press_verb(hs2, hw2,
+      hex_editor::author_at(hx, hz, 0.0, (FLOOR as float) * U), "run");
+    if len(hs2.es_runs.items) > 0 {
+      rn = hs2.es_runs.items[0] ?? WallRun {};
+      dx = rn.wr_x1 - rn.wr_x0;
+      dz = rn.wr_z1 - rn.wr_z0;
+      dl = sqrt(dx * dx + dz * dz) ?? 0.0;
+      nx = 0.0 - (dz / dl ?? 0.0);
+      nz = dx / dl ?? 0.0;
+      olo = 1000000.0;
+      ohi = 0.0 - 1000000.0;
+      cnt = 0;
+      for q in 0 - 12..13 {
+        for r in 0 - 12..13 {
+          for d in 0..6 {
+            (oq, orr, _s2) = hex_editor::edge_owner(q, r, d);
+            if oq == q && orr == r
+               && hex_editor::wall_of(hw2, q, r, d, ref) == hex_editor::WALL_MAT {
+              (nq2, nr2) = hex_grid::hex_neighbor(q, r, d);
+              (ax2, az2) = hex_grid::hex_to_px(q, r);
+              (bx2, bz2) = hex_grid::hex_to_px(nq2, nr2);
+              mx2 = (ax2 + bx2) * 0.5;
+              mz2 = (az2 + bz2) * 0.5;
+              off = nx * (mx2 - rn.wr_x0) + nz * (mz2 - rn.wr_z0);
+              if off < olo { olo = off; }
+              if off > ohi { ohi = off; }
+              cnt = cnt + 1;
+            }
+          }
+        }
+      }
+      println("  heading {rn.wr_step} of 24: {cnt} edges, offset {round(olo * 10000.0) / 10000.0 ?? 0.0} .. "
+            + "{round(ohi * 10000.0) / 10000.0 ?? 0.0}  spread "
+            + "{round((ohi - olo) * 10000.0) / 10000.0 ?? 0.0}");
+    }
+  }
+
+  // ⚠ THE CONTROL, AND IT IS WHAT MAKES THE ROWS ABOVE MEAN *`session_wall`*: a house
+  // takes its runs from `footprint_walls`' mitred corners, which lie on the wall's own
+  // boundary rather than on a line somebody walked.
+  println("--- the control: a house, whose runs are not a walked line");
+  h = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(h, 0 - 20, 0 - 20, 41, 41, FLOOR, hex_editor::SURFACE_MAT);
+  hs = hex_editor::EditSession {};
+  ha = hex_editor::author_at(0.0, 0.0 - 4.0, PI / 2.0 ?? 0.0, (FLOOR as float) * U);
+  hex_editor::place_house(h, ha, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(h, ha), hs.es_runs, hs.es_roofs);
+  for rr2 in hs.es_runs.items {
+    println("  run ({rr2.wr_x0},{rr2.wr_z0}) -> ({rr2.wr_x1},{rr2.wr_z1})");
+  }
+  hlo = 0.0;
+  hhi = 0.0;
+  hn = edge_line(h, hex_editor::WALL_MAT, ref, hlo, hhi);
+  println("  the STORE says {hn} edges, midpoints z from {hlo} to {hhi}");
+}

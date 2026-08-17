@@ -15,7 +15,7 @@ chosen: opening 11
   wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8
   placed -6,4.2
   annex 0 selected
-  an annex of kind 0 at -3,4 — 3 walls, a deck
+  an annex of kind 0 at -4,3 — 3 walls, a deck
   annex 2 selected
   a cupboard beside it — 5 walls for 2 boxes
   seat 0 selected
@@ -33,8 +33,8 @@ chosen: opening 11
   placed -10,0
   placed -3,1.5
   placed 16,-3
-  opening kind 1 at -6,4.6 half 0.85 band 3..10 spring 7 depth 0..1
-  opening kind 0 at -4.3,4.6 half 0.55 band 3..10 spring -1 depth 0..1
+  opening kind 1 at -6,3.85 half 0.85 band 3..10 spring 7 depth 0..1
+  opening kind 0 at -4.3,3.85 half 0.55 band 3..10 spring -1 depth 0..1
   opening kind 1 at 10.392304845413264,6 half 0.55 band 6..16 spring 14 depth -0.34641016151377546..1
-  opening kind 1 at -3,6 half 0.65 band 2..11 spring 9 depth 0..0.55
+  opening kind 1 at -3,5.25 half 0.65 band 2..11 spring 9 depth 0..0.55
 --- what the runner refused

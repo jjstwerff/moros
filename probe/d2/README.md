@@ -205,6 +205,58 @@ it took the first `WALL`/`FENCE` edge in direction order and a one-edge niche al
 neighbour standing. `span_mark` counts *already an opening* separately — a boundary that is
 passable is not a boundary that is absent.
 
+## ✅ 6. `D1a.3` — the run goes onto the wall when the wall has a line
+
+`runline.loft` asks the half `D1a.2` could not: `emit_run_wall` builds from the run's line and
+never reads an edge, so if the two disagree the **picture is off the wall**. On `door.keys`'s own
+wall, before:
+
+    the RUN says       z 0
+    the STORE says     14 edges, midpoints ALL at z -0.75
+    the PICTURE says   wall vertices z -0.433 .. +0.433   — centred on the line
+
+The drawn masonry's near face stops **0.317 short** of the boundary a walker collides with.
+✅ **The control coincides exactly**: `place_house`'s runs are at z −2.25 and 5.25 and so are its
+edges, because `footprint_walls` gives corners on the wall's own boundary rather than a walked line.
+
+### ⛔ And *just shift the run* is refuted for most headings
+
+| heading | edges | offset range | spread |
+|---|---|---|---|
+| **0** | 14 | −0.750 … −0.750 | **0** — straight, and off its line |
+| 2 · 6 · 10 | 15–17 | — | 0.866 |
+| 3 · 7 · 9 | 15 | — | 1.345 … 1.553 |
+| **4** | 14 | +0.033 … +0.033 | **0** — straight, and on its line |
+
+For six of eight headings the wall **zigzags about** its run and there is no line its edges lie
+on; moving it would be a best fit presented as a fact. So the rule is narrow and exact:
+
+> **When every stamped edge shares one perpendicular offset, the wall HAS a line and the run must
+> be it.** The heading is the author's and only the offset was ever wrong.
+
+⚠ **Read back from the edges the loop just wrote**, never re-derived from the lattice — and the run
+is registered *after* the marking now, because it may not be filed until the edges it describes
+are known. ⚠ **A run already on its wall is left alone, and that is not belt and braces**:
+`place_house`'s coincide to the last bit, so `olo` is ~1e-16 and shifting by it perturbed two
+mitred corners in the sixteenth digit — `test_the_four_runs_meet_end_to_end` went red on
+`0.7916666666666674` against `0.7916666666666676`.
+
+### ✅ What it fixed, and the corpus is the instrument
+
+    the RUN now says   z -0.75          the STORE says  -0.75 .. -0.75
+    the PICTURE now    z -1.183 .. -0.317               centred on -0.75
+
+Seven records moved, every one legible: `opening kind 1 at 0,0` became **`at 0,-0.75`** — the
+opening lands on the wall instead of on the line the author walked — and `door`'s τ rose 108 → 109
+as `D1a.2`'s span found the second edge it now covers. `furnish` moved by 0.25 on two different
+headings, which is the same correction at two different offsets.
+
+⚠ **The vertex COUNT is not comparable across this change and the probe says so** — it reads 258
+before and 126 after, both pure run geometry from one run of unchanged length, because
+`emit_run_wall` takes the chunk and the probe meshes chunk (0,0) alone. **The z range is the
+claim.** ✅ And `occlude` reads `ringAt 4.33` — √3·(2+½), `D1a.1`'s corner radius from an
+independent gate.
+
 ### ⏭ What follows for `D2`
 
 **The `inside` mode is unreachable by walking, in every driver.** So `D2` cannot bind the

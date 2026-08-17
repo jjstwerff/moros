@@ -1986,8 +1986,10 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
   w = q1 - q0 + pad + 1;
   h = r1 - r0 + pad + 1;
 
-  runs.items += [run];
-
+  // ⚠ **REGISTERED AFTER THE MARKING NOW, NOT BEFORE — plan 22 `D1a.3`.** The run is
+  // what everything downstream believes the wall IS: `emit_run_wall` draws from its
+  // line, `run_point_near` centres an opening on it, `annex_host` hangs a balcony off
+  // it. So it may not be filed until the edges it describes are known.
   (tx, ty) = hex_way::seg_tangent(t, 0, 0.0);
   nx = 0.0 - ty;
   nz = tx;
@@ -1997,6 +1999,8 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
   edges_halfplane_surf(eg, q0, r0, w, h, nx, nz,
                        nx * run.wr_x0 + nz * run.wr_z0, sid);
   n = 0;
+  olo = 0.0;
+  ohi = 0.0;
   for r in r0..r0 + h {
     for q in q0..q0 + w {
       for dd in 0..6 {
@@ -2013,12 +2017,63 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
           if over < 0.000001 {
             wall_set(wld, q, r, dd, mat, grade, (grade as float) * wld.w_unit);
             n = n + 1;
+            // ⚠ WHERE THIS EDGE SITS RELATIVE TO THE LINE IT WAS STAMPED FROM.
+            // Measured per edge rather than assumed: for most headings the wall
+            // ZIGZAGS about its run and there is no single offset.
+            eoff = nx * (mx - run.wr_x0) + nz * (mz - run.wr_z0);
+            if n == 1 { olo = eoff; ohi = eoff; }
+            if eoff < olo { olo = eoff; }
+            if eoff > ohi { ohi = eoff; }
           }
         }
       }
     }
   }
   marked = n;
+
+  // ── ⛔ THE RUN GOES ONTO THE WALL WHEN THE WALL HAS A LINE — plan 22 `D1a.3` ──
+  //
+  // ⛔ **A WALL WAS DRAWN 0.75 WORLD UNITS OFF THE BOUNDARY IT IS STORED ON.** Measured
+  // in [`probe/d2/runline.loft`](../../../probe/d2/runline.loft) on `door.keys`'s own
+  // wall: the run says `z 0`, the store's fourteen edge midpoints are **all** at
+  // `z -0.75`, and the emitted masonry runs `z -0.433 .. +0.433` — centred on the line,
+  // its near face stopping **0.317 short** of the boundary a walker actually collides
+  // with. `place_house` is the control and it coincides exactly, because
+  // `footprint_walls` gives corners on the wall's own boundary rather than a line
+  // somebody walked.
+  //
+  // ⚠ **AND *JUST SHIFT THE RUN* IS REFUTED FOR MOST HEADINGS, WHICH IS WHY THE
+  // CONDITION IS THE SPREAD.** Over eight headings the perpendicular offsets are:
+  //
+  //     heading  0   spread 0        all at -0.75      ← a straight wall, off its line
+  //     heading  4   spread 0        all at +0.033     ← a straight wall, on its line
+  //     2, 6, 10     spread 0.866                      ← a zigzag about the line
+  //     3, 7, 9      spread 1.34 .. 1.55               ← a wider zigzag
+  //
+  // For a zigzag the run's line is a genuine best fit and there is no line the edges
+  // lie on — moving it would be an approximation wearing a correction's clothes. So the
+  // rule is narrow and exact: **when every stamped edge shares one perpendicular offset,
+  // the wall HAS a line, and the run must be it.** `wr_step` is untouched: the heading
+  // is the author's and only the offset was ever wrong.
+  //
+  // ⚠ AND IT IS READ BACK FROM THE EDGES THIS LOOP JUST WROTE, never re-derived from
+  // the lattice — two derivations of one quantity is the shape this tree has been
+  // bitten by four times.
+  // ⚠ **AND A RUN ALREADY ON ITS WALL IS LEFT ALONE, WHICH IS NOT BELT AND BRACES.**
+  // `place_house`'s runs coincide with their edges to the last bit, so `olo` is around
+  // 1e-16 there — and shifting by it perturbs the endpoints in the sixteenth digit,
+  // which broke `test_the_four_runs_meet_end_to_end`: two mitred corners that met
+  // exactly stopped meeting. A correction must be a no-op where there is nothing to
+  // correct.
+  ooff = olo; if ooff < 0.0 { ooff = 0.0 - ooff; }
+  if n > 0 && ohi - olo < 0.000001 && ooff > 0.000001 {
+    runs.items += [WallRun { wr_x0: run.wr_x0 + nx * olo, wr_z0: run.wr_z0 + nz * olo,
+                             wr_x1: run.wr_x1 + nx * olo, wr_z1: run.wr_z1 + nz * olo,
+                             wr_mat: run.wr_mat, wr_step: run.wr_step,
+                             wr_base: run.wr_base, wr_up: run.wr_up }];
+    return;
+  }
+  runs.items += [run];
 }
 
 // ── A ROAD IS A CENTRELINE, AND ITS FENCE IS ITS OWN BOUNDARY ───────────────

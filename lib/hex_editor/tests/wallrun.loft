@@ -125,3 +125,95 @@ fn test_a_run_of_no_length_writes_nothing() {
   assert(marked == 0, "a run of no length marks nothing, got {marked}");
   assert(w.w_tau == before, "and writes nothing: τ {before} -> {w.w_tau}");
 }
+
+// ── THE RUN GOES ONTO THE WALL WHEN THE WALL HAS A LINE — plan 22 `D1a.3` ───
+//
+// ⛔ **A WALL WAS DRAWN 0.75 WORLD UNITS OFF THE BOUNDARY IT IS STORED ON.** Measured in
+// `probe/d2/runline.loft` on `door.keys`'s own wall: the run said `z 0`, the store's
+// fourteen edge midpoints were **all** at `z -0.75`, and the emitted masonry ran
+// `-0.433 .. +0.433` — centred on the line, its near face stopping 0.317 short of the
+// boundary a walker collides with. A row of cell CENTRES has no lattice edge on it, so
+// `wall_stamp` marks the nearest boundary instead, half a row away.
+//
+// ⚠ **AND *JUST SHIFT THE RUN* IS REFUTED FOR MOST HEADINGS.** Over eight headings the
+// perpendicular offsets spread by up to **1.55** — the wall zigzags about its line and
+// there is no line the edges lie on. So the rule is narrow: when every stamped edge
+// shares one offset, the wall HAS a line and the run must be it.
+
+// Every stamped edge midpoint's perpendicular offset from `run`, as a spread.
+fn offsets(w: VoxelWorld, run: hex_editor::WallRun, mat: integer, ref: float,
+           lo: &float, hi: &float) -> integer {
+  n = 0;
+  lo = 1000000.0;
+  hi = 0.0 - 1000000.0;
+  dx = run.wr_x1 - run.wr_x0;
+  dz = run.wr_z1 - run.wr_z0;
+  dl = sqrt(dx * dx + dz * dz) ?? 0.0;
+  nx = 0.0 - (dz / dl ?? 0.0);
+  nz = dx / dl ?? 0.0;
+  for q in 0 - 12..13 {
+    for r in 0 - 12..13 {
+      for d in 0..6 {
+        (oq, orr, _s) = hex_editor::edge_owner(q, r, d);
+        if oq == q && orr == r && hex_editor::wall_of(w, q, r, d, ref) == mat {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (ax, az) = hex_grid::hex_to_px(q, r);
+          (bx, bz) = hex_grid::hex_to_px(nq, nr);
+          off = nx * ((ax + bx) * 0.5 - run.wr_x0) + nz * ((az + bz) * 0.5 - run.wr_z0);
+          if off < lo { lo = off; }
+          if off > hi { hi = off; }
+          n = n + 1;
+        }
+      }
+    }
+  }
+  n
+}
+
+// Two presses of `run`, at the two ends of a line through the origin at `ang`.
+fn walked(ang: float, s: hex_editor::EditSession) -> VoxelWorld {
+  ww = world_new(0.25, hex_editor::W_RESERVE,
+                 hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(ww, 0 - 20, 0 - 20, 41, 41, 40, hex_editor::SURFACE_MAT);
+  hx = cos(ang) * 6.0;
+  hz = sin(ang) * 6.0;
+  hex_editor::press_verb(s, ww, hex_editor::author_at(0.0 - hx, 0.0 - hz, 0.0, 10.0), "run");
+  hex_editor::press_verb(s, ww, hex_editor::author_at(hx, hz, 0.0, 10.0), "run");
+  ww
+}
+
+fn test_a_straight_wall_is_registered_on_the_line_its_edges_are_on() {
+  s = hex_editor::EditSession {};
+  w = walked(0.0, s);
+  assert(len(s.es_runs.items) == 1, "the fixture laid {len(s.es_runs.items)} runs");
+  run = s.es_runs.items[0] ?? hex_editor::WallRun {};
+  lo = 0.0;
+  hi = 0.0;
+  n = offsets(w, run, hex_editor::WALL_MAT, 10.0, lo, hi);
+  assert(n > 8, "the fixture stamped {n} edges, too few to be a wall");
+  // ⚠ THE FIXTURE'S OWN PRECONDITION: this heading has to be one of the straight ones,
+  // or the row below would be asserting something about a zigzag.
+  assert(hi - lo < 0.000001,
+         "heading 0 is not a straight wall here: offsets spread {hi - lo}");
+  d = lo; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001,
+         "the run is {d} off the wall it stamped — it used to be 0.75, and the picture "
+       + "is drawn from this line");
+}
+
+// ⚠ **THE CONTROL, AND THE ROW ABOVE IS WORTH NOTHING WITHOUT IT.** A zigzag heading
+// has no line its edges lie on, so its run must be left exactly where the author walked
+// — a correction that moved it would be a best fit presented as a fact.
+fn test_and_a_zigzag_heading_is_left_where_the_author_walked() {
+  s = hex_editor::EditSession {};
+  w = walked(PI / 8.0 ?? 0.0, s);
+  run = s.es_runs.items[0] ?? hex_editor::WallRun {};
+  lo = 0.0;
+  hi = 0.0;
+  offsets(w, run, hex_editor::WALL_MAT, 10.0, lo, hi);
+  assert(hi - lo > 0.5,
+         "this heading was meant to zigzag and its offsets spread only {hi - lo} — "
+       + "the control cannot see a wrongly-moved run");
+  assert(lo < 0.0 && hi > 0.0,
+         "the wall no longer straddles its run: offsets {lo} .. {hi}");
+}

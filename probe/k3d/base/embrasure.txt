@@ -1,7 +1,7 @@
 rc: 0
-world: 24727:780399495
-md5: afec02d87efe6cd2aee36c38d45475ce
-tau: 113
+world: 24727:1483279562
+md5: e2c9b47068465aab5509bd0003e06c72
+tau: 112
 chunks: 3
 code: 0
 session: runs 1 roofs 0 leaves 0 openings 3 annex 0 props 0 slabs 0 holes 0 trunk false/0
@@ -24,7 +24,7 @@ chosen: opening 21
   opening: 1
   placed 2,9
   placed 2,-9
-  opening kind 1 at -4,0 half 0.65 band 0..9 spring 7 depth 0..1
-  opening kind 1 at 2,0 half 0.65 band 2..11 spring 9 depth 0..0.55
-  opening kind 1 at 2,0 half 0.44999999999999996 band 4..10 spring 9 depth 0.55..1
+  opening kind 1 at -4,-0.75 half 0.65 band 0..9 spring 7 depth 0..1
+  opening kind 1 at 2,-0.75 half 0.65 band 2..11 spring 9 depth 0..0.55
+  opening kind 1 at 2,-0.75 half 0.44999999999999996 band 4..10 spring 9 depth 0.55..1
 --- what the runner refused
