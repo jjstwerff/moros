@@ -465,6 +465,18 @@ fn ring_world() -> VoxelWorld {
   rw
 }
 
+// ⚠ A SESSION THAT KNOWS THE RING IT IS STANDING IN — plan 22 `D1a.2`. An opening's
+// edges are chosen by the opening's own SPAN now, and the span is centred on the
+// nearest run's centreline: a session with no run leaves the centre where the author
+// is standing, which is a cell centre and not on any wall. `ring_world` discards the
+// registry `fence_disc` fills because these rows want the world alone; this is the
+// other half, and every row that cuts an opening needs it.
+fn ring_session(w: VoxelWorld) -> EditSession {
+  rs = EditSession {};
+  ring_runs(0, 0, 2, WALL_MAT, rs.es_runs);
+  rs
+}
+
 fn on_the_wall(w: VoxelWorld) -> Author {
   (owx, owz) = hex_to_px(2, 0);
   author_on(w, owx, owz, 0.0)
@@ -516,7 +528,7 @@ fn with_a_niche(s: EditSession, w: VoxelWorld) {
 fn test_the_opening_verb_is_a_gesture_for_every_kind_it_can_be_given() {
   for kind in [1, 2, 3, 4, 11, 21] {
     w = ring_world();
-    s = EditSession {};
+    s = ring_session(w);
     if kind >= 20 { with_a_niche(s, w); }
     ack = cut(s, w, kind);
     assert(ack.ak_why != PR_NONE, "kind {kind} is not a gesture at all");
@@ -533,7 +545,7 @@ fn test_the_opening_verb_is_a_gesture_for_every_kind_it_can_be_given() {
 // from one keystroke while leaving an identical world. A divergence under a green
 // equality test is the exact shape `W4` exists to prevent.
 fn test_cutting_an_opening_does_not_move_the_selection() {
-  s = EditSession {};
+  s = ring_session(ring_world());
   before = s.es_open_kind;
   assert(session_select_open(s, OP_SEGMENT).ak_ok, "the fixture could not choose");
   for _i in 0..5 {
@@ -559,7 +571,7 @@ fn test_cutting_an_opening_does_not_move_the_selection() {
 // in the second, which is exactly how it survived.
 fn test_an_embrasure_with_no_niche_is_refused_in_words() {
   w = ring_world();
-  s = EditSession {};
+  s = ring_session(w);
   ack = cut(s, w, 20 + OP_ROUND);
   assert(!ack.ak_ok, "an embrasure was cut with no niche to cut it into");
   assert(ack.ak_why != "", "and it said why, rather than refusing in silence");

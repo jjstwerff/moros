@@ -358,13 +358,27 @@ pub fn session_opening(s: EditSession, w: VoxelWorld, a: Author, up: integer) ->
 // `select` and `opening` — and then this entry point is the only one left.
 pub fn session_open_kind(s: EditSession, w: VoxelWorld, a: Author, kind: integer,
                          up: integer) -> OpeningMade {
-  so_ack = open_ahead(w, a, DOOR_MAT, 1);
+  // ⛔ **THE SHAPE IS DECIDED FIRST, AND THE ORDER IS THE FIX — plan 22 `D1a.2`.** This
+  // was `open_ahead(w, a, DOOR_MAT, 1)` and then `opening_make`: the store was marked
+  // before anything knew how WIDE the opening would be, so it could only ever mark a
+  // fixed number of edges — one — and a doorway 1.3 world units across landed on a
+  // single 0.87 wu edge. Measured in [`probe/d2`](../../../probe/d2/README.md): the
+  // walker met the edge still marked a wall and stopped **outside the house**, so the
+  // `inside` editing mode was unreachable by walking in every driver.
+  //
+  // ⚠ `opening_make` WRITES NOTHING — it reads the runs and the standing openings and
+  // returns a shape — so putting it first costs no atomicity. What still holds is the
+  // clause the previous order was written for: the store is marked before the session
+  // records anything, so a refusal at either half leaves nothing behind.
+  so_made = opening_make(s.es_runs, s.es_open, a.au_x, a.au_z, kind, up, w.w_unit);
+  if !so_made.om_ok { return so_made; }
+  so_ack = open_span(w, a, DOOR_MAT, so_made.om_open.op_x, so_made.om_open.op_z,
+                     so_made.om_open.op_half);
   if !so_ack.ak_ok {
     return OpeningMade { om_ok: false, om_why: so_ack.ak_why, om_open: opening_none(),
                          om_kind: kind };
   }
-  so_made = opening_make(s.es_runs, s.es_open, a.au_x, a.au_z, kind, up, w.w_unit);
-  if so_made.om_ok { s.es_open.items += [so_made.om_open]; }
+  s.es_open.items += [so_made.om_open];
   so_made
 }
 

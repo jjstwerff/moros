@@ -162,6 +162,49 @@ accident of an empty registry. It is a condition now: **a live trunk within reac
 ⚠ What that costs is stated rather than left quiet — an author near both a ring and a house wall
 gets the ring, where before they got whichever the broken comparison happened to prefer.
 
+## ✅ 5. `D1a.2` — the opening marks its span, and a person gets through
+
+`session_open_kind` decides the SHAPE first (`opening_make` writes nothing) and then marks every
+wall edge whose midpoint is within `op_half` of the opening's centre — the same distance
+`opening_cuts` uses, so an edge is never passable where nothing is drawn.
+
+    after the cut  (0,-2)   4:DOOR 5:DOOR        (was 4:DOOR 5:WALL)
+    the walk       -8 -> 6  reaches 5.24         (was -2.26; control with no house 6.0)
+
+### ⛔ And the corpus refused seven records, because a `verb run` wall's centreline is not on it
+
+Span-only marking made `door`, `niche`, `embrasure`, `opening`, `profiles`, `house` and `annex`
+answer *no wall here to open*. Measured:
+
+    run registered   (-6,0) -> (6,0)        through the author's CELL CENTRES
+    stamped edges    midpoints at z = -0.75  the nearest lattice edges to that line
+    opening centre   (0,0)                   the run's projection
+    nearest edge     0.866 away              against a half of 0.65
+
+**`z = 0` is a row of cell centres and no lattice edge lies on it**, so `wall_stamp` marks the
+edges half a row off the line it was given. `place_house` does not have this — `footprint_walls`
+gives mitred corners on the wall's own boundary — which is exactly why the house case was fixed
+and these five were not.
+
+⚠ **`opening.loft` already records the mirror of this**: *"a cell centre can sit half a hex off
+the run — 0.75 m — and a hole 1.1 m wide centred there misses the wall entirely"*, which is why
+`run_point_near` exists. The same 0.75 in the other direction had nobody looking at it.
+
+> **So the marking has a FLOOR: every edge the opening covers, and never fewer than one.** That
+> makes the change a strict superset of `open_ahead(…, 1)` — `probe/k3d` is **31 scripts unmoved**
+> — and it names the remaining gap instead of hiding it.
+
+⏭ **`D1a.3`**: reconcile `session_wall`'s centreline with the wall it stamps. Bigger than it
+looks — `emit_run_wall` draws from that same line, so a run that moves moves the picture.
+
+### ⛔ And an embrasure is *already open*, which is not *no wall here*
+
+`20 + kind` is cut into the BACK of a standing niche, so every edge inside its span was already
+turned into an opening by its host and there is nothing left to mark. `open_ahead` never met this:
+it took the first `WALL`/`FENCE` edge in direction order and a one-edge niche always left a
+neighbour standing. `span_mark` counts *already an opening* separately — a boundary that is
+passable is not a boundary that is absent.
+
 ### ⏭ What follows for `D2`
 
 **The `inside` mode is unreachable by walking, in every driver.** So `D2` cannot bind the

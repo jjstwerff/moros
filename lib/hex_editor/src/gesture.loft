@@ -2316,6 +2316,128 @@ pub fn prop_at(w: VoxelWorld, q: integer, r: integer, item: integer) -> Dressed 
                    dr_count: len(pa_cells), dr_fit: pa_fit };
 }
 
+// ── AN OPENING MARKS THE EDGES ITS OWN WIDTH COVERS — plan 22 `D1a.2` ───────
+//
+// ⛔ **`open_ahead(…, 1)` DREW A DOORWAY A PERSON COULD NOT WALK THROUGH**, and
+// [`probe/d2`](../../../probe/d2/README.md) is the measurement. The boundary a walker
+// crosses is more than one hex edge wide: the cell in front of a house's near wall
+// carries `4:WALL 5:WALL`, the cut made it `4:DOOR 5:WALL`, and the walker met the one
+// still marked a wall — **z −2.26 with the editor's own cut, 5.24 with the cell's other
+// edge cut too, 6.0 with no house at all.**
+//
+// ⚠ **THE CAUSE IS THE INDEX/TRUTH SPLIT THIS FILE NAMES AT `Opening`** — *the edges
+// are the index, the opening is the truth*. The renderer honours the `Opening`
+// (`op_half 0.65`, so 1.3 world units of doorway); the walk honours only
+// `wall_stops_walk(<edge material>)`, and a hex edge is about 0.87 wu.
+//
+// ⚠ **AND THE RULE IS READ OFF THE GEOMETRY RATHER THAN CHOSEN.** Plotted: the walker
+// crosses **0.010** from the opening's centre and the two edge midpoints sit at
+// **0.433** — both inside a half of 0.65 — while the next midpoints along the same wall
+// are **1.30**, outside it. So the span discriminates: *mark every edge of the cell*
+// would pass a walk test and say nothing, which is why the tests assert the COUNT.
+//
+// ⚠ **THE SAME DISTANCE `opening_cuts` USES, DELIBERATELY.** The renderer's own
+// inside-test is `d2 > op_half * op_half`; an edge marked by a different rule would be
+// passable where nothing is drawn, or drawn where nothing is passable. One rule.
+//
+// ⚠ **ONE RING OF NEIGHBOURS, AND THAT IS A BOUND RATHER THAN A GUESS.** Edge midpoints
+// along a wall are a cell apart, so the found cell plus its six neighbours covers any
+// half-width up to about one and a half cells. The count is answered, so a caller can
+// see it did not get what it asked for.
+//
+// ⚠ **AND IT SELF-DEDUPES THROUGH THE STORE.** An edge is shared by two cells and
+// `wall_set` resolves the owner, so the same edge is reached twice; it is counted only
+// where it was still `WALL`/`FENCE`, which the first write clears.
+pub fn open_span(w: VoxelWorld, a: Author, kind: integer,
+                 cx: float, cz: float, half: float) -> Ack {
+  if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
+  (sq, sr) = px_to_hex(a.au_x, a.au_z);
+  ref = (ground_h(w, sq, sr) as float) * w.w_unit;
+  found = 0;
+  // ⛔ **AND *ALREADY OPEN* IS NOT *NO WALL HERE* — an EMBRASURE is what says so.**
+  // `20 + kind` is cut into the BACK of a standing niche, so every edge inside its
+  // span was turned into an opening by the niche that hosts it and there is nothing
+  // left to mark. `open_ahead` never met this: it took the first `WALL`/`FENCE` edge
+  // in direction order, and a one-edge niche always left a neighbour standing. Marking
+  // the whole span uses them all up, and counting only fresh marks turned the family's
+  // own composition into *stand against one*.
+  already = 0;
+  // The same two-step search `open_ahead` does: a walker stands BESIDE a wall rather
+  // than in it, so if the author's own cell carries none, try the one they face.
+  for step in 0..2 {
+    found = span_mark(w, sq, sr, kind, cx, cz, half, ref, already);
+    if found > 0 || already > 0 { break; }
+    (aq, ar) = px_to_hex(a.au_x + cos(a.au_yaw) * 1.0, a.au_z + sin(a.au_yaw) * 1.0);
+    sq = aq;
+    sr = ar;
+  }
+  // ⛔ **AND NEVER FEWER THAN ONE — A `verb run` WALL IS WHY, AND ITS CENTRELINE IS
+  // NOT ON ITS OWN WALL.** Measured: `session_wall` from `(-6,0)` to `(6,0)` registers
+  // the run through the author's CELL CENTRES, and `wall_stamp` then marks the lattice
+  // edges nearest that line — which sit at **z = -0.75**, because `z = 0` is a row of
+  // centres and no lattice edge lies on it. So the opening's centre (the run's
+  // projection, `(0,0)`) is **0.866** from the nearest edge against a half of 0.65, and
+  // a span-only rule refused every opening in `door`, `niche`, `embrasure`, `opening`
+  // and `profiles` — the corpus said so, seven records at once.
+  //
+  // ⚠ **`place_house`'s RUNS DO NOT HAVE THIS**: `footprint_walls` gives mitred corners
+  // on the wall's own boundary, so its line and its edges coincide — which is why the
+  // house case is fixed and these five were not. ⏭ Reconciling `session_wall`'s
+  // centreline with the wall it stamps is a step of its own, and it is bigger than it
+  // looks: `emit_run_wall` draws from that same line.
+  //
+  // Until then the floor keeps this change a strict SUPERSET of what `open_ahead` did —
+  // *every edge the opening covers, and never fewer than one* — so no scene that worked
+  // can stop working.
+  if found == 0 && already == 0 {
+    return open_ahead(w, a, kind, 1);
+  }
+  ack_at(ack_ok(found), sq, sr)
+}
+
+// Every wall edge of this cell and its six neighbours whose MIDPOINT is within `half`
+// of `(cx, cz)`, marked. Answers how many were — and, separately, how many were an
+// opening ALREADY, which is a boundary that is passable rather than a boundary that
+// is absent.
+fn span_mark(w: VoxelWorld, cq: integer, cr: integer, kind: integer,
+             cx: float, cz: float, half: float, ref: float, open_now: &integer) -> integer {
+  n = 0;
+  open_now = 0;
+  for ring in 0..7 {
+    q = cq;
+    r = cr;
+    if ring > 0 {
+      (nbq, nbr) = hex_neighbor(cq, cr, ring - 1);
+      q = nbq;
+      r = nbr;
+    }
+    for d in 0..6 {
+      m = wall_of(w, q, r, d, ref);
+      if m != 0 {
+        (nq, nr) = hex_neighbor(q, r, d);
+        (ax, az) = hex_to_px(q, r);
+        (bx, bz) = hex_to_px(nq, nr);
+        mx = (ax + bx) * 0.5 - cx;
+        mz = (az + bz) * 0.5 - cz;
+        // ⚠ THE PARENTHESES ARE LOAD-BEARING: `??` binds looser than `<=`, so
+        // `sqrt(…) ?? 0.0 <= half` discharges the null with the COMPARISON's result
+        // and loft refuses it — *a `boolean` default is not assignable to `float`*.
+        if (sqrt(mx * mx + mz * mz) ?? 0.0) <= half {
+          if m == WALL_MAT || m == FENCE_MAT {
+            wall_set(w, q, r, d, kind, ground_h(w, q, r), ref);
+            n = n + 1;
+          } else {
+            // Already an opening — the boundary is here and it is passable. That is
+            // the embrasure's case, and it is not the same fact as *no wall*.
+            open_now = open_now + 1;
+          }
+        }
+      }
+    }
+  }
+  n
+}
+
 pub fn open_ahead(w: VoxelWorld, a: Author, kind: integer, nedges: integer) -> Ack {
   if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   nfit = fit_ordinal(nedges, 1, 6, "opening width");
