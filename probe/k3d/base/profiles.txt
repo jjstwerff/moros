@@ -1,0 +1,33 @@
+rc: 0
+world: 24727:3271781274
+md5: c4338d5510eff81ebf75021f91ea9e2b
+tau: 124
+chunks: 3
+code: 0
+session: runs 1 roofs 0 leaves 0 openings 4 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 4
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  placed -12,0
+  road started at -12,0
+  placed 12,0
+  wall laid 56 edges, heading 0 of 24 (snapped, residual 0°), length 24
+  placed -7,-0.9
+  opening 1 selected
+  opening: 1
+  placed -2,-0.9
+  opening 2 selected
+  opening: 1
+  placed 3,-0.9
+  opening 3 selected
+  opening: 1
+  placed 8,-0.9
+  opening 4 selected
+  opening: 1
+  placed 0,-14
+  opening kind 1 at -7,0 half 0.65 band 0..9 spring 7 depth 0..1
+  opening kind 2 at -2,0 half 0.65 band 0..11 spring 7 depth 0..1
+  opening kind 3 at 3,0 half 0.65 band 0..8 spring 7 depth 0..1
+  opening kind 4 at 8,0 half 0.65 band 6..11 spring 6 depth 0..1
+--- what the runner refused

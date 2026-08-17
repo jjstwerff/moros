@@ -1,0 +1,63 @@
+rc: 101
+world: 16502:2838332778
+md5: 98f2b9ba6812ad33767c40a81b1017b0
+tau: 1275
+chunks: 2
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,-30
+  send 10: is not something this runner can do — `10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing. Run this script through a server, or take the line out.
+  placed 4,-30
+  placed 8,-30
+  placed 12,-30
+  placed 16,-30
+  placed 20,-30
+  send 10: is not something this runner can do — `10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing. Run this script through a server, or take the line out.
+  stepped 20
+  placed 10,-22
+  stepped 30
+  placed 0,0
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  raise: 1
+  stepped 20
+  placed 0,7
+  send 10: is not something this runner can do — `10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing. Run this script through a server, or take the line out.
+  placed 4,7
+  placed 8,7
+  placed 12,7
+  placed 16,7
+  placed 20,7
+  placed 24,7
+  placed 28,7
+  placed 32,7
+  send 10: is not something this runner can do — `10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing. Run this script through a server, or take the line out.
+  stepped 20
+  placed 30,9
+  stepped 10
+  placed 22,12
+  stepped 25
+  placed 26,11
+  stepped 25
+  placed 20,9
+  stepped 10
+  placed 18,6
+  stepped 25
+--- what the runner refused
+editor_run: send 10:1
+editor_run: send 10:0
+editor_run: send 10:1
+editor_run: send 10:0

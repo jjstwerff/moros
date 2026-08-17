@@ -1,0 +1,32 @@
+rc: 0
+world: 24727:4013804812
+md5: 23d3f79779eb8177a6353e169d07f9ab
+tau: 191
+chunks: 3
+code: 0
+session: runs 1 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  stepped 20
+  placed 3.46,0
+  raise: 1
+  stepped 20
+  placed 0,0
+  stair +1 at 1,0 height 4 from 0
+  stepped 10
+  placed 1.73,0
+  stair +1 at 2,0 height 8 from 4
+  stepped 10
+  placed 0,0
+  keys 1
+  stepped 90
+  keys 0
+  stepped 5
+  placed -3,-3
+  road started at -3,-3
+  placed 3,-3
+  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 6
+  stepped 40
+--- what the runner refused

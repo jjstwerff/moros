@@ -1,0 +1,30 @@
+rc: 0
+world: 24727:1975507777
+md5: 69386fae55593a1de5fed59b5558bd6d
+tau: 107
+chunks: 3
+code: 0
+session: runs 1 roofs 0 leaves 0 openings 2 annex 1 props 2 slabs 0 holes 0 trunk false/0
+chosen: opening 11
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  placed -6,4
+  road started at -6,4
+  placed 6,4
+  wall laid 28 edges, heading 0 of 24 (snapped, residual 0°), length 12
+  placed -2,2.5
+  opening 11 selected
+  opening: 1
+  seat 1 selected
+  a figure 8 units tall in the niche
+  placed -2,7.5
+  placed 3,2.6
+  annex 0 selected
+  an annex of kind 0 at 1,3 — 3 walls, a deck
+  seat 0 selected
+  a bed 1.9600000000000002 long in the box
+  placed 6.5,1
+  opening kind 1 at -2,4 half 0.65 band 2..11 spring 9 depth 0..0.55
+  opening kind 1 at 3,2.6 half 0.85 band 3..10 spring 7 depth 0..1
+--- what the runner refused

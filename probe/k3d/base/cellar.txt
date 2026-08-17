@@ -1,0 +1,55 @@
+rc: 0
+world: 32920:252869458
+md5: c96b2ce7a569fa2dd88577a71a507f48
+tau: 358
+chunks: 2
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  raise: 1
+  raise: 1
+  stepped 10
+  placed 17,0
+  stepped 20
+  level true at height 17 (quantised from 17.259818304894555, residual 0.25981830489455504)
+  keys 1
+  stepped 25
+  keys 0
+  placed 17,0
+  keys 1
+  stepped 25
+  keys 0
+  placed 17,0
+  keys 1
+  stepped 25
+  keys 0
+  placed 17,0
+  keys 1
+  stepped 25
+  keys 0
+  placed 17,0
+  level false — feet back on the ground at 4.25
+  stepped 30
+  feet 4.25 at 17,0
+  storey -1 on 19 cells, stair of 2
+  stepped 60
+  placed 22.5,0
+  stepped 20
+  feet 4.25 at 22.5,0
+  placed 20.8,0
+  stepped 20
+  feet 3.25 at 20.8,0
+  placed 19,0
+  stepped 20
+  feet 2.25 at 19,0
+  placed 17,0
+  stepped 20
+  feet 1.25 at 17,0
+  stepped 90
+  stepped 120
+  placed 12,0
+  stepped 60
+--- what the runner refused

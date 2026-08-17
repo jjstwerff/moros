@@ -1,0 +1,18 @@
+rc: 0
+world: 16502:374721773
+md5: a7da870fc0b92932dd190d41d54e94a2
+tau: 92
+chunks: 2
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 1 holes 1 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  placed 0,0
+  a slab 2 units thick at 0,6 — ceiling 10, floor above 12, clear 10
+  placed 0,6
+  a hole of kind 1 through the slab
+  placed 0,-4
+  placed 10,-2
+--- what the runner refused

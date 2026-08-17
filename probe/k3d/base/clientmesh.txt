@@ -1,0 +1,19 @@
+rc: 0
+world: 16502:4136466525
+md5: 3d1381a74509bf4caf7ba144041a140b
+tau: 274
+chunks: 2
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  stepped 20
+  stepped 20
+  stepped 20
+  raise: 1
+  stepped 20
+  raise: 1
+  stepped 20
+--- what the runner refused

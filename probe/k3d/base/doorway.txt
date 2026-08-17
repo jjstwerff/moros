@@ -1,0 +1,21 @@
+rc: 101
+world: 16502:374721773
+md5: a7da870fc0b92932dd190d41d54e94a2
+tau: 92
+chunks: 2
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  send 44: is not something this runner can do — `44:` PART swaps which store is edited, and this runner holds one world — so every gesture after it would land in the wrong one. Run this script through a server, or take the line out.
+  placed 0,0
+  raise: 1
+  send 44: is not something this runner can do — `44:` PART swaps which store is edited, and this runner holds one world — so every gesture after it would land in the wrong one. Run this script through a server, or take the line out.
+  placed -4.9,-1.3
+  placed -3,-4
+  placed 0,-5.5
+  send 44: is not something this runner can do — `44:` PART swaps which store is edited, and this runner holds one world — so every gesture after it would land in the wrong one. Run this script through a server, or take the line out.
+--- what the runner refused
+editor_run: send 44:
+editor_run: send 44:door/hung
+editor_run: send 44:
