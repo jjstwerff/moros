@@ -171,6 +171,17 @@ stays.
 | **the wire** — `mesh <surf>`, `meshy <surf> <y0> <y1>` | *was it EMITTED at all, and WHERE* | headless, no browser, off the `M:` frames |
 | **the walker** — `feet [lo hi]` | *can you GET there* — a stair is a sequence of these | headless, off the body's own matrix |
 | **a running tally** — `last <prefix>` | *where did it END UP* — the client's cache and ground verdicts arrive once per chunk and accumulate | free; it reads the status already collected |
+| **a committed record of the whole run** — [`probe/k3d`](../../probe/k3d/README.md) | *does this script still build what it built* — rc, the world's md5, τ, chunks, the session digest, the selection, every sentence a gesture printed, every line the runner refused | headless, 30 scripts in 17 s, in `make fast` |
+
+⚠ **THE LAST ROW ANSWERS A QUESTION NONE OF THE OTHERS DOES, AND FOURTEEN SCRIPTS HAD
+NOBODY ASKING IT.** Every channel above is written *into a script* by its author, so a
+script nothing runs has whatever channels it likes and reports nothing to anyone —
+measured over the corpus at plan 22 `K3d`: **fourteen of the thirty are run by no check**,
+and eight of those are *named* in a doc, a plan or a test comment, which reads exactly
+like coverage. ⛔ **And the obvious record — the saved world — is blind wherever a session
+registry carries the result**: `slab.keys` keys the world a bare `verb raise` keys, and a
+deleted `verb seat` leaves `annex.keys` and `furnish.keys` byte-identical. The record is a
+pair, plus the sentences.
 
 The first is a measurement that happens to be an image, and it is exact: a zigzag wall is
 visibly a zigzag in plan. The second is the acceptance test and cannot be automated away.

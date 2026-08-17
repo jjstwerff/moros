@@ -93,9 +93,15 @@ complaint **count, 2 → 3**, and which line the third names. ⛔ **And the fenc
 measured rather than argued**: putting it where the movement arrives costs `cellar.keys`
 **2 complaints → 10**. `make probe-k3e` is in `make fast`.
 
-**Next:** **`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done. One debt sits
-beside them, created by the step that found it: **`K3d`** — ten scripts no gate runs lost their
-only regression check (`K3b`).
+✅ **AND THE DEBT `K3b` CREATED IS PAID — `K3d`, 2026-08-17.** Every live script has a committed
+record of what it builds, `make probe-k3d` is in `make fast`, and the ten scripts that lost their
+only check have one that is not a second spelling. ⛔ **The debt's own list was stale in both
+directions** — what is RUN by nothing is **fourteen of thirty**, not ten. ⛔ **And the baseline it
+asked for would have been blind**: `slab.keys` keys the world a bare `verb raise` keys, so the
+record is a PAIR plus the gestures' own sentences. ⏭ It leaves one hole measured rather than
+promised: **`K3f`**, the five camera scripts no check in this tree names at all.
+
+**Next:** **`T1`**/**`D1`**, both unblocked now that `K2` and `V2` are done.
 
 ✅ **AND THE TWO INSTRUMENTS THAT WERE RED BEFORE ANY OF IT STARTED ARE GONE.** `probe/k1` checks
 `A`/`B` had failed since `S3` collapsed the opening keys — measured on HEAD, not caused by
@@ -194,7 +200,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`K3a`** — a word the runner does not understand FAILS the run | XS | **DONE 2026-08-15.** ⛔ **`K3` could not be a deletion until this existed.** `run_line` has answered `false` since it was written and `main` threw the answer away: an unknown word printed and the process exited **0**, so deleting the `key` branch would have made every stale `key H` a silent no-op in a run that still reported success. ⛔ **And the skip list was stale in a way nothing could see** — it named nine words, real scripts use nine more, and a missed word is reported in the same sentence a typo is: measured over the corpus, **25 of 55 scripts** printed `unknown command` and every one exited 0 · subject: a typo now exits **101** with the save and every diagnostic still describing the run · control: **41 of 41 live scripts unmoved**, `make headless-same` rc=0, `probe/k2b` 31 scripts PASS, `tools/layering.sh` rc=0 | ✅ Done |
 | ✅ **`K3b.1`** — `tools/script.mjs` fails a run on a line it could not send | XS | ⚠ the exit code, **not** the complaint — the check that existed was written against the wording | **DONE 2026-08-16.** ⛔ **`K3a` on the OTHER reader, and nobody had looked.** `!! no verb 'hoist'` and `!! unknown command 'hoist'` both printed and exited **0**, measured against a real server before the change and **101** after, with a clean script and a `key ArrowUp` still 0. ⛔ **It had to land before `K3b`, not with it** — the deletion turns every missed `key H` into a silent no-op otherwise. ⚠ **`probe/k1` `E` could not have seen it**: it grepped for the complaint, which a driver that exits 0 prints perfectly. Both halves assert rc now. ⚠ **What it deliberately does not count**: a gesture the SERVER refuses — `editor_run` sees that through an ack struct, this driver has only a status line that LAGS and TRUNCATES. Control: every first word and every `verb <name>` in the live corpus already resolves, so **0 of 41 scripts moved** | ✅ Done |
 | ✅ **`K3b`** — drop the key spelling from both readers | S | the test-name and script-vocabulary diff, **not** a green suite | **DONE 2026-08-16.** `key <K>` gone from `src/editor_run.loft` and `tools/script.mjs`; `KEYMAP`'s 22 rows gone with it, and this file's last opinion about a keyboard. ⛔ **THE PRICE WAS THREE PROBES, NOT TWO** — this row predicted `probe/k1` and `probe/k2`, and `probe/k2b` died too: it baselines on `git show 0e2d48a:<path>`, so its baseline side is in the deleted spelling and builds **nothing** (`runs 0` against the converted side's real world). Its own vacuity guard reported it — *the label map rewrote NOTHING over 31 script(s)* — which is what an instrument that can see its own emptiness is worth. ⛔ **AND A CLAIM WAS ABOUT TO GO OUT WITH THEM**: *a gesture does not move the standing selection* was held by `probe/k1` `D` and relied on as `probe/k2` check 5's premise, and **every test in `opening.loft` chose once and cut once** — so all 17 were satisfied by a gesture that CONSUMES its choice. Moved first, then seen red on a sabotage that resets the kind after each cut, **with the other 17 green**, which is what proved the gap real. ⚠ **Move before you remove.** ⏭ The genuine loss is named rather than absorbed: `K3d`. Retired the scripted half of four sabotage sweeps and kept every library row (`sabotage-x` 6 rows red on their own claims, control green, tree restored) · `probe/k1` **4 FAILED → green**, and it now asserts the deletion directly (*a stale `key H` is an unknown word and fails: rc=101*) | ✅ Done |
-| **`K3d`** — the ten un-gated scripts get a regression check that is not a second spelling | S | ⚠ it must go red on a press DELETED from a live script — the failure `probe/k2` caught and nothing does now | ⛔ **Created by `K3b`, and it is a real coverage cut rather than a tidy-up's leftovers.** `probe/k2`'s own reason for existing was that `annex` `door` `embrasure` `furnish` `house` `niche` `opening` `profiles` `determinism` `slab` are driven by **nobody automatically** — `make gate` runs `cache`, `indoors`, `cellar`, `clientmesh` and `deck`. `cellar.keys` and `deck.keys` keep their gates; the other ten now have no check that they still build what they built. ⏭ Wants a committed world-key + session-digest baseline per script, regenerable on purpose — **not** a diff against a second spelling, which is what just retired |
+| ✅ **`K3d`** — the un-gated scripts get a regression check that is not a second spelling | S | ⚠ it must go red on a press DELETED from a live script — the failure `probe/k2` caught and nothing does now | **DONE 2026-08-17.** `make probe-k3d`, **in `make fast`** (30 scripts, 17 s at `K3D_JOBS=6`): one record per script at `GROUND=0` — rc, the saved world's md5, the world key, τ, chunks, the session digest, the standing selection, every sentence a gesture printed and every line the runner refused — diffed against a committed baseline, `K3D_BLESS=1` to re-record with the diff shown first. ⛔ **THE DEBT'S OWN LIST WAS STALE IN BOTH DIRECTIONS**: three of its ten had gained checks since, five scripts it never named had not, and what is RUN by nothing is **fourteen of the thirty** — eight of which *are* named in a doc, a plan, the journal or a comment inside a loft test, so a grep for the name finds a paper trail and reads exactly like coverage. ⛔ **AND THE BASELINE THIS ROW ASKED FOR WOULD HAVE BEEN BLIND** — `slab.keys`, whose whole subject is a floor with a thickness, keys the world a bare `verb raise` keys, because a slab is a SESSION record like a prop; deleting `verb hole` from it leaves the saved bytes **identical** and moves only `holes 1 -> 0`. ⚠ **And the session digest is COUNTS, not geometry**, so the gestures' printed sentences are the third instrument and the only one that can see a wrong number in a right-looking sentence — `K3`'s `J`/`E`/`B` findings were three of those. ⛔ **Row D is `K3c`'s collision made permanent**: the groups are computed from the run and asserted, so *thirty scripts have a baseline* can never read as *thirty subjects are covered*. ⏭ The hole it cannot fill is now measured rather than promised — `K3f` · 8 sabotages red, 0 missed, plus a row that must stay **GREEN** and does |
+| **`K3f`** — the five camera scripts are checked by nothing, and no headless baseline can be their check | S | ⚠ it must go red on a camera MODE change — the edit `probe/k3d`'s `blindcam` row proves is invisible | ⛔ **FOUND BY `K3d`, and it is a measurement rather than a suspicion.** `ceiling`, `cutaway`, `eyes`, `floorprobe`, `indoors` and `lamp` raise ground, place a house and spend every remaining line on `send 40:` modes, `send 3:` looks, `snap` and `frame` — so all six leave the **same world and the same session, to the byte**. ⚠ **Only `indoors` has a check that can see a camera** (`camera_indoors.mjs`): `cutaway`, `eyes` and `floorprobe` are run by `probe/k3c` row B, which asserts **`rc = 0` and nothing else** because they are that row's control, and `ceiling` and `lamp` were run by nothing at all. `probe/k3d`'s `blindcam` row turns CUTAWAY into FOLLOW in `cutaway.keys` and requires the probe to stay green, which is what makes this row's existence a fact. ⏭ Wants a picture gate per script (a server, a browser, `frame` thresholds) — the shape `camera_indoors.mjs` already has, and `CUTAWAY`/`EYES`/the head-lamp each have their own claims in [CAMERA_INDOORS.md](../../doc/claude/CAMERA_INDOORS.md) |
 | ✅ **`K3c`** — `send` of an **authoring** id must not be silently dropped | S | ⚠ the ten scripts must go RED where they run headless — that is the deliverable, not a regression | **DONE 2026-08-16.** Default **deny**: `send_quiet` names the ids known to change nothing and everything else fails the run; `ground` — the one authoring message this runner can honestly perform — is performed on both spellings. ⛔ **The drop was visible as a COLLISION and nobody had looked**: six scripts keyed **`32952:3318286153` at τ 3813**, and `plane.keys`, whose whole subject is the floor it stands on, was byte-identical to a script that does nothing but raise a hill. ⛔ **This row's own claim about `44:` was too strong** — measured over the corpus, **no live script performs an authoring gesture inside part mode**, so the corruption is *latent* and the live loss is that five part scripts become one world. ⛔ **The class letter is a hint, not the rule**: `9` LOAD is filed **R** and replaces the store, `7` PLACE is filed **X** and moves the datum every gesture reads — a letter whitelist waves both through, which is why the list is ids. ⛔ **AND PERFORMING `ground` FOUND A LIBRARY DEFECT TWO LAYERS DOWN**: `world_file_size` never counted the `GRND` section, so `world_save` answered **`WS_IO` — the bytes did not reach the disk** over a file it had written perfectly · `make probe-k3c`, **in `make fast`** · 6 sabotages red on their own claims, control green · corpus diff exact: 8 scripts 0 → 101, `plane` moved, **30 of 38 unmoved** |
 | ✅ **`K3e`** — a line that MOVES THE AUTHOR must not be silently dropped either | S | ⚠ **the count, not the failure** — `deck.keys` has exited 101 since `K3c`, so *deck fails* was already true | **DONE 2026-08-16.** `hold`, `keys` and `turn` are remembered rather than skipped, and `verb` — the one word applied AT the author — refuses when a movement has not been cleared by an `at`. ⛔ **THE OBVIOUS ROW COULD NOT HAVE FAILED.** This row's own verify said *it must go red on `deck.keys`*, and `deck.keys` was already red: `K3c` refuses its `send 6:`. The assertion is the **complaint count, 2 → 3**, and which line the third names. ⛔ **AND THE FENCE POSITION IS PRICED RATHER THAN ARGUED.** The sweep's `atarrival` row builds the cheaper design — refuse the movement where it arrives — and it passes A, B and E: what it costs is `cellar.keys` **2 complaints → 10** and `fall`/`determinism` failing outright, because three of the four live walkers teleport afterwards. ⛔ **The line named is the FIRST since the last `at`, not the last** — a walk is a block (`keys 1`, `step 90`, `keys 0`) and naming the last points at what STOPPED a 90-unit walk; `lastnotfirst` keeps the exit code and destroys the diagnostic. ⛔ **My own probe's count was off by two and said so in its own words** — `editor_run: ` is the prefix of a complaint *and* of both summary lines, so the arithmetic form printed `printed 3 complaints, not 3`. ⛔ **And the sweep's `|` delimiter collided with the `||` in the line it was sabotaging** — caught by the row's own did-it-apply guard rather than scored as a miss · corpus diff exact: **35 of 36 scripts unmoved**, `deck` alone moved · `make probe-k3e`, **in `make fast`** (49 s) · 6 sabotages red, 0 missed, control green · `make parts` byte-identical · `make headless-same` rc=0 · `probe/k1` green |
 | ✅ **`M1`**+**`M2`** — the binding as DATA (`KeyMap`), and the verb bar that draws it | S | **DONE 2026-08-15.** `verb_of`'s chain kept as an independent body and the whole key universe driven through both. ⛔ **Three of the toolbar's six hotkey glyphs had been wrong on screen for months** — a literal is connected to nothing that can disagree with it. ⛔ **And three of this work's own instruments could not fail**, all three found by looking at the picture | ✅ Done |
@@ -255,6 +262,111 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `K3d` turned up (2026-08-17) — the debt's own list was stale, and the baseline it asked for was blind
+
+The deliverable is [`probe/k3d/`](../../probe/k3d/README.md): one record per live script at
+`GROUND=0`, diffed against a committed baseline, `K3D_BLESS=1` to re-record with the diff shown
+first. 30 scripts, 17 s in a pool of six, **in `make fast`**.
+
+### ⛔ The list of ten was stale in both directions, and eight of the fourteen look covered
+
+`K3b`'s row named `annex` `door` `embrasure` `furnish` `house` `niche` `opening` `profiles`
+`determinism` `slab`. Measured by grepping every check in the tree for each of the thirty script
+names: `house` (`probe/t3`, `probe/p6`, the Makefile), `determinism` (`walk-exact`, `probe/t3`)
+and `slab` had gained something since, and **five scripts nobody had listed** — `ceiling`, `face`,
+`fall`, `hut`, `lamp` — were in exactly the position the row described. What is RUN by nothing is
+**fourteen of thirty**.
+
+⚠ **And *named* is not *run*, which is the half that makes this hard to see.** Eight of the
+fourteen are named somewhere: in a doc, in this plan, in the journal, in another script's prose,
+or in a comment inside a loft test — `lib/hex_editor/tests/session.loft` opens its annex section
+with *"`annex.keys` — what an annex hangs on, and the two ways it has been wrong"*. Nothing
+executes any of them. **A grep for the name finds a paper trail and reads exactly like coverage.**
+
+### ⛔ The row asked for a world-key baseline, and this file had already predicted why it fails
+
+The `K3c` section above says it outright — *"a world-key baseline taken over the ten un-gated
+scripts a day earlier would have committed one identical world for four different scripts and read
+as coverage"*. Measured again at `K3d`, and one row is worse than a collision:
+
+| deleted from a live script | the saved world | the session digest |
+|---|---|---|
+| one `verb run` from `wall.keys` | `59abe82b…` → `712bceee…` | `runs 5` → `runs 4` |
+| `verb hole` from `slab.keys` | **`a7da870f…` — identical** | `holes 1` → `holes 0` |
+
+**`slab.keys`, whose entire subject is a floor with a thickness, keys the world a bare `verb
+raise` keys.** It is not broken — a slab is a **session record** like a prop or a seat, not a
+store write. So the record is a PAIR, and row C sabotages each half separately: one row proves the
+store half has teeth, and the other proves the session half does *with the world identical either
+way*.
+
+⚠ **AND HOW FAR THE BLINDNESS GOES WAS MEASURED RATHER THAN ASSUMED — TWO OF FOUR GUESSES WERE
+WRONG.** One gesture deleted from each of four more scripts, all with distinct worlds:
+
+| script | gesture deleted | the saved world | the session digest |
+|---|---|---|---|
+| `annex` | its last `verb seat` | **identical** | `props 2` → `props 1` |
+| `furnish` | its last `verb seat` | **identical** | `props 2` → `props 1` |
+| `niche` | its third `verb opening` | `8a5286ca…` → `c4d56adc…` | `openings 3` → `openings 2` |
+| `seat` | `verb place` | `ee319fa0…` → `f898e202…` | `runs 8` → `runs 4` |
+
+The world is blind exactly where a **session registry** carries the result — `slabs`, `holes`,
+`props` — and sees an opening or a house perfectly well, because those write cells. ⚠ `niche` and
+`seat` were expected to be blind and are not, and **`seat.keys` does not press `verb seat` at
+all**: its subject is a house being *seated* on a slope. A name is not a claim.
+
+### ⚠ The session digest is counts, so the sentences are a third instrument
+
+`slabs 1 holes 1` says nothing about the height the slab landed at, and `openings 2` nothing about
+a window's spring or depth. The gestures' own printed lines are the only place those numbers
+appear, and a **wrong number inside a correct-looking sentence** is not hypothetical here: `K3`'s
+`J`, `E` and `B` rows each found a handler passing a global height scale where the world's own unit
+belongs. `saysentence` is the sabotage for it — the slab's reported thickness becomes a literal,
+and it reds `slab` **alone**, with the world and the session unmoved.
+
+⚠ **Two things are deliberately NOT in the record.** The `--- ` echoes, because a script's own
+comment played back is the script's input and an instrument that reads its input can be surprised
+by nothing. And the script's **line count**, which `editor_run` prints beside τ: these scripts are
+documentation as much as fixtures, and a baseline that reds when somebody adds a comment gets
+blessed reflexively — a check that is blessed without being read is not a check.
+
+### ⛔ Row D is `K3c`'s collision made permanent, and it fires in both directions
+
+The groups are computed **from the run** and asserted against a committed list, so *thirty scripts
+have a baseline* can never be read as *thirty subjects are covered*. ⚠ **And the `noselect`
+sabotage reds D in the direction nobody designs for**: `door` and `opening` are a known identical
+pair, so changing one makes the pair **stop existing** — a report that only noticed new collisions
+would have let the group list rot into a description of a corpus that had moved on.
+
+### ⏭ The hole it cannot fill is measured rather than promised — `K3f`
+
+`ceiling`, `cutaway`, `eyes`, `floorprobe`, `indoors` and `lamp` are one house on flat ground and
+then nothing the store or the session can see. `blindcam` turns CUTAWAY into FOLLOW in
+`cutaway.keys` — the whole subject of that script — and requires this probe to stay **green**.
+That is why the coverage claim is a scored row and not a paragraph.
+
+### ⚠ Row 0 caught itself, and two of the sweep's own labels were wrong
+
+The subject-present guard was written with anchors and `grep -qF`, so six of its seven patterns
+read as *absent* — `-F` takes `^verb place$` literally — and the sweep **refused to run** over a
+tree where every anchor was present. It failed safe, which is the direction to fail in, and it is
+`CLAUDE.md`'s *a grep is an instrument whose default answer is absent* firing inside a guard
+written for that rule.
+
+⛔ **And the sweep's output is the record of what was checked, so a wrong label is a wrong
+record.** One row was written as *`B`: a baseline file removed* and does two different things: a
+**mutilated** baseline is a diff and reds **A**, while only a **missing** file reaches B's set
+comparison. They are `basedamaged` and `basegone` now. The probe had the same shape of fault in
+row C1's own message — the branch fires either when `wall.keys` loses its `verb run` line or when
+the fixture's `awk` stops matching, and it blamed only the script, which would have sent the next
+reader to the wrong file.
+
+⚠ **The concurrency hazard was designed out rather than locked out.** This probe is in `make fast`
+and its own sweep runs it nine times, on a box that carries other agents' work — so every run's
+worlds carry its pid. `probe/k2b` had two copies of itself sharing `worlds/k2b-a.hxw`, where a byte
+comparison could pass on a world the other process built; a lock directory would fix that and then
+outlive a killed run, which is how it becomes a file that refuses every future run.
 
 ## ✅ What `K3a` turned up (2026-08-15) — the driver could not tell a typo from a word it skips on purpose
 
@@ -389,6 +501,12 @@ sabotage that resets the kind after each cut — **with the other 17 green**, wh
 nobody automatically**. `cellar.keys` and `deck.keys` have real gates behind them; the other ten
 now have no check that they still build what they built. That is `K3d`, and it wants a
 committed world-key baseline rather than a second spelling — the thing that just retired.
+
+⛔ **BUILT, AND BOTH HALVES OF THAT SENTENCE WERE WRONG.** The list of ten was stale in *both*
+directions — `house`, `determinism` and `slab` had picked up checks since it was written, and
+five scripts nobody had listed were in the same position, so what is RUN by nothing is
+**fourteen of the thirty**. And a world-key baseline is exactly what `K3d` must not be: see the
+row below, and § *`K3d` turned up* at the end of this file.
 
 ⚠ **What did NOT retire, and is stronger than what it replaced**: *a half-done conversion* was
 four sabotage rows across four sweeps, each catching one script that still pressed a key. A

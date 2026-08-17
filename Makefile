@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -418,6 +418,7 @@ fast:
 	@$(MAKE) -s probe-k3c
 	@$(MAKE) -s probe-t3
 	@$(MAKE) -s probe-t4
+	@$(MAKE) -s probe-k3d
 	@echo "fast: ⚠ NOT run here — the browser. Nothing above builds or drives the"
 	@echo "      --html page; \`make page-check\` is the tier that does. A green fast"
 	@echo "      loop cleared a toolchain swap on 2026-08-16 while the browser editor"
@@ -662,6 +663,25 @@ probe-t3:
 
 probe-t4:
 	@sh probe/t4/run.sh
+
+# K3D (plan 22) — WHAT DOES EVERY LIVE SCRIPT BUILD, and would anything say if it
+# stopped? `K3b` deleted the `key <K>` spelling and took `probe/k2` with it — and
+# `probe/k2` existed because ten of these scripts are driven by NOBODY automatically.
+# Measured: fourteen of the thirty are named by no check in this tree at all.
+#
+# One record per script at `GROUND=0` — rc, the saved world's md5, τ, chunks, the
+# session digest, the standing selection, every sentence a gesture printed, every line
+# the runner refused — diffed against a committed baseline.
+#
+# ⛔ THE WORLD ALONE WOULD HAVE BEEN BLIND: `slab.keys`, whose subject is a floor with
+# a thickness, keys the world a bare `verb raise` keys, because a slab is a SESSION
+# record like a prop. Deleting `verb hole` from it leaves the saved bytes identical.
+# ⚠ IN `make fast`, pooled: 30 runs in 17 s at `K3D_JOBS=6`.
+#
+#   K3D_BLESS=1 sh probe/k3d/run.sh   re-record on purpose, diff shown first
+#   sh probe/k3d/sabotage.sh          seven sabotages, a declared blind spot, a control
+probe-k3d:
+	@sh probe/k3d/run.sh
 
 gate:
 	@GATE_JOBS=$(GATE_JOBS) sh tools/run-gates.sh \

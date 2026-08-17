@@ -59,10 +59,14 @@
 # `ceiling`, `cutaway`, `eyes`, `floorprobe`, `indoors` and `lamp` raise ground, place a
 # house, and spend every remaining line on `send 40:` modes, `send 3:` looks, `snap` and
 # `frame` — so all six leave the SAME world and the SAME session, to the byte. Row A
-# still separates them, but only by the stations the author stood at. Their subject
-# needs a server and a browser: `indoors` has `tools/gates/world/camera_indoors.mjs`
-# and the other five have nothing. **That is a live coverage hole this probe does not
-# fill and must not appear to** — it is row D's first group for exactly that reason.
+# still separates them, but only by the stations the author stood at. Their subject needs
+# a server and a browser, and exactly ONE of them has a check that can see it:
+#   `indoors`                        `camera_indoors.mjs` — the pictures themselves
+#   `cutaway` `eyes` `floorprobe`    `probe/k3c` row B, which asserts `rc = 0` and
+#                                    NOTHING else: they are that row's control
+#   `ceiling` `lamp`                 nothing at all
+# **That is a live coverage hole this probe does not fill and must not appear to** — it
+# is row D's first group for exactly that reason, and plan 22 `K3f`.
 #
 # ⚠ It runs no server and opens no socket, so it says nothing about what the SERVER
 # builds from the same script. `probe/t4` is where that comparison lives, for the two
@@ -81,10 +85,19 @@ BASE=probe/k3d/base
 CORPUS=tools/scripts
 
 rm -rf "$OUT" && mkdir -p "$OUT" "$BASE"
-# ⚠ A STALE WORLD MUST NEVER BE READ. `probe/k2b` had two copies of itself sharing
-# `worlds/k2b-a.hxw`, so a byte comparison could have passed on a world the other
-# process built. Every run here owns its own name and clears them first.
-rm -f worlds/k3d-*.hxw
+# ⚠ **A STALE WORLD MUST NEVER BE READ, AND A CONCURRENT RUN IS THE WAY THAT HAPPENS.**
+# `probe/k2b` had two copies of itself sharing `worlds/k2b-a.hxw`, so a byte comparison
+# could have passed on a world the OTHER process built — and this probe is in `make fast`
+# while its own sweep runs it nine times, on a box that carries other agents' work.
+#
+# ⚠ **THE PID IN THE NAME RATHER THAN A LOCK, DELIBERATELY.** A lock directory is the
+# atomic test-and-set a shell has, and it also outlives a run that was killed — which is
+# how it becomes a file that refuses every future run with *another run holds this*
+# (`.gitignore` says so, from `probe/k2b`). Distinct names need no release.
+TAG=k3d-$$
+rm -f "worlds/$TAG-"*.hxw
+# …and a killed run's worlds are swept by age, which cannot touch a live one.
+find worlds -maxdepth 1 -name 'k3d-*.hxw' -mmin +60 -delete 2>/dev/null
 fails=0
 
 say()  { printf '%s\n' "$*"; }
@@ -98,7 +111,7 @@ JOBS=${K3D_JOBS:-6}
 started=0
 
 launch() {       # launch <script-path> <tag>
-  ( GROUND=0 SCRIPT="$1" WORLD="k3d-$2" $LOFT --lib lib/ src/editor_run.loft \
+  ( GROUND=0 SCRIPT="$1" WORLD="$TAG-$2" $LOFT --lib lib/ src/editor_run.loft \
       > "$OUT/$2.log" 2>"$OUT/$2.err"
     echo $? > "$OUT/$2.rc" ) &
   started=$((started + 1))
@@ -122,7 +135,7 @@ record() {       # record <tag> — a normalised, diffable record of one run
   sum=$(grep -m1 ' chunks, ' "$log")
   echo "rc: $(cat "$OUT/$t.rc")"
   echo "world: $(sed -n 's/^editor_run: world //p' "$log" | tail -1)"
-  echo "md5: $(md5sum < "worlds/k3d-$t.hxw" 2>/dev/null | cut -d' ' -f1)"
+  echo "md5: $(md5sum < "worlds/$TAG-$t.hxw" 2>/dev/null | cut -d' ' -f1)"
   echo "tau: $(printf '%s' "$sum" | sed -n 's/.*τ \([0-9-]*\).*/\1/p')"
   echo "chunks: $(printf '%s' "$sum" | sed -n 's/.*, \([0-9]*\) chunks.*/\1/p')"
   echo "code: $(printf '%s' "$sum" | sed -n 's/.*(code \([0-9-]*\)).*/\1/p')"
@@ -181,7 +194,7 @@ if [ "${K3D_BLESS:-}" = "1" ]; then
   done
   say ""
   say "blessed: $moved baseline(s) written, $(ls "$BASE"/*.txt 2>/dev/null | wc -l) in all"
-  rm -f worlds/k3d-*.hxw
+  rm -f "worlds/$TAG-"*.hxw
   exit 0
 fi
 
@@ -225,8 +238,12 @@ say "C  the pair has TEETH — a press deleted from a live script goes red"
 # session digest nothing had asked a question of — and `slab`'s is the half the world
 # is blind to.
 if cmp -s "$OUT/sab-wall.keys" "$CORPUS/wall.keys"; then
-  bad "the wall fixture deletes nothing — \`wall.keys\` has no bare \`verb run\` line any \
-more, so C1 is asking about a script that no longer exists"
+  # ⚠ TWO CAUSES, AND THE MESSAGE MUST NAME BOTH. Measured in the sweep: `deadctl`
+  # sabotages the `awk` above and this branch fires, so a message blaming only the
+  # script would send the next reader to the wrong file.
+  bad "C1 the store-half fixture deletes nothing — either \`wall.keys\` no longer has a \
+bare \`verb run\` line, or the \`awk\` that removes one has stopped matching. Either way \
+C1 is comparing a file with itself"
 elif ! [ -f "$BASE/wall.txt" ]; then
   bad "no wall baseline to compare against"
 else
@@ -304,7 +321,7 @@ else
   sed '1,2d; s/^/       /' "$OUT/groups.diff"
 fi
 
-rm -f worlds/k3d-*.hxw
+rm -f "worlds/$TAG-"*.hxw
 say ""
 if [ "$fails" -eq 0 ]; then
   say "k3d: PASS — $(printf '%s\n' $names | wc -l) scripts against their baselines"
