@@ -131,6 +131,86 @@ that cost this tree a diagnosis by elimination. **CLAUDE.md's *grep the basename
 not relax**, and the reason is now that the warning you would lean on is the one that does not
 appear.
 
+## ⛔ THE MODE IS NOT THE AUTHORITY, AND THE ROOF DID NOT REACH ITS WALLS — plan 22 `D2p`/`D2a`, 2026-08-17
+
+**`D2` was going to bind verbs to the derived mode; its own premise refutes the table.**
+[`probe/d2` § 7](../../probe/d2/README.md), `probe/d2/gate.loft`. The mode and the opening
+verb disagree **in both directions**: over 25 stations the design's table would refuse **8**
+where the gesture works and grant **4** where there is no wall, while the verb cuts at the
+same `(0, −2.25)` from every working station because it projects onto the run. ⛔ **And no
+drawing of the line reaches the corpus** — a roof plan is filed by `verb place` alone, and
+**16 of the 18 openings are cut into free-standing `verb run` walls** in scripts with no
+`place` anywhere: *a wall does not need a roof.*
+
+✅ **THE CONTROL IS WHAT MAKES THAT EVIDENCE RATHER THAN ARGUMENT**, and it fires: `storey`
+over a bare meadow builds a floor on **19 cells of open grass** and `place` from inside a
+room stamps **a second whole house — 84 writes, roofs 1 → 2** — with nothing in the tree
+refusing either. Those two verbs are genuinely ungated. ⚠ **But what they want is *is there
+a building here*, and the mode answers *am I under a roof***, which is the same word
+`outside` for a meadow and for the wall the corpus performs both its storeys from. So the
+row split: `D2a` (the line), `D2b` (the building gate), and the doorstep sentence goes to
+whichever refuses.
+
+⛔ **AND CHASING THE MODE'S LINE FOUND SOMETHING THAT IS NOT ABOUT MODES AT ALL: the drawn
+roof did not reach its own walls.** `place_house` files the runs and the plan in one gesture
+and the two described different rectangles — the gable's eave corners at x −3.46…5.20 ·
+z −1.96…4.96 against wall runs at −3.85…5.58 · −2.25…5.25. ⚠ **Two hypotheses fit *outside
+at the wall* and they want opposite fixes**, so `mode_at`'s own inputs were printed beside
+its answer: `feet` reads **40 at every station**, which refutes *the author is on top of the
+wall*, leaving `plan_over` **false at the wall's own line**.
+
+⛔ **AND THE CORRECTION COULD NOT BE READ OFF ONE HOUSE.** Over twenty (wid, dep) pairs the
+nominal rectangle **overhangs** the walls at dep 3 (−0.348) and 5 (−0.580) and **falls
+short** at 4 (+0.286) and 6 (+0.054), alternating along u by the parity of `wid` too — **the
+error changes sign**, so no constant outset could have fixed it. `D1a.1`'s lesson again: a
+rule read off one case is a guess with a number attached.
+
+✅ **BUILT IN TWO PHASES, AND THE FIRST IS BYTE-IDENTICAL ON PURPOSE.** `D2a.1` removes the
+divergence path — `roof_over` writes each cell from `roof_plan_y` of the plan it files,
+instead of from `hex_draw::draw_roof`. ⚠ `S6b`'s own comment called the old arrangement
+agreement (*"both take the ridge height from the same `eave + pitch · hd`"*); that is one
+FORMULA in two bodies and holds only while both read the same rectangle, which is exactly
+what the next phase moves. `D2a.2` then takes the rectangle from `footprint_walls`' mitred
+outline plus `wall_band()/2`: **exactly −0.433 at all twenty pairs, on both axes** — the eave
+lands on the wall's outer face at every size.
+
+⛔ **AND THE FIRST TEST WRITTEN FOR IT WAS FALSE, MEASURED BEFORE IT WAS DROPPED.** *Every
+stamped wall edge MIDPOINT is under the roof* reds at 2 of 34 on a 4×3, and the excess is
+**only ever over u and at most 0.197**: the stamped boundary is a zigzag and the roof is a
+straight rectangle, which is the whole of `S6b`. **A straight roof cannot cover a jagged wall
+edge for edge**, and outsetting until it did would be an approximation in an exact-geometry
+domain. What is asserted instead is the exact claim the mesher's suppression rests on — every
+roofed column is under its own plan, over nine sizes, **with the nominal rectangle as the
+control that must miss**.
+
+✅ **RE-BASELINED, AND THE ATTRIBUTION IS EXACT.** `probe/k3d` moved **9 records: exactly the
+scripts that place a house, and every script that places one.** Every changed line is the
+ridge `21 → 23` (`31 → 33` for `seat.keys`' seated house) = `pitch 0.7 × 0.719 / 0.25`, with
+no cell count, wall-edge count, τ, chunk count or other sentence moving. ⚠ **And one line
+that is not a height**: `house.keys`' two openings — the two `D1` found reading DIFFERENT
+modes at stations its own comment describes identically — are **both `inside`** now. That
+closes as a consequence of the geometry rather than as a rule about modes, which is what says
+the rectangle was the defect and the mode was only reporting it.
+
+⚠ **THE MESH TOTALS DID NOT MOVE — 5340/3892 either way — AND THAT IS AN INSTRUMENT NOTE.**
+The gable is six points however big the rectangle is, so a vertex count cannot see coverage;
+what moved is `27 roof cells: 2 beyond the drawn gable → 0`. `fence.mjs` reading counts
+against a store was this shape one registry over at `D1a.1`.
+
+⚠ **AND FOUR OF MY OWN INSTRUMENTS WERE WRONG BEFORE THE SUBJECT WAS.** A `w_tau` control
+written downstream of its own subject (2 writes on a refusal that should have had none,
+because the second house had put a wall in the room); its station at `(0, 1.0)`, still inside
+`opening`'s reach, so *the middle of the room* cut a door; a `raise` row reading one cell
+ahead and printing `40 → 40`, which reads as *nothing moved*; and a mesh scan passing hex
+coordinates where `chunk_meshes_all` takes CHUNK INDICES — all 25 chunks answered **448/384**,
+`ringmesh`'s *bare ground* row, because since `GROUND_DEFAULT` an empty chunk still meshes a
+defaulted ground, so it concluded *the plan saves 0*.
+
+⏭ **WHAT IS OPEN:** `D2b` — the *is there a building here* gate `place` and `storey` lack —
+and a defect this session found and did not fix: **`place_house` answers `ak_ok: false` after
+57 writes and 4 filed runs** (*"the walls stand but the roof was refused"*), which is the shape
+`storey_here`'s own comment names as the thing a refusal must never mean.
+
 ## ✅ THE ROOF PLAN IS THE GESTURE'S — plan 22 `D0`, 2026-08-17
 
 **`es_roofs` had exactly one writer and it sat at the SOCKET**, five lines after
