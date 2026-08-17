@@ -436,7 +436,7 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   // three arguments could stop being re-derived; this moves the construction one
   // line earlier so there is a single plan rather than two agreeing ones.
   rp = roof_plan_of(f, roof_eave_y(seat, ROOF_EAVE_UP, w.w_unit), ROOF_PITCH_DEFAULT);
-  rf = roof_over(w, f, cells, seat, rp, 0);
+  rf = roof_over(w, f, cells, rp, 0);
   if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
   // ⚠ **AND THE PLAN IS FILED HERE, BECAUSE THIS IS WHERE THE ROOF IS KNOWN.** The
   // socket used to do it afterwards and had to re-derive all three arguments: the
@@ -501,7 +501,19 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
 // ⚠ **`hip_steps` IS REFUSED RATHER THAN IGNORED.** `roof_plan_y` is a gable and
 // knows no hip, and every caller in this tree passes 0 — but a parameter silently
 // dropped is how a capability comes back as a bug report. Refusing names the loss.
-pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
+// ⚠ **`floor_h` WAS A PARAMETER HERE AND `D2c` KILLED ITS LAST READER — plan 22
+// `D2c.1`.** The band used to start at the floor; it starts at the eave, and the eave
+// is `rp.rp_eave`, so the plan already carries the only height this function needs.
+// A parameter every caller still passes and nothing reads is worse than dead code: it
+// tells the next reader the roof is seated on that number when it is not.
+//
+// ⚠ **REMOVED RATHER THAN REFUSED, WHICH IS THE OPPOSITE CALL FROM `hip_steps` ONE
+// LINE DOWN — and the difference is whether there is a fact to check.** `hip_steps`
+// names a capability this function does not have, so it is refused out loud and a
+// caller asking for one gets told. `floor_h` named a height that is now the plan's;
+// there is nothing to validate and nothing to promise, so the honest move is for the
+// signature to stop asking for it.
+pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet,
                  rp: RoofPlan, hip_steps: integer) -> Ack {
   if !f.fp_ok { return ack_no("no plan at this facing, so no ridge to run"); }
   if hip_steps != 0 {

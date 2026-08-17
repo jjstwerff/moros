@@ -176,7 +176,7 @@ fn main() {
   rp = hex_editor::roof_plan_of(f, hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP,
                                                            w3.w_unit),
                                 hex_editor::ROOF_PITCH_DEFAULT);
-  rf = hex_editor::roof_over(w3, f, cells, seat, rp, 0);
+  rf = hex_editor::roof_over(w3, f, cells, rp, 0);
   println("  after the ROOF (ok={rf.ak_ok}):     {readable(w3, ref)} sighting(s)");
   println("    of which on the far run  (z= 5.25): {on_z(w3, ref, 5.25)}");
   println("    of which on the near run (z=-2.25): {on_z(w3, ref, 0.0 - 2.25)}");
