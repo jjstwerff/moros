@@ -1,0 +1,170 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// CAN A PERSON WALK INTO A BUILDING? — plan 22 `D2`'s premise, measured before it is
+// designed.
+//
+//     loft --lib lib/ probe/d2/door.loft
+//
+// `D1` logged the derived mode over the whole live corpus and the answer was
+// **139 gestures of 140 performed from `outside`** — including every stair, every
+// storey, the cellar, and 17 of the 18 openings. `D2` binds verbs to the mode, so
+// either the corpus is driving the editor wrongly or the mode cannot be reached.
+//
+// The suspicion came from `tools/scripts/threshold.keys`: walking at a house stopped
+// the feet at `0,-2.26`, and cutting an opening in that wall first did not change it.
+// That is one observation through a script, which cannot see WHY. This asks the store
+// and the collision set directly:
+//
+//   1. what material is on each edge around the doorway, before and after the cut
+//   2. which edge the walker's own path crosses
+//   3. where `walk_to` actually puts the feet, aimed straight through it
+// ⚠ THREE PACKAGES AND NO MORE. A program under `probe/` is not inside a package, so
+// `use hex_edge;` here sends the resolver to the REGISTRY — and it then tries to
+// auto-install every internal module basename in the graph (`gesture`, `catalogue`,
+// `codec`, …) and drowns in HTTP 429s. Everything this needs is reachable through
+// `hex_editor`, which is what a consumer sees anyway.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;    // 90°, the facing `indoors.keys` builds at
+const COLL_R = 8;
+
+fn mat_name(m: integer) -> text {
+  if m == 0 { return "-"; }
+  if m == hex_editor::WALL_MAT { return "WALL"; }
+  if m == hex_editor::DOOR_MAT { return "DOOR"; }
+  if m == hex_editor::FENCE_MAT { return "FENCE"; }
+  "mat {m}"
+}
+
+// Every edge of a cell, named by direction, with what it is made of.
+fn dump_edges(w: VoxelWorld, q: integer, r: integer, ref: float, label: text) {
+  line = "";
+  for d in 0..6 {
+    line = line + " {d}:{mat_name(hex_editor::wall_of(w, q, r, d, ref))}";
+  }
+  println("  {label} ({q},{r}) {line}");
+}
+
+fn main() {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  sess = hex_editor::EditSession {};
+
+  // The house `indoors.keys` builds: stand at (0,-4), look along +z, place ahead.
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  ack = hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                                hex_editor::grade_under(w, a),
+                                sess.es_runs, sess.es_roofs);
+  println("house: ok={ack.ak_ok} {ack.ak_why}");
+  if !ack.ak_ok { return; }
+
+  ref = (FLOOR as float) * U;
+
+  // ── 1. WHICH EDGE DOES THE WALKER MEET? ────────────────────────────────────
+  //
+  // Walk the centreline from outside toward the house and report the first cell
+  // whose boundary carries a wall — that is the doorstep, and it is where an
+  // opening has to land for a person to get in.
+  println("--- the near wall, along the walk's own line (x = 0)");
+  for i in 0..14 {
+    z = 0.0 - 8.0 + (i as float) * 0.5;
+    (wq, wr) = hex_grid::px_to_hex(0.0, z);
+    any = false;
+    for d in 0..6 {
+      if hex_editor::wall_of(w, wq, wr, d, ref) != 0 { any = true; }
+    }
+    if any { dump_edges(w, wq, wr, ref, "z={z}"); }
+  }
+
+  // ── 2. CUT THE DOOR WHERE `threshold.keys` CUT IT ──────────────────────────
+  println("--- cutting an opening at (0,-2.3), which is where the feet stopped");
+  da = hex_editor::author_at(0.0, 0.0 - 2.3, YAW, (FLOOR as float) * U);
+  made = hex_editor::session_open_kind(sess, w, da, 1, hex_editor::STOREY_H);
+  println("opening: ok={made.om_ok} {made.om_why}");
+  (dq, dr) = hex_grid::px_to_hex(0.0, 0.0 - 2.3);
+  dump_edges(w, dq, dr, ref, "after the cut");
+
+  // ── 3. WHERE DOES THE WALK ACTUALLY STOP? ──────────────────────────────────
+  //
+  // The collision set the tick builds, and one `walk_to` aimed straight through.
+  // ⚠ ASKED IN ONE HOP RATHER THAN IN TICK-SIZED STEPS ON PURPOSE: `walk_to` tests
+  // the whole SEGMENT, so a single long call answers *is this boundary passable*
+  // without the gait in the way.
+  println("--- the walk");
+  // ⚠ THROUGH `walk_proxy`, WHICH IS THE TICK'S OWN PATH — a probe that built the
+  // collision set its own way would be measuring its own arrangement of the
+  // primitives rather than the one a walker meets. It needs no mesher: only the FALL
+  // does, which is why this can live outside the server.
+  for start in 0..3 {
+    z0 = 0.0 - 8.0 + (start as float) * 2.0;
+    println("  from (0,{z0}) aiming at (0,6) -> {reach(w, sess, z0)}");
+  }
+
+  // ── 4. WHY — AND EACH ANSWER HAS A CONTROL ─────────────────────────────────
+  //
+  // The cut above marked ONE edge and the cell it landed in carries TWO. So the
+  // first hypothesis is *a door is one edge of a boundary that is more than one
+  // edge wide*, and the way to refute it is to mark the rest.
+  println("--- widen the cut to 6 edges at the same station");
+  hex_editor::open_ahead(w, da, hex_editor::DOOR_MAT, 6);
+  dump_edges(w, dq, dr, ref, "after the wide cut");
+  println("  from (0,-8) aiming at (0,6) -> {reach(w, sess, 0.0 - 8.0)}");
+
+  // ⚠ AND THE CONTROL THAT SAYS THE INSTRUMENT CAN REPORT MOVEMENT AT ALL. Without
+  // it, *the walker stopped at −2.26* is a number this probe would print for a
+  // `walk_to` that never moves anything.
+  println("--- control: the same walk with no house in the world");
+  c = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(c, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  empty = hex_editor::EditSession {};
+  println("  from (0,-8) aiming at (0,6) -> {reach(c, empty, 0.0 - 8.0)}");
+
+  // ── 5. ⛔ THE ROW THAT COULD NOT HAVE FOUND WHAT IT WAS AIMED AT ───────────
+  //
+  // It was written to ask the coarseness the other way round: the walk reads the
+  // EDGE MATERIAL, and `open_ahead` writes `DOOR_MAT` for every profile, so a
+  // WINDOW should be as passable as a door.
+  //
+  // ⛔ **IT MEASURES NOTHING, AND THE PRINTED BAND IS WHY.** `select 2` is an
+  // OUTLINE — pointed rather than round — and the height band comes from `up`, not
+  // from the selection: this opening is `band 0..11 half 0.65`, floor to head,
+  // exactly the door's. **There is no raised sill in the selection vocabulary
+  // today**, so a walker passing through it at 5.24 is correct behaviour and not a
+  // defect. The row is KEPT, printing its band, because the absence is the finding:
+  // the hypothesis is untestable in this tree until an opening can have a sill, and
+  // a row quietly deleted would leave the next reader to re-derive that.
+  println("--- a second OUTLINE at the same station, in a fresh house");
+  v = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(v, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  vs = hex_editor::EditSession {};
+  va = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  hex_editor::place_house(v, va, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(v, va), vs.es_runs, vs.es_roofs);
+  wa = hex_editor::author_at(0.0, 0.0 - 2.3, YAW, (FLOOR as float) * U);
+  // ⚠ SIX EDGES, so the width is not what is being measured here — row 4 already
+  // showed one edge is too few, and leaving that in would confound the two.
+  hex_editor::open_ahead(v, wa, hex_editor::DOOR_MAT, 6);
+  vmade = hex_editor::session_open_kind(vs, v, wa, 2, hex_editor::STOREY_H);
+  println("  window: ok={vmade.om_ok} band {vmade.om_open.op_lo}..{vmade.om_open.op_hi} "
+        + "half {vmade.om_open.op_half}");
+  println("  from (0,-8) aiming at (0,6) -> {reach(v, vs, 0.0 - 8.0)}");
+}
+
+// How far a walker gets from `(0, z0)` toward `(0, 6)`, through the tick's own
+// collision path. Reported as `z` alone: the line is straight and `x` stays 0.
+fn reach(w: VoxelWorld, sess: EditSession, z0: float) -> float {
+  wk = hex_editor::walker_new(0.0, (FLOOR as float) * U, z0);
+  hex_editor::walk_proxy(wk, w, sess.es_runs, COLL_R,
+                         hex_editor::walker_step(w.w_unit));
+  (gx, gz) = hex_editor::walk_to(wk.wk_coll, wk.wk_sf, wk.wk_rt, w,
+                                 0.0, z0, 0.0, 6.0, wk.wk_csurf as float);
+  round(gz * 1000.0) / 1000.0 ?? 0.0
+}

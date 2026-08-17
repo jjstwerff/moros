@@ -665,6 +665,32 @@ surface the walker stands on, never its feet … the difference cost this rung a
 `mode_at` takes `walk_h` now, which is also what stops the mode disagreeing with the walk about
 which storey a person is on.
 
+### ⛔ AND `D2` IS BLOCKED, WHICH `D1`'s LOG IS WHAT FOUND — a person cannot walk indoors
+
+The measurements are in [`probe/d2`](../../probe/d2/README.md) and they are in this order because
+the first raises the question the second answers.
+
+**One.** `mode_at` printed beside every `verb` line, over all 31 live scripts: **143 of 144
+gestures are performed from `outside`** — 17 of the 18 openings, both stairs, both storeys and the
+cellar. One script is ever `inside`, once. That alone is not proof this design is wrong; the corpus
+was written for a runner with no keyboard and teleports to convenient stations.
+
+**Two, and it is.** ⛔ **A door is one hex edge, and the boundary a walker crosses is two.**
+`session_open_kind` hardcodes `open_ahead(w, a, DOOR_MAT, 1)`; the cell carries `4:WALL 5:WALL`,
+the cut makes it `4:DOOR 5:WALL`, and the walker meets the edge that is still a wall. Measured
+through the tick's own collision path: **−2.26** with the editor's own cut, **5.24** with the
+cell's other edge cut too, **6.0** with no house — the control that says the instrument can report
+movement at all.
+
+⚠ **The cause is the split `gesture.loft` names in its own words** — *"the edges are the INDEX; the
+opening is the TRUTH"*. The renderer honours the `Opening` (`op_half 0.65`, so **1.3 world units**
+of doorway); the walk honours only `wall_stops_walk(<edge material>)`, and a hex edge is 0.87 wu.
+**So the doorway is drawn open and stays shut to a person.**
+
+> **`D2` cannot bind the opening, stair and storey verbs to `inside` until an opening marks the
+> edges its own width covers.** That is `D1a`, and it is the step this design did not know it
+> needed.
+
 ### ⏭ What `D1` hands `D2`: `house.keys` cuts its two openings from two different modes
 
 The script's own comment says *"a door and a window in its near wall (stand ON the wall's own
