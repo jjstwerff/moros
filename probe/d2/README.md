@@ -638,3 +638,103 @@ and one at HEAD, both answer **73 passed**, and the main tree passes on a retry 
 else running. **Two `loft` builds at once is the cause** — this file's own closing note says
 *one `loft` at a time on this box*, and what it did not say is that the failure mode is a
 resolution error pointing at a registry package rather than a slow build.
+
+## ✅ 10. `D2a`'s own sentence, re-measured — and the house has two walls missing
+
+    loft --lib lib/ probe/d2/gate.loft       # the mode's line, re-run after D2a
+    loft --lib lib/ probe/d2/reach.loft      # what the opening verb's reach actually is
+    loft --lib lib/ probe/d2/farwall.loft    # where the 84 wall edges are
+
+§ 9 recorded what `D2a` *built*. It did not re-run § 7, so the table this plan has been
+quoting — **refuse 8 · grant 4** — was still the pre-`D2a` reading. Re-running it is what
+this section is, and it answers `D2a` and then goes past it.
+
+### ✅ The line is the wall's outer face now, and that is the whole claim
+
+| | before `D2a` | after |
+|---|---|---|
+| the near wall's run, as filed | z = −2.25 | z = −2.25 |
+| the gable's eave corner | z = −1.96 | **z = −2.68** |
+| the mode flips `outside` → `inside` | **z = −2.00** | **z = −2.68** |
+| where that is, relative to the run | **0.25 INSIDE it** | **0.43 outside it** |
+
+**0.43 is `wall_band() / 2`** — the masonry's own outer face, § 9's −0.433 arriving at the
+one place it was aimed. *An author standing on their own wall reads `outside`* is false now,
+at every station in the walled band. `D2a`'s sentence is met exactly, and by construction
+rather than by tuning.
+
+### ⛔ And the disagreement did NOT close — which is the point, not a shortfall
+
+    the design's table would REFUSE 14 station(s) where the gesture works
+    the design's table would GRANT  18 station(s) where the gesture has no wall
+
+⚠ **Those are not comparable with § 7's 8 and 4 — the WINDOW changed, and it had to.** Row B
+sampled z −4.00 … +2.00, a range drawn from the `store WALL` column because that is the datum
+§ 7 had. `store` is **hex-quantised**: it answers *the cell I stand in carries a wall edge*,
+a `HEX_LEN`-wide answer to a `wall_band()`-wide question, so a station a whole hex clear of
+the masonry still says `WALL`. The verb reaches further than that window, so the old numbers
+undercounted at both ends. Row B is row A's window now and neither is chosen.
+
+> **The two authorities have different SHAPES, and no placement of the rectangle can make
+> them agree.** The mode is a continuous rectangle test. The verb is `span_mark` over the
+> author's cell **and its six neighbours**, then the cell one unit ahead and *its* six, with
+> a `open_ahead` fallback — cell-quantised and hex-shaped, reaching from four units outside
+> the wall. `D2a` moved the rectangle onto the masonry, which was a real defect and is fixed;
+> it was never going to close a gap that is structural. **§ 7's split of `D2` stands, and this
+> is the measurement that says so from the other side of the fix.**
+
+### ⛔ AND THE HOUSE THE EDITOR PLACES HAS TWO OF ITS FOUR WALLS MISSING
+
+Row B refuses every station from z = +1.25 to z = +6 — including **standing 0.75 inside the
+far wall, facing it**. That is not reach, and `reach.loft` asks the question the sweep's fixed
+facing hides: can an author cut a door in each of their own four walls?
+
+    near  (z=-2.25)  author (0,-1.5)   mode inside  -> cut at (0,-2.25)
+    far   (z= 5.25)  author (0,4.5)    mode inside  -> REFUSED — no wall here to open
+    left  (x=-3.85)  author (-3,1.5)   mode inside  -> cut at (-3.85,1.5)
+    right (x= 5.58)  author (4.8,1.5)  mode inside  -> cut at (5.58,1.5)
+
+`farwall.loft` dumps every stamped edge. `place_house` says **`84 wall edges`**; the store
+holds **23**, and they are not spread over four walls:
+
+| run | as filed | edges present | |
+|---|---|---|---|
+| near | z = −2.25 | **12**, x = −3.90 … 5.63 | ✅ complete |
+| left | x = −3.85 | **9**, z = −2.25 … 5.25 | ✅ complete — a zigzag over three x columns |
+| right | x = 5.58 | **4**, z = −2.25, −0.75, 2.25, 5.25 | ⛔ gaps, and no zigzag partners |
+| far | z = 5.25 | **2**, x = −3.90 and 5.63 | ⛔ **the two corner posts and nothing between** |
+
+⚠ **ASKED AT EVERY HEIGHT BEFORE IT WAS CALLED MISSING** — *absent* and *stamped one storey
+up* read identically at one `ref` and want opposite fixes. Over twelve heights from the seat
+up, the far run is **4 sightings at every one** and the near run **24 at every one**. It is
+absent.
+
+⚠ **AND IT IS PRE-EXISTING, CONTROLLED RATHER THAN ASSUMED.** A worktree at `3e3ac22` — the
+`D2p` commit, before `D2a.1` — gives the **same 23 edges and the same 4/24 split**, with only
+the ridge moving (61 → 63, `D2a.2`'s known change). This is not a regression; it is a shipped
+defect that nothing in the tree was looking at.
+
+> **So the editor cannot put a door or a window in the far wall of any house it places**, and
+> `S6b`'s roof has been drawn over it the whole time. The `44 PASS` sentence in § 9 covers
+> this too: no gate asserts a wall edge count, and the mesher draws walls from the **runs**
+> — which are all four, filed correctly — so the picture looks right and the store is wrong.
+> ⏭ `D2c`.
+
+### ⚠ Three of this section's own instruments were wrong first
+
+⛔ **The buckets scored the side walls at 4 each and the left wall has 9.** The midpoints
+alternate over **three** x columns — −3.46, −3.90, −4.33 — which is `D1a.1`'s zigzag one
+gesture over, and a ±0.25 window around the run caught one column of three. The unfiltered
+dump is printed first now and the buckets are checked against it. ⚠ The far wall's 2 survives
+that fix, which is what makes it a finding rather than a second bucketing error.
+
+⛔ **`reach.loft` printed a projected centre for every REFUSED station and it was believed.**
+A refusal returns `opening_none()`, whose `(0,0)` reads exactly like a projection onto a run
+through the origin — so *the verb stops projecting past z = 1.25* was a confident and entirely
+wrong account of the data, drawn from a field that means nothing when `om_ok` is false.
+
+⛔ **And `gate.loft` row A grew an `opening_would_find` that is not the verb's precondition.**
+It reproduced `open_ahead`'s two-cell search; the gesture actually runs `open_span`, whose
+`span_mark` sweeps a whole ring. The two disagree at **8 of 49 stations**, which only showed
+because row B — the real gesture — was printed beside it. A second body of a rule, in a probe
+written to catch second bodies of rules.

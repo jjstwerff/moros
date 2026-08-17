@@ -1,0 +1,183 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHERE ARE THE HOUSE'S 84 WALL EDGES? — plan 22 `D2a`'s re-measurement, third probe.
+//
+//     loft --lib lib/ probe/d2/farwall.loft
+//
+// `reach.loft` says an author standing INSIDE their own house, 0.75 units from the far
+// wall and facing it, is refused with *no wall here to open — stand against one*, while
+// the other three walls all cut. Two things produce that and they are very different
+// sizes:
+//
+//   1. the gesture cannot reach edges that ARE there, or
+//   2. **the far wall is not in the store at all** — `place_house` says `84 wall edges`
+//      and a count is not a position.
+//
+// So every stamped edge is dumped with its midpoint, and the four filed runs are printed
+// beside them. ⚠ The count was believed for two probes before anyone asked WHERE.
+
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;
+
+fn r2(v: float) -> float { round(v * 100.0) / 100.0 ?? 0.0 }
+
+fn meadow() -> VoxelWorld {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+fn main() {
+  ref = (FLOOR as float) * U;
+  w = meadow();
+  s = hex_editor::EditSession {};
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  ak = hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                               hex_editor::grade_under(w, a), s.es_runs, s.es_roofs);
+  println("house: {ak.ak_why}");
+  for k in 0..len(s.es_runs.items) {
+    rk = s.es_runs.items[k] ?? hex_editor::WallRun {};
+    println("  run {k}: ({r2(rk.wr_x0)},{r2(rk.wr_z0)}) -> ({r2(rk.wr_x1)},{r2(rk.wr_z1)})");
+  }
+
+  // ⚠ EACH EDGE IS SHARED BY TWO CELLS, so a sweep over cells and directions sees every
+  // edge TWICE. The midpoint is the same both times, which is what makes it the key:
+  // the tally below is per distinct midpoint, so it can be compared with `84`.
+  println("--- every stamped wall edge, bucketed by its midpoint");
+  zmin = 1000.0;
+  zmax = 0.0 - 1000.0;
+  xmin = 1000.0;
+  xmax = 0.0 - 1000.0;
+  seen = 0;
+  near = 0;
+  far = 0;
+  left = 0;
+  right = 0;
+  for q in 0 - 10..10 {
+    for r in 0 - 10..10 {
+      for d in 0..6 {
+        m = hex_editor::wall_of(w, q, r, d, ref);
+        if m != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (ax, az) = hex_grid::hex_to_px(q, r);
+          (bx, bz) = hex_grid::hex_to_px(nq, nr);
+          mx = (ax + bx) * 0.5;
+          mz = (az + bz) * 0.5;
+          seen = seen + 1;
+          if mz < zmin { zmin = mz; }
+          if mz > zmax { zmax = mz; }
+          if mx < xmin { xmin = mx; }
+          if mx > xmax { xmax = mx; }
+          // Which of the four filed runs is this edge on? — within a quarter unit of
+          // the run's own line, which is `D1a.3`'s claim that they coincide.
+          if mz < 0.0 - 2.0 && mz > 0.0 - 2.5 { near = near + 1; }
+          if mz > 5.0 && mz < 5.5 { far = far + 1; }
+          if mx < 0.0 - 3.6 && mx > 0.0 - 4.1 { left = left + 1; }
+          if mx > 5.3 && mx < 5.8 { right = right + 1; }
+        }
+      }
+    }
+  }
+  // ⚠ **THE BUCKETS ARE A SUMMARY AND A SUMMARY CAN AGREE WITH TWO DIFFERENT WORLDS.**
+  // *4 sightings on the far run* fits both *the far wall is two edges long* and *the far
+  // wall is only its mitred corners*, and those want opposite fixes — so the midpoints
+  // themselves are printed, sorted by the axis each run lies along.
+  // ⛔ **THE BUCKETS BELOW WERE WRONG BEFORE THIS EXISTED, AND THEY READ AS A RESULT.**
+  // `x -4.33` is in the global span and OUTSIDE the left bucket, so the side walls
+  // scored 4 when their midpoints alternate between two x values — a zigzag, exactly
+  // `D1a.1`'s finding, and half of each side fell outside the window I chose. A bucket
+  // is a claim about where the answer is, so the unfiltered dump comes first.
+  // ⚠ **IS THE FAR WALL MISSING, OR IS IT AT ANOTHER HEIGHT?** `wall_of` takes a `ref`
+  // and this probe asks at the author's own floor. *Absent* and *stamped one storey up*
+  // produce the same answer there and want completely different fixes, so the same
+  // midpoint is asked at every height the wall could occupy before anything is called
+  // missing. ⚠ The near wall is the control: whatever this says about the far run's
+  // gap, it must say the near run is present.
+  println("--- the far run's gap, asked at every height from the seat to well above");
+  for lv in 0..12 {
+    href = ((FLOOR + lv) as float) * U;
+    nfar = 0;
+    nnear = 0;
+    for qh in 0 - 10..10 {
+      for rh in 0 - 10..10 {
+        for dh in 0..6 {
+          mh = hex_editor::wall_of(w, qh, rh, dh, href);
+          if mh != 0 {
+            (nhq, nhr) = hex_grid::hex_neighbor(qh, rh, dh);
+            (ahx, ahz) = hex_grid::hex_to_px(qh, rh);
+            (bhx, bhz) = hex_grid::hex_to_px(nhq, nhr);
+            mhz = (ahz + bhz) * 0.5;
+            if mhz > 5.0 && mhz < 5.5 { nfar = nfar + 1; }
+            if mhz < 0.0 - 2.0 && mhz > 0.0 - 2.5 { nnear = nnear + 1; }
+          }
+        }
+      }
+    }
+    println("    height {FLOOR + lv} (ref {r2(href)}): far {nfar} sighting(s), "
+          + "near {nnear} sighting(s)");
+  }
+
+  println("--- every sighting, unfiltered (the buckets below are checked against this)");
+  for q0 in 0 - 10..10 {
+    for r0 in 0 - 10..10 {
+      for d0 in 0..6 {
+        m0 = hex_editor::wall_of(w, q0, r0, d0, ref);
+        if m0 != 0 {
+          (n0q, n0r) = hex_grid::hex_neighbor(q0, r0, d0);
+          (a0x, a0z) = hex_grid::hex_to_px(q0, r0);
+          (b0x, b0z) = hex_grid::hex_to_px(n0q, n0r);
+          println("    ({r2((a0x + b0x) * 0.5)},{r2((a0z + b0z) * 0.5)})");
+        }
+      }
+    }
+  }
+  println("--- the far run's own edges, by x");
+  for q2 in 0 - 10..10 {
+    for r2i in 0 - 10..10 {
+      for d2 in 0..6 {
+        m2 = hex_editor::wall_of(w, q2, r2i, d2, ref);
+        if m2 != 0 {
+          (n2q, n2r) = hex_grid::hex_neighbor(q2, r2i, d2);
+          (a2x, a2z) = hex_grid::hex_to_px(q2, r2i);
+          (b2x, b2z) = hex_grid::hex_to_px(n2q, n2r);
+          m2x = (a2x + b2x) * 0.5;
+          m2z = (a2z + b2z) * 0.5;
+          if m2z > 5.0 && m2z < 5.5 {
+            println("    far edge at ({r2(m2x)},{r2(m2z)})  mat {m2}  cell ({q2},{r2i}) dir {d2}");
+          }
+        }
+      }
+    }
+  }
+  println("--- the near run's own edges, by x  (the control: the wall that opens)");
+  for q3 in 0 - 10..10 {
+    for r3 in 0 - 10..10 {
+      for d3 in 0..6 {
+        m3 = hex_editor::wall_of(w, q3, r3, d3, ref);
+        if m3 != 0 {
+          (n3q, n3r) = hex_grid::hex_neighbor(q3, r3, d3);
+          (a3x, a3z) = hex_grid::hex_to_px(q3, r3);
+          (b3x, b3z) = hex_grid::hex_to_px(n3q, n3r);
+          m3x = (a3x + b3x) * 0.5;
+          m3z = (a3z + b3z) * 0.5;
+          if m3z < 0.0 - 2.0 && m3z > 0.0 - 2.5 {
+            println("    near edge at ({r2(m3x)},{r2(m3z)})  mat {m3}  cell ({q3},{r3}) dir {d3}");
+          }
+        }
+      }
+    }
+  }
+  println("  {seen} edge-sightings (each edge seen from both its cells)");
+  println("  midpoints span x {r2(xmin)} .. {r2(xmax)}   z {r2(zmin)} .. {r2(zmax)}");
+  println("  on the NEAR run  (z=-2.25): {near} sighting(s)");
+  println("  on the FAR run   (z= 5.25): {far} sighting(s)");
+  println("  on the LEFT run  (x=-3.85): {left} sighting(s)");
+  println("  on the RIGHT run (x= 5.58): {right} sighting(s)");
+}

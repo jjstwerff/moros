@@ -55,6 +55,12 @@ fn meadow() -> VoxelWorld {
 
 // Does the cell under `(x,z)` carry any wall edge at all? — *is there something here
 // to open*, asked of the store rather than of the mode.
+//
+// ⚠ THIS IS A HEX-WIDE ANSWER TO A 0.87-WIDE QUESTION, and reading it as *the wall is
+// here* is what made §7's residue look like a disagreement. A cell is `HEX_LEN` across
+// and the masonry is `wall_band()` thick, so a station whose CENTRE is 1.3 units clear
+// of the wall still answers `true` — the cell it stands in carries the edge. Row A
+// prints `wall_d` beside it for that reason: the distance is continuous and this is not.
 fn walled_here(w: VoxelWorld, x: float, z: float) -> boolean {
   (q, r) = hex_grid::px_to_hex(x, z);
   ref = (FLOOR as float) * U;
@@ -62,6 +68,25 @@ fn walled_here(w: VoxelWorld, x: float, z: float) -> boolean {
     if hex_editor::wall_of(w, q, r, d, ref) != 0 { return true; }
   }
   false
+}
+
+// ⛔ **THERE WAS AN `opening_would_find` HERE AND IT WAS WRONG — deleted, § 10.** It
+// reproduced `open_ahead`'s two-cell search as row A's *would the verb work* column.
+// The gesture does not run `open_ahead`: it runs `open_span`, whose `span_mark` sweeps
+// the author's cell **and its six neighbours**, with `open_ahead` only as a fallback.
+// The two disagreed at **8 of 49 stations**, which showed only because row B calls the
+// real gesture and prints beside it.
+//
+// ⚠ **A SECOND BODY OF A RULE, IN A PROBE WRITTEN TO CATCH SECOND BODIES OF RULES.**
+// Row B is the authority on what the verb does, because it is the verb. Row A prints
+// `wall_d` — a measurement, not a re-derivation — and nothing else about the gesture.
+
+// How far the station is from the nearest filed run, in world units — the wall's own
+// line rather than the cell that carries it. `run_point_near` is the projection the
+// opening gesture itself uses, so this is the verb's geometry and not a second one.
+fn wall_dist(runs: hex_editor::WallRuns, x: float, z: float) -> float {
+  (px, pz) = hex_editor::run_point_near(runs, x, z);
+  sqrt((px - x) * (px - x) + (pz - z) * (pz - z)) ?? 0.0
 }
 
 fn main() {
@@ -133,8 +158,14 @@ fn main() {
     over = hex_editor::roof_plan_over(rp0, 0.0, z);
     roofy = 0;
     if over { roofy = (hex_editor::roof_plan_y(rp0, 0.0, z) / U ?? 0.0) as integer; }
-    println("  z={r2(z)}  mode {m}  store {wl}  plan_over {over}  roof_units "
-          + "{roofy}  feet {feet}{flip}");
+    // ⚠ **`wall_d` IS WHAT MAKES THE RESIDUE A MEASUREMENT.** `store` is hex-quantised,
+    // so *WALL here and mode outside* reads as a disagreement at stations that are a
+    // whole hex clear of the masonry. `wall_d` is the distance to the wall's own line,
+    // by the same `run_point_near` projection the gesture uses — and the masonry face
+    // is at `wall_band()/2 = 0.43`, which is where `D2a` put the mode's flip.
+    wdst = wall_dist(sa.es_runs, 0.0, z);
+    println("  z={r2(z)}  mode {m}  store {wl}  wall_d {r2(wdst)}  "
+          + "plan_over {over}  roof_units {roofy}  feet {feet}{flip}");
   }
 
   // ── B. THE MODE AGAINST THE VERB'S OWN PRECONDITION ────────────────────────
@@ -146,11 +177,19 @@ fn main() {
   // Two counts are what this row is for, and they point in opposite directions:
   // a station the design would REFUSE where the gesture works, and a station the
   // design would GRANT where the gesture has nothing to act on.
+  //
+  // ⚠ **THE WINDOW IS ROW A'S, AND IT USED TO BE NARROWER — WHICH UNDERCOUNTED.**
+  // This row sampled z −4.00 … +2.00, a range drawn from the `store WALL` column
+  // because that was the datum §7 had. `store` is hex-quantised and the verb reaches
+  // a cell FURTHER — `open_ahead` searches the author's cell and the cell one unit
+  // ahead — so the gesture works from z = −5.00, a full unit outside where this row
+  // began looking, and every one of those stations reads `outside`. A window chosen
+  // from the wrong datum hides exactly the stations that make the point.
   println("--- B. `opening` at each station: what the mode says, what the gesture says");
   refused_working = 0;
   granted_empty = 0;
-  for j in 0..25 {
-    z = 0.0 - 4.0 + (j as float) * 0.25;
+  for j in 0..49 {
+    z = 0.0 - 6.0 + (j as float) * 0.25;
     wb = meadow();
     sb = hex_editor::EditSession {};
     ab = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
@@ -181,7 +220,17 @@ fn main() {
   // `outside`. Inflating the plan by one cell each way is the cheapest version of
   // *the person on the wall is in the building*, and what it must produce is the
   // flip moving OUT past the walled band.
-  println("--- D. the same house, with the roof plan inflated by one cell each way");
+  // ⛔ **THIS ROW IS STALE SINCE `D2a.2`, AND THE COMPILER SAYS SO EVERY RUN.** The
+  // literal below omits `rp_hw`/`rp_hd` — the two fields `D2a.2` added and the six
+  // extent readers now use — so they take the type's zero and *inflated by one cell*
+  // is not what gets built. `advice[omitted-field-zero]` names both fields at this
+  // line on every run. It is left rather than repaired because its hypothesis is
+  // already settled: § 7 row D refuted *the table is right and its LINE is wrong* on
+  // the corpus, not on this arithmetic — **16 of the 18 openings are cut into
+  // free-standing `verb run` walls with no `place` in the script, and a wall does not
+  // need a roof.** ⚠ What the row is kept for is the shape of that refutation; its
+  // numbers must not be quoted.
+  println("--- D. [STALE since D2a.2 — see the note above] the roof plan inflated");
   s2 = hex_editor::EditSession {};
   for p in 0..len(sa.es_roofs.items) {
     rp = sa.es_roofs.items[p] ?? hex_editor::RoofPlan {};

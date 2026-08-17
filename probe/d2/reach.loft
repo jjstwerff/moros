@@ -1,0 +1,132 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT IS THE `opening` VERB'S ACTUAL REACH? — plan 22 `D2a`'s re-measurement.
+//
+//     loft --lib lib/ probe/d2/reach.loft
+//
+// `gate.loft` row B says the gesture CUTS from z = −6.00 to z = +1.00 and REFUSES from
+// z = +1.25 on, against one house whose near wall is at z = −2.25. Neither half of that
+// is explained by reading `session_open_kind`:
+//
+//   * `open_span` anchors `span_mark` at the AUTHOR's cell and its six neighbours, so a
+//     station four units clear of the wall should find nothing — yet z = −6 cuts.
+//   * the projection `run_point_near` returns is the same `(0,−2.25)` at z = +1.00 and
+//     at z = +1.25 — yet one cuts and the other refuses.
+//
+// So the inputs are printed rather than derived: the author's cell, the cell one unit
+// ahead, whether either carries a wall, the opening's own half-width, and the projected
+// centre. ⚠ A reading of the source produced two confident and WRONG accounts of this
+// before it was run.
+
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;
+
+fn r2(v: float) -> float { round(v * 100.0) / 100.0 ?? 0.0 }
+
+fn meadow() -> VoxelWorld {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+fn walled_cell(w: VoxelWorld, q: integer, r: integer) -> boolean {
+  ref = (FLOOR as float) * U;
+  for d in 0..6 {
+    if hex_editor::wall_of(w, q, r, d, ref) != 0 { return true; }
+  }
+  false
+}
+
+// The author's cell PLUS its six neighbours — `span_mark`'s own `ring in 0..7`.
+fn walled_ring(w: VoxelWorld, q: integer, r: integer) -> boolean {
+  if walled_cell(w, q, r) { return true; }
+  for d in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+    if walled_cell(w, nq, nr) { return true; }
+  }
+  false
+}
+
+fn main() {
+  ref = (FLOOR as float) * U;
+  println("HEX_LEN = {r2(hex_grid::HEX_LEN)}");
+
+  w0 = meadow();
+  s0 = hex_editor::EditSession {};
+  a0 = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hex_editor::place_house(w0, a0, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(w0, a0), s0.es_runs, s0.es_roofs);
+
+  // The opening's own half-width, which is the distance `span_mark` compares against.
+  om0 = hex_editor::opening_make(s0.es_runs, s0.es_open, 0.0, 0.0 - 6.0, 1,
+                                 hex_editor::STOREY_H, U);
+  println("opening half = {r2(om0.om_open.op_half)}  centre "
+        + "({r2(om0.om_open.op_x)},{r2(om0.om_open.op_z)})");
+
+  println("--- per station: the cells the verb searches, and what it finds");
+  for i in 0..49 {
+    z = 0.0 - 6.0 + (i as float) * 0.25;
+    (cq, cr) = hex_grid::px_to_hex(0.0, z);
+    (fq, fr) = hex_grid::px_to_hex(0.0 + cos(YAW) * 1.0, z + sin(YAW) * 1.0);
+    here = walled_ring(w0, cq, cr);
+    ahead = walled_ring(w0, fq, fr);
+
+    // The real gesture, on a fresh world so one station cannot see another's cut.
+    wb = meadow();
+    sb = hex_editor::EditSession {};
+    ab = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+    hex_editor::place_house(wb, ab, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                            hex_editor::grade_under(wb, ab), sb.es_runs, sb.es_roofs);
+    stb = hex_editor::author_at(0.0, z, YAW, ref);
+    made = hex_editor::session_open_kind(sb, wb, stb, 1, hex_editor::STOREY_H);
+    // ⚠ **THE CENTRE IS ONLY A CENTRE WHEN IT CUT.** A refusal returns
+    // `opening_none()`, whose `(0,0)` reads exactly like a projection onto a run
+    // through the origin — this probe's first run printed it for every refused
+    // station and it was believed for several minutes.
+    verdict = "cut at ({r2(made.om_open.op_x)},{r2(made.om_open.op_z)})";
+    if !made.om_ok { verdict = "REFUSED"; }
+
+    println("  z={r2(z)}  cell ({cq},{cr}) ring_wall {here}  ahead ({fq},{fr}) "
+          + "ring_wall {ahead}  -> {verdict}");
+  }
+
+  // ── THE PRODUCT QUESTION THE SWEEP ABOVE RAISES ────────────────────────────
+  //
+  // The sweep faces +z throughout, which is the way in through the near wall. It cuts
+  // from four units OUTSIDE that wall and refuses standing against the FAR one — so
+  // the question is not about reach at all: can an author cut a door in each of their
+  // own four walls, standing just inside it and facing it?
+  //
+  // ⚠ Each wall gets its own author POSITION and YAW, because the sweep's fixed facing
+  // is what made this look like a distance rule.
+  println("--- each of the house's four walls, from just inside it, facing it");
+  wall_try("near  (z=-2.25)", 0.0, 0.0 - 1.5, 0.0 - 1.5707963267948966);
+  wall_try("far   (z= 5.25)", 0.0, 4.5, 1.5707963267948966);
+  wall_try("left  (x=-3.85)", 0.0 - 3.0, 1.5, 3.141592653589793);
+  wall_try("right (x= 5.58)", 4.8, 1.5, 0.0);
+}
+
+// One author, one facing, one house — and the gesture's own verdict. A fresh world
+// each time, because a cut changes what the next call would read.
+fn wall_try(label: text, x: float, z: float, yaw: float) {
+  ref = (FLOOR as float) * U;
+  w = meadow();
+  s = hex_editor::EditSession {};
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(w, a), s.es_runs, s.es_roofs);
+  st = hex_editor::author_at(x, z, yaw, ref);
+  (cq, cr) = hex_grid::px_to_hex(x, z);
+  m = hex_editor::mode_name(hex_editor::mode_at(s, w, st));
+  made = hex_editor::session_open_kind(s, w, st, 1, hex_editor::STOREY_H);
+  say = "cut at ({r2(made.om_open.op_x)},{r2(made.om_open.op_z)})";
+  if !made.om_ok { say = "REFUSED — {made.om_why}"; }
+  println("  {label}  author ({r2(x)},{r2(z)}) cell ({cq},{cr})  mode {m}  -> {say}");
+}
