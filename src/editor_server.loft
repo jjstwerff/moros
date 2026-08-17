@@ -3025,9 +3025,11 @@ fn probe_view() {
   az = 0.0 - 4.0;
   ayaw = PI * 0.5;
   runs = WallRuns { items: [] };
+  roofs = hex_editor::RoofPlans { items: [] };
   hack = hex_editor::place_house(wld, hex_editor::author_at(ax, az, ayaw, py_of(wld, ax, az) as float * W_UNIT),
-                                 HOUSE_W, HOUSE_D, 4, runs);
-  println("house: {hack.ak_why}  anchor ({hack.ak_q},{hack.ak_r})  runs {len(runs.items)}");
+                                 HOUSE_W, HOUSE_D, 4, runs, roofs);
+  println("house: {hack.ak_why}  anchor ({hack.ak_q},{hack.ak_r})  runs {len(runs.items)}"
+          + "  roofs {len(roofs.items)}");
 
   // 1. WHERE THE WALL EDGES ARE, read back from the store rather than from the
   //    gesture's own report — the store is the authority and the count the gesture
@@ -3059,10 +3061,11 @@ fn probe_view() {
   sz = 0.0;
   scell = world_to_hex(sx, sz);
   println("author at ({sx},{sz}) = cell ({scell.ha_q},{scell.ha_r})");
-  rp = hex_editor::roof_plan_of(
-    hex_editor::pose_footprint(ax, az, ayaw, HOUSE_W, HOUSE_D),
-    ((4 + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
-    hex_editor::ROOF_PITCH_DEFAULT);
+  // ⚠ THE PLAN THE GESTURE FILED, not a fourth hand-built copy of it — plan 22.
+  // This read `pose_footprint` again with a literal `4` for the seat and the global
+  // scale, which is the socket's old arithmetic reproduced in a diagnostic; a probe
+  // that re-derives its subject cannot see the subject being wrong.
+  rp = roofs.items[0] ?? hex_editor::RoofPlan {};
   println("under the roof PLAN: {hex_editor::roof_plan_over(rp, sx, sz)}  "
           + "ridge at ({hex_editor::roof_point_x(rp, 4)},{hex_editor::roof_point_z(rp, 4)})"
           + "..({hex_editor::roof_point_x(rp, 5)},{hex_editor::roof_point_z(rp, 5)})");
@@ -5699,22 +5702,19 @@ fn main() {
             srv.send_to(ev.cid, "S:house refused — {hack.ak_why}");
             println("editor: house refused — {hack.ak_why}");
           } else {
-            // ⚠ THE EAVE COMES FROM THE SEATED FLOOR, NOT FROM THE FEET — plan 20
-            // `A4`. `place_house` seats the pad on its OWN footprint now, so on any
-            // slope the floor is not at the grade under the feet; a plan built from
-            // the feet would put the DRAWN gable at one height and the roof's stored
-            // cells at another, and the two would disagree by the whole cut-and-fill.
+            // ⛔ **THE ROOF PLAN WAS FILED HERE AND IT IS THE GESTURE'S NOW — plan 22.**
+            // These five lines were the ONLY writer of `es_roofs` in the tree, and
+            // they sat *after* the gesture rather than inside it — so `editor_run` and
+            // the page placed houses that entered no registry at all, and the registry
+            // is what the mesher draws a gable from. Measured on one house: **189
+            // vertices** of hex staircase without a plan against **18** with it.
             //
-            // ⚠ READ BACK OUT OF THE WORLD rather than returned in the ack. The pad
-            // was just written, so the store already answers it — and a second copy
-            // travelling in an `Ack` field is a number that can disagree with the
-            // thing it describes. `ak_q`/`ak_r` is the footprint's centre, which is
-            // a floor cell by construction.
-            hseat = hex_editor::terrain_h(hack.ak_q, hack.ak_r, wld);
-            sess.es_roofs.items += [hex_editor::roof_plan_of(
-              hex_editor::pose_footprint(wk.wk_x, wk.wk_z, wk.wk_yaw, HOUSE_W, HOUSE_D),
-              ((hseat + hex_editor::ROOF_EAVE_UP) as float) * HEIGHT_SCALE,
-              hex_editor::ROOF_PITCH_DEFAULT)];
+            // ⚠ AND THE THREE ARGUMENTS WERE RE-DERIVED, WHICH IS WHY THIS COULD DRIFT.
+            // The footprint was `pose_footprint` called a second time, the eave came
+            // off a read-back of the seat, and the scale was `HEIGHT_SCALE` — a global
+            // that is 0.25 here and **0.125 on a part world**, where the same house's
+            // eave came out 13.0 against the drawn roof's 6.5. `place_house` has all
+            // three in hand and derives none of them twice.
             mark_dirty(dirty, hack.ak_q, hack.ak_r, HOUSE_W + HOUSE_D + 4);
             srv.send_to(ev.cid, "S:{hack.ak_why}");
             println("editor: {hack.ak_why} at ({hack.ak_q},{hack.ak_r})");

@@ -727,7 +727,8 @@ fn test_a_raise_still_blends_and_is_not_a_disc() {
 fn test_a_levelled_pad_carries_a_building_rigidly() {
   w = strip(SURFACE_MAT, 0);
   runs = WallRuns { items: [] };
-  ack = place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 3, 3, G, runs);
+  ack = place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 3, 3, G, runs,
+                    RoofPlans { items: [] });
   assert(ack.ak_ok, "the fixture did not place: {ack.ak_why}");
   cl = 0;
   rs = 0;

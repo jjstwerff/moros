@@ -131,6 +131,79 @@ that cost this tree a diagnosis by elimination. **CLAUDE.md's *grep the basename
 not relax**, and the reason is now that the warning you would lean on is the one that does not
 appear.
 
+## ✅ THE ROOF PLAN IS THE GESTURE'S — plan 22 `D0`, 2026-08-17
+
+**`es_roofs` had exactly one writer and it sat at the SOCKET**, five lines after
+`press_verb` returned — so `editor_run` and the page placed houses that entered no
+registry at all, and the registry is what `hex_mesh` draws a gable from. It is
+`place_house`'s now, filed from the footprint it stamped the walls on and the seat
+`footprint_seat` chose, and the server's copy is gone.
+
+⛔ **THE PAGE HAD BEEN DRAWING THE SAWTOOTH `S6b` EXISTS TO SUPPRESS.** A roof cell draws
+itself only where no plan covers it, so one house meshed both ways is **189 vertices and
+162 triangles** of per-cell hex staircase against **18 and 6** of gable — with the ridge
+0.5 wu low and the eave 0.25 high. ⚠ Not *no roof*: a **wrong** roof, which photographs as
+a roof.
+
+⛔ **AND THE SOCKET RE-DERIVED ALL THREE ARGUMENTS, WHICH IS HOW THE TWO COULD DRIFT.**
+The footprint by calling `pose_footprint` a second time on the pose, the eave off a
+read-back of the seat, and the scale off `hex_proj::HEIGHT_SCALE` — a global that is 0.25
+on the landscape and **0.125 on a part world**, where the same house's plan sits at 13.0
+and its cells at 6.5. Measured; latent, because no live script places a house in part mode
+(`K3c`). **The fourth time a global has stood in for the world here**, and the first where
+the two answers describe the *same object*. `roof_eave_y` is the one derivation now and the
+cells and the plan are its two readers.
+
+⚠ **`roofs` IS A REQUIRED PARAMETER OF `place_house`**, for `author_at`'s reason: a
+defaulted one is how the next driver forgets, and forgetting is the whole defect.
+
+✅ **AND THE INSTRUMENT IS THE COUNT, NOT A GREEN SUITE** — every headless world was
+already green without a single plan in it. `probe/k3d`: **9 scripts moved, every one on the
+`roofs` field alone**, with no world md5, τ, chunk count, exit code or sentence moving with
+them, and the count tracking the houses (`runs 8` → `roofs 2`). `make headless-same` rc 0,
+`make parts` byte-identical, `press.loft`'s key-vs-call test now compares the two **sessions**
+as well as the two worlds — the half `w_tau` is blind to by construction.
+
+⛔ **AND THE SABOTAGE SWEEP'S FIRST RUN SCORED ALL FIVE ROWS AS *NOTHING WENT RED*.**
+`loft test` takes **one target per run** and was handed three, so every row ran nothing and
+exited — and *nothing went red* is the same sentence a feature nothing tests produces. The
+guard counts `test result:` lines now, one per file. ⚠ **And a row was mislabelled**:
+`early` adds an append rather than moving one, so what it reds is the COUNT and not the
+ordering it named — renamed `twice`, and the ordering claim is now a **declared blind spot
+required to stay green**, because no fixture in the tree makes a roof refuse.
+
+✅ **AND THE GATES AGREE, MEASURED SERIALLY** — `part_mode` (**30 checks, 0 bad**, and it is
+the gate whose verdict compares the RESTORED roof-plan registry), `stencil` (the roof cells
+that must still draw themselves where no plan covers them), `storey`, `opening`, `straight`,
+`subject`, `surface`: **7 PASS, rc 0**.
+
+⛔ **AND THE PARALLEL RUN BEFORE IT WAS WORTHLESS, FOR A REASON WORTH WRITING DOWN: TWO
+`make gate` SUITES WERE ALIVE AT ONCE.** The first was launched into a background pipeline,
+was interrupted without dying, and left **10 servers**; the second announced *"reclaimed 10
+server(s) left by an interrupted run"* and then ran beside it. Both use port base **18200**,
+so they fought over the same ports: `straight`, `subject` and `surface` failed at 3.5 s with
+`unsettled top-level await` or `SERVER NEVER LISTENED`, and `terrain`, `part_place` and
+`part_sock` failed on 20-second wire timeouts at 125–191 s. **Every one of them passes
+serially.** ⚠ This is `probe/k2b`'s *two copies ran at once* one layer out, and the two
+failure modes are opposite: there it could have produced a **false pass**, here it produced
+six **false reds** — which is the cheaper accident and still cost an hour. ⚠ **And the box
+is shared**: `rustc` and another agent's loft suite were at the top of the CPU list
+throughout, so a 10-job browser suite is not an instrument here at all.
+
+⚠ **AND THE `#950` BLAST-RADIUS COUNT IN THE SECTION ABOVE IS AN UNDER-COUNT.** It says five
+gates drive a browser, from a grep for `puppeteer|chrome|launch|press.mjs|browser` —
+`cellar_ceiling` is a sixth and the grep missed it, which the run found by failing it with the
+exact page signature (every mesh row PASS — soffit 648, floor 390, wall 162, rock 384 — and
+only the three PICTURE rows red at `parts -1`, `cam false`, `sky 1`). **A grep over source is
+an instrument and its default answer is *absent*,** for the third time in this file.
+
+⏭ **WHAT IT DOES NOT FIX, SAID RATHER THAN LEFT QUIET.** `session_scene_clear` empties every
+registry on a load, deliberately and with its own argument in `session.loft` — so a world
+saved and reopened still draws its houses from cells, staircase and all. That is the
+documented degradation, it applies to all nine registries rather than to roofs, and putting
+them in the world's bytes is a FORMAT question with a plan of its own. ⚠ It does mean
+`B4`'s *close the tab and come back* returns to a sawtooth roof.
+
 ## ✅ GROUND_DEFAULT IS CLOSED — [#23](https://github.com/jjstwerff/moros/issues/23), 2026-08-13
 
 All eight steps built. **The rule is normative now** — [WORLD_MODEL § `E1γ`](WORLD_MODEL.md),

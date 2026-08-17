@@ -154,9 +154,9 @@ fn main() {
   ga = ground_h(w, 0 - 8, 0);
   gb = ground_h(w, 8, 0);
   ha = place_house(w, author_at(((0 - 8) as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
-                   3, 3, ga, runs);
+                   3, 3, ga, runs, RoofPlans { items: [] });
   hb = place_house(w, author_at((8 as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
-                   3, 3, gb, runs);
+                   3, 3, gb, runs, RoofPlans { items: [] });
   println("house A: ok={ha.ak_ok} at ({ha.ak_q},{ha.ak_r}) grade {ga - G}  {ha.ak_why}");
   println("house B: ok={hb.ak_ok} at ({hb.ak_q},{hb.ak_r}) grade {gb - G}  {hb.ak_why}");
   println("the ramp, from q=-14 to q=14: {profile(w, 0 - 14, 14)}");
@@ -208,9 +208,9 @@ fn main() {
     g3a = ground_h(w3, 0 - 8, 0);
     g3b = ground_h(w3, 8, 0);
     place_house(w3, author_at(((0 - 8) as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
-                3, 3, g3a, runs);
+                3, 3, g3a, runs, RoofPlans { items: [] });
     place_house(w3, author_at((8 as float) * 1.7320508075688772, 0.0, 0.5235987755982988),
-                3, 3, g3b, runs);
+                3, 3, g3b, runs, RoofPlans { items: [] });
     cl3 = 0;
     rs3 = 0;
     brush(w3, 0, 0, 12, RAD, cl3, rs3);

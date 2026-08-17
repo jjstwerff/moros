@@ -162,8 +162,9 @@ fn housed_world() -> VoxelWorld {
 fn test_a_house_lands_with_a_floor_and_four_walls() {
   w = housed_world();
   runs = hex_editor::WallRuns { items: [] };
+  roofs = hex_editor::RoofPlans { items: [] };
   ack = hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, PI / 6.0 ?? 0.0),
-                                HOUSE_W, HOUSE_D, 12, runs);
+                                HOUSE_W, HOUSE_D, 12, runs, roofs);
   assert(ack.ak_ok, "the house went down: {ack.ak_why}");
   assert(ack.ak_n == 27, "a 5x4 footprint is 27 cells, got {ack.ak_n}");
   // ⚠ THIS ROW USED TO READ `ak_residual > 0` AND CALL IT "it marked wall edges",
@@ -176,6 +177,12 @@ fn test_a_house_lands_with_a_floor_and_four_walls() {
          "flat ground owes no cut-and-fill, got {ack.ak_residual}");
   assert(len(runs.items) == hex_editor::PLAN_SIDES,
          "four runs for the renderer, got {len(runs.items)}");
+  // ⚠ AND THE ROOF PLAN, FOR THE SAME REASON THE RUNS ARE ASSERTED HERE — plan 22.
+  // A run reaches the renderer through `es_runs` and a gable reaches it through
+  // `es_roofs`; the second had no writer outside the socket, so a house placed by
+  // any other driver drew its roof cells as a hex staircase. This is the row that
+  // says the gesture files it.
+  assert(len(roofs.items) == 1, "one roof plan for the renderer, got {len(roofs.items)}");
 }
 
 fn test_the_four_runs_meet_end_to_end() {
@@ -186,7 +193,8 @@ fn test_the_four_runs_meet_end_to_end() {
   w = housed_world();
   runs = hex_editor::WallRuns { items: [] };
   hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, PI / 6.0 ?? 0.0),
-                          HOUSE_W, HOUSE_D, 12, runs);
+                          HOUSE_W, HOUSE_D, 12, runs,
+                          hex_editor::RoofPlans { items: [] });
   for i in 0..hex_editor::PLAN_SIDES {
     j = (i + 1) % hex_editor::PLAN_SIDES ?? 0;
     a = runs.items[i] ?? hex_editor::WallRun {};
@@ -201,11 +209,17 @@ fn test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing() {
   // and a refusal must leave the world exactly as it was.
   w = housed_world();
   runs = hex_editor::WallRuns { items: [] };
+  roofs = hex_editor::RoofPlans { items: [] };
   before = w.w_tau;
   ack = hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, 0.0),
-                                HOUSE_W, HOUSE_D, 12, runs);
+                                HOUSE_W, HOUSE_D, 12, runs, roofs);
   assert(!ack.ak_ok, "due east is refused");
   assert(ack.ak_why.contains("offer"), "with the rotation that would work: {ack.ak_why}");
   assert(w.w_tau == before, "and nothing was written: τ {before} -> {w.w_tau}");
   assert(len(runs.items) == 0, "and no runs were handed to the renderer");
+  // ⚠ AND NO PLAN EITHER, WHICH IS THE WORSE FAILURE OF THE TWO. A run filed for a
+  // wall that was never stamped draws a line in the air; a PLAN filed for a roof
+  // that was never written makes the mesher draw a gable over open ground *and*
+  // tells `shelter_at` the author is indoors under it.
+  assert(len(roofs.items) == 0, "and no roof plan was filed for a house that is not there");
 }

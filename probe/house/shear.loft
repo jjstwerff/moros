@@ -17,7 +17,7 @@ fn main() {
   }
   runs = WallRuns { items: [] };
   yaw = 0.5235987755982988;                 // 30°, a placeable facing
-  ack = place_house(w, author_at(0.0, 0.0, yaw), 5, 4, G, runs);
+  ack = place_house(w, author_at(0.0, 0.0, yaw), 5, 4, G, runs, RoofPlans { items: [] });
   if !ack.ak_ok { println("refused: {ack.ak_why}"); return; }
 
   // the footprint, remembered before the raise repaints it

@@ -1,0 +1,226 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE ROOF THE CELLS ARE, AND THE ROOF EVERYTHING ELSE BELIEVES IN — plan 22.
+//
+// A house's roof exists twice on purpose. `roof_over` writes a height per column,
+// which is what a store can hold and what the walk and the camera read; and a
+// `RoofPlan` in the session describes the same roof as a rectangle with an eave and
+// a pitch, which is what the mesher draws a GABLE from and what `shelter_at` tests
+// against. **The two must be one roof**, and until this file existed nothing said so.
+//
+// ⛔ **THEY WERE NOT ONE ROOF, AND THE REGISTRY HAD ONE WRITER.** The plan was filed
+// at the SOCKET, five lines after the gesture returned — so `editor_run` and the page
+// placed houses that entered no registry at all. `hex_mesh` draws a roof cell itself
+// only where no plan covers it (`S6b`), so a locally placed house drew the per-cell
+// hex STAIRCASE the gable exists to replace: measured on one house, **189 vertices
+// and 162 triangles** against the planned **18 and 6**.
+//
+// ⚠ **AND THE SOCKET RE-DERIVED ALL THREE ARGUMENTS**, which is how the two could
+// drift even where the registry was filled: the footprint by calling
+// `pose_footprint` a second time, the eave off a read-back of the seat, and the
+// scale off `hex_proj::HEIGHT_SCALE` — a global that is 0.25 on the landscape and
+// **0.125 on a part world**, where the same house's plan sits at 13.0 and its cells
+// at 6.5.
+//
+// ⚠ **A FLAT FIXTURE CANNOT SEE THE SEAT HALF OF THIS**, which is why the slope rows
+// are here: on flat ground the author's feet, the grade and the seated floor are one
+// number, so a plan built from any of the three is right by accident.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const W = 5;
+const D = 4;
+const FLOOR = 40;
+const YAW = 0.5235987755982988;      // 30°, the facing every house fixture here uses
+
+fn flat() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+// ⚠ AFFINE IN ONE AXIS, because every ramp in this tree is: the height is constant
+// along the other, so no ramp primitive is needed and the fixture is a stack of
+// strips.
+fn ramp(per: integer) -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  for r in 0 - 30..31 {
+    for q in 0 - 30..31 {
+      hex_editor::ground_set(w, q, r, FLOOR + q * per, hex_editor::SURFACE_MAT);
+    }
+  }
+  w
+}
+
+fn house_on(w: VoxelWorld, roofs: hex_editor::RoofPlans) -> Ack {
+  a = hex_editor::author_on(w, 0.0, 0.0, YAW);
+  hex_editor::place_house(w, a, W, D, hex_editor::grade_under(w, a),
+                          WallRuns { items: [] }, roofs)
+}
+
+// The roof height stored at a column, in units — the topmost occupied cell.
+fn stored_top(w: VoxelWorld, q: integer, r: integer) -> integer {
+  top = 0 - 1;
+  col = world_column(w, q, r);
+  for c in col.co_cells {
+    if hex_voxel::hex_occupied(c) {
+      h = c.h_height as integer ?? 0;
+      if h > top { top = h; }
+    }
+  }
+  top
+}
+
+fn test_a_placed_house_files_exactly_one_roof_plan() {
+  // The claim the whole step is about: the GESTURE files it, so every driver that
+  // can place a house has the plan — not only the one with a socket under it.
+  w = flat();
+  roofs = hex_editor::RoofPlans { items: [] };
+  ack = house_on(w, roofs);
+  assert(ack.ak_ok, "the house went down: {ack.ak_why}");
+  assert(len(roofs.items) == 1, "one plan, got {len(roofs.items)}");
+}
+
+fn test_the_plan_sits_on_the_seated_floor_and_not_on_the_authors_feet() {
+  // ⚠ THE ROW A FLAT FIXTURE CANNOT FAIL. On a ramp the pad is seated by
+  // `footprint_seat` at the mean of its own footprint, which is neither the grade
+  // under the author nor the ground under the plan's centre. A plan built from the
+  // feet puts the drawn gable a whole cut-and-fill away from the stored cells.
+  w = ramp(3);
+  a = hex_editor::author_on(w, 0.0, 0.0, YAW);
+  feet = hex_editor::grade_under(w, a);
+  roofs = hex_editor::RoofPlans { items: [] };
+  ack = house_on(w, roofs);
+  assert(ack.ak_ok, "the house went down: {ack.ak_why}");
+  rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+  // The seat, read back out of the store the gesture just wrote — the floor cell at
+  // the footprint's own anchor.
+  seat = hex_editor::terrain_h(ack.ak_q, ack.ak_r, w);
+  want = hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, w.w_unit);
+  assert(rp.rp_eave == want,
+         "the plan's eave is the seated floor's: {rp.rp_eave} against {want} "
+         + "(seat {seat}, feet {feet})");
+  // ⚠ AND THE CONTROL, because the row above is satisfied by a fixture where the two
+  // are equal. If this ramp ever stops separating them the assertion above proves
+  // nothing, and this is the line that says so.
+  assert(seat != feet,
+         "the fixture no longer separates the seat from the feet — both {seat}, "
+         + "so the row above cannot fail");
+}
+
+fn test_the_plan_and_the_cells_describe_one_roof() {
+  // The invariant, stated where it can be measured: the plan's own surface over a
+  // column equals the height the store holds there. `roof_plan_y` is what the camera
+  // samples and what the mesher builds the gable from; `stored_top` is what the walk
+  // stands on. They are the same roof or they are two.
+  //
+  // ⚠ **EVERY COLUMN UNDER THE PLAN, NOT THE ANCHOR**, and EXACT rather than within a
+  // unit. The first version of this row asked one cell with a `<= 1` tolerance, which
+  // was slack nobody had measured — the real figure is **0 over all 26 columns**, so
+  // the tolerance was room for a defect to sit in rather than quantisation being
+  // admitted. A tolerance is a claim and it needs the same measurement as any other.
+  w = flat();
+  roofs = hex_editor::RoofPlans { items: [] };
+  ack = house_on(w, roofs);
+  assert(ack.ak_ok, "the house went down: {ack.ak_why}");
+  rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+  worst = 0;
+  wq = 0;
+  wr = 0;
+  n = 0;
+  pad = W + D + 4;
+  for r in ack.ak_r - pad..ack.ak_r + pad + 1 {
+    for q in ack.ak_q - pad..ack.ak_q + pad + 1 {
+      (px, pz) = hex_to_px(q, r);
+      if hex_editor::roof_plan_over(rp, px, pz) {
+        top = stored_top(w, q, r);
+        if top >= 0 {
+          planned = (hex_editor::roof_plan_y(rp, px, pz) / w.w_unit ?? 0.0) as integer;
+          d = planned - top;
+          if d < 0 { d = 0 - d; }
+          if d > worst { worst = d; wq = q; wr = r; }
+          n = n + 1;
+        }
+      }
+    }
+  }
+  // ⚠ AND THE COUNT IS ASSERTED FIRST, because a loop that found nothing under the
+  // plan would report a worst of 0 and read exactly like agreement.
+  assert(n == 26, "26 columns under the plan, found {n}");
+  assert(worst == 0,
+         "the drawn roof and the stored roof are one shape: worst |plan - cells| "
+         + "{worst} unit(s) at ({wq},{wr}) over {n} column(s)");
+}
+
+fn test_the_author_under_the_plan_is_under_the_house() {
+  // ⚠ WHAT THE PLAN IS FOR, and the reason an absent one is not merely a drawing
+  // fault: `shelter_at` tests the roof plans, so a house nobody filed a plan for is
+  // a house the camera cannot see the roof of. It survived only because the same
+  // query also counts occupied cells overhead — one instrument masking the other.
+  w = flat();
+  roofs = hex_editor::RoofPlans { items: [] };
+  ack = house_on(w, roofs);
+  assert(ack.ak_ok, "the house went down: {ack.ak_why}");
+  rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+  (cx, cz) = hex_to_px(ack.ak_q, ack.ak_r);
+  assert(hex_editor::roof_plan_over(rp, cx, cz),
+         "the footprint's own anchor is under the plan");
+  assert(!hex_editor::roof_plan_over(rp, cx + 20.0, cz),
+         "and twenty units away is not — the plan is a rectangle, not a half-plane");
+}
+
+fn test_a_refused_house_files_no_plan() {
+  // Due east has no mitred corners, so the footprint is refused before anything is
+  // written. A plan filed here would make the mesher draw a gable over open ground
+  // AND tell the camera the author is indoors under it.
+  w = flat();
+  a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
+  roofs = hex_editor::RoofPlans { items: [] };
+  ack = hex_editor::place_house(w, a, W, D, hex_editor::grade_under(w, a),
+                                WallRuns { items: [] }, roofs);
+  assert(!ack.ak_ok, "due east is refused: {ack.ak_why}");
+  assert(len(roofs.items) == 0, "and nothing was filed: {len(roofs.items)}");
+}
+
+fn test_two_houses_file_two_plans() {
+  // A registry, not a slot. The session holds every roof in the scene, and the
+  // second house must not replace the first — which is what a driver that kept one
+  // plan beside the socket would have done.
+  w = flat();
+  roofs = hex_editor::RoofPlans { items: [] };
+  a1 = hex_editor::author_on(w, 0.0, 0.0, YAW);
+  hex_editor::place_house(w, a1, W, D, hex_editor::grade_under(w, a1),
+                          WallRuns { items: [] }, roofs);
+  a2 = hex_editor::author_on(w, 0.0, 20.0, YAW);
+  hex_editor::place_house(w, a2, W, D, hex_editor::grade_under(w, a2),
+                          WallRuns { items: [] }, roofs);
+  assert(len(roofs.items) == 2, "two houses, two plans: {len(roofs.items)}");
+  p1 = roofs.items[0] ?? hex_editor::RoofPlan {};
+  p2 = roofs.items[1] ?? hex_editor::RoofPlan {};
+  assert(p1.rp_cr != p2.rp_cr || p1.rp_cq != p2.rp_cq,
+         "and they are two different roofs: ({p1.rp_cq},{p1.rp_cr}) twice");
+}
+
+fn test_the_eave_is_the_worlds_own_unit_and_not_a_global() {
+  // ⚠ THE LATENT HALF, MEASURED RATHER THAN ASSERTED IN A COMMENT. The socket built
+  // the plan with `HEIGHT_SCALE` (0.25); a part world is authored at 0.125, and
+  // `door/slat` really is. Nothing places a house in part mode today, so this is a
+  // fence around a defect rather than a repair of a visible one — and the number is
+  // what stops it being re-introduced by someone reaching for the global again.
+  w = world_new(0.125, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  roofs = hex_editor::RoofPlans { items: [] };
+  ack = house_on(w, roofs);
+  assert(ack.ak_ok, "the house went down: {ack.ak_why}");
+  rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+  seat = hex_editor::terrain_h(ack.ak_q, ack.ak_r, w);
+  want = hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, 0.125);
+  assert(rp.rp_eave == want,
+         "the eave is in the world's unit: {rp.rp_eave} against {want}");
+  // And the control: the global's answer is a different number, so the row above is
+  // distinguishing two things rather than restating one.
+  assert(rp.rp_eave != hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, 0.25),
+         "and the global would have given a different one — the row above is blind");
+}

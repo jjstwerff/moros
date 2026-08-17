@@ -301,8 +301,20 @@ pub fn footprint_seat(cells: HexSet, terr: Heights, policy: integer) -> float {
 // The walls are laid as four RUNS whose ends are the mitred corners, so S3's band
 // draws them and two consecutive sides share an endpoint exactly — the strips meet
 // on the centreline instead of overshooting each other by half a wall.
+// ⚠ **`roofs` IS REQUIRED, EXACTLY AS `runs` IS, AND A DEFAULT WOULD REBUILD THE
+// DEFECT IT CLOSES — plan 22.** The roof PLAN had one writer and it sat at the
+// socket, five lines *after* this call: so `editor_run` and the page both placed
+// houses that entered no registry, and the plan is what the mesher draws a gable
+// from. Measured on one house, meshed both ways: **189 vertices and 162 triangles**
+// with no plan — the per-cell hex staircase `S6b` exists to suppress — against
+// **18 and 6** with it, the two gable planes. The page had been drawing the sawtooth
+// since local mode shipped.
+//
+// A defaulted parameter is how the *next* driver forgets, which is `author_at`'s
+// argument for a required height one file over: a caller that omits it gets a
+// compile error rather than a house whose roof nothing knows about.
 pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
-                   grade: integer, runs: WallRuns) -> Ack {
+                   grade: integer, runs: WallRuns, roofs: RoofPlans) -> Ack {
   f = pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
   if !f.fp_ok {
     return ack_no("a footprint at this facing has no mitred corners; turn one step "
@@ -383,6 +395,20 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   // answer — and the footprint's cells are already the ones the roof covers.
   rf = roof_over(w, f, cells, seat, ROOF_EAVE_UP, ROOF_PITCH_DEFAULT, 0);
   if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
+  // ⚠ **AND THE PLAN IS FILED HERE, BECAUSE THIS IS WHERE THE ROOF IS KNOWN.** The
+  // socket used to do it afterwards and had to re-derive all three arguments: the
+  // footprint (`pose_footprint` called a second time on the author's pose), the seat
+  // (`terrain_h` read back out of the store) and the scale (a global). All three are
+  // in hand at this line — `f` is the footprint the walls were stamped on, `seat` is
+  // the height `footprint_seat` chose, and `roof_eave_y` is the call `roof_over` just
+  // made with the same two numbers. **The plan cannot describe a different roof from
+  // the cells, because there is nothing left for it to disagree through.**
+  //
+  // ⚠ AFTER the refusal above, never before it: a plan filed for a roof that was not
+  // written is a gable the mesher draws over open walls, which is the one thing worse
+  // than the staircase.
+  roofs.items += [roof_plan_of(f, roof_eave_y(seat, ROOF_EAVE_UP, w.w_unit),
+                               ROOF_PITCH_DEFAULT)];
   // ⚠ THE RESIDUAL IS THE CUT-AND-FILL NOW, not the wall count. `Ack.ak_residual`
   // is documented as *what the author asked for and did not get*, and a tally of
   // stamped edges is neither — it is a success count wearing the refusal field. The
@@ -418,7 +444,7 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
   if !f.fp_ok { return ack_no("no plan at this facing, so no ridge to run"); }
   pad = f.fp_wid + f.fp_dep + 4;
   hz = heights_new(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
-  eave = ((floor_h + eave_up) as float) * w.w_unit;
+  eave = roof_eave_y(floor_h, eave_up, w.w_unit);
   draw_roof(footprint_plan(f), cells, hz, eave, pitch, hip_steps);
 
   // ⚠ ONE ROOF, ONE LABEL, HOWEVER MANY CHUNKS IT COVERS — `I1`. A layer is
@@ -484,6 +510,25 @@ pub const ROOF_EAVE_UP = 12;      // the wall's own height — the roof starts w
 // layout"*. The other eight registries were always in `gesture.loft` and were always
 // fine, which is the control. A type a session holds belongs where the session can
 // reach it without a cycle.
+
+// ── ONE DERIVATION OF THE EAVE, AND TWO READERS ─────────────────────────────
+//
+// The height a roof starts at is read twice by construction: `roof_over` writes a
+// band of cells up from it, and `roof_plan_of` carries it as `rp_eave` for the
+// mesher's gable and the camera's `shelter_at`. **Those are the drawn roof and the
+// roof everything else believes in**, so a second spelling of
+// `(floor + eave_up) * unit` is not a tidiness question — it is the two coming apart.
+//
+// ⚠ **AND THEY HAD COME APART, MEASURED.** The plan was built at the SOCKET, off
+// `hex_proj::HEIGHT_SCALE` — a program global — while this writes with `w.w_unit`,
+// the world's own. They are both 0.25 on the landscape, which is every fixture
+// anyone had looked at; on a part world authored at 0.125 the same house's eave is
+// **13.0 against 6.5**, six and a half world units apart. That is the fourth time a
+// global has stood in for the world in this tree (`J`, `E`, `B` were the others),
+// and the first where the two answers describe the *same object*.
+pub fn roof_eave_y(floor_h: integer, eave_up: integer, unit: float) -> float {
+  ((floor_h + eave_up) as float) * unit
+}
 
 pub fn roof_plan_of(f: Footprint, eave: float, pitch: float) -> RoofPlan {
   r = f.fp_rot;
@@ -1391,7 +1436,8 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // placed instead. One verb, one key, and the catalogue says which thing it makes.
   if verb == VB_PLACE {
     if sess.es_part == "" {
-      return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a), sess.es_runs);
+      return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a),
+                         sess.es_runs, sess.es_roofs);
     }
     return place_chosen_part(sess, w, a, root);
   }

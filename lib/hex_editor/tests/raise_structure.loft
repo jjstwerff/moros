@@ -43,7 +43,8 @@ fn cells_of(w: VoxelWorld, mat: integer, q: &vector<integer>, r: &vector<integer
 }
 
 fn house(w: VoxelWorld, runs: WallRuns) -> Ack {
-  place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 5, 4, G, runs)
+  place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 5, 4, G, runs,
+              RoofPlans { items: [] })
 }
 
 fn test_the_floor_ends_level() {
@@ -176,10 +177,12 @@ fn test_a_second_building_down_the_slope_gets_its_own_level_pad() {
   // Two houses, one under the middle of the stroke and one out on the slope.
   w = world_at(G);
   runs = WallRuns { items: [] };
-  a1 = place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 5, 4, G, runs);
+  a1 = place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 5, 4, G, runs,
+                   RoofPlans { items: [] });
   assert(a1.ak_ok, "the first house: {a1.ak_why}");
   // far enough that the two floors cannot touch, and inside the same stroke
-  a2 = place_house(w, author_on(w, 0.0, 15.0, 0.5235987755982988), 5, 4, G, runs);
+  a2 = place_house(w, author_on(w, 0.0, 15.0, 0.5235987755982988), 5, 4, G, runs,
+                   RoofPlans { items: [] });
   assert(a2.ak_ok, "the second house: {a2.ak_why}");
 
   fq: vector<integer> = [];

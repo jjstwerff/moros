@@ -4,7 +4,7 @@ md5: 2c84d82a5f96bdd61a9d647f8d4d6e30
 tau: 190
 chunks: 4
 code: 0
-session: runs 4 roofs 0 leaves 0 openings 2 annex 0 props 0 slabs 0 holes 0 trunk false/0
+session: runs 4 roofs 1 leaves 0 openings 2 annex 0 props 0 slabs 0 holes 0 trunk false/0
 chosen: opening 2
 --- what the gestures reported
   placed 0,0

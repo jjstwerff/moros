@@ -113,7 +113,8 @@ fn test_pressing_the_house_key_is_calling_place_house() {
   assert(ka_pose.au_y == ha_pose.au_y, "the two fixtures do not share a ground height");
 
   ka = press_verb(ks, by_key, ka_pose, verb_in(keymap_default(), "H"));
-  ha = place_house(by_hand, ha_pose, HOUSE_W, HOUSE_D, grade_under(by_hand, ha_pose), hs.es_runs);
+  ha = place_house(by_hand, ha_pose, HOUSE_W, HOUSE_D, grade_under(by_hand, ha_pose),
+                   hs.es_runs, hs.es_roofs);
 
   assert(ka.ak_ok == ha.ak_ok, "one placed a house and the other did not");
   assert(ka.ak_ok, "the fixture refused the house: {ka.ak_why}");
@@ -125,6 +126,22 @@ fn test_pressing_the_house_key_is_calling_place_house() {
          "pressing H did {by_key.w_tau} writes, calling place_house did "
          + "{by_hand.w_tau} — the key means something else now");
   assert(ka.ak_n == ha.ak_n, "the two disagree on how many cells were placed");
+  // ⚠ AND THE SESSION, NOT ONLY THE WORLD — plan 22. A roof PLAN reaches no store,
+  // so `w_tau` and the cell count are blind to it by construction: this whole test
+  // stayed green for as long as the registry had one writer and it was at the
+  // socket. Comparing the two sessions is what makes the key and the call the same
+  // gesture in the half the world cannot see.
+  assert(len(ks.es_roofs.items) == len(hs.es_roofs.items),
+         "the key filed {len(ks.es_roofs.items)} roof plan(s) and the call filed "
+         + "{len(hs.es_roofs.items)}");
+  assert(len(ks.es_roofs.items) == 1,
+         "and a house files exactly one: {len(ks.es_roofs.items)}");
+  kr = ks.es_roofs.items[0] ?? RoofPlan {};
+  hr = hs.es_roofs.items[0] ?? RoofPlan {};
+  assert(kr.rp_eave == hr.rp_eave && kr.rp_cq == hr.rp_cq && kr.rp_cr == hr.rp_cr
+         && kr.rp_rot == hr.rp_rot && kr.rp_pitch == hr.rp_pitch,
+         "and the two plans describe one roof: eave {kr.rp_eave}/{hr.rp_eave} "
+         + "at ({kr.rp_cq},{kr.rp_cr})/({hr.rp_cq},{hr.rp_cr}) rot {kr.rp_rot}/{hr.rp_rot}");
 }
 
 // ── `R1a` — the pose carries the ground under the feet ──────────────────────

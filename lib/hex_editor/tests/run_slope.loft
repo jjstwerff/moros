@@ -75,7 +75,8 @@ fn test_a_building_still_moves_rigidly() {
   // run would satisfy every claim above and would put back the shear `A1` removed.
   w = plain();
   runs = WallRuns { items: [] };
-  ack = place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 5, 4, G, runs);
+  ack = place_house(w, author_on(w, 0.0, 0.0, 0.5235987755982988), 5, 4, G, runs,
+                    RoofPlans { items: [] });
   assert(ack.ak_ok, "{ack.ak_why}");
   fq: vector<integer> = [];
   fr: vector<integer> = [];
