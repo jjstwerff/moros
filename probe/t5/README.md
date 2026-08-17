@@ -19,6 +19,13 @@ could come back blind.
 > survived four attempts**, and the reduction below the whole client **did not
 > converge**: the same parse, the same 90-field struct and the same libraries in a
 > 3.1 MB module are green. See *The trap is memory corruption* below.
+>
+> ✅ **AND THE TRAP HAS A NAME NOW — `Store offset overflow: rec=… fld=…`, 2026-08-17.**
+> It is loft's **own store guard** firing, not an anonymous fault: the message was in
+> the module's data section the whole time and the browser was never shown it. See
+> *The panic had a sentence and nobody was told* below. Re-validated the same day
+> against a from-scratch `make client` on the same binary — it still reproduces
+> attached and off `file://`, and it dies **after the first thumbnail is meshed**.
 
 ## What is here
 
@@ -32,7 +39,11 @@ could come back blind.
 | `t5_upload.loft` | `gl_upload_vertices` in an `--html` page, at seven sizes |
 | `t5_handlers.loft` | the client's two thumbnail handlers, lifted out under a 3-field struct |
 | `t5_bigstruct.loft` | the same, under a **90-field** struct — the client's shape |
-| `wasmname.py` | resolves a trap's `wasm-function[N]` frames against the module's name section |
+| `wasmname.py` | resolves a trap's `wasm-function[N]` frames against the module's name section — and correctly reports that it **cannot**, because an `--html` build ships none |
+| `wasmframes.py` | resolves them anyway, by **byte offset** into the code section. Names optional |
+| `wasmpanic.py` | rewrites one function body so the panic **prints** instead of only aborting |
+| `console.mjs` | every channel the browser has — `console.*` and `Log.*`, not only the page's `<pre>` |
+| `ctl.html` | `console.mjs`'s control: a page that says one line on each channel |
 
 Each `--html` page is driven the same way, because `tools/build-pages.mjs` bakes
 `data/parts` into whatever engine sits at `src/.loft/editor_client.html`:
@@ -165,6 +176,80 @@ to the client's scale is not something a probe can do cheaply.
 
 **No source-level workaround survived**: four were tried and each is a row above. The
 browser editor stays broken until loft#950 is fixed, which is what `wa:none` says.
+
+## ✅ The panic had a sentence, and nobody was told — 2026-08-17
+
+⚠ **THE WHOLE BISECT ABOVE WAS THE PRICE OF NOT READING A MESSAGE THAT WAS ALREADY IN
+THE MODULE.** The trap is not anonymous. It is loft's **own store guard**:
+
+```
+Store offset overflow: rec=… fld=…  created at pc=…, last legitimate op at pc=…,
+freed at pc=…, … now at pc=…
+```
+
+`freed at pc=` puts it in the store-lifetime family — the neighbourhood of loft#760 and
+loft#810 — rather than in graphics or meshing, and it fits the symptom exactly: a scalar
+field reading a neighbouring value's bits, with the trap arriving only on the next
+vector read. **That is a runtime check firing, not undefined behaviour**, which means
+loft's own runtime knew the record and the field the whole time.
+
+**Three steps, and the first two are readable rather than run:**
+
+1. **The frames resolve by BYTE OFFSET.** `wasmname.py` cannot answer — there is no name
+   section — but Chrome prints `wasm-function[1073]:0x56ba1c`, and that offset is a
+   *module* offset, so the code section locates the function and the instruction with no
+   names involved. `wasmframes.py` does it, and the index becomes a cross-check rather
+   than the only evidence. Its first line was the answer: `wasm-function[1073]` is a body
+   of **three bytes** — `00 00 0b`, no locals, `unreachable`, `end` — an abort STUB. So
+   eight of the ten frames were `core::panicking` and only two were program.
+2. **The message is a static in the data section.** The raising frame
+   `wasm-function[903]` (`defined#845`) passes `i32.const 1048714`, which lands exactly
+   on the length-prefixed `\x1b"Store offset overflow: rec="`. ⚠ **A byte-pattern scan
+   said 5805 hits and was a useless instrument** — the same five bytes occur inside
+   unrelated immediates — so the decode had to be real (`wasm-dis`), not a grep.
+3. **And it is confirmed at RUNTIME, because reading is not measuring.** The page already
+   imports `loft_io.loft_host_print` as `(i32 i32)`, a (ptr, len) print, and nothing on
+   the panic path calls it. `wasmpanic.py` rewrites `defined#1113`'s body to
+   `local.get 0; local.get 1; call loft_host_print; end`, re-embeds the module, and the
+   page prints. ⚠ The second argument is **not** a length, so the print runs on into the
+   rest of the string table — the first message is the answer and the runaway is the
+   instrument being honest about what it does not know.
+
+✅ **AND PRINTING IT IMPROVES THE BACKTRACE AS A SIDE EFFECT, WHICH WAS NOT THE POINT.**
+With the panic returning instead of aborting, the trap is raised at the *raising* frame:
+
+```
+wasm-function[903] defined#845 (i32,i32,i32)->i32        813 B   ← the store access
+wasm-function[63]  defined#5   (i32,i32,i32,i64,i32,i32) 1034 B
+wasm-function[390] defined#332 (i32,i32,i32,i32)        13576 B
+wasm-function[435] defined#377 (i32)                   267952 B
+wasm-function[441] defined#383 ()                        5659 B
+```
+
+Five loft frames where there were eight of panic machinery and two of program. Both
+findings are on [loft#950](https://github.com/loft-lang/loft/issues/950) and
+[loft#954](https://github.com/loft-lang/loft/issues/954), with the ordering stated:
+**route the message to `loft_host_print` before shipping a name section** — it is
+smaller and it is worth more.
+
+⚠ **AND THE DRIVER THAT PROVED THE SILENCE WAS BLIND ON ITS FIRST RUN.** *The panic
+prints nothing* could not be concluded from `press.mjs`, which reads the page's `<pre>`
+and `Runtime.exceptionThrown` and never subscribes to `console.*`. `console.mjs` does —
+and its first run scored the CONTROL as silent, because headless chrome answered
+`net::ERR_ACCESS_DENIED` for a `file://` URL under the session scratch directory. **A
+driver that cannot see a line it was told to look for reports the same silence for a
+page that never spoke and a page it never loaded**, so `ctl.html` is run first and the
+navigate result is printed every time.
+
+### The blast radius, measured rather than assumed
+
+Of the tree's 49 gates, **five drive a browser and three of them fail** — `cache`
+(222 s), `client_mesh` (243 s), `camera_indoors` (261 s) — every one by the page never
+producing a frame. `camera_indoors` is the independent instrument: the page is attached
+and alive on the wire (536 messages) and renders **pure sky over 33,600 samples**, at
+`cam false` and `parts -1`. ⚠ The two that pass — `cart` and `subject` — read numbers
+and status lines rather than a rendered world, which is why `make gate` does not simply
+collapse and why a partial green here says nothing about the product.
 
 ## ⛔ And the finding that outlives the defect: nothing in `make fast` builds the page
 

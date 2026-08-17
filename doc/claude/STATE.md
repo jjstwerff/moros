@@ -55,6 +55,39 @@ not. Padding a small page with 2,000 lines of *called* code moved it **36 KB** �
 `--html` module's size is its libraries, not its source — so a probe cannot cheaply be
 grown to the client's scale.
 
+✅ **AND THE TRAP HAS A NAME NOW — `Store offset overflow: rec=… fld=…`, 2026-08-17.**
+It is loft's **own store guard** firing, so the runtime knew the record and the field
+all along; `freed at pc=` in the same format string puts it in the store-lifetime family
+(loft#760, loft#810) rather than in graphics or meshing, and that fits the symptom
+exactly. Re-validated the same day against a from-scratch `make client` on the same
+binary — still red attached and off `file://`, dying **after the first thumbnail is
+meshed**. Three steps, in [probe/t5/README](../../probe/t5/README.md) § *The panic had a
+sentence*: the frames resolve by **byte offset** with no name section
+(`probe/t5/wasmframes.py`), the message is a static in the data section, and it is
+confirmed at RUNTIME by rewriting one function body to call the `loft_host_print` the
+page **already imports** (`probe/t5/wasmpanic.py`). ⚠ **A byte-pattern scan for the
+message pointer returned 5805 hits and was useless** — the decode had to be real.
+✅ **And printing it improves the BACKTRACE as a side effect**: with the panic returning
+instead of aborting, Chrome prints five loft frames where it printed eight of
+`core::panicking` and two of program. Both on the tracker, with the ordering stated —
+**route the message before shipping a name section.**
+
+⚠ **AND THE DRIVER THAT PROVED THE SILENCE WAS BLIND ON ITS FIRST RUN.** `press.mjs`
+reads the page's `<pre>` and `Runtime.exceptionThrown` and never subscribes to
+`console.*`, so *the panic printed nothing* was not a conclusion it could support;
+`probe/t5/console.mjs` does, and **it scored its own control as silent** because
+headless chrome answers `net::ERR_ACCESS_DENIED` for a `file://` URL under the session
+scratch directory. A driver that cannot see a line it was told to find reports the same
+silence for a page that never spoke and a page it never loaded.
+
+⚠ **AND THE BLAST RADIUS IS MEASURED NOW: 3 OF 49 GATES, NOT ALL OF THEM.** Five gates
+drive a browser; `cache`, `client_mesh` and `camera_indoors` fail, each by the page never
+producing a frame, while `cart` and `subject` pass because they read numbers and status
+lines rather than a rendered world. `camera_indoors` is the independent instrument — the
+page attached and alive on the wire (536 messages), rendering **pure sky over 33,600
+samples** at `cam false`, `parts -1`. ⚠ So a partial green over `make gate` says nothing
+about the product, for the same reason `make fast` did not.
+
 ⚠ **AND THE BISECT SHOULD NEVER HAVE BEEN NEEDED.** Chrome hands the trap ten
 `wasm-function[N]` frames and `press.mjs` has been recording them verbatim the whole time;
 they name the failing function and its call chain. They cannot be read: an `--html` build
