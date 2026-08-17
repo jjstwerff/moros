@@ -800,3 +800,36 @@ nothing here has been photographed. The mesher draws walls from the **runs**, wh
 four and filed correctly, which is the standing explanation for why no gate and no eye ever
 caught this; **that explanation is itself unmeasured**, and the instrument for it is
 `ringmesh.loft`'s, one registry over.
+
+### ✅ And the ownership guess is now measured — with the near wall as the mirror
+
+§ 11 named the decisive experiment and left it unrun. It is run, and it settles the
+asymmetry completely. Stamp one wall alone, merge a band on **one** cell, ask whether the
+shared edge survives:
+
+| the band was merged on | the far run's edge at mid (0.43, 5.25) |
+|---|---|
+| cell **(0,3)** — `in_fp true` | **destroyed**, from *both* of its sightings |
+| cell (0,4) — `in_fp false` | untouched, from both |
+
+| the band was merged on | the near run's edge at mid (0.43, −2.25) |
+|---|---|
+| cell **(0,−2)** — `in_fp false` | **destroyed**, from both of its sightings |
+| cell (0,−1) — `in_fp true` | untouched, from both |
+
+> **An edge is stored ONCE, on one of its two cells, and read back from both.** Rewriting
+> the owner's column destroys it; rewriting the neighbour's does nothing. The footprint
+> `r −1..3` contains the **far** wall's owning cells (row 3) and **not** the near wall's
+> (row −2) — so `roof_over`'s band erases one wall and spares the opposite one, from a
+> single symmetric loop over the same cells.
+
+⚠ **The owning side was direction 4 for the far run and direction 5 for the near one**, with
+the non-owning sightings at directions 1 and 2. *The 3/4/5 half owns* is the natural reading
+of that and **only two of the three were exercised** — enough to explain both walls, not
+enough to state as the store's rule.
+
+⏭ **So `D2c`'s fix is `roof_over`'s band, not the ownership.** It merges from `floor_h`,
+which is the ground, when what it is writing starts at the eave; the wall height in between
+is not the roof's to rewrite. ⚠ The fix must be measured on **all four walls** — the near
+wall has survived this defect by luck of which side owns its edges, so a change that fixes
+the far wall by moving the erase one row would swap the two and still read as progress.

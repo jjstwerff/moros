@@ -207,6 +207,84 @@ fn main() {
       }
     }
   }
+
+  // ── 5. THE DECISIVE EXPERIMENT, ONE CELL WIDE ──────────────────────────────
+  //
+  // § 4 leaves *which of an edge's two cells owns it* as the only account that fits all
+  // four walls, and a guess that fits is still a guess. This settles it: stamp the far
+  // wall alone, then merge a band on ONE cell — first the row-3 side, then the row-4
+  // side — and ask whether the shared edge at `mid (0.43, 5.25)` survives.
+  //
+  //   row 3 kills it and row 4 does not  -> the owner is the dir-4/5 cell, and the roof
+  //                                         erases the far wall because that cell is the
+  //                                         one inside the footprint
+  //   row 4 kills it and row 3 does not  -> the opposite, and the near/far asymmetry
+  //                                         needs a different explanation entirely
+  //   both kill it                       -> the merge clears an edge from either side,
+  //                                         and ownership is not the discriminator
+  println("--- 5. one cell, one band: which side of the edge owns it");
+  band5: vector<hex_voxel::Hex> = [
+    hex_voxel::Hex { h_height: (seat as u16? ?? 0),
+                     h_material: (hex_editor::FLOOR_MAT as u8? ?? 0) },
+    hex_voxel::Hex { h_height: ((seat + 20) as u16? ?? 0),
+                     h_material: (hex_editor::ROOF_MAT as u8? ?? 0) }
+  ];
+  far_side = qs[1] ?? hex_editor::WallQuad {};
+  for which in 0..2 {
+    w5 = meadow();
+    runs5 = hex_editor::WallRuns {};
+    m5 = 0;
+    hex_editor::wall_stamp(w5,
+      hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                            wr_x0: far_side.wq_x0, wr_z0: far_side.wq_y0,
+                            wr_x1: far_side.wq_x1, wr_z1: far_side.wq_y1,
+                            wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+      hex_editor::WALL_MAT, seat, runs5, m5);
+    before3 = hex_editor::wall_of(w5, 0, 3, 4, ref) != 0;
+    before4 = hex_editor::wall_of(w5, 0, 4, 1, ref) != 0;
+
+    mr = 3; if which == 1 { mr = 4; }
+    lbl = hex_voxel::world_fresh_label(w5);
+    hex_voxel::world_merge_band_as(w5, 0, mr, seat, seat + 20, band5, lbl);
+
+    after3 = hex_editor::wall_of(w5, 0, 3, 4, ref) != 0;
+    after4 = hex_editor::wall_of(w5, 0, 4, 1, ref) != 0;
+    println("  merged the band on cell (0,{mr}):  the edge at mid (0.43,5.25) reads "
+          + "[from (0,3) dir 4] {before3} -> {after3}   "
+          + "[from (0,4) dir 1] {before4} -> {after4}");
+  }
+
+  // ⚠ **AND THE NEAR WALL IS THE MIRROR, WHICH IS WHAT MAKES IT A RULE.** One wall
+  // showing an owner proves an owner exists; the claim is that the FOOTPRINT falls on
+  // the owning side for the far wall and the other side for the near one. So the same
+  // two-cell experiment runs on the near run's edge at mid (0.43,−2.25), whose cells
+  // are (0,−2) — outside the footprint `r −1..3` — and (0,−1), inside it.
+  println("--- 5b. the near run's edge, the same two cells, mirrored");
+  near_side = qs[3] ?? hex_editor::WallQuad {};
+  for which2 in 0..2 {
+    w6 = meadow();
+    runs6 = hex_editor::WallRuns {};
+    m6 = 0;
+    hex_editor::wall_stamp(w6,
+      hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                            wr_x0: near_side.wq_x0, wr_z0: near_side.wq_y0,
+                            wr_x1: near_side.wq_x1, wr_z1: near_side.wq_y1,
+                            wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+      hex_editor::WALL_MAT, seat, runs6, m6);
+    b5 = hex_editor::wall_of(w6, 0, 0 - 2, 5, ref) != 0;
+    b2 = hex_editor::wall_of(w6, 0, 0 - 1, 2, ref) != 0;
+
+    mr2 = 0 - 2; if which2 == 1 { mr2 = 0 - 1; }
+    inside2 = hexset_get(cells, 0, mr2);
+    lbl2 = hex_voxel::world_fresh_label(w6);
+    hex_voxel::world_merge_band_as(w6, 0, mr2, seat, seat + 20, band5, lbl2);
+
+    a5 = hex_editor::wall_of(w6, 0, 0 - 2, 5, ref) != 0;
+    a2 = hex_editor::wall_of(w6, 0, 0 - 1, 2, ref) != 0;
+    println("  merged on cell (0,{mr2}) [in_fp {inside2}]:  the edge at mid "
+          + "(0.43,-2.25) reads [from (0,-2) dir 5] {b5} -> {a5}   "
+          + "[from (0,-1) dir 2] {b2} -> {a2}");
+  }
 }
 
 // Sightings whose edge midpoint lies on the horizontal line `zc`, within a third of a
