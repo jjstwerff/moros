@@ -85,6 +85,32 @@ edge midpoints along this wall are 0.87 further out — **1.30** from the centre
 a wider opening marks more and a narrower one marks fewer. That discrimination is what a test for
 this has to assert, because a fix that simply marked every edge of the cell would pass the walk.
 
+### ⛔ …and building it found the second half of the same divergence
+
+`D1a` was written — `open_span`, marking every wall edge whose midpoint is within `op_half`, with
+`session_open_kind` deciding the SHAPE first so the width is known before the store is marked —
+and **five of `opening.loft`'s eighteen tests refused with *no wall here to open***. It was
+reverted rather than patched, because the reason is not the rule:
+
+    author on a ring cell            (3.464, 0)     — `fence_disc`, which registers no RUN
+    opening_make centre              (3.464, 0)     — `run_point_near` had nothing to project onto
+    every edge midpoint of that cell  0.866 away    — against a half of 0.65
+
+⚠ **AND `opening_cuts` — the renderer's OWN inside-test — uses the same plain distance**
+(`if d2 > o.op_half * o.op_half { return false; }`). So by the drawing's own rule **no point of
+that boundary is inside this opening**: the store has said `DOOR` on an edge since `open_ahead`
+was written, and the picture has no hole there. That is the index/truth split in the direction
+this probe's row 5 could not reach, and it is a fact about a wall with **no run** rather than
+about the span rule.
+
+> **So `D1a` is not a reorder plus a distance test.** It also has to decide what an opening means
+> on a wall that no run describes — `fence_disc` builds one, and five library fixtures stand on it.
+
+⏭ The two candidates, neither chosen here: give `fence_disc` a run so every wall has a
+centreline, or let an opening fall back to the EDGE it was found on when there is no run to
+project onto. The first makes one rule; the second keeps a gesture working where the first would
+change five fixtures' worlds.
+
 ### ⏭ What follows for `D2`
 
 **The `inside` mode is unreachable by walking, in every driver.** So `D2` cannot bind the
