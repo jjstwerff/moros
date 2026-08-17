@@ -1,0 +1,63 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// DOES `fixstep::approach` GIVE THE SAME ANSWER IN A BROWSER? — plan 22 `E1`.
+//
+//     loft --interpret --lib lib/ probe/e1/ease_html.loft        # the reference
+//     loft --html probe/e1/out/ease.html --lib lib/ probe/e1/ease_html.loft
+//
+// ⚠ **`fixstep`'s README MARKS `--html` AS `n/a`, AND THAT IS AN ARGUMENT RATHER
+// THAN A MEASUREMENT**: *"pure loft, no `#native` bindings, so no bridge is
+// involved."* The reasoning is sound and this tree has just spent a week on
+// [loft#950](https://github.com/loft-lang/loft/issues/950), where an `--html` build
+// diverges from every other target with no bridge involved at all. moros is the repo
+// that actually ships `--html` pages, so it is the one that can answer it.
+//
+// The specific risk is one call: `ease_fraction` is `1 − exp(−k·dt)`, and `exp` is a
+// builtin. If it is absent, stubbed or differently rounded in a browser, then
+// `approach` is wrong there — and plan 22 `C3`, the page taking the camera, is where
+// moros would find out.
+//
+// ⚠ **THE COMPARISON IS THE POINT, NOT THE NUMBERS.** This program prints the same
+// lines whichever target runs it, so the interpreter run is the reference and the
+// page's output is diffed against it. A page that printed plausible numbers and was
+// never compared would be the instrument this tree keeps catching.
+use fixstep;
+
+fn r(v: float) -> float { round(v * 10000000000.0) / 10000000000.0 ?? 0.0 }
+
+fn main() {
+  println("ease: begin");
+
+  // The composition identity — the whole reason the library's form is the right one.
+  // If `exp` misbehaves in a browser this is where it shows, because the two cuts
+  // stop agreeing.
+  a = fixstep::approach(0.0, 1.0, 6.0, 1.0);
+  b = 0.0;
+  for i in 0..60 { b = fixstep::approach(b, 1.0, 6.0, 1.0 / 60.0 ?? 0.0); }
+  println("ease: compose one {r(a)} sixty {r(b)} spread {r(a - b)}");
+
+  // The four valves `src/editor_server.loft` eases, at its own fixed step, after the
+  // tick counts the priced table uses.
+  dt = 33000.0 / 1000000.0 ?? 0.0;
+  for kk in 0..4 {
+    k = 12.0;
+    if kk == 1 { k = 2.5; }
+    if kk == 2 { k = 6.0; }
+    if kk == 3 { k = 3.0; }
+    v = 0.0;
+    for n in 0..120 { v = fixstep::approach(v, 1.0, k, dt); }
+    println("ease: k {k} after 120 ticks {r(v)}");
+  }
+
+  // `ease_fraction` on its own, including the paused frame the library documents as
+  // a zero — a browser tab that is backgrounded hands exactly this down.
+  println("ease: frac k6 dt0.033 {r(fixstep::ease_fraction(6.0, dt))}");
+  println("ease: frac paused {r(fixstep::ease_fraction(6.0, 0.0))}");
+
+  // The angle half. moros eases no angle today, but `C3` would, and a wrap that is
+  // wrong in a browser only is exactly the shape this file exists to rule out.
+  println("ease: angle 350->10 {r(fixstep::approach_angle(350.0, 10.0, 6.0, dt))}");
+  println("ease: wrap -300 {r(fixstep::wrap_delta(0.0 - 300.0))}");
+  println("ease: done");
+}
