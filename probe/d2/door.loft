@@ -7,7 +7,7 @@
 //     loft --lib lib/ probe/d2/door.loft
 //
 // `D1` logged the derived mode over the whole live corpus and the answer was
-// **139 gestures of 140 performed from `outside`** — including every stair, every
+// **143 gestures of 144 performed from `outside`** — including every stair, every
 // storey, the cellar, and 17 of the 18 openings. `D2` binds verbs to the mode, so
 // either the corpus is driving the editor wrongly or the mode cannot be reached.
 //
@@ -19,6 +19,10 @@
 //   1. what material is on each edge around the doorway, before and after the cut
 //   2. which edge the walker's own path crosses
 //   3. where `walk_to` actually puts the feet, aimed straight through it
+//   4. and whether the opening's OWN SPAN covers that crossing — the question the
+//      fix's shape turns on, and the one thing here that is geometry rather than
+//      opinion
+
 // ⚠ THREE PACKAGES AND NO MORE. A program under `probe/` is not inside a package, so
 // `use hex_edge;` here sends the resolver to the REGISTRY — and it then tries to
 // auto-install every internal module basename in the graph (`gesture`, `catalogue`,
@@ -126,6 +130,34 @@ fn main() {
   empty = hex_editor::EditSession {};
   println("  from (0,-8) aiming at (0,6) -> {reach(c, empty, 0.0 - 8.0)}");
 
+  // ── 4b. IS THE WALKER'S CROSSING INSIDE THE DOORWAY AT ALL? ────────────────
+  //
+  // ⚠ **THE QUESTION THE FIX'S SHAPE TURNS ON, AND IT IS GEOMETRY RATHER THAN
+  // OPINION.** *Mark more edges* is only right if the opening's own span really
+  // does cover where the walker crosses; if it does not, the wall was stopping
+  // them correctly and the coarse index is not the defect. So: the opening's
+  // centre and half-width, the crossing point the walk reported, and every wall
+  // edge midpoint around that cell with its distance to the centre.
+  println("--- the doorway's own span against the crossing");
+  o = made.om_open;
+  println("  opening centre ({o.op_x},{o.op_z}) half {o.op_half}");
+  cross_d = dist(o.op_x, o.op_z, 0.0, 0.0 - 2.26);
+  println("  the walk stopped at (0,-2.26) — {round(cross_d * 1000.0) / 1000.0 ?? 0.0} "
+        + "from the centre, and half is {o.op_half}");
+  for d2 in 0..6 {
+    if hex_editor::wall_of(w, dq, dr, d2, ref) != 0 {
+      (nq2, nr2) = hex_grid::hex_neighbor(dq, dr, d2);
+      (ax2, az2) = hex_grid::hex_to_px(dq, dr);
+      (bx2, bz2) = hex_grid::hex_to_px(nq2, nr2);
+      mx = (ax2 + bx2) * 0.5;
+      mz = (az2 + bz2) * 0.5;
+      println("  edge {d2} {mat_name(hex_editor::wall_of(w, dq, dr, d2, ref))} "
+            + "midpoint ({round(mx * 100.0) / 100.0 ?? 0.0},"
+            + "{round(mz * 100.0) / 100.0 ?? 0.0}) "
+            + "at {round(dist(o.op_x, o.op_z, mx, mz) * 1000.0) / 1000.0 ?? 0.0}");
+    }
+  }
+
   // ── 5. ⛔ THE ROW THAT COULD NOT HAVE FOUND WHAT IT WAS AIMED AT ───────────
   //
   // It was written to ask the coarseness the other way round: the walk reads the
@@ -167,4 +199,8 @@ fn reach(w: VoxelWorld, sess: EditSession, z0: float) -> float {
   (gx, gz) = hex_editor::walk_to(wk.wk_coll, wk.wk_sf, wk.wk_rt, w,
                                  0.0, z0, 0.0, 6.0, wk.wk_csurf as float);
   round(gz * 1000.0) / 1000.0 ?? 0.0
+}
+
+fn dist(ax: float, az: float, bx: float, bz: float) -> float {
+  sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz)) ?? 0.0
 }

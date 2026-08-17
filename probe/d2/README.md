@@ -64,6 +64,27 @@ spring line and a depth. The WALK honours only `wall_stops_walk(<edge material>)
 about 0.87 wu, so a 1.3 wu doorway does not fit in the one edge that gets marked, and the rest
 of the boundary stays shut to a person while being drawn as open.
 
+### ✅ And the fix's shape is geometry, not opinion — the numbers say *mark the span*
+
+*Mark more edges* is only right if the opening's own span really covers where the walker crosses.
+If it did not, the wall was stopping them correctly and the coarse index would not be the defect.
+So the probe plots the instance and reads the rule off it:
+
+    opening centre (0, -2.25)   half 0.65
+    the walk stopped at (0, -2.26)      0.010 from the centre
+    edge 4  midpoint (-0.43, -2.25)     0.433 from the centre
+    edge 5  midpoint (+0.43, -2.25)     0.433 from the centre
+
+**Both edges lie inside the doorway's own half-width, and the walker crosses 0.01 from its
+centre.** So the opening covers the crossing and the index marked one of the two edges it spans.
+
+> **The rule: mark every wall edge whose MIDPOINT lies within `op_half` of the opening's centre.**
+
+⚠ **And it is not *mark everything*, which is the thing that would make it useless.** The next
+edge midpoints along this wall are 0.87 further out — **1.30** from the centre, outside 0.65 — so
+a wider opening marks more and a narrower one marks fewer. That discrimination is what a test for
+this has to assert, because a fix that simply marked every edge of the cell would pass the walk.
+
 ### ⏭ What follows for `D2`
 
 **The `inside` mode is unreachable by walking, in every driver.** So `D2` cannot bind the
