@@ -1,0 +1,232 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHY DOES `place_house` STAMP TWO OF ITS FOUR WALLS? — plan 22 `D2c`.
+//
+//     loft --lib lib/ probe/d2/stamp.loft
+//
+// `farwall.loft` measured the damage: near 12 edges, left 9, right 4, far 2 — the far
+// wall is its two corner posts and nothing between. This asks the cause, and it asks it
+// with the REAL `wall_stamp` rather than a reproduction of its geometry: `place_house`
+// already calls it once per side with a `marked` out-parameter, so each side's own count
+// is available without re-deriving anything.
+//
+// ⚠ **A REPRODUCTION IS WHAT WENT WRONG LAST TIME** — `gate.loft`'s deleted
+// `opening_would_find` reproduced the wrong precondition and disagreed with the real
+// gesture at 8 of 49 stations. So every number below comes out of the library.
+//
+// Two experiments, because they separate causes that want opposite fixes:
+//
+//   1. each side stamped ALONE on its own fresh world — if the far wall gives 11 by
+//      itself, the defect is interaction or ordering between the four calls;
+//   2. the four stamped together in `place_house`'s own order — the shipped case.
+
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;
+
+fn r2(v: float) -> float { round(v * 100.0) / 100.0 ?? 0.0 }
+
+fn meadow() -> VoxelWorld {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+// Every edge the store will hand back at `ref`, counted as sightings — each edge is
+// visited from both its cells, exactly as `wall_stamp`'s own loop visits it, so this
+// number and the stamp's `marked` are on the same footing and can be subtracted.
+fn readable(w: VoxelWorld, ref: float) -> integer {
+  n = 0;
+  for q in 0 - 12..12 {
+    for r in 0 - 12..12 {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d, ref) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  ref = (FLOOR as float) * U;
+
+  // The same footprint `place_house` builds, from the same author pose the rest of
+  // `probe/d2` uses — so the four sides below are the four sides it stamps.
+  f = hex_editor::pose_footprint(0.0, 0.0 - 4.0, YAW,
+                                 hex_editor::HOUSE_W, hex_editor::HOUSE_D);
+  println("footprint ok={f.fp_ok} centre ({f.fp_cq},{f.fp_cr}) "
+        + "wid {f.fp_wid} dep {f.fp_dep} rot {f.fp_rot}");
+
+  pad = hex_editor::HOUSE_W + hex_editor::HOUSE_D + 4;
+  cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  hex_editor::footprint_fill(f, cells);
+  qs = hex_editor::footprint_walls(f, cells);
+
+  // ⚠ **THE FOOTPRINT'S OWN ROWS, BECAUSE THE ASYMMETRY IS A ROW OFFSET.** The roof
+  // erases what its footprint cells own, so which rows those are decides which walls
+  // survive — and *the cells sit against the far wall and a row short of the near one*
+  // is a claim about this rectangle, not about roofs.
+  frlo = 999; frhi = 0 - 999; fqlo = 999; fqhi = 0 - 999;
+  for rr in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for qq in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, qq, rr) {
+        if rr < frlo { frlo = rr; }
+        if rr > frhi { frhi = rr; }
+        if qq < fqlo { fqlo = qq; }
+        if qq > fqhi { fqhi = qq; }
+      }
+    }
+  }
+  println("footprint cells: q {fqlo}..{fqhi}   r {frlo}..{frhi}");
+  println("  the near run's edges sit on rows -2/-1, the far run's on rows 3/4");
+
+  println("--- 1. each side stamped ALONE, on its own fresh world");
+  for i in 0..4 {
+    side = qs[i] ?? hex_editor::WallQuad {};
+    w1 = meadow();
+    runs1 = hex_editor::WallRuns {};
+    m1 = 0;
+    hex_editor::wall_stamp(w1,
+      hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                            wr_x0: side.wq_x0, wr_z0: side.wq_y0,
+                            wr_x1: side.wq_x1, wr_z1: side.wq_y1,
+                            wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+      hex_editor::WALL_MAT, FLOOR, runs1, m1);
+    // ⚠ **THE STAMP'S OWN COUNT AND WHAT THE STORE HOLDS ARE TWO NUMBERS.** `wall_stamp`
+    // reports how many edges passed its filter; `wall_of` says how many can be read back.
+    // `place_house`'s sentence has always printed the first, and `farwall.loft` measured
+    // the second — 84 against 23 — so the pair has to be printed side by side or the
+    // loss cannot be attributed to a side at all.
+    back = readable(w1, ref);
+    println("  side {i}: ({r2(side.wq_x0)},{r2(side.wq_y0)}) -> "
+          + "({r2(side.wq_x1)},{r2(side.wq_y1)})   stamped {m1}, "
+          + "readable {back} sighting(s)");
+  }
+
+  println("--- 2. the four together, in `place_house`'s own order");
+  w2 = meadow();
+  runs2 = hex_editor::WallRuns {};
+  for j in 0..4 {
+    sj = qs[j] ?? hex_editor::WallQuad {};
+    m2 = 0;
+    hex_editor::wall_stamp(w2,
+      hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                            wr_x0: sj.wq_x0, wr_z0: sj.wq_y0,
+                            wr_x1: sj.wq_x1, wr_z1: sj.wq_y1,
+                            wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+      hex_editor::WALL_MAT, FLOOR, runs2, m2);
+    println("  side {j}: stamped {m2}, store now holds {readable(w2, ref)} sighting(s)");
+  }
+
+  // ── 3. THE LOSS IS NOT IN THE STAMPING, SO IT IS AFTER IT ──────────────────
+  //
+  // Experiments 1 and 2 say every side stamps completely and every write survives:
+  // 84 sightings, which is all four walls. `farwall.loft` reads **46** out of the same
+  // house built by `place_house`. So something between those two removes 38 sightings,
+  // and it removes them from two sides and not the other two.
+  //
+  // `place_house` does three more things: it lays a FLOOR over the footprint before
+  // stamping, and it writes a ROOF after. Each stage is counted here in the gesture's
+  // own order, so the drop lands on one line rather than on a suspicion.
+  println("--- 3. `place_house`'s own order, counted at every stage");
+  w3 = meadow();
+  runs3 = hex_editor::WallRuns {};
+  roofs3 = hex_editor::RoofPlans {};
+
+  terr = heights_new(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  for hr in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for hq in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, hq, hr) {
+        height_set(terr, hq, hr, (hex_editor::terrain_h(hq, hr, w3) as float) * w3.w_unit);
+      }
+    }
+  }
+  hex_editor::footprint_seat(cells, terr, hex_editor::SEAT_MEAN);
+  seat = FLOOR;
+  for r3 in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for q3 in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      if hexset_get(cells, q3, r3) {
+        hex_editor::ground_set(w3, q3, r3, seat, hex_editor::FLOOR_MAT);
+      }
+    }
+  }
+  println("  after the FLOOR is laid:      {readable(w3, ref)} sighting(s)");
+
+  for k in 0..4 {
+    sk = qs[k] ?? hex_editor::WallQuad {};
+    m3 = 0;
+    hex_editor::wall_stamp(w3,
+      hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                            wr_x0: sk.wq_x0, wr_z0: sk.wq_y0,
+                            wr_x1: sk.wq_x1, wr_z1: sk.wq_y1,
+                            wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+      hex_editor::WALL_MAT, seat, runs3, m3);
+  }
+  println("  after the four WALLS:         {readable(w3, ref)} sighting(s)");
+
+  println("    of which on the far run  (z= 5.25): {on_z(w3, ref, 5.25)}");
+  println("    of which on the near run (z=-2.25): {on_z(w3, ref, 0.0 - 2.25)}");
+
+  rp = hex_editor::roof_plan_of(f, hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP,
+                                                           w3.w_unit),
+                                hex_editor::ROOF_PITCH_DEFAULT);
+  rf = hex_editor::roof_over(w3, f, cells, seat, rp, 0);
+  println("  after the ROOF (ok={rf.ak_ok}):     {readable(w3, ref)} sighting(s)");
+  println("    of which on the far run  (z= 5.25): {on_z(w3, ref, 5.25)}");
+  println("    of which on the near run (z=-2.25): {on_z(w3, ref, 0.0 - 2.25)}");
+
+  // ⚠ **AN UNEXPLAINED ASYMMETRY MEANS THE CAUSE IS NOT UNDERSTOOD YET.** The roof
+  // merges a band from the FLOOR to the ridge over every footprint cell, which rewrites
+  // the whole wall height — but that is true of all four walls, and only two die. The
+  // obvious account (*an edge is owned by one of its two cells, and for opposite walls
+  // the owner is inside for one and outside for the other*) predicts the far run losing
+  // HALF its sightings. It loses 20 of 24. So the cells are printed rather than argued.
+  println("--- 4. which cells hold the far run's edges, and which are in the footprint");
+  for q4 in 0 - 12..12 {
+    for r4 in 0 - 12..12 {
+      for d4 in 0..6 {
+        (n4q, n4r) = hex_grid::hex_neighbor(q4, r4, d4);
+        (a4x, a4z) = hex_grid::hex_to_px(q4, r4);
+        (b4x, b4z) = hex_grid::hex_to_px(n4q, n4r);
+        m4z = (a4z + b4z) * 0.5;
+        dz4 = m4z - 5.25;
+        if dz4 < 0.0 { dz4 = 0.0 - dz4; }
+        if dz4 < 0.34 {
+          alive = hex_editor::wall_of(w3, q4, r4, d4, ref) != 0;
+          inside = hexset_get(cells, q4, r4);
+          nb_in = hexset_get(cells, n4q, n4r);
+          println("    cell ({q4},{r4}) dir {d4}  mid ({r2((a4x + b4x) * 0.5)},"
+                + "{r2(m4z)})  in_fp {inside}  nb_in_fp {nb_in}  alive {alive}");
+        }
+      }
+    }
+  }
+}
+
+// Sightings whose edge midpoint lies on the horizontal line `zc`, within a third of a
+// unit. ⚠ A window, so it is stated: the near and far runs are 7.5 apart and the wall
+// band is 0.87, so nothing but the intended run can fall in it.
+fn on_z(w: VoxelWorld, ref: float, zc: float) -> integer {
+  n = 0;
+  for q in 0 - 12..12 {
+    for r in 0 - 12..12 {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d, ref) != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (ax, az) = hex_grid::hex_to_px(q, r);
+          (bx, bz) = hex_grid::hex_to_px(nq, nr);
+          dz = (az + bz) * 0.5 - zc;
+          if dz < 0.0 { dz = 0.0 - dz; }
+          if dz < 0.34 { n = n + 1; }
+        }
+      }
+    }
+  }
+  n
+}

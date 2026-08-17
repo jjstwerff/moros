@@ -738,3 +738,65 @@ It reproduced `open_ahead`'s two-cell search; the gesture actually runs `open_sp
 `span_mark` sweeps a whole ring. The two disagree at **8 of 49 stations**, which only showed
 because row B — the real gesture — was printed beside it. A second body of a rule, in a probe
 written to catch second bodies of rules.
+
+## ⛔ 11. `D2c` — the roof is what destroys the wall, and the stamping is innocent
+
+    loft --lib lib/ probe/d2/stamp.loft
+
+§ 10 measured the damage and guessed at `wall_stamp`. **It is not `wall_stamp`.** This
+probe calls the real function — `place_house` already passes it a `marked` out-parameter
+per side, so no geometry is re-derived — and the stamping is perfect on all four sides:
+
+    side 0 (right)  stamped 22, readable 22        side 2 (left)  stamped 22, readable 22
+    side 1 (far)    stamped 20, readable 20        side 3 (near)  stamped 20, readable 20
+
+⚠ **AND 22 + 20 + 22 + 20 = 84**, which is exactly the number `place_house` prints. The
+sentence has been honest the whole time; what it describes stops being true four lines
+later. Stamped together on one world the store accumulates **22 → 42 → 64 → 84**: all
+four walls, complete, every write surviving.
+
+### ⛔ Then the roof runs, and half of it goes
+
+Counted at each stage of `place_house`'s own order:
+
+    after the FLOOR is laid:      0 sighting(s)
+    after the four WALLS:        84 sighting(s)     far run 24 · near run 24
+    after the ROOF (ok=true):    46 sighting(s)     far run  4 · near run 24
+
+> **`roof_over` destroys 38 of the 84, and the near wall is the control inside the same
+> measurement** — same house, same run, same instrument, one line apart. The far run goes
+> 24 → 4 while the near run does not move at all.
+
+The mechanism is `roof_over`'s write: for every footprint cell it calls
+`world_merge_band_as(w, q, r, floor_h, hu, …)` — a band from **the floor** to the ridge.
+That rewrites the entire wall height of every column inside the house, and the wall edges
+those columns hold go with it. ⚠ **The roof is not writing a roof; it is rewriting the
+column from the ground up.**
+
+### ⚠ The asymmetry is NOT explained yet, and that is stated rather than papered over
+
+Two accounts were tried against the data and **both are refuted**:
+
+* *the owner is inside for one wall and outside for the other, by a row offset* — refuted:
+  the footprint is `q −2..3, r −1..3`, the far run's edges sit on rows 3/4 and the near
+  run's on rows −2/−1, so **each wall has exactly one row inside the footprint**. Symmetric.
+* *an edge dies when either of its cells is in the footprint* — fits the far run exactly
+  (the only two survivors are the corner posts, whose both cells are outside) and **fails
+  on the near run**, whose edges also have a footprint cell and all 24 survive.
+
+⏭ What fits all four walls is **edge OWNERSHIP by direction**: an edge is stored once, on
+the cell for which it is one of directions 3/4/5, and read back from both. The far run's
+owner is then its row-3 cell (inside, erased) and the near run's its row −2 cell (outside,
+spared) — and the side walls, which zigzag, lose a mixed fraction, which is what 4-of-9 and
+9-of-9 look like. ⚠ **This is a hypothesis and it has not been measured.** The decisive
+experiment is one cell wide: stamp the far wall alone, merge a band on a single row-3 cell,
+and see whether the edge dies; then the same on a row-4 cell. **Until that runs, the located
+cause is `roof_over`'s band and the ownership story is a guess that happens to fit.**
+
+### What § 10 and § 11 together do NOT claim
+
+The picture is still unverified — the `--html` client traps before it draws (loft#950), so
+nothing here has been photographed. The mesher draws walls from the **runs**, which are all
+four and filed correctly, which is the standing explanation for why no gate and no eye ever
+caught this; **that explanation is itself unmeasured**, and the instrument for it is
+`ringmesh.loft`'s, one registry over.
