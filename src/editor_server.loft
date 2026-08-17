@@ -46,6 +46,7 @@ use hex_proj;   // the drawing primitives — plan 22 `B1b.2c.2`
 // this line when it is fixed.
 use hex_shape;
 use hex_editor;   // S3 — the wall a run draws, and the band it is drawn at
+use fixstep;      // approach — the ease, one copy for every game (plan 22 `E1`)
 // ⚠ QUALIFIER ONLY, never a bare or selective `use`: `moros_sim` reaches
 // `hex_field`, which has its own `edgeset_new` beside the `hex_edge` one this file
 // means. A qualifier adds no bare name at all.
@@ -2625,14 +2626,33 @@ fn vis_mask(body: boolean, mode: integer) -> integer {
   m
 }
 
-// Move `now` a bounded fraction of the way to `want`. `k` is gap-closed per
-// second; the clamp keeps a long frame from overshooting past the target.
-fn cam_approach(now: float, want: float, k: float, dt: float) -> float {
-  f = k * dt;
-  if f > 1.0 { f = 1.0; }
-  if f < 0.0 { f = 0.0; }
-  now + (want - now) * f
-}
+// ── ⛔ `cam_approach` LIVED HERE AND IT IS `fixstep::approach` NOW — plan 22 `E1` ──
+//
+// It was `f = k * dt` clamped to `[0,1]` — LINEAR in the frame time, so what it
+// settles at depends on how the frames were cut. `fixstep`'s is `1 − e^(−k·dt)`,
+// which composes exactly: sixty frames of 1/60 s are bit-identical to one frame of
+// 1 s. Measured here, easing 0 → 1 at k 6: linear gives **1.0** one way and
+// **0.9982029897** the other, a spread of **0.0018**; the exponential gives
+// **0.9975212478** both ways, spread **exactly 0**.
+//
+// ⚠ **THIS WAS NOT A LIVE DEFECT HERE, AND SAYING SO IS THE POINT.** `dt` is
+// `hex_editor::tick_dt()`, a CONSTANT, and the pump works a backlog one fixed step
+// per pass — so this file's own numbers were deterministic either way, and no angle
+// is eased through it, so `fixstep`'s wrap-around case does not apply. What the swap
+// buys is that frame-rate independence becomes a property of the EASE rather than an
+// accident of the DRIVER — which is what `C3` needs the day the page takes the
+// camera, and what a backlog worked off in one pass would have broken silently.
+//
+// ⚠ **AND IT IS THE SECOND COPY THAT WAS THE PROBLEM.** `fixstep/src/ease.loft`
+// quotes both games' versions side by side — same name, same signature, different
+// arithmetic — and this file is the one it names as wrong. One home for the fact.
+//
+// ⚠ WHAT MOVES, PREDICTED BEFORE THE SWAP AND MEASURED: an asymptotic approach has
+// the same target, so **a SETTLED camera is identical** and only the approach
+// differs. At the four `k` this file uses, the gap after 10 ticks (0.33 s) is
+// 0.013–0.028, after 60 ticks (2 s) it is 5e-6 … 1.4e-3, and by 120 ticks (4 s) it
+// is 3e-6 or less — `CAM_K_OUT`, the slow return, is the one that carries a
+// difference longest. `probe/e1/ease.loft` holds the table.
 
 // The vertical clearance that yields CAM_CLEAR PERPENDICULAR to the local surface.
 // Flat ground → CAM_CLEAR. A steep face → much more, which is exactly where the
@@ -6268,7 +6288,7 @@ fn main() {
       // Eased toward the target and additionally rate-capped, so neither a large
       // gap nor a long frame can turn the drift into a jump.
       cam_prev_pitch = cam_pitch;
-      cam_pitch = cam_approach(cam_pitch, cam_pt, CAM_K_PITCH, dt);
+      cam_pitch = fixstep::approach(cam_pitch, cam_pt, CAM_K_PITCH, dt);
       cam_cap = CAM_PITCH_RATE * dt;
       if cam_pitch - cam_prev_pitch > cam_cap { cam_pitch = cam_prev_pitch + cam_cap; }
       if cam_prev_pitch - cam_pitch > cam_cap { cam_pitch = cam_prev_pitch - cam_cap; }
@@ -6341,9 +6361,9 @@ fn main() {
         // eased now only because `cam_free_arc` reports the constraint BEFORE we
         // arrive — the lookahead is what buys the smoothness, and the backstop
         // below still catches anything the prediction misses.
-        cam_dist = cam_approach(cam_dist, cam_free, CAM_K_IN, dt);
+        cam_dist = fixstep::approach(cam_dist, cam_free, CAM_K_IN, dt);
       } else {
-        cam_dist = cam_approach(cam_dist, cam_free, CAM_K_OUT, dt);
+        cam_dist = fixstep::approach(cam_dist, cam_free, CAM_K_OUT, dt);
       }
       // ── WHAT THE MODE ACTUALLY CHANGES ───────────────────────────────────────
       //
@@ -6365,8 +6385,8 @@ fn main() {
       if snug_now { cam_amb_want = AMB_SNUG; cam_lamp_want = LAMP_SNUG; }
       if cut_now { cam_amb_want = AMB_CUT; cam_lamp_want = LAMP_FOLLOW; cam_body = true; }
       if eyes_now { cam_amb_want = AMB_EYES; cam_lamp_want = LAMP_EYES; cam_body = false; }
-      cam_amb = cam_approach(cam_amb, cam_amb_want, CAM_K_AMB, dt);
-      cam_lamp = cam_approach(cam_lamp, cam_lamp_want, CAM_K_AMB, dt);
+      cam_amb = fixstep::approach(cam_amb, cam_amb_want, CAM_K_AMB, dt);
+      cam_lamp = fixstep::approach(cam_lamp, cam_lamp_want, CAM_K_AMB, dt);
 
       // Rested once the boom and the lift have both arrived: until then the
       // solve has to keep running, because the ease is what is still moving.

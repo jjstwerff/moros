@@ -172,3 +172,10 @@ url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_place-
 sha256 = "f56ebeed07e81c6f7702ab867c72494c19ee5ddfeaf639343f12f4cf68a5fd67"
 source = "registry"
 deps = ["hex_field", "hex_form"]
+
+[[package]]
+name = "fixstep"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-game/releases/download/fixstep-v0.1.0/fixstep-0.1.0.tar.gz"
+sha256 = "70cc1fed7d2df2f102160d25258cecf54869c5766fe9ffea5630af66e146435c"
+source = "registry"

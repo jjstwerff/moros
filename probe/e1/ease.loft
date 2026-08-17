@@ -1,0 +1,88 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT SWAPPING THE EASE COSTS, PRICED BEFORE IT WAS SWAPPED — plan 22 `E1`.
+//
+//     loft --lib lib/ probe/e1/ease.loft
+//
+// `src/editor_server.loft` held a hand-rolled `cam_approach` — `f = k * dt` clamped
+// to `[0,1]`, LINEAR in the frame time — at five valves: the pitch drift, the boom
+// shortening and returning, the ambient and the head-lamp. `fixstep::approach` is
+// `1 − e^(−k·dt)`. This is the pair, measured, because a swap whose effect nobody
+// priced is the *swap and look* [plans/README](../../plans/README.md) refuses.
+//
+// ⚠ **THE HONEST HEADLINE FIRST: THIS WAS NOT A LIVE DEFECT IN MOROS.** The server's
+// `dt` is `hex_editor::tick_dt()`, a CONSTANT, and its pump works a backlog one fixed
+// step per pass — so both forms were deterministic here. And no ANGLE is eased
+// (`cam_yaw` never passes through it), so `fixstep`'s wrap-around case does not apply
+// either. What the swap buys is that frame-rate independence stops being an accident
+// of the driver and becomes a property of the ease.
+//
+// Row A is the claim that makes the library's form the right one; row B is what the
+// change costs this consumer.
+use fixstep;
+
+// The retired implementation, kept HERE and nowhere else — this file is the only
+// place the old arithmetic still exists, so the comparison is against the real thing
+// rather than against a description of it.
+fn retired_linear(now: float, want: float, k: float, dt: float) -> float {
+  f = k * dt;
+  if f > 1.0 { f = 1.0; }
+  if f < 0.0 { f = 0.0; }
+  now + (want - now) * f
+}
+
+fn r(v: float) -> float { round(v * 10000000000.0) / 10000000000.0 ?? 0.0 }
+
+fn main() {
+  // ── A. THE PROPERTY THE LIBRARY'S FORM HAS AND THE RETIRED ONE DOES NOT ────
+  //
+  // Ease 0 → 1 over one second, cut two ways. An exponential composes exactly —
+  // sixty factors of e^(−k/60) are one factor of e^(−k) — so the two cuts must agree
+  // to the bit. The linear one cannot, and the size of its disagreement is the whole
+  // argument.
+  println("--- A. one second, cut two ways (k 6)");
+  k = 6.0;
+  la = retired_linear(0.0, 1.0, k, 1.0);
+  lb = 0.0;
+  for i in 0..60 { lb = retired_linear(lb, 1.0, k, 1.0 / 60.0 ?? 0.0); }
+  ea = fixstep::approach(0.0, 1.0, k, 1.0);
+  eb = 0.0;
+  for j in 0..60 { eb = fixstep::approach(eb, 1.0, k, 1.0 / 60.0 ?? 0.0); }
+  println("  retired linear   1x1s {r(la)}   60x1/60s {r(lb)}   spread {r(la - lb)}");
+  println("  fixstep::approach 1x1s {r(ea)}   60x1/60s {r(eb)}   spread {r(ea - eb)}");
+  if la - lb == 0.0 { println("  ⛔ the linear form showed NO spread — this probe is not measuring it"); }
+  if ea - eb != 0.0 { println("  ⛔ the exponential form spread — the composition claim is FALSE"); }
+
+  // ── B. WHAT IT COSTS THIS CONSUMER, VALVE BY VALVE ────────────────────────
+  //
+  // ⚠ **AN ASYMPTOTIC APPROACH HAS THE SAME TARGET, so a SETTLED camera is
+  // identical and only the approach differs.** That is the prediction this row exists
+  // to check, and it is what decides whether the camera gates move: a gate that lets
+  // the camera settle sees nothing, a gate that photographs mid-transition sees the
+  // gap below. `CAM_K_OUT` — the slow return — is the one that carries it longest.
+  println("--- B. the server's four k, at its own fixed dt");
+  settle(12.0, "CAM_K_IN    (the boom shortening)");
+  settle(2.5,  "CAM_K_OUT   (the boom returning)");
+  settle(6.0,  "CAM_K_PITCH (the pitch drift)");
+  settle(3.0,  "CAM_K_AMB   (ambient and head-lamp)");
+}
+
+fn settle(k: float, name: text) {
+  // The server's own step: `hex_editor::TICK_US` is 33000 µs, and `tick_dt()` is that
+  // over a million. Spelled from the same numbers rather than as 0.033, so this
+  // cannot drift away from what the server actually integrates.
+  dt = 33000.0 / 1000000.0 ?? 0.0;
+  a = 0.0;
+  b = 0.0;
+  println("  {name}, k {k}:");
+  for n in 1..241 {
+    a = retired_linear(a, 1.0, k, dt);
+    b = fixstep::approach(b, 1.0, k, dt);
+    if n == 10 || n == 60 || n == 120 || n == 240 {
+      d = a - b;
+      if d < 0.0 { d = 0.0 - d; }
+      println("    {n} tick(s) ({r((n as float) * dt)}s): retired {r(a)}  fixstep {r(b)}  gap {d}");
+    }
+  }
+}
