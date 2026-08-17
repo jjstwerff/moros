@@ -1,6 +1,6 @@
 rc: 0
-world: 65788:2169560679
-md5: e397cea36adab92b47998129e64522d5
+world: 65788:1727853333
+md5: 045b1a78d8c15f18192757ebed85ddd0
 tau: 188
 chunks: 4
 code: 0
@@ -10,7 +10,7 @@ chosen: opening 1
   placed 0,0
   raise: 1
   placed 0,-4
-  house placed 27 cells, 84 wall edges, ridge at 21, seated at 0 (0 from your feet, cut and fill 0)
+  house placed 27 cells, 84 wall edges, ridge at 23, seated at 0 (0 from your feet, cut and fill 0)
   placed 0,-10
   stepped 120
   placed 0,0

@@ -1,0 +1,71 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// HOW FAR OUTSIDE, AND WHERE? — plan 22 `D2a.2`, before the claim is weakened.
+//
+//     loft --lib lib/ probe/d2/roofedge.loft
+//
+// The invariant *every stamped wall edge midpoint is under the roof that covers it*
+// fails at 2 of 34 midpoints on a 4x3 house. Weakening it to a count or a tolerance
+// would be an approximation in an exact-geometry domain, so this asks the two
+// questions that decide whether the claim or the rectangle is wrong: **by how much**,
+// and **where on the outline**.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const FLOOR = 40;
+const YAW = 0.5235987755982988;
+
+fn r3(v: float) -> float { round(v * 1000.0) / 1000.0 ?? 0.0 }
+
+fn main() {
+  ref = (FLOOR as float) * 0.25;
+  for wid in 4..7 {
+    for dep in 3..6 {
+      w = world_new(0.25, 0, 8, 3).wn_world;
+      hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+      roofs = hex_editor::RoofPlans { items: [] };
+      a = hex_editor::author_on(w, 0.0, 0.0, YAW);
+      ack = hex_editor::place_house(w, a, wid, dep, hex_editor::grade_under(w, a),
+                                    WallRuns { items: [] }, roofs);
+      if !ack.ak_ok { continue; }
+      rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+      p = hex_editor::footprint_plan(
+            hex_editor::pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep));
+      out = 0;
+      worstu = 0.0;
+      worstv = 0.0;
+      n = 0;
+      pad = wid + dep + 4;
+      for r in ack.ak_r - pad..ack.ak_r + pad + 1 {
+        for q in ack.ak_q - pad..ack.ak_q + pad + 1 {
+          for d in 0..6 {
+            if hex_editor::wall_of(w, q, r, d, ref) != 0 {
+              (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+              (ax, az) = hex_grid::hex_to_px(q, r);
+              (bx, bz) = hex_grid::hex_to_px(nq, nr);
+              mx = (ax + bx) * 0.5;
+              mz = (az + bz) * 0.5;
+              n = n + 1;
+              (lu, lv) = plan_to_local(p, mx, mz);
+              au = lu; if au < 0.0 { au = 0.0 - au; }
+              av = lv; if av < 0.0 { av = 0.0 - av; }
+              eu = au - rp.rp_hw;
+              ev = av - rp.rp_hd;
+              if eu > 0.0 || ev > 0.0 {
+                out = out + 1;
+                if eu > worstu { worstu = eu; }
+                if ev > worstv { worstv = ev; }
+                println("  {wid}x{dep} midpoint |u| {r3(au)} vs hw {r3(rp.rp_hw)} "
+                      + "(+{r3(eu)}),  |v| {r3(av)} vs hd {r3(rp.rp_hd)} (+{r3(ev)})");
+              }
+            }
+          }
+        }
+      }
+      println("{wid}x{dep}: {out} of {n} outside — worst over u {r3(worstu)}, "
+            + "over v {r3(worstv)}");
+    }
+  }
+}

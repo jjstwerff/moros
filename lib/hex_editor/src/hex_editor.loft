@@ -430,19 +430,20 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
 // ⚠ THE EDITOR'S ROOF WAS A LINEAR SPECIAL CASE. `roof_height` is
 // `anchor + eave + (rad - dist) * PITCH` — a cone about the stencil's centre,
 // which is the shape a disc gives you and not the shape a building has.
-// `hex_draw::draw_roof` runs `hex_roof`'s ridge profile along the plan's own u
-// axis, so a rectangle gets a GABLE: two slopes meeting on a line, hipping at the
-// ends when the ridge is shortened.
+// A rectangle gets a GABLE: two slopes meeting on a line along the plan's own u
+// axis. ⚠ **It was `hex_draw::draw_roof` that ran that profile until `D2a.1`**, and
+// the surface is `roof_plan_y`'s now — see the note above this function.
 //
 // It writes a HEIGHT FIELD over the cells rather than a mesh — a height per hex,
 // which is exactly what a column can store. So the roof reaches the world the same
 // way the stencil's did: a band of `[floor, roof]` per column, checked before
 // anything is written so a refusal means no roof rather than half a roof.
 //
-// ⚠ THE RIDGE RUNS PAST BOTH ENDS ON PURPOSE. `draw_roof`'s own comment: stopping
-// it at the wall makes the distance go radial past the tip, so the gable end rolls
-// over like a cone quadrant — 0.43 units, 0.37 m of bulge. A hip is the same call
-// with the ridge shortened, and then the conical ends are the FEATURE.
+// ⚠ THE RIDGE RUNS PAST BOTH ENDS ON PURPOSE, and `roof_plan_y` keeps that by
+// construction: the drop is a function of |v| alone and never of u, so there is no
+// distance to go radial past the tip and no cone quadrant to roll over. `draw_roof`
+// had to say so in a comment — 0.43 units, 0.37 m of bulge if you shortened it —
+// because its profile ran along the ridge; a gable that ignores u cannot have it.
 //
 // ── AND THE HEIGHTS ARE THE PLAN'S NOW — plan 22 `D2a.1` ────────────────────
 //
@@ -526,8 +527,15 @@ pub const ROOF_EAVE_UP = 12;      // the wall's own height — the roof starts w
 // construction, at any rotation, with no tolerance anywhere.
 //
 // The heights stay the cells' business — `roof_over` writes them, the walk and the
-// camera read them. This is the PICTURE, and the two agree because both take the
-// ridge height from the same `eave + pitch * hd`.
+// camera read them.
+//
+// ⛔ **AND THIS PARAGRAPH USED TO END *"the two agree because both take the ridge
+// height from the same `eave + pitch * hd`"*, WHICH WAS THE DEFECT DESCRIBED AS THE
+// DESIGN.** They took one FORMULA from two bodies — `hex_draw::draw_roof` for the
+// cells and `roof_plan_y` for the picture — and that is agreement only while both
+// read the same rectangle. `D2a.2` moved the rectangle, which is exactly the
+// condition under which it stops holding. Since `D2a.1` the cells ARE
+// `roof_plan_y`, so there is one surface and nothing to agree.
 // ⚠ `RoofPlan` AND `RoofPlans` ARE DECLARED IN `gesture.loft`, not here, and that is
 // not tidiness — it is the one thing that made `EditSession` unbuildable. This file
 // imports `session`, so `session` cannot import this one; a field it declares as a
@@ -558,21 +566,72 @@ pub fn roof_eave_y(floor_h: integer, eave_up: integer, unit: float) -> float {
   ((floor_h + eave_up) as float) * unit
 }
 
+// ── THE ROOF'S RECTANGLE IS THE ONE ITS WALLS ENCLOSE — plan 22 `D2a.2` ─────
+//
+// The half-extents of a footprint's mitred outline, in the plan's own frame. Read
+// back from `plan_walls`, never re-derived: that is the same outline `place_house`
+// stamps its wall edges along, so the roof and the walls cannot describe different
+// rectangles.
+//
+// ⚠ **max|u| AND max|v| OVER THE ENDPOINTS, NOT THE FIRST SIDE'S.** A mitred outline
+// is four segments that share corners exactly, so every extreme is an endpoint —
+// but which side carries it depends on the rotation, and taking side 0's would be
+// right at rot 0 and quietly wrong at the other five.
+pub fn plan_outline(p: Plan, qs: vector<WallQuad>, hw: &float, hd: &float) {
+  hw = 0.0;
+  hd = 0.0;
+  for i in 0..PLAN_SIDES {
+    s = qs[i] ?? WallQuad {};
+    (u0, v0) = plan_to_local(p, s.wq_x0, s.wq_y0);
+    (u1, v1) = plan_to_local(p, s.wq_x1, s.wq_y1);
+    au0 = u0; if au0 < 0.0 { au0 = 0.0 - au0; }
+    au1 = u1; if au1 < 0.0 { au1 = 0.0 - au1; }
+    av0 = v0; if av0 < 0.0 { av0 = 0.0 - av0; }
+    av1 = v1; if av1 < 0.0 { av1 = 0.0 - av1; }
+    if au0 > hw { hw = au0; }
+    if au1 > hw { hw = au1; }
+    if av0 > hd { hd = av0; }
+    if av1 > hd { hd = av1; }
+  }
+}
+
+// ⚠ **IT FILLS ITS OWN CELLS RATHER THAN TAKING THEM, AND THAT IS DELIBERATE.**
+// `place_house` has a `HexSet` in hand and passing it would save the work — and it
+// would also let the six other callers, all of which hold a bare `Footprint`, build
+// a plan with no extent at all. A gesture that cannot be called wrongly is worth one
+// rasterisation per house; this runs once per placement, never per camera sample.
+//
+// ⚠ **AND THE ROOF REACHES THE WALL'S FACE, NOT ITS CENTRELINE.** A `WallQuad` is a
+// segment and `emit_run_wall` lays masonry ±`wall_band()/2` about it — `D1a.3`
+// measured −0.433 … +0.433 — so a roof stopping on the line leaves the outer half of
+// its own wall open to the sky. That is the same defect one half-thickness smaller,
+// which is not a place to stop.
 pub fn roof_plan_of(f: Footprint, eave: float, pitch: float) -> RoofPlan {
   r = f.fp_rot;
   if box_orbit(r) != 0 { r = f.fp_offer; }
+  pad = f.fp_wid + f.fp_dep + 4;
+  cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
+  footprint_fill(f, cells);
+  hw = 0.0;
+  hd = 0.0;
+  plan_outline(footprint_plan(f), footprint_walls(f, cells), hw, hd);
+  face = wall_band() * 0.5;
   RoofPlan { rp_cq: f.fp_cq, rp_cr: f.fp_cr, rp_wid: f.fp_wid, rp_dep: f.fp_dep,
-             rp_rot: r / 2 ?? 0, rp_eave: eave, rp_pitch: pitch }
+             rp_rot: r / 2 ?? 0, rp_eave: eave, rp_pitch: pitch,
+             rp_hw: hw + face, rp_hd: hd + face }
 }
 
 fn rp_plan(rp: RoofPlan) -> Plan {
   plan_new(rp.rp_cq, rp.rp_cr, rp.rp_wid, rp.rp_dep, rp.rp_rot, false)
 }
 
-// The ridge stands `pitch * hd` above the eave — the same rise `draw_roof` gives
-// the cells, so the drawn surface and the stored heights are one shape.
+// The ridge stands `pitch * hd` above the eave, and `hd` is the roof's own
+// half-depth — `D2a.2`'s `rp_hd`, the outline its walls enclose, not the nominal
+// `plan_hd`. Since `D2a.1` the cells are written from `roof_plan_y` of this same
+// plan, so the drawn surface and the stored heights are one shape by construction
+// rather than by two bodies computing one formula.
 pub fn roof_ridge_y(rp: RoofPlan) -> float {
-  rp.rp_eave + rp.rp_pitch * plan_hd(rp_plan(rp))
+  rp.rp_eave + rp.rp_pitch * rp.rp_hd
 }
 
 // The six points a gable needs, in world space and in a fixed order:
@@ -581,8 +640,8 @@ pub fn roof_ridge_y(rp: RoofPlan) -> float {
 // Everything a renderer draws — two slopes and two gable ends — is a face of these.
 pub fn roof_point_x(rp: RoofPlan, i: integer) -> float {
   p = rp_plan(rp);
-  hw = plan_hw(p);
-  hd = plan_hd(p);
+  hw = rp.rp_hw;
+  hd = rp.rp_hd;
   u = 0.0 - hw;
   if i == 1 || i == 3 || i == 5 { u = hw; }
   v = 0.0;
@@ -594,8 +653,8 @@ pub fn roof_point_x(rp: RoofPlan, i: integer) -> float {
 
 pub fn roof_point_z(rp: RoofPlan, i: integer) -> float {
   p = rp_plan(rp);
-  hw = plan_hw(p);
-  hd = plan_hd(p);
+  hw = rp.rp_hw;
+  hd = rp.rp_hd;
   u = 0.0 - hw;
   if i == 1 || i == 3 || i == 5 { u = hw; }
   v = 0.0;
@@ -839,7 +898,7 @@ pub fn roof_plan_covers(rp: RoofPlan, q: integer, r: integer) -> boolean {
   (lu, lv) = plan_to_local(p, wx, wy);
   au = lu; if au < 0.0 { au = 0.0 - au; }
   av = lv; if av < 0.0 { av = 0.0 - av; }
-  au <= plan_hw(p) + HEX_LEN * 0.5 && av <= plan_hd(p) + HEX_LEN * 0.5
+  au <= rp.rp_hw + HEX_LEN * 0.5 && av <= rp.rp_hd + HEX_LEN * 0.5
 }
 
 // ⚠ THE ROOF'S OWN SURFACE AT A POINT, which nothing could ask before. The six
@@ -855,7 +914,7 @@ pub fn roof_plan_y(rp: RoofPlan, x: float, z: float) -> float {
   (lu, lv) = plan_to_local(p, x, z);
   av = lv;
   if av < 0.0 { av = 0.0 - av; }
-  hd = plan_hd(p);
+  hd = rp.rp_hd;
   drop = rp.rp_pitch * av;
   if av > hd { drop = rp.rp_pitch * hd; }
   roof_ridge_y(rp) - drop
@@ -868,7 +927,7 @@ pub fn roof_plan_over(rp: RoofPlan, x: float, z: float) -> boolean {
   (lu, lv) = plan_to_local(p, x, z);
   au = lu; if au < 0.0 { au = 0.0 - au; }
   av = lv; if av < 0.0 { av = 0.0 - av; }
-  au <= plan_hw(p) && av <= plan_hd(p)
+  au <= rp.rp_hw && av <= rp.rp_hd
 }
 
 // ── SHELTER: what the camera is standing under ──────────────────────────────

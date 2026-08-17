@@ -766,6 +766,34 @@ on the footprint's own boundary. ⚠ **And the fix's cost is stated up front**: 
 `eave + pitch · plan_hd`, so a roof that reaches its walls is wider **and taller**, and every gate
 that photographs a house moves. That is `D2a`.
 
+### ✅ `D2a` — built, and the rule could not be read off one house
+
+**2026-08-17**, in two phases. ⛔ **The single-instance number above is not the rule.** Over twenty
+(wid, dep) pairs the nominal rectangle **overhangs** the walls at dep 3 (−0.348) and 5 (−0.580) and
+**falls short** at 4 (+0.286) and 6 (+0.054), alternating along u by the parity of `wid` as well —
+**the error changes sign**, so no constant outset could ever have fixed it. `D1a.1`'s lesson again:
+a rule read off one case is a guess with a number attached.
+
+`D2a.1` removed the divergence path first, and could therefore be **byte-identical**: `roof_over`
+writes each cell from `roof_plan_y` of the plan that gets filed, instead of from
+`hex_draw::draw_roof`. `S6b` called the old arrangement agreement — *"both take the ridge height
+from the same `eave + pitch · hd`"* — but that is one FORMULA in two bodies, which holds only while
+both read the same rectangle. `D2a.2` then moved the rectangle to `footprint_walls`' own mitred
+outline plus `wall_band() / 2`: **exactly −0.433 at all twenty pairs, on both axes**, so the eave
+lands on the wall's outer face at every size.
+
+⛔ **AND THE EDGE-BY-EDGE VERSION OF THE CLAIM IS FALSE, MEASURED BEFORE IT WAS DROPPED.** *Every
+stamped wall edge midpoint is under the roof* reds at 2 of 34 on a 4×3, and the excess is **only
+ever over u and at most 0.197**: the stamped boundary is a zigzag and the roof is a straight
+rectangle, which is the whole of `S6b`. A straight roof cannot cover a jagged wall edge for edge,
+and outsetting until it did would be an approximation in an exact-geometry domain.
+
+✅ **AND `house.keys` ANSWERED THIS SECTION'S OWN QUESTION BY ITSELF.** The two openings `D1` found
+reading **two different modes**, at stations the script's comment describes identically, are
+**both `inside`** now. The inconsistency closes as a consequence of the roof reaching its walls
+rather than as a rule about modes — which is what says the rectangle was the defect and the mode
+was only reporting it.
+
 ⛔ **AND *THE LINE IS SIMPLY MISPLACED* WAS GIVEN ITS OWN ROW AND SURVIVES ONLY HALFWAY.** Inflating
 the roof plan by one cell each way moves the flip **−2.00 → −3.50**, which puts the wall inside and
 would end `house.keys`'s two-modes-one-comment. It rescues nothing for the verb: a roof plan is

@@ -1,6 +1,6 @@
 rc: 0
-world: 49370:940472403
-md5: ee319fa04e1221528569cf7a1d62edac
+world: 49370:3747754890
+md5: ccbed5951d8d5ecebd9162282679465f
 tau: 557
 chunks: 4
 code: 0
@@ -9,7 +9,7 @@ chosen: opening 1
 --- what the gestures reported
   placed 0,0
   stepped 20
-  house placed 27 cells, 84 wall edges, ridge at 21, seated at 0 (0 from your feet, cut and fill 0)
+  house placed 27 cells, 84 wall edges, ridge at 23, seated at 0 (0 from your feet, cut and fill 0)
   stepped 30
   placed -6,1
   stepped 40
@@ -22,7 +22,7 @@ chosen: opening 1
   stepped 30
   placed 46,0
   stepped 30
-  house placed 27 cells, 84 wall edges, ridge at 31, seated at 10 (10 from your feet, cut and fill 10)
+  house placed 27 cells, 84 wall edges, ridge at 33, seated at 10 (10 from your feet, cut and fill 10)
   stepped 40
   placed 34,3
   stepped 40

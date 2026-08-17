@@ -441,6 +441,10 @@ is where it was measured.
 
 ## ⛔ 8. `D2a`'s cost, and the two tests of one rectangle
 
+> ⚠ **EVERY NUMBER IN THIS SECTION IS THE STATE BEFORE `D2a.2`**, kept because it is what
+> the fix was chosen against. The two-cell floating-point coin flip and the uncovered band
+> are both gone — § 9 has the after.
+
     loft --lib lib/ probe/d2/roofgap.loft
 
 § 7 measured that the roof plan's rectangle is 0.385 (x) and 0.286 (z) short of the wall
@@ -495,3 +499,93 @@ is not one constant** — 0.385 in x against 0.286 in z — which is what says i
 the footprint rather than from a fudge. ⚠ **And the cost is real**: `roof_ridge_y` is
 `eave + pitch · plan_hd`, so a roof that reaches its walls is wider **and taller**, and every
 gate that photographs a house moves.
+
+## ✅ 9. `D2a` — built, in two phases, and the rectangle is the walls'
+
+    loft --lib lib/ probe/d2/roofrect.loft     # the rectangle, over 20 (wid, dep) pairs
+    loft --lib lib/ probe/d2/roofcells.loft    # the stored cells against the drawn gable
+    loft --lib lib/ probe/d2/roofedge.loft     # how far outside, and where
+
+### ⛔ The rule could not be read off one house, and the sign is why
+
+§ 7 measured ONE footprint and reported *the plan is 0.385 and 0.286 short*. Over twenty
+(wid, dep) pairs that is not the rule:
+
+| dep | the plan against the walls |
+|---|---|
+| 3 | **−0.348** — the roof OVERHANGS |
+| 4 | +0.286 — it falls short |
+| 5 | **−0.580** — it overhangs |
+| 6 | +0.054 — it falls short |
+
+**The error changes sign with parity**, and along u it alternates by the parity of `wid`
+too. So no constant outset could ever have fixed it, and *the plan is a bit small* was a
+conclusion drawn from a single instance. ⚠ This is `D1a.1`'s lesson again: a rule read off
+one case is a guess with a number attached.
+
+### The fix, in two phases, because one of them can be byte-identical
+
+**`D2a.1` — the cells come from the plan.** `S6b`'s own comment said the drawn roof and the
+stored roof agree *"because both take the ridge height from the same `eave + pitch * hd`"* —
+the same FORMULA from two bodies (`hex_draw::draw_roof` for the cells, `roof_plan_y` for the
+gable), which is agreement by coincidence and holds only while both read the same rectangle.
+`roof_over` takes the filed `RoofPlan` and writes each cell from `roof_plan_y`; `place_house`
+builds the plan one line earlier and files the object it wrote the cells from.
+
+`roofcells.loft` is what said this could be **byte-identical**: the stored heights were
+already `floor(roof_plan_y / unit)` at all 27 cells, differing by −0.299/−0.499/−0.699 —
+pure truncation, no shape. Confirmed: `make parts` byte-identical, `make headless-same` rc 0,
+`probe/k3d` 31 unmoved.
+
+**`D2a.2` — the rectangle is the outline its own walls enclose.** `RoofPlan` gains `rp_hw`
+and `rp_hd`, filled by `roof_plan_of` from `footprint_walls`' mitred outline plus half the
+wall band, and the six extent readers use them instead of `plan_hw`/`plan_hd`. Re-measured:
+
+    every (wid, dep) pair, both axes:   the roof is exactly -0.433 beyond the wall line
+
+**−0.433 at all twenty, on both axes** — `wall_band() / 2`, so the eave lands precisely on
+the wall's outer face at every size. That was −0.58 … +0.50 varying by parity.
+
+### ⛔ And the edge-by-edge version of the claim is FALSE, measured before it was dropped
+
+The first test written for this asked *every stamped wall edge MIDPOINT is under the roof*
+and went red at **2 of 34 on a 4×3**. `roofedge.loft` asked how far and where:
+
+    4x3   2 of 34 outside — worst over u 0.087, over v 0
+    5x5   4 of 46 outside — worst over u 0.197, over v 0
+    4x4 · 5x3 · 6x4        0 outside
+
+> **Only ever over u, never over v, and at most 0.197.** The stamped boundary is a zigzag and
+> the roof is a straight rectangle — which is the whole of `S6b`. **A straight roof cannot
+> cover a jagged wall edge for edge**, and outsetting until it did would mean chasing an
+> amplitude that varies with size: an approximation in an exact-geometry domain.
+
+So the asserted claim is the one that is exact and that the mesher's suppression actually
+rests on: **every column the house roofed is under its own plan**, over nine sizes, with the
+NOMINAL rectangle as the control that must miss. Without that control the row is satisfied
+by any roof big enough and has never been red.
+
+### ✅ What moved, and `house.keys` answering `D1`'s question by itself
+
+`probe/k3d`: **9 records, and they are exactly the 9 scripts that place a house** — every
+script with a `verb place` moved and no script without one did. Every changed line is the
+ridge, `21 → 23` (and `31 → 33` for `seat.keys`' seated house), which is
+`pitch 0.7 × 0.719 / 0.25 = 2.01`. No cell count, no wall-edge count, no τ, no chunk count
+and no other sentence moved.
+
+⚠ **And one line that is not a height.** `house.keys` cuts two openings at stations its own
+comment describes identically — *"stand ON the wall's own cells"* — and `D1` found them
+reading **two different modes**, which is the fact it handed to `D2`. With the roof reaching
+its walls they are **both `inside`**. The inconsistency closes as a consequence of the
+geometry rather than as a rule about modes, which is what says the rectangle was the defect.
+
+### ✅ And the band § 8 measured is closed — with the vertex count unmoved
+
+    27 roof cell(s): 0 beyond the drawn gable, 0 still drawn as cells
+    so 0 cell(s) are removed with nothing drawn over them        (was 2)
+
+⚠ **AND THE MESH TOTALS DID NOT MOVE — 5340/3892 before and after — WHICH IS WHY A COUNT
+WAS THE WRONG INSTRUMENT FOR THIS ONE.** The gable is six points however big the rectangle
+is, and the two stray cells were already suppressed by `roof_plan_covers`' half-hex; what
+changed is which cells the drawn surface *covers*, and a vertex total cannot see coverage.
+`fence.mjs` reading counts against a store was the same shape at `D1a.1`, one registry over.

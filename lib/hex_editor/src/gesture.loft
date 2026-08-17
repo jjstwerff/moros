@@ -6534,11 +6534,29 @@ pub struct Holes { items: vector<Hole> }
 pub struct RoofPlan {
   rp_cq:    integer,
   rp_cr:    integer,
+  // ⚠ **THE CELL COUNTS ARE THE FRAME'S NOW, NOT THE EXTENT'S — plan 22 `D2a.2`.**
+  // `rp_cq`/`rp_cr`/`rp_rot` place and turn the rectangle; how big it is comes from
+  // `rp_hw`/`rp_hd` below. These two are kept because they are what the footprint
+  // asked for and every message and record still reads them, but nothing derives a
+  // world distance from them any more.
   rp_wid:   integer,
   rp_dep:   integer,
   rp_rot:   integer,     // the Plan's own rotation (0..5), already halved
   rp_eave:  float,       // world units
   rp_pitch: float,
+  // ⚠ **THE ROOF'S OWN HALF-EXTENTS, IN WORLD UNITS, MEASURED FROM THE WALLS IT
+  // COVERS.** `plan_hw(p)` is `wid · HEX_LEN / 2` — the NOMINAL rectangle a `Plan`
+  // means — while the walls come from `plan_walls`, which recovers the outline from
+  // the rasterised CELLS and mitres it. The two are not equal and not even
+  // consistently ordered: measured over 20 (wid, dep) pairs the nominal rectangle
+  // **overhangs** the walls at dep 3 and 5 and **falls short** at dep 4 and 6, by
+  // −0.58 … +0.50. So the correction is not a constant and cannot be one; the only
+  // rectangle that is right at every size is the one the walls actually enclose.
+  //
+  // ⚠ They are filled by `roof_plan_of` and by nothing else, so a `RoofPlan {}`
+  // literal is a roof of zero size — which is what a null fallback should be.
+  rp_hw:    float,
+  rp_hd:    float,
 }
 
 pub struct RoofPlans { items: vector<RoofPlan> }

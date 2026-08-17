@@ -1,6 +1,6 @@
 rc: 0
-world: 49370:221628916
-md5: 59abe82bd8d035680e2bfbc2928c2801
+world: 49370:1171610315
+md5: 0bd0c4cca904670f224b30c629ca7fe1
 tau: 195
 chunks: 4
 code: 0
@@ -15,6 +15,6 @@ chosen: opening 1
   wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8
   placed 0,6
   placed -8,-8
-  house placed 27 cells, 84 wall edges, ridge at 21, seated at 0 (0 from your feet, cut and fill 0)
+  house placed 27 cells, 84 wall edges, ridge at 23, seated at 0 (0 from your feet, cut and fill 0)
   placed -16,-16
 --- what the runner refused

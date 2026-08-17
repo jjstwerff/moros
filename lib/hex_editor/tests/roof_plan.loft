@@ -148,7 +148,15 @@ fn test_the_plan_and_the_cells_describe_one_roof() {
   }
   // ⚠ AND THE COUNT IS ASSERTED FIRST, because a loop that found nothing under the
   // plan would report a worst of 0 and read exactly like agreement.
-  assert(n == 26, "26 columns under the plan, found {n}");
+  //
+  // ⚠ **26 → 27 AT `D2a.2`, AND THE DIRECTION IS THE POINT.** The plan's rectangle
+  // was `wid · HEX_LEN / 2` — the NOMINAL one a `Plan` means — and it is the outline
+  // its own walls enclose now, so it covers a column it used to leave out. **27 is
+  // every cell of a 5×4 footprint**, which is the number this row should always have
+  // read: a roof that does not reach one of its own columns was the defect, not the
+  // baseline. ⚠ And `worst == 0` below still holds over all 27, including the new
+  // one — the extra column is covered by the same surface, not by a wider tolerance.
+  assert(n == 27, "27 columns under the plan — every cell of a 5x4 footprint — found {n}");
   assert(worst == 0,
          "the drawn roof and the stored roof are one shape: worst |plan - cells| "
          + "{worst} unit(s) at ({wq},{wr}) over {n} column(s)");
@@ -223,4 +231,102 @@ fn test_the_eave_is_the_worlds_own_unit_and_not_a_global() {
   // distinguishing two things rather than restating one.
   assert(rp.rp_eave != hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, 0.25),
          "and the global would have given a different one — the row above is blind");
+}
+
+// ── THE ROOF REACHES THE WALLS IT BELONGS TO — plan 22 `D2a.2` ──────────────
+//
+// ⚠ **ASKED OF THE COLUMNS, NOT OF THE OUTLINE THE RECTANGLE WAS BUILT FROM.**
+// `rp_hw` is `footprint_walls`'s mitred outline plus half the wall band, so comparing
+// it back against `footprint_walls` is a table checked against itself. The roof CELLS
+// come from `box_fill`'s rasterisation — a different derivation — so *every column
+// this house put a roof on is under its own plan* is a claim two bodies must agree on,
+// and it is the exact claim `hex_mesh`'s suppression rests on.
+//
+// ⛔ **AND WHAT IT REPLACES WAS NOT *the roof is slightly small*.** Measured over 20
+// (wid, dep) pairs, the nominal rectangle `plan_hw`/`plan_hd` **overhangs** the walls
+// at dep 3 and 5 and **falls short** at dep 4 and 6, from −0.58 to +0.50 — the error
+// changes SIGN with parity, which is why no single outset could have fixed it and why
+// the rectangle had to come from the footprint instead.
+//
+// ⚠ **AND THE EDGE-BY-EDGE VERSION OF THIS CLAIM IS FALSE, MEASURED BEFORE IT WAS
+// DROPPED.** *Every stamped wall edge MIDPOINT is under the roof* fails at 2 of 34 on
+// a 4×3, and the excess is **only ever over u and at most 0.197** — the stamped
+// boundary is a zigzag and the roof is a straight rectangle, which is the whole of
+// `S6b`. A straight roof cannot cover a jagged wall edge for edge, and outsetting
+// until it did would mean chasing an amplitude that varies with size. See
+// `probe/d2/roofedge.loft`; the column claim is the one that is exact.
+fn roof_columns_outside(w: VoxelWorld, rp: hex_editor::RoofPlan, cq: integer,
+                        cr: integer, pad: integer, n: &integer) -> integer {
+  n = 0;
+  out = 0;
+  for r in cr - pad..cr + pad + 1 {
+    for q in cq - pad..cq + pad + 1 {
+      col = world_column(w, q, r);
+      for c in col.co_cells {
+        if hex_voxel::hex_occupied(c) {
+          if (c.h_material as integer ?? 0) == hex_editor::ROOF_MAT {
+            n = n + 1;
+            (px, pz) = hex_grid::hex_to_px(q, r);
+            if !hex_editor::roof_plan_over(rp, px, pz) { out = out + 1; }
+          }
+        }
+      }
+    }
+  }
+  out
+}
+
+fn test_every_column_the_house_roofed_is_under_its_own_plan() {
+  for wid in 4..7 {
+    for dep in 3..6 {
+      w = flat();
+      roofs = hex_editor::RoofPlans { items: [] };
+      a = hex_editor::author_on(w, 0.0, 0.0, YAW);
+      ack = hex_editor::place_house(w, a, wid, dep, hex_editor::grade_under(w, a),
+                                    WallRuns { items: [] }, roofs);
+      assert(ack.ak_ok, "the {wid}x{dep} house went down: {ack.ak_why}");
+      rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+      n = 0;
+      out = roof_columns_outside(w, rp, ack.ak_q, ack.ak_r, wid + dep + 4, n);
+      // ⚠ THE COUNT FIRST, because a fixture that roofed nothing reports 0 outside
+      // and reads exactly like agreement — `test_the_plan_and_the_cells_describe_one_roof`'s
+      // note, one file down. ⚠ And it is `> 0` rather than a formula: the cell count
+      // of a rasterised `wid x dep` box is `box_fill`'s business, and restating it
+      // here would be a second derivation of the thing under test.
+      assert(n > 0, "the {wid}x{dep} fixture roofed no column at all");
+      assert(out == 0, "{wid}x{dep}: {out} of {n} roofed column(s) are outside the "
+                     + "plan that is supposed to cover them");
+    }
+  }
+}
+
+fn test_and_the_rectangle_it_replaced_could_not_do_that() {
+  // ⚠ **THE ROW ABOVE IS SATISFIED BY ANY ROOF BIG ENOUGH**, so on its own it cannot
+  // say the change did anything. This rebuilds the NOMINAL rectangle the plan carried
+  // before `D2a.2` — `plan_hw`/`plan_hd` of the same `Plan` — and requires it to miss.
+  // Without this the pair is a test that has never been red.
+  missed = 0;
+  for wid in 4..7 {
+    for dep in 3..6 {
+      w = flat();
+      roofs = hex_editor::RoofPlans { items: [] };
+      a = hex_editor::author_on(w, 0.0, 0.0, YAW);
+      ack = hex_editor::place_house(w, a, wid, dep, hex_editor::grade_under(w, a),
+                                    WallRuns { items: [] }, roofs);
+      assert(ack.ak_ok, "the {wid}x{dep} house went down: {ack.ak_why}");
+      rp = roofs.items[0] ?? hex_editor::RoofPlan {};
+      f = hex_editor::pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
+      old = hex_editor::RoofPlan { rp_cq: rp.rp_cq, rp_cr: rp.rp_cr, rp_wid: rp.rp_wid,
+                                   rp_dep: rp.rp_dep, rp_rot: rp.rp_rot,
+                                   rp_eave: rp.rp_eave, rp_pitch: rp.rp_pitch,
+                                   rp_hw: plan_hw(hex_editor::footprint_plan(f)),
+                                   rp_hd: plan_hd(hex_editor::footprint_plan(f)) };
+      n = 0;
+      missed = missed + roof_columns_outside(w, old, ack.ak_q, ack.ak_r,
+                                             wid + dep + 4, n);
+    }
+  }
+  assert(missed > 0,
+         "the nominal rectangle covered every roofed column at all nine sizes, so the "
+       + "row above is not measuring the change");
 }
