@@ -284,3 +284,127 @@ Everything here is reachable through `hex_editor`, which is what a consumer sees
 
 ⚠ **One `loft` at a time on this box.** Concurrent invocations serialise on the build cache: a
 single `--check` measured **4m19s real against 4s of CPU** while five others were compiling.
+
+## ✅ 7. `D2`'s own premise: is the MODE the right authority for whether a verb exists?
+
+    loft --lib lib/ probe/d2/gate.loft
+
+`D1a` answered *can a person reach `inside`*. It does not answer the question `D2`
+turns on, and the design's table is a claim that can be measured against the tree it
+would govern:
+
+> **outside** … removes doors, windows, interior stairs · **inside** … adds doors,
+> windows, stairs up and down
+
+Four rows, and the fourth exists because two different things fit the first three.
+
+### ⛔ A · B — the mode and the opening verb disagree in BOTH directions
+
+One house, sampled every quarter unit along the line a person walks in on. The store's
+own wall column and `place_house`'s own filed runs are printed beside the mode, so the
+flip is read against a measured line rather than a remembered one.
+
+| | |
+|---|---|
+| the near wall's run, as filed | **z = −2.25** |
+| the cells whose edges carry wall | z = **−4.00 … −1.25** |
+| the mode flips `outside` → `inside` | **z = −2.00** |
+
+**So an author standing on their own wall reads `outside`** — the flip is a quarter unit
+*inside* the wall's line, and 8 of the 12 walled stations are on the wrong side of it.
+The far wall repeats it: the run is at z = 5.25 and the mode is `outside` from 5.25 on.
+
+Row B then asks both authorities at each of 25 stations, on a **fresh world per station**
+because a cut changes the world a later station would read:
+
+    the design's table would REFUSE  8 station(s) where the gesture works
+    the design's table would GRANT   4 station(s) where the gesture has no wall
+
+⚠ **And every working station cuts at exactly the same place — `(0, −2.25)`.** The verb
+projects onto the run, so it is *position-independent within reach of the wall*; the mode
+is not. Two authorities, and only one of them is stable where the verb is used.
+
+### ⛔ And no drawing of the line reaches the corpus, because a wall does not need a roof
+
+Row D gives the alternative hypothesis its own chance: **the table may be right and its
+LINE wrong.** Inflating `place_house`'s roof plan by one cell each way moves the flip
+from **z = −2.00 to z = −3.50** — the wall's line at −2.25 is inside it now, and
+`house.keys`'s *two openings from two different modes at two stations its own comment
+describes identically* would stop happening. So the line **is** misplaced and it is
+cheaply fixable.
+
+⛔ **It rescues nothing for `opening`.** A roof plan is filed by `verb place` alone, and
+of the 18 openings in the live corpus:
+
+| script | openings | a roof plan can exist? |
+|---|---|---|
+| `house.keys` | 2 | ✅ has `verb place` |
+| `annex` `door` `embrasure` `furnish` `niche` `opening` `profiles` | **16** | ⛔ **no `verb place` anywhere in the script** |
+
+**Sixteen of eighteen are cut into free-standing `verb run` walls in the open air**, where
+`inside` is not a mode the world can produce however the boundary is drawn. A wall does not
+need a roof, and gating the verb that opens one on being under a roof is not a line that can
+be moved into the right place.
+
+### ✅ C — the control fires, and it says the mode is the only test the tree has
+
+Without this the probe could only ever argue against the design, which is not a
+measurement. Both of these are verbs with **no precondition of their own**:
+
+| | what happens today | what could have refused it |
+|---|---|---|
+| `storey` over a **bare meadow** | ✅ `storey +1 on 19 cells` | nothing — `storey_add` asks each column for a top and never for a building |
+| `place` from **inside a room** | ✅ a second whole house, **84 writes**, roofs **1 → 2** | nothing |
+| ✅ control: `opening` out of reach of every wall | refused, **`w_tau` +0** | — the clock can report *nothing happened* |
+
+⚠ **AND THE CONTROL WAS WRONG ON ITS FIRST RUN, WHICH IS WHY IT IS PLACED WHERE IT IS.**
+Written after the second house it measured **2 writes on a refusal that should have had
+none** — by then the second house's walls were standing in the room and the opening
+succeeded. ⚠ **And its station had to move**: at `(0, 1.0)` the far wall is 3.25 away and
+still within `opening`'s reach, so *the middle of the room* cut a door. Row B's own sweep
+is what picked `(0, 2.0)`. **A control taken downstream of the subject measures the subject.**
+
+### ⛔ …but the question those two verbs need is not the question the mode answers
+
+`storey` over a meadow and `place` inside a room both want **is there a building here**.
+The mode answers **am I under a roof**, and as filed those are the same word — `outside` —
+for a bare meadow *and* for an author standing on a house's own wall, which is exactly
+where the corpus performs both of its storeys. Inflated by a cell it separates them.
+
+### ⛔ And `raise` from inside does not move the ground under the building
+
+The design's `inside` row removes *"terrain gestures that would move the ground under the
+building"*. Asked at both facings, from `(0, 2.0)` in the editor's own house:
+
+    facing +z   raise ok at (0,11)   13 of 127 ground cells moved, 0 INSIDE the footprint
+    facing -z   raise ok at (0,-9)   13 of 127 ground cells moved, 0 INSIDE the footprint
+
+`PEAK_AHEAD` is **10 hexes** and the house is 7.5 world units deep, so the disc always lands
+clear of it. The binding's stated reason is not reproducible with the building the editor
+makes. ⚠ **The first version of this row read one cell ahead and printed `40 → 40`** — which
+reads as *nothing moved* and was the probe aiming at the wrong hex.
+
+### ⛔ A defect found on the way past: a refusal that wrote 57 times
+
+At `(0, 1.0)` a second `place` answers **`ak_ok: false`** — *"the walls stand but the roof was
+refused"* — and the world's own clock says what that cost:
+
+    w_tau 8378 -> 8435: a REFUSAL that wrote 57 time(s), and filed 8 runs (was 4)
+
+`storey_here`'s own comment names this exact shape as the thing a refusal must never mean:
+*"reporting `sy_ok: false` here would tell a driver nothing happened while the world had
+already changed under it."* **The library holds two conventions for one situation and only
+one of them is written down.** It is independent of `D2` and is recorded here because this
+is where it was measured.
+
+### ⏭ What this leaves `D2`
+
+1. **`opening` is not the mode's to grant.** Its own precondition is exact, stable and
+   already spoken (*no wall here to open — stand against one*); the mode is coarse,
+   unstable at the wall, and structurally absent for 16 of 18 real uses.
+2. **The mode's line excludes the wall, and one cell of inflation includes it.** That is
+   worth fixing on its own, for `house.keys`'s two-mode inconsistency and for anything the
+   mode is later asked.
+3. **The verbs that genuinely have no gate are `place` and `storey`**, and what they want is
+   *is there a building here* — a question the roof-plan registry can answer exactly and the
+   shelter reading only approximates.

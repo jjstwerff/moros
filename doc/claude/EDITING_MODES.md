@@ -73,6 +73,17 @@ prevent.
 | **underground** | below the surface, not under a built roof | **tunnelling and cave carving** | house placement, roads |
 | **castle** *(and other sets)* | ⚠ **not a location — a SELECTION** | — | — |
 
+⛔ **AND THE FIRST TWO ROWS WERE CONTRADICTED TOO — MEASURED 2026-08-17, `D2p`.** *outside removes
+doors, windows, interior stairs* is refuted: **an author standing on their own wall reads
+`outside`**, and **16 of the corpus's 18 openings are cut into free-standing walls where no roof
+plan can exist** — a wall does not need a roof. *inside removes terrain gestures that would move
+the ground under the building* is not reproducible either: `raise` from inside the editor's own
+house moves **0 cells inside its footprint**, at both facings. ✅ **What survived is the part
+nobody had stated**: `place` and `storey` have no precondition of their own — a floor lands on 19
+cells of bare meadow and a second whole house stamps inside the first, with nothing refusing. **The
+mode is for the verbs that have no gate, not for the ones whose gate is geometric.** The numbers are
+in [Phase 4](#phase-4--the-mode-derived) and in [`probe/d2` § 7](../../probe/d2/README.md).
+
 ⚠ **THE LAST ROW IS IN THIS TABLE TO BE CONTRADICTED.** *"A castle will have their own set"* is
 about **types**, not about place: a castle's wall, door and window kinds are a different palette,
 and an author may want them in a cottage. Putting it in the mode column would make the two axes
@@ -599,7 +610,11 @@ verb the table can name being bound.
 | step | what runs beside it | what would surprise the test |
 |---|---|---|
 | ✅ **`D1`** — `mode_at(sess, w, a)` computed and **consulted by nobody**; a gate logs it every frame of an existing run | every current verb, unchanged | ⛔ **THE ROW AS WRITTEN COULD NOT HAVE FAILED — see below.** What is asserted instead is **WHICH of the two sheltered modes**, in pairs that differ by one fact |
-| **`D2`** — verbs consult the mode: a verb with no binding here **says why** | `D1`'s log, now an assertion | a verb silently doing nothing. ⚠ *Reason, offer, residual, never a blank no* — the doorstep rule, applied to a keystroke |
+| ✅ **`D1a`** — a person can walk in at all: a ring has runs, an opening marks its own span, and a run sits on the line its edges are on | the whole corpus, byte for byte | ⛔ **the walk had to REACH**: 5.24 against −2.26, with 6.0 the no-house control |
+| ✅ **`D2p`** — the premise: is the mode the right authority for whether a verb EXISTS? | nothing — a probe | ⚠ **it has to be able to say the design is RIGHT.** The control is a verb with no precondition of its own, and it fires |
+| **`D2a`** — the mode's line goes outside the wall an author stands on | the camera, which asks the same query | ⚠ not *the flip moved* — it must clear the walled band and leave the meadow alone |
+| **`D2b`** — `place` and `storey` ask *is there a building here* | the corpus's own two storeys, which must still build | ⚠ a gate that only ever says no is `D2p`'s control with the sign flipped |
+| ⛔ **`D2`** — verbs consult the mode: a verb with no binding here **says why** | `D1`'s log, now an assertion | ⛔ **THE TABLE IS REFUTED AND THE ROW IS SPLIT — see below.** What is left is `D2a` + `D2b`, and the doorstep sentence belongs to whichever refuses |
 
 ⚠ **`D1` IS UNCALLED CODE ON PURPOSE AND STILL PASSES THE LOWER BOUND**, which is worth being
 precise about: it can go red for a real reason (the mode disagreeing with `shelter_at` on a real
@@ -698,6 +713,67 @@ cells)"* — one situation, described once, for both lines. The log says the fir
 **`inside`** and the second is **`outside`**: they straddle the roof plan's rectangle. Under `D2`,
 where `inside` is what grants the opening verb, **one of those two lines stops working.** That is
 the first thing `D2` has to answer, and it was invisible until something printed the mode.
+
+### ⛔ AND `D2`'s TABLE IS REFUTED BY ITS OWN PREMISE — `D2p`, 2026-08-17
+
+The design's mode table is three sections up and it is a claim about a tree, so it was measured
+against one. [`probe/d2` § 7](../../probe/d2/README.md); what follows is what the numbers say, and
+the rows that say the design is *right* are listed first because a probe with one reachable verdict
+is not an instrument.
+
+✅ **THE MODE IS THE ONLY TEST THIS TREE HAS, FOR TWO VERBS.** `storey` over a **bare meadow**
+builds a floor on 19 cells of open grass, and `place` from **inside a room** stamps a second whole
+house — 84 writes, roof plans 1 → 2 — and nothing anywhere refuses either. `storey_add` asks each
+column for a top and never for a building. **Those two verbs are genuinely ungated**, and the
+design's instinct about them is correct.
+
+⛔ **AND THE OPENING VERB IS THE OPPOSITE CASE, MEASURED IN BOTH DIRECTIONS.** One house, 25
+stations, a fresh world each:
+
+| | |
+|---|---|
+| the near wall's run, as `place_house` files it | **z = −2.25** |
+| the cells whose edges carry wall | z = **−4.00 … −1.25** |
+| the mode flips `outside` → `inside` | **z = −2.00** |
+
+> **An author standing on their own wall reads `outside`** — the flip is a quarter unit *inside*
+> the wall's own line, and the far wall repeats it at z = 5.25.
+
+The design's table would **refuse 8 stations where the gesture works** and **grant 4 where there is
+no wall to open**. ⚠ And every working station cuts at exactly the same `(0, −2.25)`, because the
+verb projects onto the run: **it is position-independent within reach of the wall and the mode is
+not.** Two candidate authorities, and only one of them is stable where the verb is used.
+
+⛔ **AND *THE LINE IS SIMPLY MISPLACED* WAS GIVEN ITS OWN ROW AND SURVIVES ONLY HALFWAY.** Inflating
+the roof plan by one cell each way moves the flip **−2.00 → −3.50**, which puts the wall inside and
+would end `house.keys`'s two-modes-one-comment. It rescues nothing for the verb: a roof plan is
+filed by `verb place` alone, and of the live corpus's 18 openings **16 are cut into free-standing
+`verb run` walls in scripts with no `verb place` at all**.
+
+> **A wall does not need a roof.** `inside` is not a mode the world can produce at those sixteen
+> walls however the boundary is drawn, so this is not a line that can be moved into the right place.
+
+⛔ **AND THE `inside` ROW'S OTHER CLAUSE IS NOT REPRODUCIBLE EITHER.** *"Terrain gestures that would
+move the ground under the building"* — asked at both facings from inside the editor's own house,
+`raise` moved 13 of 127 ground cells and **0 of them inside the footprint**, because `PEAK_AHEAD` is
+10 hexes against a house 7.5 world units deep. The disc always lands clear.
+
+**So the rule the measurements leave standing is not the one that was written:**
+
+> **The mode does not GRANT a verb whose own precondition is geometric.** `opening` already
+> answers *no wall here to open — stand against one*, exactly, stably, and at the right
+> granularity. What the mode is for is the verbs that have **no** precondition — and what those
+> want is *is there a building here*, which the shelter reading only approximates: as filed it
+> says `outside` both for a bare meadow and for the wall the corpus performs its storeys from.
+
+That splits the row into `D2a` — the line goes outside the wall, and ⚠ **`shelter_at` is the
+camera's query too, so the eave belongs in the plan and both readers move together rather than a
+second enclosure test being added** — and `D2b`, the building gate `place` and `storey` need.
+
+⛔ **AND A DEFECT FELL OUT OF THE CONTROL, INDEPENDENT OF ALL OF IT.** `place_house` answers
+`ak_ok: false` — *"the walls stand but the roof was refused"* — after **57 writes and 4 filed
+runs**. `storey_here`'s own comment names that shape as the thing a refusal must never mean, so the
+library holds two conventions for one situation and only one is written down.
 
 ## Phase 5 — the scripts, and the types
 

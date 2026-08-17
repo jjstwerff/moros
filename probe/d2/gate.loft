@@ -1,0 +1,323 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// IS THE MODE THE RIGHT AUTHORITY FOR WHETHER A VERB IS AVAILABLE? — plan 22 `D2`'s
+// third premise, measured before the binding table is written.
+//
+//     loft --lib lib/ probe/d2/gate.loft
+//
+// `D1a` unblocked `D2` by making the `inside` mode reachable on foot. That answers
+// *can a person get there*, and it does not answer the question `D2` actually turns
+// on. [EDITING_MODES](../../doc/claude/EDITING_MODES.md)' own table says:
+//
+//   > **outside** … removes doors, windows, interior stairs
+//   > **inside**  … adds doors, windows, stairs up and down
+//
+// On the corpus tally that refuses **22 of 144 gestures** — 17 openings, 2 stairs,
+// 2 storeys and a cellar — every one of which builds something correct today. The
+// corpus teleports, so that is not proof by itself. What would be proof either way
+// is comparing the mode against **the verb's own precondition**, station by station,
+// because those are the two candidate authorities and only one of them can be right:
+//
+//   A. where does the mode FLIP, relative to the wall an opening is cut in?
+//   B. at each station, does the mode agree with what the gesture itself says?
+//   C. and the control — is there a verb with NO precondition of its own, where the
+//      mode is the only test available? Without this row the probe can only ever
+//      argue *against* the design, which is not a measurement.
+//   D. and the ALTERNATIVE hypothesis its own row, because *the table is wrong* and
+//      *the LINE is wrong* both fit rows A and B and only one needs a redesign:
+//      inflate the roof plan by a cell and see whether the disagreement closes.
+//
+// ⚠ **THE ROWS PRINT IN THE ORDER A · B · D · C**, which is deliberate: D is B's
+// alternative and belongs beside it, while C is the control for all three and reads
+// as an answer rather than as a question.
+
+// ⚠ THREE PACKAGES AND NO MORE — `probe/d2/door.loft`'s note: a program under
+// `probe/` is not inside a package, so a fourth `use` sends the resolver to the
+// registry and it drowns in HTTP 429s auto-installing module basenames.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;    // 90°, facing +z — the way `indoors.keys` builds
+
+fn r2(v: float) -> float { round(v * 100.0) / 100.0 ?? 0.0 }
+
+// A world of flat ground, and nothing else.
+fn meadow() -> VoxelWorld {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+// Does the cell under `(x,z)` carry any wall edge at all? — *is there something here
+// to open*, asked of the store rather than of the mode.
+fn walled_here(w: VoxelWorld, x: float, z: float) -> boolean {
+  (q, r) = hex_grid::px_to_hex(x, z);
+  ref = (FLOOR as float) * U;
+  for d in 0..6 {
+    if hex_editor::wall_of(w, q, r, d, ref) != 0 { return true; }
+  }
+  false
+}
+
+fn main() {
+  ref = (FLOOR as float) * U;
+
+  // ── A. WHERE THE MODE FLIPS, ALONG THE LINE A PERSON WALKS IN ON ───────────
+  //
+  // One house, sampled every quarter unit from well outside to well inside. The
+  // wall column is the store's own answer, so the flip and the wall can be read
+  // against each other rather than against a remembered number.
+  println("--- A. the mode along x = 0, and where the store says the wall is");
+  wa = meadow();
+  sa = hex_editor::EditSession {};
+  aa = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hack = hex_editor::place_house(wa, aa, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                                 hex_editor::grade_under(wa, aa),
+                                 sa.es_runs, sa.es_roofs);
+  println("  house: ok={hack.ak_ok} {hack.ak_why}  roofs={len(sa.es_roofs.items)} "
+        + "runs={len(sa.es_runs.items)}");
+  if !hack.ak_ok { return; }
+
+  // ⚠ THE WALL'S OWN LINE, PRINTED, so the flip below is read against a measured
+  // number rather than against a remembered one. `D1a.3` put these runs on the
+  // boundary their edges are stored on, which is what makes them a datum at all.
+  for k in 0..len(sa.es_runs.items) {
+    rk = sa.es_runs.items[k] ?? hex_editor::WallRun {};
+    println("  run {k}: ({r2(rk.wr_x0)},{r2(rk.wr_z0)}) -> ({r2(rk.wr_x1)},{r2(rk.wr_z1)})");
+  }
+
+  prev = "";
+  for i in 0..49 {
+    z = 0.0 - 6.0 + (i as float) * 0.25;
+    st = hex_editor::author_at(0.0, z, YAW, ref);
+    m = hex_editor::mode_name(hex_editor::mode_at(sa, wa, st));
+    wl = "-";
+    if walled_here(wa, 0.0, z) { wl = "WALL"; }
+    flip = "";
+    if prev != "" && prev != m { flip = "   <- the mode FLIPS here"; }
+    prev = m;
+    println("  z={r2(z)}  mode {m}  store {wl}{flip}");
+  }
+
+  // ── B. THE MODE AGAINST THE VERB'S OWN PRECONDITION ────────────────────────
+  //
+  // ⚠ A FRESH WORLD PER STATION, because cutting an opening changes the world and
+  // a cumulative sweep would be measuring its own earlier cuts. The expensive
+  // arrangement is the honest one here.
+  //
+  // Two counts are what this row is for, and they point in opposite directions:
+  // a station the design would REFUSE where the gesture works, and a station the
+  // design would GRANT where the gesture has nothing to act on.
+  println("--- B. `opening` at each station: what the mode says, what the gesture says");
+  refused_working = 0;
+  granted_empty = 0;
+  for j in 0..25 {
+    z = 0.0 - 4.0 + (j as float) * 0.25;
+    wb = meadow();
+    sb = hex_editor::EditSession {};
+    ab = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+    hex_editor::place_house(wb, ab, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                            hex_editor::grade_under(wb, ab),
+                            sb.es_runs, sb.es_roofs);
+    stb = hex_editor::author_at(0.0, z, YAW, ref);
+    m = hex_editor::mode_name(hex_editor::mode_at(sb, wb, stb));
+    made = hex_editor::session_open_kind(sb, wb, stb, 1, hex_editor::STOREY_H);
+    say = "cut at ({r2(made.om_open.op_x)},{r2(made.om_open.op_z)})";
+    if !made.om_ok { say = "REFUSED — {made.om_why}"; }
+    if m == "outside" && made.om_ok { refused_working = refused_working + 1; }
+    if m == "inside" && !made.om_ok { granted_empty = granted_empty + 1; }
+    println("  z={r2(z)}  mode {m}  opening {say}");
+  }
+  println("  the design's table would REFUSE {refused_working} station(s) where the "
+        + "gesture works");
+  println("  the design's table would GRANT {granted_empty} station(s) where the "
+        + "gesture has no wall");
+
+  // ── D. IS THE BOUNDARY SIMPLY DRAWN IN THE WRONG PLACE? ────────────────────
+  //
+  // ⚠ **THE ALTERNATIVE HYPOTHESIS, AND IT HAS TO BE GIVEN ITS OWN CHANCE.** Row B
+  // says the mode and the gesture disagree; that is evidence the design's table is
+  // wrong OR that its LINE is, and only one of those needs a redesign. `place_house`
+  // files a roof plan whose rectangle is the wall's own line, and row A's flip sits
+  // a quarter unit inside it — so an author standing ON their own wall reads
+  // `outside`. Inflating the plan by one cell each way is the cheapest version of
+  // *the person on the wall is in the building*, and what it must produce is the
+  // flip moving OUT past the walled band.
+  println("--- D. the same house, with the roof plan inflated by one cell each way");
+  s2 = hex_editor::EditSession {};
+  for p in 0..len(sa.es_roofs.items) {
+    rp = sa.es_roofs.items[p] ?? hex_editor::RoofPlan {};
+    s2.es_roofs.items += [hex_editor::RoofPlan {
+      rp_cq: rp.rp_cq, rp_cr: rp.rp_cr,
+      rp_wid: rp.rp_wid + 2, rp_dep: rp.rp_dep + 2,
+      rp_rot: rp.rp_rot, rp_eave: rp.rp_eave, rp_pitch: rp.rp_pitch }];
+  }
+  prev2 = "";
+  for n in 0..25 {
+    z = 0.0 - 5.0 + (n as float) * 0.25;
+    st2 = hex_editor::author_at(0.0, z, YAW, ref);
+    m0 = hex_editor::mode_name(hex_editor::mode_at(sa, wa, st2));
+    m1 = hex_editor::mode_name(hex_editor::mode_at(s2, wa, st2));
+    wl2 = "-";
+    if walled_here(wa, 0.0, z) { wl2 = "WALL"; }
+    mark = "";
+    if prev2 != "" && prev2 != m1 { mark = "   <- the inflated flip"; }
+    prev2 = m1;
+    println("  z={r2(z)}  store {wl2}  as filed {m0}  inflated {m1}{mark}");
+  }
+
+  // ── C. THE CONTROL — A VERB WITH NO PRECONDITION OF ITS OWN ────────────────
+  //
+  // ⚠ WITHOUT THIS ROW THE PROBE CAN ONLY ARGUE AGAINST THE DESIGN, and a probe
+  // that can only reach one verdict is not an instrument. `storey_add` walks a
+  // 19-cell disc and asks each column whether it has a top — there is no *is there
+  // a building here* in it — so a storey over a bare meadow is the case where the
+  // mode would be the only test in the tree.
+  println("--- C1. `storey` over a bare meadow: does anything refuse it?");
+  wc = meadow();
+  sc = hex_editor::EditSession {};
+  ac = hex_editor::author_at(0.0, 0.0, YAW, ref);
+  println("  mode here: {hex_editor::mode_name(hex_editor::mode_at(sc, wc, ac))}");
+  sy = hex_editor::storey_here(wc, ac, 1);
+  println("  storey: ok={sy.sy_ok} cells={sy.sy_cells} — {sy.sy_say}");
+
+  // A second house stamped inside the first: the same question one verb over.
+  println("--- C2. `place` from INSIDE a house: does anything refuse it?");
+  wd = meadow();
+  sd = hex_editor::EditSession {};
+  ad = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hex_editor::place_house(wd, ad, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(wd, ad), sd.es_runs, sd.es_roofs);
+  // ⚠ **(0, 2.0), NOT (0, 1.0) — AND ROW B IS WHAT PICKED IT.** At z = 1.0 the wall
+  // at z = −2.25 is still 3.25 away and inside `opening`'s reach, so the "middle of
+  // the room" station cuts a door in the far wall and the control below succeeds.
+  // Row B's own sweep says the refusal starts at z = 1.25; this stands clear of it.
+  inside = hex_editor::author_at(0.0, 2.0, YAW, ref);
+  println("  mode here: {hex_editor::mode_name(hex_editor::mode_at(sd, wd, inside))}"
+        + "  roofs before {len(sd.es_roofs.items)}");
+  // ⚠ THE CONTROL FIRST, AND THE ORDER IS THE POINT — it was written after the
+  // second house and measured **2 writes on a refusal that should have had none**,
+  // because by then the second house's walls were standing in the room and the
+  // opening SUCCEEDED. A control taken downstream of the subject measures the
+  // subject. This one runs while the room is still empty: `opening` out of reach of
+  // every wall is a refusal known to write nothing, so it is what says `w_tau` can
+  // report *nothing happened* at all.
+  tau1 = wd.w_tau;
+  quiet = hex_editor::session_open_kind(sd, wd, inside, 1, hex_editor::STOREY_H);
+  println("  control: opening ok={quiet.om_ok} ({quiet.om_why}) — w_tau {tau1} -> "
+        + "{wd.w_tau}, {wd.w_tau - tau1} write(s)");
+
+  // ⚠ `w_tau` RATHER THAN THE SENTENCE. The refusal below says *the walls stand*,
+  // which is a claim about the world made by the thing that refused; the edit clock
+  // is the world's own answer and it bumps once per write that changed something.
+  tau0 = wd.w_tau;
+  h2 = hex_editor::place_house(wd, inside, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                               hex_editor::grade_under(wd, inside),
+                               sd.es_runs, sd.es_roofs);
+  println("  place: ok={h2.ak_ok} {h2.ak_why}  roofs after {len(sd.es_roofs.items)}");
+  println("  w_tau {tau0} -> {wd.w_tau} — it wrote {wd.w_tau - tau0} time(s)");
+
+  // ── C2b. ⛔ A DEFECT THIS ROW FOUND ON THE WAY PAST, KEPT BECAUSE IT IS REAL ──
+  //
+  // The station above started at (0, 1.0) and `place` answered **`ak_ok: false`**
+  // there — *"the walls stand but the roof was refused"* — after writing to the
+  // world. `storey_here`'s own comment names that exact shape as the thing a
+  // refusal must never mean: *"reporting `sy_ok: false` here would tell a driver
+  // nothing happened while the world had already changed under it."* So the same
+  // library holds two conventions for one situation, and only one of them is
+  // written down. `w_tau` is what turns the sentence into a number.
+  println("--- C2b. a `place` that answers REFUSED after writing");
+  wf = meadow();
+  sf = hex_editor::EditSession {};
+  af = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hex_editor::place_house(wf, af, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(wf, af), sf.es_runs, sf.es_roofs);
+  near = hex_editor::author_at(0.0, 1.0, YAW, ref);
+  tau2 = wf.w_tau;
+  h3 = hex_editor::place_house(wf, near, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                               hex_editor::grade_under(wf, near),
+                               sf.es_runs, sf.es_roofs);
+  println("  place: ok={h3.ak_ok} — {h3.ak_why}");
+  println("  w_tau {tau2} -> {wf.w_tau}: a REFUSAL that wrote {wf.w_tau - tau2} "
+        + "time(s), and filed {len(sf.es_runs.items)} runs");
+
+  // And the terrain verb the design's `inside` row names by name — asked at BOTH
+  // facings, because one of them answers a different question.
+  println("--- C3. `raise` from INSIDE a house: does the ground under the floor move?");
+  raise_report("facing +z, toward the far wall", YAW, ref);
+  raise_report("facing -z, back across the room", 0.0 - YAW, ref);
+}
+
+// One `raise` from a station inside a house, with WHERE it landed read against the
+// building's own footprint rather than against a remembered rectangle.
+//
+// ⚠ **THE FIRST VERSION READ ONE CELL AND PRINTED `40 -> 40`** — which reads as
+// *nothing moved* and was the probe aiming at the wrong hex. `raise_ahead` brushes a
+// DISC at `PEAK_AHEAD` hexes along the facing, so a fixed cell ahead is a guess;
+// scanning the ground around the building and reporting each moved cell's position
+// cannot miss it wherever the disc lands, and says whether it landed INSIDE.
+fn raise_report(label: text, yaw: float, ref: float) {
+  w = meadow();
+  s = hex_editor::EditSession {};
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(w, a), s.es_runs, s.es_roofs);
+
+  // The footprint, read off the runs `place_house` just filed — `D1a.3` put those
+  // on the boundary their edges are stored on, so they are the building's own line.
+  x0 = 1000.0; x1 = 0.0 - 1000.0; z0 = 1000.0; z1 = 0.0 - 1000.0;
+  for k in 0..len(s.es_runs.items) {
+    rn = s.es_runs.items[k] ?? hex_editor::WallRun {};
+    if rn.wr_x0 < x0 { x0 = rn.wr_x0; }
+    if rn.wr_x1 < x0 { x0 = rn.wr_x1; }
+    if rn.wr_x0 > x1 { x1 = rn.wr_x0; }
+    if rn.wr_x1 > x1 { x1 = rn.wr_x1; }
+    if rn.wr_z0 < z0 { z0 = rn.wr_z0; }
+    if rn.wr_z1 < z0 { z0 = rn.wr_z1; }
+    if rn.wr_z0 > z1 { z1 = rn.wr_z0; }
+    if rn.wr_z1 > z1 { z1 = rn.wr_z1; }
+  }
+
+  stand = hex_editor::author_at(0.0, 2.0, yaw, ref);
+  (cq0, cr0) = hex_grid::px_to_hex((x0 + x1) * 0.5, (z0 + z1) * 0.5);
+  before = [for _ in 0..0 { 0 }];
+  for dq in (0 - 6)..7 {
+    for dr in (0 - 6)..7 {
+      if hex_grid::hex_distance(cq0 + dq, cr0 + dr, cq0, cr0) <= 6 {
+        before += [hex_editor::ground_h(w, cq0 + dq, cr0 + dr)];
+      }
+    }
+  }
+  tau = w.w_tau;
+  ack = hex_editor::raise_ahead(w, stand, 1);
+  moved = 0;
+  under = 0;
+  worst = 0;
+  ix = 0;
+  for dq2 in (0 - 6)..7 {
+    for dr2 in (0 - 6)..7 {
+      if hex_grid::hex_distance(cq0 + dq2, cr0 + dr2, cq0, cr0) <= 6 {
+        now = hex_editor::ground_h(w, cq0 + dq2, cr0 + dr2);
+        was = before[ix] ?? 0;
+        if now != was {
+          moved = moved + 1;
+          if now - was > worst { worst = now - was; }
+          (px, pz) = hex_grid::hex_to_px(cq0 + dq2, cr0 + dr2);
+          if px >= x0 && px <= x1 && pz >= z0 && pz <= z1 { under = under + 1; }
+        }
+        ix = ix + 1;
+      }
+    }
+  }
+  println("  {label}");
+  println("    mode {hex_editor::mode_name(hex_editor::mode_at(s, w, stand))}, "
+        + "footprint x {r2(x0)}..{r2(x1)} z {r2(z0)}..{r2(z1)}");
+  println("    raise ok={ack.ak_ok} at ({ack.ak_q},{ack.ak_r}) — {moved} of {ix} "
+        + "ground cell(s) moved, {under} of them INSIDE the footprint, worst +{worst}, "
+        + "w_tau +{w.w_tau - tau}");
+}
