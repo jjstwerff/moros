@@ -30,6 +30,21 @@ move — still `loft 2026.8.0`. Every measurement behind the `T1` and `T2` commi
 Re-checked on the new one, `make fast` is **157 test files, exit 0**, layering, `walk-exact`,
 `probe-k3c` and `probe-k3e` all green — so the two steps stand.
 
+⛔ **AND THAT RE-CHECK WAS BLIND TO HALF THE PRODUCT — found 2026-08-17 by probe 5.** The
+`--html` client built with the new binary **traps with `RuntimeError: unreachable`** the
+moment it has a part thumbnail to build: attached to a server (which sends 20 of them), or
+local off `_site/index.html` (which bakes 20 into its base tree). The same source built by
+the previous binary attaches, runs 300 frames and answers 8 digests.
+[loft#950](https://github.com/loft-lang/loft/issues/950), `sev:high` `wa:none`, with the
+control pair and five ruled-out measurements in [probe/t5/README.md](../../probe/t5/README.md).
+
+⚠ **THE LESSON IS THE SCHEDULING, NOT THE DEFECT.** Every check in the list above is
+green **and none of them builds or drives the page** — `make probe-demo` and
+`make probe-auth` are the two that do, and both sit outside `make fast`. So a
+toolchain swap was signed off by a re-check that could not see the browser editor at
+all, and *"the two steps stand"* was true while the product was broken. When a green
+run is used to clear a change, ask what it does not run.
+
 **The tracker, snapshotted** (labels move on someone else's schedule; the measurements are in
 [LOFT_HANDOFF](LOFT_HANDOFF.md), which is where they belong):
 

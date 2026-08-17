@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-t3 probe-t4 pages probe-demo plan-check play play-fast browser port-free
+.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -418,6 +418,32 @@ fast:
 	@$(MAKE) -s probe-k3c
 	@$(MAKE) -s probe-t3
 	@$(MAKE) -s probe-t4
+	@echo "fast: ⚠ NOT run here — the browser. Nothing above builds or drives the"
+	@echo "      --html page; \`make page-check\` is the tier that does. A green fast"
+	@echo "      loop cleared a toolchain swap on 2026-08-16 while the browser editor"
+	@echo "      was broken the whole time (loft#950)."
+
+# ── THE TWO CHECKS THAT DRIVE A BROWSER ─────────────────────────────────────
+#
+# The only checks in this tree that build the `--html` client and put keys into it.
+# `probe-demo` opens `_site/index.html` off a disk with no server anywhere;
+# `probe-auth` serves the same bytes three ways and watches which authority the page
+# claims.
+#
+# ⚠ **IT IS OUT OF `make fast` BECAUSE IT IS SLOW, AND THAT IS A COST, NOT A
+# DECISION.** A client build is minutes; the fast loop is seconds and is meant to stay
+# that way. What the split cost, once: `/usr/local/bin/loft` was replaced on
+# 2026-08-16 23:08 and the re-check that signed it off — 157 test files, `layering.sh`,
+# `walk-exact.sh`, `probe-k3c`, `probe-t3`, `probe-t4`, every one green — **does not
+# touch a browser**. The `--html` page had stopped working entirely
+# (`RuntimeError: unreachable`, loft#950) and nothing said so for a day.
+#
+# ⚠ **SO RUN THIS AFTER A TOOLCHAIN CHANGE, BEFORE SIGNING ONE OFF.** It rebuilds the
+# client on purpose rather than reusing whatever is in `src/.loft/` — the stale page
+# left there is exactly what would hide the next one of these.
+page-check: client pages
+	@$(MAKE) -s probe-demo
+	@$(MAKE) -s probe-auth
 
 check:
 	@sh tools/layering.sh

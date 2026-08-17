@@ -1,0 +1,41 @@
+// WHICH CALL TRAPS IN THE BROWSER — plan 22, probe 5.
+//
+//   loft --html src/.loft/editor_client.html probe/t5/t5_pagethumb.loft
+//   make pages && node probe/b1b/press.mjs "file://$PWD/_site/index.html" …
+//
+// ⚠ IT IS BUILT OVER THE CLIENT'S OWN OUTPUT PATH ON PURPOSE. `tools/build-pages.mjs`
+// bakes `data/parts` into whatever engine sits at `src/.loft/editor_client.html`, and
+// a browser filesystem is the one thing this path needs that a `--native-wasm` run
+// gets for free. So this borrows the demo's baking to put 20 parts in front of a
+// twenty-line program.
+//
+// The editor page walks `part_availability` → `part_thumb_wire` → its own
+// `add_thumb_cam`/`add_thumb_mesh`, and dies somewhere between printing the part
+// count and printing the mesh count. This runs the LIBRARY half alone: if it traps,
+// the defect is under `hex_mesh`; if it survives, it is in the client's two handlers.
+use hex_mesh;
+use graphics;
+
+fn main() {
+  // A context first — the editor builds its thumbnails after its window is up, and
+  // a difference in that order would be a difference between this and the subject.
+  graphics::gl_create_window(320, 240, "t5 pagethumb");
+  root = "/data/parts";
+  avail = hex_mesh::part_availability(root);
+  println("t5: {len(avail)} parts under '{root}'");
+  total = 0;
+  for i in 0..len(avail) {
+    name = (avail[i] ?? hex_mesh::PartAvail {}).av_name;
+    // ⚠ SAID BEFORE THE CALL, NOT AFTER. A trap prints nothing of its own, so the
+    // last line on screen has to be the one that names what was about to run.
+    println("t5: about to wire '{name}'…");
+    n = 0;
+    for m in hex_mesh::part_thumb_wire(root, hex_mesh::surface_count() + i, name) {
+      n = n + 1;
+    }
+    total = total + n;
+    println("t5: '{name}' — {n} message(s)");
+  }
+  println("t5: {total} thumbnail messages over {len(avail)} parts — the library half survived");
+  graphics::gl_destroy_window();
+}

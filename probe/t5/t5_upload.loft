@@ -1,0 +1,28 @@
+// Does `gl_upload_vertices` survive the `--html` build? — plan 22, probe 5.
+//
+//   loft --html probe/t5/out/t5_upload.html probe/t5/t5_upload.loft
+//
+// The editor page dies with `RuntimeError: unreachable` the moment it has a part
+// thumbnail to build, and `add_thumb_mesh`'s only browser-specific call is this one.
+// The library half of that path — `hex_mesh::part_thumb_wire` — is green on the
+// interpreter, on `--native` and on `--native-wasm` alike (69 messages over 20 parts,
+// all three), so what is left is the browser target.
+//
+// ⚠ IT CLIMBS RATHER THAN TAKING ONE SIZE. `house/cottage` is 1104 vertices — 6624
+// floats — and the smaller parts are 18. A single size that happened to work would
+// say the call is fine; the interesting number is WHERE it stops, if it stops.
+use graphics;
+
+fn main() {
+  graphics::gl_create_window(320, 240, "t5 upload");
+  println("t5: window up");
+  for n in [1, 18, 108, 144, 246, 1104, 4096] {
+    v: vector<single> = [];
+    for i in 0..n * 6 { v += [((i % 97) as float * 0.125) as single]; }
+    println("t5: uploading {n} vertices ({len(v)} floats)…");
+    vao = graphics::gl_upload_vertices(v, 6);
+    println("t5: {n} vertices → vao {vao}");
+  }
+  println("t5: every upload survived");
+  graphics::gl_destroy_window();
+}

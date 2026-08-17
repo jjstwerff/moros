@@ -609,6 +609,13 @@ struct Client {
   // place that knows what its own keys did.
   turned_by: float,
   said_still: boolean,
+  // Every walk bit this page has EVER held — plan 22, probe 5. ⚠ IT IS A HIGH-WATER
+  // MARK AND NOT `wk_held`, because the report it feeds prints once every 300 frames
+  // and a key held for 120 ms is invisible to that sampling: the attached line
+  // asserts the walker stood still, and *nobody asked it to move* is the same
+  // sentence with none of the meaning. `wk_held` answers what is down NOW; this
+  // answers whether the guard was ever put to the question.
+  held_seen: integer,
   // Which catalogue row is chosen, 0 for none — plan 22 `B2e`. The NAME lives in
   // the session; this is the driver's place in its own list.
   part_pick: integer,
@@ -2085,6 +2092,10 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   if hex_editor::rebind_holds(st.rb) { bits = 0; }
   if bits != st.wk.wk_held {
     st.wk.wk_held = bits;
+    // ⚠ ACCUMULATED HERE RATHER THAN READ LATER — probe 5's vacuity guard. This
+    // branch is the only place the held bits are ever written, and it fires on the
+    // EDGE, so it is also the only place that can see a 120 ms press at all.
+    st.held_seen = st.held_seen | bits;
     // ── WHERE HELD INPUT GOES — the same fork `act` is, one layer down ────────
     //
     // Attached, the bits go on the wire and the SERVER integrates them. Local,
@@ -3138,7 +3149,7 @@ fn main() {
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
-    tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false,
+    tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false, held_seen: 0,
     // ⚠ AT THE ORIGIN WITH AN EMPTY PROXY, and the first tick builds it. A page that
     // goes local seeds the POSE from the author it already had — see `st.local = true`
     // — and deliberately does not seed the feet: `fall_step`'s first branch is the
@@ -3579,15 +3590,21 @@ fn main() {
       println("client: {frames} frames — meshes {st.c_mesh}, placements {st.c_place}, "
               + "drops {st.c_drop}, cameras {st.c_cam}, status {st.c_status}, "
               + "parts {len(st.parts)}");
-      // ⚠ THE WALKER'S OWN NUMBERS, AND ONLY WHERE THIS PAGE IS THE WALKER — plan
-      // 22 `B1c.1`. Attached they would be zero and meaningless: the pose is the
-      // server's there, and a page reporting its own idle integrator beside the
-      // server's walk would be two accounts of one fact.
+      // ⚠ THE WALKER'S OWN NUMBERS — plan 22 `B1c.1`, AND THE ATTACHED HALF IS A
+      // CLAIM RATHER THAN A REPORT (plan 22, probe 5). This read *"only where this
+      // page is the walker … attached they would be zero and meaningless"*, which
+      // is the thing probe 5 exists to measure offered as the reason not to look at
+      // it: **the guard that keeps them zero is one line** (`if st.local { author =
+      // local_tick(…) }`), and a reader deleting it as redundant would get a page
+      // levelling its own copy of a world it does not own, with every number on
+      // screen still right. So attached it says so, in the shape an assertion takes
+      // — the numbers are the ones that must be zero, and `probe/t5` reads them.
       //
-      // ⚠ TWO NUMBERS, BECAUSE ONE CANNOT ANSWER. `ticked` says the CLOCK advanced
-      // — the thing a missing time bridge takes away silently — and `turned_by`
-      // says the KEYS did something, which a step count cannot: 300 steps of `a`
-      // and 300 of `d` leave the same `ticked` and opposite worlds.
+      // ⚠ AND IT IS STILL ONE ACCOUNT AND NOT TWO. The old objection was that a
+      // page reporting its own integrator beside the server's walk gives a reader
+      // two stories about one person; the attached line reports an IDLE integrator
+      // and names it idle, which is a fact about this page rather than a second
+      // opinion about where the character is.
       if st.local {
         // ⚠ THREE NUMBERS, BECAUSE NO TWO OF THEM CAN ANSWER FOR THE THIRD.
         // `ticked` says the CLOCK advanced — what a missing time bridge takes away
@@ -3598,6 +3615,16 @@ fn main() {
         println("client: local walker — {st.ticked} steps, yaw {author.au_yaw} "
                 + "(turned {st.turned_by}), walked {st.wk.wk_walked} at "
                 + "({author.au_x},{author.au_z}) feet {st.wk.wk_y} landed {st.wk.wk_fell}");
+      } else {
+        // ⚠ `asked` IS ON THE LINE BECAUSE IT IS THE ONLY ONE THAT IS NOT EXPECTED
+        // TO BE ZERO, and it is what keeps the other three from being vacuous: a
+        // walker that was never asked to move proves nothing about a walker that
+        // refused to. Attached, `poll_input` fills the held bits for the wire
+        // exactly as it does locally, so *keys held and not one step consumed* is
+        // precisely what the guard WORKING looks like.
+        println("client: attached walker — idle: {st.ticked} steps, walked "
+                + "{st.wk.wk_walked}, stamped {st.lv_stamped}, asked {st.held_seen} "
+                + "(the world is the server's; this page must not tick)");
       }
     }
   }

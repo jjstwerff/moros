@@ -1,0 +1,37 @@
+// Does `hex_mesh::part_thumb_wire` survive the WASM backend? — plan 22, probe 5.
+//
+// Found while trying to run probe 5: the `--html` editor page, built with the
+// toolchain installed 2026-08-16 23:08, dies with `RuntimeError: unreachable` the
+// moment a part library is present — attached to a server (which sends thumbnails)
+// or local off `_site/index.html` (which bakes 20 parts into its base tree). The
+// SAME page bytes built by the previous toolchain attach and run 300 frames.
+//
+// This is the smallest thing that calls the suspect without a browser: one part
+// through `part_thumb_wire`, the call the client's boot makes 20 times and the
+// server's `part_thumbs_all` makes on the interpreter without complaint.
+//
+//   loft --lib lib/ probe/t5/t5_thumb.loft                 the interpreter
+//   loft --native --lib lib/ probe/t5/t5_thumb.loft        the native backend
+//   loft --native-wasm --lib lib/ probe/t5/t5_thumb.loft   wasip2, then wasmtime
+use hex_mesh;
+
+fn main() {
+  root = env_variable("T5_PARTS");
+  if root == "" { root = "data/parts"; }
+  // ⚠ THE NAMES ARE READ, NOT SPELLED. A hard-coded list that drifted from the
+  // library would report "0 messages" — a clean run over nothing, which is the
+  // sentence a blind fixture produces.
+  avail = hex_mesh::part_availability(root);
+  println("t5: {len(avail)} parts under '{root}'");
+  total = 0;
+  for i in 0..len(avail) {
+    name = (avail[i] ?? hex_mesh::PartAvail {}).av_name;
+    n = 0;
+    for m in hex_mesh::part_thumb_wire(root, hex_mesh::surface_count() + i, name) {
+      n = n + 1;
+    }
+    total = total + n;
+    println("t5: '{name}' — {n} message(s)");
+  }
+  println("t5: {total} thumbnail messages over {len(avail)} parts");
+}

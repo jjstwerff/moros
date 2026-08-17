@@ -388,8 +388,15 @@ address (or the hostname `make browser` prints) cannot connect.
   and three instruments were blind before one answered. ⛔ **`T3` is that same shape at the level of a
   PLAN**: the acceptance its own step table names — `deck.keys` == the server — **cannot be run at `T3`
   at all**, because `deck.keys` levels and levelling is `T4`. *A walk that does not level writes
-  nothing*, so no step in this design could ever have been accepted the way that row said. ⏭ Probe 5 —
-  *a remote page must not tick* — is the one claim still unmeasured
+  nothing*, so no step in this design could ever have been accepted the way that row said. ⛔ **Probe 5 —
+  *a remote page must not tick* — is BUILT and BLOCKED** (`probe/t5`): the page cannot attach, because the
+  `--html` build made by the loft installed 2026-08-16 23:08 traps on the thumbnail path
+  ([loft#950](https://github.com/loft-lang/loft/issues/950)). ⚠ **Its red rows are NOT an answer** — they
+  say *the page never attached*, which is a fact about the page. ⛔ **And the blocker is the better
+  finding: nothing in `make fast` builds the page**, so a toolchain swap was cleared by a green re-check
+  that could not see the browser editor at all — `make probe-demo` and `make probe-auth` are the only two
+  checks that drive one, and both sit outside the fast loop. **When a green run is used to clear a change,
+  ask what it does not run**
 - [World model](doc/claude/WORLD_MODEL.md) — **the landscape, and its normative contract**: the voxel, columns, layers, windowed heights, fold-freedom and border alignment
 - [Ground default](doc/claude/GROUND_DEFAULT.md) — ✅ **CLOSED, and now a closure record.** The
   rule it established is normative in [WORLD_MODEL § `E1γ`](doc/claude/WORLD_MODEL.md) — *a world

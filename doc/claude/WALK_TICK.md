@@ -227,6 +227,36 @@ compare its world against the server's.
 has a walker"* is one sentence too wide: `editor_run` must not get a clock, and a remote
 page must not get a tick.
 
+⛔ **BUILT, RUN, AND BLOCKED BY THE TOOLCHAIN — 2026-08-17.** The harness is
+[probe/t5/](../../probe/t5/README.md): two pages, two live servers, control against
+sabotage, with the prediction written first. **It answers nothing yet**, because the
+page cannot attach — the `--html` build made by the loft installed 2026-08-16 23:08
+traps with `RuntimeError: unreachable` the moment it has a part thumbnail to build
+([loft#950](https://github.com/loft-lang/loft/issues/950)). ⚠ **And the run it did
+produce must not be read as an answer**: every row is red and the transcript says *the
+page never attached*, which is a fact about the page and not about the guard.
+
+⚠ **THE INSTRUMENT IS THE DIGEST, NOT A WORLD KEY**, and that is the design decision
+worth keeping. A page holds a *cache*, which legitimately differs from the world by
+whatever has not streamed to it — so an md5 comparison would be meaningless either
+way. The server already asks the right question once a second (`D:`), the page already
+answers it (`41:agree N bad M layers L`), and **the server writes the answer down**,
+which puts the evidence on the far side of the wire from the thing under test.
+
+⚠ **AND TWO INSTRUMENTS HAD TO BE BUILT, BOTH OF WHICH EXISTED AS SENTENCES ARGUING
+THEY WERE UNNECESSARY.** The walker report was gated `if st.local` because *"attached
+they would be zero and meaningless"* — the claim under test as the reason not to look
+at it; it now prints an attached line asserting idleness. And `wk_held` prints once
+every 300 frames while a driven key is held for 120 ms, so *the keys were asked* was
+invisible — `held_seen` is a high-water mark, because **a walker nobody asked to move
+proves nothing about a walker that refused to.**
+
+⛔ **THE BLOCKER IS ALSO THE MORE USEFUL FINDING: nothing in `make fast` builds the
+page.** The toolchain swap was cleared by a green re-check — 157 test files, layering,
+`walk-exact`, three probes — and **not one of them drives a browser**. `make probe-demo`
+and `make probe-auth` are the two that do, and both sit outside the fast loop. See
+[STATE.md](STATE.md).
+
 ### ⏭ Probe 6 — is `mark_dirty` reporting, or effect?
 
 The level stamp dirties a disc of `LEVEL_R = 5`. If `TickOut` cannot carry enough for
