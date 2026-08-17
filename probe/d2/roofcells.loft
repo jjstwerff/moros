@@ -1,0 +1,44 @@
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+const U = 0.25;
+const FLOOR = 40;
+const YAW = 1.5707963267948966;
+fn r3(v: float) -> float { round(v * 1000.0) / 1000.0 ?? 0.0 }
+fn main() {
+  ref = (FLOOR as float) * U;
+  w = world_new(U, hex_editor::W_RESERVE, hex_editor::WORLD_EPS,
+                hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 40, 0 - 40, 81, 81, FLOOR, hex_editor::SURFACE_MAT);
+  s = hex_editor::EditSession {};
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, ref);
+  hex_editor::place_house(w, a, hex_editor::HOUSE_W, hex_editor::HOUSE_D,
+                          hex_editor::grade_under(w, a), s.es_runs, s.es_roofs);
+  rp = s.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+  println("eave {r3(rp.rp_eave)}  ridge {r3(hex_editor::roof_ridge_y(rp))}  pitch {rp.rp_pitch}");
+  (fq, fr) = hex_grid::px_to_hex(0.87, 1.5);
+  worst = 0.0;
+  n = 0;
+  for q in (fq - 6)..(fq + 7) {
+    for r in (fr - 6)..(fr + 7) {
+      col = hex_voxel::world_column(w, q, r);
+      for c in col.co_cells {
+        if hex_voxel::hex_occupied(c) {
+          if (c.h_material as integer ?? 0) == hex_editor::ROOF_MAT {
+            n = n + 1;
+            (px, pz) = hex_grid::hex_to_px(q, r);
+            stored = (c.h_height as integer ?? 0);
+            planned = hex_editor::roof_plan_y(rp, px, pz) / U ?? 0.0;
+            d = (stored as float) - planned;
+            if d < 0.0 { d = 0.0 - d; }
+            if d > worst { worst = d; }
+            println("  ({q},{r}) at ({r3(px)},{r3(pz)})  stored {stored}  "
+                  + "gable {r3(planned)}  diff {r3((stored as float) - planned)}  "
+                  + "over {hex_editor::roof_plan_over(rp, px, pz)}");
+          }
+        }
+      }
+    }
+  }
+  println("{n} roof cells, worst |stored - gable| = {r3(worst)} units");
+}

@@ -393,7 +393,12 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   // exactly where the wall stops: lower would cut into it, higher would leave a
   // band of daylight. A refusal here refuses the HOUSE — half a house is not an
   // answer — and the footprint's cells are already the ones the roof covers.
-  rf = roof_over(w, f, cells, seat, ROOF_EAVE_UP, ROOF_PITCH_DEFAULT, 0);
+  // ⚠ **THE PLAN IS BUILT BEFORE THE CELLS ARE WRITTEN — plan 22 `D2a.1`** — because
+  // it is now what the cells are written FROM. `D0` moved the filing here so the
+  // three arguments could stop being re-derived; this moves the construction one
+  // line earlier so there is a single plan rather than two agreeing ones.
+  rp = roof_plan_of(f, roof_eave_y(seat, ROOF_EAVE_UP, w.w_unit), ROOF_PITCH_DEFAULT);
+  rf = roof_over(w, f, cells, seat, rp, 0);
   if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
   // ⚠ **AND THE PLAN IS FILED HERE, BECAUSE THIS IS WHERE THE ROOF IS KNOWN.** The
   // socket used to do it afterwards and had to re-derive all three arguments: the
@@ -407,8 +412,7 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   // ⚠ AFTER the refusal above, never before it: a plan filed for a roof that was not
   // written is a gable the mesher draws over open walls, which is the one thing worse
   // than the staircase.
-  roofs.items += [roof_plan_of(f, roof_eave_y(seat, ROOF_EAVE_UP, w.w_unit),
-                               ROOF_PITCH_DEFAULT)];
+  roofs.items += [rp];
   // ⚠ THE RESIDUAL IS THE CUT-AND-FILL NOW, not the wall count. `Ack.ak_residual`
   // is documented as *what the author asked for and did not get*, and a tally of
   // stamped edges is neither — it is a success count wearing the refusal field. The
@@ -439,13 +443,32 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
 // it at the wall makes the distance go radial past the tip, so the gable end rolls
 // over like a cone quadrant — 0.43 units, 0.37 m of bulge. A hip is the same call
 // with the ridge shortened, and then the conical ends are the FEATURE.
+//
+// ── AND THE HEIGHTS ARE THE PLAN'S NOW — plan 22 `D2a.1` ────────────────────
+//
+// ⚠ **`draw_roof` WAS A SECOND ANSWER TO ONE QUESTION, AND `S6b`'s OWN COMMENT SAID
+// SO WITHOUT NOTICING**: *"the two agree because both take the ridge height from the
+// same `eave + pitch * hd`."* They took the same FORMULA from two different bodies —
+// `hex_draw`'s height field for the cells, `roof_plan_y` for the gable — which is
+// agreement by coincidence of arithmetic, not one derivation. It held only while
+// both read the same rectangle, and `D2a.2` is about to move that rectangle.
+//
+// So the cells are written from `roof_plan_y` of the plan that gets FILED, and the
+// picture and the store cannot come apart because there is nothing left to disagree
+// through. ⚠ **The step is byte-identical on purpose** — measured, not hoped: the
+// stored heights were already `floor(roof_plan_y / unit)` at all 27 cells of the
+// editor's own house, so this phase moves no world and the one after it moves both.
+//
+// ⚠ **`hip_steps` IS REFUSED RATHER THAN IGNORED.** `roof_plan_y` is a gable and
+// knows no hip, and every caller in this tree passes 0 — but a parameter silently
+// dropped is how a capability comes back as a bug report. Refusing names the loss.
 pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
-                 eave_up: integer, pitch: float, hip_steps: integer) -> Ack {
+                 rp: RoofPlan, hip_steps: integer) -> Ack {
   if !f.fp_ok { return ack_no("no plan at this facing, so no ridge to run"); }
+  if hip_steps != 0 {
+    return ack_no("a hipped roof is not drawn from a plan yet ({hip_steps} steps)");
+  }
   pad = f.fp_wid + f.fp_dep + 4;
-  hz = heights_new(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
-  eave = roof_eave_y(floor_h, eave_up, w.w_unit);
-  draw_roof(footprint_plan(f), cells, hz, eave, pitch, hip_steps);
 
   // ⚠ ONE ROOF, ONE LABEL, HOWEVER MANY CHUNKS IT COVERS — `I1`. A layer is
   // chunk-wide, so a roof spanning a boundary makes a layer record in each chunk it
@@ -458,7 +481,12 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet, floor_h: integer,
   for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
     for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
       if hexset_get(cells, q, r) {
-        hu = (height_get(hz, q, r) / w.w_unit ?? 0.0) as integer;
+        // ⚠ THE CELL'S CENTRE, AND THE SAME TRUNCATION `height_get` FED. The old
+        // path read a float height field in world units and truncated it here; this
+        // reads the plan's own surface at the same point and truncates it the same
+        // way, which is what makes the phase byte-identical rather than merely close.
+        (rpx, rpz) = hex_to_px(q, r);
+        hu = (roof_plan_y(rp, rpx, rpz) / w.w_unit ?? 0.0) as integer;
         if hu > ridge { ridge = hu; }
         band: vector<hex_voxel::Hex> = [
           hex_voxel::Hex { h_height: (floor_h as u16? ?? 0),

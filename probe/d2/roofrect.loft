@@ -1,0 +1,95 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT RECTANGLE IS THE ROOF SUPPOSED TO BE? — plan 22 `D2a`, read off instances
+// before a rule is written.
+//
+//     loft --lib lib/ probe/d2/roofrect.loft
+//
+// `gate.loft` measured ONE house: the plan's rectangle is **0.385 short in x and
+// 0.286 short in z** of the wall runs the same gesture files. Two different numbers
+// from one footprint, which already says the correction is not a constant — but two
+// numbers from one instance cannot say what it IS either.
+//
+// ⚠ **THIS IS `D1a.1`'s MOVE.** There, *six runs, one per lattice direction* was what
+// a reader expects and the dump refuted it; the rule (`√3·(rad+½)` corners, six
+// zigzag sides) was read off three radii and then asserted against all of them. Same
+// shape here: place the same house at several widths and depths, print the plan's
+// half-extents beside the walls' own, and let the pattern be visible before anything
+// is claimed.
+//
+// ⚠ **AND THE WALL IS A CENTRELINE, NOT A FACE.** `WallQuad` is a segment and
+// `emit_run_wall` lays masonry ±`wall_band()/2` about it (`D1a.3` measured
+// −0.433 … +0.433), so *the roof reaches its walls* has two readings a half-thickness
+// apart. Both are printed; picking one is the step's job, not the probe's.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;
+
+fn r3(v: float) -> float { round(v * 1000.0) / 1000.0 ?? 0.0 }
+
+fn main() {
+  ref = (FLOOR as float) * U;
+  println("wid dep |  plan hw    hd  |  wall hw    hd  |  short by u     v");
+
+  for wid in 3..8 {
+    for dep in 3..7 {
+      w = world_new(U, hex_editor::W_RESERVE,
+                    hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+      hex_editor::ground_fill(w, 0 - 40, 0 - 40, 81, 81, FLOOR,
+                              hex_editor::SURFACE_MAT);
+      s = hex_editor::EditSession {};
+      a = hex_editor::author_at(0.0, 0.0 - 10.0, YAW, ref);
+      ack = hex_editor::place_house(w, a, wid, dep, hex_editor::grade_under(w, a),
+                                    s.es_runs, s.es_roofs);
+      if !ack.ak_ok { println("{wid} {dep} | REFUSED {ack.ak_why}"); continue; }
+
+      rp = s.es_roofs.items[0] ?? hex_editor::RoofPlan {};
+      (pcx, pcz) = hex_grid::hex_to_px(rp.rp_cq, rp.rp_cr);
+
+      // ⚠ AT ROT 0 THE LOCAL FRAME IS THE WORLD'S — the author faces +z throughout,
+      // so u is x and v is z and the two can be compared directly. A probe that
+      // varied the facing here would be measuring `plan_to_local` as well, which is
+      // not the question and would hide the one that is.
+      x0 = 1000.0; x1 = 0.0 - 1000.0; z0 = 1000.0; z1 = 0.0 - 1000.0;
+      for k in 0..len(s.es_runs.items) {
+        rn = s.es_runs.items[k] ?? hex_editor::WallRun {};
+        if rn.wr_x0 < x0 { x0 = rn.wr_x0; }
+        if rn.wr_x1 < x0 { x0 = rn.wr_x1; }
+        if rn.wr_x0 > x1 { x1 = rn.wr_x0; }
+        if rn.wr_x1 > x1 { x1 = rn.wr_x1; }
+        if rn.wr_z0 < z0 { z0 = rn.wr_z0; }
+        if rn.wr_z1 < z0 { z0 = rn.wr_z1; }
+        if rn.wr_z0 > z1 { z1 = rn.wr_z0; }
+        if rn.wr_z1 > z1 { z1 = rn.wr_z1; }
+      }
+      whw = (x1 - x0) * 0.5;
+      whd = (z1 - z0) * 0.5;
+
+      // The plan's own, through the drawn gable's corners — `roof_point_*` is what a
+      // renderer uses, so this is the picture's answer rather than a re-derivation.
+      phw = (hex_editor::roof_point_x(rp, 1) - hex_editor::roof_point_x(rp, 0)) * 0.5;
+      phd = (hex_editor::roof_point_z(rp, 2) - hex_editor::roof_point_z(rp, 0)) * 0.5;
+
+      // ⚠ AND THE CENTRES MUST AGREE OR NOTHING BELOW MEANS ANYTHING — a plan offset
+      // from its walls would produce a plausible half-extent difference that is
+      // really a translation.
+      cxo = r3((x0 + x1) * 0.5 - pcx);
+      czo = r3((z0 + z1) * 0.5 - pcz);
+      note = "";
+      if cxo != 0.0 || czo != 0.0 { note = "   ⚠ centres differ by ({cxo},{czo})"; }
+
+      println("{wid}   {dep}   |  {r3(phw)}  {r3(phd)}  |  {r3(whw)}  {r3(whd)}  |  "
+            + "{r3(whw - phw)}  {r3(whd - phd)}{note}");
+    }
+  }
+
+  println("--- the wall's own thickness, for the second reading of *reaches*");
+  println("  wall_band {r3(hex_editor::wall_band())}, so a face is "
+        + "{r3(hex_editor::wall_band() * 0.5)} beyond the centreline");
+  println("  HEX_LEN {r3(hex_grid::HEX_LEN)}  half {r3(hex_grid::HEX_LEN * 0.5)}");
+}

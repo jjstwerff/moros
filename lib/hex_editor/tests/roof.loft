@@ -49,12 +49,22 @@ fn roof_at(w: VoxelWorld, q: integer, r: integer) -> integer {
   h
 }
 
+// ⚠ **THE PLAN IS AN ARGUMENT NOW — plan 22 `D2a.1`.** `roof_over` used to take an
+// eave step and a pitch and hand them to `hex_draw::draw_roof`; it takes the filed
+// `RoofPlan` and writes the cells from `roof_plan_y`, so the store and the picture
+// are one surface rather than two bodies computing one formula. This builds the
+// plan a test means, at the eave every fixture here already used.
+fn plan_at(f: Footprint, pitch: float) -> RoofPlan {
+  hex_editor::roof_plan_of(f, hex_editor::roof_eave_y(FLOOR, hex_editor::ROOF_EAVE_UP,
+                                                      0.25), pitch)
+}
+
 fn roofed() -> VoxelWorld {
   w = world();
   f = placed();
   cells = footprint_cells(f);
-  hex_editor::roof_over(w, f, cells, FLOOR, hex_editor::ROOF_EAVE_UP,
-                        hex_editor::ROOF_PITCH_DEFAULT, 0);
+  hex_editor::roof_over(w, f, cells, FLOOR,
+                        plan_at(f, hex_editor::ROOF_PITCH_DEFAULT), 0);
   w
 }
 
@@ -62,8 +72,8 @@ fn test_a_roof_covers_every_cell_of_the_footprint() {
   w = world();
   f = placed();
   cells = footprint_cells(f);
-  ack = hex_editor::roof_over(w, f, cells, FLOOR, hex_editor::ROOF_EAVE_UP,
-                              hex_editor::ROOF_PITCH_DEFAULT, 0);
+  ack = hex_editor::roof_over(w, f, cells, FLOOR,
+                              plan_at(f, hex_editor::ROOF_PITCH_DEFAULT), 0);
   assert(ack.ak_ok, "the roof went on: {ack.ak_why}");
   assert(ack.ak_n == 27, "a 5x4 footprint is 27 cells, got {ack.ak_n}");
 }
@@ -116,10 +126,8 @@ fn test_a_steeper_pitch_makes_a_taller_ridge() {
   a = world();
   b = world();
   f = placed();
-  ra = hex_editor::roof_over(a, f, footprint_cells(f), FLOOR,
-                             hex_editor::ROOF_EAVE_UP, 0.30, 0);
-  rb = hex_editor::roof_over(b, f, footprint_cells(f), FLOOR,
-                             hex_editor::ROOF_EAVE_UP, 0.90, 0);
+  ra = hex_editor::roof_over(a, f, footprint_cells(f), FLOOR, plan_at(f, 0.30), 0);
+  rb = hex_editor::roof_over(b, f, footprint_cells(f), FLOOR, plan_at(f, 0.90), 0);
   assert(rb.ak_residual > ra.ak_residual,
          "a steeper pitch rides higher: ridge {ra.ak_residual} at 0.30, {rb.ak_residual} at 0.90");
 }
@@ -152,8 +160,7 @@ fn test_a_roof_at_an_unplaceable_facing_is_refused() {
   east = hex_editor::pose_footprint(0.0, 0.0, 0.0, W, D);
   before = w.w_tau;
   ack = hex_editor::roof_over(w, east, footprint_cells(east), FLOOR,
-                              hex_editor::ROOF_EAVE_UP,
-                              hex_editor::ROOF_PITCH_DEFAULT, 0);
+                              plan_at(east, hex_editor::ROOF_PITCH_DEFAULT), 0);
   assert(!ack.ak_ok, "no plan, no roof");
   assert(w.w_tau == before, "and nothing written: τ {before} -> {w.w_tau}");
 }
@@ -216,7 +223,7 @@ fn test_the_drawn_ridge_and_the_stored_ridge_are_the_same_height() {
   w = world();
   f = placed();
   ack = hex_editor::roof_over(w, f, footprint_cells(f), FLOOR,
-                              hex_editor::ROOF_EAVE_UP, hex_editor::ROOF_PITCH_DEFAULT, 0);
+                              plan_at(f, hex_editor::ROOF_PITCH_DEFAULT), 0);
   stored = ack.ak_residual;                       // the ridge, in height units
   drawn = (hex_editor::roof_ridge_y(rp()) / 0.25 ?? 0.0) as integer;
   d = stored - drawn;
