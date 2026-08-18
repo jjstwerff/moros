@@ -1071,7 +1071,7 @@ for (const raw of lines) {
   // It rewrites the SUBJECT BAR (`· opening <kind>`), which is 24 rows of every
   // frame this file classifies, so a `snap` taken before it and judged after it
   // would be judged against a strip that has changed.
-  if (['at', 'verb', 'select', 'ground', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
+  if (['at', 'verb', 'select', 'ground', 'declare', 'hold', 'turn', 'send', 'keys', 'rate', 'step', 'save', 'eye'].includes(cmd)) {
     lastShot = null;
   }
   if (cmd === 'at') {
@@ -1366,6 +1366,16 @@ for (const raw of lines) {
     // landed — that difference is the whole point of stepping.
     ws.send(`35:${rest[0]}`);
     console.log('  ' + await ack('stepped', 60000));
+  } else if (cmd === 'declare') {
+    // `declare <axis> <slot> <name>` — how a house type or a material mapping gets
+    // into the world at all (plan 22 `T1c`). ⚠ THE REST OF THE LINE GOES OVER
+    // VERBATIM and this file parses nothing: a declaration's body carries spaces
+    // (`wid=5 dep=4`) and commas (`verbs=a:opening,b:hole`), so any shape this side
+    // invented would be a second parser to keep in step with
+    // `hex_editor::world_declare` — the divergence `S2c` measured three days ago, in
+    // the handler next door.
+    ws.send(`54:${rest.join(' ')}`);
+    console.log('  ' + await ack(['declared ', 'declare refused'], 10000));
   } else if (cmd === 'save') {
     ws.send(`8:${rest[0]}`);
     console.log('  ' + await ack('saved', 30000));

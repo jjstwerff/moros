@@ -3027,6 +3027,60 @@ pub fn world_palette(w: VoxelWorld, kind: integer, region: integer) -> PalRead {
   PalRead { pr_code: PAL_OK, pr_items: out, pr_why: "" }
 }
 
+// ── ONE SLOT, WITHOUT REWRITING THE REGION — plan 22 `T1c` ──────────────────
+//
+// ⛔ **`world_set_palette` HAD ZERO PRODUCTION CALLERS UNTIL THIS EXISTED, AND THE
+// SHAPE OF ITS SIGNATURE IS WHY.** It takes the region's WHOLE palette as a vector,
+// which is right for a writer that has one and wrong for every driver there is: a
+// script says *slot 1 of this axis is a castle* and knows nothing about the other
+// 254. Read-modify-write in the caller is the obvious answer and it is also how a
+// second entry for one slot gets written — the refusal `PAL_DUP` exists to catch —
+// so the merge belongs on this side of the wall, once.
+//
+// Replaces the entry at `slot`, or appends it; every other slot and every other
+// REGION survives, which is `world_set_palette`'s own rule one level up. The
+// refusals are that function's, unchanged: slot 0 is absence and is not writable,
+// past 255 is unaddressable, and a newline would forge a line.
+//
+// ⚠ **AN EMPTY NAME DELETES THE SLOT** rather than writing a nameless entry. It is
+// `session_select_part`'s *the way out is the same message*, and the alternative is a
+// palette that can be filled and never emptied — with `PAL_ABSENT_C` then firing on
+// every cell that used the byte, which is a fault the author cannot undo.
+pub fn world_palette_put(w: VoxelWorld, kind: integer, region: integer,
+                         slot: integer, name: text) -> integer {
+  had = world_palette(w, kind, region);
+  if had.pr_code != PAL_OK { return had.pr_code; }
+  out: vector<PalEntry> = [];
+  for e in had.pr_items {
+    if e.pl_slot != slot { out += [e]; }
+  }
+  if name != "" { out += [PalEntry { pl_slot: slot, pl_name: name }]; }
+  world_set_palette(w, kind, region, out)
+}
+
+// The axis a person names, or `0 - 1` for a word that is not one.
+//
+// ⚠ **THE VOCABULARY LIVES HERE BECAUSE IT WOULD OTHERWISE LIVE IN EVERY DRIVER.**
+// A runner, a socket handler and a browser client each spelling `material`/`edge`/
+// `item`/`house` is the four-site count `W4` was written to end, one axis over — and
+// the wire carries the NUMBER, so a remapped word costs nothing downstream.
+pub fn pal_kind_of(name: text) -> integer {
+  if name == "material" { return PAL_MATERIAL; }
+  if name == "edge"     { return PAL_EDGE; }
+  if name == "item"     { return PAL_ITEM; }
+  if name == "house"    { return PAL_HTYPE; }
+  0 - 1
+}
+
+// …and back, for a sentence that has to say which axis it refused.
+pub fn pal_kind_name(kind: integer) -> text {
+  if kind == PAL_MATERIAL { return "material"; }
+  if kind == PAL_EDGE     { return "edge"; }
+  if kind == PAL_ITEM     { return "item"; }
+  if kind == PAL_HTYPE    { return "house"; }
+  "?"
+}
+
 // What this world calls `slot` on this axis. `PAL_ABSENT` for 0; **empty for a byte
 // the palette does not name**, which a caller must treat as a fault rather than as
 // a default.

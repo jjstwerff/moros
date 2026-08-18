@@ -70,6 +70,76 @@ not yet claimed here.
 and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
 only the lifetime fix.
 
+## ⛔ A HOUSE TYPE COULD BE READ AND NOT WRITTEN — plan 22 `T1b`/`T1c`, 2026-08-18
+
+**Read this before adding anything else to the palette.** `T1b` set out to give a house
+type the OPENING an author gets by default and finished by finding that **no driver
+could declare a type at all**:
+
+| | |
+|---|---|
+| `hex_voxel::world_set_palette` | **zero production callers** — every one in the tree was a loft test |
+| a `load` command | neither `editor_run` nor `tools/script.mjs` had one |
+| a wire message for a palette | none existed |
+
+So **plan 21's region mappings and plan 22's house types were both readable by a gesture
+and writable only by a test.** `T1a.1`, `T1a.2` and `T1b` each shipped consulting a table
+nothing outside `lib/*/tests/` could fill — three steps, every suite green, the feature
+unreachable from any driver. ⚠ `T1a.2` is the step that **deleted `verbs_here()` for
+having no consumer**, and the same audit walked straight past the missing writer for the
+whole axis. *Check that what you built is called* has a bigger sibling: **check that what
+reads a table has something that can fill it.**
+
+✅ **`T1c` builds the way in.** `hex_voxel::world_palette_put` writes one slot and leaves
+its neighbours and every other region alone; `hex_editor::world_declare` is the one
+parser and both drivers hand it the whole line — `editor_run`'s `declare`, the server's
+new `54:`. ⚠ **The payload is the LINE and not fields**: a body carries spaces
+(`wid=5 dep=4`) *and* commas (`verbs=portcullis:opening,sally:hole`), so a separator
+would need a split-on-the-first-two rule in every reader and `tools/script.mjs` would
+have to know the shape to build one.
+
+✅ **`tools/scripts/htype.keys` is the invariant's own script** — *adding a type touches
+no code*. Nothing under `lib/` names 7, 5 or `OP_POINTED`:
+
+| | cells | opening | world |
+|---|---|---|---|
+| with the `declare` line | **37** | **kind 2** | `6a7e1e65…` |
+| the same script without it | 27 | kind 1 | `ab6d327b…` |
+
+⛔ **And the sabotage is what makes it evidence**: with the server's `54:` branch removed
+the served world is `ab6d327b…` — the *undeclared control's own md5* — because the server
+built the compiled-in 5×4 house. `make probe-s2c` prints both hashes side by side.
+
+### What `T1b` itself settled
+
+⚠ **One opening default, because this editor has ONE opening selection.** *Which door*
+and *which window* are the same field since `S3` collapsed six keys onto one verb.
+⛔ **And *which floor* is not reachable at all** — the tree's materials are structural
+kinds (`FLOOR_MAT` is *a built floor*, not a finish), so a `floor=` field would parse
+perfectly and change nothing. Written into the source rather than built.
+
+⚠ **`es_open_set` is a second field and it has to be**: an author who chose `OP_ROUND`
+and an author who chose nothing hold the same number, so the override row chooses
+**exactly the kind the type would have given anyway**.
+
+⚠ **THE SUBJECT LINE MOVED WITH IT, AND THAT IS THE FEATURE.** `editor_server` read
+`sess.es_open_kind` at **eleven** `hud_wire` sites; with a type in play the panel would
+say *round* while the next press cut *pointed*. `open_kind_here` is one derivation with
+two readers, and the bare `36:` handler reads it too — the raw field there would have
+been `S2c` rebuilt one field over, in the same handler, three days later.
+
+✅ **AND `T1a.2` HAS A LIVE PATH AT LAST, WHICH IS THE OTHER THING `T1c` BOUGHT.** A
+script saying `declare house 1 castle wid=5 dep=4 verbs=portcullis:opening` and then
+`verb portcullis` answers **`portcullis: 1`** and cuts the opening — a verb no compiler
+ever saw, dispatched from a declaration, with no code touched. Until `declare` existed
+that step's whole subject was unreachable outside a loft test.
+
+⏭ **What is still open:** the same verb **over the wire**. `script.mjs`'s `VERBMAP` is a
+constant table with no row for `portcullis`, and the socket has no *perform this verb by
+name* message — so an aliased verb is headless-only. That is the same shape as the verb
+bar's missing query (*which verbs does this editor have* has to be asked, not known), and
+it is where `T1` continues.
+
 ## ⛔ THE SERVER CUT A DIFFERENT DOOR THAN THE RUNNER — plan 22 `S2c`, fixed 2026-08-18
 
 **`src/editor_server.loft`'s `36:` handler was a second body of

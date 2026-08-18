@@ -658,6 +658,24 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   // `run_line` is already at the complexity the compiler nudges at.
   if cmd == "ground" { return run_ground(w, rest, said); }
   if cmd == "send"   { return run_send(w, wk, rest, said); }
+  // ⚠ **`declare` IS THE WAY A TYPE GETS INTO A WORLD AT ALL — plan 22 `T1c`.**
+  // Before it, `hex_voxel::world_set_palette` had zero production callers, so a house
+  // type could be read by `press_verb` and written by nothing but a loft test.
+  //
+  // ⚠ **THE WHOLE LINE GOES TO THE LIBRARY**, exactly as it does on the socket: one
+  // parser, one refusal set, one sentence. `S2c` measured what the alternative costs.
+  //
+  // ⚠ **AND A REFUSED DECLARATION FAILS THE RUN**, which `run_ground` beside it does
+  // not do. That asymmetry is deliberate and it is `K3a`'s rule, not an oversight: a
+  // declaration that did not land leaves the script building the DEFAULT house while
+  // reading as though it had asked for a castle — the silent-drop class `K3c` was
+  // written for. `ground`'s own refusal predates that rule and is a separate row.
+  if cmd == "declare" {
+    (dcq, dcr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+    dack = hex_editor::world_declare(w, hex_voxel::world_region_at(w, dcq, dcr), rest);
+    said = dack.ak_why;
+    return dack.ak_ok;
+  }
 
   said = "unknown command '{cmd}'";
   false

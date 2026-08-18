@@ -328,3 +328,92 @@ fn test_a_type_that_declares_no_opening_leaves_the_choice_alone() {
   assert(cut_kind(w, s, at) == hex_editor::OP_ROUND,
          "a type that declares no opening changed what the verb cuts");
 }
+
+// ── HOW A DECLARATION GETS IN — plan 22 `T1c` ───────────────────────────────
+//
+// ⛔ **IT COULD NOT, THROUGH TWO PLANS.** `hex_voxel::world_set_palette` had **zero
+// production callers** when this was written — every one in the tree was a loft test
+// — no driver had a `load` command, and the socket had no message for a palette. So
+// every row above this line tested a table that nothing outside a test could fill.
+//
+// ⚠ **ONE PARSER, TWO DRIVERS.** `editor_run` performs a `declare` line and the
+// server performs `54:`, and both hand the whole line to `world_declare` — because
+// `S2c` had just measured a socket keeping its own body of a library gesture at six
+// of eight scripts.
+
+fn test_a_declaration_line_reaches_the_palette() {
+  w = meadow();
+  ack = hex_editor::world_declare(w, 0, "house 1 castle wid=9 dep=7 opening=2");
+  assert(ack.ak_ok, "refused: {ack.ak_why}");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(ht.ht_ok, "the line did not resolve as a type: {ht.ht_why}");
+  assert(ht.ht_wid == 9 && ht.ht_dep == 7 && ht.ht_open == hex_editor::OP_POINTED,
+         "wid {ht.ht_wid} dep {ht.ht_dep} opening {ht.ht_open}");
+}
+
+fn test_the_body_keeps_its_spaces_and_its_commas() {
+  // ⚠ **THE REASON THE WIRE CARRIES THE LINE AND NOT FIELDS.** A body has spaces
+  // (`wid=5 dep=4`) AND commas (`verbs=a:opening,b:hole`), so any separator would
+  // need a split-on-the-first-N rule in every reader — and `tools/script.mjs` would
+  // have to know the shape to build one.
+  w = meadow();
+  assert(hex_editor::world_declare(w, 0,
+           "house 1 castle wid=5 dep=4 verbs=portcullis:opening,sally:hole").ak_ok,
+         "the comma-bearing body was refused");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(len(ht.ht_verbs) == 2, "{len(ht.ht_verbs)} verbs survived the wire form");
+}
+
+fn test_an_axis_that_is_not_one_is_refused_without_an_offer() {
+  // Nominal — `houses` is not *nearly* `house`, and a declaration that guessed would
+  // write a house type into the MATERIAL palette, which is exactly what `T1a.1`'s red
+  // caught before it shipped.
+  w = meadow();
+  ack = hex_editor::world_declare(w, 0, "houses 1 castle wid=5 dep=4");
+  assert(!ack.ak_ok, "'houses' was accepted as an axis");
+  assert(!ack.ak_why.contains("offer"), "and got no offer: {ack.ak_why}");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, 0, 1) == "",
+         "a house type was written anyway");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL, 0, 1) == "",
+         "it landed in the MATERIAL palette — `T1a.1`'s red, one layer up");
+}
+
+fn test_a_malformed_line_says_which_half_it_could_not_read() {
+  w = meadow();
+  assert(!hex_editor::world_declare(w, 0, "").ak_ok, "an empty line was accepted");
+  assert(!hex_editor::world_declare(w, 0, "house").ak_ok, "an axis alone was accepted");
+  slotless = hex_editor::world_declare(w, 0, "house one castle wid=5 dep=4");
+  assert(!slotless.ak_ok, "'one' was accepted as a slot");
+  assert(slotless.ak_why.contains("one"), "the reason names it: '{slotless.ak_why}'");
+}
+
+fn test_the_palettes_own_refusals_come_through_unchanged() {
+  // ⚠ NOT RE-DECIDED HERE. `world_palette_put` already knows that slot 0 is absence
+  // and that 255 is the last a byte names; a second opinion is how the two disagree.
+  w = meadow();
+  assert(!hex_editor::world_declare(w, 0, "house 0 nothing").ak_ok, "slot 0 was written");
+  assert(!hex_editor::world_declare(w, 0, "house 256 far").ak_ok, "slot 256 was written");
+}
+
+fn test_the_way_out_is_the_same_line() {
+  w = meadow();
+  assert(hex_editor::world_declare(w, 0, "house 1 castle wid=9 dep=7").ak_ok, "declared");
+  assert(hex_editor::world_declare(w, 0, "house 1").ak_ok, "the clearing line was refused");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(!ht.ht_ok, "the type survived being cleared");
+  // …and the gesture goes back to the house it always built.
+  ack = placed_by_verb(w);
+  assert(ack.ak_ok && footprint_cells(ack) == 27,
+         "after clearing, the verb built {footprint_cells(ack)} cells rather than 27");
+}
+
+fn test_a_declaration_is_scoped_to_the_region_it_was_made_in() {
+  // Plan 21 `R2`'s rule, and the reason both drivers pass the AUTHOR's region: a
+  // declaration that always wrote region 0 would be global while the palette is not.
+  w = meadow();
+  assert(hex_editor::world_declare(w, 2, "house 1 castle wid=9 dep=7").ak_ok, "region 2");
+  assert(!hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT).ht_ok,
+         "region 0 acquired region 2's type");
+  assert(hex_editor::house_type(w, 2, hex_editor::HTYPE_DEFAULT_SLOT).ht_ok,
+         "region 2 did not keep its own");
+}

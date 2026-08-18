@@ -289,3 +289,98 @@ fn test_the_type_axis_keeps_the_palette_s_own_rules() {
   assert(world_palette_name(w, PAL_HTYPE, 0, 0) == PAL_ABSENT, "slot 0 answers absence");
   assert(world_palette_name(w, PAL_HTYPE, 0, 9) == "", "an undeclared slot is empty");
 }
+
+// ── ONE SLOT AT A TIME — plan 22 `T1c` ──────────────────────────────────────
+//
+// ⛔ **THE WRITER EXISTED AND NO DRIVER COULD USE IT.** `world_set_palette` takes a
+// region's whole palette as a vector; a script says *slot 1 is a castle* and knows
+// nothing about the other 254. Measured before this was built: `world_set_palette`
+// had **zero production callers** — every one in the tree was a test — so plan 21's
+// region mappings and plan 22's house types were both readable and unwritable.
+
+fn put_world() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
+
+fn test_putting_one_slot_leaves_its_neighbours_alone() {
+  w = put_world();
+  assert(hex_voxel::world_set_palette(w, hex_voxel::PAL_MATERIAL, 0,
+           [hex_voxel::PalEntry { pl_slot: 1, pl_name: "sand" },
+            hex_voxel::PalEntry { pl_slot: 2, pl_name: "clay" }]) == hex_voxel::PAL_OK,
+         "the fixture would not write");
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_MATERIAL, 0, 2, "loam")
+         == hex_voxel::PAL_OK, "the put was refused");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL, 0, 1) == "sand",
+         "slot 1 did not survive: "
+       + "'{hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL, 0, 1)}'");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL, 0, 2) == "loam",
+         "slot 2 was not replaced: "
+       + "'{hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL, 0, 2)}'");
+}
+
+fn test_putting_a_slot_twice_does_not_leave_two_of_it() {
+  // ⚠ **THE REASON THE MERGE IS ON THIS SIDE OF THE WALL.** A caller doing its own
+  // read-modify-write is how a duplicate gets written, and `PAL_DUP` is the refusal
+  // that exists to catch one — so a second put must REPLACE rather than append, and
+  // the world must still be readable afterwards.
+  w = put_world();
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 1, "cottage wid=5 dep=4")
+         == hex_voxel::PAL_OK, "first put refused");
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 1, "castle wid=9 dep=7")
+         == hex_voxel::PAL_OK, "second put refused — a duplicate was written");
+  rd = hex_voxel::world_palette(w, hex_voxel::PAL_HTYPE, 0);
+  assert(len(rd.pr_items) == 1, "{len(rd.pr_items)} entries for one slot");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, 0, 1) == "castle wid=9 dep=7",
+         "the later put did not win");
+}
+
+fn test_an_empty_name_takes_the_slot_out_again() {
+  // ⚠ THE WAY OUT IS THE SAME CALL — `session_select_part`'s rule. A palette that can
+  // be filled and never emptied leaves `PAL_ABSENT_C` firing on every cell that used
+  // the byte, with nothing the author can do about it.
+  w = put_world();
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 1, "castle wid=5 dep=4")
+         == hex_voxel::PAL_OK, "put refused");
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 1, "") == hex_voxel::PAL_OK,
+         "the delete was refused");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, 0, 1) == "",
+         "the slot survived its own deletion: "
+       + "'{hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, 0, 1)}'");
+}
+
+fn test_a_put_on_one_region_leaves_the_others_alone() {
+  w = put_world();
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 1, "cottage wid=5 dep=4")
+         == hex_voxel::PAL_OK, "region 0 refused");
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 3, 1, "castle wid=9 dep=7")
+         == hex_voxel::PAL_OK, "region 3 refused");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, 0, 1) == "cottage wid=5 dep=4",
+         "region 0 was overwritten by region 3");
+  assert(hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, 3, 1) == "castle wid=9 dep=7",
+         "region 3 did not take");
+}
+
+fn test_the_slot_refusals_are_the_palettes_own() {
+  w = put_world();
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 0, "nothing")
+         == hex_voxel::PAL_SLOT, "slot 0 was written — absence is not a definition");
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 256, "far")
+         == hex_voxel::PAL_SLOT, "slot 256 was written — a u8 names no more");
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_HTYPE, 0, 1, "a\nb")
+         == hex_voxel::PAL_NEWLINE, "a newline was written into a line-based section");
+}
+
+fn test_an_axis_has_one_vocabulary_and_it_is_here() {
+  // ⚠ A runner, a socket handler and a browser client each spelling these four words
+  // is `W4`'s four-site count one axis over.
+  assert(hex_voxel::pal_kind_of("material") == hex_voxel::PAL_MATERIAL, "material");
+  assert(hex_voxel::pal_kind_of("edge") == hex_voxel::PAL_EDGE, "edge");
+  assert(hex_voxel::pal_kind_of("item") == hex_voxel::PAL_ITEM, "item");
+  assert(hex_voxel::pal_kind_of("house") == hex_voxel::PAL_HTYPE, "house");
+  assert(hex_voxel::pal_kind_of("") < 0 && hex_voxel::pal_kind_of("houses") < 0,
+         "a word that is not an axis was accepted");
+  // …and the round trip, so a sentence naming what it refused cannot drift from it.
+  for k in [hex_voxel::PAL_MATERIAL, hex_voxel::PAL_EDGE, hex_voxel::PAL_ITEM,
+            hex_voxel::PAL_HTYPE] {
+    assert(hex_voxel::pal_kind_of(hex_voxel::pal_kind_name(k)) == k,
+           "axis {k} does not survive naming: '{hex_voxel::pal_kind_name(k)}'");
+  }
+}

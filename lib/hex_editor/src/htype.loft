@@ -177,3 +177,82 @@ fn ht_verb_list(body: text) -> vector<TypeVerb> {
   }
   out
 }
+
+// ── HOW A DECLARATION GETS INTO A WORLD — plan 22 `T1c` ─────────────────────
+//
+// ⛔ **IT COULD NOT, AND THAT WENT UNNOTICED THROUGH TWO PLANS.** Measured at `T1b`:
+// `hex_voxel::world_set_palette` had **zero production callers** — every one in the
+// tree was a test — no driver has a `load` command, and there was no wire message for
+// a palette. So plan 21's region mappings and this plan's house types were both
+// *readable and unwritable* outside a loft test: the gesture consulted the table, the
+// table could never be filled, and every suite was green.
+//
+// ⚠ **ONE PARSER, TWO DRIVERS, AND THE ORDER OF THOSE WORDS IS THE WHOLE POINT.**
+// `editor_run` performs a `declare` line and the server performs `54:` — and `S2c`
+// had just measured what happens when a socket keeps its own body of a gesture the
+// library already owns: **six of eight scripts built different worlds.** So the line
+// is parsed, refused and answered here, once, and each driver contributes exactly
+// what it owns — a sentence and, on the server, a broadcast.
+//
+// ⚠ **AND THE PAYLOAD IS THE LINE ITSELF, not fields joined with a separator.** A
+// declaration's body carries spaces (`wid=5 dep=4`) AND commas
+// (`verbs=a:opening,b:hole`), so a `<axis>,<slot>,<body>` wire form would need a
+// split-on-the-first-two rule in every reader — and `tools/script.mjs` would have to
+// know the shape in order to build it. Passing the rest of the line through verbatim
+// means the driver decides nothing, which is what keeps the parse singular.
+//
+// ⚠ **THE REGION IS THE CALLER'S**, and the callers pass the author's — plan 21
+// `R2`'s rule, the same one `press_verb` reads a type with. A declaration that always
+// wrote region 0 would be global while the palette it lives in is not.
+//
+//   declare house 1 castle wid=5 dep=4 opening=2
+//   declare house 1                              ← and the way out is the same line
+pub fn world_declare(w: VoxelWorld, region: integer, line: text) -> Ack {
+  wd = line.trim();
+  if wd == "" {
+    return ack_no("declare what? say <axis> <slot> <name>, "
+                + "e.g. `house 1 castle wid=5 dep=4`");
+  }
+  sp1 = wd.find(" ");
+  if sp1 == null {
+    return ack_no("declare '{wd}' names an axis and nothing else — "
+                + "say <axis> <slot> <name>");
+  }
+  axis = wd[0..(sp1 ?? 0)];
+  kind = hex_voxel::pal_kind_of(axis);
+  // ⚠ NOMINAL — `houses` is not *nearly* `house`. The vocabulary is
+  // `hex_voxel::pal_kind_of`'s and a refusal here offers nothing, which is
+  // `session_select_open`'s wording for the same shape.
+  if kind < 0 {
+    return ack_no("'{axis}' is not a palette axis; say material, edge, item or house");
+  }
+  rest = wd[(((sp1 ?? 0) + 1) as i32)..].trim();
+  sp2 = rest.find(" ");
+  slot_t = rest;
+  body = "";
+  if sp2 != null {
+    slot_t = rest[0..(sp2 ?? 0)];
+    body = rest[(((sp2 ?? 0) + 1) as i32)..];
+  }
+  slot = slot_t as i32?;
+  if slot == null {
+    return ack_no("'{slot_t}' is not a slot number");
+  }
+  code = hex_voxel::world_palette_put(w, kind, region, (slot ?? 0) as integer, body);
+  // ⚠ **THE REFUSAL IS THE PALETTE'S, TRANSLATED AND NOT RE-DECIDED.** `world_palette_put`
+  // already knows that slot 0 is absence, that a `u8` names no more than 255, and that
+  // a newline would forge a line; a second opinion here is how the two come to disagree.
+  if code == hex_voxel::PAL_SLOT {
+    return ack_no("slot {slot} is not writable — 0 is absence and 255 is the last a byte names");
+  }
+  if code == hex_voxel::PAL_NEWLINE {
+    return ack_no("a newline in a name would forge a line in the {axis} palette");
+  }
+  if code != hex_voxel::PAL_OK {
+    return ack_no("the {axis} palette refused slot {slot} (code {code})");
+  }
+  if body == "" {
+    return ack_about(0, "{axis} {slot} cleared in region {region}", 0);
+  }
+  ack_about(1, "{axis} {slot} = {body} in region {region}", 0)
+}

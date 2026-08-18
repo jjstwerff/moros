@@ -94,7 +94,31 @@ verb <name>      raise · lower · place · opening · fence · wall · run · s
                  stair_up · stair_down · slab · hole · storey · cellar
 select <kind>    what the NEXT opening cuts — `49:<kind>` on the wire
                  `select seat <kind>` · `select annex <kind>` name their own subject
+declare <axis> <slot> <name…>
+                 what a byte or a slot MEANS in the author's region — `54:` on the
+                 wire, `material` · `edge` · `item` · `house`. A bare
+                 `declare house 1` clears it again
 ```
+
+⛔ **`declare` IS NEW AT `T1c` AND ITS ABSENCE HAD OUTLIVED TWO PLANS.** Measured
+2026-08-18: `hex_voxel::world_set_palette` had **zero production callers** — every one in
+the tree was a loft test — neither driver had a `load` command, and the socket had no
+message for a palette. So plan 21's region mappings and plan 22's house types were both
+*readable by a gesture and writable only by a test*, and three steps shipped consulting a
+table nothing outside `lib/*/tests/` could fill. ⚠ **The rest of the line goes over
+verbatim**: a body carries spaces (`wid=5 dep=4`) **and** commas
+(`verbs=portcullis:opening,sally:hole`), so `hex_editor::world_declare` is the one parser
+and neither driver decides anything. ⚠ **And a refused `declare` FAILS the run** where
+`ground` beside it does not — `K3a`'s rule, because a declaration that did not land
+leaves the script building the default house while reading as though it asked for a
+castle.
+
+⚠ **A `verb` A TYPE DECLARED WORKS HEADLESS AND NOT OVER THE WIRE.** With
+`declare house 1 castle wid=5 dep=4 verbs=portcullis:opening` in the script,
+`verb portcullis` answers `portcullis: 1` in `src/editor_run.loft` — a word no compiler
+ever saw. `tools/script.mjs` refuses it, because its `VERBMAP` is a constant table and the
+socket has no *perform this verb by name* message. Stated rather than left to be
+discovered from a failing run.
 
 ⛔ **AND A STALE `key H` IS NOW A FAILED RUN, WHICH IS THE ONLY REASON THE DELETION WAS
 SAFE.** Both readers used to print a complaint at a word they did not understand and exit

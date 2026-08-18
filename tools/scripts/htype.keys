@@ -1,0 +1,34 @@
+# T1c — A HOUSE TYPE, DECLARED RATHER THAN COMPILED IN
+#
+# ⛔ **NOTHING COULD PUT ONE INTO A WORLD UNTIL THIS SCRIPT EXISTED.** Measured at
+# plan 22 `T1b`: `hex_voxel::world_set_palette` had zero production callers — every
+# one in the tree was a loft test — no driver has a `load` command, and the socket had
+# no message for a palette. So `press_verb` consulted a table that could never be
+# filled, through two plans, with every suite green.
+#
+# ⚠ **IT IS THE INVARIANT'S OWN SCRIPT**: *adding a type touches no code*. Nothing
+# under `lib/` names 7, 5 or `OP_POINTED` as a default — they exist only in the
+# `declare` line below, and the house and the opening have to change because of it.
+#
+# ⚠ **AND IT IS WHAT `probe/s2c` COMPARES ACROSS THE TWO DRIVERS.** The declaration
+# reaches `editor_run` as a line and the server as `54:`, and both hand the whole line
+# to `hex_editor::world_declare` — one parser, because `S2c` measured what the other
+# arrangement costs.
+
+echo --- flat ground to build on
+at 0 0 0
+verb raise
+
+echo --- the type, as data
+declare house 1 longhouse wid=7 dep=5 opening=2
+
+echo --- the house it asks for: 7x5, not the compiled-in 5x4
+at -6 -6 30
+verb place
+
+# ⚠ NOTHING IS SELECTED HERE, DELIBERATELY. The opening the type declares is what an
+# author who has chosen nothing gets; a `select` line above would test the selection
+# and say nothing about the type.
+echo --- and the opening the type decides, with nothing chosen
+at -3 2 30
+verb opening

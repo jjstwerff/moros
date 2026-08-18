@@ -32,7 +32,12 @@ GROUND=${GROUND:-0}
 # even before the fix (`house`, `annex`, `furnish` — their walls come from
 # `place_house`, whose runs sit on the edges they stamp), so a sample of those three
 # would have reported the defect as absent.
-SCRIPTS=${*:-"house door opening niche embrasure profiles annex furnish"}
+#
+# ⚠ **`htype` IS HERE FOR A SECOND REASON — plan 22 `T1c`.** It is the only script
+# that DECLARES anything, so it is the one row that can see the two drivers disagree
+# about a house type: the declaration reaches `editor_run` as a line and the server as
+# `54:`, and a driver that parsed it itself would build a different house.
+SCRIPTS=${*:-"house door opening niche embrasure profiles annex furnish htype"}
 
 ran=0
 bad=0

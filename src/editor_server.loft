@@ -549,6 +549,15 @@ const MSG_SELECT_ANNEX = 53;
 // said so first, and this is the third name collision in one session. The plane is
 // what this message names anyway, which is the better word for it.
 const MSG_PLANE = 50;
+// ⚠ **THE FIRST WAY A PALETTE CAN BE WRITTEN AT ALL — plan 22 `T1c`.** Measured at
+// `T1b`: `hex_voxel::world_set_palette` had **zero production callers**, this socket
+// had no message for one, and no driver has a `load` command — so plan 21's region
+// mappings and this plan's house types were readable by a gesture and writable only
+// by a loft test. ⚠ **The payload is the LINE, verbatim** — `house 1 castle wid=5
+// dep=4 verbs=a:opening` carries spaces AND commas, so any field separator would need
+// a split rule in every reader; `hex_editor::world_declare` is the one parser and this
+// handler contributes a sentence and a broadcast.
+const MSG_DECLARE = 54;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -5288,6 +5297,27 @@ fn main() {
             srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
                                      hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             println("editor: camera mode {cam_mode}");
+          }
+        } else if ev.msg_id == MSG_DECLARE {
+          // ⚠ THE REGION IS THE AUTHOR'S — plan 21 `R2`, the rule every other reader
+          // of a palette here follows.
+          (dcq, dcr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+          dack = hex_editor::world_declare(wld, hex_voxel::world_region_at(wld, dcq, dcr),
+                                           ev.payload);
+          if !dack.ak_ok {
+            srv.send_to(ev.cid, "S:declare refused — {dack.ak_why}");
+            println("editor: declare refused — {dack.ak_why}");
+          } else {
+            srv.send_to(ev.cid, "S:declared {dack.ak_why}");
+            println("editor: declared {dack.ak_why}");
+            // ⚠ **AND THE SUBJECT LINE MOVES WITH IT.** A house type carries the
+            // opening an author who has chosen nothing will cut (`T1b`), so declaring
+            // one changes what `open_kind_here` answers — and a panel still showing
+            // the old kind would be the `ps_status` literal again: a standing fact
+            // that stopped being true and said nothing.
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
+                                   wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
           }
         } else if ev.msg_id == MSG_PLANE {
           // ── `G7` — WHAT UNTOUCHED GROUND IS ────────────────────────────────

@@ -336,6 +336,8 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`T1a`** — three names for the storey height become one home | S | ⚠ **not a green suite** — a merge of equal constants is byte-identical by construction, so the check is a SABOTAGE: moving the surviving constant must move what the deleted ones drove, and it must not have before | **DONE 2026-08-18.** `hex_mesh::WALL_UP` and `hex_editor::ROOF_EAVE_UP` are deleted; `gesture::STOREY_H` is the one home and `hex_mesh` reads it across the arrow (`hex_mesh` depends on `hex_editor`, never the reverse — checked in the manifests, not remembered). ⛔ **THE DIVERGENCE WAS DEMONSTRATED BEFORE IT WAS FIXED**: with the tree as it stood, `STOREY_H` 12 → 13 left `house.keys`' ridge at **23, unmoved**, because the roof was reading `ROOF_EAVE_UP`. After the merge the same edit moves it to **24**. That pair is the instrument — a merge of two 12s cannot be seen by any equality check. ⚠ **AND THE EAVE IS A MULTIPLE, NOT A SURVIVING SECOND CONSTANT**: `place_house` asks for `STOREY_H`, so a two-storey wall is `2 * STOREY_H` and stays joined to the number. Keeping `ROOF_EAVE_UP` "for when the eave differs" is exactly how they drifted apart. ⚠ **The stale claim is corrected where it was made** — `WALL_UP`'s comment said *"there is one storey height in the tree rather than two"*, written at `B1b.2c.4` counting the SERVER's copy against the mesher's and never looking at `hex_editor`'s two |
 | ✅ **`T1a.1`** — a house type is a PALETTE entry, and the verb reads it | S | ⚠ **the parse is not the check** — a perfect parser beside a gesture that still builds its constant is `slope_settle`'s defect wearing a declaration format, so the claim is made through `press_verb` and the world must come out a different SIZE | **DONE 2026-08-18**, format chosen by the project owner: **plan 21's palette, not a new one**. `hex_voxel` gains a fourth axis (`PAL_HTYPE`, `TAG_PALT`) and **does not know what a house is** — it carries `slot=payload` exactly as `PALM` carries `1=sand`, while `hex_editor::house_type` owns the meaning. The axis inherits sectioned storage, per-region scoping, slot-0 absence, the 256 refusal and the duplicate/newline refusals without any of it being written twice. ⛔ **THE RED CAUGHT THE WRONG BUILD I WOULD OTHERWISE HAVE SHIPPED**: adding the constants without teaching `pal_tag` — whose default is `TAG_PALM` — wrote house types into the **MATERIAL** section, where they round-tripped perfectly, left **20 of 21** palette tests green, and made `world_palette_name(w, PAL_MATERIAL, 0, 1)` answer `"cottage wid=5 dep=4"`. A world would have loaded against a mapping in which slot 1 is a house. That failure is now written into `pal_tag` itself. ✅ **The invariant is asserted through the ONE production consumer**, `press_verb`'s place arm: `test_adding_a_type_touches_no_code` declares `longhouse wid=7 dep=5` and the world has to change size. ⚠ **Its expected count is the GESTURE's, not a number written in the test** — the first draft asserted 47 because that is what 7×5 looks like it should be, and a hex rasterisation says **37**; the control is `place_house` called with 7 and 5 explicitly, so two paths must reach one house. ⚠ **An undeclared world is unchanged by MECHANISM rather than care** (`ht_ok` false → today's constants), which is `R2`'s *region 0 is the default* one axis over and is what let this land byte-identical instead of re-baselining 31 scripts. ⚠ **A malformed declaration REFUSES the gesture rather than defaulting** — `world_palette_check`'s own argument: a type quietly falling back to 5×4 would build the wrong house and say nothing · `make lib-test` **1881 → 1891 both backends** (hex_editor 596, hex_voxel 210) · `make parts` rc 0 · `make headless-same` rc 0 · `probe/k3d` PASS 31 with **`probe/k3d/base` showing no diff at all** |
 | ✅ **`T1a.2`** — a type contributes its own VERBS | S | ⚠ **the parse is not the check, and neither is a green suite** — the row that matters is the one that goes red when the single consumer line is disabled | **DONE 2026-08-18.** A type verb is an **alias onto an existing gesture** — `castle wid=5 dep=4 verbs=portcullis:opening` — and it has to be: the invariant is *adding a type touches no code*, and a verb running NEW behaviour is new code by definition. What a declaration can contribute is a NAME for something the editor already does; the type's own defaults are what make it a portcullis rather than a window. That limit is stated in the source rather than left to be found. `verb_resolve` is consumed by `press_verb` in one line, **seen red with it disabled** (`not a gesture`, and nothing else moved). Three refusals, each with its reason: a type **cannot shadow a base verb** (`place` means place in every world, or a declaration silently redefines the editor for everyone in that region); an alias onto an **unknown base** is refused rather than dispatched; and an alias **cannot chain** onto another alias, which is what keeps this one resolution rather than a loop with a depth limit — a depth limit being the shape a cycle hides in. ⛔ **AND THE MOST USEFUL THING IN THIS STEP WAS DELETED.** `verbs_here()` — the query [EDITING_MODES](../../doc/claude/EDITING_MODES.md) says must replace the constant — parsed correctly and had a passing test, and **no consumer**: the sabotage proved it, staying green while the dispatch row went red. That is this tree's commonest defect (`slope_settle`: five tests, three probes, no gesture), so it was removed rather than shipped. ⏭ Its consumer is the verb bar, and wiring it needs two things this step did not build: the **world threaded** to `client_verb_specs` (its call sites hold only `Client`), and a **key** for a type verb — *"possibly even unique keys"* — which is a declaration change, not a wiring change. ⚠ **Process slip, recorded**: this feature's code was written BEFORE its tests, which is backwards here; the sabotage was the red retrofitted, and the discipline only held because it was checked · `make lib-test` **1891 → 1896 both backends** (22 results, 3792 total) · `make parts` rc 0 · `make headless-same` rc 0 · `probe/k3d` PASS 31 |
+| ✅ **`T1b`** — a type declares the OPENING an author gets, unless they have chosen | S | ⚠ **not a parse** — the claim is made through `press_verb`, and the override row must choose the very kind that is also the default, or it cannot tell *chosen* from *unchosen* | **DONE 2026-08-18.** The design's first clause — *"defaults for windows/doors/floors"* — as far as this editor can honour it. ⚠ **ONE opening default, because there is ONE opening selection**: *which door* and *which window* are the same field since `S3` collapsed six keys onto one verb, and two declaration fields would put back the flattening [EDITING_MODES](../../doc/claude/EDITING_MODES.md) already records as shipped. ⛔ **AND *WHICH FLOOR* IS NOT REACHABLE AT ALL** — the tree's materials are structural kinds (`FLOOR_MAT` is *a built floor*, not a finish), so a `floor=` field would parse perfectly and change nothing; written down rather than built. `es_open_set` is a second field and has to be: an author who chose `OP_ROUND` and an author who chose nothing hold the same number. ⚠ **`house_type` moved to `htype.loft`** so `session.loft` can ask — a `use` goes one way — with the BASENAME grepped against `lib/*/src/`, `src/`, the registry and `../loft-libs-world/` first, because loft#912's surviving half fires no advice when the collision is fatal. ⚠ **The SUBJECT LINE had to move with it and that is the point**: `editor_server` read `sess.es_open_kind` at ELEVEN `hud_wire` sites, and with a type in play the panel would say *round* while the next press cut *pointed*. `open_kind_here` is one derivation with two readers, and the bare `36:` handler reads it too — taking the raw field there would have been `S2c` rebuilt one field over, in the same handler, three days later · sabotage 4 rows, 0 missed · `make lib-test L=hex_editor` **602 → 608 both backends** · `make parts` rc 0 · `probe/k3d` PASS 31 · `make probe-s2c` 8 byte-identical |
+| ✅ **`T1c`** — a world can be TOLD what a type is: `declare` and `54:` | S | ⚠ **the two drivers' worlds, byte for byte** — and the control is the same script with the `declare` line removed, which must build a different one | **DONE 2026-08-18.** ⛔ **NOTHING COULD PUT A TYPE INTO A WORLD, AND THAT HELD THROUGH TWO PLANS.** Measured while finishing `T1b`: `hex_voxel::world_set_palette` had **zero production callers** — every one in the tree was a loft test — no driver has a `load` command, and the socket had no message for a palette. So plan 21's region mappings **and** plan 22's house types were *readable by a gesture and writable only by a test*, with every suite green: `T1a.1`, `T1a.2` and `T1b` all shipped a table nothing outside `lib/*/tests/` could fill. ✅ **`hex_voxel::world_palette_put`** is the missing writer — one slot, other slots and other regions untouched, an empty name deletes — because `world_set_palette` takes the region's WHOLE palette as a vector, which is right for a writer that has one and wrong for every driver there is, and caller-side read-modify-write is exactly how `PAL_DUP` gets written. ⚠ **ONE PARSER, TWO DRIVERS**: `hex_editor::world_declare` takes the LINE and both `editor_run`'s `declare` and the server's `54:` hand it over whole — `S2c`'s finding honoured in advance rather than after. ⚠ **And the payload is the line and not fields**, which is the one design decision here: a body carries spaces AND commas (`verbs=portcullis:opening,sally:hole`), so any separator would need a split-on-the-first-two rule in every reader and `tools/script.mjs` would have to know the shape to build one. ⚠ **A refused declaration FAILS the run**, unlike `run_ground` beside it — `K3a`'s rule, because a declaration that did not land leaves the script building the DEFAULT house while reading as though it asked for a castle. ✅ **`tools/scripts/htype.keys` is the invariant's own script**: nothing under `lib/` names 7, 5 or `OP_POINTED`, and the world comes out **37 cells and `opening kind 2`** against the control's **27 and kind 1**. ✅ **The server does it too, end to end** — `declared house 1 = longhouse …`, `house placed 37 cells`, `opened profile 2` — and `probe/s2c` says the two worlds are the same **byte for byte**. ⛔ **Sabotage: with the server's `54:` branch removed the served world is `ab6d327b…`, which is the UNDECLARED control's md5 exactly** · `probe/k3d` 31 → 32 scripts · palette tests 21 → 27 |
 | **`T1`** — a type declares defaults and its own verbs, as DATA | M | ⚠ a declared type reproduces today's cottage **byte for byte** in `make parts` | ⏭ **UNBLOCKED (`K2` shipped), and its premise is measured rather than assumed — 2026-08-18.** ⛔ **THE HEIGHT OF ONE STOREY IS SPELLED THREE TIMES, IN THREE PACKAGES, AND A COMMENT CLAIMS IT IS SPELLED ONCE.** `hex_mesh::WALL_UP` = 12 (*"a storey of masonry"*), `hex_editor::ROOF_EAVE_UP` = 12 (*"the wall's own height — the roof starts where it ends"*) and `hex_editor::gesture::STOREY_H` = 12 (*"one storey, in height units"*) — **81 call sites between them and no test that couples any two.** `ROOF_EAVE_UP`'s own words make it the same fact as `WALL_UP`, not merely the same number. ⚠ **And `WALL_UP`'s comment says *"there is one storey height in the tree rather than two"*** — written at `B1b.2c.4` when the SERVER's copy was deleted, counting the server against the mesher and never looking at `hex_editor`'s two. It has been false since it was written. ⚠ **AND THE COUNT IS THREE BECAUSE THE OTHER `12`s WERE CHECKED, NOT ASSUMED** — the tree holds nine `= 12` constants and six are different facts: `BK_WALL` is a refusal CODE in an enumeration (`BK_DEPTH` 3 … `BK_OPEN` 13), `FOUNDATION` is how far a structure may cut into the ground, `POSE_ROT` is a rotation granularity, `MSG_STOREY` a wire id, `FACING_COUNT` and `SLOPE_PASSES` their own. A count of duplicates that swept those in would have been an argument for merging things that must stay apart. ✅ **`T1a` HAS SINCE MERGED THEM** — one home, `STOREY_H`, with the sabotage pair as its instrument. ⏭ **So `T1`'s first move was not a declaration format**: a type cannot bundle a default that has three homes, and the format question (⚠ [EDITING_MODES](../../doc/claude/EDITING_MODES.md)' *do not invent a fourth* — plan 21's shipped palette and PARTS' tagged sections are the two that exist) comes after the facts have one home each |
 | ✅ **`B1a`** — the client's key table names a **VERB** — `W4`'s fourth site | S | **DONE 2026-08-13.** `make probe-b1a`: the real client page driven by a browser against a fresh server, beside a committed baseline of itself. **7 sentences identical, world `82d622b3` identical.** Two sabotages red, each on a different instrument | ✅ Done |
 | ✅ **`B1b.0`** — ONE world model: `ε`/`θ` are `hex_editor`'s, not each program's | XS | **DONE 2026-08-13.** `worlds/headless.hxw` moved to **exactly the md5 the pre-change experiment predicted**; `make parts` byte-identical, `make headless-same` rc=0, `make lib-test` 1600 both backends. One sabotage moves the runner AND the server | ✅ Done |
@@ -389,6 +391,111 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `T1b`/`T1c` turned up (2026-08-18) — the table was read by a gesture and writable only by a test
+
+**`T1b` set out to do the design's first clause for a house type — *"defaults for
+windows/doors/floors"* — and finished by finding that no driver could declare a type at
+all.** Both halves are below; the second is the larger finding.
+
+### ⛔ What the editor can actually honour, measured rather than assumed
+
+*Which door* and *which window* are **one field** here — `es_open_kind`, whose units are
+the outline and whose tens are the depth — because `S3` collapsed six keys onto one
+`opening` verb. A type declaring `door=` and `window=` separately would be describing an
+editor that does not exist, and would put back the door/window flattening
+[EDITING_MODES](../../doc/claude/EDITING_MODES.md) already records as a shipped mistake.
+
+⛔ **And *which floor* is not reachable at all.** The tree's materials are structural
+kinds — `WALL_MAT` 1, `DOOR_MAT` 2, `FENCE_MAT` 3, `FLOOR_MAT` 4, `ROOF_MAT` 5 — not
+finishes. A `floor=` field would parse perfectly, read back perfectly, and change
+nothing: this tree's commonest defect wearing a declaration format. It is written into
+`htype.loft` rather than built.
+
+### ⚠ `es_open_set` is a second field, and the row that needs it chooses the default
+
+*Unless overridden* cannot be read off `es_open_kind` alone: an author who deliberately
+chose `OP_ROUND` and an author who has chosen nothing hold the same number. So the
+override test chooses **exactly the kind the type would have given anyway** — a row that
+compared against `OP_ROUND` could not have told the two apart. A refused selection does
+**not** count as choosing, or a typo would silence a house type for the rest of a
+session.
+
+### ⚠ The subject line had to move, and that is the feature rather than a tidy-up
+
+`editor_server` read `sess.es_open_kind` at **eleven** `hud_wire` sites. With a type in
+play those are two different numbers — the panel would say *round* while the next press
+cut *pointed*, which is the one thing a subject line exists to make impossible. So
+`open_kind_here` is **one derivation with two readers**, and the bare `36:` handler reads
+it too: taking the raw field there would have made a declared type work headless and not
+over the wire — `S2c` rebuilt one field over, in the same handler, three days later.
+
+### ⛔ And then: nothing could put a type into a world
+
+Measured while wiring the above, and it is the finding that outlives the step:
+
+| | |
+|---|---|
+| `hex_voxel::world_set_palette` | **zero production callers** — every one in the tree is a loft test |
+| a `load` command | neither driver has one |
+| a wire message for a palette | none existed |
+
+So **plan 21's region mappings and plan 22's house types were both readable by a gesture
+and writable only by a test.** `T1a.1` ("a house type is DATA"), `T1a.2` ("a type
+contributes its own verbs") and `T1b` all shipped consulting a table nothing outside
+`lib/*/tests/` could fill — three steps, every suite green, and the feature unreachable
+from any driver. ⚠ **`T1a.2` was the step that deleted `verbs_here()` for having no
+consumer**, and the same audit walked past the fact that the whole axis had no writer.
+
+`T1c` builds the way in:
+
+- **`world_palette_put`** — one slot, neighbours and other regions untouched, an empty
+  name deletes. `world_set_palette` takes the region's whole palette as a vector, which
+  is right for a writer that has one and wrong for every driver there is; caller-side
+  read-modify-write is exactly how a `PAL_DUP` gets written, so the merge is on the
+  library's side of the wall, once.
+- **`world_declare(w, region, line)`** — the parse, the four refusals and the sentence,
+  in one place. `editor_run`'s `declare` and the server's `54:` both hand the **whole
+  line** over. ⚠ The payload is the line and not fields because a body carries spaces
+  (`wid=5 dep=4`) *and* commas (`verbs=portcullis:opening,sally:hole`), so any separator
+  would need a split-on-the-first-two rule in every reader — and `tools/script.mjs` would
+  have to know the shape in order to build one.
+
+### ✅ The invariant has its own script now, and a control that must differ
+
+`tools/scripts/htype.keys`. Nothing under `lib/` names 7, 5 or `OP_POINTED`; they exist
+only in one `declare` line:
+
+| | cells | opening | world |
+|---|---|---|---|
+| with the declaration | **37** | **kind 2** | `6a7e1e65…` |
+| the same script without it | 27 | kind 1 | `ab6d327b…` |
+
+The server does it end to end too — `declared house 1 = longhouse wid=7 dep=5 opening=2`,
+`house placed 37 cells`, `opened profile 2` — and `probe/s2c` says the two drivers' worlds
+are the same **byte for byte**.
+
+⛔ **The sabotage is what makes that evidence.** With the server's `54:` branch removed,
+the served world is `ab6d327b…` — the *undeclared control's own md5*, exactly. The server
+built the compiled-in 5×4 house because it never saw the declaration, and the check said
+so with the two hashes side by side.
+
+### ⏭ What it does NOT close
+
+- **A type's own VERBS are still unreachable over the wire** — and they are reachable
+  headless now, which is new. Measured: a script saying
+  `declare house 1 castle wid=5 dep=4 verbs=portcullis:opening` and then
+  `verb portcullis` answers **`portcullis: 1`** and cuts the opening, so `T1a.2`'s alias
+  dispatch has a live driver path for the first time since it shipped. Over the wire it
+  does not: `tools/script.mjs`'s `VERBMAP` is a constant table with no row for a word no
+  compiler ever saw, and the socket has no *perform this verb by name* message. That is
+  the same shape as the verb bar's missing query — *which verbs does this editor have*
+  has to be asked, not known — and it is the next step rather than a footnote.
+- **The page client cannot declare anything.** It holds the authority locally, so it
+  needs the same call rather than the message; untouched here.
+- **Nothing declares a MATERIAL yet.** The axis is reachable now (`declare material 1
+  sand`) and no script uses it, so plan 21's own consumer — `gesture.loft`'s slope limit
+  — is still fed only by tests.
 
 ## ✅ What `S2c` turned up (2026-08-18) — a count agreed and the world did not
 
