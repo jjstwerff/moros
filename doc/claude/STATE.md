@@ -22,6 +22,34 @@ when the step landed, and this file duplicating it is how it grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ✅ loft#950 IS FIXED UPSTREAM — and it is NOT live here until the binary is installed
+
+**Confirmed end to end from this side, 2026-08-18.** The `--html` client built with loft's
+`tuxedo-work-957` binary of 09:36 renders: `local thumbnails — 49 meshes for 20 parts`,
+20 thumbnails, 300 frames, and **zero trap lines** — no `unreachable`, no `RuntimeError`,
+no store guard. ⚠ **And it is not merely *did not crash*:** the page produces
+`world 16502:374721773`, which is the world the `B2`/`B3` row recorded on 2026-08-13
+when the demo last worked. Same world, to the key.
+
+**The cause was theirs to find and they found it in one row.** `LOFT_VAR_TABLE` showed the
+loop binding `wc` marked `def OWNS` where it should carry `deps=[_vector_1(11)]`; scope
+exit then freed it, and its `DbRef` carried `st`'s `store_nr`, which is how the `Client`
+store died. ✅ **Isolated to the binary here by a controlled pair** — one tree, same
+function, same `ref(3029)`, only the compiler changed: the 16 Aug build says `OWNS`, their
+09:36 build says `deps=[…]`. Nothing on our side was altered to fix it.
+
+⛔ **AND THE TREE STILL BUILDS THE BROKEN PAGE.** `/usr/local/bin/loft` is the 16 Aug
+binary, so until it is replaced: `make client` produces the trapping page, the five
+browser gates (`cache`, `camera_indoors`, `cellar_ceiling`, `client_mesh`, `deck_soffit`)
+stay red, `make probe-demo` and `make probe-auth` stay unrunnable, and the PICTURE stays
+unverified for `D2a.2`, `D2c` and `E1` — each of which recorded that limitation rather
+than working around it. **Installing the toolchain closes all of it at once**, and it is
+the single highest-value action available in this tree right now.
+
+⚠ **A size change nobody has explained**: the same source is **7910 KB** on the old binary
+and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
+only the lifetime fix.
+
 ## ⛔ THE HOUSE HAD TWO OF ITS FOUR WALLS MISSING — plan 22 `D2c`, fixed 2026-08-18
 
 **Read this one first if you read nothing else.** `place_house` printed `84 wall edges`

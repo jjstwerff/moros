@@ -1,3 +1,24 @@
+> # ✅ RESOLVED — loft#950 is fixed upstream, 2026-08-18
+>
+> The `--html` client built with loft's `tuxedo-work-957` binary of 09:36 renders: **49
+> thumbnail meshes for 20 parts, 20 thumbnails, 300 frames, zero trap lines**, and it
+> produces `world 16502:374721773` — the world `B2`/`B3` recorded on 2026-08-13, before
+> the regression. Same world to the key, not merely an absence of a crash.
+>
+> **The cause was one row of `LOFT_VAR_TABLE`**, found by loft's maintainer: the loop
+> binding `wc` marked `def OWNS` where it should carry `deps=[_vector_1(11)]`, so scope
+> exit freed it and its `DbRef` carried `st`'s `store_nr`. Isolated to the binary by a
+> controlled pair — one tree, same function, same `ref(3029)`, only the compiler changed.
+>
+> ⚠ **Everything below is the investigation as it stood, and it is kept.** Its value is
+> not the conclusion — which was wrong about where the fault lived — but the eleven
+> ruled-out measurements, the reduction that did NOT converge, and the three instruments
+> that were blind before one answered. ⚠ Read § *The panic had a sentence* and probe 4
+> before trusting any absence measured here.
+>
+> ⏭ **NOT live in this tree until `/usr/local/bin/loft` is replaced** — the 16 Aug binary
+> still builds the trapping page.
+
 # Probe 5 — a page in REMOTE mode must not tick
 
 Plan 22, [WALK_TICK.md § probe 5](../../doc/claude/WALK_TICK.md). The last unmeasured
