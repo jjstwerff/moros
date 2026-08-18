@@ -14,7 +14,12 @@ LOFT ?= loft
 # cores idle; above it the wall is the slowest single file and nothing else moves.
 TEST_JOBS ?= 16
 
-# The loft packages under lib/, in dependency order.
+# The loft packages under lib/. ⚠ **NOT in dependency order, whatever this line said
+# before** — measured 2026-08-18, four edges contradict it: `moros_render` precedes
+# `hex_proj`, `hex_editor` precedes `hex_part`, and `hex_part` and `hex_mesh` both
+# precede `glb_read`. It costs nothing, because each `loft test` resolves its own
+# dependencies — which is exactly why the claim went unchallenged for so long.
+# `tools/rdeps.sh` sorts topologically rather than trusting this order.
 #
 # ⚠ THIS LIST IS THE TEST TARGET, so a package missing from it is a package whose
 # tests never run. `hex_voxel` and `glb_read` sat outside it for months — 66 tests
@@ -92,8 +97,35 @@ tests: node_modules
 layering:
 	@sh tools/layering.sh
 
+# ⚠ **`P=` SCOPES IT, AND WITHOUT THAT IT WAS ALL-OR-NOTHING.** `run-tests.sh` has
+# taken a `P` since it was written and this loop did not, so a change touching one
+# package re-ran eleven — measured 2026-08-18: ten packages clear in ~60 s and
+# `hex_editor` alone takes longer than all of them together (50 files, 596 tests, run
+# twice because `--native` compiles Rust). A check that cannot be narrowed is a check
+# people run wholesale or skip entirely, and skipping is the failure that matters.
+#
+# ⚠ **SCOPE IT BY THE REVERSE DEPENDENCIES, NEVER BY WHAT YOU EDITED.** Only three
+# packages here read `hex_voxel` or `hex_editor` — `hex_editor`, `hex_mesh` and
+# `hex_part` — so an editor change is `L=hex_editor`, while the other eight cannot see
+# it. ⚠ Getting that set wrong is how a scoped run reports green about a package it
+# never built, which is why `L=` DERIVES it and why the full sweep is still what runs
+# before a push.
+#
+#     make lib-test                    # every package, both backends — pre-push
+#     make lib-test L=hex_editor       # that library AND its dependents — inner loop
+#     make lib-test P="a b"            # an explicit list, when you know better
+# ⚠ **`L=` IS COMPUTED, NEVER A MAP KEPT HERE.** `tools/rdeps.sh` reads the manifests
+# and sorts topologically, so adding a dependency widens the set the same day rather
+# than the day somebody remembers — the failure `tools/layering.sh`'s stale skip list
+# already cost this tree once. ⚠ An unknown name FAILS: a typo returning an empty set
+# would test nothing and report success.
+LIB_TEST_PACKAGES = $(if $(L),$(shell sh tools/rdeps.sh $(L)),$(if $(P),$(P),$(LIB_PACKAGES)))
+
 lib-test: layering | .test-logs
-	@for p in $(LIB_PACKAGES); do \
+	@if [ -z "$(strip $(LIB_TEST_PACKAGES))" ]; then \
+		echo "lib-test: nothing selected — rdeps said nothing for L=$(L)"; exit 2; fi
+	@printf 'lib-test: %s\n' "$(strip $(LIB_TEST_PACKAGES))"
+	@for p in $(LIB_TEST_PACKAGES); do \
 		printf '\n=== %s ===\n' "$$p"; \
 		( cd lib/$$p && $(LOFT) test 2>&1 \
 			| tee $(CURDIR)/.test-logs/$$p-interpret.log | grep -viE '^  Warning' ) \
