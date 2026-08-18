@@ -2679,17 +2679,28 @@ fn vis_mask(body: boolean, mode: integer) -> integer {
 // before. ⚠ It must stay layer-aware: `cell_normal` itself reads `terrain_h`, the
 // OUTDOORS, and on a deck that is a different surface three storeys down with a
 // completely different slope.
-fn cam_clear_at(x: float, z: float, eye: float, wld: VoxelWorld) -> float {
+// ⚠ **THE SURFACE ARRIVES AS A FUNCTION — plan 22 `C1`.** This took `eye` and the
+// WORLD and called `surface_h_at` itself, which is the one thing that stops these
+// routines becoming `hex_cam`: a camera library three games share cannot know how any
+// of them stores a surface. The sampler is the consumer's, exactly as `cliff_edges`
+// takes its terrain by a function and `ground_axle` takes its own — the precedent is
+// this tree's and the mechanism is proven, so this is a shape change and not a bet.
+//
+// ⚠ **`eye` WENT WITH IT, AND THAT IS THE POINT RATHER THAN A TIDY-UP.** It was only
+// ever passed through to the sampler; a parameter this function does not use is a
+// parameter the library version would have to explain. The closure captures it at the
+// call site, where the eye's height is already known.
+fn cam_clear_at(x: float, z: float, sample: fn(integer, integer) -> float) -> float {
   a = world_to_hex(x, z);
   c0 = hex_to_world(a.ha_q, a.ha_r, 0);
-  h0 = surface_h_at(a.ha_q, a.ha_r, eye, wld);
+  h0 = sample(a.ha_q, a.ha_r);
   sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
   for nd in 0..6 {
     (nq, nr) = hex_grid::hex_neighbor(a.ha_q, a.ha_r, nd);
     nw = hex_to_world(nq, nr, 0);
     dx = nw.x - c0.x;
     dz = nw.z - c0.z;
-    dy = surface_h_at(nq, nr, eye, wld) - h0;
+    dy = sample(nq, nr) - h0;
     sxx = sxx + dx * dx;
     szz = szz + dz * dz;
     sxy = sxy + dx * dy;
@@ -2747,7 +2758,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       // layer at or below the height you are at. The reference is this sample's
       // own eye height, which is exactly what "is the eye below the surface" asks.
       ey_s = oy + t * sp;
-      if ey_s < hex_mesh::ground_under(wld, sx, sz, ey_s) + cam_clear_at(sx, sz, ey_s, wld) {
+      if ey_s < hex_mesh::ground_under(wld, sx, sz, ey_s) + cam_clear_at(sx, sz, fn(cq: integer, cr: integer) -> float { surface_h_at(cq, cr, ey_s, wld) }) {
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
@@ -2952,7 +2963,7 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // another heuristic: **the eye is never below the surface.** Obstruction is
   // outright bad and a raised eye is merely an unusual angle, so when the two
   // conflict the angle loses.
-  floor_at_eye = hex_mesh::ground_under(wld, ex, ez, ey) + cam_clear_at(ex, ez, ey, wld);
+  floor_at_eye = hex_mesh::ground_under(wld, ex, ez, ey) + cam_clear_at(ex, ez, fn(cq: integer, cr: integer) -> float { surface_h_at(cq, cr, ey, wld) });
   if ey < floor_at_eye { ey = floor_at_eye; }
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
