@@ -553,10 +553,10 @@ else no "F3 no house was ever placed — the turn did not reach an admissible fa
 # takes a lattice ROTATION rather than the raw yaw. That quantisation is what lets
 # a demo driven by wall-clock key presses be asserted byte for byte.
 f_key=$(printf '%s' "$f_placed" | sed -n 's/.*world \([0-9]*:[0-9]*\).*/\1/p')
-if [ "$f_key" = "41145:1306471549" ]; then
+if [ "$f_key" = "41145:635835879" ]; then
   say "F4 and the world is exactly $f_key — a continuous turn, a quantised gesture"
 else
-  no "F4 the first house built world '$f_key', not 41145:1306471549"
+  no "F4 the first house built world '$f_key', not 41145:635835879"
 fi
 
 # F5 — and it reached the PICTURE. ⚠ A world key cannot see a drawing, and this is
@@ -570,7 +570,13 @@ fi
 # ── Q  the SELECTION decides what `place` makes — plan 22 `B2e` ────────────
 #
 # ⚠ THE CONTROL IS THE `F` BLOCK, ALREADY RUN. F presses `d` then `h` with nothing
-# chosen and builds the procedural house: **27 cells, world `41145:1306471549`**.
+# chosen and builds the procedural house: **27 cells, world `41145:635835879`**.
+# ⚠ RE-BASELINED 2026-08-18: was `41145:1306471549`, recorded at `B1c.1` on
+# 2026-08-13. `D2a` raised the ridge and `D2c` gave the house back two walls it
+# had been missing, so the SAME 27 cells now hold different content. This probe
+# could not say so at the time — loft#950 had it unrunnable for the two days
+# those fixes landed, which is `D2a.2`'s "gates that could not see it" one
+# probe over.
 # This presses `d`, then `k` to choose a part, then the SAME `h` at the same pose —
 # so a different world can only be the selection, not the key, the facing or the
 # place.
@@ -616,8 +622,8 @@ else no "Q1 no part was chosen — the choosing key did nothing"; fi
 # file; the shape is now the default rather than a correction.
 if [ -z "$q_key" ]; then
   no "Q2 nothing was placed in this run, so it cannot say whether the selection changed what `place` makes (the turn may have landed short of an admissible facing)"
-elif [ "$q_key" != "41145:1306471549" ]; then
-  say "Q2 the same key built $q_key ($q_n cells) where F4 built 41145:1306471549 (27)"
+elif [ "$q_key" != "$f_key" ]; then
+  say "Q2 the same key built $q_key ($q_n cells) where F4 built $f_key (27)"
 else
   no "Q2 place built F4's own house world ($q_key) — the selection changed nothing"
 fi
@@ -630,9 +636,11 @@ fi
 # "built and never called" defect wearing a walker's clothes. So the verdict is a
 # WORLD: the same house, placed after walking, must land somewhere else.
 #
-# ⚠ AND THE BASELINE IS `F4`'s, MEASURED IN THIS SAME RUN. `41145:1306471549` is
-# what the F block builds by turning and placing WITHOUT walking, so the two
-# differ in exactly one thing.
+# ⚠ AND THE BASELINE IS `F4`'s, MEASURED IN THIS SAME RUN — and it is `$f_key`
+# NOW RATHER THAN A LITERAL. It said `41145:1306471549` while claiming to be the
+# value measured in this run, so a geometry change made THREE rows fail where one
+# claim had actually moved. What G2 asserts is that walking puts the house
+# somewhere else — a relationship, which survives any change to the house itself.
 #
 # ⚠ IT RETRIES THE TURN LIKE `F` DOES, AND THE FIRST VERSION DID NOT — which cost a
 # red run. One key press is 3 OR 4 fixed steps depending on when the browser
@@ -683,8 +691,8 @@ fi
 # failure it did not measure. `F2` needed the same split.
 if [ -z "$g_key" ]; then
   no "G2 no house was placed in this run, so it cannot say whether the walk reached the gesture (the turn may have landed short of an admissible facing)"
-elif [ "$g_key" != "41145:1306471549" ]; then
-  say "G2 the house landed elsewhere: $g_key against F4's 41145:1306471549"
+elif [ "$g_key" != "$f_key" ]; then
+  say "G2 the house landed elsewhere: $g_key against F4's $f_key"
 else
   no "G2 the house landed at $g_key — exactly the world F4 builds standing still, so the walk did not reach the gesture"
 fi

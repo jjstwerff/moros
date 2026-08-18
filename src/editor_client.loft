@@ -54,6 +54,7 @@ use gridmesh as gm;   // enc_coord — the SAME chunk key the server packs mesh 
 // is one function — two copies that agree today are two copies.
 use hex_mesh;
 use hex_editor;
+use hex_cam;      // the camera's geometry, shared with the server (plan 22 `C3`)
 // ⚠ FOR THE WALK'S TYPES ONLY — plan 22 `B1c.2c`. The page holds an `EdgeSet`, a
 // `Surfaces` and a `Track` between ticks (the collision proxy it caches), and the
 // walk itself is `hex_editor`'s. Nothing here derives an edge.
@@ -997,9 +998,16 @@ fn set_camera(st: Client, body: text) {
 // answers to *where is the eye*, diverging quietly. So this does the one thing a
 // page needs to be an editor — **see what you built** — from a fixed boom behind
 // the author, and `C3` replaces it whole.
-const LOCAL_BOOM  = 5.0;      // world units back along the facing
-const LOCAL_LIFT  = 3.2;      // …and up, so the ground ahead is in frame
-const LOCAL_AIM   = 0.9;      // the target sits at chest height, not at the feet
+// ⚠ **THESE WERE THREE MORE CAMERA NUMBERS AND THEY ARE `hex_cam`'s NOW — plan 22
+// `C3`.** `LOCAL_BOOM 5.0`, `LOCAL_LIFT 3.2` and `LOCAL_AIM 0.9` were this page's own
+// framing, fixed in WORLD UNITS and derived from nothing — a third set beside the
+// server's and the library's. The server's are gone at `C2b`; these are the last.
+//
+// ⚠ **AND FIXED WORLD UNITS IS THE DEFECT, NOT THE DUPLICATION.** A camera framing a
+// person is sized by that person: `hex_cam` keeps the RATIOS and takes the figure, so
+// the same call frames the editor's figure and crawler's without either being retuned.
+// A boom of 5.0 was right for one height and silently wrong for any other.
+fn local_fig() -> float { hex_editor::FIGURE_M / hex_editor::WU_PER_M ?? 0.0 }
 const LOCAL_NEAR  = 0.1;
 const LOCAL_FAR   = 400.0;
 const LOCAL_FOV   = 55.0;     // degrees — the server's number, for one picture
@@ -1185,10 +1193,33 @@ fn local_camera(st: Client, a: hex_editor::Author) {
   // `gl_set_uniform_mat4` takes and what `C:` parses into. Assigning the whole
   // struct type-checked clean — so the field is written explicitly rather than
   // left to whatever that acceptance means.
+  // ⚠ **THE PIVOT IS THE LIBRARY'S, SO THE EYE ORBITS WHAT THE PERSON IS LOOKING AT**
+  // rather than their navel — plan 22 `C3`. The page aimed at `au_y + LOCAL_AIM` on
+  // the character's own spot; `cam_pivot_*` leads it by `PIVOT_AHEAD` figures, which
+  // is the difference between following someone and staring at their back.
+  lc_fig = local_fig();
+  lc_boom = hex_cam::cam_boom(lc_fig);
+  lc_px = hex_cam::cam_pivot_x(a.au_x, a.au_yaw, lc_fig);
+  lc_pz = hex_cam::cam_pivot_z(a.au_z, a.au_yaw, lc_fig);
+  lc_py = hex_cam::cam_pivot_y(a.au_y, lc_fig);
+  // ⚠ **AND THE EYE IS LIFTED BY THE CLEARANCE THE SURFACE ASKS FOR**, which is the
+  // whole of `cam_clear_at`: flat ground wants `CAM_CLEAR`, a slope wants the normal's
+  // length times it. Without this the page's fixed 3.2 lift let the eye graze a
+  // hillside — the failure the server's own gate reads as the frame filling with
+  // ground. The sampler is this page's own world, exactly as the server hands its own.
+  (lc_q, lc_r) = hex_grid::px_to_hex(lc_px - lc_fx * lc_boom, lc_pz - lc_fz * lc_boom);
+  lc_clear = hex_cam::cam_clear_at(lc_q, lc_r,
+    fn(cq: integer, cr: integer) -> float {
+      (hex_editor::terrain_h(cq, cr, st.cache) as float) * st.cache.w_unit },
+    fn(cq: integer, cr: integer, d: integer) -> (integer, integer) {
+      hex_grid::hex_neighbor(cq, cr, d) },
+    fn(cq: integer, cr: integer) -> (float, float) { hex_grid::hex_to_px(cq, cr) });
+  lc_ground = (hex_editor::terrain_h(lc_q, lc_r, st.cache) as float) * st.cache.w_unit;
+  lc_eye = lc_py + hex_cam::eye_height(lc_fig);
+  if lc_eye < lc_ground + lc_clear { lc_eye = lc_ground + lc_clear; }
   st.view = graphics::mat4_look_at(
-    graphics::vec3(a.au_x - lc_fx * LOCAL_BOOM, a.au_y + LOCAL_LIFT,
-                   a.au_z - lc_fz * LOCAL_BOOM),
-    graphics::vec3(a.au_x, a.au_y + LOCAL_AIM, a.au_z),
+    graphics::vec3(lc_px - lc_fx * lc_boom, lc_eye, lc_pz - lc_fz * lc_boom),
+    graphics::vec3(lc_px, lc_py, lc_pz),
     graphics::vec3(0.0, 1.0, 0.0)).m;
   st.proj = graphics::mat4_perspective(LOCAL_FOV * PI / 180.0,
                                        (WIN_W as float) / (WIN_H as float),
