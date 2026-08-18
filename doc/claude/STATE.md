@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-08-09)
+# STATE.md — where the editor work stands (2026-08-18)
 
 **A handoff, and short on purpose.** Where the work stands, what was decided, what is open —
 read it first after a break.
@@ -21,6 +21,74 @@ when the step landed, and this file duplicating it is how it grows back.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
+
+## ⛔ THE HOUSE HAD TWO OF ITS FOUR WALLS MISSING — plan 22 `D2c`, fixed 2026-08-18
+
+**Read this one first if you read nothing else.** `place_house` printed `84 wall edges`
+and the store held **23**: the near wall complete at 12, the left at 9, the right 4 of ~9,
+and **the far wall reduced to its two corner posts**. An author standing inside their own
+house, facing that wall, was refused *no wall here to open — stand against one*. It was
+**pre-existing** — controlled against a worktree at `3e3ac22`, identical there — and had
+survived every suite.
+
+⛔ **THE STAMPING WAS INNOCENT.** All four sides stamp completely and every write
+survives — 22 + 20 + 22 + 20, which is exactly the 84 the sentence prints. `roof_over`
+then merged a band from **the floor** to the ridge over every footprint cell, and
+`band_column` replaces everything between `lo` and `hi`. A wall is not a cell of its own:
+it lives in `sv_wall_nw`/`_ne`/`_e` on the cell at the floor, which was exactly `lo`.
+Stage by stage — floor 0 → walls 84 → roof 46, far run 24 → 4 with the near run 24 → 24
+**one line apart in the same measurement**.
+
+⚠ **THE ASYMMETRY IS ONE ROW OF OWNERSHIP.** An edge is stored once, on one of its two
+cells, and read back from both. The footprint contains the far wall's owning cells and
+not the near wall's — so one wall died and the opposite one did not, from a single
+symmetric loop. **A total would have read as healthy**, which is why
+`tests/house_walls.loft` asserts the four walls separately.
+
+✅ **The fix is three lines and a subtraction**: the band is `[eave, hu]` carrying only
+the roof, because `place_house` had already laid the floor — the band's floor cell was a
+SECOND assertion of a fact that already had a home. ⚠ Where to fix it was decided by a
+probe: the tree's other two `world_merge_band_as` callers put the wall fields INTO their
+band, so the API was not at fault and this caller was.
+
+⚠ **AND IT WAS INVISIBLE BECAUSE THE MESHER DRAWS WALLS FROM THE RUNS**, which were all
+four and correctly filed. **The picture was right and the store was wrong** — no gate
+asserts a wall-edge count, and the browser gates that render a house are down on
+loft#950 anyway.
+
+## ✅ WHAT ELSE LANDED — 2026-08-18
+
+| | |
+|---|---|
+| **`D2a`** | confirmed by re-measurement, not inference: the mode's line moved from **0.25 inside** the wall's run to **0.43 outside** it — `wall_band()/2`, the masonry's own face. ⛔ The disagreement did **not** close, and that is the result: the mode is a continuous rectangle and the verb a hex-shaped cell sweep reaching four units, so **no placement of the rectangle could ever have made them agree** |
+| **`D2b`** | half built, half **refuted by its own verify**. `place` refuses a house whose footprint overlaps a filed plan, and writes nothing doing it. ⛔ The storey half is dropped: all three live storeys (`deck`, `cellar`, `threshold`) run over bare ground with `verb place` count **zero**, so *the meadow must refuse* and *the corpus's storeys must still build* are the same case. **A storey is a terrain gesture here, not a building one** |
+| **`E1`** | the camera's ease is `fixstep::approach` — moros consumes an external library for it now. ⛔ **Not a live bug fix, and the plan row says so**: `dt` is a constant here and no angle is eased, so both forms were deterministic. What it buys is frame-rate independence as a property of the EASE rather than an accident of the DRIVER |
+| **`T1a`** | the storey height had **three names in three packages** (`WALL_UP`, `ROOF_EAVE_UP`, `STOREY_H`, all 12, 81 call sites, nothing coupling them) and has **one** now. ⚠ Demonstrated by sabotage, since a merge of two 12s is byte-identical by construction: before, moving the constant left the ridge at 23 **unmoved**; after, it moves to 24 |
+| **`T1a.1`/`T1a.2`** | **a house type is DATA** — plan 21's palette, not a new format, on the owner's call. `hex_voxel` gained a fourth axis and does not know what a house is; `hex_editor` owns the meaning. A type's own verbs are **aliases onto existing gestures**, because a verb running new behaviour would be new code and the invariant is *adding a type touches no code* |
+
+⚠ **AND `verbs_here()` WAS DELETED BEFORE IT SHIPPED.** It was the query
+[EDITING_MODES](EDITING_MODES.md) demands, it parsed correctly, it had a passing test —
+and **no consumer**, which the sabotage exposed by leaving it green while the dispatch
+row went red. Its consumer is the verb bar, and wiring it needs the **world threaded** to
+`client_verb_specs` and a **key** for a type verb. ⏭ That is where `T1` continues.
+
+## ⚠ AN INSTRUMENT TRAP THAT COST FOUR FALSE GREENS — 2026-08-18
+
+`make X 2>&1 | tail -N; echo "rc=$?"` reports **`tail`'s** exit code, which is always 0.
+Four `rc=0` lines were meaningless before a **stale `.test-logs`** exposed it — 587 tests
+where 589 were expected, from a log an hour old. ⚠ **The same bug reappeared twice more
+the same day**, in a helper's exit code read through `| head -1` and in a "scoped" test
+run that was actually the full sweep because the Makefile edit had silently not applied.
+**Capture the status before the pipe, and verify an edit applied before timing it.**
+
+✅ **AND SCOPING EXISTS NOW**: `make lib-test L=<pkg>` runs that library and everything
+that depends on it, computed by `tools/rdeps.sh` from the manifests — never a map in the
+Makefile, which is how `tools/layering.sh`'s skip list went stale. An unknown name exits
+**2**; an empty set would test nothing and report success. **Measured: `L=hex_editor` is
+264 s against ~540 s for the full sweep** — about half, on the change where the saving is
+*smallest*, because `hex_editor` is the expensive package and is in the set either way. ⚠ It sorts topologically
+because `LIB_PACKAGES` is **not** in dependency order, whatever its comment said — four
+edges contradict it.
 
 ## ⚠ THE TOOLCHAIN CHANGED UNDER TODAY'S WORK — inspected 2026-08-17
 
