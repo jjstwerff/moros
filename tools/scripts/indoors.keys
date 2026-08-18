@@ -73,8 +73,24 @@ step 90
 snap s10-house-corner
 # Along the diagonal the room is longer, so the boom keeps more of itself — the
 # opposite direction from the row above, which is why both are here.
+#
+# ⚠ **THE CEILING IS 0.65 HERE AND 0.60 EVERYWHERE ELSE — plan 22 `D2c`, 2026-08-18.**
+# This row read `masonry 0.6174 > 0.60` the first time it could run after `D2c`, and
+# the cause is the fix rather than a regression: **the far wall used to be two corner
+# posts**, so facing it you saw through the gap, and it is twelve edges of masonry now.
+# More wall in a room is what a complete house looks like.
+#
+# ⚠ **RAISED ONLY HERE, AND THE PICTURE WAS LOOKED AT FIRST.** `shots/s10-house-corner.png`
+# shows a room — wall, soffit above, floor below, the figure central, no sky leaking and
+# no camera buried in geometry. Loosening a threshold because the picture changed is how
+# a real regression gets waved through, so the frame was read before the number moved.
+#
+# ⏭ **AND THE NEXT ONE TO GO IS NAMED RATHER THAN PRE-EMPTIVELY LOOSENED**: the row at
+# line 68 reads **0.5966** against its own 0.60, from the same cause. It is left at 0.60
+# on purpose — a guard is not widened until something forces it — but when it trips,
+# this is why, and it is not a new fault.
 cam 3.5 5.2
-frame 0.005 0.60 soffit 0.10 1.0 roof 0 0.05 sky 0 0.001
+frame 0.005 0.65 soffit 0.10 1.0 roof 0 0.05 sky 0 0.001
 
 # ── AUTO DEGRADING INTO SNUG ─────────────────────────────────────────────────
 #
