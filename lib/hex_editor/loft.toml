@@ -6,9 +6,26 @@ loft    = ">=0.8"
 [library]
 entry = "src/hex_editor.loft"
 
-# The `hex_*` family, from the REGISTRY. They are published at 0.1.0 and
-# byte-identical to ../../../loft-libs-world (diffed, not assumed), so there is
-# nothing to copy and no path into a tree another agent is editing.
+# The `hex_*` family, from the REGISTRY. They are published at 0.1.0 and were
+# byte-identical to ../../../loft-libs-world when this line was written (diffed, not
+# assumed), so there is nothing to copy and no path into a tree another agent is editing.
+#
+# ⛔ **AND THAT DIFF IS STALE — MEASURED 2026-08-18: ALL FOURTEEN `hex_*` PACKAGES NOW
+# DIFFER FROM THE CHECKOUT.** Eleven differ only in comments. **Three differ in CODE**,
+# and one of those matters to a reader here:
+#
+#   hex_field   +73 lines, purely ADDITIVE (`stencil_unstamp*`) — we simply do not have them
+#   hex_form    +13 lines of REFUSALS — the registry copy accepts malformed stencil
+#               headers (`C1`/`C3`/`C4`) that the checkout rejects
+#   hex_way      1 line: `track_offset` is `+ d * dir` here and `- d * dir` there —
+#               **the sibling's own fix, which the published 0.1.0 does not carry**
+#
+# ⚠ The `hex_way` line is a real defect in what we build against: an offset arc lands on
+# the far side of the way from its straights, so an offset way comes apart at its joints
+# — measured at a **gap of 1.0** on a 0.5 offset (`probe/way`). It cannot reach moros,
+# because every track this tree builds is `track_straight` only and the straight branch
+# never reads `dir`. ⚠ **Say `sh probe/way/drift.sh` rather than trusting this comment**:
+# a byte-identity claim written once is a claim about the day it was written.
 #
 # ⚠ A NOTE HERE SAID `hex_world` WAS "deliberately NOT here" WHILE IT WAS DECLARED
 # TWENTY-FIVE LINES BELOW. It was true when this package was world-free and outlived

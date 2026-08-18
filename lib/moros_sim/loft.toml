@@ -10,8 +10,9 @@ entry = "src/moros_sim.loft"
 # ⚠ THE REGISTRY, NOT THE SIBLING CHECKOUT — see the longer note in moros_map's
 # manifest. A `path` dependency makes the whole directory it points at a search
 # path, so these two made every package in `loft-libs-world` resolvable from a tree
-# another agent edits. Both are byte-identical to registry 0.1.0 (diffed), so only
-# the route changes.
+# another agent edits. Both were byte-identical to registry 0.1.0 when this was written
+# (diffed), so only the route changed. ⛔ **NOT ANY MORE — measured 2026-08-18**; see the
+# `hex_*` block in `lib/hex_editor/loft.toml` and `sh probe/way/drift.sh`.
 #
 # A3 composes joint values in hex_body's own unit (TURNS) and A4 embeds one of
 # its rigs at a body, so the conversion is READ from there rather than copied.

@@ -70,6 +70,74 @@ not yet claimed here.
 and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
 only the lifetime fix.
 
+## ⛔ `hex_way` HAS A ONE-SIDED ANGLE WRAP, AND WE BUILD AGAINST A `hex_way` THE SIBLING HAS ALREADY FIXED — 2026-08-18
+
+**Two findings from one inspection**, and the second is about this tree rather than the
+library. [probe/way](../../probe/way/README.md).
+
+### A. `seg_distance` normalises in ONE direction (both copies, unreported)
+
+```
+  while aa < lo { aa = aa + 2pi; }      // …and never `while aa > hi { aa -= 2pi }`
+```
+
+An angle is a direction, not a quantity, so the same curve authored a turn lower is the
+same curve — and it is not, to this function. A point taken **from** the arc reads:
+
+| the arc | reads |
+|---|---|
+| `a0=0 a1=+pi/2`, `+3pi/4..+5pi/4`, `+7.0..+8.0` | ✅ 0 away |
+| `a0=-2pi a1=-2pi+pi/2` | ⛔ **1.531 away** |
+| `a0=-7.0 a1=-6.0` | ⛔ **0.990 away** |
+
+⚠ **The same file has the correct two-sided wrap twelve lines further down** —
+`seg_param` wraps up *and* down. One file, two normalisations, one of them one-sided,
+which is this tree's *a guard that works in ONE DIRECTION reads exactly like a guard*.
+
+**What it costs**: `seg_distance` is not a leaf — `track_distance`, `nearest_seg`,
+`way_mark`, `way_stamp`, `cut_arb` and `way_param`'s segment choice all route through it.
+**The same quarter arc marks 5 cells authored at `[0, pi/2]` and 1 at
+`[-2pi, -2pi+pi/2]`.** One curve, two footprints.
+
+✅ **The fix is measured, not proposed** — `probe/way/hex_way-fix.patch`, a shared
+`ang_wrap` used by both functions. Applied to the sibling checkout: every row holds, the
+footprints agree, `hex_way`'s own 12 tests stay green. ⚠ **The checkout was then restored
+byte-for-byte** — another agent is working that tree right now — so landing it there, or
+republishing, is the owner's call.
+
+⚠ **Not reachable from moros**: nothing in `lib/`, `src/`, the sibling or the registry
+calls `track_arc` at all. Every track this tree builds is `track_straight`, and the arc
+path has no caller outside `hex_way`'s own tests. That is why six worked examples and two
+suites never saw it.
+
+### B. ⛔ *"byte-identical to the checkout (diffed, not assumed)"* is false for all fourteen
+
+Three manifests here carried that claim. Measured: **all fourteen `hex_*` differ**, eleven
+in comments only and **three in CODE**:
+
+| | | |
+|---|---|---|
+| `hex_field` | +73 lines | purely **additive** (`stencil_unstamp*`) |
+| `hex_form` | +13 lines | added **refusals** — the published copy accepts malformed stencil headers the checkout rejects |
+| `hex_way` | **1 line** | `track_offset` is `+ d * dir` published, `- d * dir` in the checkout |
+
+That last is the sibling's own fix and **the published 0.1.0 does not carry it**: measured
+against what we build, an offset way comes apart at its joints with a **gap of 1.0** on a
+0.5 offset. ⚠ It cannot reach moros either — `track_offset` is used here on straights
+only, and the straight branch never reads `dir`.
+
+✅ **`sh probe/way/drift.sh` is in `make fast`**, and it is a **baseline rather than a
+threshold**: the drift is real today and closing it is a republish this tree does not own,
+so it fires when the sibling moves further *or* when a republish lands. A guard that is
+red on purpose is one people learn to ignore — `probe/k1` and `probe/k2` rotted exactly
+that way.
+
+⚠ **AND MY OWN EQUIDISTANCE ROW PASSED AGAINST THE BROKEN COPY.** *Is the offset exactly
+|d| from the centreline* is green on the published `+ d * dir`: equidistance does not pick
+a side. `track_offset`'s own comment says so — *"the number that sees it is the gap at a
+joint, not the distance to the line"* — and I had rebuilt that blind gate by hand before
+reading the sentence warning about it.
+
 ## ⛔ TWO SIBLING PACKAGES CLAIMED ONE MODULE FILE NAME — fixed 2026-08-18, [loft#976](https://github.com/loft-lang/loft/issues/976)
 
 **Spotted as an `Advice[module-name-shadowed]` in the editor server's build log while

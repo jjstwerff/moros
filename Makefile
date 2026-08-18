@@ -452,6 +452,13 @@ fast:
 # own file, and **the consumer's `use` line order decides which**. Measured on
 # `moros_sim` + `hex_part`, 2026-08-18 — see `probe/skin/README.md`.
 	@sh tools/basenames.sh
+# ⚠ **AND WHAT WE BUILD AGAINST IS NOT WHAT THE SIBLING TESTS.** Three manifests here
+# said the registry was *byte-identical to the checkout (diffed, not assumed)*; measured
+# 2026-08-18, all fourteen `hex_*` differ and **three differ in CODE** — including a
+# `track_offset` fix in `hex_way` that the published 0.1.0 does not carry. It is a
+# BASELINE rather than a threshold, because the drift is not this tree's to close: it
+# fires when the sibling moves further OR when a republish lands. `probe/way/README.md`.
+	@sh probe/way/drift.sh
 	@sh tools/walk-exact.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 	@$(MAKE) -s probe-k3c

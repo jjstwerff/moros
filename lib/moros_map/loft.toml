@@ -11,9 +11,11 @@ entry = "src/moros_map.loft"
 # every package in `../../../loft-libs-world` became resolvable through it, from a
 # tree another agent edits. CLAUDE.md's standing warning, and it was live here.
 #
-# The registry's 0.1.0 is byte-identical to the checkout (diffed, not assumed), so
-# nothing changes but where it is read from. 758 tests green across all eight
-# packages after the reroute.
+# The registry's 0.1.0 was byte-identical to the checkout when this was written (diffed,
+# not assumed), so nothing changed but where it is read from. 758 tests green across all
+# eight packages after the reroute. ⛔ **IT IS NO LONGER TRUE — measured 2026-08-18, all
+# fourteen differ and three differ in CODE.** The long form is in `lib/hex_editor/loft.toml`
+# beside the `hex_*` block; the instrument is `sh probe/way/drift.sh`.
 #
 # It was ALSO the first suspect when the editor's build died on `Expect token ;` at
 # `hexwall.loft:113` — a valid line in a published library — and it was the wrong
