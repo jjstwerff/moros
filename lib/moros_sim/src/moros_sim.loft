@@ -13,7 +13,7 @@ use frames;
 use ground;
 use tether;
 use shape;
-use skin;
+use self::skin;
 use bend;
 // ⚠ `cliff` LEFT — plan 22 `B1c.2a`. Its own header named `hex_edge`'s shared
 // layer as its target home and said it sat here only because moving to another

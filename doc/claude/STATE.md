@@ -70,6 +70,47 @@ not yet claimed here.
 and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
 only the lifetime fix.
 
+## ⛔ TWO SIBLING PACKAGES CLAIMED ONE MODULE FILE NAME — fixed 2026-08-18, [loft#976](https://github.com/loft-lang/loft/issues/976)
+
+**Spotted as an `Advice[module-name-shadowed]` in the editor server's build log while
+doing `T1c`, and it turned out to be fatal rather than cosmetic.** `moros_sim` and
+`hex_part` each held a `src/skin.loft`, with **no name in common**, each saying a bare
+`use skin;`. Both suites green forever — a package's own graph holds only itself.
+
+| a consumer that pulls both | what breaks |
+|---|---|
+| `use moros_sim; use hex_part;` | ⛔ `unknown type 'PartBox'`, `Unknown function skin_covers` |
+| `use hex_part; use moros_sim;` | ⛔ `Unknown function skin_overlap` |
+
+⛔ **THE CONSUMER'S `use` LINE ORDER DECIDES WHICH LIBRARY LOSES ITS MODULE**, and
+neither author can see it from their own tests. ⚠ **A qualified name does not help** —
+`hex_part::skin_covers` fails exactly as the bare name does, because the module never
+loads and there is no second name to choose between. That is what separates this from
+the struct-name collision CLAUDE.md records as fixed on 2026-08-11.
+
+⚠ **IT HAD NOT BITTEN ONLY BY LUCK.** Both `skin` modules are **test-only** —
+`moros_sim`'s `skin_fit`/`skin_pocket` and `hex_part`'s `skin_covers`/`part_box` have no
+production caller between them — so nothing ever crossed the boundary, and the server
+has had both packages in its graph for months. **The first production caller in either
+would have been the failure**, reported against a file its author had not touched.
+
+✅ **The fix is one line per package and it is the compiler's own suggestion**:
+`use self::skin;`, measured in both orders with every answer matching what each
+package's tests assert. **Write `use self::<x>;` for a module your package owns, always.**
+
+✅ **AND `make fast` RUNS `tools/basenames.sh` NOW** — it fails when two packages each
+hold `src/<x>.loft` and each claim it with a bare `use`. ⚠ It does not flag `render.loft`
+(`lavition_ui` + `graphics`) or `wall.loft` (`hex_part` + `hex_world`): only one package
+claims each of those, so the rule is *two bare claims*, not *two files*. ⚠ **Its first
+draft reported fourteen collisions and every one was a package with itself** — the
+working-tree `../loft-libs-world/hex_place` against the registry's `hex_place-0.1.0` —
+so it normalises the version suffix now.
+
+⚠ **AND MY OWN CONTROL FAILED FIRST, ON MY MISTAKE.** `SkinCheck.kc_worst` does not
+exist; it is `kc_dx`. A probe that reds for its own reason and one that reds for the
+subject's look identical in a log, which is why the control is a separate file that has
+to go green before the subject's red means anything. [probe/skin](../../probe/skin/README.md).
+
 ## ⛔ A HOUSE TYPE COULD BE READ AND NOT WRITTEN — plan 22 `T1b`/`T1c`, 2026-08-18
 
 **Read this before adding anything else to the palette.** `T1b` set out to give a house
@@ -354,6 +395,7 @@ run is used to clear a change, ask what it does not run.
 | [#948](https://github.com/loft-lang/loft/issues/948) · [#949](https://github.com/loft-lang/loft/issues/949) | its two residues | **filed 2026-08-17** |
 | [#950](https://github.com/loft-lang/loft/issues/950) | `--html` clobbers a struct parameter | **filed 2026-08-17**, narrowed to one statement the same day |
 | [#954](https://github.com/loft-lang/loft/issues/954) | `--html` ships no wasm name section | **filed 2026-08-17** — why #950 cost a bisect |
+| [#976](https://github.com/loft-lang/loft/issues/976) | two SIBLING packages claim one module basename, and the **consumer's** `use` order decides which loses its public surface | **filed 2026-08-18** — `enhancement` `needs-design` `wa:clean`, the ask being that a bare `use <x>;` prefer the package's OWN file. Fixed here with `use self::skin;` in both, and guarded by `tools/basenames.sh` |
 
 ⛔ **AND #912 IS THE ONE TO READ, BECAUSE THE FIX IS REAL AND LANDS ON THE WRONG SIDE.** loft
 gained an `Advice[module-name-shadowed]` that names both files, the `use` site and which one

@@ -445,6 +445,13 @@ gate-rep:
 #   TEST_VERBOSE=1 make fast      per-file seconds
 fast:
 	@sh tools/layering.sh
+# ⚠ **A SECOND STRUCTURAL GUARD, AND IT IS NOT WHAT `layering.sh` CHECKS.** That one
+# reads the ARROWS — who may depend on whom. This reads the module FILE NAMES, which
+# are global across the whole dependency graph (loft#912): two packages each holding
+# `src/skin.loft` and each saying a bare `use skin;` means only one of them gets its
+# own file, and **the consumer's `use` line order decides which**. Measured on
+# `moros_sim` + `hex_part`, 2026-08-18 — see `probe/skin/README.md`.
+	@sh tools/basenames.sh
 	@sh tools/walk-exact.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 	@$(MAKE) -s probe-k3c

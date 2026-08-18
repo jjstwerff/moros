@@ -1,0 +1,56 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// TWO PACKAGES DECLARE `src/skin.loft`. WHICH ONE DOES A CONSUMER GET?
+//
+// ⚠ Seen as an `Advice[module-name-shadowed]` in the SERVER's build log, naming
+// `lib/moros_sim/src/skin.loft` and `lib/hex_part/src/skin.loft` and saying *"this
+// `use` binds the second one"*. [loft#912](https://github.com/loft-lang/loft/issues/912)
+// and its two residues, #948 and #949 — and CLAUDE.md's table says the case where the
+// advice FIRES is the case where **the dependency's own answer silently changes**.
+//
+// ⚠ **THE INSTRUMENT IS AN ANSWER, NOT A BUILD.** A program that compiles proves the
+// names resolved to something; it does not prove they resolved to the right thing.
+// Each number below is checked against the value that package's OWN test asserts, so
+// a silently swapped module shows as a wrong number rather than as a missing symbol.
+// CONTROL: moros_sim is NOT in this graph
+use hex_part;
+
+fn main() {
+  ok = true;
+  // ── hex_part's skin ───────────────────────────────────────────────────────
+  // `skin_covers` over the same two boxes `lib/hex_part/tests/skin.loft` uses: a skin
+  // that contains the blockout answers `KC_COVERS`, one that is short answers
+  // `KC_SHORT`, and an empty pair answers `KC_EMPTY`.
+  blockout = hex_part::PartBox { pb_x0: 0.0, pb_y0: 0.0, pb_z0: 0.0,
+                                 pb_x1: 1.0, pb_y1: 2.0, pb_z1: 0.5 };
+  wide = hex_part::PartBox { pb_x0: 0.0 - 3.0, pb_y0: 0.0 - 1.0, pb_z0: 0.0 - 3.0,
+                             pb_x1: 4.0, pb_y1: 5.0, pb_z1: 4.0 };
+  short = hex_part::PartBox { pb_x0: 0.1, pb_y0: 0.0, pb_z0: 0.0,
+                              pb_x1: 0.8, pb_y1: 2.0, pb_z1: 0.5 };
+  empty = hex_part::PartBox { pb_x0: 0.0, pb_y0: 0.0, pb_z0: 0.0,
+                              pb_x1: 0.0, pb_y1: 0.0, pb_z1: 0.0 };
+  c_same = hex_part::skin_covers(blockout, blockout, 0.001);
+  c_wide = hex_part::skin_covers(blockout, wide, 0.001);
+  c_shrt = hex_part::skin_covers(blockout, short, 0.001);
+  c_mt   = hex_part::skin_covers(blockout, empty, 0.001);
+  println("skin: hex_part skin_covers same -> {c_same.kc_code}");
+  println("skin: hex_part skin_covers wide -> {c_wide.kc_code}");
+  println("skin: hex_part skin_covers short -> {c_shrt.kc_code} dx {c_shrt.kc_dx}");
+  println("skin: hex_part skin_covers empty -> {c_mt.kc_code}");
+  if c_same.kc_code != hex_part::KC_COVERS || c_wide.kc_code != hex_part::KC_COVERS {
+    println("skin: ⛔ a skin that contains the blockout did not say so");
+    ok = false;
+  }
+  if c_shrt.kc_code != hex_part::KC_SHORT {
+    println("skin: ⛔ a short skin did not say so");
+    ok = false;
+  }
+  if c_mt.kc_code != hex_part::KC_EMPTY {
+    println("skin: ⛔ an empty box did not say so");
+    ok = false;
+  }
+
+  if ok { println("skin: BOTH ANSWER — the collision changes no answer in this graph"); }
+  else  { println("skin: ⛔ AN ANSWER MOVED — the shadowing is live"); }
+}

@@ -392,6 +392,44 @@ with an exact comparison — the effort letter did not change, the *recoverabili
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
 
+## ⛔ What the `skin` collision turned up (2026-08-18) — a sibling can amputate your public API
+
+**Not a plan step — a defect found in a build log while doing `T1c`, measured, fixed and
+filed.** [`probe/skin`](../../probe/skin/README.md),
+[loft#976](https://github.com/loft-lang/loft/issues/976).
+
+`moros_sim` and `hex_part` each held a `src/skin.loft`, with **no name in common**, each
+saying a bare `use skin;`. Both suites green forever, because a package's own graph holds
+only itself. Put both in one program:
+
+| the consumer says | what breaks |
+|---|---|
+| `use moros_sim; use hex_part;` | ⛔ `unknown type 'PartBox'`, `Unknown function skin_covers` |
+| `use hex_part; use moros_sim;` | ⛔ `Unknown function skin_overlap` |
+
+⛔ **The consumer's `use` line ORDER decides which library loses its module**, and
+⚠ **a qualified name does not help** — `hex_part::skin_covers` fails as the bare name
+does, because the module never loads and there is no second name to choose between. What
+is amputated is a **published library's public surface**, decided by unrelated siblings
+in somebody else's graph.
+
+⚠ **It had not bitten only because both modules are test-only.** Neither
+`moros_sim::skin_fit` nor `hex_part::skin_covers` has a production caller, so nothing
+crossed the boundary and the editor server has carried both packages for months. **The
+first production caller in either would have been the failure** — reported against a file
+its author had not touched.
+
+✅ `use self::skin;` in both, the compiler's own suggestion, measured in both orders.
+✅ `tools/basenames.sh` is the standing guard and it is in `make fast`: two packages each
+holding `src/<x>.loft` **and each claiming it with a bare `use`**. ⚠ It does not flag
+`render.loft` or `wall.loft`, where only one package claims the name — the rule is *two
+bare claims*, not *two files*. ⚠ Its first draft reported **fourteen** collisions, every
+one a working-tree package against its own published version.
+
+⚠ **And my own control failed first, on my mistake** (`SkinCheck.kc_worst` is `kc_dx`) —
+which is why the control is a separate file that has to go green before the subject's red
+means anything.
+
 ## ✅ What `T1b`/`T1c` turned up (2026-08-18) — the table was read by a gesture and writable only by a test
 
 **`T1b` set out to do the design's first clause for a house type — *"defaults for

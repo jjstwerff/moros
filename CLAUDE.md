@@ -114,6 +114,37 @@ goes red. ⚠ And it is worth re-reading which way the pair went — the struct-
 outright while this one got a warning, so *a reader who saw one ✅ could reasonably assume the
 other*.
 
+⛔ **AND THERE IS A THIRD SHAPE, LIVE IN THIS TREE FOR MONTHS — measured 2026-08-18,
+[loft#976](https://github.com/loft-lang/loft/issues/976).** Not a package and its dependency: **two
+SIBLINGS that know nothing about each other**, `moros_sim` and `hex_part`, each holding
+`src/skin.loft` with **no name in common** and each saying a bare `use skin;`. Both suites green
+forever, because a package's own graph holds only itself. Then a consumer pulls both:
+
+| the consumer says | what breaks |
+|---|---|
+| `use moros_sim; use hex_part;` | ⛔ `unknown type 'PartBox'`, `Unknown function skin_covers` |
+| `use hex_part; use moros_sim;` | ⛔ `Unknown function skin_overlap` |
+
+**The CONSUMER's `use` line order decides which library loses its module**, and neither author can
+see it from their own tests. ⚠ **A qualified name does not help** — `hex_part::skin_covers` fails
+exactly as the bare name does, because the module never loads and there is no second name to choose
+between; that is what separates this from the struct collision fixed on 2026-08-11. ⚠ **What is
+amputated is a published library's PUBLIC SURFACE**, decided by unrelated siblings in somebody
+else's graph.
+
+✅ **THE FIX IS ONE LINE PER PACKAGE AND IT IS THE COMPILER'S OWN SUGGESTION: `use self::skin;`** —
+measured to work in both orders, with every answer matching what each package's tests assert. **Write
+`use self::<x>;` for a module your package owns, always**, and treat the bare form as the special
+case that wants a stranger's file. ✅ And `make fast` runs **`tools/basenames.sh`** now, which fails
+when two packages each hold `src/<x>.loft` and each claim it with a bare `use` — checked against the
+defect it was written for. ⚠ It does **not** flag `render.loft` (`lavition_ui` + `graphics`) or
+`wall.loft` (`hex_part` + `hex_world`), because only one package claims each of those; the rule is
+*two bare claims*, not *two files*. [probe/skin](probe/skin/README.md).
+
+⚠ **AND IT HAD NOT BITTEN ONLY BY LUCK**: both `skin` modules are test-only, so no call ever crossed
+the boundary. **The first production caller in either would have been the failure** — reported
+against a file its author had not touched.
+
 ⚠ **AND THE CHECK THAT SHOULD HAVE CAUGHT IT WAS DISABLED BY A NAME.** `tools/layering.sh` skipped
 every `moros_*` package, so a universal package wearing a Moros prefix was exempt from the one
 check written to catch exactly that — `moros_ui` for months, then `moros_terrain`. Both are
