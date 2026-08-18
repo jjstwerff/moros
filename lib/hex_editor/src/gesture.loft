@@ -2821,6 +2821,18 @@ pub struct OpeningMade {
   om_kind: integer = 0,       // the profile, after the tens and twenties are read off
   om_x:    float = 0.0,       // where it landed ON the wall, not where the author stood
   om_z:    float = 0.0,
+  // ── THE CELL WHOSE EDGES WERE MARKED — plan 22 `S2c` ────────────────────────
+  //
+  // ⚠ **NOT DERIVED FROM `om_x`/`om_z`, AND THAT IS THE POINT.** A driver rebuilding
+  // a picture needs the cell to mark dirty, and `open_span` already knows which one
+  // it wrote — the author's own or the one they face, whichever carried the wall. A
+  // caller re-deriving it from the point on the wall would be the socket re-deriving
+  // the gesture's own arguments, which is `D0`'s finding: three arguments recomputed
+  // five lines after the function that knew them returned.
+  //
+  // ⚠ ZERO ON A REFUSAL, like `om_open`, and read there by nobody.
+  om_q:    integer = 0,
+  om_r:    integer = 0,
 }
 
 // A hole of no size, for the `om_open` an `OpeningMade` carries on a REFUSAL and

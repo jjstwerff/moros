@@ -451,6 +451,14 @@ fast:
 	@$(MAKE) -s probe-t3
 	@$(MAKE) -s probe-t4
 	@$(MAKE) -s probe-k3d
+# ⚠ **AND THIS IS THE ONLY THING IN `fast` THAT COMPILES EITHER PROGRAM UNDER `src/`.**
+# The comment over `headless-same` records what that cost once: a name collision in
+# `editor_server.loft` presented as a thirty-minute HANG, with the compiler's own
+# two-line diagnostic sitting in `.editor.log`, and nothing in this tier noticed
+# because nothing in this tier builds it. It also carries `probe-s2c`, so the fast loop
+# now sees a divergence between the two drivers instead of only the library's own view
+# of itself. ⚠ It costs about 35 s of the tier and starts three servers, each stopped.
+	@$(MAKE) -s headless-same
 	@echo "fast: ⚠ NOT run here — the browser. Nothing above builds or drives the"
 	@echo "      --html page; \`make page-check\` is the tier that does. A green fast"
 	@echo "      loop cleared a toolchain swap on 2026-08-16 while the browser editor"
@@ -607,6 +615,27 @@ headless-same:
 	  echo "  headless: $$(cat .headless.txt)"; \
 	  echo "  served:   $$(cat .served.txt)"; exit 1; fi
 	@rm -f .headless.txt .served.txt
+	@$(MAKE) -s probe-s2c S="niche embrasure"
+
+# S2c (plan 22) — THE SAME SCRIPT BUILDS THE SAME WORLD, WITH AND WITHOUT A SERVER,
+# **on the openings**. The target above compares one SENTENCE and that sentence is
+# `verb place`'s; this compares the saved worlds BYTE FOR BYTE.
+#
+# ⛔ **IT WAS FALSE FOR FIVE OF THE EIGHT SCRIPTS THAT CUT AN OPENING**, because the
+# server's `36:` handler was a second body of `hex_editor::session_open_kind` with
+# `D1a.2`'s defect still in it — `niche` opened 6 edges headless and 3 served,
+# `embrasure` 2 and **3**. See `probe/s2c/README.md`; the table and both controls are
+# there.
+#
+# ⚠ `S=` NARROWS IT, and `headless-same` above passes the two rows that diverged in
+# OPPOSITE directions — one where the server opened fewer edges and one where it opened
+# more. A bare `make probe-s2c` runs all eight, which is what a change to the opening
+# family should do.
+#
+# ⚠ THREE OF THE EIGHT AGREED EVEN BEFORE THE FIX, so a shorter default list is not a
+# cheaper version of this check — it is a version that reports the defect as absent.
+probe-s2c:
+	@GROUND=0 sh probe/s2c/run.sh $(S)
 
 # SHOW THE GUARDS, AND CHECK THEM. Every S3 probe, each printing its own verdict, and
 # the ones that draw a map draw it here — the guard's decisions as a picture rather than

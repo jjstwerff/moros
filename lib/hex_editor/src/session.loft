@@ -379,6 +379,13 @@ pub fn session_open_kind(s: EditSession, w: VoxelWorld, a: Author, kind: integer
                          om_kind: kind };
   }
   s.es_open.items += [so_made.om_open];
+  // ⚠ **THE CELL COMES BACK WITH THE ANSWER — plan 22 `S2c`.** `open_span` searched
+  // the author's own cell and then the one they face, and it is the only thing here
+  // that knows which of the two carried the wall. A driver marking a chunk dirty from
+  // the author's position instead would be right most of the time and wrong exactly
+  // when the opening went into the cell ahead, which is the common case for a walker.
+  so_made.om_q = so_ack.ak_q;
+  so_made.om_r = so_ack.ak_r;
   so_made
 }
 

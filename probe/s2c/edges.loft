@@ -1,0 +1,105 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// DO THE TWO DRIVERS CUT THE SAME OPENING? — plan 22 `S2c`, the premise.
+//
+// ⚠ **THE HYPOTHESIS CAME FROM READING AND THE ANSWER HAS TO COME FROM A COUNT.**
+// `editor_run` performs `verb opening` through `press_verb` → `session_open_kind`,
+// which since `D1a.2` decides the SHAPE first and then marks every wall edge the
+// opening's own width covers (`open_span`). `src/editor_server.loft`'s `36:` handler
+// is a second body of the same gesture and still does it the old way round:
+// `open_ahead(wld, a, DOOR_MAT, 1)` — ONE edge, at the author's own cell — and then
+// `opening_make`. If that is live, a door cut over the wire marks one 0.87-unit edge
+// where the same script headless marks the whole opening, which is exactly the state
+// `D1a.2` measured as *the walker stopped outside the house*.
+//
+// ⚠ **THE CONTROL IS IN THE SAME PROGRAM, AND IT IS WHAT MAKES THE SUBJECT
+// READABLE.** Both drivers place their house through `press_verb` (`V2a`), so the
+// WALL_MAT bytes must agree; only DOOR_MAT is in question. A run where both differ is
+// a fixture fault — two different houses — and says nothing about openings. A run
+// where neither differs refutes the finding.
+//
+// ⚠ **AND THE WORLD KEYS CANNOT BE THE INSTRUMENT.** `editor_run` seeds a patch of
+// ground and the server seeds none (`E1γ` — absence is the floor), so the two worlds
+// differ before a gesture is performed. `make headless-same` compares one SENTENCE
+// for that reason, and that sentence is about the HOUSE — which is why nothing in
+// this tree has ever looked at what the openings did.
+//
+// ⚠ **EVERY LAYER, NOT A REFERENCE HEIGHT.** `wall_of` takes the height the author is
+// authoring at and picks a layer from it; a probe that guessed one would report zero
+// for a world whose floor is somewhere else and read as *no walls were built*. A
+// column carries its layers, so this counts the bytes themselves.
+use hex_editor;
+use hex_voxel;
+
+// Wall bytes of one material, counted once each — an edge is STORED once, on its
+// owning cell, whatever else can see it.
+fn stored(w: VoxelWorld, mat: integer) -> integer {
+  n = 0;
+  for q in 0 - 16..16 {
+    for r in 0 - 16..16 {
+      col = world_column(w, q, r);
+      for c in col.co_cells {
+        if (c.h_wall_nw as integer ?? 0) == mat { n = n + 1; }
+        if (c.h_wall_ne as integer ?? 0) == mat { n = n + 1; }
+        if (c.h_wall_e  as integer ?? 0) == mat { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn load(path: text) -> VoxelWorld {
+  ld = world_load(path);
+  if ld.wl_code != hex_voxel::WL_OK {
+    println("s2c: cannot read {path} — code {ld.wl_code} {ld.wl_detail}");
+  }
+  ld.wl_world
+}
+
+fn main() {
+  ra = env_variable("RUNNER");
+  sa = env_variable("SERVED");
+  if ra == "" || sa == "" {
+    println("s2c: RUNNER=<path> SERVED=<path> are both required");
+    return;
+  }
+  rw = load(ra);
+  sw = load(sa);
+
+  r_wall = stored(rw, hex_editor::WALL_MAT);
+  s_wall = stored(sw, hex_editor::WALL_MAT);
+  r_door = stored(rw, hex_editor::DOOR_MAT);
+  s_door = stored(sw, hex_editor::DOOR_MAT);
+
+  println("s2c: runner wall {r_wall} door {r_door}");
+  println("s2c: served wall {s_wall} door {s_door}");
+
+  // ⛔ **THE FIRST CONTROL WAS WRONG AND IT LOOKED RIGHT: `WALL_MAT` ALONE.** An
+  // opening does not ADD a byte, it CONVERTS one — `wall_set` replaces the wall
+  // material on the edge it opens — so a driver that opens more edges has fewer walls
+  // by exactly that many, and a wall-only control reads *the two built different
+  // houses* for the one reason it was written to exclude. What both drivers must
+  // agree on is the BOUNDARY: `verb run` and `verb place` stamp it and the opening
+  // family only re-labels within it.
+  r_all = r_wall + r_door;
+  s_all = s_wall + s_door;
+  println("s2c: boundary runner {r_all} served {s_all}");
+  if r_all == 0 || s_all == 0 {
+    println("s2c: CONTROL FAILED — a world with no boundary in it ({r_all} / {s_all}); "
+            + "the fixture never ran and the door counts say nothing");
+    return;
+  }
+  if r_all != s_all {
+    println("s2c: CONTROL FAILED — the two drivers stamped different boundaries "
+            + "({r_all} vs {s_all} bytes); the door counts say nothing");
+    return;
+  }
+  println("s2c: control OK — {r_all} boundary bytes in both");
+  if r_door == s_door {
+    println("s2c: AGREE — both drivers opened {r_door} of them");
+  } else {
+    println("s2c: DIVERGES — headless opened {r_door}, served {s_door}: the server's "
+            + "`36:` handler is a second body and it opens a different set of edges");
+  }
+}
