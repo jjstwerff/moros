@@ -58,9 +58,36 @@ from `main`, and:
 - `worked-examples` is **6 commits unpushed** and mid-series (rows 1–5 of a phase).
 
 So the ang_wrap fix rides on their unpublished 0.1.1, and shipping it means merging
-another session's unfinished plan phase to `main` first. That is a decision about someone
-else's work, not a mechanical step, so it is where this stops. The registry checkout and
-the signing key are both on this box; the signing step is human-gated by design.
+another session's unfinished plan phase to `main` first.
+
+⛔ **AND THAT MERGE WOULD TURN THE SHARED LIBRARY CI RED — measured, and it is the real
+blocker.** `library-ci-reusable.yml` gates every package on
+`check_doc_drift.sh examples`, and loft's `scripts/example_repos.tsv` registers only
+**HXG, HXT, HXW** for this repo. The branch authored worked examples in five more:
+
+| package | acronym | citations that fail |
+|---|---|---|
+| `hex_form` | `HXF` | 7 |
+| `hex_place` | `HXP` | 6 |
+| `hex_roof` | `HXR` | 6 |
+| `hex_shape` | `HXS` | 9 |
+| `hex_way` | `HXY` | 7 |
+
+`hex_grid` passes the same command — that is the control, and it says the gate works
+while the rows are missing. ⚠ **The gate is green on `main` today only because those
+files do not exist there**, so the failure is invisible until somebody merges. **A
+library repo cannot register its own acronym** — the registry is ecosystem-global and
+lives in loft — so this is [loft#979](https://github.com/loft-lang/loft/issues/979),
+filed rather than fixed because that tree is read-and-file-tickets here.
+
+✅ **Everything downstream is de-risked and waiting.** `loft package` in `hex_way` builds
+cleanly and prints its index entry — `sha256 6d077b33…`, 16550 bytes — and the registry
+checkout (`~/workspace/loft-registry`) plus the signing key are on this box. ⚠ Two
+details the runbook warns about and `loft package` does not emit: the entry needs
+`"subpath": "hex_way"` and `"deps": {"hex_field": ">=0.1", "hex_edge": ">=0.1"}` copied
+from the 0.1.0 entry, and the release tag must be **`hex_way-v0.1.1`** to match that
+entry's url shape (`loft package` guesses a different repo). The signing step is
+human-gated by design.
 
 ⚠ **Not reachable from moros.** Nothing in `lib/`, `src/`, the sibling tree or the
 registry calls `track_arc` at all; every track this tree builds is `track_straight`. The
