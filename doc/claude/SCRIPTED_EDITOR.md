@@ -274,7 +274,7 @@ throughout so there is always something to look at.
 | `S4` | ✅ **a house from the pose** — `box_fill`, `seat_write`, four mitred sides | `shots/s4-house.png`: the plan closes at every corner |
 | `S5` | ✅ **a door and a window where the author stands** — `O` and `P` | `shots/s5-opening.png`: you see through it |
 | `S6` | ◐ **`draw_roof`** — the model is done and gabled; the eave is still a hex staircase | not yet: it reads as a red slab. The eave wants the plan's straight side, exactly as the wall did at `S3` |
-| `S7` | ✅ **`src/editor_run`** — the same `.keys` file, no socket, no tick | `make headless-same`: both drivers report the same house |
+| `S7` | ✅ **`src/editor_run`** — the same `.keys` file, no socket, no tick | `make headless-same`: both drivers report the same house — ⛔ **and *the same house* was all it ever compared.** Plan 22 `S2c`, 2026-08-18: the sentence it diffs is `verb place`'s, so the opening family was outside it, and the server's `36:` handler had kept its own copy of the gesture — **six of the eight live scripts that cut an opening built a different world with a socket than without**, `house.keys` among them, with the same edge COUNT and the door in a different segment. It runs `make probe-s2c` now, which compares the two drivers' saved worlds **byte for byte** at `GROUND=0`, and `make fast` runs the pair |
 | `S8` | **the leaf** — a door that swings, on a hinge (`Assembly`, `A1`–`A10`) | the door **ajar**, which is what makes it read as a door |
 
 ⚠ **`S1` before `S3`.** The temptation is to fix the visible wall first. The test comes

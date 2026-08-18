@@ -457,7 +457,9 @@ fast:
 # two-line diagnostic sitting in `.editor.log`, and nothing in this tier noticed
 # because nothing in this tier builds it. It also carries `probe-s2c`, so the fast loop
 # now sees a divergence between the two drivers instead of only the library's own view
-# of itself. ⚠ It costs about 35 s of the tier and starts three servers, each stopped.
+# of itself. ⚠ It starts THREE servers, each stopped: one for the house sentence and one
+# per `probe-s2c` script. Measured — the sentence half alone was 11.8 s, and `make fast`
+# end to end is 5m04 with the pair in it.
 	@$(MAKE) -s headless-same
 	@echo "fast: ⚠ NOT run here — the browser. Nothing above builds or drives the"
 	@echo "      --html page; \`make page-check\` is the tier that does. A green fast"

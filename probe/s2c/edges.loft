@@ -13,11 +13,20 @@
 // where the same script headless marks the whole opening, which is exactly the state
 // `D1a.2` measured as *the walker stopped outside the house*.
 //
-// ⚠ **THE CONTROL IS IN THE SAME PROGRAM, AND IT IS WHAT MAKES THE SUBJECT
-// READABLE.** Both drivers place their house through `press_verb` (`V2a`), so the
-// WALL_MAT bytes must agree; only DOOR_MAT is in question. A run where both differ is
-// a fixture fault — two different houses — and says nothing about openings. A run
-// where neither differs refutes the finding.
+// ⛔ **AND IT IS THE DIAGNOSIS, NOT THE VERDICT — `run.sh` COMPARES THE BYTES.** A
+// count is blind to WHICH edge was opened, and `house.keys` is the fixture that
+// proves it: 2 door bytes in both drivers, two worlds that are not the same file, and
+// the front door in a different wall segment. This program runs when `cmp` has
+// already said they differ, to say what changed hands.
+//
+// ⛔ **THE FIRST CONTROL HERE WAS `WALL_MAT` ALONE AND IT LOOKED RIGHT.** Both drivers
+// place their house through `press_verb` (`V2a`), so — the reasoning went — the walls
+// must agree and only the doors are in question. They do not: an opening does not ADD
+// a boundary byte, it **converts** one, so a driver that opens more edges has fewer
+// walls by exactly that many. The control fired *the two drivers did not build the
+// same house* on the three rows it existed to exclude, and it fired BECAUSE the
+// subject was real. What both drivers must share is the BOUNDARY TOTAL — `verb run`
+// and `verb place` stamp it and the opening family only re-labels within it.
 //
 // ⚠ **AND THE WORLD KEYS CANNOT BE THE INSTRUMENT.** `editor_run` seeds a patch of
 // ground and the server seeds none (`E1γ` — absence is the floor), so the two worlds
@@ -49,6 +58,29 @@ fn stored(w: VoxelWorld, mat: integer) -> integer {
   n
 }
 
+// ⛔ **AND A COUNT CANNOT SEE *WHICH***, WHICH IS WHY THIS EXISTS. `house.keys` scores
+// 2 door bytes in both drivers and its two worlds are **not** the same file: the old
+// server took the first `WALL`/`FENCE` edge in DIRECTION ORDER from the author's cell
+// and the library takes the edges nearest the opening's projection onto the run, so
+// the same number of edges can be a different set of them. The count said AGREE and
+// the bytes said DIFFER, and the bytes were right.
+fn door_edges(w: VoxelWorld, mat: integer) -> text {
+  out = "";
+  for q in 0 - 16..16 {
+    for r in 0 - 16..16 {
+      col = world_column(w, q, r);
+      l = 0;
+      for c in col.co_cells {
+        if (c.h_wall_nw as integer ?? 0) == mat { out += " {q},{r}/{l}nw"; }
+        if (c.h_wall_ne as integer ?? 0) == mat { out += " {q},{r}/{l}ne"; }
+        if (c.h_wall_e  as integer ?? 0) == mat { out += " {q},{r}/{l}e"; }
+        l = l + 1;
+      }
+    }
+  }
+  out
+}
+
 fn load(path: text) -> VoxelWorld {
   ld = world_load(path);
   if ld.wl_code != hex_voxel::WL_OK {
@@ -74,6 +106,14 @@ fn main() {
 
   println("s2c: runner wall {r_wall} door {r_door}");
   println("s2c: served wall {s_wall} door {s_door}");
+  r_at = door_edges(rw, hex_editor::DOOR_MAT);
+  s_at = door_edges(sw, hex_editor::DOOR_MAT);
+  println("s2c: runner doors at{r_at}");
+  println("s2c: served doors at{s_at}");
+  if r_at != s_at && r_door == s_door {
+    println("s2c: ⛔ THE SAME COUNT ON A DIFFERENT SET — a count is blind to WHICH "
+            + "edge was opened, and these two are not the same door");
+  }
 
   // ⛔ **THE FIRST CONTROL WAS WRONG AND IT LOOKED RIGHT: `WALL_MAT` ALONE.** An
   // opening does not ADD a byte, it CONVERTS one — `wall_set` replaces the wall

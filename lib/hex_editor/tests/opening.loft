@@ -530,3 +530,45 @@ fn test_and_the_same_house_with_no_door_still_stops_them() {
          "an undoored house let the walker in at "
        + "{walk_reach(w, s, 0.0 - 8.0, 6.0)}");
 }
+
+// ── THE CELL COMES BACK WITH THE ANSWER — plan 22 `S2c` ─────────────────────
+//
+// ⚠ **A DRIVER REBUILDING A PICTURE NEEDS TO KNOW WHICH COLUMN CHANGED**, and until
+// this it had to re-derive one from the author's pose. That is right until the wall is
+// the one AHEAD — `open_span` searches the author's own cell and then the cell they
+// face — and it is wrong exactly for a walker, who stands beside a wall rather than in
+// it. `src/editor_server.loft`'s `36:` handler is the consumer: `mark_dirty` takes
+// `om_q`/`om_r`.
+//
+// ⚠ **THE CLAIM IS THAT IT IS THE MARKED CELL, NOT THAT IT IS NON-ZERO.** A field
+// left at its default would pass *did it come back* on a fixture whose answer happens
+// to be `(0,0)`, so the row asserts the cell that OWNS the edge the gesture turned
+// into a door — read out of the store, never out of the same expression the subject
+// used.
+fn test_the_opening_reports_the_cell_whose_edge_it_opened() {
+  w = walled();
+  s = a_session_at_a_wall(w);
+  made = hex_editor::session_opening(s, w, at_the_wall(w), hex_editor::STOREY_H);
+  assert(made.om_ok, "refused: {made.om_why}");
+  // The cell it named must carry a door edge of its own, or one of its neighbours'
+  // edges is stored on it — which is what `edge_owner` decides and what a driver
+  // marking a chunk dirty is actually about.
+  doors = 0;
+  for d in 0..6 {
+    if hex_editor::wall_of(w, made.om_q, made.om_r, d, 2.0) == hex_editor::DOOR_MAT {
+      doors = doors + 1;
+    }
+  }
+  assert(doors > 0,
+         "the gesture named ({made.om_q},{made.om_r}) and there is no opening on it");
+  // ⚠ AND THE CONTROL: a cell that was NOT the one it named has no opening on it.
+  // Without this the row would pass for any cell in a world where every cell has a
+  // door — which `walled()` is not, and the assertion is what says so.
+  far = 0;
+  for d in 0..6 {
+    if hex_editor::wall_of(w, made.om_q + 4, made.om_r, d, 2.0) == hex_editor::DOOR_MAT {
+      far = far + 1;
+    }
+  }
+  assert(far == 0, "the fixture has openings everywhere — this row cannot be surprised");
+}

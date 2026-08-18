@@ -70,6 +70,59 @@ not yet claimed here.
 and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
 only the lifetime fix.
 
+## ⛔ THE SERVER CUT A DIFFERENT DOOR THAN THE RUNNER — plan 22 `S2c`, fixed 2026-08-18
+
+**`src/editor_server.loft`'s `36:` handler was a second body of
+`hex_editor::session_open_kind`.** `S2a` moved the opening's CHOOSING into the library
+and left the ASSEMBLY at the socket: `open_ahead(wld, a, DOOR_MAT, 1)` and only then
+`opening_make` — the order `D1a.2` reversed on the other side, with the one-edge width
+it replaced and a store write that happened before the refusal was known.
+
+⛔ **So the same `.keys` file built a different world depending on whether a socket was
+involved, on SIX of the eight live scripts that cut an opening.** `niche` 6 edges
+headless against 3 served, `profiles` 6 against 4, `door` and `opening` 3 against 2, and
+`embrasure` 2 against **3** — the server opening one MORE, because a refused embrasure
+had already turned a wall edge into a door.
+
+⛔ **AND `house.keys` IS THE ROW TO READ, BECAUSE A COUNT IS BLIND TO IT.** Two edges in
+both drivers, and the two worlds are not the same file:
+
+```
+runner doors at  -2,1/0nw  -1,2/0e
+served doors at  -3,1/0e   -1,2/0e
+```
+
+The window landed on the same edge and **the front door did not**. The old body took the
+first `WALL`/`FENCE` edge in DIRECTION ORDER from the author's own cell; `open_span`
+takes the edges nearest the opening's projection onto the run. `house.keys` is the script
+every check in this tree runs and the one that renders `s6-house.png`.
+
+⚠ **THE HYPOTHESIS CAME FROM READING AND THE FIRST MEASUREMENT REFUTED IT.** `house`
+alone printed *"REFUTED — both drivers marked 2 door bytes"* — the sentence a real defect
+produces when the one fixture everybody runs is the one that agrees. What rescued it was
+running **every** script that opens something, and then replacing the count with the
+**bytes**. ⚠ **And my own control was wrong while looking exactly like a control**:
+`WALL_MAT` alone, on the argument that both drivers place the same house. An opening
+CONVERTS a boundary byte rather than adding one, so a driver that opens more edges has
+fewer walls by exactly that many, and the control fired on the three rows it existed to
+exclude. The invariant is the **boundary total**.
+
+✅ **The fix is the call** — `session_open_kind`, the entry point `press_verb` already
+uses. `OpeningMade` carries `om_q`/`om_r` now, the cell `open_span` actually marked,
+because a socket re-deriving it from the pose is `D0`'s finding again. One sentence per
+outcome falls out of the restructure: the old body sent *"no niche to cut into"* and then
+*"opened a profile 1 hole"* over the top of it, a defect its own comment had deferred.
+
+⛔ **NOTHING IN THE TREE COULD SEE IT, AND THAT IS THE PART TO CARRY FORWARD.**
+`make headless-same` compares ONE SENTENCE and that sentence is `verb place`'s; **no gate
+cuts an opening over the wire at all**; and `probe/k3d` records the headless side only.
+✅ `make probe-s2c` compares the two drivers' saved worlds **byte for byte** at
+`GROUND=0` (the runner started where the server starts), with the counts as the diagnosis
+on a difference and a vacuity guard under it. Control at the pre-fix commit: **6 of 8
+DIFFER**. ✅ **And `make fast` now runs `headless-same`** — the only thing in that tier
+that compiles either program under `src/`, which is the gap the Makefile has recorded
+since a name collision presented as a thirty-minute hang.
+
 ## ⛔ THE HOUSE HAD TWO OF ITS FOUR WALLS MISSING — plan 22 `D2c`, fixed 2026-08-18
 
 **Read this one first if you read nothing else.** `place_house` printed `84 wall edges`

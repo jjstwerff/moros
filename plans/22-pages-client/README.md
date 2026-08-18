@@ -199,6 +199,15 @@ entry** (plan 21's, on the owner's call), the store carries the payload without 
 house is, and `press_verb` reads it: `longhouse wid=7 dep=5` changes the house with **no code
 touched**, while a world declaring nothing is byte-identical.
 
+✅ **AND THE TWO DRIVERS CUT THE SAME DOOR NOW — `S2c`, 2026-08-18.** Found while reading
+`press_verb`'s opening arm for `T1`, not looked for: the server's `36:` handler was a **second
+body** of `session_open_kind` with `D1a.2`'s defect still in it, so **six of the eight live
+scripts that open anything built a different world with a socket than without**. ⛔ **`house.keys`
+is the row that matters** — 2 edges in both drivers and the worlds still differ, because the same
+count is a different SET of edges: the flagship script's front door was in the wrong wall segment
+over the wire. ⚠ **The count refuted the hypothesis and the bytes confirmed it**, which is *when
+one instrument cannot answer, the answer is a second instrument* applied to my own probe.
+
 **Next:** the rest of **`T1`** — the defaults beyond `wid`/`dep` (which door, which window,
 which floor), and then the half that decides the architecture: **a type that contributes its own
 VERBS**, which is what makes the verb table data and *"which keys does this editor have"* a query
@@ -283,6 +292,7 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 | ✅ **`S3`** = **`R2`** — `O P I U N M` collapse to ONE `opening` verb | M | **DONE.** Six keys against six selections: equal `w_tau` AND equal `Opening` · 4 sabotages red · `R3`'s regression retired | ✅ Done |
 | ✅ **`S0`** — the scene records go with the store they describe | XS | **DONE.** Found while checking `S1`'s premise: `9:` left the previous world's cottage in the session and `37:` hung a balcony on it | ✅ Done |
 | ✅ **`S2a`** — the opening's CHOOSING moves into `hex_editor` | S | **DONE.** The server's report is **identical over 8 scripts and 240 lines**; 5 new loft tests, 4 sabotages red | ✅ Done |
+| ✅ **`S2c`** — the server's `36:` handler calls `session_open_kind`; its second body is deleted | S | ⚠ **not a green suite and not a count** — the two drivers' saved WORLDS, byte for byte, over every script that opens anything | **DONE 2026-08-18.** `S2a` moved the CHOOSING and left the ASSEMBLY at the socket: `open_ahead(wld, a, DOOR_MAT, 1)` and only then `opening_make` — the order `D1a.2` reversed on the other side, with the one-edge width it replaced. ⛔ **SO THE SAME `.keys` FILE BUILT A DIFFERENT WORLD DEPENDING ON WHETHER A SOCKET WAS INVOLVED, on SIX of the eight live scripts that cut an opening**: `niche` 6 edges headless against 3 served, `profiles` 6 against 4, `door` and `opening` 3 against 2, `embrasure` 2 against **3** — the server opening one MORE, because it wrote the store before it knew the shape was refused. ⛔ **AND `house.keys` IS THE ROW TO READ**: 2 edges in both, and the worlds still differ — `-2,1/0nw` against `-3,1/0e`, **the same count on a different set**. The old body took the first `WALL`/`FENCE` edge in DIRECTION ORDER from the author's cell; `open_span` takes the edges nearest the opening's projection onto the run. The flagship script's front door was in the wrong wall segment over the wire. ⚠ **THE HYPOTHESIS CAME FROM READING AND THE FIRST MEASUREMENT REFUTED IT** — `house` alone printed *REFUTED — both drivers marked 2 door bytes*, which is what a defect that is only visible on other fixtures says. Two things rescued it: running EVERY script that opens something, and then replacing the count with the BYTES. ⛔ **AND MY OWN CONTROL WAS WRONG WHILE LOOKING RIGHT** — `WALL_MAT` alone. An opening CONVERTS a boundary byte rather than adding one, so a driver that opens more edges has fewer walls by exactly that many, and the control read *the two built different houses* on the rows it existed to exclude; the invariant is the boundary TOTAL, which agreed on all eight rows before and after. ⚠ `OpeningMade` carries `om_q`/`om_r` now — the cell `open_span` actually marked, the author's own or the one they face — because a socket re-deriving it from the pose is `D0`'s finding again. ⚠ **One sentence per outcome falls out of the restructure**: the old body sent *"no niche to cut into"* and then *"opened a profile 1 hole"* over the top of it, a defect its own comment deferred to *the next commit*. ⛔ **NOTHING IN THE TREE COULD SEE ANY OF IT** — `make headless-same` compares one sentence and that sentence is `verb place`'s, **no gate cuts an opening over the wire at all**, and `probe/k3d` records the headless side only · ✅ eight scripts byte-identical at `GROUND=0`, `make probe-s2c`, with the pre-fix commit as the control at **6 of 8 DIFFER** · `make fast` now runs `headless-same`, **the only thing in that tier that compiles either program under `src/`** · `make parts` rc 0 · `probe/k3d` PASS 31 |
 | ✅ **`V1`** — the verb vocabulary, `verb_of(key)`, and a `press` that takes a verb | S | **DONE.** Eleven keys through both layers, compared as whole-world BYTES · 6 sabotages red · hex_editor 420 → 428 | ✅ Done |
 | ✅ **`V2a`** — the server's `MSG_HOUSE` takes the VERB | XS | **DONE.** `make headless-same` green, sabotage red (`served:` empty against `house placed 27 cells, 84 wall edges, ridge at 21`) · `make gate` 48 PASS | ✅ Done |
 | ✅ **`V2b`** — `editor_run` resolves through `verb_of`; the **last production caller of `press(key)`** | S | **DONE.** ⚠ no equality can see this step — `probe/k1` check `G` (choose pointed, press `O`, the selection decides), seen red on the old line · `make headless-same` · `make probe-verbs` · `make probe-convert` | ✅ Done |
@@ -379,6 +389,94 @@ with an exact comparison — the effort letter did not change, the *recoverabili
 3. **What does local mode do about the walk?** The server has a tick and a walker; `editor_run`
    teleports and says so. The page reuses the client's existing walk — **unverified**, and the
    design names it as the honest place its invariant may be false.
+
+## ✅ What `S2c` turned up (2026-08-18) — a count agreed and the world did not
+
+**The claim `make headless-same` exists to make is *the same script builds the same scene with
+and without a server*.** For the opening family it was false, and it had been false since `S2a`
+— which moved the opening's CHOOSING into `hex_editor` and left the ASSEMBLY at the socket.
+
+### ⛔ Two bodies of one gesture, and only one of them got `D1a.2`
+
+`src/editor_server.loft`'s `36:` handler was:
+
+```
+oack  = open_ahead(wld, author, DOOR_MAT, 1)     ← ONE edge, in direction order
+omade = opening_make(…, HEIGHT_SCALE)            ← …and only then the shape
+```
+
+`hex_editor::session_open_kind` is the other body, and since `D1a.2` it runs the other way
+round — the shape first, then `open_span` marking every edge the opening's own width covers,
+at the point projected onto the run. Two things follow that the handler kept: the **one-edge
+width** `D1a.2` measured as *the walker stopped outside the house*, and a **store write before
+the refusal**, so a refused embrasure had already turned a wall into a door.
+
+⚠ And `HEIGHT_SCALE` rather than `w.w_unit` — `R1a`'s finding, latent here for the same reason
+it was latent at `D0`: no live script opens anything in part mode.
+
+### ⛔ Six of eight scripts, and the flagship one is invisible to a count
+
+| script | edges headless | served | the world |
+|---|---|---|---|
+| `house` | 2 | 2 | ⛔ **differs — same count, different edges** |
+| `door` · `opening` | 3 | **2** | ⛔ differs |
+| `niche` | 6 | **3** | ⛔ differs |
+| `embrasure` | 2 | **3** | ⛔ differs — the server opened one **more** |
+| `profiles` | 6 | **4** | ⛔ differs |
+| `annex` · `furnish` | 1 | 1 | identical |
+
+```
+runner doors at  -2,1/0nw  -1,2/0e
+served doors at  -3,1/0e   -1,2/0e
+```
+
+The window landed on the same edge and **the door did not**. `house.keys` is the script every
+check in this tree runs and the one that renders `s6-house.png`.
+
+### ⛔ The hypothesis came from reading, and the first measurement REFUTED it
+
+`house.keys` alone printed *`REFUTED — both drivers marked 2 door bytes`*. That is the sentence
+a defect produces when the one fixture everybody runs happens to be the one that agrees — and
+it is a sentence I would have filed. What rescued it was running **every** script that opens
+something, and then replacing the count with the **bytes**: at which point `house` joined the
+list, in the one way a count cannot see. **A number that agrees is not a world that agrees.**
+
+### ⛔ And my own control was wrong while looking exactly like a control
+
+The first version compared `WALL_MAT` bytes, on the argument that both drivers place their house
+through `press_verb` so the walls must match. They do not: **an opening CONVERTS a boundary byte
+rather than adding one**, so a driver that opens more edges has fewer walls by exactly that many.
+The control fired *the two drivers did not build the same house* on `niche`, `embrasure` and
+`profiles` — the three rows it existed to exclude — and it fired *because* the subject was real.
+The invariant is the **boundary total**, and it agreed on all eight rows before the fix and
+after, which is what makes these the same scenes with different holes in them.
+
+### ✅ What is checked now, and where it runs
+
+`make probe-s2c` compares the two drivers' saved worlds **byte for byte** at `GROUND=0` — the
+runner started where the server starts, which is what makes a whole world comparable at all —
+and only on a difference does it run the counts, so a failure names the gesture instead of
+starting a bisect. It carries a vacuity guard, because *no script diverged* and *nothing ran*
+are the same sentence otherwise.
+
+`make headless-same` runs the two rows that diverged in **opposite** directions, and
+⚠ **`make fast` now runs `headless-same`** — which is the only thing in that tier that compiles
+either program under `src/`. The Makefile has recorded what that gap cost since `D1`: a name
+collision in `editor_server.loft` presented as a **thirty-minute hang** with loft's own two-line
+diagnostic sitting in `.editor.log`, and no fast-tier check could see it because none of them
+builds that program.
+
+### What it does NOT claim
+
+- **Nothing about the picture.** No gate cuts an opening over the wire, and the five browser
+  gates are a separate question; what moved here is the store, and the store is what was
+  measured.
+- **Not that `36:` is the last second body.** It is the one that was measured. The same shape —
+  a library gesture with the socket keeping its own assembly — is what `K3`'s slab and hole
+  slices found, and the instrument built here (`probe/s2c/run.sh`) generalises to any script.
+- **Not that the divergence ever reached a person's screen in a way anyone noticed.** It reached
+  every attached editing session; whether anybody saw a door in the wrong segment is not
+  something this measurement can answer.
 
 ## ✅ What `D1` turned up (2026-08-17) — the verify was a self-test, and the corpus caught what the tests could not
 
