@@ -435,7 +435,7 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   // it is now what the cells are written FROM. `D0` moved the filing here so the
   // three arguments could stop being re-derived; this moves the construction one
   // line earlier so there is a single plan rather than two agreeing ones.
-  rp = roof_plan_of(f, roof_eave_y(seat, ROOF_EAVE_UP, w.w_unit), ROOF_PITCH_DEFAULT);
+  rp = roof_plan_of(f, roof_eave_y(seat, STOREY_H, w.w_unit), ROOF_PITCH_DEFAULT);
   rf = roof_over(w, f, cells, rp, 0);
   if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
   // ⚠ **AND THE PLAN IS FILED HERE, BECAUSE THIS IS WHERE THE ROOF IS KNOWN.** The
@@ -593,7 +593,13 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet,
 // degrees, and 0.7 is 35: steep enough that the gable is visible from the ground,
 // which is the only test this step has.
 pub const ROOF_PITCH_DEFAULT = 0.70;
-pub const ROOF_EAVE_UP = 12;      // the wall's own height — the roof starts where it ends
+// ⛔ **`ROOF_EAVE_UP` WAS HERE AND IT WAS THE THIRD NAME FOR ONE NUMBER — plan 22
+// `T1a`.** Its own comment said *"the wall's own height — the roof starts where it
+// ends"*, which makes it the same FACT as `gesture::STOREY_H` rather than merely the
+// same value; `hex_mesh::WALL_UP` was the third. The eave is not an independent
+// quantity, it is *one storey up*, so the call site says `STOREY_H` and a two-storey
+// wall would say `2 * STOREY_H` — which is the thing a separate constant could not
+// express without diverging.
 
 // ── S6b: THE ROOF IS DRAWN FROM ITS PLAN, NOT FROM ITS CELLS ────────────────
 //

@@ -1,7 +1,7 @@
 // `WALL` — how tall a part's walls are, and what they are made of.
 //
 // Plan 17 `A8.8`, [PARTS.md §P9.13]. The step exists because a door photographed
-// as a hole: `A8.3`'s leaf is drawn in the `wall` surface at one `WALL_UP`, which
+// as a hole: `A8.3`'s leaf is drawn in the `wall` surface at one `STOREY_H`, which
 // is the colour and the height of the wall it hangs in.
 //
 // ⚠ EVERY CLAIM HERE IS PAIRED WITH THE THING IT MUST REFUSE. A section that

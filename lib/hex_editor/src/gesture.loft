@@ -742,6 +742,22 @@ pub fn edge_set(w: VoxelWorld, a: Author, dir: integer, mat: integer, ref: float
 
 // A storey's height and the material a built floor carries — the storey gesture's
 // own vocabulary, moved with it.
+// ⚠⚠ **THE STOREY HEIGHT, AND IT IS THE ONLY ONE — plan 22 `T1a`.** A wall stands
+// this tall, an opening is cut in a wall this tall, and a roof's eave sits this far
+// above its floor. Those are three USES of one fact, and until `T1a` they were three
+// CONSTANTS: `hex_mesh::WALL_UP` (*"a storey of masonry"*) and
+// `hex_editor::ROOF_EAVE_UP` (*"the wall's own height"*) both said 12 beside this one,
+// in three packages, across 81 call sites, with nothing coupling any two.
+//
+// ⚠ **AND IT WAS DEMONSTRATED RATHER THAN ARGUED**: moving this constant to 13 left
+// `house.keys`' ridge at **23**, unmoved, because the roof was reading the other name.
+// After the merge the same edit moves it — which is what says there is one home now.
+//
+// ⚠ **A TALLER WALL IS A MULTIPLE, NOT A SECOND CONSTANT.** `place_house` asks for its
+// eave as `STOREY_H`, so a two-storey wall is `2 * STOREY_H` and stays joined to this
+// number. A separate `ROOF_EAVE_UP` is exactly how the two drift apart — which is the
+// state `T1a` found and the reason a house TYPE (plan 22 `T1`) could not bundle it yet:
+// a type cannot carry a default that has three homes.
 pub const STOREY_H     = 12;          // one storey, in height units (3 wu ≈ 2.6 m)
 pub const FLOOR_MAT    = 4;           // a built floor, above or below ground
 
@@ -5010,7 +5026,7 @@ pub fn ground_kind_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> Gr
 // second copy of a set nobody owns.
 //
 // ⚠ ONLY THE SLOPE LIVES HERE YET. `hex_mesh::wall_up` still hard-codes the HEIGHT
-// of each kind (`WALL_UP` 12, `FENCE_UP` 4, a door 0), which is the same shape of
+// of each kind (`STOREY_H` 12, `FENCE_UP` 4, a door 0), which is the same shape of
 // hard-coding one attribute over — named rather than fixed. It was the server's
 // until plan 22 `B1b.2c.3`; moving it HERE is what would let a kind carry its own
 // height, and `hex_mesh` depends on this package so the arrow already allows it.

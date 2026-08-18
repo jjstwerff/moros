@@ -2772,7 +2772,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
     (wnq, wnr) = hex_grid::hex_neighbor(wq, wr, wd);
     wh = terrain_h(wq, wr, wld);
     if terrain_h(wnq, wnr, wld) > wh { wh = terrain_h(wnq, wnr, wld); }
-    if oy + want * wt * sp < ((wh + hex_mesh::WALL_UP) as float) * HEIGHT_SCALE {
+    if oy + want * wt * sp < ((wh + hex_editor::STOREY_H) as float) * HEIGHT_SCALE {
       // ⚠ THE WALKER'S SKIN, BORROWED BY THE CAMERA ON PURPOSE. This is the boom's
       // sweep, not a walk — but the clearance it wants off a wall is the same 1 cm,
       // and a camera-local copy would be a second constant nobody could keep equal.
@@ -5520,7 +5520,7 @@ fn main() {
             okind = sess.es_open_kind;
             if ev.payload != "" { okind = ev.payload as integer ?? hex_editor::OP_ROUND; }
             omade = hex_editor::opening_make(
-              sess.es_runs, sess.es_open, wk.wk_x, wk.wk_z, okind, hex_mesh::WALL_UP, HEIGHT_SCALE);
+              sess.es_runs, sess.es_open, wk.wk_x, wk.wk_z, okind, hex_editor::STOREY_H, HEIGHT_SCALE);
             if omade.om_back {
               if omade.om_code == hex_editor::OM_NO_HOST {
                 srv.send_to(ev.cid, "S:no niche to cut into — make one with N first");

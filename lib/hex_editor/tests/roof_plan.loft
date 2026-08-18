@@ -98,7 +98,7 @@ fn test_the_plan_sits_on_the_seated_floor_and_not_on_the_authors_feet() {
   // The seat, read back out of the store the gesture just wrote — the floor cell at
   // the footprint's own anchor.
   seat = hex_editor::terrain_h(ack.ak_q, ack.ak_r, w);
-  want = hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, w.w_unit);
+  want = hex_editor::roof_eave_y(seat, hex_editor::STOREY_H, w.w_unit);
   assert(rp.rp_eave == want,
          "the plan's eave is the seated floor's: {rp.rp_eave} against {want} "
          + "(seat {seat}, feet {feet})");
@@ -224,12 +224,12 @@ fn test_the_eave_is_the_worlds_own_unit_and_not_a_global() {
   assert(ack.ak_ok, "the house went down: {ack.ak_why}");
   rp = roofs.items[0] ?? hex_editor::RoofPlan {};
   seat = hex_editor::terrain_h(ack.ak_q, ack.ak_r, w);
-  want = hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, 0.125);
+  want = hex_editor::roof_eave_y(seat, hex_editor::STOREY_H, 0.125);
   assert(rp.rp_eave == want,
          "the eave is in the world's unit: {rp.rp_eave} against {want}");
   // And the control: the global's answer is a different number, so the row above is
   // distinguishing two things rather than restating one.
-  assert(rp.rp_eave != hex_editor::roof_eave_y(seat, hex_editor::ROOF_EAVE_UP, 0.25),
+  assert(rp.rp_eave != hex_editor::roof_eave_y(seat, hex_editor::STOREY_H, 0.25),
          "and the global would have given a different one — the row above is blind");
 }
 

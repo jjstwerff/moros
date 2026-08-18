@@ -6,7 +6,7 @@
 //
 // ⚠ THE STEP EXISTS BECAUSE A DOOR PHOTOGRAPHED AS A HOLE. `A8.3`'s leaf reaches
 // the wire and is drawn in colour `0.55,0.52,0.46` spanning `y 0.00..3.25` — the
-// `wall` surface byte for byte, at one `WALL_UP` standing on the paving. Same
+// `wall` surface byte for byte, at one `STOREY_H` standing on the paving. Same
 // colour as the wall it hangs in, same height as the wall it hangs in.
 // `probe/a83/leaf_visible/run.sh` is the measurement, and its second finding is
 // why this is a FORMAT change and not content: a cell's `h_material` colours a

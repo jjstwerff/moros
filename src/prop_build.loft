@@ -402,7 +402,7 @@ fn write_leaf(root: text) {
 // ⚠ A CELL IS A HORIZONTAL PLATE AND A WALL BYTE IS A VERTICAL PANEL, which is the
 // measurement the whole step turns on (`probe/a83/shapes.loft`). Two cells stacked
 // in one column draw as two floating slabs — never a jamb, never a leaf — while a
-// cell's `h_wall_*` byte draws a panel `WALL_UP` tall through `emit_wall_panel`,
+// cell's `h_wall_*` byte draws a panel `STOREY_H` tall through `emit_wall_panel`,
 // and `part_body_meshes` takes exactly that fallback because a part carries no wall
 // RUNS. So every vertical surface in a part is an edge byte, and the wall below is
 // the part's own comment on §P9.2's first row: *the opening is the wall*.
@@ -415,7 +415,7 @@ fn write_leaf(root: text) {
 // ⚠ THE OPENING IS `DOOR_MAT`, NOT AN ABSENT BYTE. `wall_up(DOOR_MAT)` is 0, so it
 // draws no panel — the same hole either way — but the document then SAYS there is a
 // door there, which is what an opening profile will need when a part can carry one.
-// ⚠ What it cannot yet say is a HEAD: the per-edge fallback has two heights, `WALL_UP`
+// ⚠ What it cannot yet say is a HEAD: the per-edge fallback has two heights, `STOREY_H`
 // and `FENCE_UP`, so the opening runs the full height of the wall and there is no
 // lintel over it. That wants either an `Opening` in the part format or a per-part
 // wall height, and neither exists — written down rather than approximated.
@@ -488,7 +488,7 @@ fn write_cell_leaf(root: text) {
   assert(part_set_fits(w, PartFits { pf_kind: "door", pf_size: "1x2" }).sw_code == SK_OK,
          "the leaf's FITS was refused");
   // ⚠ THE WHOLE OF `A8.8`, AND IT IS ONE LINE — §P9.13. Without it this leaf is
-  // drawn in the `wall` surface at one `WALL_UP`: measured, colour
+  // drawn in the `wall` surface at one `STOREY_H`: measured, colour
   // `0.55,0.52,0.46` spanning `y 0.00..3.25`, which is the colour AND the height
   // of the wall it hangs in (`probe/a83/leaf_visible/`). A door is joinery, so it
   // is timber — the same `floor` surface `door/plank`'s cells already take, and

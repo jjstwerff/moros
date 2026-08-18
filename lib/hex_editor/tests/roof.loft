@@ -55,7 +55,7 @@ fn roof_at(w: VoxelWorld, q: integer, r: integer) -> integer {
 // are one surface rather than two bodies computing one formula. This builds the
 // plan a test means, at the eave every fixture here already used.
 fn plan_at(f: Footprint, pitch: float) -> RoofPlan {
-  hex_editor::roof_plan_of(f, hex_editor::roof_eave_y(FLOOR, hex_editor::ROOF_EAVE_UP,
+  hex_editor::roof_plan_of(f, hex_editor::roof_eave_y(FLOOR, hex_editor::STOREY_H,
                                                       0.25), pitch)
 }
 
@@ -93,8 +93,8 @@ fn test_the_roof_starts_where_the_wall_ends() {
       }
     }
   }
-  assert(lowest >= FLOOR + hex_editor::ROOF_EAVE_UP - 2,
-         "the lowest roof cell is at the eave, got {lowest} against {FLOOR + hex_editor::ROOF_EAVE_UP}");
+  assert(lowest >= FLOOR + hex_editor::STOREY_H - 2,
+         "the lowest roof cell is at the eave, got {lowest} against {FLOOR + hex_editor::STOREY_H}");
 }
 
 fn test_the_ridge_stands_above_the_eave() {
@@ -168,7 +168,7 @@ fn test_a_roof_at_an_unplaceable_facing_is_refused() {
 // ── S6b: the drawn roof, which is the plan's and not the cells' ─────────────
 
 fn rp() -> RoofPlan {
-  hex_editor::roof_plan_of(placed(), (FLOOR + hex_editor::ROOF_EAVE_UP) as float * 0.25,
+  hex_editor::roof_plan_of(placed(), (FLOOR + hex_editor::STOREY_H) as float * 0.25,
                            hex_editor::ROOF_PITCH_DEFAULT)
 }
 

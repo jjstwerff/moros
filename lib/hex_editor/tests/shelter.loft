@@ -30,7 +30,7 @@ fn world() -> VoxelWorld {
 fn roofs() -> RoofPlans {
   f = hex_editor::pose_footprint(0.0, 0.0, PI / 6.0 ?? 0.0, W, D);
   RoofPlans { items: [hex_editor::roof_plan_of(
-    f, ((FLOOR + hex_editor::ROOF_EAVE_UP) as float) * U,
+    f, ((FLOOR + hex_editor::STOREY_H) as float) * U,
     hex_editor::ROOF_PITCH_DEFAULT)] }
 }
 

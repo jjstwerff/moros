@@ -1077,15 +1077,24 @@ pub fn tile_ready(w: VoxelWorld, cx: integer, cz: integer) -> boolean {
 
 // The drawing's own constants. Most are private because nothing outside asks them.
 //
-// ⚠ TWO ARE PUBLISHED, AND THE TIMING IS THE POINT — plan 22 `B1b.2c.4`. While
+// ⚠ ONE IS PUBLISHED, AND THE TIMING IS THE POINT — plan 22 `B1b.2c.4`. While
 // `src/editor_server.loft` held its own copy of this mesher it also held its own
 // `WALL_UP` and `SPECIES_BUSH`, and a program declaring a name a library publishes
 // SHADOWS it invisibly (`HOUSE_W`, measured) — so publishing them then would have
-// left the server reading its own 12 whatever this file said. The server's copies
-// are gone with the mesher, so the two the server still needs for its OWN work
-// (an opening's fit check, a scatter's species) are `hex_mesh::`'s now and there is
-// one storey height in the tree rather than two.
-pub const WALL_UP      = 12;      // a storey of masonry
+// left the server reading its own 12 whatever this file said.
+//
+// ⛔ **AND THIS COMMENT USED TO END *"there is one storey height in the tree rather
+// than two"*, WHICH WAS FALSE THE DAY IT WAS WRITTEN — plan 22 `T1a`.** It counted
+// the SERVER's copy against this one and never looked at `hex_editor`, which held
+// **two** more: `STOREY_H` (*"one storey, in height units"*) and `ROOF_EAVE_UP`
+// (*"the wall's own height"*). Three names, one fact, three packages, 81 call sites
+// and no test coupling any two — measured, and demonstrated by moving `STOREY_H` to
+// 13 and watching the roof's ridge not move at all.
+//
+// ⚠ **SO `WALL_UP` IS GONE AND THIS FILE READS `hex_editor::STOREY_H`.** The arrow
+// allows it — `hex_mesh` depends on `hex_editor` and not the reverse — and a
+// storey's height is the EDITOR's fact about what it builds, not the mesher's about
+// what it draws.
 const FENCE_UP     = 4;           // waist-high
 const FRAME_W      = 0.14;        // how far the surround reaches past the opening
 const FRAME_PROUD  = 0.05;        // and how far it stands out of the wall's face
@@ -1100,7 +1109,7 @@ const SLAB_STEP    = 0.5;         // world units between a holed ceiling's ribs
 fn wall_up(mat: integer) -> integer {
   if mat == FENCE_MAT { return FENCE_UP; }
   if mat == DOOR_MAT { return 0; }
-  WALL_UP
+  hex_editor::STOREY_H
 }
 
 // The same question with a part's own `WALL` section in hand — plan 17 `A8.8`,
@@ -1116,7 +1125,7 @@ fn wall_up_part(mat: integer, pup: integer) -> integer {
   if mat == FENCE_MAT { return FENCE_UP; }
   if mat == DOOR_MAT { return 0; }
   if pup > 0 { return pup; }
-  WALL_UP
+  hex_editor::STOREY_H
 }
 
 // Vegetation and roofs in ONE traversal.
@@ -2050,7 +2059,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
                 // path). The wall it is cut OUT of is the part's, so the head is
                 // measured against that.
                 siup = pwup;
-                if siup <= 0 { siup = WALL_UP; }
+                if siup <= 0 { siup = hex_editor::STOREY_H; }
                 sispring = 0 - 1;
                 if pospring > 0 { sispring = pospring; }
                 siop = hex_editor::Opening {
