@@ -1,0 +1,179 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT A WORLD DECLARES A HOUSE TYPE TO BE — plan 22 `T1a.1`, its own module at `T1b`.
+//
+// ⚠ **IT LIVED IN `hex_editor.loft` AND MOVED FOR ONE REASON: `session.loft` HAS TO
+// ASK.** A `use` goes one way — the root module uses `session`, so `session` cannot
+// reach back — and the moment a type carries the OPENING an author gets by default,
+// the reader of that default is the gesture that cuts one, which is
+// `session_opening`. The alternative was a `dflt` parameter threaded from
+// `press_verb` through a signature nine test call sites also spell, and a parameter
+// named for nothing in particular is how a caller comes to pass the wrong one.
+//
+// ⚠ **NOTHING PUBLIC CHANGED BY MOVING.** A module is this package's own
+// organisation; `hex_editor::house_type` is the same name it was. What moved is which
+// file it can be called FROM.
+//
+// ⚠ **AND THE FILENAME WAS GREPPED BEFORE IT WAS CHOSEN.** A module's BASENAME is
+// global across the whole dependency graph — [loft#912](https://github.com/loft-lang/loft/issues/912),
+// and the half of it that is still live fires no advice at all when the collision is
+// fatal. `htype` is absent from `lib/*/src/`, `src/`, `~/.loft/registry/*/src/` and
+// `../loft-libs-world/*/src/`; `types.loft` is taken, which is why it is not that.
+use gesture;
+use hex_voxel;
+
+// ── A HOUSE TYPE IS A PALETTE ENTRY — plan 22 `T1a.1` ──────────────────────
+//
+// > *"so we eventually get house types that set defaults for windows/doors/floors and
+// > possibly even unique keys, so the system can grow."*
+//
+// ⚠ **THE FORMAT IS PLAN 21's PALETTE AND NOT A NEW ONE**, on the project owner's
+// call. [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) is explicit that a
+// fourth way of saying *what this thing is called and what it is made of* is the
+// duplication plan 21 and PARTS both exist to stop. So a type is
+// `hex_voxel::PAL_HTYPE` slot N, and it inherits the whole mechanism for free:
+// sectioned storage, per-REGION scoping, slot 0 as absence, a refusal past 255, and
+// duplicate and newline refusals.
+//
+// ⚠ **THE STORE CARRIES THE PAYLOAD AND THIS FILE GIVES IT MEANING.** `hex_voxel`
+// does not know what a house is; it holds `slot=text` exactly as it holds `1=sand`.
+// The declaration is `<name> wid=<n> dep=<n>` and the fields are a fresh decision,
+// which is what plan 21 said would carry across and what would not.
+//
+// ⚠ **AN UNDECLARED WORLD IS UNCHANGED, AND THAT IS A MECHANISM RATHER THAN CARE.**
+// `ht_ok` is false when nothing is declared and `press_verb` then builds exactly the
+// house it always did — the same shape `R2` used to keep every `R1` world resolving,
+// stated as *region 0 is the default*. It is what lets this land byte-identical.
+// Which slot the `place` verb reads. ⚠ ONE slot for now and named rather than
+// literal, because the day a catalogue lets an author pick a type this is the
+// thing that stops being a constant — and a bare `1` at the call site is how that
+// day turns into a grep.
+pub const HTYPE_DEFAULT_SLOT = 1;
+
+// ── A TYPE'S OWN VERB — plan 22 `T1a.2` ────────────────────────────────────
+//
+// > *"A castle may have a keystroke a cottage has no use for."*
+//
+// ⚠⚠ **A TYPE VERB IS AN ALIAS ONTO AN EXISTING GESTURE, AND IT HAS TO BE.** The
+// invariant is *adding a type touches no code*; a verb that ran NEW behaviour would
+// be new code by definition, so the only thing a declaration can contribute is a
+// NAME for a gesture the editor already performs. `portcullis:opening` is a castle's
+// word for cutting an opening — the castle's own defaults are what make it a
+// portcullis rather than a window, which is the *bundle of defaults* half of a type
+// doing the work the name suggests.
+//
+// ⚠ **THAT IS A LIMIT AND IT IS STATED RATHER THAN DISCOVERED.** A type cannot add a
+// gesture the editor does not have. The day one needs to, that is a library change
+// and a new base verb — and the declaration then names it like any other.
+pub struct TypeVerb { tv_name: text, tv_base: text }
+
+pub struct HouseType {
+  ht_ok:    boolean = false,
+  ht_name:  text    = "",
+  ht_wid:   integer = 0,
+  ht_dep:   integer = 0,
+  ht_verbs: vector<TypeVerb> = [],
+  // ── THE OPENING THIS TYPE GIVES AN AUTHOR WHO HAS NOT CHOSEN — `T1b` ───────
+  //
+  // > *"house types that set defaults for windows/doors/floors"*
+  //
+  // ⚠ **ONE OPENING DEFAULT, BECAUSE THIS EDITOR HAS ONE OPENING SELECTION.**
+  // *Which door* and *which window* are the same field here — `es_open_kind`, whose
+  // units are the outline and whose tens are the depth — so a type that declared
+  // `door=` and `window=` separately would be describing an editor that does not
+  // exist. `S3` collapsed six keys onto one `opening` verb for that reason and
+  // [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) records the door/window
+  // split as a **flattening already shipped**; inventing two fields here would put
+  // it back in a declaration format.
+  //
+  // ⚠ **AND *WHICH FLOOR* IS NOT REACHABLE AT ALL, MEASURED RATHER THAN OMITTED.**
+  // The tree's materials are structural kinds — `WALL_MAT` 1, `DOOR_MAT` 2,
+  // `FENCE_MAT` 3, `FLOOR_MAT` 4, `ROOF_MAT` 5 — not finishes, so there is nothing a
+  // type could name. A `floor=` field would parse perfectly and change nothing,
+  // which is this tree's commonest defect wearing a declaration format.
+  //
+  // ⚠ `0 - 1` IS *THIS TYPE DECLARES NONE*, and it is distinguishable because every
+  // legal opening kind is `>= 0`. It is not `OP_ROUND`: a type that silently meant
+  // *round* would be indistinguishable from a type that said nothing, and the
+  // author's own choice could then never be told from the type's.
+  ht_open:  integer = 0 - 1,
+  ht_why:   text    = "",
+}
+
+// One `key=value` out of a declaration, or `miss` when it is not there.
+fn ht_field(body: text, key: text, miss: integer) -> integer {
+  at = body.find("{key}=");
+  if at == null { return miss; }
+  rest = body[(((at ?? 0) + key.size() + 1) as i32)..];
+  cut = rest.find(" ");
+  tok = rest;
+  if cut != null { tok = rest[0..(cut ?? 0)]; }
+  // ⚠ THE NULL IS DISCHARGED BEFORE THE WIDENING, not folded into a `??` with an
+  // `integer` on the other side: that asks loft to narrow `miss` to `i32` and it
+  // refuses, correctly.
+  v = tok as i32?;
+  if v == null { return miss; }
+  (v ?? 0) as integer
+}
+
+// The type this world declares at `slot`, or `ht_ok: false` when it declares none.
+//
+// ⚠ **A MALFORMED DECLARATION IS REFUSED, NEVER DEFAULTED.** `world_palette_check`'s
+// own argument, one axis over: a type that quietly fell back to 5x4 would build the
+// wrong house and say nothing, which is the failure a palette exists to make
+// impossible. A declaration that names no `wid`/`dep` is not a cottage with default
+// dimensions — it is a declaration somebody got wrong.
+pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
+  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, region, slot);
+  if raw == "" || raw == hex_voxel::PAL_ABSENT {
+    return HouseType { ht_why: "no house type declared at slot {slot}" };
+  }
+  sp = raw.find(" ");
+  nm = raw;
+  if sp != null { nm = raw[0..(sp ?? 0)]; }
+  wid = ht_field(raw, "wid", 0 - 1);
+  dep = ht_field(raw, "dep", 0 - 1);
+  if wid < 1 || dep < 1 {
+    return HouseType { ht_name: nm,
+                       ht_why: "type '{nm}' declares wid {wid} dep {dep}; both must be >= 1" };
+  }
+  // ⚠ **AN OPENING KIND THAT IS NOT ONE REFUSES THE TYPE, exactly as `wid=0` does** —
+  // and it is `opening_kind_ok` that decides, never a range. The admissible set is
+  // not one: the units are the outline (`0..4`) and the tens the depth, so `5`, `15`,
+  // `25` and `30` are nothing at all. A type quietly falling back to `OP_ROUND` would
+  // cut a round-headed door in a castle that declared a pointed one and say nothing,
+  // which is the failure `world_palette_check` exists to make impossible.
+  opn = ht_field(raw, "opening", 0 - 1);
+  if opn >= 0 && !opening_kind_ok(opn) {
+    return HouseType { ht_name: nm,
+                       ht_why: "type '{nm}' declares opening {opn}, which is not an "
+                             + "opening kind; nominal, so there is no nearest one" };
+  }
+  HouseType { ht_ok: true, ht_name: nm, ht_wid: wid, ht_dep: dep,
+              ht_verbs: ht_verb_list(raw), ht_open: opn }
+}
+
+// `verbs=<alias>:<base>,<alias>:<base>` out of a declaration, or empty.
+//
+// ⚠ A PAIR THAT NAMES NO BASE IS DROPPED, NOT GUESSED. `portcullis` on its own could
+// only be resolved by inventing a gesture for it, and the palette's rule one axis
+// over is that an unnamed byte is a fault rather than a default.
+fn ht_verb_list(body: text) -> vector<TypeVerb> {
+  out: vector<TypeVerb> = [];
+  at = body.find("verbs=");
+  if at == null { return out; }
+  rest = body[(((at ?? 0) + 6) as i32)..];
+  cut = rest.find(" ");
+  if cut != null { rest = rest[0..(cut ?? 0)]; }
+  for pair in rest.split(',') {
+    if pair == "" { continue; }
+    c = pair.find(":");
+    if c == null { continue; }
+    nm = pair[0..(c ?? 0)];
+    bs = pair[(((c ?? 0) + 1) as i32)..];
+    if nm == "" || bs == "" { continue; }
+    out += [TypeVerb { tv_name: nm, tv_base: bs }];
+  }
+  out
+}

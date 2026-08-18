@@ -34,6 +34,10 @@
 // worth nothing — which is the trap `editor_run.loft` was written to avoid and this
 // inherits. `make headless-same` is the check that they still agree.
 use gesture;
+// What a world DECLARES a house type to be — plan 22 `T1b`. A type carries the
+// opening an author gets when they have chosen none, and the reader of that default
+// is the gesture that cuts one, which is in this file.
+use htype;
 use hex_voxel;
 use hex_grid;
 // ⚠ THE FIRST `use say` IN THIS FILE, and it is the file's own note above being taken
@@ -113,6 +117,27 @@ pub struct EditSession {
   // one where six keys collapse to one verb, and inventing the split before then
   // would be designing a container for contents nobody has measured.
   es_open_kind: integer = OP_ROUND,
+  // ── …AND WHETHER THIS AUTHOR EVER CHOSE IT — plan 22 `T1b` ─────────────────
+  //
+  // ⚠ **A SECOND FIELD, BECAUSE `OP_ROUND` IS A LEGAL CHOICE AND ALSO THE DEFAULT.**
+  // A house type declares the opening an author gets *unless overridden*, and
+  // *overridden* cannot be read off `es_open_kind` alone: an author who deliberately
+  // chose `OP_ROUND` and an author who has chosen nothing hold the same number. The
+  // field above says WHAT and this one says WHETHER, which is the only pair that can
+  // tell them apart.
+  //
+  // ⚠ **AND IT IS NOT A SENTINEL IN `es_open_kind`**, which the note above already
+  // refuses for its own reason: *a session that never chose must still cut something
+  // defensible rather than an invalid value every caller must test for*. A sentinel
+  // would also have moved every session digest and every `H:` line in the corpus,
+  // where this moves nothing until a world declares a type.
+  //
+  // ⚠ **ONE-WAY, FOR NOW, AND SAID OUT LOUD.** Nothing clears it, so an author who
+  // has chosen once stops seeing type defaults. That is the same shape a brush has
+  // and it is not obviously right — `session_select_part` takes an empty name to mean
+  // *nothing chosen*, and a bare `49:` doing the same here is the answer the day
+  // somebody wants one. It is a declaration change, not a mechanism change.
+  es_open_set: boolean = false,
   // ── WHICH PART IS CHOSEN — plan 22 `B2e` ───────────────────────────────────
   //
   // Empty means *none*, and that is a real state rather than a missing one: with
@@ -289,6 +314,11 @@ pub fn session_select_open(s: EditSession, kind: integer) -> Ack {
     return ack_no("{kind} is not an opening kind; nominal, so there is no nearest one");
   }
   s.es_open_kind = kind;
+  // ⚠ **THE CHOICE IS RECORDED AS A CHOICE — plan 22 `T1b`, and only on the way that
+  // SUCCEEDS.** A refused kind must leave the author exactly as they were, which
+  // includes leaving them un-chosen: setting this above the guard would let a typo
+  // silence a house type for the rest of the session.
+  s.es_open_set = true;
   ack_ok(kind)
 }
 
@@ -334,7 +364,42 @@ pub fn session_select_part(s: EditSession, name: text) -> Ack {
 // authored at another unit entirely, so an arch struck against `hex_proj`'s constant
 // would be right on the landscape and wrong on every part.
 pub fn session_opening(s: EditSession, w: VoxelWorld, a: Author, up: integer) -> OpeningMade {
-  session_open_kind(s, w, a, s.es_open_kind, up)
+  session_open_kind(s, w, a, open_kind_here(s, w, a.au_x, a.au_z), up)
+}
+
+// ── WHAT THE NEXT OPENING WILL CUT — plan 22 `T1b` ──────────────────────────
+//
+// > *"…each producing the TYPE's defaults unless overridden"*
+// > — [EDITING_MODES](../../../doc/claude/EDITING_MODES.md)
+//
+// ⚠ **THIS IS ONE DERIVATION WITH TWO READERS, AND THAT IS WHY IT IS A FUNCTION.**
+// The gesture needs it, and so does the SUBJECT LINE — `editor_server`'s `H:` says
+// what you are working on, and it read `es_open_kind` at twelve sites. With a type
+// default in play those are two different numbers: the panel would say *round* while
+// the next press cut *pointed*, which is the one thing a subject line exists to make
+// impossible ([CATALOGUE](../../../doc/claude/CATALOGUE.md) §C1).
+//
+// ⚠ **THE REGION IS THE AUTHOR'S, NOT ZERO** — plan 21 `R2`'s rule, and `press_verb`'s
+// place arm already reads its dimensions that way. A type belongs to where its author
+// is standing, so asking region 0 would make types global while the palette they live
+// in is not, and the divergence would appear on the first world with two regions.
+//
+// ⚠ **AND IT TAKES x/z RATHER THAN AN `Author`** because the subject line's callers
+// hold a walker and not a pose, and a helper that made twelve broadcast sites
+// construct an `Author` to ask a question about a region would not be called at
+// twelve sites for long.
+pub fn open_kind_here(s: EditSession, w: VoxelWorld, x: float, z: float) -> integer {
+  if s.es_open_set { return s.es_open_kind; }
+  (okq, okr) = hex_grid::px_to_hex(x, z);
+  ht = house_type(w, hex_voxel::world_region_at(w, okq, okr), HTYPE_DEFAULT_SLOT);
+  // ⚠ A BROKEN DECLARATION FALLS BACK RATHER THAN REFUSING **HERE**, and the place
+  // arm's opposite choice is not an inconsistency. `place` cannot proceed without
+  // `wid`/`dep`, so it refuses and says why; an opening needs nothing from the type
+  // at all, so refusing one would make a malformed field the author cannot see stop a
+  // gesture that does not depend on it. The refusal an author must not miss already
+  // fires, on the verb that needs the number.
+  if !ht.ht_ok || ht.ht_open < 0 { return s.es_open_kind; }
+  ht.ht_open
 }
 
 // …and the same gesture told which kind THIS TIME — plan 22 `S3`.

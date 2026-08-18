@@ -31,6 +31,11 @@ use hex_place;
 use hex_grid;
 use hex_part;
 use names;
+// What a world DECLARES a house type to be — plan 22 `T1a.1`, its own module at
+// `T1b`. ⚠ It is below `session` in the arrow, not beside it: `session.loft` uses it
+// so that `session_opening` can read the type's own opening, which is the whole
+// reason it stopped living in this file.
+use htype;
 // ⚠ AFTER `gesture`, because a session is the state those gestures are applied to.
 use session;
 // The sentences the editor says — plan: the wire becomes transport.
@@ -1206,128 +1211,6 @@ pub fn mode_at(sess: EditSession, w: VoxelWorld, a: Author) -> integer {
 // that is genuinely the socket's business. What it must stop deciding is what the
 // key MEANS.
 
-// One shape for now — the gesture is the question here, not the parameters. ⚠ It
-// is here rather than in each program because it was in each program: two copies
-// that agreed by luck (`src/editor_run.loft` and `src/editor_server.loft`).
-// ── A HOUSE TYPE IS A PALETTE ENTRY — plan 22 `T1a.1` ──────────────────────
-//
-// > *"so we eventually get house types that set defaults for windows/doors/floors and
-// > possibly even unique keys, so the system can grow."*
-//
-// ⚠ **THE FORMAT IS PLAN 21's PALETTE AND NOT A NEW ONE**, on the project owner's
-// call. [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) is explicit that a
-// fourth way of saying *what this thing is called and what it is made of* is the
-// duplication plan 21 and PARTS both exist to stop. So a type is
-// `hex_voxel::PAL_HTYPE` slot N, and it inherits the whole mechanism for free:
-// sectioned storage, per-REGION scoping, slot 0 as absence, a refusal past 255, and
-// duplicate and newline refusals.
-//
-// ⚠ **THE STORE CARRIES THE PAYLOAD AND THIS FILE GIVES IT MEANING.** `hex_voxel`
-// does not know what a house is; it holds `slot=text` exactly as it holds `1=sand`.
-// The declaration is `<name> wid=<n> dep=<n>` and the fields are a fresh decision,
-// which is what plan 21 said would carry across and what would not.
-//
-// ⚠ **AN UNDECLARED WORLD IS UNCHANGED, AND THAT IS A MECHANISM RATHER THAN CARE.**
-// `ht_ok` is false when nothing is declared and `press_verb` then builds exactly the
-// house it always did — the same shape `R2` used to keep every `R1` world resolving,
-// stated as *region 0 is the default*. It is what lets this land byte-identical.
-// Which slot the `place` verb reads. ⚠ ONE slot for now and named rather than
-// literal, because the day a catalogue lets an author pick a type this is the
-// thing that stops being a constant — and a bare `1` at the call site is how that
-// day turns into a grep.
-pub const HTYPE_DEFAULT_SLOT = 1;
-
-// ── A TYPE'S OWN VERB — plan 22 `T1a.2` ────────────────────────────────────
-//
-// > *"A castle may have a keystroke a cottage has no use for."*
-//
-// ⚠⚠ **A TYPE VERB IS AN ALIAS ONTO AN EXISTING GESTURE, AND IT HAS TO BE.** The
-// invariant is *adding a type touches no code*; a verb that ran NEW behaviour would
-// be new code by definition, so the only thing a declaration can contribute is a
-// NAME for a gesture the editor already performs. `portcullis:opening` is a castle's
-// word for cutting an opening — the castle's own defaults are what make it a
-// portcullis rather than a window, which is the *bundle of defaults* half of a type
-// doing the work the name suggests.
-//
-// ⚠ **THAT IS A LIMIT AND IT IS STATED RATHER THAN DISCOVERED.** A type cannot add a
-// gesture the editor does not have. The day one needs to, that is a library change
-// and a new base verb — and the declaration then names it like any other.
-pub struct TypeVerb { tv_name: text, tv_base: text }
-
-pub struct HouseType {
-  ht_ok:    boolean = false,
-  ht_name:  text    = "",
-  ht_wid:   integer = 0,
-  ht_dep:   integer = 0,
-  ht_verbs: vector<TypeVerb> = [],
-  ht_why:   text    = "",
-}
-
-// One `key=value` out of a declaration, or `miss` when it is not there.
-fn ht_field(body: text, key: text, miss: integer) -> integer {
-  at = body.find("{key}=");
-  if at == null { return miss; }
-  rest = body[(((at ?? 0) + key.size() + 1) as i32)..];
-  cut = rest.find(" ");
-  tok = rest;
-  if cut != null { tok = rest[0..(cut ?? 0)]; }
-  // ⚠ THE NULL IS DISCHARGED BEFORE THE WIDENING, not folded into a `??` with an
-  // `integer` on the other side: that asks loft to narrow `miss` to `i32` and it
-  // refuses, correctly.
-  v = tok as i32?;
-  if v == null { return miss; }
-  (v ?? 0) as integer
-}
-
-// The type this world declares at `slot`, or `ht_ok: false` when it declares none.
-//
-// ⚠ **A MALFORMED DECLARATION IS REFUSED, NEVER DEFAULTED.** `world_palette_check`'s
-// own argument, one axis over: a type that quietly fell back to 5x4 would build the
-// wrong house and say nothing, which is the failure a palette exists to make
-// impossible. A declaration that names no `wid`/`dep` is not a cottage with default
-// dimensions — it is a declaration somebody got wrong.
-pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
-  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, region, slot);
-  if raw == "" || raw == hex_voxel::PAL_ABSENT {
-    return HouseType { ht_why: "no house type declared at slot {slot}" };
-  }
-  sp = raw.find(" ");
-  nm = raw;
-  if sp != null { nm = raw[0..(sp ?? 0)]; }
-  wid = ht_field(raw, "wid", 0 - 1);
-  dep = ht_field(raw, "dep", 0 - 1);
-  if wid < 1 || dep < 1 {
-    return HouseType { ht_name: nm,
-                       ht_why: "type '{nm}' declares wid {wid} dep {dep}; both must be >= 1" };
-  }
-  HouseType { ht_ok: true, ht_name: nm, ht_wid: wid, ht_dep: dep,
-              ht_verbs: ht_verb_list(raw) }
-}
-
-// `verbs=<alias>:<base>,<alias>:<base>` out of a declaration, or empty.
-//
-// ⚠ A PAIR THAT NAMES NO BASE IS DROPPED, NOT GUESSED. `portcullis` on its own could
-// only be resolved by inventing a gesture for it, and the palette's rule one axis
-// over is that an unnamed byte is a fault rather than a default.
-fn ht_verb_list(body: text) -> vector<TypeVerb> {
-  out: vector<TypeVerb> = [];
-  at = body.find("verbs=");
-  if at == null { return out; }
-  rest = body[(((at ?? 0) + 6) as i32)..];
-  cut = rest.find(" ");
-  if cut != null { rest = rest[0..(cut ?? 0)]; }
-  for pair in rest.split(',') {
-    if pair == "" { continue; }
-    c = pair.find(":");
-    if c == null { continue; }
-    nm = pair[0..(c ?? 0)];
-    bs = pair[(((c ?? 0) + 1) as i32)..];
-    if nm == "" || bs == "" { continue; }
-    out += [TypeVerb { tv_name: nm, tv_base: bs }];
-  }
-  out
-}
-
 // ⛔ **`verbs_here()` WAS HERE AND IT WAS DELETED BEFORE IT SHIPPED — plan 22
 // `T1a.2`.** It answered *which verbs does this editor have here* — base set plus the
 // type's own — which is exactly the query
@@ -1373,6 +1256,15 @@ pub fn verb_resolve(w: VoxelWorld, region: integer, slot: integer, verb: text) -
   verb
 }
 
+// One shape for now — the gesture is the question here, not the parameters. ⚠ It
+// is here rather than in each program because it was in each program: two copies
+// that agreed by luck (`src/editor_run.loft` and `src/editor_server.loft`).
+//
+// ⚠ **THIS COMMENT WAS STRANDED FOR A DAY AND IT IS BACK ON ITS OWN CONSTANTS**
+// (plan 22 `T1b`): `T1a.1` inserted the house-type block between it and the two
+// values it describes, and moving that block to `htype.loft` is what made the gap
+// visible. A comment that has drifted off its subject reads as a note about
+// whatever now follows it.
 pub const HOUSE_W = 5;
 pub const HOUSE_D = 4;
 

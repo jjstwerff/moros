@@ -3744,7 +3744,8 @@ fn main() {
         // client was in the list and reached nobody. A client that connects and is
         // told nothing shows an empty subject line for as long as no toggle moves —
         // which on a quiet session is forever.
-        srv.send_to(ev.cid, hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+        srv.send_to(ev.cid, hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
         // ⚠ IT GOES OUT HERE **AND AGAIN WHENEVER THE LIBRARY MOVES** — plan 17
         // `A7.1`. This comment used to read *"the catalogue does not change during
         // a session, so it goes out once"*, which was false the whole time: the
@@ -4120,7 +4121,8 @@ fn main() {
                 part_tau0 = wld.w_tau;
                 part_sig0 = hex_voxel::world_sections_key(wld);
                 srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                       wk.wk_levelling, roading, tracing, sess.es_open_kind));
+                                       wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
                 srv.send_to(ev.cid, "S:part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
                                   + "{len(wld.w_sections)} sections");
                 println("editor: part '{sv_name}' saved — {len(wld.w_chunks)} chunks, "
@@ -4134,7 +4136,8 @@ fn main() {
             nch = len(wld.w_chunks);
             if scode == 0 { world_name = ev.payload; }
             srv.send_to(ev.cid, "S:saved {nch} chunks to {ev.payload} (code {scode})");
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             println("editor: saved {nch} chunks -> {ev.payload} (code {scode})");
           }
         } else if ev.msg_id == MSG_LOAD && in_part {
@@ -4434,7 +4437,8 @@ fn main() {
               wk.wk_vy = 0.0;
               moved = true;
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                     wk.wk_levelling, roading, tracing, sess.es_open_kind));
+                                     wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
               srv.send_to(ev.cid, "S:part '{pt_shown}' closed — {pt_edits} edits "
                                 + "discarded{pt_secs}, world restored "
                                 + "({len(wld.w_chunks)} chunks)");
@@ -4518,7 +4522,8 @@ fn main() {
               cart_hide(srv);
               moved = true;
               srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                     wk.wk_levelling, roading, tracing, sess.es_open_kind));
+                                     wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
               pt_meta = part_meta(wld);
               pt_named = part_name;
               if pt_meta.mr_code == MR_OK && pt_meta.mr_meta.pm_name != "" {
@@ -4568,7 +4573,8 @@ fn main() {
             // not happen is the exact lie B2.3's control is aimed at, one message
             // over from the mode it was written for.
             world_name = ev.payload;
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             // Everything visible is derived from the world, so a load invalidates
             // all of it — the one case where the whole loaded set really is dirty,
             // and saying so through the same routine keeps one path.
@@ -5249,7 +5255,8 @@ fn main() {
           } else {
             tracing = twant != 0;
             srv.send_to(ev.cid, "S:trace {tracing}");
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             println("editor: trace {tracing}");
           }
         } else if ev.msg_id == MSG_MODE {
@@ -5278,7 +5285,8 @@ fn main() {
             // control. The refusal above sends no `H:`, so a mode the server
             // declines leaves every client's subject line exactly as it was — the
             // one behaviour that separates a HUD from an echo of the keystroke.
-            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+            srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             println("editor: camera mode {cam_mode}");
           }
         } else if ev.msg_id == MSG_PLANE {
@@ -5339,7 +5347,8 @@ fn main() {
             // every client's subject line exactly as it was, or the HUD is an echo
             // of the keystroke rather than a report of the state.
             srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode,
-                                   wk.wk_levelling, roading, tracing, sess.es_open_kind));
+                                   wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             println("editor: opening {sess.es_open_kind} selected");
           }
         } else if ev.msg_id == MSG_SELECT_PART {
@@ -5524,7 +5533,13 @@ fn main() {
           // says which hole to cut this time and does NOT move the selection: a key
           // that silently re-chose would make *what am I working on* depend on what
           // you last pressed, which is the thing the subject line exists to answer.
-          okind = sess.es_open_kind;
+          // ⚠ **`open_kind_here`, NOT `sess.es_open_kind` — plan 22 `T1b`.** A bare
+          // `36:` means *the one I chose*, and with a house type in play what an
+          // author who has chosen NOTHING gets is the type's own opening. Reading the
+          // raw field here would have made a declared type work headless and not over
+          // the wire, which is `S2c` rebuilt one field over — the same two-bodies
+          // shape, in the same handler, three days later.
+          okind = hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z);
           if ev.payload != "" { okind = ev.payload as integer ?? hex_editor::OP_ROUND; }
           omade = hex_editor::session_open_kind(sess, wld,
                     hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y),
@@ -5993,7 +6008,8 @@ fn main() {
             srv.send_to(ev.cid, "S:road false at grade {road_h}");
             println("editor: road off at grade {road_h}");
           }
-          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
         } else if ev.msg_id == MSG_WATER {
           watering = (ev.payload as integer ?? 0) != 0;
           if watering { water_run = 0; }
@@ -6025,7 +6041,8 @@ fn main() {
             moved = true;
             println("editor: levelling off — feet back on the ground at {wk.wk_y}");
           }
-          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing, sess.es_open_kind));
+          srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
+                                     hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
         } else if ev.msg_id == MSG_RAISE {
           // ⚠ THE GESTURE IS `hex_editor`'s NOW — `SCRIPTED_EDITOR.md` §2. Ninety
           // lines of ray-walk, brush and clamp lived here, reachable only through

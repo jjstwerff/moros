@@ -213,3 +213,118 @@ fn test_an_alias_cannot_chain_onto_another_alias() {
   got = hex_editor::verb_resolve(w, 0, hex_editor::HTYPE_DEFAULT_SLOT, "a");
   assert(got == "a", "`a` does not chain through `b`, got '{got}'");
 }
+
+// ── THE OPENING A TYPE GIVES AN AUTHOR WHO HAS NOT CHOSEN — plan 22 `T1b` ───
+//
+// > *"house types that set defaults for windows/doors/floors"* … *"each producing the
+// > TYPE's defaults unless overridden"*
+//
+// ⚠ **ONE OPENING DEFAULT, BECAUSE THIS EDITOR HAS ONE OPENING SELECTION** — *which
+// door* and *which window* are the same field, `es_open_kind`, since `S3` collapsed
+// six keys onto one verb. ⚠ **And *which floor* is not reachable at all**: the tree's
+// materials are structural kinds (`FLOOR_MAT` is *a built floor*, not a finish), so a
+// `floor=` field would parse perfectly and change nothing.
+//
+// ⚠ **THE CLAIM IS MADE THROUGH `press_verb`**, exactly as the size rows above are:
+// a parse that reads `opening=2` back is not evidence that any gesture consults it.
+
+// The opening the gesture actually cut, read out of the session the verb wrote to.
+fn cut_kind(w: VoxelWorld, s: EditSession, a: Author) -> integer {
+  ack = hex_editor::press_verb(s, w, a, hex_editor::VB_OPENING, "");
+  assert(ack.ak_ok, "the opening was refused: {ack.ak_why}");
+  assert(len(s.es_open.items) > 0, "nothing reached the session");
+  o = s.es_open.items[len(s.es_open.items) - 1] ?? hex_editor::opening_none();
+  o.op_kind
+}
+
+// Stand inside the house that was just placed, against its near wall.
+fn at_the_near_wall() -> Author {
+  hex_editor::author_at(0.0, 0.0 - 1.5, 0.0 - YAW, (FLOOR as float) * U)
+}
+
+fn test_an_undeclared_world_cuts_the_opening_it_always_did() {
+  w = meadow();
+  s = hex_editor::EditSession {};
+  a_house(w, s);
+  at = at_the_near_wall();
+  s.es_author = at;
+  assert(cut_kind(w, s, at) == hex_editor::OP_ROUND,
+         "an undeclared world stopped cutting a round-headed opening");
+}
+
+fn test_a_type_decides_the_opening_when_the_author_has_chosen_none() {
+  // ⛔ **THE ROW.** Nothing in `lib/` names `OP_POINTED` as a default; it exists only
+  // in the string below. If the gesture stops consulting the type this goes red while
+  // every parse row stays green — the gap between *built* and *called*.
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 opening=2");
+  s = hex_editor::EditSession {};
+  a_house(w, s);
+  at = at_the_near_wall();
+  s.es_author = at;
+  assert(cut_kind(w, s, at) == hex_editor::OP_POINTED,
+         "the castle's declared opening was not what the verb cut");
+}
+
+fn test_the_authors_own_choice_overrides_the_type() {
+  // ⚠ *"…unless overridden"*, and this is the row that needs `es_open_set` rather
+  // than a comparison against `OP_ROUND`: the author chooses the very kind that is
+  // also the default, so a test that read *is it still the default* could not tell
+  // the two apart. The type says pointed, the author says round, and round is what
+  // must be cut.
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 opening=2");
+  s = hex_editor::EditSession {};
+  a_house(w, s);
+  assert(hex_editor::session_select_open(s, hex_editor::OP_ROUND).ak_ok, "chose round");
+  at = at_the_near_wall();
+  s.es_author = at;
+  assert(cut_kind(w, s, at) == hex_editor::OP_ROUND,
+         "the type overruled an author who had chosen");
+}
+
+fn test_a_refused_selection_does_not_count_as_choosing() {
+  // ⚠ A TYPO MUST NOT SILENCE A HOUSE TYPE for the rest of the session. `5` is not an
+  // opening kind, so the selection is refused — and the author is still un-chosen,
+  // which means the castle still decides.
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 opening=2");
+  s = hex_editor::EditSession {};
+  a_house(w, s);
+  assert(!hex_editor::session_select_open(s, 5).ak_ok, "5 was accepted as a kind");
+  at = at_the_near_wall();
+  s.es_author = at;
+  assert(cut_kind(w, s, at) == hex_editor::OP_POINTED,
+         "a refused selection silenced the type's own opening");
+}
+
+fn test_an_opening_a_type_declares_must_be_one() {
+  // ⚠ NOMINAL — the units are the outline and the tens the depth, so `5` is nothing
+  // at all rather than nearly an oculus. A type that fell back to round would cut the
+  // wrong hole in a castle and say nothing, which is `world_palette_check`'s argument.
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 opening=5");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(!ht.ht_ok, "opening 5 was accepted");
+  assert(ht.ht_why.contains("5"), "and the reason names it: '{ht.ht_why}'");
+  // …and the gesture that needs the size refuses, rather than building a 5x4.
+  ack = placed_by_verb(w);
+  assert(!ack.ak_ok, "the broken declaration still built a house");
+}
+
+fn test_a_type_that_declares_no_opening_leaves_the_choice_alone() {
+  // ⚠ THE CONTROL FOR THE WHOLE FAMILY: `wid`/`dep` without `opening=` must not
+  // acquire one. `ht_open` is `0 - 1` and the session's own kind stands, which is
+  // what keeps every existing world byte-identical.
+  w = meadow();
+  declare(w, "cottage wid=5 dep=4");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(ht.ht_ok, "the type resolved: {ht.ht_why}");
+  assert(ht.ht_open < 0, "it invented an opening default: {ht.ht_open}");
+  s = hex_editor::EditSession {};
+  a_house(w, s);
+  at = at_the_near_wall();
+  s.es_author = at;
+  assert(cut_kind(w, s, at) == hex_editor::OP_ROUND,
+         "a type that declares no opening changed what the verb cuts");
+}
