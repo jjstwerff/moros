@@ -237,3 +237,55 @@ fn test_a_world_with_no_regions_resolves_exactly_as_before() {
   assert(world_palette_name(w, PAL_MATERIAL, 0, 2) == "road", "region 0 lookup");
   assert(world_palette_check(w) == "", "a region-free world was refused");
 }
+
+// ── A FOURTH AXIS: THE HOUSE TYPE — plan 22 `T1a.1` ────────────────────────
+//
+// ⚠ **THE STORE LEARNS A TABLE, NOT A HOUSE.** A house type is the editor's concept
+// — a bundle of defaults, and eventually its own verbs — and none of that belongs
+// here. What belongs here is the thing this file already owns: a sectioned,
+// regioned, slotted table with 0 for absence and a refusal past 255. `hex_editor`
+// parses what the payload MEANS; this axis only carries it, exactly as `PALM`
+// carries "sand" without knowing what sand is.
+//
+// ⚠ **AND IT EXISTS BECAUSE THE ALTERNATIVE WAS A FOURTH FILE FORMAT.**
+// [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) is explicit that a new way
+// of saying *what this thing is called and what it is made of* is the duplication
+// plan 21 and PARTS both exist to stop — so a house type is a palette axis or it is
+// a mistake.
+
+fn test_the_house_type_axis_has_its_own_tag() {
+  assert(TAG_PALT == section_tag("PALT"), "TAG_PALT is {TAG_PALT}");
+  // ⛔ **THE ROW THAT WOULD HAVE CAUGHT THE OBVIOUS WRONG BUILD.** `pal_tag` answers
+  // `TAG_PALM` for anything it does not recognise, so a fourth axis added as a
+  // constant WITHOUT teaching `pal_tag` would write house types into the MATERIAL
+  // section — where they would round-trip perfectly, pass every test in this file,
+  // and quietly redefine what the world's bytes mean.
+  assert(TAG_PALT != TAG_PALM && TAG_PALT != TAG_PALW && TAG_PALT != TAG_PALI,
+         "the house-type axis shares a section tag with another");
+}
+
+fn test_a_house_type_does_not_disturb_the_material_palette() {
+  w = fresh();
+  assert(world_set_palette(w, PAL_MATERIAL, 0, [pal(1, "sand"), pal(2, "rock")]) == PAL_OK,
+         "the materials went in");
+  assert(world_set_palette(w, PAL_HTYPE, 0, [pal(1, "cottage wid=5 dep=4")]) == PAL_OK,
+         "the type went in");
+  // ⛔ THE COLLISION, ASKED FROM BOTH SIDES. Writing one axis must leave the other
+  // exactly as it was — `world_set_palette` rewrites the whole section for a region.
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 1) == "sand",
+         "material 1 after a type write: '{world_palette_name(w, PAL_MATERIAL, 0, 1)}'");
+  assert(world_palette_name(w, PAL_MATERIAL, 0, 2) == "rock", "material 2 survived");
+  assert(world_palette_name(w, PAL_HTYPE, 0, 1) == "cottage wid=5 dep=4",
+         "the type reads back whole, `=` in the payload and all");
+}
+
+fn test_the_type_axis_keeps_the_palette_s_own_rules() {
+  w = fresh();
+  // Slot 0 is absence on every axis, and a fourth must not be the one that forgets.
+  assert(world_set_palette(w, PAL_HTYPE, 0, [pal(0, "cottage")]) == PAL_SLOT,
+         "slot 0 is not writable on the type axis either");
+  assert(world_set_palette(w, PAL_HTYPE, 0, [pal(1, "a"), pal(1, "b")]) == PAL_DUP,
+         "two entries claiming one slot");
+  assert(world_palette_name(w, PAL_HTYPE, 0, 0) == PAL_ABSENT, "slot 0 answers absence");
+  assert(world_palette_name(w, PAL_HTYPE, 0, 9) == "", "an undeclared slot is empty");
+}

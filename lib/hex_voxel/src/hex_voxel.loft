@@ -2856,6 +2856,12 @@ pub const PAL_ABSENT = "-";     // what slot 0 answers, named so a reader can sa
 pub const PAL_MATERIAL = 0;
 pub const PAL_EDGE     = 1;
 pub const PAL_ITEM     = 2;
+// ⚠ A FOURTH AXIS, AND THE STORE DOES NOT KNOW WHAT A HOUSE IS — plan 22 `T1a.1`.
+// It carries `slot=payload` for house types exactly as `PALM` carries "sand":
+// `hex_editor` parses what the payload MEANS. A house type is a palette axis
+// because the alternative was a FOURTH declaration format, which is the
+// duplication plan 21 and PARTS both exist to stop.
+pub const PAL_HTYPE    = 3;
 
 // ⚠ LITERALS, held equal to `section_tag(…)` by a test — the same rule and the same
 // reason as the part sections: a file-scope constant is an inlined expression,
@@ -2865,6 +2871,7 @@ pub const TAG_PALM = 1296843088;   // 'PALM', low byte first — materials
 pub const TAG_PALW = 1464615248;   // 'PALW' — edges
 pub const TAG_PALI = 1229734224;   // 'PALI' — items
 pub const TAG_RGNS = 1397638994;   // 'RGNS' — which region each chunk belongs to
+pub const TAG_PALT = 1414283600;   // 'PALT' — house types, plan 22 `T1a.1`
 
 pub struct PalEntry { pl_slot: integer, pl_name: text }
 
@@ -2874,9 +2881,16 @@ pub const PAL_DUP      = 2;   // two entries claiming one slot
 pub const PAL_NEWLINE  = 3;   // a newline in a name would forge a line
 pub const PAL_ABSENT_C = 4;   // a byte a cell uses that the palette does not name
 
+// ⚠ **THE DEFAULT IS `TAG_PALM`, WHICH MAKES AN UNTAUGHT AXIS A SILENT CLOBBER** —
+// measured, plan 22 `T1a.1`. Adding `PAL_HTYPE` as a constant and forgetting this
+// function wrote house types into the MATERIAL section: they round-tripped
+// perfectly, twenty of the twenty-one palette tests stayed green, and
+// `world_palette_name(w, PAL_MATERIAL, 0, 1)` came back `"cottage wid=5 dep=4"`.
+// A world would have loaded against a mapping where slot 1 is a house.
 fn pal_tag(kind: integer) -> integer {
   if kind == PAL_EDGE { return TAG_PALW; }
   if kind == PAL_ITEM { return TAG_PALI; }
+  if kind == PAL_HTYPE { return TAG_PALT; }
   TAG_PALM
 }
 

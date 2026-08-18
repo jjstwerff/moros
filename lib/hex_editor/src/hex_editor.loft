@@ -1209,6 +1209,82 @@ pub fn mode_at(sess: EditSession, w: VoxelWorld, a: Author) -> integer {
 // One shape for now — the gesture is the question here, not the parameters. ⚠ It
 // is here rather than in each program because it was in each program: two copies
 // that agreed by luck (`src/editor_run.loft` and `src/editor_server.loft`).
+// ── A HOUSE TYPE IS A PALETTE ENTRY — plan 22 `T1a.1` ──────────────────────
+//
+// > *"so we eventually get house types that set defaults for windows/doors/floors and
+// > possibly even unique keys, so the system can grow."*
+//
+// ⚠ **THE FORMAT IS PLAN 21's PALETTE AND NOT A NEW ONE**, on the project owner's
+// call. [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) is explicit that a
+// fourth way of saying *what this thing is called and what it is made of* is the
+// duplication plan 21 and PARTS both exist to stop. So a type is
+// `hex_voxel::PAL_HTYPE` slot N, and it inherits the whole mechanism for free:
+// sectioned storage, per-REGION scoping, slot 0 as absence, a refusal past 255, and
+// duplicate and newline refusals.
+//
+// ⚠ **THE STORE CARRIES THE PAYLOAD AND THIS FILE GIVES IT MEANING.** `hex_voxel`
+// does not know what a house is; it holds `slot=text` exactly as it holds `1=sand`.
+// The declaration is `<name> wid=<n> dep=<n>` and the fields are a fresh decision,
+// which is what plan 21 said would carry across and what would not.
+//
+// ⚠ **AN UNDECLARED WORLD IS UNCHANGED, AND THAT IS A MECHANISM RATHER THAN CARE.**
+// `ht_ok` is false when nothing is declared and `press_verb` then builds exactly the
+// house it always did — the same shape `R2` used to keep every `R1` world resolving,
+// stated as *region 0 is the default*. It is what lets this land byte-identical.
+// Which slot the `place` verb reads. ⚠ ONE slot for now and named rather than
+// literal, because the day a catalogue lets an author pick a type this is the
+// thing that stops being a constant — and a bare `1` at the call site is how that
+// day turns into a grep.
+pub const HTYPE_DEFAULT_SLOT = 1;
+
+pub struct HouseType {
+  ht_ok:   boolean = false,
+  ht_name: text    = "",
+  ht_wid:  integer = 0,
+  ht_dep:  integer = 0,
+  ht_why:  text    = "",
+}
+
+// One `key=value` out of a declaration, or `miss` when it is not there.
+fn ht_field(body: text, key: text, miss: integer) -> integer {
+  at = body.find("{key}=");
+  if at == null { return miss; }
+  rest = body[(((at ?? 0) + key.size() + 1) as i32)..];
+  cut = rest.find(" ");
+  tok = rest;
+  if cut != null { tok = rest[0..(cut ?? 0)]; }
+  // ⚠ THE NULL IS DISCHARGED BEFORE THE WIDENING, not folded into a `??` with an
+  // `integer` on the other side: that asks loft to narrow `miss` to `i32` and it
+  // refuses, correctly.
+  v = tok as i32?;
+  if v == null { return miss; }
+  (v ?? 0) as integer
+}
+
+// The type this world declares at `slot`, or `ht_ok: false` when it declares none.
+//
+// ⚠ **A MALFORMED DECLARATION IS REFUSED, NEVER DEFAULTED.** `world_palette_check`'s
+// own argument, one axis over: a type that quietly fell back to 5x4 would build the
+// wrong house and say nothing, which is the failure a palette exists to make
+// impossible. A declaration that names no `wid`/`dep` is not a cottage with default
+// dimensions — it is a declaration somebody got wrong.
+pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
+  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_HTYPE, region, slot);
+  if raw == "" || raw == hex_voxel::PAL_ABSENT {
+    return HouseType { ht_why: "no house type declared at slot {slot}" };
+  }
+  sp = raw.find(" ");
+  nm = raw;
+  if sp != null { nm = raw[0..(sp ?? 0)]; }
+  wid = ht_field(raw, "wid", 0 - 1);
+  dep = ht_field(raw, "dep", 0 - 1);
+  if wid < 1 || dep < 1 {
+    return HouseType { ht_name: nm,
+                       ht_why: "type '{nm}' declares wid {wid} dep {dep}; both must be >= 1" };
+  }
+  HouseType { ht_ok: true, ht_name: nm, ht_wid: wid, ht_dep: dep }
+}
+
 pub const HOUSE_W = 5;
 pub const HOUSE_D = 4;
 
@@ -1697,7 +1773,25 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // placed instead. One verb, one key, and the catalogue says which thing it makes.
   if verb == VB_PLACE {
     if sess.es_part == "" {
-      return place_house(w, a, HOUSE_W, HOUSE_D, grade_under(w, a),
+      // ⚠ **THE TYPE IS DATA NOW — plan 22 `T1a.1`, and this is its ONE consumer.**
+      // A world that declares a house type at slot 1 of its region builds THAT type;
+      // a world that declares none builds exactly what it always did, because
+      // `ht_ok` is false and these constants are what `HOUSE_W`/`HOUSE_D` have always
+      // been. That fallback is what makes the step byte-identical over every existing
+      // script rather than a re-baseline.
+      //
+      // ⚠ **THE REGION IS THE AUTHOR'S, NOT ZERO.** A type belongs to where the house
+      // is going — plan 21 `R2`'s whole point is that a desert beside a mountain
+      // resolves its own names — so asking region 0 here would have made types global
+      // while the palette they live in is not, and the divergence would only show on
+      // the first world with two regions.
+      (htq, htr) = px_to_hex(a.au_x, a.au_z);
+      ht = house_type(w, hex_voxel::world_region_at(w, htq, htr), HTYPE_DEFAULT_SLOT);
+      if !ht.ht_ok && ht.ht_name != "" { return ack_no(ht.ht_why); }
+      hw = HOUSE_W;
+      hd = HOUSE_D;
+      if ht.ht_ok { hw = ht.ht_wid; hd = ht.ht_dep; }
+      return place_house(w, a, hw, hd, grade_under(w, a),
                          sess.es_runs, sess.es_roofs);
     }
     return place_chosen_part(sess, w, a, root);

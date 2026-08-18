@@ -1,0 +1,136 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A HOUSE TYPE IS DATA — plan 22 `T1a.1`.
+//
+// > **The invariant, and it is testable: ADDING A TYPE TOUCHES NO CODE.**
+// > — [EDITING_MODES](../../../doc/claude/EDITING_MODES.md)
+//
+// ⚠ **THAT SENTENCE IS THE ONLY ROW HERE THAT MATTERS**, and it is why the last test
+// declares a 7x5 rather than asserting a parse. A parser can be perfect while the
+// gesture still builds its constant, which is this tree's commonest defect wearing a
+// declaration format: `slope_settle` was tested by five tests and called by no
+// gesture. So the claim is made through `press_verb` — the one production consumer —
+// and the world has to come out a different size.
+//
+// ⚠ **THE FORMAT IS PLAN 21's PALETTE, ON THE OWNER'S CALL.** A house type is
+// `hex_voxel::PAL_HTYPE` slot 1 of the author's REGION, so it inherits slot-0
+// absence, the 256 refusal, duplicate and newline refusals, and per-region scoping
+// without any of it being written twice.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U     = 0.25;
+const FLOOR = 40;
+const YAW   = 1.5707963267948966;
+
+fn meadow() -> VoxelWorld {
+  w = world_new(U, hex_editor::W_RESERVE,
+                hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 30, 0 - 30, 61, 61, FLOOR, hex_editor::SURFACE_MAT);
+  w
+}
+
+fn declare(w: VoxelWorld, body: text) {
+  assert(hex_voxel::world_set_palette(w, hex_voxel::PAL_HTYPE, 0,
+           [hex_voxel::PalEntry { pl_slot: hex_editor::HTYPE_DEFAULT_SLOT, pl_name: body }])
+         == hex_voxel::PAL_OK, "the declaration '{body}' was refused");
+}
+
+// Place through the VERB, never through `place_house` directly — the verb is where a
+// type has to be read, and a test that called the gesture would prove nothing about
+// whether anything consults the table.
+fn placed_by_verb(w: VoxelWorld) -> Ack {
+  s = hex_editor::EditSession {};
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  s.es_author = a;
+  hex_editor::press_verb(s, w, a, hex_editor::VB_PLACE, "")
+}
+
+fn footprint_cells(ack: Ack) -> integer { ack.ak_n }
+
+// ── the parse ───────────────────────────────────────────────────────────────
+
+fn test_a_world_that_declares_nothing_has_no_type() {
+  w = meadow();
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(!ht.ht_ok, "an undeclared world has no type");
+  assert(ht.ht_name == "", "and names none: '{ht.ht_name}'");
+}
+
+fn test_a_declaration_reads_back_as_its_name_and_its_defaults() {
+  w = meadow();
+  declare(w, "cottage wid=5 dep=4");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(ht.ht_ok, "the type resolved: {ht.ht_why}");
+  assert(ht.ht_name == "cottage", "name '{ht.ht_name}'");
+  assert(ht.ht_wid == 5 && ht.ht_dep == 4, "wid {ht.ht_wid} dep {ht.ht_dep}");
+}
+
+fn test_a_declaration_missing_its_dimensions_is_refused_not_defaulted() {
+  // ⚠ `world_palette_check`'s own argument one axis over: a type that quietly fell
+  // back to 5x4 would build the wrong house and say nothing.
+  w = meadow();
+  declare(w, "cottage");
+  ht = hex_editor::house_type(w, 0, hex_editor::HTYPE_DEFAULT_SLOT);
+  assert(!ht.ht_ok, "a type with no wid/dep does not resolve");
+  assert(ht.ht_name == "cottage", "and it still says which one: '{ht.ht_name}'");
+  assert(ht.ht_why != "", "with a reason: '{ht.ht_why}'");
+}
+
+// ── and what the verb does with it ──────────────────────────────────────────
+
+fn test_an_undeclared_world_builds_exactly_the_house_it_always_did() {
+  // ⚠ THE ROW THAT MAKES THIS STEP BYTE-IDENTICAL over every existing script, and it
+  // is a mechanism rather than care: `ht_ok` false means the constants are used.
+  w = meadow();
+  ack = placed_by_verb(w);
+  assert(ack.ak_ok, "the default house stands: {ack.ak_why}");
+  assert(footprint_cells(ack) == 27, "a 5x4 house is 27 cells, got {footprint_cells(ack)}");
+}
+
+fn test_a_declared_cottage_reproduces_that_house_exactly() {
+  w = meadow();
+  declare(w, "cottage wid=5 dep=4");
+  ack = placed_by_verb(w);
+  assert(ack.ak_ok, "the declared cottage stands: {ack.ak_why}");
+  assert(footprint_cells(ack) == 27,
+         "a declared 5x4 is the same 27 cells, got {footprint_cells(ack)}");
+}
+
+fn test_adding_a_type_touches_no_code() {
+  // ⛔ **THE INVARIANT.** Nothing in `lib/` knows the number 7 or the number 5 below;
+  // they exist only in this string. If the verb ever stops consulting the table this
+  // row goes red while every parse test above stays green — which is exactly the gap
+  // between *built* and *called*.
+  w = meadow();
+  declare(w, "longhouse wid=7 dep=5");
+  ack = placed_by_verb(w);
+  assert(ack.ak_ok, "the longhouse stands: {ack.ak_why}");
+  assert(footprint_cells(ack) != 27,
+         "a 7x5 is not the 5x4 house — the verb ignored the declaration");
+  // ⚠ **THE EXPECTED COUNT IS THE GESTURE'S OWN, NOT A NUMBER WRITTEN HERE.** The
+  // first draft asserted 47 because that is what 7x5 looks like it should be; a hex
+  // rasterisation says 37, and a guessed constant would have made this row fail for
+  // a reason that has nothing to do with the claim. So the control is `place_house`
+  // called with 7 and 5 EXPLICITLY: two paths to one house, and the declaration has
+  // to reach the same place the arguments do.
+  c = meadow();
+  cs = hex_editor::EditSession {};
+  ca = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  direct = hex_editor::place_house(c, ca, 7, 5, hex_editor::grade_under(c, ca),
+                                   cs.es_runs, cs.es_roofs);
+  assert(direct.ak_ok, "the control house stands: {direct.ak_why}");
+  assert(footprint_cells(ack) == footprint_cells(direct),
+         "declared 7x5 is {footprint_cells(ack)} cells, called 7x5 is "
+       + "{footprint_cells(direct)}");
+}
+
+fn test_a_broken_declaration_refuses_the_gesture_rather_than_building_the_wrong_house() {
+  w = meadow();
+  declare(w, "cottage wid=0 dep=4");
+  ack = placed_by_verb(w);
+  assert(!ack.ak_ok, "the gesture refused rather than falling back");
+  assert(ack.ak_why != "", "and said why: '{ack.ak_why}'");
+}
