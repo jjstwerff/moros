@@ -35,11 +35,32 @@ leaf — `track_distance`, `nearest_seg`, `way_mark`, `way_stamp`, `cut_arb` and
 > The **same** quarter arc marks **5 cells** authored at `[0, pi/2]` and **1** at
 > `[-2pi, -2pi+pi/2]`. One curve, two footprints.
 
-✅ **The fix is measured, not proposed** — `probe/way/hex_way-fix.patch`. Applied to the
-sibling checkout, every row above holds, the footprints agree at 5 and 5, and `hex_way`'s
-own 12 tests stay green. **The checkout was then restored byte-for-byte**: another agent
-is working that tree (`hex_shape/tests/zz-probe.loft` appeared during this session), and
-landing it there — or republishing — is the owner's call, not this tree's.
+✅ **LANDED IN THE SIBLING — `b553c84`, on the `worked-examples` branch.** `ang_wrap` is a
+shared helper both `seg_distance` and `seg_param` call, so the file no longer carries two
+normalisations; `seg_param`'s behaviour is unchanged because it was already doing exactly
+this inline. The worked example is **`@HXY-007`**, seen red first with the old slide put
+back — *"the SAME arc authored at [-2pi, -2pi+pi/2] reports its own points 3.061 away"* —
+and it asserts both halves, the distance and the footprint, with a fixture guard so a run
+that marked nothing cannot read as agreement.
+
+✅ **Parity gate: one program, three targets, byte-identical output** (`96a32ff0…`) —
+interpreter, `--native`, and `--native-wasm` under wasmtime. `loft test` and
+`loft test --native` are 13 passed / 2 files. (`--native-wasm` is not a `loft test` mode —
+the runner says so; it compiles a program, so the gate runs `sweep.loft` as the program.)
+
+⛔ **AND IT CANNOT BE PUBLISHED ON ITS OWN — measured, not assumed.** Publishing builds
+from `main`, and:
+
+- `hex_way/tests/02-worked-examples.loft` — the file `@HXY-007` lives in — **does not
+  exist on `main`**. It was created by the sibling's `799f99d`, *@PLN141 Phase E row 4*.
+- `loft.toml`'s `version = "0.1.1"` and the `track_offset` fix are that same commit's.
+  The registry has **only 0.1.0**.
+- `worked-examples` is **6 commits unpushed** and mid-series (rows 1–5 of a phase).
+
+So the ang_wrap fix rides on their unpublished 0.1.1, and shipping it means merging
+another session's unfinished plan phase to `main` first. That is a decision about someone
+else's work, not a mechanical step, so it is where this stops. The registry checkout and
+the signing key are both on this box; the signing step is human-gated by design.
 
 ⚠ **Not reachable from moros.** Nothing in `lib/`, `src/`, the sibling tree or the
 registry calls `track_arc` at all; every track this tree builds is `track_straight`. The
@@ -57,6 +78,11 @@ Three differ in code:
 | `hex_field` | +73 lines | purely **additive** (`stencil_unstamp*`) — we simply do not have them |
 | `hex_form` | +13 lines | added **refusals**; the registry copy accepts malformed stencil headers the checkout rejects |
 | `hex_way` | **1 line** | `track_offset` is `+ d * dir` published and `- d * dir` in the checkout |
+
+⚠ **The `hex_way` row is 16 lines now, not 1 — I widened it myself.** The `ang_wrap` fix is
+landed in the checkout (`b553c84` on `worked-examples`) and the registry still has 0.1.0, so
+the baseline moved and `drift.sh` said so out loud before I re-blessed it. That is the guard
+working: the drift changed, and the run that changed it is the one that had to explain why.
 
 That last one is the sibling's own fix — their commit calls it *"an offset that is exactly
 the right distance from the wrong side"* — and **the published 0.1.0 does not carry it**.
