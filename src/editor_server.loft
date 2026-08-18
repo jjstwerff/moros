@@ -46,6 +46,7 @@ use hex_proj;   // the drawing primitives — plan 22 `B1b.2c.2`
 // this line when it is fixed.
 use hex_shape;
 use hex_editor;   // S3 — the wall a run draws, and the band it is drawn at
+use hex_cam;      // the camera's geometry, shared with crawler (plan 22 `C2b`)
 use fixstep;      // approach — the ease, one copy for every game (plan 22 `E1`)
 // ⚠ QUALIFIER ONLY, never a bare or selective `use`: `moros_sim` reaches
 // `hex_field`, which has its own `edgeset_new` beside the `hex_edge` one this file
@@ -2081,7 +2082,9 @@ fn limb_at(lbody: Mat4, jx: float, jy: float, jz: float, swing: float) -> Mat4 {
 // perpendicular gap is 0.28·cos(72°) ≈ 0.09, inside the near plane, and the
 // hillside fills the screen. `cam_clear_at` converts this into the vertical
 // clearance that actually delivers it, using the local gradient.
-const CAM_CLEAR      = 0.45;   // how far off the SURFACE the eye must stay
+// ⚠ `CAM_CLEAR` IS `hex_cam`'s — plan 22 `C2b`. It was declared here too, and a
+// program declaring a name a library publishes SHADOWS it invisibly (`HOUSE_W`,
+// measured), so the two would have drifted with nothing able to say so.
 const CAM_MIN_FRAC   = 0.22;   // never pull closer than this fraction of the boom
 const CAM_STEPS      = 14;     // march resolution along the boom
 // ── Rates ────────────────────────────────────────────────────────────────────
@@ -2580,7 +2583,7 @@ const MODE_EYES   = 4;
 const EYES_PITCH  = 1.50;      // ±86° — straight up and straight down, both allowed
 const AMB_EYES    = 0.30;      // lifted from SNUG's: you are IN the room, not spying on it
 const LAMP_EYES   = 0.70;
-fn eye_wu() -> float { figure_wu() * 0.92 }   // where a person's eyes are, not their chest
+fn eye_wu() -> float { hex_cam::eye_height(figure_wu()) }   // a person's eyes, not their chest
 
 // The pitch a mode allows. ⚠ ONE DERIVATION AND TWO CALLERS, and the second caller
 // is the one that matters: the fence used to be applied only where the player's
@@ -2679,36 +2682,23 @@ fn vis_mask(body: boolean, mode: integer) -> integer {
 // before. ⚠ It must stay layer-aware: `cell_normal` itself reads `terrain_h`, the
 // OUTDOORS, and on a deck that is a different surface three storeys down with a
 // completely different slope.
-// ⚠ **THE SURFACE ARRIVES AS A FUNCTION — plan 22 `C1`.** This took `eye` and the
-// WORLD and called `surface_h_at` itself, which is the one thing that stops these
-// routines becoming `hex_cam`: a camera library three games share cannot know how any
-// of them stores a surface. The sampler is the consumer's, exactly as `cliff_edges`
-// takes its terrain by a function and `ground_axle` takes its own — the precedent is
-// this tree's and the mechanism is proven, so this is a shape change and not a bet.
+// ⚠ **THE CLEARANCE IS `hex_cam`'s NOW — plan 22 `C2b`.** What is left here is the
+// ADAPTER, and it is the whole seam: the library asks for a cell and two lattice
+// functions, this file knows which lattice moros uses and how it stores a surface.
+// `C1` made the surface a parameter; this hands over the lattice too, so nothing
+// about hex geometry or the store crosses into the package crawler will share.
 //
-// ⚠ **`eye` WENT WITH IT, AND THAT IS THE POINT RATHER THAN A TIDY-UP.** It was only
-// ever passed through to the sampler; a parameter this function does not use is a
-// parameter the library version would have to explain. The closure captures it at the
-// call site, where the eye's height is already known.
-fn cam_clear_at(x: float, z: float, sample: fn(integer, integer) -> float) -> float {
+// ⚠ **THE ORIGINAL IS DELETED RATHER THAN LEFT BESIDE IT.** Two bodies of one
+// derivation is what `D2a.1` and `T1a` were both about, and a private copy that
+// still compiles is the one a later edit lands in.
+fn cam_clear_here(x: float, z: float, eye: float, wld: VoxelWorld) -> float {
   a = world_to_hex(x, z);
-  c0 = hex_to_world(a.ha_q, a.ha_r, 0);
-  h0 = sample(a.ha_q, a.ha_r);
-  sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
-  for nd in 0..6 {
-    (nq, nr) = hex_grid::hex_neighbor(a.ha_q, a.ha_r, nd);
-    nw = hex_to_world(nq, nr, 0);
-    dx = nw.x - c0.x;
-    dz = nw.z - c0.z;
-    dy = sample(nq, nr) - h0;
-    sxx = sxx + dx * dx;
-    szz = szz + dz * dz;
-    sxy = sxy + dx * dy;
-    szy = szy + dz * dy;
-  }
-  gx = sxy / sxx ?? 0.0;
-  gz = szy / szz ?? 0.0;
-  CAM_CLEAR * sqrt(1.0 + gx * gx + gz * gz)
+  hex_cam::cam_clear_at(a.ha_q, a.ha_r,
+    fn(cq: integer, cr: integer) -> float { surface_h_at(cq, cr, eye, wld) },
+    fn(cq: integer, cr: integer, d: integer) -> (integer, integer) {
+      hex_grid::hex_neighbor(cq, cr, d) },
+    fn(cq: integer, cr: integer) -> (float, float) {
+      w = hex_to_world(cq, cr, 0); (w.x, w.z) })
 }
 
 // The surface height at a CELL for an eye at `ref` — `ground_under`'s rule without
@@ -2758,7 +2748,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
       // layer at or below the height you are at. The reference is this sample's
       // own eye height, which is exactly what "is the eye below the surface" asks.
       ey_s = oy + t * sp;
-      if ey_s < hex_mesh::ground_under(wld, sx, sz, ey_s) + cam_clear_at(sx, sz, fn(cq: integer, cr: integer) -> float { surface_h_at(cq, cr, ey_s, wld) }) {
+      if ey_s < hex_mesh::ground_under(wld, sx, sz, ey_s) + cam_clear_here(sx, sz, ey_s, wld) {
         free = want * ((i - 1) as float) / (CAM_STEPS as float) ?? 0.0;   // last clear sample
         hit = true;
       }
@@ -2833,7 +2823,7 @@ fn cam_free_arc(cx: float, cyy: float, cz: float, cyaw: float, rate: float,
     off = lo + (hi - lo) * (i as float) / (CAM_ARC_N as float) ?? 0.0;
     y2 = cyaw + off;
     // the pivot swings with yaw too, so it is recomputed per sample
-    f = cam_free_dist(cam_pivot_x(cx, y2), cam_pivot_y(cyy), cam_pivot_z(cz, y2),
+    f = cam_free_dist(cam_pivot_x_here(cx, y2), cam_pivot_y_here(cyy), cam_pivot_z_here(cz, y2),
                       y2, cpitch, want, wld, coll);
     if f < worst { worst = f; }
   }
@@ -2864,10 +2854,10 @@ fn cam_pitch_target(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
 // The over-the-shoulder solve, as an orbit that is ALWAYS behind the facing.
 // Camera and character share one yaw, so the camera cannot drift off the
 // character's back — there is no second value to keep in step.
-fn cam_boom() -> float { figure_wu() * 2.90 }
-fn cam_pivot_x(cx: float, cyaw: float) -> float { cx + (0.0 - sin(cyaw)) * figure_wu() * 0.34 }
-fn cam_pivot_z(cz: float, cyaw: float) -> float { cz + cos(cyaw) * figure_wu() * 0.34 }
-fn cam_pivot_y(cyy: float) -> float { cyy + figure_wu() * 0.70 }
+fn cam_boom_here() -> float { hex_cam::cam_boom(figure_wu()) }
+fn cam_pivot_x_here(cx: float, cyaw: float) -> float { hex_cam::cam_pivot_x(cx, cyaw, figure_wu()) }
+fn cam_pivot_z_here(cz: float, cyaw: float) -> float { hex_cam::cam_pivot_z(cz, cyaw, figure_wu()) }
+fn cam_pivot_y_here(cyy: float) -> float { hex_cam::cam_pivot_y(cyy, figure_wu()) }
 
 // Where a placed eye stands, and whether one is placed at all — `48:`.
 //
@@ -2934,9 +2924,9 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // it over-the-SHOULDER rather than straight down the spine.  `cam_pivot_*`
   // repeat this so the tick's occlusion march starts from the same point; if the
   // two ever drift the camera would avoid a hill it is not actually looking past.
-  ox = cam_pivot_x(cx, cyaw);
-  oz = cam_pivot_z(cz, cyaw);
-  oy = cam_pivot_y(cyy);
+  ox = cam_pivot_x_here(cx, cyaw);
+  oz = cam_pivot_z_here(cz, cyaw);
+  oy = cam_pivot_y_here(cyy);
   // The eye orbits the pivot and the TARGET stays near it. Measured: with a
   // target far ahead, the eye rose with pitch while the aim did not, so past
   // ~40° the character dropped out of frame — a follow camera that loses what
@@ -2963,7 +2953,7 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // another heuristic: **the eye is never below the surface.** Obstruction is
   // outright bad and a raised eye is merely an unusual angle, so when the two
   // conflict the angle loses.
-  floor_at_eye = hex_mesh::ground_under(wld, ex, ez, ey) + cam_clear_at(ex, ez, fn(cq: integer, cr: integer) -> float { surface_h_at(cq, cr, ey, wld) });
+  floor_at_eye = hex_mesh::ground_under(wld, ex, ez, ey) + cam_clear_here(ex, ez, ey, wld);
   if ey < floor_at_eye { ey = floor_at_eye; }
   eye = vec3(ex, ey, ez);
   tgt = vec3(ox + ky * fh * 1.20, oy + fh * 0.05, oz + sy * fh * 1.20);
@@ -3136,10 +3126,10 @@ fn probe_view() {
   }
   println("view-blocking edges in the proxy around the author: {ncoll / 2 ?? 0} (each counted twice)");
   py2 = hex_mesh::terrain_y(sx, sz, wld);
-  ox2 = cam_pivot_x(sx, PI * 0.5);
-  oz2 = cam_pivot_z(sz, PI * 0.5);
-  oy2 = cam_pivot_y(py2);
-  want = cam_boom();
+  ox2 = cam_pivot_x_here(sx, PI * 0.5);
+  oz2 = cam_pivot_z_here(sz, PI * 0.5);
+  oy2 = cam_pivot_y_here(py2);
+  want = cam_boom_here();
   for i in 0..8 {
     yy = (i as float) * PI * 0.25;
     f = cam_free_dist(ox2, oy2, oz2, yy, 0.35, want, wld, coll);
@@ -6194,12 +6184,12 @@ fn main() {
         coll_view = hex_editor::edges_around(wld, wk.wk_cq, wk.wk_cr, COLL_R, true,
                                  sess.es_runs, surfaces_new(), wk.wk_csurf as float);
       }
-      cam_want = cam_boom();
+      cam_want = cam_boom_here();
       cut_now = cam_mode == MODE_CUTAWAY;
       if cut_now { cam_want = cut_boom(); }
       eyes_now = cam_mode == MODE_EYES;
       if eyes_now { cam_want = 0.0; }
-      cpx = cam_pivot_x(wk.wk_x, wk.wk_yaw); cpy = cam_pivot_y(wk.wk_y); cpz = cam_pivot_z(wk.wk_z, wk.wk_yaw);
+      cpx = cam_pivot_x_here(wk.wk_x, wk.wk_yaw); cpy = cam_pivot_y_here(wk.wk_y); cpz = cam_pivot_z_here(wk.wk_z, wk.wk_yaw);
       // Angular velocity, lightly smoothed so one jittery drag frame does not
       // throw the prediction. This is the "we are already turning" signal.
       cam_rate = cam_rate * 0.6 + ((wk.wk_yaw - cam_yaw_prev) / dt ?? 0.0) * 0.4;
@@ -6355,9 +6345,9 @@ fn main() {
       if cut_now { cam_creep = 0.0; }
       cam_slide = 0.0;
       if cam_creep > 0.0 {
-        cam_px = cam_pivot_x(wk.wk_x, wk.wk_yaw);
-        cam_pz = cam_pivot_z(wk.wk_z, wk.wk_yaw);
-        cam_py = cam_pivot_y(wk.wk_y);
+        cam_px = cam_pivot_x_here(wk.wk_x, wk.wk_yaw);
+        cam_pz = cam_pivot_z_here(wk.wk_z, wk.wk_yaw);
+        cam_py = cam_pivot_y_here(wk.wk_y);
         cam_reach = CAM_SHOULDER + CAM_SKIN;
         cam_lf = cam_free_side(cam_px, cam_py, cam_pz, wk.wk_yaw, cam_reach, wld,
                                coll_view, 1.0);
