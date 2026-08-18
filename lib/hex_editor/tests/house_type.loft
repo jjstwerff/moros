@@ -134,3 +134,82 @@ fn test_a_broken_declaration_refuses_the_gesture_rather_than_building_the_wrong_
   assert(!ack.ak_ok, "the gesture refused rather than falling back");
   assert(ack.ak_why != "", "and said why: '{ack.ak_why}'");
 }
+
+// ── A TYPE'S OWN VERBS — plan 22 `T1a.2` ───────────────────────────────────
+//
+// > *"A castle may have a keystroke a cottage has no use for."* … *"a type that
+// > contributes verbs means the verb set is not knowable at compile time, so which
+// > keys does this editor have becomes a QUERY rather than a constant."*
+//
+// ⚠ **A TYPE VERB IS AN ALIAS ONTO AN EXISTING GESTURE.** It has to be: the invariant
+// is *adding a type touches no code*, and a verb running NEW behaviour is new code by
+// definition. What a declaration can contribute is a NAME for something the editor
+// already does — the type's own defaults are what make it a portcullis rather than a
+// window.
+
+fn a_house(w: VoxelWorld, s: EditSession) -> Author {
+  a = hex_editor::author_at(0.0, 0.0 - 4.0, YAW, (FLOOR as float) * U);
+  s.es_author = a;
+  hex_editor::press_verb(s, w, a, hex_editor::VB_PLACE, "");
+  a
+}
+
+fn test_an_undeclared_verb_is_refused_and_stays_refused() {
+  // ⛔ THE RED THIS FEATURE WAS BUILT AGAINST, kept as a row: a world that declares
+  // no type must not acquire a vocabulary from anywhere.
+  w = meadow();
+  s = hex_editor::EditSession {};
+  a = a_house(w, s);
+  ack = hex_editor::press_verb(s, w, a, "portcullis", "");
+  assert(!ack.ak_ok, "an undeclared verb does nothing");
+}
+
+fn test_a_type_verb_performs_its_base_gesture() {
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 verbs=portcullis:opening");
+  s = hex_editor::EditSession {};
+  a = a_house(w, s);
+  // Stand inside, against the near wall, exactly as the opening tests do.
+  at = hex_editor::author_at(0.0, 0.0 - 1.5, 0.0 - YAW, (FLOOR as float) * U);
+  s.es_author = at;
+  ack = hex_editor::press_verb(s, w, at, "portcullis", "");
+  assert(ack.ak_ok, "the castle's own verb cut its opening: {ack.ak_why}");
+  assert(len(s.es_open.items) == 1,
+         "and it went into the session as an opening: {len(s.es_open.items)}");
+}
+
+fn test_a_type_cannot_shadow_a_base_verb() {
+  // ⚠ `place` means place in every world. A declaration that could redefine it would
+  // change the editor for everyone standing in that region — the palette's *a byte
+  // the palette does not name is a fault* argument pointed at silent REDEFINITION
+  // rather than silent absence.
+  w = meadow();
+  declare(w, "rogue wid=5 dep=4 verbs=place:hole");
+  base = hex_editor::verb_resolve(w, 0, hex_editor::HTYPE_DEFAULT_SLOT,
+                                  hex_editor::VB_PLACE);
+  assert(base == hex_editor::VB_PLACE,
+         "`place` still means place, got '{base}'");
+  // and the alias is not reachable under its own name either
+  s = hex_editor::EditSession {};
+  a = a_house(w, s);
+  assert(!hex_editor::press_verb(s, w, a, "place:hole", "").ak_ok,
+         "the declaration's pair does not become a verb of its own");
+}
+
+fn test_an_alias_onto_an_unknown_base_is_refused_not_dispatched() {
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 verbs=portcullis:sorcery");
+  s = hex_editor::EditSession {};
+  a = a_house(w, s);
+  ack = hex_editor::press_verb(s, w, a, "portcullis", "");
+  assert(!ack.ak_ok, "an alias onto a gesture the editor does not have is refused");
+}
+
+fn test_an_alias_cannot_chain_onto_another_alias() {
+  // ⚠ ONE resolution, never a loop with a depth limit — a depth limit is the shape a
+  // cycle hides in.
+  w = meadow();
+  declare(w, "castle wid=5 dep=4 verbs=a:b,b:opening");
+  got = hex_editor::verb_resolve(w, 0, hex_editor::HTYPE_DEFAULT_SLOT, "a");
+  assert(got == "a", "`a` does not chain through `b`, got '{got}'");
+}

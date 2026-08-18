@@ -1237,12 +1237,30 @@ pub fn mode_at(sess: EditSession, w: VoxelWorld, a: Author) -> integer {
 // day turns into a grep.
 pub const HTYPE_DEFAULT_SLOT = 1;
 
+// ── A TYPE'S OWN VERB — plan 22 `T1a.2` ────────────────────────────────────
+//
+// > *"A castle may have a keystroke a cottage has no use for."*
+//
+// ⚠⚠ **A TYPE VERB IS AN ALIAS ONTO AN EXISTING GESTURE, AND IT HAS TO BE.** The
+// invariant is *adding a type touches no code*; a verb that ran NEW behaviour would
+// be new code by definition, so the only thing a declaration can contribute is a
+// NAME for a gesture the editor already performs. `portcullis:opening` is a castle's
+// word for cutting an opening — the castle's own defaults are what make it a
+// portcullis rather than a window, which is the *bundle of defaults* half of a type
+// doing the work the name suggests.
+//
+// ⚠ **THAT IS A LIMIT AND IT IS STATED RATHER THAN DISCOVERED.** A type cannot add a
+// gesture the editor does not have. The day one needs to, that is a library change
+// and a new base verb — and the declaration then names it like any other.
+pub struct TypeVerb { tv_name: text, tv_base: text }
+
 pub struct HouseType {
-  ht_ok:   boolean = false,
-  ht_name: text    = "",
-  ht_wid:  integer = 0,
-  ht_dep:  integer = 0,
-  ht_why:  text    = "",
+  ht_ok:    boolean = false,
+  ht_name:  text    = "",
+  ht_wid:   integer = 0,
+  ht_dep:   integer = 0,
+  ht_verbs: vector<TypeVerb> = [],
+  ht_why:   text    = "",
 }
 
 // One `key=value` out of a declaration, or `miss` when it is not there.
@@ -1282,7 +1300,77 @@ pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
     return HouseType { ht_name: nm,
                        ht_why: "type '{nm}' declares wid {wid} dep {dep}; both must be >= 1" };
   }
-  HouseType { ht_ok: true, ht_name: nm, ht_wid: wid, ht_dep: dep }
+  HouseType { ht_ok: true, ht_name: nm, ht_wid: wid, ht_dep: dep,
+              ht_verbs: ht_verb_list(raw) }
+}
+
+// `verbs=<alias>:<base>,<alias>:<base>` out of a declaration, or empty.
+//
+// ⚠ A PAIR THAT NAMES NO BASE IS DROPPED, NOT GUESSED. `portcullis` on its own could
+// only be resolved by inventing a gesture for it, and the palette's rule one axis
+// over is that an unnamed byte is a fault rather than a default.
+fn ht_verb_list(body: text) -> vector<TypeVerb> {
+  out: vector<TypeVerb> = [];
+  at = body.find("verbs=");
+  if at == null { return out; }
+  rest = body[(((at ?? 0) + 6) as i32)..];
+  cut = rest.find(" ");
+  if cut != null { rest = rest[0..(cut ?? 0)]; }
+  for pair in rest.split(',') {
+    if pair == "" { continue; }
+    c = pair.find(":");
+    if c == null { continue; }
+    nm = pair[0..(c ?? 0)];
+    bs = pair[(((c ?? 0) + 1) as i32)..];
+    if nm == "" || bs == "" { continue; }
+    out += [TypeVerb { tv_name: nm, tv_base: bs }];
+  }
+  out
+}
+
+// ⛔ **`verbs_here()` WAS HERE AND IT WAS DELETED BEFORE IT SHIPPED — plan 22
+// `T1a.2`.** It answered *which verbs does this editor have here* — base set plus the
+// type's own — which is exactly the query
+// [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) says must replace a constant.
+// It had tests. It had **no consumer**, and this tree's commonest defect is a tested
+// claim nothing honours: `slope_settle` was called by five tests, three probes and no
+// gesture, and `footprint_seat` was built for seating a pad and called by nobody.
+//
+// ⚠ **THE CONSUMER IS THE VERB BAR, AND IT NEEDS TWO THINGS THIS STEP DID NOT BUILD.**
+// `client_verb_specs` is the one production reader of *what can I do* — and (1) its
+// call sites hold only `Client`, so the WORLD has to be threaded to it before it can
+// ask a question about a region, and (2) a type verb has **no key bound**, so the bar
+// would draw it with a blank glyph. The second is the real design: a type that
+// contributes a verb probably contributes its KEY too — *"possibly even unique keys"*
+// — and that is a declaration change, not a wiring change.
+//
+// So the dispatch half ships (`verb_resolve`, consumed by `press_verb` and seen red
+// with it disabled) and the query half waits for the step that can honour it.
+
+fn verb_is_base(name: text) -> boolean {
+  for v in keymap_verbs(keymap_default()) { if v == name { return true; } }
+  false
+}
+
+// What a verb NAME means here — itself for a base verb, the base gesture for a type's
+// alias, and itself when nothing claims it so the caller's own refusal still fires.
+//
+// ⚠ **A TYPE CANNOT SHADOW A BASE VERB.** `place` means place in every world, or a
+// declaration could quietly redefine the editor for everyone standing in that region
+// — which is the palette's *a byte the palette does not name is a fault* argument
+// pointed at the other risk: silent redefinition rather than silent absence.
+//
+// ⚠ **AND THE BASE MUST ITSELF BE A BASE VERB**, so an alias onto an alias cannot
+// chain. That is what keeps this ONE resolution rather than a loop with a depth
+// limit, and a depth limit is the shape a cycle hides in.
+pub fn verb_resolve(w: VoxelWorld, region: integer, slot: integer, verb: text) -> text {
+  if verb_is_base(verb) { return verb; }
+  ht = house_type(w, region, slot);
+  if !ht.ht_ok { return verb; }
+  for tv in ht.ht_verbs {
+    if tv.tv_name == verb && verb_is_base(tv.tv_base) { return tv.tv_base; }
+  }
+  verb
 }
 
 pub const HOUSE_W = 5;
@@ -1742,6 +1830,22 @@ pub fn place_chosen_part(sess: EditSession, w: VoxelWorld, a: Author, root: text
 // compared session carry a path that means nothing on the other side.
 pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
                   root: text = "") -> Ack {
+  // ⚠ **A TYPE'S OWN VERB ARRIVES HERE AS ITS ALIAS — plan 22 `T1a.2`, and this line
+  // is the whole consumer.** `verb_resolve` answers the verb unchanged for every base
+  // verb and for every world that declares no type, so this is a no-op on all 31
+  // corpus scripts; where a type declares `portcullis:opening`, the chain below sees
+  // `opening` and performs it.
+  //
+  // ⚠ **AT THE TOP RATHER THAN AT THE FALL-THROUGH, AND THE REASON IS RECURSION.**
+  // Resolving after the chain would mean calling this function again with the base
+  // verb, and an alias onto an alias would then be a loop needing a depth limit.
+  // `verb_resolve` refuses to chain instead, so one pass is the whole story.
+  //
+  // ⚠ **AND THE REGION IS THE AUTHOR'S**, exactly as the place arm reads its
+  // dimensions: a type belongs to where its author is standing, which is plan 21
+  // `R2`'s rule and would be silently wrong the first time a world has two regions.
+  (vrq, vrr) = px_to_hex(a.au_x, a.au_z);
+  verb = verb_resolve(w, hex_voxel::world_region_at(w, vrq, vrr), HTYPE_DEFAULT_SLOT, verb);
   if verb == VB_RAISE { return raise_ahead(w, a, 1); }
   if verb == VB_LOWER { return raise_ahead(w, a, 0 - 1); }
   // ⚠ **THE SAME SHAPE AS THE TWO LINES ABOVE, AND THAT IS THE ARGUMENT.** A
