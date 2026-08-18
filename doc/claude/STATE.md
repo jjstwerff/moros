@@ -38,13 +38,33 @@ store died. ✅ **Isolated to the binary here by a controlled pair** — one tre
 function, same `ref(3029)`, only the compiler changed: the 16 Aug build says `OWNS`, their
 09:36 build says `deps=[…]`. Nothing on our side was altered to fix it.
 
-⛔ **AND THE TREE STILL BUILDS THE BROKEN PAGE.** `/usr/local/bin/loft` is the 16 Aug
-binary, so until it is replaced: `make client` produces the trapping page, the five
-browser gates (`cache`, `camera_indoors`, `cellar_ceiling`, `client_mesh`, `deck_soffit`)
-stay red, `make probe-demo` and `make probe-auth` stay unrunnable, and the PICTURE stays
-unverified for `D2a.2`, `D2c` and `E1` — each of which recorded that limitation rather
-than working around it. **Installing the toolchain closes all of it at once**, and it is
-the single highest-value action available in this tree right now.
+⛔ **AND THERE ARE TWO LOFT BINARIES ON THIS BOX, THEY REPORT THE SAME VERSION, AND
+`make` DOES NOT USE THE ONE THIS TREE'S DOCS NAME.**
+
+| | built | `--version` | used by `make`? |
+|---|---|---|---|
+| `~/.local/bin/loft` | **2026-08-18 11:45** | `loft 2026.8.0` | ✅ **yes** — first on `PATH` |
+| `/usr/local/bin/loft` | 2026-08-16 23:08 | `loft 2026.8.0` | ❌ no |
+
+The Makefile says `LOFT ?= loft`, so every target resolves through **`PATH`**, and `PATH`
+answers `~/.local/bin/loft`. ⚠ **`--version` cannot tell them apart** — both say
+`loft 2026.8.0`, which is the same trap that let a toolchain swap go unnoticed on
+2026-08-16. **`ls -la $(which loft)` is the instrument; the version string is not.**
+
+⚠ **AND THIS FILE SAID THE WRONG THING AN HOUR AGO.** It read *"`/usr/local/bin/loft` is
+the 16 Aug binary, so `make client` produces the trapping page"*. The conclusion happened
+to be true — the rebuild did produce the broken page — but the REASON was wrong, and a
+reason that is wrong for a true conclusion is the kind that survives. `make` never
+consulted `/usr/local/bin/loft` at all. ⚠ [CLAUDE.md](../../CLAUDE.md) still says to
+verify against *"the installed `/usr/local/bin/loft`, which is moros's own toolchain"* —
+**that is no longer what the build uses**, and the two now differ by loft#950's fix.
+
+✅ **THE USER INSTALL CARRIES THE FIX — measured, not assumed.** `LOFT_VAR_TABLE` on one
+tree: `~/.local/bin/loft` gives `wc … deps=[_vector_1(11)]` where the 16 Aug build gives
+`def OWNS`. Same function, same `ref(3029)`, only the compiler changed. ⏭ What that is
+worth to the five browser gates, to `make probe-demo`/`probe-auth` and to the PICTURE
+that `D2a.2`, `D2c` and `E1` each recorded as unverified is **being measured now** and is
+not yet claimed here.
 
 ⚠ **A size change nobody has explained**: the same source is **7910 KB** on the old binary
 and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
