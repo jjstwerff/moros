@@ -1,0 +1,19 @@
+[package]
+name    = "hex_cam"
+version = "0.1.0"
+loft    = ">=0.8"
+description = "A third-person camera's geometry — clearance, boom and pivot — over a surface it is handed"
+
+# ⚠ **ZERO DEPENDENCIES, AND THAT IS THE WHOLE POINT — plan 22 `C2a`.** This package
+# exists so three consumers can share one camera: the editor's server, its page
+# client, and crawler. A camera that pulled in a world model could be shared by none
+# of them, because each stores its surface differently — which is exactly why `C1`
+# turned the sampler into a `fn(…)` parameter before this package was created.
+#
+# ⚠ **THE CONSUMER ANSWERS THE QUESTIONS; THIS PACKAGE ASKS THEM.** `C1` measured
+# that the camera asks the world THREE distinct things, and they do not collapse:
+# interpolated ground at a continuous point, the SURFACE at a cell, and the TERRAIN
+# at a cell. A library that took one sampler would be quietly wrong at two of them.
+
+[library]
+entry = "src/hex_cam.loft"

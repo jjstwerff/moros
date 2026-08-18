@@ -1,0 +1,119 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE CLEARANCE A SLOPE ASKS FOR — plan 22 `C2a`.
+//
+// ⚠ **REAL GEOMETRY, WHICH IS WHY THIS PACKAGE PASSES THE LOWER BOUND.** A test that
+// checked a declaration against itself could not be surprised; these hand the
+// function synthetic terrain whose gradient is known in closed form and check the
+// number against it. A wrong fit, a swapped axis or a dropped square root all move
+// the answer, and each has its own row.
+use hex_cam;
+
+// A flat-top hex lattice is the CONSUMER's, so the tests supply one — a square grid
+// is enough to exercise the fit and keeps the arithmetic checkable by hand.
+fn nb(q: integer, r: integer, d: integer) -> (integer, integer) {
+  if d == 0 { return (q + 1, r); }
+  if d == 1 { return (q - 1, r); }
+  if d == 2 { return (q, r + 1); }
+  if d == 3 { return (q, r - 1); }
+  if d == 4 { return (q + 1, r + 1); }
+  (q - 1, r - 1)
+}
+
+fn px(q: integer, r: integer) -> (float, float) { ((q as float), (r as float)) }
+
+fn test_flat_ground_asks_for_the_bare_clearance() {
+  // Every neighbour at the same height: the gradient is zero, the normal is 1, and
+  // the answer must be exactly `CAM_CLEAR` — not approximately.
+  got = hex_cam::cam_clear_at(0, 0, fn(q: integer, r: integer) -> float { 3.0 }, nb, px);
+  assert(got == hex_cam::CAM_CLEAR,
+         "flat ground wants exactly CAM_CLEAR, got {got}");
+}
+
+fn test_a_slope_asks_for_more_and_the_factor_is_the_normal() {
+  // A plane of gradient 1 in x, over THIS fixture's six neighbours. The expected
+  // value is derived here rather than copied from a run:
+  //
+  //     dx over the six:  +1 -1  0  0 +1 -1   ->  sxx = 4
+  //     dz over the six:   0  0 +1 -1 +1 -1   ->  szz = 4
+  //     dy = dx (a pure x slope)              ->  sxy = 4,  szy = 2
+  //     gx = 4/4 = 1        gz = 2/4 = 0.5
+  //     CAM_CLEAR * sqrt(1 + 1 + 0.25) = 0.45 * 1.5 = 0.675
+  //
+  // ⛔ **AND THE FIRST VERSION OF THIS ROW ASSERTED 0.6364, WHICH IS THE ANSWER FOR
+  // INDEPENDENT AXES.** It went red and the function was right: this fixture's
+  // DIAGONAL neighbours — `(+1,+1)` and `(-1,-1)` — couple x and z, so a slope in x
+  // alone still produces `gz = 0.5`. A real hex ring couples them too, which is why
+  // the fixture is left as it is and the derivation written out instead. ⚠ A test
+  // that re-derived this from the function's own expression could not have caught
+  // the author's arithmetic, which is what it did catch.
+  got = hex_cam::cam_clear_at(0, 0,
+          fn(q: integer, r: integer) -> float { (q as float) * 1.0 }, nb, px);
+  want = 0.675;
+  d = got - want; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "gradient 1 in x wants {want}, got {got}");
+}
+
+fn test_the_two_axes_are_symmetric() {
+  // ⚠ THE ROW THAT CATCHES A SWAPPED AXIS. `sxy/sxx` and `szy/szz` are easy to cross,
+  // and a crossed pair is invisible on any terrain that slopes the same way in both.
+  gx = hex_cam::cam_clear_at(0, 0,
+         fn(q: integer, r: integer) -> float { (q as float) * 2.0 }, nb, px);
+  gz = hex_cam::cam_clear_at(0, 0,
+         fn(q: integer, r: integer) -> float { (r as float) * 2.0 }, nb, px);
+  d = gx - gz; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "a slope in x and the same slope in z want the same clearance: {gx} vs {gz}");
+}
+
+fn test_a_steeper_face_asks_for_strictly_more() {
+  a = hex_cam::cam_clear_at(0, 0,
+        fn(q: integer, r: integer) -> float { (q as float) * 1.0 }, nb, px);
+  b = hex_cam::cam_clear_at(0, 0,
+        fn(q: integer, r: integer) -> float { (q as float) * 4.0 }, nb, px);
+  assert(b > a, "a steeper face asks for more clearance: {a} then {b}");
+  assert(a > hex_cam::CAM_CLEAR, "and any slope asks for more than the flat: {a}");
+}
+
+fn test_the_sign_of_the_slope_does_not_matter() {
+  // Downhill is as much a hillside as uphill; a fit that lost the square would
+  // differ, which is what this row exists to catch.
+  up = hex_cam::cam_clear_at(0, 0,
+         fn(q: integer, r: integer) -> float { (q as float) * 3.0 }, nb, px);
+  dn = hex_cam::cam_clear_at(0, 0,
+         fn(q: integer, r: integer) -> float { (0.0 - (q as float)) * 3.0 }, nb, px);
+  d = up - dn; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "uphill and downhill want the same clearance: {up} vs {dn}");
+}
+
+// ── THE BOOM AND PIVOT, WHICH ARE THE FIGURE'S ─────────────────────────────
+
+fn test_every_length_scales_with_the_figure() {
+  // ⚠ THE CLAIM THAT MAKES THIS SHARABLE: crawler's figure and the editor's are not
+  // the same height, so a boom fixed in world units would frame one of them wrongly.
+  a = hex_cam::cam_boom(1.0);
+  b = hex_cam::cam_boom(2.0);
+  assert(b == a * 2.0, "the boom is proportional to the figure: {a} then {b}");
+  assert(hex_cam::eye_height(2.0) == hex_cam::eye_height(1.0) * 2.0, "so is the eye");
+}
+
+fn test_the_pivot_leads_the_character_it_follows() {
+  // Facing +x (yaw 0): the pivot must sit AHEAD in z by `PIVOT_AHEAD` figures, and
+  // above the feet by `PIVOT_UP`. A pivot behind the character orbits their back.
+  fig = 2.0;
+  z = hex_cam::cam_pivot_z(0.0, 0.0, fig);
+  y = hex_cam::cam_pivot_y(0.0, fig);
+  assert(z == fig * hex_cam::PIVOT_AHEAD, "the pivot leads in z at yaw 0: {z}");
+  assert(y == fig * hex_cam::PIVOT_UP, "and rises above the feet: {y}");
+}
+
+fn test_turning_the_character_turns_the_pivot_with_them() {
+  // A quarter turn must move the lead from one axis to the other — if the pivot did
+  // not follow the yaw it would swing the eye through the character on every turn.
+  fig = 2.0;
+  x90 = hex_cam::cam_pivot_x(0.0, 1.5707963267948966, fig);
+  z90 = hex_cam::cam_pivot_z(0.0, 1.5707963267948966, fig);
+  assert(x90 < 0.0 - 0.6, "at a quarter turn the lead is in -x: {x90}");
+  d = z90; if d < 0.0 { d = 0.0 - d; }
+  assert(d < 0.000001, "and z no longer leads: {z90}");
+}

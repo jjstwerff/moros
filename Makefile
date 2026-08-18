@@ -27,7 +27,7 @@ TEST_JOBS ?= 16
 # packages and take no brand prefix (see CLAUDE.md), which is exactly why a
 # `moros_*`-shaped list skipped them.
 LIB_PACKAGES = moros_map moros_editor moros_render moros_sim lavition_ui \
-               hex_voxel hex_editor hex_part hex_proj hex_mesh glb_read
+               hex_voxel hex_editor hex_part hex_proj hex_mesh glb_read hex_cam
 
 serve:
 	$(PY) -m http.server $(PORT) --directory html &

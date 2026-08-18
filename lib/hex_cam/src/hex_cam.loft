@@ -1,0 +1,102 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A THIRD-PERSON CAMERA'S GEOMETRY — plan 22 `C2a`.
+//
+// The arithmetic a following camera needs, over a surface it is HANDED rather than
+// one it reads. Three consumers want this and none of them can share a world model:
+// the editor's server, its page client, and crawler.
+//
+// ── ⚠ WHAT THIS PACKAGE IS NOT ─────────────────────────────────────────────
+//
+// **No world.** `C1` turned the surface into a `fn(…)` parameter precisely so this
+// could exist; a camera that read a store could be shared by nobody.
+//
+// **No mode policy.** AUTO, FOLLOW, SNUG, CUTAWAY and EYES want opposite answers
+// from the same facts, and which one is right is the CONSUMER's decision —
+// [CAMERA_INDOORS.md](../../../doc/claude/CAMERA_INDOORS.md) is that argument, and
+// it stays with the consumer that has the modes.
+//
+// **No easing.** `fixstep::approach` owns that (plan 22 `E1`), and a second copy
+// here is the defect `E1` closed.
+//
+// ── ⚠ AND IT IS A COPY UNTIL `C2b` ─────────────────────────────────────────
+//
+// `src/editor_server.loft` still holds the originals and still runs them. This is
+// deliberate and is the plan's own shape: the copy must be green on its OWN tests
+// before a consumer moves, so that a red can be attributed to the move rather than
+// to the routines. The originals are deleted at `C2b`, once `camera_indoors` is
+// unmoved through the library.
+
+// How far off the surface the eye must stay, on the flat.
+//
+// ⚠ **MEASURED IN A PICTURE RATHER THAN CHOSEN.** Below this the eye grazes the
+// ground on a slope and the frame fills with hillside; the editor's own gate reads
+// the result as `subject`, the share of the frame the character occupies.
+pub const CAM_CLEAR = 0.45;
+
+// ── THE CLEARANCE A SLOPE ASKS FOR ─────────────────────────────────────────
+//
+// ⚠ **THE CLEARANCE IS PERPENDICULAR TO THE SURFACE, NOT VERTICAL, AND THAT IS THE
+// WHOLE OF THIS FUNCTION.** Flat ground wants `CAM_CLEAR`; a steep face wants much
+// more, because a fixed vertical gap lets the eye graze a hillside and fill the
+// screen with it. The factor is `sqrt(1 + gx² + gz²)` — the length of the surface
+// normal — so it is the gradient's own arithmetic rather than a fudge.
+//
+// ⚠ **THE GRADIENT IS A LEAST-SQUARES FIT OVER THE SIX NEIGHBOURS**, not four extra
+// samples: the editor's own note records that asking `ground_under` four times at
+// ±0.5 wu was the version this replaced, and a ring fit is both cheaper and less
+// direction-dependent.
+//
+// ⚠ **THE SAMPLER IS THE CONSUMER'S — plan 22 `C1`.** `sample(q, r)` answers the
+// surface height at a CELL for the eye's own level. The eye height is captured by
+// the caller's closure, because this function never needs to know it.
+//
+// `nb` gives the six neighbours of a cell and `px` its world centre; both are the
+// consumer's lattice, so this package does not carry one.
+pub fn cam_clear_at(cq: integer, cr: integer,
+                    sample: fn(integer, integer) -> float,
+                    nb: fn(integer, integer, integer) -> (integer, integer),
+                    px: fn(integer, integer) -> (float, float)) -> float {
+  (c0x, c0z) = px(cq, cr);
+  h0 = sample(cq, cr);
+  sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
+  for nd in 0..6 {
+    (nq, nr) = nb(cq, cr, nd);
+    (nx, nz) = px(nq, nr);
+    dx = nx - c0x;
+    dz = nz - c0z;
+    dy = sample(nq, nr) - h0;
+    sxx = sxx + dx * dx;
+    szz = szz + dz * dz;
+    sxy = sxy + dx * dy;
+    szy = szy + dz * dy;
+  }
+  gx = sxy / sxx ?? 0.0;
+  gz = szy / szz ?? 0.0;
+  CAM_CLEAR * (sqrt(1.0 + gx * gx + gz * gz) ?? 1.0)
+}
+
+// ── THE BOOM AND ITS PIVOT ─────────────────────────────────────────────────
+//
+// ⚠ **EVERY LENGTH IS THE FIGURE'S, WHICH IS WHY `fig` IS A PARAMETER AND NOT A
+// CONSTANT.** A camera framing a person is sized by that person: crawler's figure
+// and the editor's are not the same height, and a package that fixed the boom in
+// world units would frame one of them wrongly. The ratios are the shared part.
+pub const BOOM_FIGURES  = 2.90;   // how far back, in figure heights
+pub const PIVOT_AHEAD   = 0.34;   // how far the pivot leads the character
+pub const PIVOT_UP      = 0.70;   // and how far above its feet
+pub const EYE_FRACTION  = 0.92;   // where a person's eyes are, not their chest
+
+pub fn cam_boom(fig: float) -> float { fig * BOOM_FIGURES }
+pub fn eye_height(fig: float) -> float { fig * EYE_FRACTION }
+
+// The pivot the boom swings about — ahead of the character and above their feet, so
+// the eye orbits what they are looking at rather than their navel.
+pub fn cam_pivot_x(cx: float, cyaw: float, fig: float) -> float {
+  cx + (0.0 - sin(cyaw)) * fig * PIVOT_AHEAD
+}
+pub fn cam_pivot_z(cz: float, cyaw: float, fig: float) -> float {
+  cz + cos(cyaw) * fig * PIVOT_AHEAD
+}
+pub fn cam_pivot_y(cy: float, fig: float) -> float { cy + fig * PIVOT_UP }
