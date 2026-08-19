@@ -458,7 +458,7 @@ fast:
 # `track_offset` fix in `hex_way` that the published 0.1.0 does not carry. It is a
 # BASELINE rather than a threshold, because the drift is not this tree's to close: it
 # fires when the sibling moves further OR when a republish lands. `probe/way/README.md`.
-	@sh probe/way/drift.sh
+	@DRIFT_ADVISORY=1 sh probe/way/drift.sh
 	@sh tools/walk-exact.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 	@$(MAKE) -s probe-k3c
@@ -663,6 +663,20 @@ guards:
 # ⚠ Spawns headless Chrome and an xvfb display; both are cleaned up by the script.
 probe-text:
 	@sh probe/b1/run.sh
+
+# THE GATING FORM OF THE DRIFT CHECK, for the moment somebody is about to trust a
+# `hex_*` answer. `fast` runs it ADVISORY instead.
+#
+# ⛔ **AND THIS TARGET WAS BRIEFLY DECLARED IN THE MIDDLE OF `fast`'s RECIPE, WHICH
+# TRUNCATED IT — 2026-08-19.** A target declaration ends the recipe above it, so
+# `walk-exact`, `run-tests`, four probes and `headless-same` silently became part of
+# THIS target, and `make fast` went green **in 0.367 seconds** having run three checks
+# out of ten. ⚠ It was caught by the CLOCK, not by the exit code: rc 0 is what a tier
+# that runs nothing reports. *When a green run is used to clear a change, ask what it
+# does not run* — written in this file already, and walked into anyway while using
+# `fast` to clear a new toolchain.
+drift:
+	@sh probe/way/drift.sh
 
 # THE PRE-FLIGHT FOR STARTING A PLAN — are its steps small AND validated?
 #   make plan-check P=22-pages-client

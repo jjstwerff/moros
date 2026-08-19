@@ -65,6 +65,23 @@ if [ ! -f "$BASE" ]; then
   echo "drift: no baseline at $BASE — run DRIFT_BLESS=1 sh probe/way/drift.sh"; exit 1
 fi
 printf '%s' "$out" > "$TMP/now"
+# ⛔ **ADVISORY IN `make fast`, AND THAT IS A CORRECTION OF THIS SCRIPT'S FIRST DAY.**
+# It was written as a GATE in the fast tier on 2026-08-18 and was red by the next
+# morning — not because anything here moved, but because the sibling landed @PLN141
+# Phase E rows 6–12 overnight and six packages drifted at once. A check that goes red on
+# somebody else's commit rate makes this tree's loop hostage to theirs, which is the
+# *red on purpose* trap this script's own comment warns about, walked into while writing
+# the warning. So `fast` gets one line and never a failure; `make drift` is the gate,
+# for the moment somebody is about to trust a `hex_*` answer.
+if [ "${DRIFT_ADVISORY:-0}" = "1" ]; then
+  if diff -q "$BASE" "$TMP/now" >/dev/null 2>&1; then
+    echo "drift: $seen package(s), $code differing in code — as recorded"
+  else
+    echo "drift: ⚠ the drift MOVED since it was recorded — $code of $seen package(s) differ in code now."
+    echo '       make drift shows which; DRIFT_BLESS=1 sh probe/way/drift.sh re-records.'
+  fi
+  exit 0
+fi
 if ! diff -q "$BASE" "$TMP/now" >/dev/null 2>&1; then
   echo "drift: THE DRIFT MOVED — the sibling's code changed, or a republish landed"
   diff "$BASE" "$TMP/now" | sed 's/^/  /'

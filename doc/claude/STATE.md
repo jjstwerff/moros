@@ -70,6 +70,63 @@ not yet claimed here.
 and **7434 KB** on the new one — 476 KB smaller. Raised on the issue; do not assume it is
 only the lifetime fix.
 
+## ⚠ THE TOOLCHAIN MOVED AGAIN — 2026-08-19, and it is a TIGHTENING rather than a regression
+
+`~/.local/bin/loft` was rebuilt **19 Aug 20:29** (the 18 Aug build this file recorded is
+gone). ⚠ **`--version` still cannot tell any of them apart** — all say `loft 2026.8.0`;
+the hashes do: `cebf52d0…` user-level against `3c7a117f…` system.
+
+⛔ **AND `loft verify-self` CANNOT VERIFY EITHER OF THEM, AND EXITS 0 SAYING SO.** Both
+installs answer *"not a release bundle — nothing to check against"* with **rc 0**. For a
+command whose stated job is *detects corruption and partial upgrades*, `verified intact`
+and `could not verify anything` are the same answer —
+[loft#1012](https://github.com/loft-lang/loft/issues/1012), filed with `audit`'s graded
+exit codes as the precedent. **Use `ls -la` and `sha256sum`; the version string and the
+exit code both lie by omission.**
+
+### Two source constructs stopped compiling, and both are deliberate
+
+| what broke | what it is |
+|---|---|
+| `is Type { field }` in EXPRESSION position | ⚠ `{ field }` is the **field-capture list** and wants a block after it. Baseline `55_is_capture_needs_a_body_block.expect` |
+| an interpolation hole spanning LINES | ⚠ documented in loft's `DIAGNOSTICS.md`: *a hole holds code, and code stops at the end of its line*. Baseline `54_format_unclosed_open_brace.expect` |
+
+**Consecutive baseline numbers, same diagnostics work — these are intended tightenings
+with committed expected output, not regressions.** The multi-line hole was **never legal**
+by loft's own documented rule; the older lexer simply did not catch it.
+
+⚠ **AND THE `format-unclosed-hole` FIX SUGGESTION IS WRONG FOR OUR CASE** — it says
+*write it `{{`*, which is right for a literal brace and would have put a literal `{` on
+the wire where the camera matrix goes. Both sites are **hoisted into a local** instead:
+`src/editor_server.loft`'s `say_view` and its `MSG_PROP` sentence.
+
+⚠ **`use self::skin;` RAISED THIS TREE'S MINIMUM TOOLCHAIN.** `/usr/local/bin/loft`
+(16 Aug) now answers *Library 'self' not found* three times and cannot build the tree at
+all, so it is no longer available as a control for anything.
+
+### ⛔ And the browser tier found a check of ours whose premise had expired
+
+`make fast` is green on the new binary (1m38). `make page-check` is **not**: `probe-auth`
+fails **1 of 37** —
+
+```
+FAIL D4 the far ground changed too (2667548928 → 1806428659): the camera moved, not the world
+```
+
+⚠ **IT IS NOT THE BINARY AND IT IS NOT A DEFECT — IT IS `C3`.** Controlled: the same
+binary, the same lexer fix, a worktree at `8f30f57` (the commit before *the page takes the
+camera*) → **auth PASS, 37 checks**. D4 assumes *a raise cannot move the camera*, which
+was true of the page's old fixed `LOCAL_LIFT 3.2` and is false of `hex_cam`, which lifts
+the eye by the clearance the surface asks for. **The check is right about what it wants
+and can no longer see it**, which is `C3`'s own row saying *what is NOT verified is the
+picture* — the browser gates were down on loft#950 when it shipped, and the picture has
+now caught up.
+
+⏭ **Re-aiming D4 needs a SECOND instrument, not a looser one**: the probe reads only
+pixel digests, so *the world moved* and *the eye moved* are one observation. It wants the
+eye height on the wire beside the digests. Left red on purpose — a check that cannot
+answer must not be made to pass.
+
 ## ⛔ `hex_way` HAS A ONE-SIDED ANGLE WRAP, AND WE BUILD AGAINST A `hex_way` THE SIBLING HAS ALREADY FIXED — 2026-08-18
 
 **Two findings from one inspection**, and the second is about this tree rather than the

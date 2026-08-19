@@ -53,7 +53,12 @@ fn test_click_on_each_button_reports_its_own_id() {
   for i in 0..6 {
     r = toolbar_button_rect(i);
     hit = panel_hit_test(p, r.r_x + 4, r.r_y + 4);
-    assert(hit is UhToolButton { tb_id }, "button {i} was not hit");
+    // ⚠ NO CAPTURE LIST IN THE ASSERT — plan-free, 2026-08-19. `{ tb_id }` after a
+    // type is the FIELD-CAPTURE list and wants a block after it, so it cannot stand in
+    // expression position; the loft installed 19 Aug says so by name and offers `match`.
+    // This assert only asks WHICH VARIANT, and the `if` below is where the field is
+    // read — so the capture was never doing anything here.
+    assert(hit is UhToolButton, "button {i} was not hit");
     if hit is UhToolButton { tb_id } {
       assert(tb_id == i, "clicked button {i}, got id {tb_id}");
     }
@@ -76,7 +81,7 @@ fn test_click_on_a_list_item_reports_its_index() {
   lr = p.p_list.lb_rect;
   for i in 0..4 {
     hit = panel_hit_test(p, lr.r_x + 4, lr.r_y + i * LIST_ITEM_HEIGHT + 2);
-    assert(hit is UhListItem { li_idx }, "list row {i} was not hit");
+    assert(hit is UhListItem, "list row {i} was not hit");
     if hit is UhListItem { li_idx } {
       assert(li_idx == i, "clicked row {i}, got index {li_idx}");
     }

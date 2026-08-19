@@ -2899,9 +2899,16 @@ fn cam_wire(cx: float, cyy: float, cz: float, cyaw: float, cpitch: float, asp: f
   // eases either: a tripod that drifted into place would make two consecutive
   // `snap`s of one scene different pictures.
   if eye_at.pe_on {
-    return "C:{hex_mesh::mat_wire(mat4_look_at(vec3(eye_at.pe_x, eye_at.pe_y, eye_at.pe_z),
-                                     vec3(cx, cyy + figure_wu() * 0.55, cz),
-                                     vec3(0.0, 1.0, 0.0)))};"
+    // ⚠ **THE MATRIX IS HOISTED BECAUSE A HOLE CANNOT SPAN LINES** — 2026-08-19. loft's
+    // `DIAGNOSTICS.md` states the rule: *a hole holds code, and code stops at the end of
+    // its line*, so the three-line `{…}` this used to be was never legal; the lexer
+    // simply did not catch it until the 19 Aug build. ⚠ The diagnostic's own suggested
+    // fix — *write it `{{`* — is right for a literal brace and WRONG here: it would
+    // escape the hole and put a literal `{` on the wire where the camera matrix goes.
+    eye_m = mat4_look_at(vec3(eye_at.pe_x, eye_at.pe_y, eye_at.pe_z),
+                         vec3(cx, cyy + figure_wu() * 0.55, cz),
+                         vec3(0.0, 1.0, 0.0));
+    return "C:{hex_mesh::mat_wire(eye_m)};"
       + "{hex_mesh::mat_wire(mat4_perspective(55.0 * PI / 180.0, asp, CAM_NEAR, CAM_FAR))}";
   }
   // ── EYES: THE EYE *IS* THE HEAD, AND THE TARGET SWINGS WITH THE PITCH ──────
@@ -5123,8 +5130,11 @@ fn main() {
             srv.send_to(ev.cid, "S:prop refused — {pdr.dr_why}");
           } else {
             mark_dirty(dirty, pdr.dr_q, pdr.dr_r, 2);
-            srv.send_to(ev.cid, "S:{say_prop(ev.payload as integer ?? 1, pdr.dr_q,
-                                            pdr.dr_r, pdr.dr_height, pdr.dr_count)}");
+            // ⚠ HOISTED — a hole's code stops at the end of its line (2026-08-19); see
+            // `say_view`'s note. The call is too wide for one line, so it is not in a hole.
+            pdr_say = say_prop(ev.payload as integer ?? 1, pdr.dr_q,
+                               pdr.dr_r, pdr.dr_height, pdr.dr_count);
+            srv.send_to(ev.cid, "S:{pdr_say}");
             println("editor: prop at ({pdr.dr_q},{pdr.dr_r}) height {pdr.dr_height}");
           }
         } else if ev.msg_id == MSG_DRESSING {
