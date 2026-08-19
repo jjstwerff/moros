@@ -15,6 +15,8 @@
 #   AUTH_SABOTAGE=scratchsession …       it presses into a session nobody keeps
 #   AUTH_SABOTAGE=eager …                one unanswered dial is enough to give up
 #   AUTH_SABOTAGE=nocam …                local mode writes and never sets a camera
+#   AUTH_SABOTAGE=camdrift …             the camera is re-solved on every write
+#   AUTH_SABOTAGE=camquiet …             …and one that never says where it is
 #   AUTH_SABOTAGE=nomesh …               …and never meshes its own ground
 #   AUTH_SABOTAGE=stale …                it writes and does not redraw
 #   AUTH_SABOTAGE=groundonly …          it meshes the GROUND and nothing else
@@ -163,6 +165,16 @@ if [ -n "$SAB" ]; then
     # and nothing else — and the `cmp` guard below proves a change was made, never
     # that the change matters. A sabotage that is red nowhere is either a blind
     # instrument or a no-op, and only reading tells you which.
+    # ── D4's two failure modes, 2026-08-19 ──────────────────────────────────
+    # A camera re-solved on every tick that moved, not only on a TURN: the picture
+    # then changes for TWO reasons
+    # and D3 alone cannot say which. ⚠ This is the drift D4 was written for, and the
+    # old pixel form could not tell it from the gesture — which is how it came to
+    # report *the camera moved* on a run where the camera cannot move.
+    camdrift) sed -i 's/^    if turned.au_yaw != a.au_yaw {$/    if true {/' "$SRC" ;;
+    # …and the instrument going silent. ⚠ Without D4's `-eq 1` this one is INVISIBLE:
+    # *the camera was not re-solved* is trivially true of a page that never says so.
+    camquiet) sed -i '/^  println("client: local cam/,+1d' "$SRC" ;;
     nomesh) sed -i 's/^          lg_boot = local_surfaces(st, sess, author);$/          lg_boot = 0;/' "$SRC" ;;
     # It writes and does not redraw — the picture is a photograph of the world
     # before the gesture, with every count and both digests correct.
@@ -492,7 +504,11 @@ field() { sed -n "s/^SHOT $1 .*$2 \([0-9]*\):\([0-9]*\).*/\\$3/p" "$OUT/b.shots"
 w_before=$(field before world 1);       w_sum_before=$(field before world 2)
 w_sum_steady=$(field steady world 2)
 w_sum_first=$(field after-first world 2)
-g_sum_before=$(field before ground 2);  g_sum_first=$(field after-first ground 2)
+# ⚠ **THE `ground` RECT IS PRINTED AND NO LONGER JUDGED — see D4.** `press.mjs`'s own
+# comment calls it *"what a gesture has to move"* while D4 used to require that it did
+# NOT move: two comments in one probe asserting opposite things about one rectangle,
+# which is how the stale one survived. It stays in the transcript because a reader
+# chasing a framing change wants it; nothing asserts on it.
 p_before=$(field before panel 1)
 
 # ⚠ THE POSITIVE CONTROL FIRST. A capture that failed, or a decoder that answered
@@ -522,14 +538,33 @@ if [ -n "$w_sum_first" ] && [ "$w_sum_first" != "$w_sum_before" ]; then
 else
   bad "D3 the raise left the picture at $w_sum_before — the page wrote a world it does not draw"
 fi
-# ⚠ AND NOT EVERYWHERE, WHICH IS WHAT SEPARATES A GESTURE FROM A CAMERA. A raise
-# changes the ground in front of the author; a camera that drifted — a stray drag
-# from the focus click, say — would change the far ground too, and D3 alone would
-# call that a pass.
-if [ -n "$g_sum_first" ] && [ "$g_sum_first" = "$g_sum_before" ]; then
-  ok "D4 …and only where the gesture landed — the far ground is untouched"
+# ⚠ AND NOT BECAUSE THE CAMERA MOVED, WHICH IS WHAT SEPARATES A GESTURE FROM A DRIFT.
+# D3 says the picture changed; a stray drag from the focus click would change it too,
+# and D3 alone would call that a pass.
+#
+# ⛔ **THIS USED TO ASK A SECOND RECTANGLE TO HOLD STILL, AND THAT WAS A PIXEL
+# ANSWERING A QUESTION ABOUT A CAMERA — 2026-08-19.** *The world changed here* and *the
+# view moved* arrive as one number in a screen rect, so the check could only ever infer.
+# It inferred correctly until `C3` re-seated the camera (`cam_boom`, a leading pivot, a
+# clearance lift), after which the rect framed terrain the raise reaches and the check
+# went red saying **"the camera moved, not the world"** — which was FALSE: `local_camera`
+# is called at boot and on a YAW change only, and the sequence presses no turn before
+# this shot, so the camera provably could not have moved. A check that names the wrong
+# cause is worse than one that fails, because the next reader believes it.
+#
+# ⚠ **SO THE CAMERA IS ASKED DIRECTLY.** `client: local cam — eye … aim …` is printed
+# where the matrix is solved, and the claim is a COUNT: solved once, at boot, and not
+# again across the raise. ⚠ **`-eq 1`, NOT `-le 1`** — a lost report would make *it did
+# not move again* true by absence, which is the vacuity this whole file is built to
+# refuse. One line means the instrument spoke AND the camera stayed put.
+cam_n=$(grep -c '^client: local cam — ' "$OUT/b.log" || true)
+cam_at=$(grep -m1 '^client: local cam — ' "$OUT/b.log" | sed 's/^client: local cam — //')
+if [ "$cam_n" -eq 1 ]; then
+  ok "D4 …and the camera never moved to do it — solved once, at $cam_at"
+elif [ "$cam_n" -eq 0 ]; then
+  bad "D4 the page never said where its camera is — the instrument is absent, so D3's change is unattributed"
 else
-  bad "D4 the far ground changed too ($g_sum_before → $g_sum_first): the camera moved, not the world"
+  bad "D4 the camera was re-solved $cam_n times during the run, so D3's change is not the world's alone"
 fi
 
 # ── B1b.2c.4c — and is it the WHOLE picture, or the ground alone ─────

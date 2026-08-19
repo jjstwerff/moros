@@ -1225,6 +1225,22 @@ fn local_camera(st: Client, a: hex_editor::Author) {
                                        (WIN_W as float) / (WIN_H as float),
                                        LOCAL_NEAR, LOCAL_FAR).m;
   st.has_cam = true;
+  // ── THE CAMERA SAYS WHERE IT IS — plan 22, `D4`'s second instrument ─────────
+  //
+  // ⚠ **A PICTURE CANNOT TELL A WORLD CHANGE FROM A CAMERA CHANGE, AND THAT IS WHAT
+  // COST `probe/b1b`'s D4 ITS MEANING.** That check read a fixed screen rectangle and
+  // asserted it held still across a raise, on the reasoning that a stray drag would
+  // move it too. Both halves are pixels, so the two causes arrive as one number — and
+  // when `C3` re-seated the camera (`cam_boom`, a leading pivot, a clearance lift) the
+  // rectangle simply began framing terrain the gesture reaches, and the check went red
+  // for a reason it could not name. *When one instrument cannot answer, the answer is
+  // a second instrument.*
+  //
+  // ⚠ **IT IS AFFORDABLE BECAUSE THIS FUNCTION IS RARE**, not because the line is
+  // short: the camera is re-solved at boot and on a YAW change, nowhere else, so this
+  // is two lines in a run rather than one per frame.
+  println("client: local cam — eye {lc_px - lc_fx * lc_boom},{lc_eye},"
+          + "{lc_pz - lc_fz * lc_boom} aim {lc_px},{lc_py},{lc_pz}");
 }
 
 // Mesh the tiles around the author out of the page's OWN cache and install them.

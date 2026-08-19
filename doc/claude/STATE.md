@@ -113,19 +113,38 @@ fails **1 of 37** —
 FAIL D4 the far ground changed too (2667548928 → 1806428659): the camera moved, not the world
 ```
 
-⚠ **IT IS NOT THE BINARY AND IT IS NOT A DEFECT — IT IS `C3`.** Controlled: the same
-binary, the same lexer fix, a worktree at `8f30f57` (the commit before *the page takes the
-camera*) → **auth PASS, 37 checks**. D4 assumes *a raise cannot move the camera*, which
-was true of the page's old fixed `LOCAL_LIFT 3.2` and is false of `hex_cam`, which lifts
-the eye by the clearance the surface asks for. **The check is right about what it wants
-and can no longer see it**, which is `C3`'s own row saying *what is NOT verified is the
-picture* — the browser gates were down on loft#950 when it shipped, and the picture has
-now caught up.
+⚠ **IT IS NOT THE BINARY — IT IS `C3`.** Controlled: the same binary, the same lexer
+fix, a worktree at `8f30f57` (the commit before *the page takes the camera*) → **auth
+PASS, 37 checks**.
 
-⏭ **Re-aiming D4 needs a SECOND instrument, not a looser one**: the probe reads only
-pixel digests, so *the world moved* and *the eye moved* are one observation. It wants the
-eye height on the wire beside the digests. Left red on purpose — a check that cannot
-answer must not be made to pass.
+⛔ **AND MY FIRST DIAGNOSIS OF IT WAS WRONG, WHICH IS WORTH MORE THAN THE FIX.** I wrote
+that `hex_cam` lifts the eye with the terrain, so the far ground legitimately moves.
+**`local_camera` is called at boot and on a YAW change only** — two call sites, and the
+key sequence presses no turn before that shot — so the camera provably *could not* have
+moved during the raise. What `C3` changed is where the camera SITS at boot (`cam_boom`, a
+leading pivot, a clearance lift), so a fixed screen rectangle began framing terrain the
+gesture reaches. ⚠ **The old check's own failure message said *"the camera moved, not the
+world"*, and that sentence was false** — a check that names the wrong cause is worse than
+one that fails, because the next reader believes it. I did.
+
+⚠ **AND THE PROBE CONTRADICTED ITSELF ABOUT THAT RECTANGLE.** `press.mjs` calls the
+`ground` rect *"what a gesture has to move"*; D4 required that it did **not** move. Two
+comments, one rectangle, opposite claims — which is how the stale one survived.
+
+✅ **RE-AIMED ONTO A SECOND INSTRUMENT — 2026-08-19.** The page prints
+`client: local cam — eye … aim …` where the matrix is solved, and D4 is now a COUNT:
+solved **once**, at boot, and not again across the raise, so D3's change is the world's by
+elimination. ⚠ **`-eq 1`, not `-le 1`** — a lost report would make *it did not move again*
+true by absence. Two sabotages, both declared in the probe: `camdrift` (the yaw guard
+opened) reds it at **309 re-solves**, `camquiet` (the report deleted) reds it at **0**.
+The `ground` rect is printed and judged by nothing.
+
+⏭ **AND THE NEW INSTRUMENT PAID FOR ITSELF IMMEDIATELY.** The clean run prints **one**
+camera line while the key sequence includes `w` — so **walking does not re-solve the
+camera**. `local_camera`'s own comment says it is *"re-solved on any tick that moved"* a
+pose and the code checks `turned.au_yaw != a.au_yaw`; a walk moves the author and leaves
+the view where it was. Whether that is wrong for a follow camera is the next question, and
+it is now a measurement rather than a reading.
 
 ## ⛔ `hex_way` HAS A ONE-SIDED ANGLE WRAP, AND WE BUILD AGAINST A `hex_way` THE SIBLING HAS ALREADY FIXED — 2026-08-18
 
