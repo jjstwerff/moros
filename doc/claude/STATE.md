@@ -76,6 +76,14 @@ only the lifetime fix.
 gone). ⚠ **`--version` still cannot tell any of them apart** — all say `loft 2026.8.0`;
 the hashes do: `cebf52d0…` user-level against `3c7a117f…` system.
 
+⚠ **AND IT MOVED AGAIN MID-SESSION — 21:15, `98262fdb…`.** Three builds in one day, one
+version string, no announcement: the checks run before ~21:15 measured `cebf52d0…` and
+everything after measured `98262fdb…`, both green. **Record the hash, never the date and
+never the version** — a date is stale by the next build and the version was never a
+handle at all. ⚠ A benign consequence spotted in passing: `loft test` stopped counting
+`main` in its totals, so a suite that read 13 reads 11 with every row present. **A test
+count that drops is a toolchain question before it is a coverage question.**
+
 ⛔ **AND `loft verify-self` CANNOT VERIFY EITHER OF THEM, AND EXITS 0 SAYING SO.** Both
 installs answer *"not a release bundle — nothing to check against"* with **rc 0**. For a
 command whose stated job is *detects corruption and partial upgrades*, `verified intact`
