@@ -179,6 +179,30 @@ and it is not one.
 ⛔ **Sabotages, both red**: `camstuck` (the shipped defect restored) → *the camera fell
 0.6870 → 0.7579 behind*; `camquiet` (the report removed) → *the instrument is absent*.
 
+### ✅ And `PIVOT_AHEAD` is `PIVOT_LATERAL` now — it was never ahead of anything
+
+The facing in this family is `(cos yaw, sin yaw)` — both drivers boom along it — and the
+pivot offset is `(-sin yaw, cos yaw)`, that facing turned **a quarter turn**. The name
+said forward; the arithmetic has always been sideways.
+
+⚠ **Three of the four sites describing it were wrong, and the arithmetic never was.**
+`editor_client` said the pivot *"leads it by `PIVOT_AHEAD` figures"*; `hex_cam`'s own test
+was `test_the_pivot_leads_the_character_it_follows`, with a comment reading *"facing +x
+(yaw 0): the pivot must sit AHEAD in z"* — a sentence that contradicts itself. Only
+`editor_server` had it: *"offset LATERAL to the facing … over-the-SHOULDER rather than
+straight down the spine."* A reader reasoning from the name would put the eye behind the
+character's head.
+
+⚠ **AND THE OLD TEST READ ONLY z, so a pivot that ALSO led forward would have passed it**
+— the very camera its comment described. The rows now assert **no x component at yaw 0**
+and, over eight yaws, that the offset's **dot product with the facing is zero** while its
+length stays `fig · PIVOT_LATERAL`: one pose cannot tell a quarter turn from a lucky axis.
+Sabotaged by making the pivot genuinely lead — **3 rows red**.
+
+✅ **A pure rename, and the evidence is a number that did not move**: `|aim − author|` is
+**0.6870** in `probe/b1b` D4 and `probe/b2` G1b, before and after. hex_cam 8 → 9 tests on
+both backends; only moros consumes the package, checked before touching a public name.
+
 ⚠ **AND A SABOTAGE RUN LEAVES ITS BUILD IN `src/.loft`.** `AUTH_SABOTAGE=camquiet make
 probe-auth` then `make probe-demo` packaged the sabotaged client into `_site/index.html`,
 and the demo read a page with the instrument deliberately removed — a red belonging to the

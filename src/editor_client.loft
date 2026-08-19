@@ -1199,10 +1199,17 @@ fn local_camera(st: Client, a: hex_editor::Author) {
   // `gl_set_uniform_mat4` takes and what `C:` parses into. Assigning the whole
   // struct type-checked clean — so the field is written explicitly rather than
   // left to whatever that acceptance means.
-  // ⚠ **THE PIVOT IS THE LIBRARY'S, SO THE EYE ORBITS WHAT THE PERSON IS LOOKING AT**
-  // rather than their navel — plan 22 `C3`. The page aimed at `au_y + LOCAL_AIM` on
-  // the character's own spot; `cam_pivot_*` leads it by `PIVOT_AHEAD` figures, which
-  // is the difference between following someone and staring at their back.
+  // ⚠ **THE PIVOT IS THE LIBRARY'S, SO THE EYE ORBITS PAST THE PERSON'S SHOULDER**
+  // rather than straight down their spine — plan 22 `C3`. The page aimed at
+  // `au_y + LOCAL_AIM` on the character's own spot; `cam_pivot_*` steps the aim aside
+  // by `PIVOT_LATERAL` figures.
+  //
+  // ⛔ **THIS COMMENT SAID `cam_pivot_*` "LEADS IT", AND IT NEVER HAS** — corrected
+  // 2026-08-19 with the constant it named. The offset is the facing turned a quarter
+  // turn (`(-sin, cos)` against a facing of `(cos, sin)`), so it is LATERAL. The
+  // arithmetic was always this; three of the four comments describing it were not, and
+  // `editor_server`'s — *"offset LATERAL to the facing … over-the-SHOULDER"* — was the
+  // only one that had it right.
   lc_fig = local_fig();
   lc_boom = hex_cam::cam_boom(lc_fig);
   lc_px = hex_cam::cam_pivot_x(a.au_x, a.au_yaw, lc_fig);

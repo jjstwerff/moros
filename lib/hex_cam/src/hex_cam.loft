@@ -84,19 +84,40 @@ pub fn cam_clear_at(cq: integer, cr: integer,
 // and the editor's are not the same height, and a package that fixed the boom in
 // world units would frame one of them wrongly. The ratios are the shared part.
 pub const BOOM_FIGURES  = 2.90;   // how far back, in figure heights
-pub const PIVOT_AHEAD   = 0.34;   // how far the pivot leads the character
+// ⛔ **THIS WAS `PIVOT_LATERAL`, AND IT HAS NEVER BEEN AHEAD OF ANYTHING** — renamed
+// 2026-08-19 after the arithmetic was read against the facing it is applied to.
+// The facing in this family is `(cos yaw, sin yaw)` — both drivers boom along it —
+// and the pivot offset below is `(-sin yaw, cos yaw)`, which is that facing turned a
+// quarter turn in the x–z plane. **Perpendicular, not forward.**
+//
+// ⚠ **THE NAME WAS WRONG IN THREE PLACES AND RIGHT IN THE ONE THAT MATTERED.**
+// `editor_client`'s comment said the pivot *"leads it by `PIVOT_AHEAD` figures"*; this
+// package's own test was called `test_the_pivot_leads_the_character_it_follows` and its
+// comment read *"facing +x (yaw 0): the pivot must sit AHEAD in z"* — a sentence that
+// contradicts itself, since +z is not ahead of +x. Only `editor_server`'s comment had
+// it: *"offset LATERAL to the facing — which is what makes it over-the-SHOULDER rather
+// than straight down the spine."* That is what this number does.
+//
+// ⚠ **AND THE ARITHMETIC WAS NEVER WRONG** — every driver framed the shoulder it was
+// meant to. What was wrong was that four sites described it and three described a
+// different camera, so a reader reasoning from the name would place the eye behind the
+// character's head instead of over their shoulder.
+pub const PIVOT_LATERAL = 0.34;   // how far the pivot sits to the SIDE of the facing
 pub const PIVOT_UP      = 0.70;   // and how far above its feet
 pub const EYE_FRACTION  = 0.92;   // where a person's eyes are, not their chest
 
 pub fn cam_boom(fig: float) -> float { fig * BOOM_FIGURES }
 pub fn eye_height(fig: float) -> float { fig * EYE_FRACTION }
 
-// The pivot the boom swings about — ahead of the character and above their feet, so
-// the eye orbits what they are looking at rather than their navel.
+// The pivot the boom swings about — to one SIDE of the character and above their feet,
+// so the eye orbits past their shoulder rather than straight down their spine.
+//
+// ⚠ The offset is the facing turned a quarter turn: facing `(cos yaw, sin yaw)`, offset
+// `(-sin yaw, cos yaw)`. At yaw 0 a character faces +x and the pivot sits at +z.
 pub fn cam_pivot_x(cx: float, cyaw: float, fig: float) -> float {
-  cx + (0.0 - sin(cyaw)) * fig * PIVOT_AHEAD
+  cx + (0.0 - sin(cyaw)) * fig * PIVOT_LATERAL
 }
 pub fn cam_pivot_z(cz: float, cyaw: float, fig: float) -> float {
-  cz + cos(cyaw) * fig * PIVOT_AHEAD
+  cz + cos(cyaw) * fig * PIVOT_LATERAL
 }
 pub fn cam_pivot_y(cy: float, fig: float) -> float { cy + fig * PIVOT_UP }

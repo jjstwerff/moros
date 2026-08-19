@@ -97,14 +97,48 @@ fn test_every_length_scales_with_the_figure() {
   assert(hex_cam::eye_height(2.0) == hex_cam::eye_height(1.0) * 2.0, "so is the eye");
 }
 
-fn test_the_pivot_leads_the_character_it_follows() {
-  // Facing +x (yaw 0): the pivot must sit AHEAD in z by `PIVOT_AHEAD` figures, and
-  // above the feet by `PIVOT_UP`. A pivot behind the character orbits their back.
+fn test_the_pivot_sits_beside_the_character_not_in_front_of_them() {
+  // ⛔ **THIS ROW USED TO SAY *"facing +x (yaw 0): the pivot must sit AHEAD in z"***,
+  // which contradicts itself — +z is not ahead of +x — and it passed, because the
+  // NUMBER was right and only the word was wrong. Renamed with the constant, 2026-08-19.
+  //
+  // The offset is the facing turned a quarter turn in the x–z plane, so at yaw 0 a
+  // character facing +x has the pivot at +z: **beside them, over the shoulder**. A
+  // pivot straight ahead would put the eye behind their head looking down their spine.
   fig = 2.0;
+  x = hex_cam::cam_pivot_x(0.0, 0.0, fig);
   z = hex_cam::cam_pivot_z(0.0, 0.0, fig);
   y = hex_cam::cam_pivot_y(0.0, fig);
-  assert(z == fig * hex_cam::PIVOT_AHEAD, "the pivot leads in z at yaw 0: {z}");
+  assert(z == fig * hex_cam::PIVOT_LATERAL, "the pivot steps aside in z at yaw 0: {z}");
+  // ⚠ **AND NOTHING IN x, WHICH IS THE HALF THE OLD ROW NEVER ASKED.** It read only z,
+  // so a pivot that ALSO led forward would have passed it — the very reading its own
+  // comment described. Facing +x, a forward component is an x component.
+  assert(x == 0.0, "and does not lead along the facing at yaw 0: {x}");
   assert(y == fig * hex_cam::PIVOT_UP, "and rises above the feet: {y}");
+}
+
+fn test_the_offset_is_perpendicular_to_the_facing_at_every_yaw() {
+  // ⚠ **THE RULE, NOT ONE POSE.** One yaw cannot tell a quarter turn from a lucky
+  // axis: at yaw 0 an offset *along +z* and an offset *perpendicular to the facing*
+  // are the same vector. Four yaws separate them, and the dot product with the facing
+  // is what says it — zero at every pose or the offset has a forward component.
+  fig = 2.0;
+  for i in 0..8 {
+    yaw = (i as float) * 0.7853981633974483;      // eighths of a turn
+    dx = hex_cam::cam_pivot_x(0.0, yaw, fig);
+    dz = hex_cam::cam_pivot_z(0.0, yaw, fig);
+    // the facing both drivers boom along
+    dot = dx * cos(yaw) + dz * sin(yaw);
+    if dot < 0.0 { dot = 0.0 - dot; }
+    assert(dot < 0.0000001,
+           "at yaw {yaw} the pivot offset ({dx},{dz}) has a forward component {dot} — "
+         + "it is meant to be LATERAL to the facing");
+    // …and it is a real offset, not merely a perpendicular zero.
+    len = sqrt(dx * dx + dz * dz) ?? 0.0;
+    assert(len > fig * hex_cam::PIVOT_LATERAL - 0.0000001
+        && len < fig * hex_cam::PIVOT_LATERAL + 0.0000001,
+           "and it is {len} from the character rather than {fig * hex_cam::PIVOT_LATERAL}");
+  }
 }
 
 fn test_turning_the_character_turns_the_pivot_with_them() {
