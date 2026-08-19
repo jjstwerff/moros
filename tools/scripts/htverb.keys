@@ -1,0 +1,31 @@
+# T1d — A VERB THE TYPE DECLARED, OVER THE WIRE AS WELL AS HEADLESS
+#
+# ⛔ **`T1a.2` SHIPPED A TYPE'S OWN VERBS AND THEY COULD NOT TRAVEL.** `editor_run`
+# hands the word straight to `press_verb`, so `verb portcullis` has worked headless
+# since `T1c` gave a script a way to declare one. `tools/script.mjs` held a CONSTANT
+# TABLE of verb → message id, and a declared verb is a word no compiler ever saw — so
+# over the wire it answered *no verb 'portcullis'* and the run failed.
+#
+# ⚠ **THE INVARIANT IS THE SAME ONE `htype.keys` CARRIES**: adding a type touches no
+# code. Nothing under `lib/` or `src/` knows the word below — it exists in one
+# `declare` line, and the opening it cuts is the castle's own pointed one.
+#
+# ⚠ **AND IT IS THE PAIR THAT MATTERS, NOT THE WORD.** `probe/s2c` runs this script
+# through both drivers and compares the saved worlds byte for byte, so *the alias
+# resolved* is asserted where it could otherwise diverge: `editor_run` resolving in
+# `press_verb` and the socket resolving in a table would be `S2c` all over again.
+
+echo --- flat ground to build on
+at 0 0 0
+verb raise
+
+echo --- a castle, and a word for cutting its openings
+declare house 1 castle wid=5 dep=4 opening=2 verbs=portcullis:opening
+
+echo --- the house the type asks for
+at -6 -6 30
+verb place
+
+echo --- and the castle's own verb, which no compiler has ever seen
+at -3 2 30
+verb portcullis

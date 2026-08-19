@@ -1,0 +1,19 @@
+rc: 0
+world: 65854:786895814
+md5: aa4bdc600d8d360fcd7f5a07558944b4
+tau: 189
+chunks: 4
+code: 0
+session: runs 4 roofs 1 leaves 0 openings 1 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  house 1 = castle wid=5 dep=4 opening=2 verbs=portcullis:opening in region 0
+  placed -6,-6
+  house placed 27 cells, 84 wall edges, ridge at 23, seated at 0 (0 from your feet, cut and fill 0)
+  placed -3,2
+  mode inside
+  portcullis: 1
+  opening kind 2 at -2.8754627916220947,1.784295227656675 half 0.65 band 0..11 spring 7 depth 0..1
+--- what the runner refused

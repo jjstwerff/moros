@@ -139,7 +139,12 @@ fn main() {
   if r_door == s_door {
     println("s2c: AGREE — both drivers opened {r_door} of them");
   } else {
-    println("s2c: DIVERGES — headless opened {r_door}, served {s_door}: the server's "
-            + "`36:` handler is a second body and it opens a different set of edges");
+    // ⚠ **THE FACT, NOT A CAUSE.** This line used to end *"the server's `36:` handler is
+    // a second body"*, which was true of the defect it was written for and wrong for
+    // the next one: at `T1d` a server that had simply dropped `55:<verb>` was reported
+    // as a second body of a handler it never reached. A check that names the wrong
+    // cause gets believed — `probe/b1b`'s D4 cost a whole diagnosis that way.
+    println("s2c: DIVERGES — headless opened {r_door}, served {s_door}: the two drivers "
+            + "did not cut the same set of edges");
   }
 }

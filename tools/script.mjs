@@ -1107,12 +1107,41 @@ for (const raw of lines) {
     // gate. The one thing this knows that `key` did not is that the id comes from the
     // VERB, which is why the profile could leave the table above with it.
     const v = rest[0];
-    const vmsg = VERBMAP[v];
-    if (!vmsg) { console.log(`  !! no verb '${v}' — see hex_editor::press_verb`); unknown += 1; continue; }
+    // ⛔ **A WORD THIS TABLE HAS NEVER HEARD OF IS NOT AN ERROR ANY MORE — plan 22
+    // `T1d`.** A house type declares verbs no compiler ever saw (`T1a.2`), so a
+    // constant table cannot have a row for them: `verb portcullis` worked headless —
+    // `editor_run` hands the word straight to `press_verb` — and failed here with
+    // *no verb 'portcullis'*, which made a declared verb headless-only.
+    //
+    // ⚠ **THE TABLE IS STILL CONSULTED FIRST, AND THAT IS NOT HESITATION.** Each
+    // dedicated id has a handler that owns a SENTENCE (`fenced N edges, M stored
+    // outside`), which `K3` deliberately left in the server when it moved the gestures
+    // into the library. Routing every verb through `55:` would replace all of them with
+    // one generic line and redden the gates that read them — so the specific id wins
+    // where there is one, and `55:` carries what nothing else can.
+    //
+    // ⚠ **AND THIS FILE STILL DECIDES NOTHING.** The word goes over verbatim; the
+    // SERVER resolves it through `press_verb`, alias and all, which is the same
+    // resolution `editor_run` does. A `VERBMAP` row is an id, never a meaning (`K1`).
+    const vmsg = VERBMAP[v] ?? `55:${v}`;
     ws.send(vmsg);
     await sleep(250);
     const vsaid = status[status.length - 1];
     if (vsaid) console.log('  ' + vsaid);
+    // ⛔ **THE FLOOR MOVED WITH THE AUTHORITY, AND DROPPING IT WOULD HAVE BEEN SILENT.**
+    // `K3a`/`K3b.1` bought the rule that a word this driver cannot send FAILS the run —
+    // it used to fire on `VERBMAP` having no row. Now that any word reaches the wire,
+    // that branch is gone, and a typo (`verb plce`) would sail through at exit 0, which
+    // is the exact silent no-op those two steps were written to end. So the question is
+    // asked of the party that can now answer it: the server replies `no gesture for X`
+    // when `press_verb` resolves the word to nothing, and THAT is the failure.
+    //
+    // ⚠ It reads the reply rather than the table, so a verb a house type declares is
+    // accepted for the same reason a typo is rejected — one authority, not two.
+    if (vsaid && vsaid.startsWith(`no gesture for `)) {
+      console.log(`  !! no verb '${v}' — the server resolved it to no gesture`);
+      unknown += 1;
+    }
   } else if (cmd === 'ground') {
     // `ground <height> <material>` — what UNTOUCHED ground IS, GROUND_DEFAULT `G7`.
     // `ground off` clears it back to today. Not a gesture: it writes no cell, it

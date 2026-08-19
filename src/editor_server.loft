@@ -558,6 +558,22 @@ const MSG_PLANE = 50;
 // a split rule in every reader; `hex_editor::world_declare` is the one parser and this
 // handler contributes a sentence and a broadcast.
 const MSG_DECLARE = 54;
+// ⛔ **A VERB BY NAME, BECAUSE UNTIL NOW A VERB COULD NOT TRAVEL — plan 22 `T1d`.**
+// [EDITING_MODES](../doc/claude/EDITING_MODES.md) says *the WIRE carries the verb, never
+// the key*, and this socket carried neither: it carries a MESSAGE ID per gesture, and
+// `tools/script.mjs` holds a constant table mapping verb → id. That is fine for the
+// verbs a compiler saw — and a house type declares verbs no compiler ever will
+// (`T1a.2`), so `verb portcullis` worked headless, where `editor_run` hands the word
+// straight to `press_verb`, and failed over the wire with *no verb 'portcullis'*.
+//
+// ⚠ **IT DOES NOT REPLACE THE DEDICATED IDS, AND THAT IS DELIBERATE.** Each of those
+// handlers owns a SENTENCE — `fenced N edges, M stored outside`, `road laid N cells` —
+// which `K3` left here on purpose when it moved the gestures into the library. Routing
+// every verb through this one would silently replace all of them with a generic line,
+// and the gates that read them would go red for a reason that is not about gestures.
+// So `script.mjs` keeps sending the specific id where it has one, and reaches for this
+// only for a word it has never heard of — which is exactly the declared ones.
+const MSG_VERB = 55;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -5307,6 +5323,34 @@ fn main() {
             srv.broadcast(hud_wire(in_part, world_name, part_name, cam_mode, wk.wk_levelling, roading, tracing,
                                      hex_editor::open_kind_here(sess, wld, wk.wk_x, wk.wk_z)));
             println("editor: camera mode {cam_mode}");
+          }
+        } else if ev.msg_id == MSG_VERB {
+          // ⚠ THE SAME CALL `editor_run` MAKES, INCLUDING THE LIBRARY ROOT, so a verb
+          // performed here and the same verb performed headless are one body — which
+          // is what `probe/s2c` compares byte for byte.
+          vack = hex_editor::press_verb(sess, wld,
+                   hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y),
+                   ev.payload, parts_root());
+          // ⚠ **THE RUNNER'S OWN WORDING, `said_ack`'s** — *no gesture for X* when the
+          // verb resolves to nothing, *refused: why* when the gesture said no, and the
+          // gesture's own sentence otherwise. Two drivers saying different things about
+          // one verb is what this whole plan spends its time removing.
+          if vack.ak_why == hex_editor::PR_NONE {
+            srv.send_to(ev.cid, "S:no gesture for {ev.payload}");
+            println("editor: no gesture for {ev.payload}");
+          } else if !vack.ak_ok {
+            srv.send_to(ev.cid, "S:refused: {vack.ak_why}");
+            println("editor: {ev.payload} refused — {vack.ak_why}");
+          } else {
+            v_said = vack.ak_why;
+            if v_said == "" { v_said = "{ev.payload}: {vack.ak_n}"; }
+            srv.send_to(ev.cid, "S:{v_said}");
+            println("editor: {v_said}");
+            // ⚠ THE DIRTY MARK IS THE AUTHOR'S CELL AND A GENEROUS RADIUS, because
+            // this handler cannot know which gesture ran or how far it reached. A
+            // dedicated id marks what it wrote; this one marks the neighbourhood.
+            (vq, vr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+            mark_dirty(dirty, vq, vr, hex_editor::SLAB_PAD);
           }
         } else if ev.msg_id == MSG_DECLARE {
           // ⚠ THE REGION IS THE AUTHOR'S — plan 21 `R2`, the rule every other reader

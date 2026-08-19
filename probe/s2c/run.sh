@@ -37,7 +37,12 @@ GROUND=${GROUND:-0}
 # that DECLARES anything, so it is the one row that can see the two drivers disagree
 # about a house type: the declaration reaches `editor_run` as a line and the server as
 # `54:`, and a driver that parsed it itself would build a different house.
-SCRIPTS=${*:-"house door opening niche embrasure profiles annex furnish htype"}
+#
+# ⚠ **AND `htverb` IS THE THIRD REASON — `T1d`.** It performs a verb the TYPE declared,
+# which the runner resolves inside `press_verb` and the socket carries as `55:<verb>`.
+# A driver resolving aliases in its own table instead of asking the gesture layer is
+# `S2c` rebuilt one word over, and this row is what would see it.
+SCRIPTS=${*:-"house door opening niche embrasure profiles annex furnish htype htverb"}
 
 ran=0
 bad=0
