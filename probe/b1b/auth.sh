@@ -15,7 +15,7 @@
 #   AUTH_SABOTAGE=scratchsession …       it presses into a session nobody keeps
 #   AUTH_SABOTAGE=eager …                one unanswered dial is enough to give up
 #   AUTH_SABOTAGE=nocam …                local mode writes and never sets a camera
-#   AUTH_SABOTAGE=camdrift …             the camera is re-solved on every write
+#   AUTH_SABOTAGE=camstuck …             the camera follows a TURN and not a walk
 #   AUTH_SABOTAGE=camquiet …             …and one that never says where it is
 #   AUTH_SABOTAGE=nomesh …               …and never meshes its own ground
 #   AUTH_SABOTAGE=stale …                it writes and does not redraw
@@ -106,6 +106,11 @@ ok()  { pass=$((pass + 1)); echo "  ok   $1"; }
 bad() { fail=$((fail + 1)); echo "  FAIL $1"; }
 
 SRC=src/editor_client.loft
+# ⚠ **A SABOTAGE RUN LEAVES ITS BUILD IN `src/.loft`, AND THE NEXT PROBE USES IT.**
+# Hit 2026-08-19: `AUTH_SABOTAGE=camquiet make probe-auth` then `make probe-demo`
+# packaged the sabotaged client into `_site/index.html`, and the demo read a page with
+# the instrument deliberately removed — a red that belonged to the previous command.
+# `make client` before any other browser probe, or read a run that is not yours.
 if [ -n "$SAB" ]; then
   SRC="$OUT/sab_client.loft"
   cp src/editor_client.loft "$SRC"
@@ -166,15 +171,16 @@ if [ -n "$SAB" ]; then
     # that the change matters. A sabotage that is red nowhere is either a blind
     # instrument or a no-op, and only reading tells you which.
     # ── D4's two failure modes, 2026-08-19 ──────────────────────────────────
-    # A camera re-solved on every tick that moved, not only on a TURN: the picture
-    # then changes for TWO reasons
+    # The camera as it was until 2026-08-19: re-solved on a yaw change and nothing
+    # else, so a WALK leaves it behind and the author strolls out of their own frame.
+    # ⚠ This is the shipped defect, kept as the sabotage — the picture
     # and D3 alone cannot say which. ⚠ This is the drift D4 was written for, and the
     # old pixel form could not tell it from the gesture — which is how it came to
     # report *the camera moved* on a run where the camera cannot move.
-    camdrift) sed -i 's/^    if turned.au_yaw != a.au_yaw {$/    if true {/' "$SRC" ;;
+    camstuck) sed -i 's/^    if turned.au_yaw != a.au_yaw || turned.au_x != a.au_x$/    if turned.au_yaw != a.au_yaw \&\& false || turned.au_yaw != a.au_yaw/' "$SRC" ;;
     # …and the instrument going silent. ⚠ Without D4's `-eq 1` this one is INVISIBLE:
     # *the camera was not re-solved* is trivially true of a page that never says so.
-    camquiet) sed -i '/^  println("client: local cam/,+1d' "$SRC" ;;
+    camquiet) sed -i 's/^                + " cam ({st.cam_ax},{st.cam_az}) eye {st.cam_ey}");$/                + "");/' "$SRC" ;;
     nomesh) sed -i 's/^          lg_boot = local_surfaces(st, sess, author);$/          lg_boot = 0;/' "$SRC" ;;
     # It writes and does not redraw — the picture is a photograph of the world
     # before the gesture, with every count and both digests correct.
@@ -557,14 +563,32 @@ fi
 # again across the raise. ⚠ **`-eq 1`, NOT `-le 1`** — a lost report would make *it did
 # not move again* true by absence, which is the vacuity this whole file is built to
 # refuse. One line means the instrument spoke AND the camera stayed put.
-cam_n=$(grep -c '^client: local cam — ' "$OUT/b.log" || true)
-cam_at=$(grep -m1 '^client: local cam — ' "$OUT/b.log" | sed 's/^client: local cam — //')
-if [ "$cam_n" -eq 1 ]; then
-  ok "D4 …and the camera never moved to do it — solved once, at $cam_at"
-elif [ "$cam_n" -eq 0 ]; then
-  bad "D4 the page never said where its camera is — the instrument is absent, so D3's change is unattributed"
+# ⚠ **AND *SOLVED ONCE* WAS THE WRONG CLAIM TOO — 2026-08-19, the same day.** It was
+# true only because the camera was BROKEN: it re-solved on a yaw change and nothing
+# else, so a walk left it behind. Fixed, it re-solves whenever the pose moves, and a
+# count of one would now be the bug asserting itself. **What survives the fix is the
+# INVARIANT: the camera is where the author is.**
+# ⚠ **THE DISTANCE, NOT THE POSITION.** The pivot sits LATERAL to the facing — the
+# server's own comment calls it over-the-shoulder — so the aim is never the author's own
+# x/z, and an equality check passes only at yaw 0. What holds at every pose is how FAR
+# the aim is from the person, and `probe/b2`'s G1b asserts the same number.
+d_off=$(grep '^client: local walker — ' "$OUT/b.log" | awk '
+  match($0, /at \(-?[0-9.]+,-?[0-9.]+\)/) {
+    split(substr($0, RSTART+4, RLENGTH-5), a, ",")
+    if (match($0, /cam \(-?[0-9.]+,-?[0-9.]+\)/)) {
+      split(substr($0, RSTART+5, RLENGTH-6), c, ",")
+      dx = c[1] - a[1]; dz = c[2] - a[2]
+      printf "%.4f\n", sqrt(dx*dx + dz*dz)
+    }
+  }')
+d_first=$(printf '%s' "$d_off" | head -1)
+d_last=$(printf '%s' "$d_off" | tail -1)
+if [ -z "$d_first" ]; then
+  bad "D4 the walker line carries no camera — the instrument is absent, so D3's change is unattributed"
+elif [ "$d_first" = "$d_last" ]; then
+  ok "D4 …and the camera is following the person — $d_last from them throughout"
 else
-  bad "D4 the camera was re-solved $cam_n times during the run, so D3's change is not the world's alone"
+  bad "D4 the camera fell $d_first -> $d_last behind the author — the view is not following the person"
 fi
 
 # ── B1b.2c.4c — and is it the WHOLE picture, or the ground alone ─────

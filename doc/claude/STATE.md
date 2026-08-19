@@ -139,12 +139,50 @@ true by absence. Two sabotages, both declared in the probe: `camdrift` (the yaw 
 opened) reds it at **309 re-solves**, `camquiet` (the report deleted) reds it at **0**.
 The `ground` rect is printed and judged by nothing.
 
-⏭ **AND THE NEW INSTRUMENT PAID FOR ITSELF IMMEDIATELY.** The clean run prints **one**
-camera line while the key sequence includes `w` — so **walking does not re-solve the
-camera**. `local_camera`'s own comment says it is *"re-solved on any tick that moved"* a
-pose and the code checks `turned.au_yaw != a.au_yaw`; a walk moves the author and leaves
-the view where it was. Whether that is wrong for a follow camera is the next question, and
-it is now a measurement rather than a reading.
+## ⛔ THE PAGE'S CAMERA DID NOT FOLLOW A WALK — found by that instrument, fixed 2026-08-19
+
+**`local_tick` re-solved the camera when the YAW changed and at no other time.** A walk
+moves the pose and not the yaw, so the view stayed where it was. Measured on the demo
+page: six `w` presses walked the author to **(2.347, 0)** while the camera still aimed at
+**x = 0**, solved once at boot. **The author walks out of their own frame.**
+
+⚠ **THE COMMENT ABOVE THE GUARD SAID THE RIGHT THING AND THE CONDITION UNDER IT DID NOT** —
+*"the camera is DERIVED from the pose, so it is re-solved on any tick that moved one"*,
+implemented as `if turned.au_yaw != a.au_yaw`. Nobody compared the two, because **a turn is
+the only case the author pictured**: the comment's second clause is entirely about turning.
+
+⚠ **AND IT WAS A TWO-DRIVER DIVERGENCE.** The server has always re-solved every tick from
+`wk_*`. This is the plan whose one invariant is *the page is the same editor with the
+authority local instead of remote*.
+
+✅ **Fixed** — the guard is the pose now (x, z, y or yaw). ✅ **And the report moved with
+it**: a println inside `local_camera` was affordable when the camera solved twice a run and
+is one line per tick now, so the eye and aim ride the walker's own 300-frame line —
+**author and camera on ONE line at ONE moment**, which is what makes *the camera follows*
+a subtraction rather than an inference across two reports.
+
+### ⚠ Three checks of mine were wrong before the subject was
+
+| | |
+|---|---|
+| D4 v1 | a second screen RECT holding still — a pixel answering a question about a camera |
+| D4 v2 | *solved once* — true only because the camera was **broken**; the fix makes a count of one the bug asserting itself |
+| G1b v1 | `aim x == author x` — holds only at yaw 0, and **my own comment one line above said the claim was a difference, not a position** |
+
+✅ **What survives all three is the invariant: `|aim − author|` is CONSTANT.** Measured
+**0.6870** at yaw 0 after a 0.32 walk and 0.6870 at yaw 0.58 after a 2.35 walk — one
+number, two poses, no convention to get wrong. Both probes assert it now. ⚠ The pivot sits
+**lateral** to the facing (the server calls it over-the-shoulder), so the aim is never the
+author's own x/z — `hex_cam::PIVOT_AHEAD`'s name and two comments call it a forward *lead*,
+and it is not one.
+
+⛔ **Sabotages, both red**: `camstuck` (the shipped defect restored) → *the camera fell
+0.6870 → 0.7579 behind*; `camquiet` (the report removed) → *the instrument is absent*.
+
+⚠ **AND A SABOTAGE RUN LEAVES ITS BUILD IN `src/.loft`.** `AUTH_SABOTAGE=camquiet make
+probe-auth` then `make probe-demo` packaged the sabotaged client into `_site/index.html`,
+and the demo read a page with the instrument deliberately removed — a red belonging to the
+previous command. Noted in the probe.
 
 ## ⛔ `hex_way` HAS A ONE-SIDED ANGLE WRAP, AND WE BUILD AGAINST A `hex_way` THE SIBLING HAS ALREADY FIXED — 2026-08-18
 

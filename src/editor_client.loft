@@ -617,6 +617,12 @@ struct Client {
   // sentence with none of the meaning. `wk_held` answers what is down NOW; this
   // answers whether the guard was ever put to the question.
   held_seen: integer,
+  // Where `local_camera` last put the eye and what it aimed at — the walker's report
+  // prints them beside the author, so *the camera follows* is one line rather than an
+  // inference across two.
+  cam_ax: float,
+  cam_az: float,
+  cam_ey: float,
   // Which catalogue row is chosen, 0 for none — plan 22 `B2e`. The NAME lives in
   // the session; this is the driver's place in its own list.
   part_pick: integer,
@@ -1225,22 +1231,17 @@ fn local_camera(st: Client, a: hex_editor::Author) {
                                        (WIN_W as float) / (WIN_H as float),
                                        LOCAL_NEAR, LOCAL_FAR).m;
   st.has_cam = true;
-  // ── THE CAMERA SAYS WHERE IT IS — plan 22, `D4`'s second instrument ─────────
+  // ── WHERE THE CAMERA ENDED UP, FOR THE WALKER'S OWN REPORT ─────────────────
   //
-  // ⚠ **A PICTURE CANNOT TELL A WORLD CHANGE FROM A CAMERA CHANGE, AND THAT IS WHAT
-  // COST `probe/b1b`'s D4 ITS MEANING.** That check read a fixed screen rectangle and
-  // asserted it held still across a raise, on the reasoning that a stray drag would
-  // move it too. Both halves are pixels, so the two causes arrive as one number — and
-  // when `C3` re-seated the camera (`cam_boom`, a leading pivot, a clearance lift) the
-  // rectangle simply began framing terrain the gesture reaches, and the check went red
-  // for a reason it could not name. *When one instrument cannot answer, the answer is
-  // a second instrument.*
-  //
-  // ⚠ **IT IS AFFORDABLE BECAUSE THIS FUNCTION IS RARE**, not because the line is
-  // short: the camera is re-solved at boot and on a YAW change, nowhere else, so this
-  // is two lines in a run rather than one per frame.
-  println("client: local cam — eye {lc_px - lc_fx * lc_boom},{lc_eye},"
-          + "{lc_pz - lc_fz * lc_boom} aim {lc_px},{lc_py},{lc_pz}");
+  // ⚠ **RECORDED, NOT PRINTED HERE.** A picture cannot tell a world change from a
+  // camera change — which is what cost `probe/b1b`'s D4 its meaning — so the camera
+  // has to say where it is. It cannot say so from inside this function any more: the
+  // guard above now re-solves on every tick that moved the pose, so a println here is
+  // one line per walking tick. The walker's own 300-frame report reads these instead,
+  // which puts the author and the camera that follows them on ONE line at ONE moment.
+  st.cam_ax = lc_px;
+  st.cam_az = lc_pz;
+  st.cam_ey = lc_eye;
 }
 
 // Mesh the tiles around the author out of the page's OWN cache and install them.
@@ -1896,13 +1897,29 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
     // The camera is DERIVED from the pose, so it is re-solved on any tick that
     // moved one — otherwise turning would rotate the author inside a fixed view,
     // which reads as the keys doing nothing at all.
-    if turned.au_yaw != a.au_yaw {
+    //
+    // ⛔ **AND FOR MONTHS THIS SENTENCE WAS TRUE AND THE CONDITION UNDER IT WAS NOT.**
+    // It read `if turned.au_yaw != a.au_yaw`, so a WALK — which moves the pose and not
+    // the yaw — left the view exactly where it was. Measured on the demo page: six `w`
+    // presses walked the author to **(2.347, 0)** while the camera still aimed at
+    // **x = 0**, solved once at boot. The author walks out of their own frame.
+    // ⚠ The server has never had this: it re-solves every tick from `wk_*`, so this was
+    // also a two-driver divergence in the one plan whose invariant is *the page is the
+    // same editor with the authority local instead of remote*.
+    // ⚠ **It went unseen because a turn was the only case anybody pictured** — the
+    // comment names the pose and the code names the yaw, and nothing compared them.
+    if turned.au_yaw != a.au_yaw || turned.au_x != a.au_x
+       || turned.au_z != a.au_z || turned.au_y != a.au_y {
       local_camera(st, turned);
       // ⚠ NOT A RE-MESH. A turn moves no cell, so the geometry the page already
       // holds is still exactly right — only the matrix changed. Re-meshing here
       // would put `local_act`'s 338,688 floats on a per-frame path, which is the
       // cost that comment says a keystroke can afford and a frame cannot.
-      st.turned_by = st.turned_by + (turned.au_yaw - a.au_yaw);
+      // ⚠ STILL ONLY ON A YAW CHANGE — a walk re-solves the camera above and turns
+      // nothing, and `turned_by` is what says the TURN keys reached the pose.
+      if turned.au_yaw != a.au_yaw {
+        st.turned_by = st.turned_by + (turned.au_yaw - a.au_yaw);
+      }
     }
     // ⚠ AND A WRITE *IS* WORTH THAT COST, WHICH IS THE DISTINCTION THE LINE ABOVE
     // DRAWS. A turn moves no cell; a level stamp moves a disc of them. ⏭ It redraws
@@ -3197,6 +3214,7 @@ fn main() {
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
     tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false, held_seen: 0,
+    cam_ax: 0.0, cam_az: 0.0, cam_ey: 0.0,
     // ⚠ AT THE ORIGIN WITH AN EMPTY PROXY, and the first tick builds it. A page that
     // goes local seeds the POSE from the author it already had — see `st.local = true`
     // — and deliberately does not seed the feet: `fall_step`'s first branch is the
@@ -3659,9 +3677,14 @@ fn main() {
         // count cannot (300 steps of `a` and 300 of `d` leave the same count).
         // `walked` says the WALK keys did, which the yaw cannot — and it is the
         // one a wall makes zero while everything else keeps moving.
+        // ⚠ **AND THE CAMERA ON THE SAME LINE, AT THE SAME MOMENT.** *The camera
+        // follows the author* is otherwise an inference across two reports printed at
+        // different times; here it is a subtraction a reader can do by eye, and the
+        // one `probe/b1b`'s D4 asserts.
         println("client: local walker — {st.ticked} steps, yaw {author.au_yaw} "
                 + "(turned {st.turned_by}), walked {st.wk.wk_walked} at "
-                + "({author.au_x},{author.au_z}) feet {st.wk.wk_y} landed {st.wk.wk_fell}");
+                + "({author.au_x},{author.au_z}) feet {st.wk.wk_y} landed {st.wk.wk_fell}"
+                + " cam ({st.cam_ax},{st.cam_az}) eye {st.cam_ey}");
       } else {
         // ⚠ `asked` IS ON THE LINE BECAUSE IT IS THE ONLY ONE THAT IS NOT EXPECTED
         // TO BE ZERO, and it is what keeps the other three from being vacuous: a

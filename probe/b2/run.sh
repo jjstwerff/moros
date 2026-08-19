@@ -682,6 +682,42 @@ else
   no "G1 the author never left the origin — walked '$g_dist', at '($g_at)'"
 fi
 
+# G1b — AND THE CAMERA CAME WITH THEM. ⛔ It did not, until 2026-08-19: `local_tick`
+# re-solved the camera when the YAW changed and at no other time, so a walk moved the
+# author and left the view where it was — measured on this very page, six `w` presses
+# to (2.347, 0) with the camera still aiming at x 0. Its own comment said the camera is
+# "re-solved on any tick that moved" a pose; the condition under it named only the yaw,
+# and nothing compared the two. ⚠ The server has always re-solved every tick from
+# `wk_*`, so this was a two-driver divergence in the plan whose invariant is *the page
+# is the same editor with the authority local instead of remote*.
+#
+# ⚠ THE CLAIM IS A DIFFERENCE, NOT A POSITION — the pivot sits LATERAL to the facing
+# (over-the-shoulder), so the aim is never the author's own x/z. What must hold is that
+# the offset does not GROW as they walk.
+# ⚠ **AND THE FIRST VERSION OF THIS ROW ASSERTED EQUALITY, WHICH THE COMMENT ABOVE
+# ALREADY SAID WAS WRONG.** `aim x == author x` holds only at yaw 0; the demo turns, and
+# it read *the view stayed behind* on a camera that was following perfectly. The rule is
+# the DISTANCE, and it is invariant to both: measured 0.6870 at yaw 0 after a 0.32 walk
+# and 0.6870 at yaw 0.58 after a 2.35 walk — one number, two poses.
+g_off=$(grep '^client: local walker — ' "$OUT/walk.log" | awk '
+  match($0, /at \(-?[0-9.]+,-?[0-9.]+\)/) {
+    split(substr($0, RSTART+4, RLENGTH-5), a, ",")
+    if (match($0, /cam \(-?[0-9.]+,-?[0-9.]+\)/)) {
+      split(substr($0, RSTART+5, RLENGTH-6), c, ",")
+      dx = c[1] - a[1]; dz = c[2] - a[2]
+      printf "%.4f\n", sqrt(dx*dx + dz*dz)
+    }
+  }')
+g_off_first=$(printf '%s' "$g_off" | head -1)
+g_off_last=$(printf '%s' "$g_off" | tail -1)
+if [ -z "$g_off_first" ] || [ -z "$g_off_last" ]; then
+  no "G1b the walker line carries no camera — the page cannot say whether the view followed"
+elif [ "$g_off_first" = "$g_off_last" ]; then
+  say "G1b and the camera came with them — it sits $g_off_last from the author, before the walk and after"
+else
+  no "G1b the camera fell $g_off_first -> $g_off_last behind the author over the walk — the view is not following the person"
+fi
+
 # G2 — and the world knows. This is the whole step: a pose nothing reads is a pose
 # that was not built.
 #
