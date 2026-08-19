@@ -1229,6 +1229,67 @@ pub fn mode_at(sess: EditSession, w: VoxelWorld, a: Author) -> integer {
 //
 // So the dispatch half ships (`verb_resolve`, consumed by `press_verb` and seen red
 // with it disabled) and the query half waits for the step that can honour it.
+//
+// ✅ **THAT STEP IS `T1e`, AND THE QUERY IS BACK WITH BOTH CONSUMERS — 2026-08-20.**
+// `verbs_here` is below. What it waited for was a KEY: a declaration says
+// `portcullis:opening:F` now, so the bar has a glyph to draw and the poll has a code
+// to watch. The world was never the blocker it looked like — `Client` has held its
+// own `st.cache` since `B1b.1b`.
+
+// ── WHICH VERBS DOES THIS EDITOR HAVE, HERE? — plan 22 `T1e` ────────────────
+//
+// > *"a type that contributes verbs means the verb set is not knowable at compile
+// > time, so which keys does this editor have becomes a QUERY rather than a
+// > constant."* — [EDITING_MODES](../../../doc/claude/EDITING_MODES.md)
+//
+// The person's own map, plus whatever the type standing here declares. Order is the
+// answer's, so the base verbs keep the positions a person has learned and a declared
+// one arrives at the end rather than shuffling the bar.
+//
+// ⚠ **A DECLARED KEY REPLACES, IT DOES NOT REFUSE — `keymap_bind`'s OWN RULE.** Every
+// letter is taken (counted at `K3`: all 26), so *the key you want is already doing
+// something* is the normal case; a type that could only have an unused key could never
+// have one. In a castle's region `F` is the portcullis, and outside it `F` is the fence
+// again — which is the same sentence [EDITING_MODES](../../../doc/claude/EDITING_MODES.md)
+// uses for the MODE axis: *"a house in a cave switches to houses again"*.
+//
+// ⚠ **A VERB WITH NO KEY IS STILL IN THE ANSWER**, bound to `KEY_NONE`. It is reachable
+// by script and by wire (`T1c`, `T1d`) and the bar draws it with a blank glyph — which
+// is the truth about it, and `key_glyph("")` already answers that way for any unbound
+// verb.
+//
+// ⚠ **AND A KEY THE HARDWARE HAS NO CODE FOR IS DROPPED** rather than bound to 0:
+// `key_code_of` answers `KEY_NONE` for a name it does not know, and a binding that
+// cannot be pressed is worse than an absent one — the bar would show a glyph for a key
+// no keyboard sends.
+pub fn verbs_here(w: VoxelWorld, region: integer, slot: integer, m: KeyMap) -> KeyMap {
+  out = m.km_items;
+  ht = house_type(w, region, slot);
+  if !ht.ht_ok { return keymap_of(out); }
+  for tv in ht.ht_verbs {
+    // ⚠ THE SAME THREE REFUSALS `verb_resolve` MAKES, and they are asked HERE too
+    // rather than trusted from there: a bar that offered a verb the dispatch refuses
+    // would be an editor advertising a gesture it will not perform.
+    if !verb_is_base(tv.tv_base) { continue; }
+    if verb_is_base(tv.tv_name) { continue; }
+    code = key_code_of(tv.tv_key);
+    if tv.tv_key != "" && code == KEY_NONE { continue; }
+    kept: vector<KeyBind> = [];
+    for b in out {
+      // The declared key wins where it lands, and the verb it displaced keeps its own
+      // row with no key — so the bar still lists it and says, correctly, that it has
+      // none here.
+      if tv.tv_key != "" && b.kb_key == tv.tv_key {
+        kept += [KeyBind { kb_key: "", kb_code: KEY_NONE, kb_verb: b.kb_verb }];
+      } else {
+        kept += [b];
+      }
+    }
+    out = kept;
+    out += [KeyBind { kb_key: tv.tv_key, kb_code: code, kb_verb: tv.tv_name }];
+  }
+  keymap_of(out)
+}
 
 fn verb_is_base(name: text) -> boolean {
   for v in keymap_verbs(keymap_default()) { if v == name { return true; } }

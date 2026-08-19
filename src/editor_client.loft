@@ -623,6 +623,23 @@ struct Client {
   cam_ax: float,
   cam_az: float,
   cam_ey: float,
+  // ── WHICH VERBS THIS EDITOR HAS, WHERE THE AUTHOR IS — plan 22 `T1e` ───────
+  //
+  // `st.keys` is the PERSON's map — what they bound, what a rebind moves, what
+  // `keymap_save` persists. This is that map plus whatever the house type standing
+  // here declares, and it is **derived every frame from the world and the pose**.
+  //
+  // ⚠ **ONE DERIVATION, TWO READERS** — the verb bar draws it and `poll_input`
+  // dispatches from it. Computing it twice is how the bar comes to advertise a key the
+  // poll does not watch, which is the `ps_status` literal wearing a keyboard.
+  //
+  // ⚠ **AND THE REBINDER STILL TARGETS `st.keys`**, never this: a person rebinding
+  // changes their own keyboard, not the castle's. A declared key is the world's and
+  // travels with the document.
+  keys_here: hex_editor::KeyMap,
+  // The declared verbs whose key was down last frame — the edge a `was_*` field cannot
+  // hold, because the names are the world's rather than the compiler's.
+  down_verbs: vector<text>,
   // Which catalogue row is chosen, 0 for none — plan 22 `B2e`. The NAME lives in
   // the session; this is the driver's place in its own list.
   part_pick: integer,
@@ -2013,7 +2030,13 @@ fn client_reserved(code: integer) -> text {
 // and `KEY_NONE` must never be handed to `gl_key_pressed` — code 0 is not a key and
 // what it reports is the bridge's business, not ours.
 fn verb_down(st: Client, verb: text) -> boolean {
-  c = hex_editor::code_for(st.keys, verb);
+  // ⚠ **`keys_here`, NOT `keys` — plan 22 `T1e`, AND IT FIXES BOTH HALVES AT ONCE.**
+  // A declared verb has no row in the person's map, so looking there answered
+  // `KEY_NONE` and the key did nothing; and the verb the declaration DISPLACED still
+  // had its key there, so `f` would have fired the fence as well. One map, asked by
+  // both the bar and every press, is what makes *what the bar shows is what the key
+  // does* true by construction rather than by two tables agreeing.
+  c = hex_editor::code_for(st.keys_here, verb);
   if c == hex_editor::KEY_NONE { return false; }
   graphics::gl_key_pressed(c)
 }
@@ -2065,6 +2088,46 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // a blank no*, applied to a keystroke: silence reads to an author as the key
   // being broken, which is what they would report instead of this.
   println("client: the verb '{verb}' has no wire message here");
+}
+
+// ── WHAT THIS EDITOR CAN DO HERE — plan 22 `T1e`, derived, not held ─────────
+//
+// ⚠ **THE REGION IS THE AUTHOR'S**, plan 21 `R2`, the same rule every other reader of a
+// house type follows: walk into a castle's region and its verbs arrive; walk out and
+// they go. That is [EDITING_MODES](../doc/claude/EDITING_MODES.md)' *"a house in a cave
+// switches to houses again"* on the third axis.
+//
+// ⚠ **EVERY FRAME, AND AFFORDABLE BECAUSE IT IS A PALETTE READ** — one section lookup
+// and a short vector. What it must NOT be is cached against a pose, because the pose is
+// what changes it.
+//
+// ⚠ **AND IT IS CALLED BEFORE THE BAR IS REBUILT, WHICH IS WHERE THE FIRST DRAFT PUT IT
+// WRONG.** Deriving this inside `poll_input` left the bar reading a map built one call
+// LATER — the fixture run showed 15 base slots and no `portcullis`, with the query
+// working perfectly and nothing to read it. **A derivation has to happen before its
+// readers, and the reader here is the frame's own rebuild.**
+//
+// Answers whether the set CHANGED, because that is what the bar has to be told: the
+// answer moves when an author walks across a region boundary, and nothing else on the
+// frame would mark the panel dirty for it.
+fn local_verbs(st: Client, a: hex_editor::Author) -> boolean {
+  (vhq, vhr) = hex_grid::px_to_hex(a.au_x, a.au_z);
+  was = hex_editor::keymap_verbs(st.keys_here);
+  st.keys_here = hex_editor::verbs_here(st.cache,
+                   hex_voxel::world_region_at(st.cache, vhq, vhr),
+                   hex_editor::HTYPE_DEFAULT_SLOT, st.keys);
+  now = hex_editor::keymap_verbs(st.keys_here);
+  if len(was) != len(now) { return true; }
+  // ⚠ **THE ORDER IS THE ANSWER, WHICH IS WHY THIS COMPARES POSITIONS.** `verbs_here`
+  // appends a declared verb and leaves the base rows where they were, so a set that
+  // gained one differs in LENGTH and a set that changed which key sits where differs in
+  // the glyph the bar reads — and the glyph is read from `keys_here` at draw time, so a
+  // rebuild triggered by either is enough. What this must not do is compare the names
+  // as a SET: `F` moving from `fence` to `portcullis` adds a name and removes no verb.
+  for i in 0..len(now) {
+    if (was[i] ?? "") != (now[i] ?? "") { return true; }
+  }
+  false
 }
 
 fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
@@ -2361,6 +2424,34 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   kwin = graphics::gl_key_pressed(KEY_WINDOW);
   if kwin && !st.was_window { wire(h, st, "36:2"); }
   st.was_window = kwin;
+
+  // ── AND THE VERBS THIS WORLD DECLARED — plan 22 `T1e` ──────────────────────
+  //
+  // ⚠ **THE LOOP IS THE POINT.** Every press above is a line naming a `VB_*` a compiler
+  // saw; a house type declares verbs no compiler ever will, so they cannot have lines.
+  // What they can have is the same treatment applied to whatever `verbs_here` answered
+  // — which is [EDITING_MODES](../doc/claude/EDITING_MODES.md)' *"which keys does this
+  // editor have becomes a QUERY rather than a constant"*, arriving at the keyboard.
+  //
+  // ⚠ **ONLY THE NON-BASE ONES**, deliberately. The base verbs keep their written-out
+  // lines because each carries its own edge flag and, attached, its own wire message;
+  // routing them through here would be a second dispatch for gestures that already have
+  // one — `S2c`'s two-bodies shape, in the client this time.
+  //
+  // ⚠ **AND THE EDGE IS A LIST, BECAUSE THE VERBS ARE NOT KNOWN AT COMPILE TIME.** A
+  // `was_*` field per verb is exactly what cannot be written for a declared one, so the
+  // names that were down last frame are carried instead. Same rule as every press
+  // above: a HELD key must fire once.
+  down_now: vector<text> = [];
+  for dv in hex_editor::keymap_verbs(st.keys_here) {
+    if hex_editor::verb_is_known(st.keys, dv) { continue; }
+    if !verb_down(st, dv) { continue; }
+    down_now += [dv];
+    was = false;
+    for wv in st.down_verbs { if wv == dv { was = true; } }
+    if !was { act(h, st, sess, a, dv); }
+  }
+  st.down_verbs = down_now;
 
   // Drag to look. A raw delta is an input event, not a model decision.
   mbtn = graphics::gl_mouse_button();
@@ -2953,7 +3044,11 @@ fn status_line(st: Client) -> text {
 // choosing a subset.
 fn client_verb_specs(st: Client) -> vector<SpecVerb> {
   vs: vector<SpecVerb> = [];
-  for v in hex_editor::keymap_verbs(st.keys) {
+  // ⚠ **`keys_here`, NOT `keys` — plan 22 `T1e`.** The bar's whole job is *what can I
+  // do*, and since a house type can declare a verb the answer depends on where the
+  // author is standing. `poll_input` derives this once a frame and dispatches from the
+  // same map, so the bar cannot advertise a key the keyboard does not watch.
+  for v in hex_editor::keymap_verbs(st.keys_here) {
     // ⚠ `key_glyph`, NOT THE RAW NAME. `ArrowUp` is seven characters and a slot is 34px
     // at an 8px advance — the bar truncates as a backstop, and `ArrowUp`/`ArrowDown`
     // truncate to the SAME five characters, which is two identical glyphs on two
@@ -2963,7 +3058,7 @@ fn client_verb_specs(st: Client) -> vector<SpecVerb> {
     // screen that says WHICH verb the next keystroke is about to name. A prompt in the
     // console is invisible to the person actually rebinding.
     vs += [spec_verb_on(v, hex_editor::verb_short(v),
-                        hex_editor::key_glyph(hex_editor::key_for(st.keys, v)),
+                        hex_editor::key_glyph(hex_editor::key_for(st.keys_here, v)),
                         st.rb.rb_at == hex_editor::RB_PICKED && st.rb.rb_verb == v)];
   }
   vs
@@ -3221,7 +3316,8 @@ fn main() {
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
     tick_at: 0, ticked: 0, turned_by: 0.0, said_still: false, held_seen: 0,
-    cam_ax: 0.0, cam_az: 0.0, cam_ey: 0.0,
+    cam_ax: 0.0, cam_az: 0.0, cam_ey: 0.0, keys_here: hex_editor::keymap_default(),
+    down_verbs: [],
     // ⚠ AT THE ORIGIN WITH AN EMPTY PROXY, and the first tick builds it. A page that
     // goes local seeds the POSE from the author it already had — see `st.local = true`
     // — and deliberately does not seed the feet: `fall_step`'s first branch is the
@@ -3563,6 +3659,9 @@ fn main() {
       }
     }
     drain(h, st);
+    // ⚠ **BEFORE THE REBUILD, NOT AFTER — plan 22 `T1e`.** The bar draws
+    // `st.keys_here`, so the frame that changes it is the frame that must rebuild.
+    if local_verbs(st, author) { st.panel_dirty = true; }
     // ⚠ REBUILT ON CHANGE, WHICH IS WHERE C5's CACHE BECOMES REAL. B1.4 could
     // build the textures once because the text never moved; now the server can
     // move it, so the rule is the one C5 states — one texture per block, rebuilt

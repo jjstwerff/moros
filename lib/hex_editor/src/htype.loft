@@ -66,7 +66,19 @@ pub const HTYPE_DEFAULT_SLOT = 1;
 // ⚠ **THAT IS A LIMIT AND IT IS STATED RATHER THAN DISCOVERED.** A type cannot add a
 // gesture the editor does not have. The day one needs to, that is a library change
 // and a new base verb — and the declaration then names it like any other.
-pub struct TypeVerb { tv_name: text, tv_base: text }
+pub struct TypeVerb {
+  tv_name: text,
+  tv_base: text,
+  // ── AND THE KEY IT WANTS — plan 22 `T1e` ───────────────────────────────────
+  //
+  // > *"…and possibly even unique keys, so the system can grow."*
+  //
+  // ⚠ **EMPTY IS *NO KEY*, AND IT IS A REAL STATE.** A declared verb reachable by
+  // script and by wire but not by keyboard is exactly what `T1c`/`T1d` shipped, and
+  // it is a defensible thing to declare — so the key is optional and its absence
+  // means the verb bar draws no glyph rather than an invented one.
+  tv_key:  text = "",
+}
 
 pub struct HouseType {
   ht_ok:    boolean = false,
@@ -154,11 +166,15 @@ pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
               ht_verbs: ht_verb_list(raw), ht_open: opn }
 }
 
-// `verbs=<alias>:<base>,<alias>:<base>` out of a declaration, or empty.
+// `verbs=<alias>:<base>[:<key>],…` out of a declaration, or empty.
 //
 // ⚠ A PAIR THAT NAMES NO BASE IS DROPPED, NOT GUESSED. `portcullis` on its own could
 // only be resolved by inventing a gesture for it, and the palette's rule one axis
 // over is that an unnamed byte is a fault rather than a default.
+//
+// ⚠ **THE KEY IS THE THIRD FIELD AND IT IS OPTIONAL** — plan 22 `T1e`. `portcullis:opening`
+// is a verb with no key (reachable by script and by wire, which is what `T1c`/`T1d`
+// gave it); `portcullis:opening:F` is one a person can press.
 fn ht_verb_list(body: text) -> vector<TypeVerb> {
   out: vector<TypeVerb> = [];
   at = body.find("verbs=");
@@ -172,8 +188,16 @@ fn ht_verb_list(body: text) -> vector<TypeVerb> {
     if c == null { continue; }
     nm = pair[0..(c ?? 0)];
     bs = pair[(((c ?? 0) + 1) as i32)..];
+    ky = "";
+    // ⚠ THE SECOND COLON IS SEARCHED IN THE REMAINDER, not in the pair — `find` answers
+    // the FIRST match, so asking the pair again would hand back the one already used.
+    c2 = bs.find(":");
+    if c2 != null {
+      ky = bs[(((c2 ?? 0) + 1) as i32)..];
+      bs = bs[0..(c2 ?? 0)];
+    }
     if nm == "" || bs == "" { continue; }
-    out += [TypeVerb { tv_name: nm, tv_base: bs }];
+    out += [TypeVerb { tv_name: nm, tv_base: bs, tv_key: ky }];
   }
   out
 }

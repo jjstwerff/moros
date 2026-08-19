@@ -16,6 +16,10 @@
 #   AUTH_SABOTAGE=eager …                one unanswered dial is enough to give up
 #   AUTH_SABOTAGE=nocam …                local mode writes and never sets a camera
 #   AUTH_SABOTAGE=camstuck …             the camera follows a TURN and not a walk
+#
+# AUTH_FIXTURE=castle …                  the page's own world DECLARES a house type, so
+#                                        the verb bar and the keyboard can be asked about
+#                                        a verb no compiler saw (plan 22 `T1e`)
 #   AUTH_SABOTAGE=camquiet …             …and one that never says where it is
 #   AUTH_SABOTAGE=nomesh …               …and never meshes its own ground
 #   AUTH_SABOTAGE=stale …                it writes and does not redraw
@@ -88,6 +92,7 @@ PAGE="src/.loft/editor_client.html"
 PORT="${EDITOR_PORT:-18090}"
 SPORT="${AUTH_STATIC_PORT:-18099}"
 SAB="${AUTH_SABOTAGE:-}"
+FIX="${AUTH_FIXTURE:-}"
 mkdir -p "$OUT"
 
 CONNECTING="moros editor — connecting to the server"
@@ -111,6 +116,30 @@ SRC=src/editor_client.loft
 # packaged the sabotaged client into `_site/index.html`, and the demo read a page with
 # the instrument deliberately removed — a red that belonged to the previous command.
 # `make client` before any other browser probe, or read a run that is not yours.
+# ── THE FIXTURE, WHICH IS NOT A SABOTAGE — plan 22 `T1e` ────────────────────
+#
+# ⛔ **THE PAGE CANNOT DECLARE ANYTHING, AND THAT IS THE MEASURED GAP.** `T1c` gave
+# `editor_run` a `declare` line and the server `54:`; local mode got neither, because a
+# declaration is not a gesture and the page has no text input. A page's world could
+# still carry one — `world.hxw` is loaded at boot and palettes survive `world_save` —
+# but that file is baked into the `--html` build, so a fixture world would change what
+# EVERY page run boots with, including the demo's.
+#
+# So the declaration is patched in at the one place the page's own world exists. It is a
+# FIXTURE, not a sabotage: it does not break anything to see whether a check notices, it
+# supplies the document a person would have opened. Declared separately so nobody reads
+# a green fixture run as a passing sabotage.
+if [ -n "${FIX:-}" ]; then
+  SRC="$OUT/fix_client.loft"
+  cp src/editor_client.loft "$SRC"
+  case "$FIX" in
+    castle) sed -i 's|^          lg_boot = local_surfaces(st, sess, author);$|          hex_editor::world_declare(st.cache, 0, "house 1 castle wid=5 dep=4 opening=2 verbs=portcullis:opening:F");\n          lg_boot = local_surfaces(st, sess, author);|' "$SRC" ;;
+    *) echo "auth: unknown AUTH_FIXTURE '$FIX'"; exit 2 ;;
+  esac
+  if diff -q src/editor_client.loft "$SRC" >/dev/null 2>&1; then
+    echo "auth: the fixture '$FIX' changed NOTHING — its sed no longer matches"; exit 2
+  fi
+fi
 if [ -n "$SAB" ]; then
   SRC="$OUT/sab_client.loft"
   cp src/editor_client.loft "$SRC"
@@ -503,6 +532,67 @@ fi
 # unwritten world is a flat plane at one height under a constant ambient, so it is
 # genuinely one colour; the horizon is the only thing in that half of the picture
 # that is not. So the region that answers *is anything drawn* SPANS the horizon.
+# ── T1e — A VERB THE WORLD DECLARED, ON THE BAR AND ON THE KEYBOARD ─────────
+#
+# ⚠ **RUN ONLY WHEN THE FIXTURE IS ASKED FOR**, because it needs a page whose world
+# declares a house type and no page can declare one for itself yet (see the fixture
+# block above). Without it these two claims have no subject, so they are SKIPPED with
+# a line rather than passed — *absent* and *true* must not read alike.
+if [ -n "$FIX" ]; then
+  echo
+  echo "── T1e  the verbs this world declared ──────────────────────────────"
+  # The bar prints its own slots — `<key>:<verb>` per slot, read off what was LAID OUT
+  # rather than re-composed from the map, which is `say_verb_bar`'s whole argument.
+  # ⚠ **THE LAST BAR LINE, NOT THE FIRST.** The bar is built once before the frame loop
+  # — from the base map, because the page has not gone local yet and its world is still
+  # empty — and rebuilt when the verb set changes. Reading `grep -m1` reported the boot
+  # bar and called a working query a failure; the transcript had both lines in it the
+  # whole time.
+  t_bar=$(grep '^client: verb bar ' "$OUT/b.log" | tail -1 || true)
+  echo "     ${t_bar:-<no verb bar line>}"
+  if printf '%s' "$t_bar" | grep -q 'F:portcullis'; then
+    ok "T1 the bar offers the castle's own verb on the key it declared — F:portcullis"
+  else
+    bad "T1 the bar does not list 'F:portcullis' — a declared verb the editor has and does not show"
+  fi
+  # ⚠ AND THE DISPLACED VERB IS STILL THERE, WITH NO KEY. `F` was the fence's; a bar
+  # that dropped `fence` would be hiding a verb the editor still has.
+  if printf '%s' "$t_bar" | grep -q -- '-:fence'; then
+    ok "T1 …and the verb it displaced is still offered, keyless — -:fence"
+  else
+    bad "T1 'fence' vanished from the bar when the castle took its key"
+  fi
+  # The keyboard half: `f` is pressed in this run, and inside the castle that key is the
+  # portcullis.
+  #
+  # ⚠ **THE CLAIM IS THAT IT WAS DISPATCHED, NOT THAT IT SUCCEEDED — and the first draft
+  # asked the wrong one.** It looked for an opening in the session and went red on
+  # a run where everything worked: the page said
+  # *"local portcullis refused — no wall here to open — stand against one"*, which is
+  # the GESTURE answering, having been reached through the alias. Whether a wall is
+  # there is the fixture's pose, and this row is about the keyboard.
+  #
+  # ⚠ **SO THE FAILURE MODE IT WATCHES IS `no gesture for`** — the key doing nothing,
+  # which is what a bar advertising a verb the poll cannot see would produce.
+  t_say=$(grep -m1 "^client: local portcullis" "$OUT/b.log" || true)
+  if grep -q "no gesture for 'portcullis'" "$OUT/b.log"; then
+    bad "T1 the key reached the client and resolved to nothing — 'no gesture for portcullis'"
+  elif [ -n "$t_say" ]; then
+    ok "T1 and pressing it reached the gesture — ${t_say#client: local }"
+  else
+    bad "T1 the key was pressed and the declared verb never ran — the bar offers what the keyboard ignores"
+  fi
+
+  # ⚠ **AND THE COMPARISON ROWS BELOW CANNOT HOLD UNDER A FIXTURE.** B8/B10/B11 check
+  # this page against `editor_run` on the same keys, and the fixture deliberately gives
+  # the page a world the runner does not have — a castle that takes `F` from the fence,
+  # so the fence never rings and the worlds differ ON PURPOSE. Saying so here is the
+  # difference between a known-different run and a regression.
+  echo "     ⚠ a fixture run changes what the page builds, so the runner comparisons"
+  echo "       (B8 fence, B10 world, B11 session) are expected to differ and are not"
+  echo "       the subject; run without AUTH_FIXTURE for those."
+fi
+
 echo
 echo "── B1b.2  what the page could actually SEE ─────────────────────────"
 sed 's/^/     /' "$OUT/b.shots" 2>/dev/null || true
