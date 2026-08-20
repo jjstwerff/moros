@@ -1,8 +1,0 @@
-# L's CONTROL — the same walk with the levelling never turned on.
-rate 0
-at 0 0 0
-verb raise
-keys 1
-step 240
-keys 0
-walker

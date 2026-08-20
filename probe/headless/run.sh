@@ -26,7 +26,12 @@ LOFT="${LOFT:-loft}"
 ok=1
 say() { echo "   $1"; }
 no()  { echo "   ✗ $1"; ok=0; }
-run() { SCRIPT="tools/scripts/$1.keys" $LOFT --lib lib/ src/editor_run.loft 2>/dev/null \
+# ⚠ THE FIXTURES LIVE HERE, NOT IN `tools/scripts/`. That directory is the SCENE
+# corpus `probe/k3d` baselines by picture, and a script with no `snap` in it is
+# picture-indistinguishable from every other snapless script — so putting gate
+# fixtures there moved k3d's coverage groups and reddened it. Measured, after pushing
+# a commit that wired this into `make fast` without running `make fast`.
+run() { SCRIPT="probe/headless/scripts/$1.keys" $LOFT --lib lib/ src/editor_run.loft 2>/dev/null \
         | grep -vE '^[[:space:]]*(advice|[0-9]+ \|)'; }
 key() { printf '%s' "$1" | grep -m1 -oE 'editor_run: world [0-9]+:[0-9]+' | awk '{print $3}'; }
 # ⚠ THE LAST WALKER LINE, NOT THE FIRST. `hfall.keys` reports once after the raise
@@ -118,8 +123,12 @@ b_why=$(printf '%s' "$b_o" | grep -m1 -oE 'refused: storey refused \(-2\)[^$]*' 
 
 echo
 echo "── L   level while walking, and cut the raised ground ──────────────"
-l_o=$(run bl); lc_o=$(run bl_flat)
-l_key=$(key "$l_o"); lc_key=$(key "$lc_o")
+# ⚠ `hfall` IS L's CONTROL, and there is no second script for it. `bl` is `hfall`
+# with `send 6:1`/`send 6:0` around the walk and nothing else changed, so the two
+# worlds differ by exactly the levelling. A separate `bl_flat` was byte-identical to
+# `hfall` — `probe/k3d` noticed before I did, which is what its grouping is for.
+l_o=$(run bl)
+l_key=$(key "$l_o"); lc_key=$(key "$h_o")
 printf '%s' "$l_o" | grep -q 'level true at height' \
   && say "L1 the walker froze a grade: $(printf '%s' "$l_o" | grep -m1 -oE 'level true at height [0-9-]*')" \
   || no "L1 levelling never came on"
