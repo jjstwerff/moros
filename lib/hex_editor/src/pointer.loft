@@ -1,0 +1,75 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHAT ONE FRAME OF THE POINTER MEANS — plan 18 `B1.3c`.
+//
+// ⚠ **THIS IS HERE BECAUSE IT WAS IN A BROWSER GATE, AND IT IS A RULE.** The claim
+// — *a press that begins on a UI surface stays that surface's until it is released,
+// and never becomes a look-drag* — is a state machine over four booleans. Nothing in
+// it needs GL, a DOM or wasm. It was written inline in `src/editor_client.loft` and
+// proved by rebuilding a 7 MB wasm client and driving a headless browser, four
+// rounds of it, because that was the only place it could be asked.
+//
+// CLAUDE.md already says which half goes where — *the store's rules are loft tests;
+// the drawn result and the sentences are gates* — and an input rule is a rule. What
+// the browser still has to answer is whether the client CALLS this with real device
+// input; that is one thin row, not sixteen boots.
+//
+// ⚠ **`on_ui` IS A BOOLEAN, NOT A `UiHit`.** The decision does not depend on WHICH
+// surface was hit, only on whether one was — so taking the hit type here would drag
+// `lavition_ui` into `hex_editor`'s dependencies to learn nothing. The caller keeps
+// the hit and routes it; this decides whose press it is.
+
+// The pointer's memory between frames: two booleans and no coordinates.
+//
+// ⚠ THEY ARE NOT ONE FLAG. A single "busy" bit cannot separate *the world is being
+// dragged* from *the UI owns this press*, and collapsing them is the shipped defect:
+// the flag that suppresses the drag cannot be the flag the drag reads, or the frame
+// after a UI press computes a look-delta from the press position and sends it.
+pub struct Pointer {
+  pt_down: boolean,   // a WORLD drag is in progress
+  pt_ui:   boolean,   // the held press belongs to a UI surface
+}
+
+pub fn pointer_new() -> Pointer { Pointer { pt_down: false, pt_ui: false } }
+
+// What the caller should do with this frame.
+//
+// ⚠ `PaBegin` AND `PaDrag` ARE DIFFERENT ANSWERS. The first frame of a world press
+// has no previous position to subtract, so a caller that treated it as a drag would
+// send a delta measured from wherever the pointer last was — which, after a click on
+// the panel, is the panel.
+pub enum PointerAct {
+  PaNothing,   // the button is up
+  PaTake,      // the press EDGE landed on a UI surface: act on the hit, and keep it
+  PaHeld,      // that press is still held: consume it, and do nothing else
+  PaBegin,     // the press edge landed on the world: start a drag, emit no delta
+  PaDrag,      // a world drag continues: the caller sends its delta
+}
+
+// Advance the pointer one frame and say what it means.
+//
+// ⚠ THE ORDER OF THE ARMS IS THE RULE. `pt_ui` is asked BEFORE `pt_down`, so a press
+// the UI took can never fall through to the drag — including after the cursor has
+// left the surface it was pressed on. Ask `pt_down` first and *the same press, two
+// authorities* comes straight back.
+//
+// ⚠ AND THE EDGE IS THE ONLY PLACE `on_ui` IS READ. Re-deciding every frame re-picks
+// under a stationary cursor for ever, and picks a DIFFERENT surface the moment the
+// cursor moves with the button still down — a drag silently changing the person's
+// choice.
+pub fn pointer_step(p: Pointer, down: boolean, on_ui: boolean) -> PointerAct {
+  if !down {
+    p.pt_down = false;
+    p.pt_ui = false;
+    return PaNothing;
+  }
+  if p.pt_ui { return PaHeld; }
+  if p.pt_down { return PaDrag; }
+  if on_ui {
+    p.pt_ui = true;
+    return PaTake;
+  }
+  p.pt_down = true;
+  PaBegin
+}

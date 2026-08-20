@@ -1548,6 +1548,18 @@ echo
 echo "── P   choosing from the catalogue with the mouse ──────────────────"
 # B1.3c (plan 18) — CAN YOU CLICK A ROW, AND DOES THE CAMERA STAY PUT?
 #
+# ⚠ **THIS IS THE WIRE HALF, AND IT USED TO BE BOTH.** The RULE — *a press that
+# begins on a UI surface stays that surface's until it is released* — is
+# `hex_editor::pointer_step` now, and `lib/hex_editor/tests/pointer.loft` sweeps all
+# sixteen of its states plus the shipped defect, headless, in milliseconds. It lived
+# here, which meant proving it cost a 7 MB wasm rebuild and a headless Chromium, and
+# showing this gate could FAIL cost a second one.
+#
+# What stays is what only a browser can answer: do the device's own button and
+# coordinates reach that rule at all, and does the click route to a real choice.
+# ⚠ Kept whole rather than thinned — `P1` and `P2` are two different wiring claims
+# (the hit routes; the press is consumed), and the rule moving out did not merge them.
+#
 # ⚠ **TWO CLAIMS OUT OF ONE PRESS, and the second is the one that was broken.**
 # `panel_hit_test` has answered *what is under this pixel* since plan 18 and nothing
 # in the tree asked it, so every click fell through to the look-drag: pressing a

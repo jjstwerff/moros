@@ -699,13 +699,13 @@ struct Client {
   // way without anyone at the keyboard.
   shoot: text,
   levelling: boolean,
-  dragging: boolean,
-  // A press that began on the PANEL, held until it is released — plan 18 `B1.3c`.
+  // The pointer's memory between frames — plan 18 `B1.3c`, and it is the LIBRARY's.
   //
-  // ⚠ SEPARATE FROM `dragging` ON PURPOSE. Reusing `dragging` to mean *this press is
-  // spoken for* would make the very next frame compute a look-delta from `last_x` and
-  // send it: the flag that suppresses the drag cannot be the flag the drag reads.
-  ui_press: boolean,
+  // ⚠ TWO BOOLEANS AND NOT ONE. A single "busy" bit cannot separate *the world is
+  // being dragged* from *the UI owns this press*, and the flag that suppresses the
+  // drag cannot be the flag the drag reads. `hex_editor::Pointer` holds both and
+  // `lib/hex_editor/tests/pointer.loft` sweeps every state they can be in.
+  ptr: hex_editor::Pointer,
   last_x: float,
   last_y: float,
   // What arrived, for the gate and for a person watching the console.
@@ -2461,7 +2461,7 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // the button still down, which is a drag silently changing the person's choice.
   if hex_editor::rebind_holds(st.rb) {
     down = (mbtn & 1) != 0;
-    if down && !st.dragging {
+    if down && !st.ptr.pt_down {
       // ⚠ **THE FIRST HIT-TEST IN THIS TREE WITH A CALLER.** `verbbar_hit` and
       // `panel_hit_test` were both built, tested green and invoked by nothing — the
       // commonest defect here — and this is `verbbar_hit`'s consumer.
@@ -2474,7 +2474,7 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
     }
     // ⚠ NO DRAG WHILE REBINDING. A click on the bar that also turned the camera would
     // move the view under a person whose eyes are on a strip of slots.
-    st.dragging = down;
+    st.ptr.pt_down = down;
     return;
   }
   // ── A CLICK ON THE PANEL IS NOT A LOOK-DRAG (plan 18 `B1.3c`) ──────────────
@@ -2494,28 +2494,38 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // ⚠ AND THE PRESS STAYS THE PANEL'S UNTIL IT IS RELEASED. Deciding once and
   // remembering is what stops a press that began on a row from becoming a look-drag
   // as soon as the cursor leaves the strip — the same press, two authorities.
-  pdown = (mbtn & 1) != 0;
-  if !pdown { st.ui_press = false; }
-  if pdown && !st.dragging && !st.ui_press {
-    phit = panel_hit_test(pan, mx as integer, my as integer);
-    if !(phit is UhWorld) {
-      st.ui_press = true;
-      panel_click(h, st, sess, pan, phit);
-    }
+  // ⚠ THE RULE IS `hex_editor::pointer_step`'S, AND THIS IS ITS CALLER. It was
+  // written out here, which put an INPUT RULE inside a browser gate: proving it meant
+  // rebuilding a 7 MB wasm client and driving a headless Chromium, and showing the
+  // gate could fail cost a second rebuild. The rule is a state machine over four
+  // booleans and its suite sweeps all sixteen states in milliseconds.
+  //
+  // ⚠ WHAT IS LEFT HERE IS THE WIRING, and that is the half only a browser can
+  // answer: do the device's own buttons and coordinates reach the rule at all.
+  //
+  // ⚠ THE HIT IS COMPUTED EVERY FRAME AND READ ONLY ON THE EDGE. `panel_hit_test` is
+  // a handful of rectangle tests over a laid-out panel, so asking always costs
+  // nothing — and `pointer_step` consults `on_ui` only when a press begins, which is
+  // what stops a cursor moving under a held button from re-picking a different row.
+  phit = panel_hit_test(pan, mx as integer, my as integer);
+  pa = hex_editor::pointer_step(st.ptr, (mbtn & 1) != 0, !(phit is UhWorld));
+  if pa is PaTake {
+    panel_click(h, st, sess, pan, phit);
+    return;
   }
-  if st.ui_press { return; }
-  if (mbtn & 1) != 0 {
-    if st.dragging {
-      ddx = (mx - st.last_x) as integer;
-      ddy = (my - st.last_y) as integer;
-      if ddx != 0 || ddy != 0 { wire(h, st, "3:{ddx},{ddy}"); }
-    }
-    st.dragging = true;
-    st.last_x = mx;
-    st.last_y = my;
-  } else {
-    st.dragging = false;
+  if pa is PaHeld { return; }
+  if pa is PaNothing { return; }
+  // ⚠ `PaBegin` FALLS PAST THE DELTA AND STILL RECORDS THE POSITION. The first frame
+  // of a world press has no previous point to subtract; treating it as a drag would
+  // send a delta measured from wherever the pointer last was — which, right after a
+  // click on the panel, is the panel.
+  if pa is PaDrag {
+    ddx = (mx - st.last_x) as integer;
+    ddy = (my - st.last_y) as integer;
+    if ddx != 0 || ddy != 0 { wire(h, st, "3:{ddx},{ddy}"); }
   }
+  st.last_x = mx;
+  st.last_y = my;
 }
 
 // ── The panel (plan 18, B1.2b) ───────────────────────────────────────────────
@@ -3460,7 +3470,7 @@ fn main() {
     was_fence: false, was_wall: false,
     was_step_up: false, was_step_down: false,
     was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
-    dragging: false, ui_press: false, last_x: 0.0, last_y: 0.0,
+    ptr: hex_editor::pointer_new(), last_x: 0.0, last_y: 0.0,
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,

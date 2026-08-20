@@ -1,0 +1,98 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// The pointer rule, headless — plan 18 `B1.3c`.
+//
+// ⚠ EVERY ONE OF THESE WAS A BROWSER GATE. The claim they make was proved once by
+// rebuilding a 7 MB wasm client and driving a headless Chromium, and the sabotage
+// that showed the gate could fail cost a second full rebuild. The rule needs none of
+// that; only the WIRING does.
+use hex_editor;
+
+fn act(a: PointerAct) -> text {
+  if a is PaNothing { return "nothing"; }
+  if a is PaTake    { return "take"; }
+  if a is PaHeld    { return "held"; }
+  if a is PaBegin   { return "begin"; }
+  "drag"
+}
+
+// ── The whole table, so no cell is left to a fixture's luck ──────────────────
+//
+// ⚠ A SWEEP, NOT SAMPLES. Four booleans is sixteen states and all sixteen are
+// cheap, so there is no reason to pick. The expected column is hand-written first
+// and the loop only checks it — a table derived from the function would be the
+// table checked against itself.
+fn expected(pt_down: boolean, pt_ui: boolean, down: boolean, on_ui: boolean) -> text {
+  if !down { return "nothing"; }
+  if pt_ui { return "held"; }
+  if pt_down { return "drag"; }
+  if on_ui { return "take"; }
+  "begin"
+}
+
+fn test_every_state_of_the_pointer_has_the_answer_written_down() {
+  n = 0;
+  for i in 0..16 {
+    pd = (i / 8 ?? 0) % 2 == 1;
+    pu = (i / 4 ?? 0) % 2 == 1;
+    dn = (i / 2 ?? 0) % 2 == 1;
+    ou = i % 2 == 1;
+    p = Pointer { pt_down: pd, pt_ui: pu };
+    got = act(pointer_step(p, dn, ou));
+    want = expected(pd, pu, dn, ou);
+    assert(got == want,
+           "was(down {pd}, ui {pu}) + press {dn} over-ui {ou} → '{got}', wanted '{want}'");
+    n += 1;
+  }
+  assert(n == 16, "the sweep visited {n} of 16 states");
+}
+
+// ── The gesture the browser was rebuilt four times to ask about ──────────────
+//
+// ⚠ THIS IS THE SABOTAGE, AS A TEST. Removing the client's `if st.ui_press { return; }`
+// made the frame after a UI press fall through to the drag — measured in the browser
+// as 1 look-drag against 0. Here it is three calls and no build.
+fn test_a_press_on_the_panel_never_becomes_a_drag() {
+  p = pointer_new();
+  assert(act(pointer_step(p, true, true)) == "take", "the press edge on the panel must be taken");
+  assert(act(pointer_step(p, true, true)) == "held", "the held press must stay the panel's");
+  assert(act(pointer_step(p, true, true)) == "held", "and keep staying the panel's");
+  assert(act(pointer_step(p, false, false)) == "nothing", "release ends it");
+}
+
+// ⚠ AND THE CURSOR LEAVES THE PANEL WHILE HELD, which is the case the ORDER of the
+// arms exists for. A hand that presses a row and drifts two pixels off the strip is
+// ordinary; if `pt_down` were asked before `pt_ui` this frame would be a drag, and
+// the person would have turned the camera by choosing a part.
+fn test_a_taken_press_survives_the_cursor_leaving_the_surface() {
+  p = pointer_new();
+  assert(act(pointer_step(p, true, true)) == "take", "taken on the panel");
+  assert(act(pointer_step(p, true, false)) == "held", "still the panel's off the strip");
+  assert(act(pointer_step(p, true, false)) == "held", "and still");
+}
+
+// The control: the same shape out in the world DOES drag, so "held" above is a fact
+// about the panel and not about a state machine that never drags at all.
+fn test_a_press_in_the_world_begins_and_then_drags() {
+  p = pointer_new();
+  assert(act(pointer_step(p, true, false)) == "begin", "the world press edge begins");
+  assert(act(pointer_step(p, true, false)) == "drag", "and the next frame drags");
+  assert(act(pointer_step(p, true, true)) == "drag",
+         "a world drag passing OVER the panel keeps dragging — the press was the world's");
+}
+
+// ⚠ RELEASE CLEARS BOTH. A release that cleared only the UI flag would leave a world
+// drag armed with a stale position, so the next press anywhere emits a delta measured
+// from wherever the last one ended.
+fn test_release_clears_both_halves() {
+  p = pointer_new();
+  _ = pointer_step(p, true, true);
+  _ = pointer_step(p, false, false);
+  assert(!p.pt_ui && !p.pt_down, "after release: ui {p.pt_ui}, down {p.pt_down}");
+  q = pointer_new();
+  _ = pointer_step(q, true, false);
+  _ = pointer_step(q, false, false);
+  assert(!q.pt_ui && !q.pt_down, "after a world release: ui {q.pt_ui}, down {q.pt_down}");
+  assert(act(pointer_step(q, true, false)) == "begin", "the next press begins afresh, not drags");
+}

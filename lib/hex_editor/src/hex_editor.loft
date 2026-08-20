@@ -54,6 +54,7 @@ use self::keymap;
 // it turns you and how big one step is — plan 22 `B1c`. Those three lived in
 // `src/editor_server.loft` alone, which is why a page with the same keyboard and
 // the same author could not move at all.
+use self::pointer;
 use self::pose;
 // Cliffs, as EDGES — plan 22 `B1c.2a`, moved from `moros_sim`. A cliff is a
 // hex-lattice fact rather than a Moros one, both of its dependencies (`hex_field`,
