@@ -48,7 +48,22 @@ interpreter, `--native`, and `--native-wasm` under wasmtime. `loft test` and
 `loft test --native` are 13 passed / 2 files. (`--native-wasm` is not a `loft test` mode —
 the runner says so; it compiles a program, so the gate runs `sweep.loft` as the program.)
 
-⛔ **AND IT CANNOT BE PUBLISHED ON ITS OWN — measured, not assumed.** Publishing builds
+✅ **PUBLISHED — `hex_way 0.1.1`, 2026-08-20.** `main` fast-forwarded (17 commits, all 14
+packages green, both worked-example gates clean), release `hex_way-v0.1.1`, registry
+signed at `205f839`. The installed artifact is **byte-identical to the checkout** and
+carries both fixes; `sweep.loft` against what moros resolves today reports **ALL ROWS
+HOLD** — the offset joins at ~1e-16 where it gapped by 1.0, and the same quarter arc
+marks **5 cells either way** where it marked 5 and 1.
+
+⚠ **`registry_validate.sh hex_way` PRINTED `OK` ABOUT THE WRONG VERSION.** It resolved
+`^0.1.0` against the locally cached copy — *"Already cached (skipped): hex_way 0.1.0"* —
+and reported success without ever fetching what had just been published. Pinning exposed
+it: `loft install hex_way@0.1.1` answered *no version satisfies constraint* while the CDN
+already served it, from a stale LOCAL index cache that `loft api --registry --refresh`
+clears. **A post-publish validator that silently validates the previous release is a
+green light about the one thing it was run to check.**
+
+⛔ **What it took to get there — measured, not assumed.** Publishing builds
 from `main`, and:
 
 - `hex_way/tests/02-worked-examples.loft` — the file `@HXY-007` lives in — **does not
@@ -104,7 +119,7 @@ Three differ in code:
 |---|---|---|
 | `hex_field` | +73 lines | purely **additive** (`stencil_unstamp*`) — we simply do not have them |
 | `hex_form` | +13 lines | added **refusals**; the registry copy accepts malformed stencil headers the checkout rejects |
-| `hex_way` | **1 line** | `track_offset` is `+ d * dir` published and `- d * dir` in the checkout |
+| `hex_way` | ~~1 line~~ | ✅ **closed 2026-08-20** — `0.1.1` published with both arc fixes, and moros requires `>=0.1.1` |
 
 ⚠ **The `hex_way` row is 16 lines now, not 1 — I widened it myself.** The `ang_wrap` fix is
 landed in the checkout (`b553c84` on `worked-examples`) and the registry still has 0.1.0, so

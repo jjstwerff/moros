@@ -17,15 +17,21 @@ entry = "src/hex_editor.loft"
 #   hex_field   +73 lines, purely ADDITIVE (`stencil_unstamp*`) — we simply do not have them
 #   hex_form    +13 lines of REFUSALS — the registry copy accepts malformed stencil
 #               headers (`C1`/`C3`/`C4`) that the checkout rejects
-#   hex_way      1 line: `track_offset` is `+ d * dir` here and `- d * dir` there —
-#               **the sibling's own fix, which the published 0.1.0 does not carry**
+#   hex_way      ✅ CLOSED 2026-08-20 by publishing 0.1.1 — see below
 #
-# ⚠ The `hex_way` line is a real defect in what we build against: an offset arc lands on
-# the far side of the way from its straights, so an offset way comes apart at its joints
-# — measured at a **gap of 1.0** on a 0.5 offset (`probe/way`). It cannot reach moros,
-# because every track this tree builds is `track_straight` only and the straight branch
-# never reads `dir`. ⚠ **Say `sh probe/way/drift.sh` rather than trusting this comment**:
-# a byte-identity claim written once is a claim about the day it was written.
+# ✅ **THE `hex_way` ROW IS GONE, AND CLOSING IT IS WHAT THIS NOTE IS FOR.** It carried
+# two defects in the published 0.1.0: `track_offset` put an offset ARC on the far side of
+# the way from its straights (an offset way came apart at its joints, measured at a **gap
+# of 1.0** on a 0.5 offset — the sibling's own fix, unpublished), and `seg_distance`
+# normalised an angle in **one direction only**, so an arc authored below the atan2 range
+# reported points lying ON it as up to 1.53 away (found here, fixed upstream, `@HXY-007`).
+# 0.1.1 carries both and this tree now requires it. ⚠ **Neither could ever reach moros** —
+# every track built here is `track_straight`, and the straight branch never reads `dir` —
+# so the floor is raised to say what we depend on, not to fix a symptom.
+#
+# ⚠ **Say `sh probe/way/drift.sh` rather than trusting this comment**: a byte-identity
+# claim written once is a claim about the day it was written, which is how the sentence
+# above this block came to be false for all fourteen packages.
 #
 # ⚠ A NOTE HERE SAID `hex_world` WAS "deliberately NOT here" WHILE IT WAS DECLARED
 # TWENTY-FIVE LINES BELOW. It was true when this package was world-free and outlived
@@ -41,7 +47,7 @@ hex_field = ">=0.1"
 # a straight, which is what a wall's two faces are. The editor already depends on
 # it for collision and for the fence; the geometry has no business deriving it a
 # second time.
-hex_way   = ">=0.1"
+hex_way   = ">=0.1.1"   # 0.1.1 is the arc fixes — see hex_mesh's note and probe/way
 # The wall run marks the edges its line crosses — `edges_halfplane_surf` and the
 # surface it measures against are hex_edge's, and deriving them again here is what
 # the whole package exists not to do.

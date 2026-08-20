@@ -33,7 +33,13 @@ graphics     = ">=0.1"
 # TRACK (the centreline the panels are built along) and an opening can be cut into a
 # PART's own wall, so the mesher needs both. Neither widens the cone in a direction
 # that matters: `hex_editor`, already here, depends on both.
-hex_way      = ">=0.1"
+# ⚠ **`>=0.1.1`, NOT `>=0.1` — 2026-08-20.** 0.1.0 carries two defects this tree found
+# and published fixes for: `track_offset` put an offset ARC on the far side of the way
+# (a gap of 1.0 at the joints) and `seg_distance` normalised an angle in one direction
+# only. ⚠ **Neither could reach moros** — every track here is `track_straight` and the
+# straight branch never reads `dir` — so the floor is raised to say what we depend on
+# rather than to fix a symptom. `probe/way` has both measurements.
+hex_way      = ">=0.1.1"
 hex_part     = { path = "../hex_part" }
 # ⚠ ARRIVED WITH THE THUMBNAIL — plan 22 `B2d`. A part may name a `.glb` for its
 # body (`A6.1`), and a catalogue image that skipped it would draw a statue as an

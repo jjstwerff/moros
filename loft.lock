@@ -143,9 +143,9 @@ source = "registry"
 
 [[package]]
 name = "hex_way"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_way-v0.1.0/hex_way-0.1.0.tar.gz"
-sha256 = "03cc160ba0d34076403a4e862f78ea59a39a4dbb2fad0767acdfdb4268de060f"
+version = "0.1.1"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_way-v0.1.1/hex_way-0.1.1.tar.gz"
+sha256 = "4d0fbcaaa712bc99110610855375ddd4aa696e7c7b0cc16f1ab1451777650461"
 source = "registry"
 deps = ["hex_edge", "hex_field"]
 
