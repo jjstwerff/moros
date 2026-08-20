@@ -1507,59 +1507,81 @@ echo "── P   choosing from the catalogue with the mouse ──────�
 # ⚠ **TWO CLAIMS OUT OF ONE PRESS, and the second is the one that was broken.**
 # `panel_hit_test` has answered *what is under this pixel* since plan 18 and nothing
 # in the tree asked it, so every click fell through to the look-drag: pressing a
-# catalogue row turned the camera under a person whose eyes were on the panel. That
-# is the same thing the rebind path already refuses, for the reason it gives there.
+# catalogue row turned the camera under a person whose eyes were on the panel.
 #
 # ⚠ **THE DRIVER TWITCHES TWO PIXELS WHILE THE BUTTON IS DOWN, AND IT HAS TO.** A
-# still press sends no look-delta whether or not the panel consumes it — so a still
-# click passes P2 on a fixed editor and on a broken one alike, which is a check that
-# cannot fail. Two pixels is what a hand does.
+# still press sends no look-delta whether or not the panel consumes it, so a still
+# click passes on a fixed editor and on a broken one alike.
 #
-# ⚠ **AND `~world` IS P2'S POSITIVE CONTROL, NOT DECORATION.** *No drag came out of
-# that press* is an ABSENCE, and an absence reads the same when the drag path is
-# broken, when the page stopped printing, or when the twitch never arrived. The same
-# gesture out in the world must produce the line, and P3 is what says the instrument
-# works — measured by ORDER within one run, because the page dedupes the line and a
-# second run would cost a whole boot to learn nothing more.
+# ⛔ **TWO RUNS, AND THE FIRST VERSION OF THIS CHECK WAS THE REASON.** It clicked the
+# row and the world in ONE run and compared LINE NUMBERS — the drag line must come
+# after the world click. Measured against the shipped defect restored: **it passed.**
+# The driver's own `click …` lines go to its stdout immediately while the page's
+# `client:` lines arrive later in a batch, so the two streams are never interleaved
+# and the driver's lines are ALWAYS first. `p_dragln > p_worldln` was true by
+# construction — a check that could not fail, on the one row it existed to prove.
+#
+# ⚠ **SO THE CLAIM IS A COUNT INSIDE ONE STREAM, NEVER AN ORDER ACROSS TWO.** Run one
+# clicks only the row and requires ZERO look-drags; run two clicks only the world and
+# requires at least one. Each is a count of `client:` lines against `client:` lines,
+# and the second is what says the instrument fires at all.
 #
 # ⚠ **BY KIND, NOT BY INDEX** — `#part` takes the first row of that family. Which
 # index is a part changes the moment the catalogue grows, and a number here would
-# quietly start clicking a material and reporting it as a part.
-P_KEYS="#part,~world"
+# quietly start clicking a material and reporting it as a part. Measured: the first
+# part is row ELEVEN.
+P_KEYS="#part"
 timeout 400 node probe/b1b/press.mjs "file://$SITE" "$P_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/pick.raw" 2>&1 || true
 grep -E '^(client|canvas|click)' "$OUT/pick.raw" > "$OUT/pick.log" || true
-grep -E "^click (row|world)|^client: local part '|^client: local — '3:'" "$OUT/pick.log" \
-  | sed 's/^/   /'
+grep -E "^click row|^client: local part '|^client: local — '3:'" "$OUT/pick.log" | sed 's/^/   /'
 
-p_rowln=$(grep -n '^click row ' "$OUT/pick.log" | head -1 | cut -d: -f1)
-p_worldln=$(grep -n '^click world ' "$OUT/pick.log" | head -1 | cut -d: -f1)
-p_dragln=$(grep -n "client: local — '3:'" "$OUT/pick.log" | head -1 | cut -d: -f1)
+p_row=$(grep -c '^click row ' "$OUT/pick.log" || true)
 p_chosen=$(grep -m1 "^client: local part '" "$OUT/pick.log" || true)
+p_drag=$(grep -c "client: local — '3:'" "$OUT/pick.log" || true)
+p_rows=$(grep '^client: catalogue rows — .' "$OUT/pick.log" | tail -1)
 
 # P1 — the click reached a consumer and chose the row that was under it.
 if [ -n "$p_chosen" ]; then
   say "P1 the click chose a part: ${p_chosen#client: local }"
-elif [ -n "$p_rowln" ]; then
+elif [ "$p_row" -ge 1 ]; then
   no "P1 a row was clicked and nothing was chosen — the hit-test still reaches no consumer"
 else
   no "P1 no row was clicked at all — the client never reported its catalogue rows"
 fi
 
-# P2 — and that press did not become a look-drag. The claim is about ORDER: no drag
-# line may appear before the world click, which is the only press in this run that is
-# allowed to produce one.
-if [ -z "$p_rowln" ] || [ -z "$p_worldln" ]; then
-  no "P2 the run did not reach both clicks — P2 has no subject"
-elif [ -z "$p_dragln" ] || [ "$p_dragln" -gt "$p_worldln" ]; then
-  say "P2 and the camera stayed put — the press on the row never reached the look-drag"
+# P2 — and NOTHING in that run was a look-drag. The only press is the row, so any
+# count above zero is the press leaking through the panel.
+if [ "$p_row" -lt 1 ]; then
+  no "P2 the run never clicked a row — P2 has no subject"
+elif [ "$p_drag" -eq 0 ]; then
+  say "P2 and the camera stayed put — the only press in the run reached no look-drag"
 else
-  no "P2 the press on the row turned the camera — '3:' reached the wire at line $p_dragln, before the world click at $p_worldln"
+  no "P2 the press on the row turned the camera — $p_drag look-drag(s) in a run whose only press was the panel"
 fi
 
-# P3 — the control. Same gesture, out in the world, where the answer must be yes.
-if [ -n "$p_dragln" ] && [ -n "$p_worldln" ] && [ "$p_dragln" -gt "$p_worldln" ]; then
-  say "P3 control: the same press-and-twitch in the WORLD does drag — P2 is a fact about the panel"
+# P4 — every row's KIND is a bare family name. ⚠ FOUND BY THIS LINE EXISTING: local
+# mode stored the catalogue WITH its wire tag while the socket path stored the body,
+# so row 0 came back as kind `N:material` and no comparison against a family could
+# ever match it. One list, two authorities, different bytes — which is the thing
+# `B2f` exists to forbid.
+if [ -z "$p_rows" ]; then
+  no "P4 the client reported no catalogue rows at all"
+elif printf '%s' "$p_rows" | grep -qE '[0-9]+:[A-Za-z]+:[a-z]+:'; then
+  no "P4 a row's kind carries the wire tag: $(printf '%s' "$p_rows" | grep -oE '[0-9]+:[A-Za-z]+:[a-z]+:[^@]*@' | head -1)"
+else
+  say "P4 every row's kind is a bare family name — the two authorities agree byte for byte"
+fi
+
+# P3 — the control, in its own run. The same gesture out in the world, where the
+# answer must be yes. ⚠ WITHOUT THIS, P2's zero reads identically when the drag path
+# is broken, when the page stopped printing, or when the twitch never arrived.
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "~world" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/pickw.raw" 2>&1 || true
+grep -E '^(client|canvas|click)' "$OUT/pickw.raw" > "$OUT/pickw.log" || true
+w_drag=$(grep -c "client: local — '3:'" "$OUT/pickw.log" || true)
+if [ "$w_drag" -ge 1 ]; then
+  say "P3 control: the same press-and-twitch in the WORLD does drag — P2's zero is a fact about the panel"
 else
   no "P3 the world click produced no look-drag either — P2's zero says nothing"
 fi

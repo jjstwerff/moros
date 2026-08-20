@@ -3538,7 +3538,20 @@ fn main() {
   // `probe/b1c/parts.mjs` measured again for this: `part_list` needs `is_dir` as
   // well as `list_dir`, and a page whose library is present but unreadable lists
   // NOTHING — indistinguishable from a demo shipped without one.
-  local_cat = hex_mesh::catalogue_for(LOCAL_PARTS);
+  // ⚠ THE BODY, NOT THE WHOLE MESSAGE — and the two authorities were holding
+  // different bytes for the same list until this line said so. `catalogue_for`
+  // answers the WIRE form, `N:` and then the rows, because that is what the server
+  // sends; the socket path stores what arrives AFTER the tag. Storing the message
+  // here left `st.mats` beginning `N:material|grass|…`, so `parse_entries` read row
+  // ZERO's kind as `N:material` and it matched no family anywhere.
+  //
+  // ⚠ IT HURT NOTHING AND THAT IS WHY IT LASTED. `part_names_of` filters on
+  // `KIND_PART`, and the row that was wrong is always a material — so every part
+  // behaved, the panel drew, and the only visible trace was a kind nobody printed.
+  // `B2f`'s rule is ONE LIST whichever authority filled it, and one list held two
+  // ways is the same defect wearing a smaller coat.
+  local_wire = hex_mesh::catalogue_for(LOCAL_PARTS);
+  local_cat = local_wire[(local_wire.find(":") ?? 0 - 1) + 1..];
   local_avail = hex_mesh::part_availability(LOCAL_PARTS);
   println("client: local library — {len(local_avail)} parts under '{LOCAL_PARTS}'");
 
