@@ -125,10 +125,15 @@ fn test_the_bar_is_the_same_height_however_many_verbs_there_are() {
          "1 verb makes a bar {few.vb_rect.r_h} tall and 60 make one "
        + "{lots.vb_rect.r_h} tall");
   assert(lots.vb_hidden > 0, "60 verbs fitted a 1200px window — nothing overflowed");
+  // ⚠ ONE SLOT, SO THE REFERENCE IS A FACT AND NOT A FALLBACK. This read carried
+  // a `?? 0 - 1` whose default loft proved could never fire: `few` is built from
+  // exactly one spec four lines up. A sentinel that cannot appear reads as care
+  // and asserts nothing, and it would have stood in silently for an empty bar.
+  base_y = few.vb_slots[0].vt_rect.r_y;
   for s in lots.vb_slots {
-    assert(s.vt_rect.r_y == few.vb_slots[0]?.vt_rect.r_y ?? 0 - 1,
+    assert(s.vt_rect.r_y == base_y,
            "a slot sits at y {s.vt_rect.r_y} where the single-slot bar puts one at "
-         + "{few.vb_slots[0]?.vt_rect.r_y ?? 0 - 1} — the bar has wrapped");
+         + "{base_y} — the bar has wrapped");
   }
 }
 

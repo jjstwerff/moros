@@ -67,6 +67,25 @@ fn test_fit_truncates_with_a_marker() {
   assert(text_width(s, m) <= 48, "the truncation must itself fit");
 }
 
+// ⚠ THE SAME BOX, THE SAME CHARACTER COUNT, A LABEL THAT IS NOT ASCII.
+//
+// `fit_text` computes its cut in CHARACTERS — `px / advance` — and loft's slice
+// bounds are BYTE offsets, so a two-byte character spends two of them. The cut
+// then lands early and the label comes back SHORTER than it had room for: not
+// corrupt (loft snaps a byte cut outward to a character boundary), just quietly
+// wrong, and invisible to a suite whose every fixture is ASCII.
+//
+// 'thíck_cürved' is 12 characters and 14 bytes. At advance 8 a 48px box has
+// room for 6, so 4 survive the marker: 'thíc..'. Byte-cutting at 4 yields 'thí'
+// — three characters — and a panel that had room for a fourth never shows it.
+fn test_fit_counts_characters_not_bytes() {
+  m = mono(8);
+  s = fit_text("thíck_cürved", 48, m);
+  assert(s == "thíc..", "want 'thíc..', got '{s}'");
+  assert(len(s) == 6, "6 characters of room were paid for, {len(s)} came back");
+  assert(text_width(s, m) <= 48, "the truncation must itself fit");
+}
+
 // ⚠ THE MARKER ONLY APPEARS WHEN SOMETHING WAS REMOVED. Otherwise a caller
 // cannot tell "this fitted" from "this was never measured", and a panel full of
 // ".." would read as a rendering bug rather than as narrow boxes.
@@ -161,7 +180,10 @@ fn test_the_list_sweep_is_not_vacuous() {
   cut = 0;
   for it in wide.p_list.lb_items {
     lb = it.en_label;
-    if lb != "" && len(lb) >= 2 && lb[len(lb) - 2..len(lb)] == ".." { cut += 1; }
+    // ⚠ `ends_with`, NOT a slice. `len` counts characters and a slice bound is a
+    // byte offset, so `lb[len(lb) - 2..]` asks the wrong question of any label
+    // that is not ASCII — the same confusion `fit_text` shipped with.
+    if lb.ends_with("..") { cut += 1; }
   }
   assert(cut > 0, "no wall name was truncated at advance 24 — the sweep proves nothing");
 }

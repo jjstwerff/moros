@@ -95,6 +95,29 @@ pub fn fits(s: text, px: integer, m: Metrics) -> boolean { text_width(s, m) <= p
 // ".." rather than a single "…": the ellipsis is one code point but several
 // bytes, and `text_width` counts characters.  A marker whose own width is
 // ambiguous is the wrong thing to measure a truncation with.
+// The byte offset just past the `n`th character of `s`, or its end if it has
+// fewer than `n`.
+//
+// ⚠ THIS EXISTS BECAUSE THE TWO UNITS DO NOT MEET. `len` counts characters and a
+// slice bound is a byte offset, and loft's stdlib has nothing between them — so a
+// cut computed in characters, which is what an advance gives you, has to be
+// walked into an offset before it can be used. `c#next` is the byte just past the
+// current character, which is exactly the cut point.
+//
+// ⚠ The failure it prevents is SILENT: loft snaps a byte cut outward to a
+// character boundary, so a character count spent as bytes never corrupts the
+// text — it just stops early, and the label comes back shorter than the box it
+// was measured against. Every ASCII fixture agrees with the bug.
+fn byte_after_chars(s: text, n: integer) -> integer {
+  if n <= 0 { return 0; }
+  bac_seen = 0;
+  for bac_c in s {
+    bac_seen += 1;
+    if bac_seen >= n { return bac_c#next; }
+  }
+  size(s)
+}
+
 pub fn fit_text(s: text, px: integer, m: Metrics) -> text {
   if m.m_adv64 <= 0 { return s; }
   if text_width(s, m) <= px { return s; }
@@ -106,7 +129,7 @@ pub fn fit_text(s: text, px: integer, m: Metrics) -> text {
   if keep <= 0 {
     room = (px / adv) ?? 0;
     if room <= 0 { return ""; }
-    return s[0..room];
+    return s[0..byte_after_chars(s, room)];
   }
-  s[0..keep] + ".."
+  s[0..byte_after_chars(s, keep)] + ".."
 }
