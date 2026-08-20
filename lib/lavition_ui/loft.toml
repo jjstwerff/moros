@@ -2,6 +2,20 @@
 name    = "lavition_ui"
 version = "0.1.0"
 loft    = ">=0.8"
+description = "Panel layout, hit-testing and text metrics for an in-engine editor UI: rectangles and hits, with no world, no lattice, no window and no GL."
+
+# ⚠ BOTH FLOORS ARE THIS RELEASE, WHICH IS WHAT A FIRST RELEASE MEANS. They are
+# promises to a consumer about which older releases this one is still a drop-in for
+# (`api_`) and whose stored data it still reads (`data_`); on 0.1.0 there is nothing
+# older, so both are trivially true and checkable.
+#
+# ⚠ RAISING A FLOOR IS HOW A BREAK IS DECLARED, and it is the only way — the release
+# number is deliberately not an indicator. Keeping them still is the default. ⏭ The
+# one already in sight: `EDITING_MODES` makes the verb table DATA, which reshapes
+# `spec_verb` / `spec_verb_on` / `verbbar_build`. That is an `api_` move when it
+# lands, and it should be a decision with a CHANGELOG line rather than a surprise.
+api_compatible_with  = "0.1.0"
+data_compatible_with = "0.1.0"
 
 [library]
 entry = "src/lavition_ui.loft"

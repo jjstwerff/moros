@@ -161,3 +161,5 @@ probe/b1c/.chrome/
 # more, which is a rule that needs editing every time somebody writes a sabotage.
 probe/b2/.*.loft
 probe/b2/.loft/
+# `loft package` output — the tarball is a release artifact, not a source file.
+lib/*/*.tar.gz
