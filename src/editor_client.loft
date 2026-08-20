@@ -1979,7 +1979,11 @@ fn wire(h: web::WsHandler, st: Client, msg: text) {
   // condition in ten places, one of which the next person forgets.
   if hex_editor::rebind_holds(st.rb) { return; }
   if !st.local { web::send(h, msg); return; }
-  id = msg[..msg.find(":") ?? len(msg)];
+  // ⚠ `size()`, NOT `len()`. `find` answers a BYTE offset and a slice bound is a
+  // byte offset, so the fallback for "no colon" has to be one too — `len` counts
+  // characters, and mixing the two units in one bound is what shipped a silently
+  // short label in `lavition_ui::fit_text`.
+  id = msg[..msg.find(":") ?? msg.size()];
   for said in st.said_local {
     if said == id { return; }
   }
