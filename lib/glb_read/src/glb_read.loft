@@ -12,7 +12,7 @@
 // the accessors are genuinely followed — attribute order, key order and unused
 // members are all free to vary.
 use mesh3d;
-use json;
+use self::json;
 
 pub const GR_OK        = 0;
 pub const GR_MISSING   = 1;   // no such file

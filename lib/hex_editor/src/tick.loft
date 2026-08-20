@@ -41,10 +41,10 @@
 //
 // **No camera, no broadcast, no dirty set.** `TickOut` reports what happened so a
 // driver can mesh, mark and speak; it never decides anything.
-use gesture;
-use pose;
-use walk;
-use fall;
+use self::gesture;
+use self::pose;
+use self::walk;
+use self::fall;
 
 use hex_edge;
 use hex_way;

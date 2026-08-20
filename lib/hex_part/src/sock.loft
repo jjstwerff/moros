@@ -14,8 +14,8 @@
 // is how `F-HOLE` went wrong in FITTINGS — an opening became an edge material and
 // then nothing could be hung in it.
 use hex_voxel;
-use codec;
-use meta;
+use self::codec;
+use self::meta;
 
 // ⚠ LITERALS, held equal to `section_tag(…)` by a test — the same call `meta.loft`
 // and `inst.loft` make, and for the reason their comments give: a file-scope

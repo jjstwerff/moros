@@ -36,12 +36,12 @@
 // about what it is showing. It takes labels, key glyphs and an armed flag; the words
 // `opening` and `cellar` never appear here. That is what lets a different editor with
 // a different vocabulary use it unchanged.
-use widgets;
-use panel;
-use font;
+use self::widgets;
+use self::panel;
+use self::font;
 // `DrawRect`, `DrawText` and `Theme` — the picture as lists, which is `render.loft`'s
 // shape and this file's for its reason: no GL here, so the tests need no window.
-use render;
+use self::render;
 
 // ── Layout constants ─────────────────────────────────────────────
 //

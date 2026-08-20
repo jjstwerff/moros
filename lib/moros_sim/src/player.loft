@@ -5,8 +5,8 @@
 
 use graphics;
 use moros_map;
-use tools;
-use collide;
+use self::tools;
+use self::collide;
 
 // ── Constants ────────────────────────────────────────────────────
 // All velocities are world-units / second.  Gravity is world-units / s².

@@ -43,8 +43,8 @@
 // contact's is quadratic: a rate near 0.71, so about 80 rounds to reach `10⁻¹²`
 // near enough independent of `N`. The default budget says so out loud rather than
 // letting a caller discover it.
-use assembly;
-use frames;
+use self::assembly;
+use self::frames;
 use graphics;
 
 pub struct Bend {

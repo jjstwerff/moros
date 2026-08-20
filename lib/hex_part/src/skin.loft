@@ -29,7 +29,7 @@
 // the one thing §P9.11 says may never move — and it would do it silently, which is
 // this tree's most expensive failure shape.
 use hex_voxel;
-use stamp;   // part_columns — the cells that are the hitbox
+use self::stamp;   // part_columns — the cells that are the hitbox
 
 // A box in FINAL world units — the units the export writes and the artist models
 // in. ⚠ NOT `moros_render::Aabb`: that is a Moros package and this is a lavition

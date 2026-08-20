@@ -23,7 +23,7 @@
 // rendering, and the rule that a NOMINAL refusal never grows an offer, were library
 // property before this file existed. What the server kept was the verb in front of it,
 // which is why `say_refused` takes both.
-use gesture;
+use self::gesture;
 
 // ── the shape of every refusal ───────────────────────────────────────────────
 //

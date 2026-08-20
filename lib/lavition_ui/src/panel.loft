@@ -10,8 +10,8 @@
 // labels, indices and a status string the consumer already has.
 //
 // See doc/claude/EDITOR_UI.md §U2.
-use widgets;
-use font;
+use self::widgets;
+use self::font;
 
 // ── Layout constants ─────────────────────────────────────────────
 pub PANEL_WIDTH        = 240;

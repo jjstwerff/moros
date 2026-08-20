@@ -10,7 +10,7 @@
 // (`STATE.md` decision 6). `hex_part` knows what a part is and nothing about
 // what a house should do.
 use hex_voxel;
-use region;
+use self::region;
 
 // The inverse of `re_origin`: a part cell back to the world cell it lands on
 // when the part is centred at `(cq, cr)`.

@@ -18,13 +18,13 @@
 // instances of one part. Binding *by part* would make the two frames
 // indistinguishable, which is the coordinate problem wearing a different hat.
 use hex_voxel;
-use codec;
-use meta;
-use sock;
-use hinge;
-use fit;
-use inst;
-use catalogue;
+use self::codec;
+use self::meta;
+use self::sock;
+use self::hinge;
+use self::fit;
+use self::inst;
+use self::catalogue;
 
 // ⚠ A LITERAL, held equal to `section_tag(…)` by a test, for the reason
 // `meta.loft` gives: a file-scope constant is an inlined expression re-evaluated

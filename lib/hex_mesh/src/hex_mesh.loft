@@ -28,10 +28,10 @@ use hex_proj;
 use hex_grid;
 use hex_voxel;
 use hex_editor;
-use surfaces;
+use self::surfaces;
 // The catalogue — the join of what can be drawn and what parts exist. Plan 22 `B2c`.
 // ⚠ `choices`, not `catalogue`: `hex_part` already has a module of that name.
-use choices;
+use self::choices;
 
 // The renderer's tile, in hexes. See the banner: NOT the store's `CHUNK_W`.
 pub const MESH_CHUNK = 8;

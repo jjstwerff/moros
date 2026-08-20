@@ -21,8 +21,8 @@ use moros_map;
 use moros_editor;
 use moros_render;
 use graphics;
-use player;
-use tools;
+use self::player;
+use self::tools;
 
 // ── Camera control ────────────────────────────────────────────────
 // User's persistent orbit delta on top of the current camera mode's

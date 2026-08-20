@@ -64,8 +64,8 @@
 // `sample` is a function, not a world. That keeps every clause here a pure
 // function of its arguments — the tests hand it analytic terrains whose answers
 // are known in closed form — and it keeps this file free of `moros_map`.
-use assembly;
-use frames;
+use self::assembly;
+use self::frames;
 use graphics;
 
 pub struct Rest {

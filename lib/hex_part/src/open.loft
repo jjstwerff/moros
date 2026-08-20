@@ -18,8 +18,8 @@
 // is that a part has no wall RUNS, so it takes the per-edge fallback, and that path
 // never asked. This section is what lets it.
 use hex_voxel;
-use codec;
-use meta;
+use self::codec;
+use self::meta;
 
 // ⚠ A LITERAL, held equal to `section_tag("OPEN")` by a test — `meta.loft`'s rule
 // and its reason: a file-scope constant is an inlined expression re-evaluated at

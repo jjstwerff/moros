@@ -3,18 +3,18 @@
 // moros_sim — player physics, world-direct collision, and tool dispatch
 // for the Moros walkable editor.  Re-exports submodule symbols.
 
-use tools;
-use player;
-use collide;
-use editor;
+use self::tools;
+use self::player;
+use self::collide;
+use self::editor;
 
-use assembly;
-use frames;
-use ground;
-use tether;
-use shape;
+use self::assembly;
+use self::frames;
+use self::ground;
+use self::tether;
+use self::shape;
 use self::skin;
-use bend;
+use self::bend;
 // ⚠ `cliff` LEFT — plan 22 `B1c.2a`. Its own header named `hex_edge`'s shared
 // layer as its target home and said it sat here only because moving to another
 // agent's tree is an ask; `hex_editor` is the waypoint, because that is where the

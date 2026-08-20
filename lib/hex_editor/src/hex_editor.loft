@@ -20,7 +20,13 @@
 // which is why nothing can be scripted, replayed or tested without one.
 // The gestures — `SCRIPTED_EDITOR.md` §2 — live in their own module and are
 // re-exported here, the way `hex_draw` carries `housedraw` and `hexsurf`.
-use gesture;
+// ⚠ THE MODULE QUALIFIER IS GONE, AND `use self::` IS WHY. A module imported as
+// `use self::<x>;` has no `<x>::` spelling — neither the bare qualifier nor
+// `self::<x>::<fn>()` parses — so the two forms are mutually exclusive, and the
+// protection is worth more than the prefix. Bare is unambiguous here: loft refuses
+// an ambiguous bare name outright and names both packages, so this would not have
+// compiled if something else in the graph claimed it.
+use self::gesture;
 
 use hex_draw;
 use hex_form;
@@ -30,42 +36,42 @@ use hex_shape;
 use hex_place;
 use hex_grid;
 use hex_part;
-use names;
+use self::names;
 // What a world DECLARES a house type to be — plan 22 `T1a.1`, its own module at
 // `T1b`. ⚠ It is below `session` in the arrow, not beside it: `session.loft` uses it
 // so that `session_opening` can read the type's own opening, which is the whole
 // reason it stopped living in this file.
-use htype;
+use self::htype;
 // ⚠ AFTER `gesture`, because a session is the state those gestures are applied to.
-use session;
+use self::session;
 // The sentences the editor says — plan: the wire becomes transport.
-use say;
+use self::say;
 // The definition layer as data — plan 22 `M1`. ⚠ IT KNOWS NO VERB NAMES, which is why
 // the arrow points this way: `keymap.loft` is the mechanism and `keymap_default` below
 // is the only place the default LAYOUT is written, beside the `VB_*` it names.
-use keymap;
+use self::keymap;
 // ⚠ AFTER `gesture`, because it takes an `Author`. What a HELD key means, how fast
 // it turns you and how big one step is — plan 22 `B1c`. Those three lived in
 // `src/editor_server.loft` alone, which is why a page with the same keyboard and
 // the same author could not move at all.
-use pose;
+use self::pose;
 // Cliffs, as EDGES — plan 22 `B1c.2a`, moved from `moros_sim`. A cliff is a
 // hex-lattice fact rather than a Moros one, both of its dependencies (`hex_field`,
 // `hex_edge`) were already ours, and the walker that consults it is arriving here.
-use cliff;
+use self::cliff;
 // ⚠ AFTER `cliff`, which it consults, and after `gesture` for `edge_layer` and the
 // wall materials. Where a walker ENDS UP — plan 22 `B1c.2b`, moved verbatim out of
 // `src/editor_server.loft` so one walk answers both drivers.
-use walk;
+use self::walk;
 // The feet, between ticks — plan 22 `B1c.3`, moved from `moros_sim`. ⚠ AFTER `walk`
 // only for reading order: a fall takes floats and a ground height and knows nothing
 // about edges.
-use fall;
+use self::fall;
 // ⚠ LAST, BECAUSE IT SEQUENCES EVERYTHING ABOVE IT. One tick of the person — plan 22
 // `T1`. The primitives were all already here and the ORDER they run in was written
 // twice, in `src/editor_server.loft` and `src/editor_client.loft`, with the second
 // copy already missing the level stamp entirely.
-use tick;
+use self::tick;
 
 // One wall, as the renderer should draw it: the mitred segment from corner to
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the
@@ -600,7 +606,7 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet,
 pub const ROOF_PITCH_DEFAULT = 0.70;
 // ⛔ **`ROOF_EAVE_UP` WAS HERE AND IT WAS THE THIRD NAME FOR ONE NUMBER — plan 22
 // `T1a`.** Its own comment said *"the wall's own height — the roof starts where it
-// ends"*, which makes it the same FACT as `gesture::STOREY_H` rather than merely the
+// ends"*, which makes it the same FACT as `STOREY_H` rather than merely the
 // same value; `hex_mesh::WALL_UP` was the third. The eave is not an independent
 // quantity, it is *one storey up*, so the call site says `STOREY_H` and a two-storey
 // wall would say `2 * STOREY_H` — which is the thing a separate constant could not

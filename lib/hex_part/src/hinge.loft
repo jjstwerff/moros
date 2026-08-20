@@ -22,8 +22,8 @@
 // importing it: nothing here calls `moros_sim`, and the eight numbers are just
 // numbers until something assembles them.
 use hex_voxel;
-use codec;
-use meta;
+use self::codec;
+use self::meta;
 
 // ⚠ A LITERAL, held equal to `section_tag(…)` by a test — the reason `meta.loft`
 // gives: a file-scope constant is an inlined expression re-evaluated at every

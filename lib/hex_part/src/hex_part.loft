@@ -7,20 +7,20 @@
 // not a new document type — opening a part IS loading a world, so it renders in
 // the same shader, saves in the same format and is verified by the same gates.
 use hex_voxel;
-use catalogue;
-use codec;
-use region;
-use meta;
-use sock;
-use fit;
-use inst;
-use bind;
-use cycle;
-use hinge;
-use prop;
-use stamp;
-use expand;
-use bake;
-use open;   // A8.9 — what shape a part's doorways are cut to (P9.14)
-use wall;   // A8.8 — how tall a part's walls are, and what they are made of (P9.13)
+use self::catalogue;
+use self::codec;
+use self::region;
+use self::meta;
+use self::sock;
+use self::fit;
+use self::inst;
+use self::bind;
+use self::cycle;
+use self::hinge;
+use self::prop;
+use self::stamp;
+use self::expand;
+use self::bake;
+use self::open;   // A8.9 — what shape a part's doorways are cut to (P9.14)
+use self::wall;   // A8.8 — how tall a part's walls are, and what they are made of (P9.13)
 use self::skin;   // A8.7 — what a returned skin may and may not do (P9.11)

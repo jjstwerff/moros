@@ -35,15 +35,15 @@
 // back in `ex_meshes`. The composition is the same walk — same frame, same heights,
 // same sockets — and only what the body produces differs.
 use hex_voxel;
-use inst;
-use cycle;
-use bind;
-use sock;
-use catalogue;
-use stamp;
-use meta;
-use prop;
-use hinge;   // `A5.2` — the swing rides in `MeshAt`, so the hinge is read here
+use self::inst;
+use self::cycle;
+use self::bind;
+use self::sock;
+use self::catalogue;
+use self::stamp;
+use self::meta;
+use self::prop;
+use self::hinge;   // `A5.2` — the swing rides in `MeshAt`, so the hinge is read here
 
 pub const EX_OK      = 0;
 pub const EX_MISSING = 1;   // the part is not in the library

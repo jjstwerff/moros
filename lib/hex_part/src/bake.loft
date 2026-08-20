@@ -22,17 +22,17 @@
 // asymmetry is the point of §P4 and not an inconsistency: `expand` keeps the
 // record, which outranks the cells, so its cells need no name.
 use hex_voxel;
-use inst;
-use cycle;
-use bind;
-use sock;
-use catalogue;
-use stamp;
-use meta;
-use prop;
-use expand;
-use open;    // A8.9 — the head profile a flattening cannot carry either (P9.14)
-use wall;    // A8.8 — the profile a flattening cannot carry (P9.13)
+use self::inst;
+use self::cycle;
+use self::bind;
+use self::sock;
+use self::catalogue;
+use self::stamp;
+use self::meta;
+use self::prop;
+use self::expand;
+use self::open;    // A8.9 — the head profile a flattening cannot carry either (P9.14)
+use self::wall;    // A8.8 — the profile a flattening cannot carry (P9.13)
 
 pub const BK_OK      = 0;
 pub const BK_MISSING = 1;   // the part is not in the library

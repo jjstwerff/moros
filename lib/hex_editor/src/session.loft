@@ -33,11 +33,11 @@
 // If one ever did, the two paths could disagree and the headless answer would be
 // worth nothing — which is the trap `editor_run.loft` was written to avoid and this
 // inherits. `make headless-same` is the check that they still agree.
-use gesture;
+use self::gesture;
 // What a world DECLARES a house type to be — plan 22 `T1b`. A type carries the
 // opening an author gets when they have chosen none, and the reader of that default
 // is the gesture that cuts one, which is in this file.
-use htype;
+use self::htype;
 use hex_voxel;
 use hex_grid;
 // ⚠ THE FIRST `use say` IN THIS FILE, and it is the file's own note above being taken
@@ -46,7 +46,7 @@ use hex_grid;
 // `say.loft` was cut out of the server — so a sentence a gate reads belongs there, and
 // the three composed inline below (`a bed … in the box`, `hole refused — …`) are the
 // residue of the older arrangement rather than the rule.
-use say;
+use self::say;
 
 // ⚠ `EditSession`, NOT `Session`. `ssh` publishes `pub struct Session` and a struct
 // name is GLOBAL across a consumer's dependency graph — two declarations merge into

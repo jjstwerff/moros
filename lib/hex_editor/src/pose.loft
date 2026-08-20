@@ -28,7 +28,7 @@
 // its own, and it is the half that a house is actually waiting on — `place` is
 // refused at yaw 0 with *"a footprint at this facing has no mitred corners; turn
 // one step"*.
-use gesture;
+use self::gesture;
 
 // ── THE HELD BITS, AND THE WIRE ALREADY SPELLS THEM ─────────────────────────
 //

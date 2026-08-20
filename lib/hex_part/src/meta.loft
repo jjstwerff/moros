@@ -6,7 +6,7 @@
 // the CONTENT and knows nothing about where the bytes end up. A store that knew
 // what `PART` meant would be a store with an opinion about its consumers.
 use hex_voxel;
-use codec;
+use self::codec;
 
 // ⚠ LITERALS, held equal to `section_tag(…)` by a test rather than derived from
 // it. That began as a workaround for loft#744 — `const X = some_fn()` aborted —

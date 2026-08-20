@@ -21,9 +21,9 @@
 // > chose*. Those are all `PART` and `SOCK` — §P5's own words, and the reason
 // > this record holds a reference rather than the geometry.
 use hex_voxel;
-use codec;
-use meta;
-use catalogue;
+use self::codec;
+use self::meta;
+use self::catalogue;
 use glb_read;
 
 // ⚠ A LITERAL, held equal to `section_tag(…)` by a test — `meta.loft`'s reason: a

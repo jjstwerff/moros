@@ -27,8 +27,8 @@
 // `HEIGHT_SCALE` is a global that is **wrong on a part world** (`door/slat` is
 // authored at 0.125), and `w.w_unit` is the world's own answer. Nothing below needs
 // either, because a reference in units is what the surface rule takes.
-use gesture;
-use cliff;
+use self::gesture;
+use self::cliff;
 
 use hex_field;
 use hex_edge;

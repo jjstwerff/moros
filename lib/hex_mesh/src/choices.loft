@@ -33,7 +33,13 @@
 // CLAUDE.md records for struct names. `choices` is what this list is: the things an
 // author can pick.
 use hex_part;
-use surfaces;
+// ⚠ THE MODULE QUALIFIER IS GONE, AND `use self::` IS WHY. A module imported as
+// `use self::<x>;` has no `<x>::` spelling — neither the bare qualifier nor
+// `self::<x>::<fn>()` parses — so the two forms are mutually exclusive, and the
+// protection is worth more than the prefix. Bare is unambiguous here: loft refuses
+// an ambiguous bare name outright and names both packages, so this would not have
+// compiled if something else in the graph claimed it.
+use self::surfaces;
 
 // ── The wire's own vocabulary ───────────────────────────────────────────────
 //
@@ -95,10 +101,10 @@ pub fn part_availability(root: text) -> vector<PartAvail> {
 // that is not a thing.
 pub fn catalogue_wire(avail: vector<PartAvail>) -> text {
   out = "N:";
-  n = surfaces::surface_count();
+  n = surface_count();
   for i in 0..n {
     if i > 0 { out = out + ";"; }
-    nm = surfaces::surface_at(i).sf_name;
+    nm = surface_at(i).sf_name;
     why = surface_block(nm);
     av = "1";
     if why != "" { av = "0"; }

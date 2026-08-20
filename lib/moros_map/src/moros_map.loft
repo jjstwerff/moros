@@ -3,9 +3,9 @@
 // moros_map — shared data model for the Moros hex scene system.
 // Re-exports all types and public functions.
 
-use types;
-use palette;
-use spawn;
+use self::types;
+use self::palette;
+use self::spawn;
 use hex_field;
 use hex_grid;    // the lattice — rounding and distance are ITS parity to get right
 

@@ -25,9 +25,9 @@
 // complete beats near and ranked, and an edit distance over `2x3` and `3x3` would
 // be a guess wearing a number's clothes.
 use hex_voxel;
-use meta;
-use sock;
-use catalogue;
+use self::meta;
+use self::sock;
+use self::catalogue;
 
 pub const SF_OK      = 0;
 pub const SF_KIND    = 1;   // a door offered to a pillar socket

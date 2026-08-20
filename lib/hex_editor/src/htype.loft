@@ -20,7 +20,7 @@
 // and the half of it that is still live fires no advice at all when the collision is
 // fatal. `htype` is absent from `lib/*/src/`, `src/`, `~/.loft/registry/*/src/` and
 // `../loft-libs-world/*/src/`; `types.loft` is taken, which is why it is not that.
-use gesture;
+use self::gesture;
 use hex_voxel;
 
 // ── A HOUSE TYPE IS A PALETTE ENTRY — plan 22 `T1a.1` ──────────────────────
