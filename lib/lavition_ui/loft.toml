@@ -17,6 +17,14 @@ description = "Panel layout, hit-testing and text metrics for an in-engine edito
 api_compatible_with  = "0.1.0"
 data_compatible_with = "0.1.0"
 
+# ⏭ WHEN THE `loft` FLOOR NEXT MOVES: `text.char_slice(from, to)` slices by
+# CHARACTERS and is the stdlib cure for the two-units defect `src/font.loft` closes by
+# hand in `byte_after_chars` — seven call sites go through it. It needs a loft newer
+# than this floor, and raising the floor to buy a tidier internal is a bad trade for a
+# first release: it costs every consumer a toolchain upgrade to fix nothing they can
+# observe. The hand-rolled walk ships with 0.1.0; `char_slice` is what replaces it the
+# next time there is an independent reason to move `loft = ">="`.
+
 [library]
 entry = "src/lavition_ui.loft"
 
