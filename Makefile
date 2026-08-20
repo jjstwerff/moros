@@ -1,4 +1,4 @@
-.PHONY: client client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -237,9 +237,42 @@ play-fast: port-free client
 # loft.toml, src/*.loft, tests/ and native/, so a locally installed library loses
 # its wasm bridge (loft-lang/loft#667). `rm -rf ~/.loft/lib/web` is the fix; the
 # published package was never at fault.
-client:
+# ⚠ **DEPENDENCY-TRACKED, AND `page-check` STILL FORCES IT.** This recipe was
+# unconditional, so `make client` paid a ~5-minute wasm compile even when not one
+# byte had changed — and every `page-check` and every probe loop paid it again.
+# `CLIENT_SRC` is every loft file the page is built from, so an unchanged tree is a
+# no-op and a changed one rebuilds.
+#
+# ⚠ **THAT IS NOT THE STALENESS THE WARNING BELOW IS ABOUT.** `page-check`'s note
+# says the client is rebuilt on purpose because *"the stale page left there is
+# exactly what would hide the next one of these"* — and the case it guards is a
+# TOOLCHAIN swap, which changes no source file and so is invisible to `make`. A
+# dependency on the sources cannot see a new `/usr/local/bin/loft`. So `page-check`
+# keeps a forced rebuild (`client-force`) and only the dev loop gets the cheap one.
+CLIENT_SRC := $(wildcard src/*.loft) $(wildcard lib/*/src/*.loft)
+
+client: src/.loft/editor_client.html
+
+src/.loft/editor_client.html: $(CLIENT_SRC)
 	$(LOFT) --html --lib lib/ src/editor_client.loft
 	@echo "wrote src/.loft/editor_client.html"
+
+client-force:
+	$(LOFT) --html --lib lib/ src/editor_client.loft
+	@echo "wrote src/.loft/editor_client.html (forced)"
+
+# ⚠ ONE BOOT, NO BLOCKS — the fastest loop this tree has, and it was folklore until
+# it was a target. `press.mjs` is what `probe/b2` drives the page with; this runs it
+# directly, so a gesture can be tried without the sixteen browser boots a full
+# `probe-demo` pays for. It ASSERTS NOTHING and says so: reading the output is the
+# point, and a claim about the editor still needs `make probe-demo`.
+#   make press K='#part'          click the first catalogue row
+#   make press K='ArrowUp,w,w'    keys, in order
+#   make press K='@raise'         click a verb slot · `~world` drags the world
+press: client pages
+	@test -n "$(K)" || { echo "usage: make press K='#part'   (keys, @verb, #kind, ~world)"; exit 2; }
+	@node probe/b1b/press.mjs "file://$(PWD)/_site/index.html" "$(K)" \
+	   --await 'no server answered' --wait-ms 90000 2>&1 | grep -E '^(client|canvas|click)'
 
 editor: client
 	$(LOFT) --interpret --lib lib/ src/editor_server.loft
@@ -498,7 +531,7 @@ fast:
 # ⚠ **SO RUN THIS AFTER A TOOLCHAIN CHANGE, BEFORE SIGNING ONE OFF.** It rebuilds the
 # client on purpose rather than reusing whatever is in `src/.loft/` — the stale page
 # left there is exactly what would hide the next one of these.
-page-check: client pages
+page-check: client-force pages
 	@$(MAKE) -s probe-demo
 	@$(MAKE) -s probe-auth
 

@@ -377,6 +377,29 @@ ok=1
 say() { echo "   $1"; }
 no() { echo "   ✗ $1"; ok=0; }
 
+# ⚠ **`DEMO_ONLY=P,M` RUNS THOSE BLOCKS AND SAYS SO.** One `probe-demo` boots a
+# browser SIXTEEN times, and iterating on one gate paid for the other fifteen every
+# round — measured on plan 18 `B1.3c`, where four rounds of a one-block change cost
+# four full runs.
+#
+# ⛔ **AND IT MUST NOT BE ABLE TO SAY `demo PASS`.** A selector that prints the same
+# verdict as a whole run is how somebody checks one block and believes they checked
+# the tier — the silent-cap failure this tree writes down everywhere else. With
+# `DEMO_ONLY` set the verdict names what ran and what did not, and never claims the
+# demo holds.
+#
+# The core — `D0`, `D1` and the picture checks — always runs: it is what says the
+# page booted at all, and every block below reads its world. For raw iteration with
+# no assertions, `make press K='#part'` is one boot and no blocks.
+DEMO_ONLY="${DEMO_ONLY:-}"
+want() {
+  [ -z "$DEMO_ONLY" ] && return 0
+  case ",$DEMO_ONLY," in *,"$1",*) return 0 ;; esac
+  skipped="$skipped $1"
+  return 1
+}
+skipped=""
+
 # D1 — the page ran at all.
 if [ "$boot" -ge 1 ]; then say "D1 booted: the engine printed its own banner"
 else no "D1 the page never booted — nothing printed a banner"; fi
@@ -473,6 +496,7 @@ else
   no "P3 the catalogue drew $p_th thumbnails ($p_arr off the wire) — a part row without a picture is a row an author cannot use"
 fi
 
+if want F; then
 # ── F  the demo can BUILD A HOUSE — plan 22 `B1c.1`, the turn ───────────────
 #
 # ⚠ THE NEGATIVE CONTROL IS THE FIRST KEY OF THE SAME RUN. `place` is refused at
@@ -567,6 +591,8 @@ else
   no "F5 a house was placed and no wall was ever drawn"
 fi
 
+fi   # ── F
+if want Q; then
 # ── Q  the SELECTION decides what `place` makes — plan 22 `B2e` ────────────
 #
 # ⚠ THE CONTROL IS THE `F` BLOCK, ALREADY RUN. F presses `d` then `h` with nothing
@@ -628,6 +654,8 @@ else
   no "Q2 place built F4's own house world ($q_key) — the selection changed nothing"
 fi
 
+fi   # ── Q
+if want G; then
 # ── G  the demo can WALK, and it moves where a house lands — `B1c.2c` ──────
 #
 # ⚠ THE CLAIM IS NOT *the numbers moved*, IT IS *the walk reaches the gesture*.
@@ -733,6 +761,8 @@ else
   no "G2 the house landed at $g_key — exactly the world F4 builds standing still, so the walk did not reach the gesture"
 fi
 
+fi   # ── G
+if want H; then
 # ── H  the demo's feet FALL — plan 22 `B1c.3` ──────────────────────────────
 #
 # ⚠ THE CONTROL IS THE `G` RUN, WHICH ALREADY HAPPENED. G walks the same distance
@@ -792,6 +822,8 @@ else
   no "H3 the flat-ground walk reported feet '$g_feet' landed '$g_landed' — it should have neither, so H1/H2 prove nothing"
 fi
 
+fi   # ── H
+if want L; then
 # ── L  the demo can LEVEL as it walks — plan 22 `T2` ───────────────────────
 #
 # ⛔ **THIS KEY DID NOTHING HERE AND SAID IT HAD.** `l` flipped a page-local flag and
@@ -842,6 +874,8 @@ else
   no "L3 the levelled walk keyed '$l_world' and the unlevelled one '$h_world' — a count with no world behind it is a report about a call, not about the ground"
 fi
 
+fi   # ── L
+if want R; then
 # ── R  the demo can lay a WALL RUN — plan 22 `K3` ──────────────────────────
 #
 # ⚠ **THE DEMO'S MOST-PRESSED KEY WAS ITS DEADEST ONE.** `R` is 22 of the 40
@@ -898,6 +932,8 @@ else
   no "R3 no world key was printed beside either run press"
 fi
 
+fi   # ── R
+if want B; then
 # ── B  a STOREY above, and a CELLAR that gets a reason — plan 22 `K3` ──────
 #
 # ⚠ **THESE WERE THE LAST TWO RAW `wire` SENDS IN THE CLIENT'S INPUT BLOCK, AND THAT
@@ -977,6 +1013,8 @@ else
   no "B3 the cellar printed '${b_dn#client: local }' — neither a dig nor the library's own refusal"
 fi
 
+fi   # ── B
+if want K; then
 # ── K  the VERB BAR says what you can press and what presses it — `M2` ─────
 #
 # ⛔ **WHAT THIS REPLACES WAS WRONG ON SCREEN FOR MONTHS.** The side panel's toolbar
@@ -1024,6 +1062,8 @@ else
   say "K3 and it says what it could not show: $k_h hidden"
 fi
 
+fi   # ── K
+if want M; then
 # ── M  the KEYBOARD IS THE PERSON'S — arm, pick a slot, press a key — `M3` ──
 #
 # The bar above says what the binding IS; this says a person can CHANGE it, in the
@@ -1401,6 +1441,8 @@ else
   say "O4 …and the walker is on it: feet $o_feet2 after the reload, against $o_feet1 in a fresh page (the FALL owns this, not the load)"
 fi
 
+fi   # ── M
+if want E; then
 # ── E  the demo can be TOLD where a server is — plan 22 `B2b` ───────────────
 #
 # ⚠ THREE RUNS, AND TWO OF THEM ARE CONTROLS. *The page connected* means nothing
@@ -1500,6 +1542,8 @@ else
   node tools/build-pages.mjs > /dev/null || fail "could not restore the plain demo"
 fi
 
+fi   # ── E
+if want P; then
 echo
 echo "── P   choosing from the catalogue with the mouse ──────────────────"
 # B1.3c (plan 18) — CAN YOU CLICK A ROW, AND DOES THE CAMERA STAY PUT?
@@ -1596,7 +1640,18 @@ else
   no "P3 the world click produced no look-drag either — P2's zero says nothing"
 fi
 
+fi   # ── P
 echo
+if [ -n "$DEMO_ONLY" ]; then
+  # ⚠ NEVER `demo PASS` FROM A SUBSET. What ran and what did not are both named, so
+  # a partial run cannot be mistaken for the tier in a log or in a memory.
+  if [ "$ok" -eq 1 ]; then
+    echo "demo PARTIAL PASS — blocks [$DEMO_ONLY] held, plus the core."
+    echo "                    NOT RUN:$skipped — this is not a demo PASS."
+    exit 0
+  fi
+  fail "blocks [$DEMO_ONLY] did not hold (see $OUT/) — NOT RUN:$skipped"
+fi
 if [ "$ok" -eq 1 ]; then
   echo "demo PASS — _site/index.html opens from file://, edits its own world and draws it."
   echo "            No server, no toolchain, no port — and it attaches to one it is told about."
