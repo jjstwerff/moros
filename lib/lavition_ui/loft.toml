@@ -2,6 +2,11 @@
 name    = "lavition_ui"
 version = "0.1.0"
 loft    = ">=0.8"
+# ⚠ THE SOURCE STAYS WHERE IT IS BATTLE-TESTED, so the release is cut from moros and
+# the registry entry is a FOREIGN-PACKAGE one. Moving the source into a loft-libs-*
+# repo would hand a library to a repo whose CI cannot exercise it — the promotion
+# rule running backwards.
+repository = "jjstwerff/moros"
 description = "Panel layout, hit-testing and text metrics for an in-engine editor UI: rectangles and hits, with no world, no lattice, no window and no GL."
 
 # ⚠ BOTH FLOORS ARE THIS RELEASE, WHICH IS WHAT A FIRST RELEASE MEANS. They are
