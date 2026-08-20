@@ -700,6 +700,12 @@ struct Client {
   shoot: text,
   levelling: boolean,
   dragging: boolean,
+  // A press that began on the PANEL, held until it is released — plan 18 `B1.3c`.
+  //
+  // ⚠ SEPARATE FROM `dragging` ON PURPOSE. Reusing `dragging` to mean *this press is
+  // spoken for* would make the very next frame compute a look-delta from `last_x` and
+  // send it: the flag that suppresses the drag cannot be the flag the drag reads.
+  ui_press: boolean,
   last_x: float,
   last_y: float,
   // What arrived, for the gate and for a person watching the console.
@@ -2135,7 +2141,7 @@ fn local_verbs(st: Client, a: hex_editor::Author) -> boolean {
 }
 
 fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
-              a: hex_editor::Author, bar: VerbBar) {
+              a: hex_editor::Author, bar: VerbBar, pan: Panel) {
   // ── REBINDING — arm, pick a slot, press a key (plan 22 `M3`) ───────────────
   //
   // ⚠ **THE ARM KEY IS HANDLED FIRST AND IT OWNS `Escape` OUTRIGHT.** The scan below
@@ -2324,26 +2330,7 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
     pnames = part_names_of(st.mats);
     st.part_pick = st.part_pick + 1;
     if st.part_pick > len(pnames) { st.part_pick = 0; }
-    pick = "";
-    if st.part_pick > 0 { pick = pnames[st.part_pick - 1] ?? ""; }
-    // ⚠ THE INDEX IS THE DRIVER'S AND THE NAME IS THE SESSION'S — here and on the
-    // server alike. Cycling needs the LIST, which belongs to whoever holds the
-    // catalogue; the gesture needs only the chosen name. One past the end clears
-    // it, so `h` goes back to building the procedural house: the way out is the
-    // same key.
-    if st.local {
-      psel = hex_editor::session_select_part(sess, pick);
-      if !psel.ak_ok { println("client: local part refused — {psel.ak_why}"); }
-      else { println("client: local {psel.ak_why}"); }
-      st.panel_dirty = true;
-    } else {
-      // ⚠ `51:`, NOT `44:`. `44:` is part MODE — it opens a part for EDITING — and
-      // sending it here would have swapped the author's whole world for a door
-      // instead of choosing one to place. Caught by reading the server's id table
-      // rather than by anything going red: both are "a message about a part", and
-      // the wrong one is a plausible-looking editor doing something drastic.
-      wire(h, st, "51:{pick}");
-    }
+    commit_part_pick(h, st, sess);
   }
   st.was_part = kpart;
 
@@ -2490,6 +2477,33 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
     st.dragging = down;
     return;
   }
+  // ── A CLICK ON THE PANEL IS NOT A LOOK-DRAG (plan 18 `B1.3c`) ──────────────
+  //
+  // ⚠ **AND ITS ABSENCE WAS A LIVE DEFECT, NOT A MISSING FEATURE.** Every click
+  // reached the drag below, so pressing a catalogue row turned the camera under a
+  // person whose eyes were on the panel — which is the exact thing the rebind path
+  // twelve lines up already refuses, for the exact reason it gives there. The
+  // hit-test that answers this has been in `lavition_ui` since plan 18 and nothing
+  // in the tree asked it.
+  //
+  // ⚠ THE PRESS EDGE, not the held button, and for `verbbar_hit`'s reason: testing
+  // every frame re-picks under a stationary cursor forever, and picks a DIFFERENT
+  // row the moment the cursor moves with the button still down — a drag silently
+  // changing the person's choice.
+  //
+  // ⚠ AND THE PRESS STAYS THE PANEL'S UNTIL IT IS RELEASED. Deciding once and
+  // remembering is what stops a press that began on a row from becoming a look-drag
+  // as soon as the cursor leaves the strip — the same press, two authorities.
+  pdown = (mbtn & 1) != 0;
+  if !pdown { st.ui_press = false; }
+  if pdown && !st.dragging && !st.ui_press {
+    phit = panel_hit_test(pan, mx as integer, my as integer);
+    if !(phit is UhWorld) {
+      st.ui_press = true;
+      panel_click(h, st, sess, pan, phit);
+    }
+  }
+  if st.ui_press { return; }
   if (mbtn & 1) != 0 {
     if st.dragging {
       ddx = (mx - st.last_x) as integer;
@@ -3096,6 +3110,83 @@ fn say_verb_bar(b: VerbBar) {
   println("client: verb slots — {pos_s}");
 }
 
+// Where every VISIBLE catalogue row sits, for whoever has to click one.
+//
+// ⚠ READ OFF THE LAID-OUT PANEL, exactly as `say_verb_bar` reads the laid-out bar
+// and for its reason: a driver that computed a row's y from the item height would
+// be a second copy of the layout, green while clicking at the wrong pixel — and a
+// mis-click reads as *choosing from the panel does not work*, which is the wrong
+// bug to go looking for.
+//
+// ⚠ VISIBLE ONLY, and the two functions differ on purpose. `list_row_rect` answers
+// where a row is even when it is scrolled out of the strip, which is right for it
+// and wrong here: a centre outside the list is a pixel the hit-test calls `UhNone`,
+// so reporting it would hand a driver a coordinate that cannot work.
+//
+// ⚠ THE INDEX IS WHAT IDENTIFIES A ROW, not the label. `panel_build` FITS every
+// label to its box, so `lb_items` holds `thick_cu..` where the catalogue holds
+// `thick_curved` — a name matched out of this line would miss exactly the long ones.
+// The label rides along so a person reading the log can see what was clicked.
+//
+// ⚠ AND THE KIND, so a driver can ask for *a part* without knowing where the
+// families fall in the list. Which index is a part is a fact about a catalogue that
+// changes whenever one is added; which KIND a row is, is the row's own answer.
+fn say_catalogue_rows(p: Panel) {
+  pos_s = "";
+  for i in 0..len(p.p_list.lb_items) {
+    r = list_row_rect(p, i);
+    cx = r.r_x + r.r_w / 2 ?? 0;
+    cy = r.r_y + r.r_h / 2 ?? 0;
+    if !rect_contains(p.p_list.lb_rect, cx, cy) { continue; }
+    it = p.p_list.lb_items[i] ?? entry("");
+    if pos_s != "" { pos_s += " "; }
+    pos_s += "{i}:{it.en_kind}:{it.en_label}@{cx},{cy}";
+  }
+  println("client: catalogue rows — {pos_s}");
+}
+
+// What a click on the panel MEANS — plan 18 `B1.3c`, and the consumer
+// `panel_hit_test` never had.
+//
+// ⚠ THE LIBRARY ANSWERS *WHAT IS UNDER THIS PIXEL* AND STOPS THERE, which is why
+// `route_click` was deleted from beside it: only a consumer knows what a click on
+// row 3 is for, and for a client with a server behind it the answer is usually
+// *send a message and wait to be told* rather than *set a local field*
+// (CATALOGUE §C1). This function is that knowledge, and it lives here.
+fn panel_click(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
+               pan: Panel, hit: UiHit) {
+  if hit is UhListItem { li_idx } {
+    it = pan.p_list.lb_items[li_idx] ?? entry("");
+    // ⚠ A REFUSAL SAYS WHY — §C2's rule, and the row already carries the reason it
+    // is drawn dimmed with. A click that did nothing at all would be the blank no.
+    if !it.en_available {
+      println("client: '{it.en_label}' cannot be chosen — {it.en_reason}");
+      return;
+    }
+    if it.en_kind == hex_mesh::KIND_PART {
+      st.part_pick = part_pick_of_row(pan.p_list.lb_items, li_idx);
+      commit_part_pick(h, st, sess);
+      return;
+    }
+    // ⚠ SAID, NOT SILENTLY DROPPED. Nothing in the editor can choose a material
+    // yet — `hex_editor` has `session_select_part` and no counterpart — so the row
+    // is real, the click is real, and the capability is the missing half. A gap
+    // named where it is reached is worth more than one recorded in a document.
+    println("client: '{it.en_label}' is a {it.en_kind} and nothing can choose one "
+            + "yet — the session has no select for that family");
+    return;
+  }
+  if hit is UhToolButton { tb_id } {
+    // ⏭ THE TOOLBAR IS SUPERSEDED BY THE VERB BAR rather than repaired by it, so a
+    // click here is CONSUMED and does nothing else. Consuming it is the point: it is
+    // what keeps the camera still under a person whose eyes are on the panel.
+    println("client: toolbar button {tb_id} — superseded by the verb bar, nothing "
+            + "bound");
+    return;
+  }
+  // `UhNone` — inside the strip, on nothing. Consumed, and that is the whole answer.
+}
+
 fn client_panel_spec(st: Client) -> PanelSpec {
   PanelSpec {
     // ⛔ **THREE OF THESE GLYPHS WERE WRONG, AND THEY WERE DRAWN ON SCREEN FOR
@@ -3215,6 +3306,60 @@ fn split_on(s: text, sep: text) -> vector<text> {
 // `B2f`. ⚠ It reuses `parse_entries` rather than scanning the string again: the
 // panel's rows and the cycling order are the same list by construction, so a part
 // cannot be shown in one place and skipped in the other.
+// Tell whoever owns the choice what `st.part_pick` now points at — plan 18 `B1.3c`.
+//
+// ⚠ THE INDEX IS THE DRIVER'S AND THE NAME IS THE SESSION'S — here and on the
+// server alike. Cycling needs the LIST, which belongs to whoever holds the
+// catalogue; the gesture needs only the chosen name. Nought clears it, so `h` goes
+// back to building the procedural house: the way out is the same key.
+//
+// ⚠ ONE COMMIT PATH FOR THE KEY AND FOR THE CLICK, and that is the whole reason
+// this is a function. The cycler and the panel differ only in how they ARRIVE at an
+// index; what an index means — which name it is, which authority is told, what a
+// refusal says — is one answer, and a second copy of it is the two-bodies shape
+// this tree keeps paying for.
+fn commit_part_pick(h: web::WsHandler, st: Client, sess: hex_editor::EditSession) {
+  pnames = part_names_of(st.mats);
+  pick = "";
+  if st.part_pick > 0 { pick = pnames[st.part_pick - 1] ?? ""; }
+  if st.local {
+    psel = hex_editor::session_select_part(sess, pick);
+    if !psel.ak_ok { println("client: local part refused — {psel.ak_why}"); }
+    else { println("client: local {psel.ak_why}"); }
+    st.panel_dirty = true;
+  } else {
+    // ⚠ `51:`, NOT `44:`. `44:` is part MODE — it opens a part for EDITING — and
+    // sending it here would have swapped the author's whole world for a door
+    // instead of choosing one to place. Caught by reading the server's id table
+    // rather than by anything going red: both are "a message about a part", and
+    // the wrong one is a plausible-looking editor doing something drastic.
+    wire(h, st, "51:{pick}");
+  }
+}
+
+// The cycler's 1-based place for the catalogue row at `idx`, or 0 when that row is
+// not a part at all.
+//
+// ⚠ THE PANEL AND THE CYCLER DO NOT SHARE AN INDEX SPACE, and that is the trap
+// this exists to close. The list shows BOTH families (§C3 — one widget for a
+// material and a part alike); `part_names_of` walks only the parts. So row 4 of the
+// panel is not part 4, and a click that passed the row number straight to
+// `st.part_pick` would choose a different thing from the one under the cursor —
+// silently, and more wrongly the more materials come first.
+//
+// ⚠ COUNTED OVER THE LIST THE PANEL DREW, never re-derived from `st.mats`. The two
+// orders are the same list by construction, and that is only true while there is
+// one list.
+fn part_pick_of_row(items: vector<Entry>, idx: integer) -> integer {
+  seen = 0;
+  for i in 0..len(items) {
+    if (items[i] ?? entry("")).en_kind != hex_mesh::KIND_PART { continue; }
+    seen = seen + 1;
+    if i == idx { return seen; }
+  }
+  0
+}
+
 fn part_names_of(mats: text) -> vector<text> {
   out: vector<text> = [];
   for e in parse_entries(mats) {
@@ -3315,7 +3460,7 @@ fn main() {
     was_fence: false, was_wall: false,
     was_step_up: false, was_step_down: false,
     was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
-    dragging: false, last_x: 0.0, last_y: 0.0,
+    dragging: false, ui_press: false, last_x: 0.0, last_y: 0.0,
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
@@ -3537,6 +3682,7 @@ fn main() {
   // read out of the BUILT bar rather than re-composed from the map — a line that
   // re-derived them would agree with itself however the layout had gone.
   say_verb_bar(ui_bar);
+  say_catalogue_rows(ui_panel);
   // ⚠ READ OUT OF THE BUILT PANEL, NEVER RE-COMPOSED. `authority_line(st)` here
   // would agree with itself for as long as it was copied correctly and say
   // nothing about what the panel holds — the `K1` shape. `ss_text` is what
@@ -3693,6 +3839,8 @@ fn main() {
       // claim of the step is that the bar follows the map. Read out of the REBUILT bar,
       // so a rebind that moved the binding and not the picture is visible here.
       say_verb_bar(ui_bar);
+      say_catalogue_rows(ui_panel);
+  say_catalogue_rows(ui_panel);
       println("client: subject line ← {st.hud}");
       println("client: status ← {ui_panel.p_status.ss_text}");
       // ⚠ THE TWO FAMILIES ARE COUNTED APART, because one number cannot say which
@@ -3721,7 +3869,10 @@ fn main() {
     // bar rather than the specs: where a slot is on screen is the only thing that can
     // answer *which one did they click*, and re-deriving that from `VERB_SLOT_W` at the
     // input site would be a second layout to keep in step with the drawn one.
-    poll_input(h, st, sess, author, ui_bar);
+    // ⚠ AND THE PANEL FOR THE SAME REASON THE BAR IS HERE: where a row SITS is the
+    // only thing that can answer *which one did they click*, and it is known by the
+    // laid-out panel and by nothing else.
+    poll_input(h, st, sess, author, ui_bar, ui_panel);
     // ── THE PAGE'S OWN TICK — plan 22 `B1c.1` ─────────────────────────────
     //
     // Attached, the pose is the SERVER's: it integrates the walk on its tick and

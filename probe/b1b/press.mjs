@@ -335,6 +335,64 @@ const clickSlot = async (verb) => {
     { type: 'mouseReleased', x: px, y: py, button: 'left', clickCount: 1, buttons: 0 });
   await sleep(gapMs);
 };
+// Click a CATALOGUE ROW, at the centre the CLIENT reported for it — plan 18 `B1.3c`.
+//
+// ⚠ **BY INDEX, NOT BY NAME.** `panel_build` fits every label to its box, so a long
+// catalogue name reaches `lb_items` truncated — `thick_cu..` where the catalogue says
+// `thick_curved`. A driver matching the name would miss exactly the long ones, which
+// is the half most likely to be interesting.
+//
+// ⚠ **AND IT TWITCHES WHILE THE BUTTON IS DOWN, ON PURPOSE.** A press with no motion
+// under it sends no look-delta whether or not the panel consumes the click, so a
+// still click cannot tell a fixed editor from a broken one. Two pixels is what a hand
+// does, and it is what makes `P2` able to fail.
+const clickRow = async (sel) => {
+  const lines = (await out()).split('\n').filter((l) => l.includes('client: catalogue rows — '));
+  if (!lines.length) await bye(1, `P ROW MISS — the client never reported its rows`);
+  // `#3` is row three; `#part` is the FIRST row of that kind. The second form is what
+  // a gate should use: which index is a part changes the moment a catalogue grows,
+  // and a hard-coded number would then click a material and report it as a part.
+  const want = /^\d+$/.test(sel) ? `${sel}:[^@ ]*` : `\\d+:${sel}:[^@ ]*`;
+  const m = lines[lines.length - 1].match(new RegExp(`(?:^|[ —])(${want})@(-?\\d+),(-?\\d+)`));
+  if (!m) await bye(1, `P ROW MISS — no row '${sel}' in: ${lines[lines.length - 1]}`);
+  const px = crect.x + Number(m[2]) * sx, py = crect.y + Number(m[3]) * sy;
+  console.log(`click row ${m[1]} at client ${m[2]},${m[3]} → viewport ` +
+    `${Math.round(px)},${Math.round(py)}`);
+  await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: px, y: py, buttons: 0 });
+  await sleep(60);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mousePressed', x: px, y: py, button: 'left', clickCount: 1, buttons: 1 });
+  await sleep(holdMs);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mouseMoved', x: px + 2, y: py + 2, buttons: 1 });
+  await sleep(holdMs);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mouseReleased', x: px + 2, y: py + 2, button: 'left', clickCount: 1, buttons: 0 });
+  await sleep(gapMs);
+};
+// The SAME press-and-twitch, out in the world — the positive control for it.
+//
+// ⚠ **A GATE THAT ONLY CHECKS THE PANEL CANNOT SEE A DEAD INSTRUMENT.** "No look-drag
+// came out of that press" is an absence, and an absence reads identically when the
+// drag path is broken, when the page stopped printing, or when the twitch never
+// arrived. This clicks where the answer must be YES, so the zero next to it is a fact
+// about the panel rather than about the driver.
+const clickWorld = async () => {
+  const px = Math.max(8, Math.min(crect.x + crect.w * 0.6, 1000));
+  const py = Math.max(8, Math.min(crect.y + crect.h * 0.6, 700));
+  console.log(`click world at viewport ${Math.round(px)},${Math.round(py)}`);
+  await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: px, y: py, buttons: 0 });
+  await sleep(60);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mousePressed', x: px, y: py, button: 'left', clickCount: 1, buttons: 1 });
+  await sleep(holdMs);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mouseMoved', x: px + 2, y: py + 2, buttons: 1 });
+  await sleep(holdMs);
+  await call('Input.dispatchMouseEvent',
+    { type: 'mouseReleased', x: px + 2, y: py + 2, button: 'left', clickCount: 1, buttons: 0 });
+  await sleep(gapMs);
+};
 const clickX = Math.max(8, Math.min(crect.x + crect.w * 0.6, 1000));
 const clickY = Math.max(8, Math.min(crect.y + crect.h * 0.6, 700));
 await call('Input.dispatchMouseEvent',
@@ -350,6 +408,11 @@ for (const k of keysArg.split(',')) {
   // press. `Escape,@raise,5` is one sentence and splitting it across two arguments
   // would let a caller write it in an order the editor cannot answer.
   if (k.trim().startsWith('@')) { await clickSlot(k.trim().slice(1)); continue; }
+  // ⚠ `#N` IS A CLICK ON CATALOGUE ROW N, in the key list for `@verb`'s reason — what
+  // a click MEANS depends on what was pressed before it.
+  if (k.trim().startsWith('#')) { await clickRow(k.trim().slice(1)); continue; }
+  // `~world` is the same press-and-twitch out in the world — P2's positive control.
+  if (k.trim() === '~world') { await clickWorld(); continue; }
   // ⚠ `!reload` RE-OPENS THE PAGE MID-RUN — plan 22 `M5b`, and it is in the key list for
   // `@verb`'s reason: *bind it, close the tab, come back* is ONE sentence, and a run
   // that had to be split across two invocations of this driver would be two experiments

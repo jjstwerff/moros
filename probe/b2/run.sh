@@ -1501,6 +1501,70 @@ else
 fi
 
 echo
+echo "── P   choosing from the catalogue with the mouse ──────────────────"
+# B1.3c (plan 18) — CAN YOU CLICK A ROW, AND DOES THE CAMERA STAY PUT?
+#
+# ⚠ **TWO CLAIMS OUT OF ONE PRESS, and the second is the one that was broken.**
+# `panel_hit_test` has answered *what is under this pixel* since plan 18 and nothing
+# in the tree asked it, so every click fell through to the look-drag: pressing a
+# catalogue row turned the camera under a person whose eyes were on the panel. That
+# is the same thing the rebind path already refuses, for the reason it gives there.
+#
+# ⚠ **THE DRIVER TWITCHES TWO PIXELS WHILE THE BUTTON IS DOWN, AND IT HAS TO.** A
+# still press sends no look-delta whether or not the panel consumes it — so a still
+# click passes P2 on a fixed editor and on a broken one alike, which is a check that
+# cannot fail. Two pixels is what a hand does.
+#
+# ⚠ **AND `~world` IS P2'S POSITIVE CONTROL, NOT DECORATION.** *No drag came out of
+# that press* is an ABSENCE, and an absence reads the same when the drag path is
+# broken, when the page stopped printing, or when the twitch never arrived. The same
+# gesture out in the world must produce the line, and P3 is what says the instrument
+# works — measured by ORDER within one run, because the page dedupes the line and a
+# second run would cost a whole boot to learn nothing more.
+#
+# ⚠ **BY KIND, NOT BY INDEX** — `#part` takes the first row of that family. Which
+# index is a part changes the moment the catalogue grows, and a number here would
+# quietly start clicking a material and reporting it as a part.
+P_KEYS="#part,~world"
+timeout 400 node probe/b1b/press.mjs "file://$SITE" "$P_KEYS" \
+  --await 'no server answered' --wait-ms 90000 > "$OUT/pick.raw" 2>&1 || true
+grep -E '^(client|canvas|click)' "$OUT/pick.raw" > "$OUT/pick.log" || true
+grep -E "^click (row|world)|^client: local part '|^client: local — '3:'" "$OUT/pick.log" \
+  | sed 's/^/   /'
+
+p_rowln=$(grep -n '^click row ' "$OUT/pick.log" | head -1 | cut -d: -f1)
+p_worldln=$(grep -n '^click world ' "$OUT/pick.log" | head -1 | cut -d: -f1)
+p_dragln=$(grep -n "client: local — '3:'" "$OUT/pick.log" | head -1 | cut -d: -f1)
+p_chosen=$(grep -m1 "^client: local part '" "$OUT/pick.log" || true)
+
+# P1 — the click reached a consumer and chose the row that was under it.
+if [ -n "$p_chosen" ]; then
+  say "P1 the click chose a part: ${p_chosen#client: local }"
+elif [ -n "$p_rowln" ]; then
+  no "P1 a row was clicked and nothing was chosen — the hit-test still reaches no consumer"
+else
+  no "P1 no row was clicked at all — the client never reported its catalogue rows"
+fi
+
+# P2 — and that press did not become a look-drag. The claim is about ORDER: no drag
+# line may appear before the world click, which is the only press in this run that is
+# allowed to produce one.
+if [ -z "$p_rowln" ] || [ -z "$p_worldln" ]; then
+  no "P2 the run did not reach both clicks — P2 has no subject"
+elif [ -z "$p_dragln" ] || [ "$p_dragln" -gt "$p_worldln" ]; then
+  say "P2 and the camera stayed put — the press on the row never reached the look-drag"
+else
+  no "P2 the press on the row turned the camera — '3:' reached the wire at line $p_dragln, before the world click at $p_worldln"
+fi
+
+# P3 — the control. Same gesture, out in the world, where the answer must be yes.
+if [ -n "$p_dragln" ] && [ -n "$p_worldln" ] && [ "$p_dragln" -gt "$p_worldln" ]; then
+  say "P3 control: the same press-and-twitch in the WORLD does drag — P2 is a fact about the panel"
+else
+  no "P3 the world click produced no look-drag either — P2's zero says nothing"
+fi
+
+echo
 if [ "$ok" -eq 1 ]; then
   echo "demo PASS — _site/index.html opens from file://, edits its own world and draws it."
   echo "            No server, no toolchain, no port — and it attaches to one it is told about."
