@@ -1526,6 +1526,16 @@ echo "── P   choosing from the catalogue with the mouse ──────�
 # requires at least one. Each is a count of `client:` lines against `client:` lines,
 # and the second is what says the instrument fires at all.
 #
+# ✅ **AND THE REWRITE IS MEASURED, NOT ARGUED.** One command, one instrument, only
+# the compiler's input changed — the same `#part` run against a client built with
+# `if st.ui_press { return; }` present and removed:
+#
+#     sabotaged  1 look-drag      fixed  0 look-drags
+#
+# P1 stays green in BOTH, which is the shape to expect: choosing a row and consuming
+# its press are separate claims, and a sabotage that reddened everything would say
+# the run had broken rather than that the guard had.
+#
 # ⚠ **BY KIND, NOT BY INDEX** — `#part` takes the first row of that family. Which
 # index is a part changes the moment the catalogue grows, and a number here would
 # quietly start clicking a material and reporting it as a part. Measured: the first
