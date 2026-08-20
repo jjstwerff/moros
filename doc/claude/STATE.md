@@ -610,6 +610,8 @@ run is used to clear a change, ask what it does not run.
 | [#950](https://github.com/loft-lang/loft/issues/950) | `--html` clobbers a struct parameter | **filed 2026-08-17**, narrowed to one statement the same day |
 | [#954](https://github.com/loft-lang/loft/issues/954) | `--html` ships no wasm name section | **filed 2026-08-17** — why #950 cost a bisect |
 | [#976](https://github.com/loft-lang/loft/issues/976) | two SIBLING packages claim one module basename, and the **consumer's** `use` order decides which loses its public surface | **filed 2026-08-18** — `enhancement` `needs-design` `wa:clean`, the ask being that a bare `use <x>;` prefer the package's OWN file. Fixed here with `use self::skin;` in both, and guarded by `tools/basenames.sh` |
+| [#1012](https://github.com/loft-lang/loft/issues/1012) | `verify-self` exits **0** having verified nothing | **filed 2026-08-19** — both installs on this box answer *"not a release bundle"* at rc 0, so a corruption detector cannot tell *intact* from *unexaminable* |
+| [#1027](https://github.com/loft-lang/loft/issues/1027) | `registry_validate.sh` validated the version it was REPLACING and printed `OK` | **filed 2026-08-20** — no index refresh, then the highest version present LOCALLY. Hit the minute `hex_way 0.1.1` was published. ⚠ Same distinction as #1012: *checked the thing you meant* against *checked something* |
 
 ⛔ **AND #912 IS THE ONE TO READ, BECAUSE THE FIX IS REAL AND LANDS ON THE WRONG SIDE.** loft
 gained an `Advice[module-name-shadowed]` that names both files, the `use` site and which one
