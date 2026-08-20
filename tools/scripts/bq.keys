@@ -1,0 +1,10 @@
+# Q, HEADLESS — choose a part, and place THAT instead of a house.
+# ⚠ THE SAME VERB AND THE SAME FACING AS `bf`. Only the selection differs, so a
+# different world is the selection's doing and nothing else's.
+rate 0
+at 0 0 0
+keys 8
+step 7
+keys 0
+part door/doorway
+verb place

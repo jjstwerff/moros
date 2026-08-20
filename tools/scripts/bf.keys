@@ -1,0 +1,12 @@
+# F, HEADLESS — turn, and build a house where it was refused.
+# ⚠ rot 9 at boot has no mitred corners; ONE turn of 7 ticks reaches rot 10, which
+# does. The refusal is the subject, not an accident of the fixture.
+rate 0
+at 0 0 0
+echo --- at boot, square on
+verb place
+echo --- one turn, then the same verb
+keys 8
+step 7
+keys 0
+verb place

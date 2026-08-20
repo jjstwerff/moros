@@ -1,0 +1,12 @@
+# G, HEADLESS — walk, and place a house somewhere else.
+# ⚠ THE SAME GESTURE AS `bf` AFTER A WALK, so a different world key is the walk's.
+rate 0
+at 0 0 0
+keys 1
+step 60
+keys 0
+keys 8
+step 7
+keys 0
+verb place
+walker

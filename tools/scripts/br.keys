@@ -1,0 +1,11 @@
+# R, HEADLESS — start a run, walk, and close it.
+rate 0
+at 0 0 0
+echo --- open
+verb run
+keys 1
+step 60
+keys 0
+echo --- close
+verb run
+walker

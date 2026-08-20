@@ -1,0 +1,12 @@
+# B, HEADLESS — a storey above, and a cellar told why not.
+# ⚠ THE STOREY NEEDS A BUILDING UNDER IT, so this is `bf`'s house first.
+rate 0
+at 0 0 0
+keys 8
+step 7
+keys 0
+verb place
+echo --- up
+verb storey
+echo --- and down, which the library refuses with its own reason
+verb cellar

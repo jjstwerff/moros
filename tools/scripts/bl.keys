@@ -1,0 +1,15 @@
+# L, HEADLESS — level while walking, and cut the raised ground.
+# ⚠ `send 6 1`, NOT a verb. Levelling is a state of the WALKER rather than a gesture,
+# and `6:` is the same wire id the server takes — one path, not a second spelling.
+# ⚠ THE CLAIM IS THE WORLD, NOT A STAMP COUNTER. The client counts dirty ticks into
+# `lv_stamped`; a count of ticks is the driver's shape, as `landed` proved. A world
+# key is what was EMITTED, and `bl_flat` is the same walk with the levelling removed.
+rate 0
+at 0 0 0
+verb raise
+send 6:1
+keys 1
+step 240
+keys 0
+send 6:0
+walker
