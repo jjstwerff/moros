@@ -1,6 +1,12 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
 # JOURNAL — how the editor got here, newest first
 
+⚠ **THE RECORD HAS A GAP: 2026-08-12 … 08-19 WERE NEVER WRITTEN HERE.** The entries jump
+from Session 19 (08-11) to Session 20 (08-20), and what happened between lives only in
+STATE.md — which thins, because it is the handoff. So the numbering counts *journalled*
+sessions, not sessions. Flagged rather than quietly renumbered: a reader counting entries
+would otherwise read the gap as nothing having happened.
+
 **Why this is a separate file.** [STATE.md](STATE.md) says *read it first after a break*,
 and it had grown to 2,446 lines of session log — so the one document a reader is told to
 open was the longest in the tree, and the current state was buried in eight sessions of
@@ -11,6 +17,150 @@ than the lines it takes. What has moved out of STATE.md is everything that descr
 moment rather than the present: the per-session entries, the numbered item log, and three
 sections that were durable in form and stale in fact (§ *What exists*, § *What to do next*,
 § *Open work* — all superseded by STATE.md's own pick-up).
+
+---
+
+## Session 20 — 2026-08-20: a library nobody had agreed to, and three checks that could not fail
+
+⚠ **THE JOURNAL SKIPS 2026-08-12 … 08-19.** Those sessions are in STATE.md and were never
+written here, so this is the next *journalled* session rather than the twentieth. Said out
+loud because a reader counting entries would otherwise read the gap as nothing having
+happened.
+
+The session began with *inspect the latest user-level loft install* and ended with
+`lavition_ui` 0.1.0 published. Almost none of the value is in that arc.
+
+### The install, and a rule that had been wrong for a day
+
+`~/.local/bin/loft` was a fresh build shadowing `/usr/local/bin/loft` on `PATH`, both
+answering `loft 2026.8.0`. Everything it carried mattered — loft#950 (the `--html`
+asyncify trap, fixed by giving the save region a static address and a `LOFT950!` canary),
+#954, #968, #1012 — but the durable finding was smaller: **the version string has never
+identified a build here.** Five builds landed in two days. `sha256sum` is the handle.
+
+⚠ **AND `verify-self` EXITS 2 NOW WHERE IT EXITED 0**, which closed #1012 — measured as a
+controlled pair, one command over two binaries, rather than read off a changelog.
+
+### `lavition_ui`: the answer to @PLN145 `D0` was a count
+
+The loft engine stream asked whether we would publish it. The honest answer was *not yet*,
+and the reason was a number nobody had taken: **15 of 31 public functions had no production
+caller in this tree.** Including `panel_hit_test` — the one function they asked to depend on
+— which `src/editor_client.loft` describes in its own words as *"built, tested green and
+invoked by nothing"*.
+
+⚠ **THEIR VERIFY COULD NOT HAVE CAUGHT IT.** `D0`'s bar was *"its own tests pass unchanged
+after the move"*, which checks the MOVE and says nothing about whether the surface was ever
+HONOURED. They widened it and put it in `LIBRARY_AUTHORING.md` as §2a1 — *a surface proven
+only by its own tests is a surface nobody has agreed to* — citing this package's count.
+
+⚠ **AND THE SAME DEFECT WAS SITTING IN MY OWN MANIFEST.** `loft.toml` had claimed *nothing
+here needs a world, a lattice, a window or a GL context* in a comment for months, while
+`loft test` printed `no [sandbox] policy — admission not exercised` on every single run and
+nobody read the line. They left an unverified claim in a README for one session; mine had
+the longer run. It is a declared `[sandbox]` policy now, checked at load.
+
+### The panel had no click, and that was a live defect
+
+Wiring `panel_hit_test` was not adding a feature — it was fixing one. Every press fell
+through to the look-drag, so **clicking a catalogue row turned the camera** under a person
+whose eyes were on the panel. The rebind path twelve lines above already refuses exactly
+this, for exactly this reason, and the panel — bigger, and clicked more — did not.
+
+⚠ **THE RULE DID NOT BELONG IN A BROWSER GATE.** *A press that begins on a UI surface stays
+that surface's until it is released* is a state machine over four booleans. Proving it cost
+a 7 MB wasm rebuild and a headless Chromium, four rounds to build and a fifth to show the
+gate could fail. It is `hex_editor::pointer_step` now: sixteen states swept headless, and
+the browser keeps only the half it alone can answer — do the device's own buttons reach the
+rule.
+
+### Three checks of mine could not fail, and one of them passed
+
+⛔ **The panel-click gate compared line numbers across two streams that are never
+interleaved.** The driver's stdout is written on dispatch; the page's console arrives in a
+batch. `p_dragln > p_worldln` was true by construction, so it reported `ok` against the
+shipped defect restored. Rewritten as counts inside one stream: **1 sabotaged, 0 fixed.**
+
+⛔ **`grep -oE '[0-9]+' | head -1` on `storey +1 on 19 cells` answers `1`.** Greater than
+zero, so the row went GREEN while printing a figure that was never the cell count. A check
+that passes with the wrong number in its own sentence is worse than one that fails, and it
+is the one that survives review.
+
+⛔ **And a `walker()` helper took the FIRST of two reports**, which is necessarily the
+fixture's starting state — scoring `feet 0 landed 0` as the result of a fall.
+
+⚠ Three greps, one runner, and the tree already says *a grep over a log is an instrument and
+its default answer is the one you were hoping for*. Knowing the rule did not help; only
+running the sabotage did.
+
+### Seven blocks came off the browser, and one number would not port
+
+`H F Q G R B L` are scripts in `make fast` now. Porting `H` produced the session's best
+measurement: at an identical walked distance the headless run matches the browser **bit for
+bit** — `walked 24.219612852397255`, `feet 0.5027999999999875`, same digits — and disagrees
+on one number, `landed 28` against `34`.
+
+✅ **PROVED RATHER THAN ARGUED:** replaying the same distance as 57 pulses of 4 moving ticks
+with 21 idle between them answers **34**, exactly. `fl_landed` is a true edge, but walking
+down a slope touches down repeatedly and the count follows how finely the walk was sampled.
+⛔ **So `landed` measures the driver, not the world, and must never be asserted by value.**
+The browser's `H2` asks `> 0`, which is right; the obvious improvement of pinning it would
+gate the clock.
+
+⚠ The enabling find: `wk_fell` sits on the shared `hex_editor::Walker` and the only line in
+the tree that printed it was the browser client's summary. *A fall completed* was
+browser-only by accident of where a `println` was written.
+
+### What the session cost me, in order
+
+⚠ **I started a 129-file sweep while `make client` was reading those sources**, which is why
+the first sabotage run exited 1 having proved nothing.
+
+⚠ **`SCRIPT` is an environment variable, not an argument.** Three scripts passed
+positionally all ran the DEFAULT and returned the same world key — and I read that as *the
+scripts agree* before noticing they had never been read. An earlier claim in the same
+session that `fall.keys` had been run headless was the same mistake.
+
+⚠ **I filtered away the error that was telling me the answer.** `send 6 1` was refused with
+`send needs <id>:<payload>` — a line my own grep excluded — so levelling never came on and I
+read it as *L does not reproduce*.
+
+⚠ **I pushed two commits that wired a new target into `make fast` without running `make
+fast`.** `probe/k3d` caught the consequence: gate fixtures do not belong in the scene corpus,
+because a script with no `snap` is picture-indistinguishable from every other snapless one.
+It also caught that a control I had just written was byte-identical to its own subject.
+
+⚠ **And a `json.load` → `json.dumps` round-trip reformatted the whole registry index** —
+4,186 insertions for a nineteen-line addition. Caught on `git diff --stat` before the push.
+
+### The publish
+
+Tag `lavition_ui-v0.1.0` → `2692bfd`, a release on `jjstwerff/moros`, and
+[registry#24](https://github.com/loft-lang/registry/pull/24). A **foreign-package** entry:
+the loft side argued against their own repo, because moving the source into
+`loft-libs-graphics` would hand a library to a repo whose CI cannot exercise it — this
+tree's promotion rule running backwards.
+
+⚠ **The publish gate is a command this tree forbids me to run** (`../loft`'s checkout
+binary), so the loft session ran it — against a COPY with `native-auto/` and `.loft/`
+deleted first, so nothing cached could carry the result. 87 on `--interpret`, 87 on
+`--native`, 87 under deny-warnings. Same 87 as the installed loft, so the
+checkout-vs-installed disagreement that blocked `imaging` 0.2.2 does not exist here.
+
+⚠ **The name is permanent now.** `lavition_ui` is a brand prefix against the tree's own
+no-brand rule, and the user confirmed it knowing that a published name cannot be renamed.
+
+### One more instrument that lied
+
+The first `make fast` after the 22:44 toolchain swap died on `registry index signature
+INVALID — refusing to install`, un-bypassable even with `--allow-unsigned`. Identical re-run:
+green. The index and its signature had been rewritten mid-run.
+
+⚠ **The message reads as a security event** — *doesn't verify against any known key* is what
+a tampered index produces, so the natural first move is trust roots. Filed as
+[#1045](https://github.com/loft-lang/loft/issues/1045); the loft side then measured the layer
+underneath, where `std::fs::write` truncates before it fills — **a partial index in 194 of
+200 concurrent reads.** I named a real symptom and stopped one level above the cause.
 
 ---
 
