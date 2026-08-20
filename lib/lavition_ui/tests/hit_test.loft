@@ -117,6 +117,67 @@ fn test_scrolling_moves_which_row_a_click_names() {
 
 fn after_differs(a: integer, b: integer) -> boolean { a != b }
 
+// ── The row rectangle, against the hit-test that has to agree with it ────────
+//
+// ⚠ THE ROUND TRIP IS THE CLAIM, not the arithmetic. `list_row_rect` and
+// `panel_hit_test` are one layout read in two directions, and the only way they
+// can be wrong is by disagreeing — so the test asks the hit-test where the
+// rectangle's own centre lands and requires the row back. Checking the numbers
+// against numbers would be the table checked against the table.
+fn row_centre_hits_its_own_row(p: Panel, why: text) {
+  seen = 0;
+  for i in 0..len(p.p_list.lb_items) {
+    r = list_row_rect(p, i);
+    cx = r.r_x + r.r_w / 2 ?? 0;
+    cy = r.r_y + r.r_h / 2 ?? 0;
+    // ⚠ A ROW SCROLLED OUT OF THE STRIP HAS A POSITION AND NO HIT, which is the
+    // documented split between these two and not a disagreement: `list_row_rect`
+    // answers *where is row i*, `panel_hit_test` answers *what is under this
+    // pixel*, and a pixel outside the list is under nothing. Asking the hit-test
+    // about it would be asking it the other function's question. ⚠ This `continue`
+    // is why the count below exists — a filter that quietly removed every row
+    // would leave a green test that examined nothing.
+    if !rect_contains(p.p_list.lb_rect, cx, cy) { continue; }
+    seen += 1;
+    hit = panel_hit_test(p, cx, cy);
+    assert(is_item(hit), "{why}: row {i}'s own centre ({cx},{cy}) is inside the "
+                       + "list and is not an item at all");
+    if hit is UhListItem { li_idx } {
+      assert(li_idx == i, "{why}: row {i}'s own centre hit-tests as row {li_idx}");
+    }
+  }
+  assert(seen > 0, "{why}: no row's centre landed inside the list — nothing was tested");
+}
+
+fn test_every_rows_centre_hit_tests_back_to_that_row() {
+  row_centre_hits_its_own_row(six_button_panel(), "unscrolled");
+}
+
+// ⚠ SCROLLED IS THE CASE THAT SEPARATES THE TWO. Unscrolled, a row rectangle
+// that forgot the scroll offset agrees with the hit-test at every index — the
+// term is zero — so a test that never scrolls cannot tell a correct inverse from
+// one that ignores half its input. Measured: with the term dropped this fails at
+// row 0 and the unscrolled test above stays green.
+fn test_the_row_rectangle_follows_the_scroll() {
+  p = six_button_panel();
+  p.p_list.lb_scroll = LIST_ITEM_HEIGHT;
+  row_centre_hits_its_own_row(p, "scrolled one row");
+}
+
+// ⚠ AN INDEX WITH NO ROW GETS NO RECTANGLE. Returning the geometry of a row that
+// is not there is what makes an off-by-one draw a phantom entry instead of
+// nothing, so the empty rectangle is the answer and it is asserted rather than
+// assumed.
+fn test_an_index_past_the_end_has_no_rectangle() {
+  p = six_button_panel();
+  n = len(p.p_list.lb_items);
+  for bad in [-1, n, n + 5] {
+    r = list_row_rect(p, bad);
+    assert(r.r_w == 0 && r.r_h == 0,
+           "index {bad} of {n} answered a {r.r_w}x{r.r_h} rectangle");
+  }
+}
+
 // ── Empty panel ──────────────────────────────────────────────────
 
 fn test_an_empty_panel_hits_nothing_inside_the_strip() {

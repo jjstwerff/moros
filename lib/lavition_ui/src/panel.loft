@@ -224,6 +224,29 @@ pub enum UiHit {
   UhNone,
 }
 
+// Where row `idx` sits on screen — the inverse of `panel_hit_test`'s list arm.
+//
+// ⚠ IT EXISTS SO A CONSUMER NEED NOT RE-DERIVE THE LAYOUT. Drawing a row,
+// clicking one, and driving one from a test all want the same rectangle, and the
+// only other way to have it is to write `lb_rect.r_y + idx * lb_item_height`
+// out again at each site — a second copy of the layout, which stays green right
+// up until the layout moves. `verbbar` has answered this since it shipped, with
+// a `vt_rect` on every slot; the list did not, and the list is the half a
+// catalogue is clicked in.
+//
+// ⚠ THE RECTANGLE COMES BACK EVEN WHEN THE ROW IS SCROLLED OUT OF SIGHT.
+// Clamping it here would answer a different question — *is this row visible* —
+// and a caller that wants that one asks `rect_contains(p.p_list.lb_rect, …)` of
+// the centre. An index with no row at all is the one case with no answer, and it
+// gets an empty rectangle rather than a plausible one.
+pub fn list_row_rect(p: Panel, idx: integer) -> UiRect {
+  if idx < 0 || idx >= len(p.p_list.lb_items) { return rect(0, 0, 0, 0); }
+  rect(p.p_list.lb_rect.r_x,
+       p.p_list.lb_rect.r_y + idx * p.p_list.lb_item_height - p.p_list.lb_scroll,
+       p.p_list.lb_rect.r_w,
+       p.p_list.lb_item_height)
+}
+
 pub fn panel_hit_test(p: Panel, mx: integer, my: integer) -> UiHit {
   // Outside the panel's x-range → the world behind it.
   if mx >= p.p_rect.r_x + p.p_rect.r_w {
