@@ -1,4 +1,4 @@
-# STATE.md — where the editor work stands (2026-08-18)
+# STATE.md — where the editor work stands (2026-08-20)
 
 **A handoff, and short on purpose.** Where the work stands, what was decided, what is open —
 read it first after a break.
@@ -21,6 +21,93 @@ when the step landed, and this file duplicating it is how it grows back.
 > airplanes and loft's Workbench are the other consumers. See
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
+
+## ⚠ WHERE IT LANDED — 2026-08-20
+
+**`lavition_ui` 0.1.0 is PUBLISHED**, which closes @PLN145 `D0` — the only phase of that
+plan that was ever ours. Tag `lavition_ui-v0.1.0` → `2692bfd` on `jjstwerff/moros`, a
+GitHub release carrying the tarball, and [loft-lang/registry#24](https://github.com/loft-lang/registry/pull/24)
+open (+19/−0) awaiting a maintainer. sha `ea646e67…`, 38 236 bytes, no deps.
+
+⚠ **A FOREIGN-PACKAGE ENTRY — the source stays here.** The loft side argued against
+their own repo: moving it into `loft-libs-graphics` beside `stage`/`text2d`/`tween`
+would hand a library to a repo whose CI cannot exercise it, which is this tree's
+promotion rule running backwards. `repository = "jjstwerff/moros"` in the manifest is
+what makes `loft package` emit the right tag and URL.
+
+⚠ **THE NAME IS NOW PERMANENT.** `lavition_ui` is a brand prefix against the
+no-brand-prefix rule for lavition packages, and the user confirmed it on 2026-08-20
+knowing a published name cannot be renamed.
+
+⛔ **PR #24's CI WILL BE RED AND IT IS NOT OURS.** `tools/validate.py` fails gate 1 on
+untouched `main` — `zttext` and `fixstep` both carry `"categories": []`, confirmed
+independently by the loft side over the live index. Our entry raises no validator error.
+
+### The panel had no click, and that was a live defect rather than a gap
+
+`panel_hit_test` had been tested green since plan 18 with **no caller**, so every press
+fell through to the look-drag: clicking a catalogue row turned the camera under a person
+whose eyes were on the panel — the exact thing the rebind path already refuses. It is
+wired now, and a click on a part row chooses it through the *same* commit path the `h`
+key uses (`commit_part_pick`).
+
+⚠ **THE RULE MOVED TO `hex_editor::pointer_step`.** *A press that begins on a UI surface
+stays that surface's until it is released* is a state machine over four booleans and
+needs no browser — it was costing a 7 MB wasm rebuild per question. Sixteen states swept
+headless; the client is the caller. ⚠ `on_ui` is a **boolean, not a `UiHit`**, so
+`hex_editor` does not gain a `lavition_ui` dependency to learn nothing.
+
+⚠ **AND THE GATE I WROTE FOR IT COULD NOT FAIL.** It compared line numbers across the
+driver's stdout and the page's console — two streams that are never interleaved — so it
+reported `ok` against the shipped defect restored. Rewritten as counts inside one stream:
+**1 look-drag sabotaged, 0 fixed.**
+
+### Seven of `probe/b2`'s blocks are answered headless now
+
+`H F Q G R B L` run as scripts in `make fast` (`probe/headless/`), seconds instead of a
+browser. **Every one of those blocks stays** — move before you remove: the browser keeps
+the claim no script can make, that pressing a KEY reaches a verb, because `editor_run`
+speaks verbs and held-key bits and skips the keymap layer.
+
+⛔ **NEVER ASSERT THE VALUE OF A PER-TICK COUNTER.** `landed` counts ticks in a state, so
+it measures the driver's sampling: at an identical walked distance the browser says
+**34** and a held-key script says **28** — and replaying the distance as moving-then-idle
+pulses says 34 exactly. `> 0`, never `-eq`. A world KEY is what was emitted.
+
+### The loop is cheaper, and one guard is deliberate
+
+| | before | now |
+|---|---|---|
+| one gate block | 16 browser boots | `DEMO_ONLY=P` — that block plus the core |
+| `make client`, nothing changed | ~5 min wasm compile | `Nothing to be done` |
+| try a gesture | no path but the full probe | `make press K='#part'` |
+
+⛔ **`DEMO_ONLY` CANNOT PRINT `demo PASS`** — it prints `demo PARTIAL PASS` and names
+what did not run, on the failure path too. A selector that prints the same verdict as a
+whole run is how somebody checks one block and believes they checked the tier.
+⚠ **`page-check` still FORCES the client rebuild** (`client-force`): the staleness it
+guards is a TOOLCHAIN swap, which changes no source file and is invisible to `make`.
+
+### `use self::` on all 129 of them
+
+Every package's own modules, tree-wide — 129 lines, 39 files, 7 packages;
+`tools/basenames.sh` drops from 71 module claims to 23. Nothing was red and that is the
+point: no stranger can make the second claim later, and `lavition_ui` now lives in graphs
+where strangers do, holding `panel`, `font`, `widgets` and `render`.
+
+⚠ **`use self::x;` AND `x::fn()` ARE MUTUALLY EXCLUSIVE** — neither the bare qualifier nor
+`self::x::fn()` parses, so *always write `use self::`* is unachievable for any file that
+qualifies. Two sites dropped the qualifier instead;
+[loft#1043](https://github.com/loft-lang/loft/issues/1043), and it is in loft's own
+`LIBRARY_AUTHORING.md` §2a2 now.
+
+### Filed, and two already fixed
+
+| | | |
+|---|---|---|
+| [#1042](https://github.com/loft-lang/loft/issues/1042) | admission printed `allowed libraries: []` for a profile that was never defined | ✅ fixed |
+| [#1043](https://github.com/loft-lang/loft/issues/1043) | no qualified spelling for a `self::`-bound module | ✅ fixed |
+| [#1045](https://github.com/loft-lang/loft/issues/1045) | the registry index and its `.sig` are not swapped atomically | ⛔ fix unmerged — **re-run is the workaround**, see [LOFT_HANDOFF.md](LOFT_HANDOFF.md) |
 
 ## ✅ loft#950 IS FIXED UPSTREAM — and it is NOT live here until the binary is installed
 
@@ -84,6 +171,30 @@ handle at all. ⚠ A benign consequence spotted in passing: `loft test` stopped 
 `main` in its totals, so a suite that read 13 reads 11 with every row present. **A test
 count that drops is a toolchain question before it is a coverage question.**
 
+⚠ **AND TWICE MORE ON 2026-08-20 — five builds in two days, one version string.**
+`f253821f…` at 14:49, then `0332a1bc…` at 22:44, the second announced by the loft side
+before it landed. **Everything current is measured on `0332a1bc…`**: `make fast`, the
+full browser tier, and `lavition_ui`'s gate.
+
+⚠ **VERIFY A SWAP BEHAVIOURALLY, NEVER BY THE VERSION STRING.** All five answer
+`loft 2026.8.0`. The 22:44 build is identified by two things it can do and its
+predecessor cannot: `"héllo".char_slice(0, 4)` → `héll`, and `std::Format.NotExists`
+resolving in value position ([loft#1039](https://github.com/loft-lang/loft/issues/1039)).
+
+⛔ **AND THE FIRST `make fast` AFTER A SWAP CAN BE RED FOR NOTHING.** It died on
+`registry index signature INVALID — refusing to install`, un-bypassable even with
+`--allow-unsigned`; the identical re-run passed with nothing changed. The index and its
+signature had been rewritten mid-run. **Re-run before diagnosing** —
+[loft#1045](https://github.com/loft-lang/loft/issues/1045), fix unmerged, and *doesn't
+verify against any known key* is the sentence a tampered index produces, so the wrong
+next move is trust roots.
+
+⏭ **`text.char_slice` IS THE CURE FOR `font.loft`'s TWO UNITS AND IS DELIBERATELY NOT
+TAKEN.** It needs this toolchain, and raising `lavition_ui`'s `loft = ">="` floor on a
+first release would cost every consumer an upgrade to fix nothing they can observe. The
+hand-rolled `byte_after_chars` ships with 0.1.0; the swap is recorded in that package's
+manifest for the next time the floor moves for an independent reason.
+
 ⛔ **AND `loft verify-self` CANNOT VERIFY EITHER OF THEM, AND EXITS 0 SAYING SO.** Both
 installs answer *"not a release bundle — nothing to check against"* with **rc 0**. For a
 command whose stated job is *detects corruption and partial upgrades*, `verified intact`
@@ -91,6 +202,11 @@ and `could not verify anything` are the same answer —
 [loft#1012](https://github.com/loft-lang/loft/issues/1012), filed with `audit`'s graded
 exit codes as the precedent. **Use `ls -la` and `sha256sum`; the version string and the
 exit code both lie by omission.**
+
+✅ **FIXED — measured 2026-08-20 on the build installed 14:49.** `verify-self` on a
+non-bundle install now exits **2**; the same sentence on the older binary exits 0. The
+controlled pair is one command over two binaries. **The `sha256sum` half of the advice
+stands regardless** — the version string still cannot tell two builds apart.
 
 ### Two source constructs stopped compiling, and both are deliberate
 
