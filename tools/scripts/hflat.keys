@@ -1,0 +1,15 @@
+# H's CONTROL, HEADLESS — the same walk with nothing raised to fall off.
+#
+# ⚠ WITHOUT THIS, `hfall` PROVES NOTHING. Feet above zero and a landing count are
+# only evidence if a flat walk produces neither — otherwise they are facts about
+# walking rather than about falling. `probe/b2` takes this control from block `G`'s
+# log, which is a different run of a different block; here it is one line different
+# from the thing it controls.
+rate 0
+at 0 0 0
+
+echo --- no raise: the same walk on the ground plane
+keys 1
+step 240
+keys 0
+walker

@@ -595,6 +595,30 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   //
   // ⏭ Its judging form — `feet <lo> <hi>`, which fails a run — is not here; this
   // reports, and nothing in the corpus judges through this driver yet.
+  // ⚠ **THE WALKER'S OWN NUMBERS, PRINTED IN EXACTLY ONE PLACE UNTIL NOW.**
+  // `wk_fell` is a field on `hex_editor::Walker` — the same walker this program holds
+  // — and the only line in the tree that ever printed it was the browser client's
+  // summary at `editor_client.loft`. So *a fall completed* was a browser-only claim by
+  // accident of where a `println` was written, not because the fact needs a browser:
+  // `probe/b2`'s `H` block rebuilt a 7 MB wasm client and drove a headless Chromium to
+  // read a counter this program has had all along.
+  //
+  // ⚠ A SEPARATE COMMAND RATHER THAN A WIDER `feet`. `cellar.keys` and
+  // `threshold.keys` already print `feet`, and widening a line two committed scripts
+  // emit is a change to their output for no gain — this one is additive and nothing
+  // can have depended on it.
+  //
+  // ⚠ THE SAME FIELDS AND THE SAME ORDER AS THE CLIENT'S LINE, so the two are
+  // comparable by eye and by `sed`. A headless report in a different shape would make
+  // every comparison a translation.
+  if cmd == "walker" {
+    said = "walker yaw {wk.wk_yaw} walked {wk.wk_walked} "
+         + "at ({round(wk.wk_x * 1000.0) / 1000.0 ?? 0.0},"
+         + "{round(wk.wk_z * 1000.0) / 1000.0 ?? 0.0}) "
+         + "feet {wk.wk_y} landed {wk.wk_fell}";
+    return true;
+  }
+
   if cmd == "feet" {
     said = "feet {round(wk.wk_y * 1000.0) / 1000.0 ?? 0.0} "
          + "at {round(wk.wk_x * 100.0) / 100.0 ?? 0.0},{round(wk.wk_z * 100.0) / 100.0 ?? 0.0}";

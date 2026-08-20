@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-hfall probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -498,6 +498,7 @@ fast:
 	@$(MAKE) -s probe-t3
 	@$(MAKE) -s probe-t4
 	@$(MAKE) -s probe-k3d
+	@$(MAKE) -s probe-hfall
 # ⚠ **AND THIS IS THE ONLY THING IN `fast` THAT COMPILES EITHER PROGRAM UNDER `src/`.**
 # The comment over `headless-same` records what that cost once: a name collision in
 # `editor_server.loft` presented as a thirty-minute HANG, with the compiler's own
@@ -832,6 +833,12 @@ probe-t4:
 #
 #   K3D_BLESS=1 sh probe/k3d/run.sh   re-record on purpose, diff shown first
 #   sh probe/k3d/sabotage.sh          seven sabotages, a declared blind spot, a control
+# ⚠ THE FALL, WITH NO BROWSER — a port of `probe/b2`'s `H` block, and `H` STAYS.
+# Move before you remove: the browser keeps the claim that pressing `w` reaches the
+# walk, which no script can make. What moved is what never needed a browser.
+probe-hfall:
+	@sh probe/hfall/run.sh
+
 probe-k3d:
 	@sh probe/k3d/run.sh
 

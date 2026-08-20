@@ -1,0 +1,30 @@
+# H, HEADLESS — raise the ground, walk over it, and fall.
+#
+# The same claim `probe/b2`'s `H` block makes, without a browser: the feet leave the
+# ground plane, and a fall COMPLETES. That block presses `ArrowUp` and then `w` sixty
+# times against a 7 MB wasm client; here the verb is named and the ticks are counted.
+#
+# ⚠ THE NUMBERS ARE NOT THE BROWSER'S AND ARE NOT MEANT TO BE. Sixty key presses is
+# whatever number of ticks the page's clock gave them; `step` is exactly the ticks
+# asked for. What has to agree is the FACTS — feet off the plane, at least one
+# landing — and the control below is what stops those being true of any walk at all.
+#
+# ⚠ rate 0, so nothing advances but what a line asks for.
+rate 0
+at 0 0 0
+
+echo --- one raise, under the author
+verb raise
+walker
+
+# ⚠ **240 TICKS, AND 120 WAS NOT ENOUGH — MEASURED, NOT PICKED.** Profiled in
+# sixty-tick steps: at 120 the walker has CLIMBED to feet 0.88 and landed 0; the
+# first landings appear between 120 and 180 (13 of them by 180), and by 360 it is
+# back on the plane at 49 and stops. A height that merely tracks the terrain is the
+# CLIMB — only a landing is the fall, which is what `probe/b2`'s own `H2` failure
+# text says and what a too-short walk looks like.
+echo --- walk forward off the crest
+keys 1
+step 240
+keys 0
+walker
