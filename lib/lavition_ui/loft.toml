@@ -18,3 +18,28 @@ entry = "src/lavition_ui.loft"
 # cheapest possible proof of that — it cannot drift the way a comment can.
 #
 # See doc/claude/EDITOR_UI.md; the seam is `PanelSpec` (§U2).
+
+# ⚠ ADMISSIBLE LOFT, AND DECLARED SO IT IS CHECKED RATHER THAN CLAIMED.
+#
+# @PLN86's admission proves a designated function safe AT LOAD — capability,
+# termination, data integrity, backend — and which side of that boundary a library
+# sits on is a property of its API, cheap to state while the signatures are being
+# written and a re-architecture afterwards. This one is on the admissible side by
+# construction: no `#native`, no I/O, no GL, and `src/` contains no `while` at all,
+# so every loop is a `for` over a bound written down at the loop.
+#
+# ⚠ THE POINT IS THE NEGATIVE. Without this section `loft test` says "no # ⚠ THE KEY IS THE PROFILE NAME, not a keyword. `[sandbox] plug = [...]` in
+# loft's own SANDBOX.md reads as a fixed word and is not one — it designates a
+# profile CALLED `plug`, and with no `[profile.plug]` beside it the grant list is
+# empty. That failure prints `allowed libraries: []`, which reads as *nothing is
+# allowed here* rather than *you named a profile that does not exist*.
+[sandbox]
+ui = ["src/*.loft"]
+
+# ⚠ `code` IS THE COMPILER'S OWN INTRINSICS, NOT A REACH OUTSIDE THE PACKAGE.
+# Admission counts `OpPreAllocVector` — what building a `vector<T>` lowers to — as
+# reaching a library named `code`, so a package that assembles a list at all is
+# inadmissible until this is granted. Measured on `verbbar_text_list`, whose whole
+# body is a loop appending rows.
+[profile.ui]
+allow_libs = ["code"]
