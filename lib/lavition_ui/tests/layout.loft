@@ -193,3 +193,36 @@ fn test_a_selection_outside_the_buttons_marks_nothing() {
     assert(!b.btn_selected, "button {b.btn_id} marked by an out-of-range selection");
   }
 }
+
+// ⚠ THE 2-PIXEL OVERLAP, ASSERTED RATHER THAN DESCRIBED. `hotkey_room`'s own
+// comment records the defect it was written to close — the hotkey was fitted to
+// `HOTKEY_COL - 4` and drawn at `HOTKEY_X`, which left it two pixels longer than
+// the gap and put it straight back under the label it was being moved out of. A
+// comment cannot go red, and this function had no test and no caller outside its
+// own package at all.
+//
+// ⚠ THE CLAIM IS THE ROUND TRIP BETWEEN THE TWO SITES, not the arithmetic. `render`
+// draws the hotkey at `r_x + HOTKEY_X`; `panel_build` fits it to `hotkey_room()`.
+// Those are the two numbers that have to meet, and either one alone is a number
+// checked against itself.
+fn test_a_hotkey_fitted_to_its_room_never_reaches_the_label() {
+  for adv in [4, 8, 16, 32] {
+    m = ui_metrics(adv, 8);
+    // The widest thing a hotkey can be — every fitted result is at most this.
+    cut = fit_text("WWWW", hotkey_room(), m);
+    right = HOTKEY_X + text_width(cut, m);
+    assert(right <= HOTKEY_COL,
+           "at advance {adv} a hotkey drawn at {HOTKEY_X} runs to {right}, and the "
+         + "label starts at {HOTKEY_COL} — they overlap by {right - HOTKEY_COL}");
+  }
+}
+
+// ⚠ AND THE GAP IS NOT ZERO, because *they do not overlap* and *they do not touch*
+// are different claims and only the second is what the constant is for. Without
+// this a `HOTKEY_GAP` of 0 would satisfy the test above at every advance.
+fn test_the_hotkey_and_the_label_never_touch() {
+  assert(HOTKEY_X + hotkey_room() + HOTKEY_GAP == HOTKEY_COL,
+         "the three distances do not add up to the column: {HOTKEY_X} + "
+       + "{hotkey_room()} + {HOTKEY_GAP} is not {HOTKEY_COL}");
+  assert(HOTKEY_GAP > 0, "a gap of {HOTKEY_GAP} lets the hotkey touch the label");
+}

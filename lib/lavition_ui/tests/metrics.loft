@@ -104,6 +104,29 @@ fn test_a_box_too_small_for_the_marker_still_fits() {
   assert(s0 == "", "no room means no text, got '{s0}'");
 }
 
+// ⚠ `fits` AND `fit_text` ARE ONE QUESTION ASKED TWO WAYS, and the test is that
+// they agree rather than that each is right on its own. A boolean twin that drifts
+// from the function it predicts is worse than no twin: a caller asks `fits` and
+// then draws the untruncated string, and the overflow is somewhere else entirely.
+//
+// ⚠ SWEPT ACROSS THE BOUNDARY, not sampled near it. The interesting pixel is the
+// one where the answer changes, and a fixture that happens to sit either side of it
+// tests nothing about the edge.
+fn test_fits_is_true_exactly_when_nothing_would_be_cut() {
+  m = mono(8);
+  seen_yes = 0;
+  seen_no = 0;
+  for px in 0..120 {
+    y = fits("Stencil", px, m);
+    same = fit_text("Stencil", px, m) == "Stencil";
+    assert(y == same, "at {px}px `fits` says {y} and `fit_text` "
+                    + "{if same { \"changes nothing\" } else { \"cuts\" }}");
+    if y { seen_yes += 1; } else { seen_no += 1; }
+  }
+  assert(seen_yes > 0 && seen_no > 0,
+         "the sweep never crossed the boundary — {seen_yes} fit, {seen_no} did not");
+}
+
 fn test_unmeasured_metrics_do_not_mangle_text() {
   // advance 0 means nobody measured; truncating everything to nothing would be
   // worse than passing it through, and the fixed-pitch check is what catches it.

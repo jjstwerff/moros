@@ -5,8 +5,22 @@
 // lavition's, not Moros's. It holds no world, no lattice and no tool: a
 // consumer hands it a `PanelSpec` of labels and indices, and gets back
 // rectangles and hits. See doc/claude/EDITOR_UI.md.
-use widgets;
-use font;
-use panel;
-use render;
-use verbbar;
+// ⚠ `self::`, ON EVERY ONE — loft#976, and this package is the reason it matters.
+// A module's BASENAME is global across a consumer's whole dependency graph, so a
+// bare `use render;` here claims the name `render` in every graph this library is
+// pulled into — and the registry's `graphics` has shipped a `src/render.loft` since
+// 0.1.0. Two bare claims and the CONSUMER's `use` line order decides which library
+// loses its module, reported as an unknown function in a file its author never
+// touched. `src/editor_client.loft` already links both.
+//
+// ⚠ NOTHING IS RED TODAY and that is not the test. `graphics` does not claim its
+// `render` bare, so `tools/basenames.sh` passes — the rule it enforces is *two bare
+// claims*, not *two files*. What changes on publication is that this package becomes
+// a stranger in graphs nobody here can see, where the other claim is somebody else's
+// to make. `panel`, `font`, `widgets` and `render` are four of the most ordinary
+// names a UI library could hold.
+use self::widgets;
+use self::font;
+use self::panel;
+use self::render;
+use self::verbbar;
