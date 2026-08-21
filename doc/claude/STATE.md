@@ -127,7 +127,8 @@ what makes `loft package` emit the right tag and URL.
 no-brand-prefix rule for lavition packages, and the user confirmed it on 2026-08-20
 knowing a published name cannot be renamed.
 
-⛔ **PR #24's CI WILL BE RED AND IT IS NOT OURS.** `tools/validate.py` fails gate 1 on
+⛔ **PR #24's CI WILL BE RED AND IT IS NOT OURS.** `loft-lang/registry`'s own
+`tools/validate.py` — not a path in this tree — fails gate 1 on
 untouched `main` — `zttext` and `fixstep` both carry `"categories": []`, confirmed
 independently by the loft side over the live index. Our entry raises no validator error.
 

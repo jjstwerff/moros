@@ -6,7 +6,7 @@ refuted by its own probe and replaced by `L3′`.** Plan
 [#19](https://github.com/jjstwerff/moros/issues/19) holds the steps and the per-step record.
 
 ⚠ **AND THE ONE INVARIANT WAS FALSIFIED ON 2026-08-11 — read
-[L5′](#l5-the-program-does-not-travel-measured-2026-08-11) before this file's `L3′` section, which
+[L5′](#l5--the-program-does-not-travel-measured-2026-08-11) before this file's `L3′` section, which
 still reads as though the program were free.** The packages, the gates and the other four programs
 travel; `src/editor_server.loft` does not.
 
@@ -31,7 +31,7 @@ the **program**, the **gates**, and the **content** they drive.
 ⚠ **AND IT IS MEASURED NOW RATHER THAN ASSERTED — `probe/l6/run.sh` / `make probe-split`, 2026-08-11.**
 It fails at the **program**: `src/editor_server.loft` imports `moros_render` and `moros_sim` and
 does not compile with `lib/moros_*` absent, while this file said in bold that it does. The other
-three sites hold. [L5′](#l5-the-program-does-not-travel-measured-2026-08-11) is the finding and
+three sites hold. [L5′](#l5--the-program-does-not-travel-measured-2026-08-11) is the finding and
 `tools/layering.sh`'s `PROGRAM_DEBT` is the ratchet.
 
 ⚠ **THE GATE HALF IS NOT MERELY UNMEASURED, IT IS UNREACHABLE.** *The 39 gates green with
@@ -145,7 +145,7 @@ map — depending on `hex_grid` and `graphics` and nothing else, so both `moros_
 ⚠ **THIS PARAGRAPH THEN SAID *"With `L2` and `L3′` done, `src/editor_server.loft` has zero Moros
 dependencies and the program, its client, its gates and its content can all travel together"*, IN
 BOLD, AND IT WAS NEVER TRUE.** Measured 2026-08-11 with `probe/l6/run.sh` — the honest instrument
-is a compile, not a reading — see [L5′](#l5-the-program-does-not-travel-measured-2026-08-11) below.
+is a compile, not a reading — see [L5′](#l5--the-program-does-not-travel-measured-2026-08-11) below.
 
 ### L4 — `hex_world` was an ambiguous global name — ✅ RESOLVED by `L6.2`, 2026-08-11
 
@@ -410,7 +410,7 @@ every height with every count agreeing.** That is what the probe cost, and what 
 ## ✅ And a second probe was run on 2026-08-11, and it falsified the INVARIANT
 
 `probe/l6/run.sh` (`make probe-split`) — *does the editor program build with the Moros tree
-absent?* **No**, and [L5′](#l5-the-program-does-not-travel-measured-2026-08-11) is what it found.
+absent?* **No**, and [L5′](#l5--the-program-does-not-travel-measured-2026-08-11) is what it found.
 
 ⚠ **THE TWO PROBES ARE THE SAME LESSON AT DIFFERENT ALTITUDES, AND THAT IS WHY THIS SECTION IS
 KEPT BESIDE THE FIRST.** `L3`'s probe falsified a *step* — three calls that were not what they

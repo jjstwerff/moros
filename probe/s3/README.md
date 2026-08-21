@@ -14,7 +14,7 @@ and one of those probes was **itself** the bug — it copied into a local rather
 So the routine is written down as files that run, rather than as a conclusion:
 
 1. **a probe per claim**, liberally — a redundant one costs nothing, a missing one costs a session;
-2. **an oracle in the code**, not in the probe — the probe asks `moros_terrain::tile_ready`
+2. **an oracle in the code**, not in the probe — the probe asks `hex_mesh::tile_ready`
    rather than carrying its own copy of the rule, because a probe that re-derives what it
    tests agrees with itself and proves nothing;
 3. **a map, not a tally** — see below, this is the step that actually paid;
@@ -59,7 +59,7 @@ sweep over terrain that does not emit everywhere is partly measuring nothing. It
 
 ## Where the oracle lives now
 
-`moros_terrain::tile_ready(world, cx, cz)` — beside the mesher, because it is a fact about
+`hex_mesh::tile_ready(world, cx, cz)` — beside the mesher, because it is a fact about
 what the mesher *reads*: `MESH_CHUNK` cells plus `MESH_MARGIN` = 2 on every side, which is
 the grid `chunk_mesh_mat` really builds. Tested in `lib/moros_terrain/tests/mesh.loft`;
 consumed by `src/editor_client.loft`'s `Q:` handler; gated by
