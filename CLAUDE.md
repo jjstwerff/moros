@@ -450,6 +450,15 @@ address (or the hostname `make browser` prints) cannot connect.
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.
   **All built and gated**; the doc records which of its own design sentences the measurements
   refuted, which is most of its value
+- [Editor defects](doc/claude/EDITOR_DEFECTS.md) — **five defects found by USING the editor on
+  2026-08-21, none of which any gate went red on**: the whole neighbourhood re-meshes on every
+  write, the page editor has **no character** (the figure is built and posed server-side only),
+  a house floor is not flat on a slope, and ⚠ **every wall is drawn TWICE** — once round the hex
+  edges from the cells, once straight from the `WallRun` — because the gesture writes both
+  records and the mesher emits both. Its 4 and 5 are **one defect**: only the store is saved, so
+  a reload deletes exactly one of the two copies. Read it for the pattern more than the list —
+  the wall pair was landed by a step whose gate asked *is the world byte-identical* and got
+  **yes**, which is what a change that only adds a second drawing of the same thing answers
 - [Editor ladder](doc/claude/EDITOR_LADDER.md) — **the rungs, their plans, and [the order of work](doc/claude/EDITOR_LADDER.md#the-order-of-work)** with the checkpoints that need the user's eyes
 
 ⚠ **The four below are HISTORY, and this index called them reference for months.** Each was
