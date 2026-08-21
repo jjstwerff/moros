@@ -53,7 +53,7 @@ its axles and rolling wheels. A character is that, with different joints.
 |---|---|---|---|
 | 1 | the whole world re-meshes on every write | ⚠ **verified**, and the source already marks it `⏭` | `local_surfaces` takes a neighbourhood, not a disc |
 | 2 | no character in the page editor | ⚠ **verified** | the figure is built and posed **server-side only**, and hardcoded |
-| 3 | a house floor is not flat by default | ◐ **not localised** | seating is wired; the floor write is not ruled in or out |
+| 3 | a house floor is not flat by default | ✅ **answered upstream** (`X67`) | `SEAT_MEAN` lands exactly half a height unit off; it must be refused with an offer, not truncated |
 | 4 | every wall is drawn **twice** — hex-edge and straight | ⚠ **verified** | two emitters, and the gesture writes **both** records |
 | 5 | after a reload the straight walls are gone | ⚠ **verified** | the save carries the **cells**; the run record is not saved |
 
@@ -182,6 +182,16 @@ five drawables it did not receive.**
 
 ## 3. A house floor is not flat by default
 
+✅ **ANSWERED UPSTREAM — `X67`, and it is a fix rather than an investigation.** The height slot
+is an **integer** at `HEIGHT_SCALE = 0.25` wu, and hexbody measured `SEAT_MEAN` landing **exactly
+half a unit off**: `1.125` = 4.5 units. The rule it settles is that an off-grid seat must be
+**refused with an offer**, never truncated — *"81 heights swept on quarter- and eighth-steps, 21
+admitted, 0 false accepts, 0 disagreements, every offer itself on-grid."*
+[FORMAL_CORE.md](FORMAL_CORE.md) carries it. ⚠ **The sloped-cell fixture below is still worth
+building** — it is what would have caught this here — but the mechanism is no longer open.
+
+The original entry, kept because its reasoning is what the fixture must check:
+
 ◐ **Reported, not localised — the one entry here without a mechanism.** Written down at this
 confidence deliberately: guessing a cause and prescribing a fix for it is what
 [OPEN_ISSUES.md](OPEN_ISSUES.md)'s own banner warns about (*"the road-linking entry diagnosed a
@@ -296,6 +306,15 @@ rather than a preference:**
 >
 > *"There should not be a session record at all — just a cache of the meshes that are created,
 > one per chunk."*
+
+⛔ **AND IT IS NORMATIVE UPSTREAM, WHICH NOBODY HAD CHECKED.**
+[FORMAL_CORE.md](FORMAL_CORE.md) §2.4.3 — the binding extract of `hexbody/ROUNDTRIP.md` — states
+it outright: *"the canonical text is **not** a second editor representation, and must not become
+one — that is exactly the second layer the editor is not allowed to have"*, with layer 2
+*"derived on demand, **never persisted**"* per chunk and *"an edit dirties the chunks it touches,
+and their layer-2 meshes rebuild."* §6.1 settles the wall half the same way: *a wall surface is
+the exact **AVERAGE** of its edges, never a fit*, gated as `X47`. **So none of what follows is a
+new architecture — it is a debt against one already written down and gated.**
 
 ⚠ **THIS IS [WORLD_MODEL.md](WORLD_MODEL.md)'S OWN INVARIANT, ENFORCED** — *the store is the
 only authority, everything else is derived, writes go in place.* The `EditSession` is a **second
