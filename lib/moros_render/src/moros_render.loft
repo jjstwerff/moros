@@ -1057,10 +1057,6 @@ pub fn avatar_add_to_scene(scene: Scene, pos: Vec3, radius: float) -> integer {
 // stencil/depth-peel GPU tricks — identical logic runs under the
 // interpreter, native OpenGL, and WebGL.
 
-pub struct Aabb {
-  aabb_min: Vec3,
-  aabb_max: Vec3,
-}
 
 pub fn aabb_from_sphere(centre: Vec3, radius: float) -> Aabb {
   Aabb {
@@ -1086,32 +1082,6 @@ pub fn aabb_from_points(a: Vec3, b: Vec3) -> Aabb {
 
 // Bounding box of every vertex in a mesh.  O(vertices) — cache at
 // mesh-build time if this shows up in frame profiles.
-pub fn mesh_aabb(m: Mesh) -> Aabb {
-  if len(m.vertices) == 0 {
-    return Aabb {
-      aabb_min: vec3(0.0, 0.0, 0.0),
-      aabb_max: vec3(0.0, 0.0, 0.0),
-    };
-  }
-  ma_mn_x = m.vertices[0].pos.x;
-  ma_mn_y = m.vertices[0].pos.y;
-  ma_mn_z = m.vertices[0].pos.z;
-  ma_mx_x = ma_mn_x;
-  ma_mx_y = ma_mn_y;
-  ma_mx_z = ma_mn_z;
-  for ma_mv in m.vertices {
-    if ma_mv.pos.x < ma_mn_x { ma_mn_x = ma_mv.pos.x; }
-    if ma_mv.pos.y < ma_mn_y { ma_mn_y = ma_mv.pos.y; }
-    if ma_mv.pos.z < ma_mn_z { ma_mn_z = ma_mv.pos.z; }
-    if ma_mv.pos.x > ma_mx_x { ma_mx_x = ma_mv.pos.x; }
-    if ma_mv.pos.y > ma_mx_y { ma_mx_y = ma_mv.pos.y; }
-    if ma_mv.pos.z > ma_mx_z { ma_mx_z = ma_mv.pos.z; }
-  }
-  Aabb {
-    aabb_min: vec3(ma_mn_x, ma_mn_y, ma_mn_z),
-    aabb_max: vec3(ma_mx_x, ma_mx_y, ma_mx_z),
-  }
-}
 
 pub OCCLUSION_HALF_ANGLE_DEG = 15.0;    // 30° full cone
 pub OCCLUSION_NEAR_MARGIN = 0.2;        // skip first 20% of axis
@@ -1184,6 +1154,11 @@ pub fn aabb_vs_cone(b: Aabb, c: ViewCone) -> boolean {
 // whose mesh_idx is out of range flag as false (safe default).
 // The avatar node is NOT special-cased here; callers who render
 // the avatar should either draw it last or exclude it by name.
+// ⚠ `Aabb` AND `mesh_aabb` LEFT FOR `hex_proj` — plan 19 `L6.3a`. Neither had any Moros
+// content: `Mesh` is `graphics`'s and the answer is two corners. They were the last two
+// names `src/editor_server.loft` reached into this package for, and a lavition program
+// importing a Moros one is the arrow the layering guard exists to forbid. They are used
+// from here through the dependency this package already declares.
 pub fn flag_occluders(scene: Scene, cone: ViewCone) -> vector<boolean> {
   fo_flags: vector<boolean> = [];
   for fo_n in scene.nodes {

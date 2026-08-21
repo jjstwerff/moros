@@ -113,8 +113,13 @@ PROGRAMS="src/editor_server.loft src/editor_client.loft src/editor_run.loft
 # rule `moros_ui` and `moros_terrain` already taught: a universal package wearing a
 # consumer's prefix. Whether they are renamed or the program is weaned off them is
 # plan 19 `L6.3` and its open question 5, and it is not decided here.
-PROGRAM_DEBT="src/editor_server.loft:moros_render
-              src/editor_server.loft:moros_sim"
+# ⚠ `moros_render` IS PAID — plan 19 `L6.3a`, 2026-08-21. `world_to_hex` was a Moros
+# wrapper around `hex_grid::px_to_hex` returning a struct whose third field no caller read;
+# the 13 sites take the pair directly, which is what `hex_mesh` had already done and
+# recorded. `Aabb`/`mesh_aabb` had no Moros content at all and joined the drawing
+# primitives in `hex_proj`. ⚠ A REMOVED DEBT HAS TO BE RECORDED AS PROGRESS OR THE NUMBER
+# ROTS — this list fails in BOTH directions.
+PROGRAM_DEBT="src/editor_server.loft:moros_sim"
 
 fail=0
 

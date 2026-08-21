@@ -120,9 +120,27 @@ done
 # are on different footings, so collapsing them would lose the distinction: the
 # `moros_render` half is a projection that `L3′` half-moved, the `moros_sim` half
 # is open question 5 and is not settled.
-check "C moros_render" err "Library 'moros_render' not found" \
-  "the server no longer imports moros_render — PAID; lower PROGRAM_DEBT in tools/layering.sh" \
-  --check --lib "$STAGE/" src/editor_server.loft
+# ✅ **`C` IS PAID — plan 19 `L6.3a`, 2026-08-21 — AND IT IS A SOURCE CHECK, NOT A BUILD
+# ONE.** `world_to_hex` was a wrapper around `hex_grid::px_to_hex` returning a struct whose
+# third field no caller read; its 13 sites take the pair directly. `Aabb`/`mesh_aabb` had no
+# Moros content at all and joined the drawing primitives in `hex_proj`.
+#
+# ⛔ **AND IT CANNOT BE A BUILD CHECK UNTIL `D` IS PAID, WHICH IS THE FINDING.** `moros_sim`
+# DEPENDS ON `moros_render`, so the server's remaining `use moros_sim as msim;` drags it back
+# in transitively: staging everything-but-`moros_render` still answers *Library
+# 'moros_render' not found*, three times, from `moros_sim`'s own sources. Measured, not
+# assumed. So the two halves of the debt were never independent — paying `C` removes the
+# DIRECT import and nothing more, and `L6.3b` is what makes this a build check.
+#
+# ⚠ **A PAID ROW FLIPS, IT IS NOT DELETED** — deleted, nothing would notice a re-import, and
+# `use moros_render;` is one line away for anyone who wants a name that happens to live there.
+if grep -qE '^use moros_render;' src/editor_server.loft; then
+  echo "FAIL  C moros_render         the server imports moros_render again — a re-import, and"
+  echo "                             PROGRAM_DEBT in tools/layering.sh must rise to match"
+  fail=1
+else
+  printf 'ok    %-22s %s\n' "C moros_render" "no direct import — PAID (a build check needs D; moros_sim pulls it in)"
+fi
 
 check "D moros_sim" err "Library 'moros_sim' not found" \
   "the server no longer imports moros_sim — PAID; lower PROGRAM_DEBT in tools/layering.sh" \
@@ -168,6 +186,6 @@ if [ "$fail" -ne 0 ]; then
   echo "probe/l6: FAILED — read each line above; every one says what its flip means."
   exit 1
 fi
-echo "probe/l6: the split is ONE FILE away — src/editor_server.loft, 2 imports, 53 call sites."
+echo "probe/l6: the split is ONE FILE away — src/editor_server.loft, 1 import, 9 call sites (was 2 and 53 — L6.3a paid moros_render)."
 echo "          Four programs and 53 gates already travel. Plan 19 L6.3 is what pays it."
 exit 0

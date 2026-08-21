@@ -33,7 +33,7 @@ use hex_edge;     // sweep_path / edge_block — collision is the LIBRARY's quer
 use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band is derived
 use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
 use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
-use moros_render;
+use hex_grid;   // px_to_hex — the pair, taken directly (plan 19 `L6.3a`)
 use hex_mesh;
 use hex_proj;   // the drawing primitives — plan 22 `B1b.2c.2`
 // ⚠ `hex_shape` IS NOT USED HERE, AND IT HAS TO BE NAMED ANYWAY. `hex_editor` is
@@ -1304,9 +1304,9 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
     edir = payload[..eci] as integer ?? 0;
     emat = payload[eci + 1..] as integer ?? WALL_MAT;
   }
-  ehx = world_to_hex(px, pz);
+  (ehx_q, ehx_r) = px_to_hex(px, pz);
   eack = hex_editor::edge_set(wld, hex_editor::author_at(px, pz, 0.0, py), edir, emat, py,
-                              terrain_h(ehx.ha_q, ehx.ha_r, wld));
+                              terrain_h(ehx_q, ehx_r, wld));
   if !eack.ak_ok {
     srv.send_to(cid, "S:{say_refused(\"edge\", eack.ak_why)}");
     println("editor: edge refused — {eack.ak_why}");
@@ -1371,8 +1371,8 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // The ground height at a world point, as an integer grade — a road is GRADED, so it
 // takes one height for its whole run rather than following every bump.
 fn py_of(wld: VoxelWorld, x: float, z: float) -> integer {
-  a = world_to_hex(x, z);
-  terrain_h(a.ha_q, a.ha_r, wld)
+  (a_q, a_r) = px_to_hex(x, z);
+  terrain_h(a_q, a_r, wld)
 }
 
 // A cell's three owned edges, one group per PRESENT cell of its column.
@@ -2385,7 +2385,7 @@ fn skin_check(sc_w: VoxelWorld) -> hex_part::SkinCheck {
     return hex_part::SkinCheck { kc_code: hex_part::KC_EMPTY,
                                  kc_why: "the mesh does not load" };
   }
-  sc_box = moros_render::mesh_aabb(sc_gl.gr_mesh);
+  sc_box = mesh_aabb(sc_gl.gr_mesh);
   hex_part::skin_covers(
     hex_part::part_box(sc_w, hex_grid::SQRT3 * hex_grid::HEX_SIZE, HEIGHT_SCALE, W_UNIT),
     hex_part::PartBox {
@@ -2717,8 +2717,8 @@ fn vis_mask(body: boolean, mode: integer) -> integer {
 // derivation is what `D2a.1` and `T1a` were both about, and a private copy that
 // still compiles is the one a later edit lands in.
 fn cam_clear_here(x: float, z: float, eye: float, wld: VoxelWorld) -> float {
-  a = world_to_hex(x, z);
-  hex_cam::cam_clear_at(a.ha_q, a.ha_r,
+  (a_q, a_r) = px_to_hex(x, z);
+  hex_cam::cam_clear_at(a_q, a_r,
     fn(cq: integer, cr: integer) -> float { surface_h_at(cq, cr, eye, wld) },
     fn(cq: integer, cr: integer, d: integer) -> (integer, integer) {
       hex_grid::hex_neighbor(cq, cr, d) },
@@ -3122,8 +3122,8 @@ fn probe_view() {
   //    roof's plan, which carries half a hex of tolerance of its own.
   sx = 0.0;
   sz = 0.0;
-  scell = world_to_hex(sx, sz);
-  println("author at ({sx},{sz}) = cell ({scell.ha_q},{scell.ha_r})");
+  (scell_q, scell_r) = px_to_hex(sx, sz);
+  println("author at ({sx},{sz}) = cell ({scell_q},{scell_r})");
   // ⚠ THE PLAN THE GESTURE FILED, not a fourth hand-built copy of it — plan 22.
   // This read `pose_footprint` again with a literal `4` for the seat and the global
   // scale, which is the socket's old arithmetic reproduced in a diagnostic; a probe
@@ -3138,13 +3138,13 @@ fn probe_view() {
   //    defect from a wall the set never received.
   // ⚠ THE SAME CALL THE TICK MAKES, with `view` true — a probe that built the set a
   // different way would measure a set the camera never uses.
-  coll = hex_editor::edges_around(wld, scell.ha_q, scell.ha_r, COLL_R, true, runs,
+  coll = hex_editor::edges_around(wld, scell_q, scell_r, COLL_R, true, runs,
                       surfaces_new(), 4.0);
   // How many of the store's wall edges reached it, counted by asking the SET rather
   // than by trusting the builder.
   ncoll = 0;
-  for q in scell.ha_q - COLL_R..scell.ha_q + COLL_R + 1 {
-    for r in scell.ha_r - COLL_R..scell.ha_r + COLL_R + 1 {
+  for q in scell_q - COLL_R..scell_q + COLL_R + 1 {
+    for r in scell_r - COLL_R..scell_r + COLL_R + 1 {
       // ⚠ `edge_blocked`, NOT `edge_mat`. Blocking lives in the SURFACE channel —
       // `edge_block` writes `SURF_NONE` there and `edge_blocked` reads it back — so
       // a count through the material channel reads zero however full the set is.
@@ -4650,26 +4650,26 @@ fn main() {
                 // the road above. `road_lay` stamps where the author is; this
                 // FOLLOWS THE GROUND and uses the facing only to break a tie — which
                 // on a plain is every step and on a hillside is none of them.
-                whx = world_to_hex(wk.wk_x, wk.wk_z);
+                (whx_q, whx_r) = px_to_hex(wk.wk_x, wk.wk_z);
                 wsteps = 6;
                 wcl = 0;
                 wrs = 0;
                 wwhy = "";
-                wn = hex_editor::water_lay(wld, whx.ha_q, whx.ha_r,
+                wn = hex_editor::water_lay(wld, whx_q, whx_r,
                        hex_editor::snap_dir(cos(wk.wk_yaw), sin(wk.wk_yaw)), wsteps, water_run,
                        wcl, wrs, wwhy);
                 water_run = water_run + wn;
                 // ⚠ THE RUN MAY LEAVE THE DISC ENTIRELY, because its length is the
                 // ground's business and not the stroke's — so the dirty mark covers
                 // the steps it was allowed rather than a brush radius.
-                mark_dirty(dirty, whx.ha_q, whx.ha_r, wsteps + 2);
+                mark_dirty(dirty, whx_q, whx_r, wsteps + 2);
                 if wcl != 0 {
                   srv.broadcast("S:water refused after {wn} cells — {wwhy}");
                   println("editor: water refused after {wn} cells: {wwhy}");
                 }
               }
               if roading {
-                rhx = world_to_hex(wk.wk_x, wk.wk_z);
+                (rhx_q, rhx_r) = px_to_hex(wk.wk_x, wk.wk_z);
                 // ── A ROAD FOLLOWS THE LANDSCAPE — plan 20 ────────────────────────
                 //
                 // > *"A road will follow the landscape the way a road builder works,
@@ -4727,7 +4727,7 @@ fn main() {
                 road_h = rd_h1 - (round(rd_slope * rd_look) as integer ?? 0);
                 rd_clamp = 0;
                 rd_res = 0;
-                hex_editor::road_lay(wld, rhx.ha_q, rhx.ha_r, road_h,
+                hex_editor::road_lay(wld, rhx_q, rhx_r, road_h,
                                      hex_editor::ROAD_HALF, wk.wk_y,
                                      cos(wk.wk_yaw) * rd_slope, sin(wk.wk_yaw) * rd_slope,
                                      rd_clamp, rd_res, road_grades);
@@ -4748,12 +4748,12 @@ fn main() {
                 // whole connected run, so a stroke that broke the limit can lower
                 // cells far behind the author — marking only the disc leaves those
                 // chunks holding the mesh they had before the cut.
-                mark_dirty(dirty, rhx.ha_q, rhx.ha_r,
+                mark_dirty(dirty, rhx_q, rhx_r,
                            hex_editor::ROAD_HALF + hex_editor::PEAK_R);
                 wk.wk_y = (road_h as float) * HEIGHT_SCALE;
                 // ⚠ AND WHETHER THE RUN COULD BE HELD TO ITS LIMIT AT ALL — `A4`'s
                 // refusal, on the gesture that can now reach it.
-                rd_owed = hex_editor::slope_owed(wld, rhx.ha_q, rhx.ha_r);
+                rd_owed = hex_editor::slope_owed(wld, rhx_q, rhx_r);
                 if rd_owed > 0 && !road_stalled {
                   road_stalled = true;
                   srv.broadcast("S:road did not settle — the run is still {rd_owed} "
@@ -4846,17 +4846,17 @@ fn main() {
           // that produced it. Splitting them across two messages would report a
           // pose from a later tick, which is the whole failure this replaces.
           sn_n = sn_n + 1;
-          sn_hx = world_to_hex(wk.wk_x, wk.wk_z);
-          sn_ref = hex_editor::walk_h(sn_hx.ha_q, sn_hx.ha_r, wld, wk.wk_y / HEIGHT_SCALE ?? 0.0);
-          sn_sf = hex_voxel::world_surface(wld, sn_hx.ha_q, sn_hx.ha_r,
+          (sn_hx_q, sn_hx_r) = px_to_hex(wk.wk_x, wk.wk_z);
+          sn_ref = hex_editor::walk_h(sn_hx_q, sn_hx_r, wld, wk.wk_y / HEIGHT_SCALE ?? 0.0);
+          sn_sf = hex_voxel::world_surface(wld, sn_hx_q, sn_hx_r,
                                            wk.wk_y / HEIGHT_SCALE ?? 0.0);
           sn_txt = "snapshot {sn_n}\n"
             + "character  x {wk.wk_x}  z {wk.wk_z}  y {wk.wk_y}  yaw {wk.wk_yaw}\n"
-            + "cell       {sn_hx.ha_q},{sn_hx.ha_r}\n"
+            + "cell       {sn_hx_q},{sn_hx_r}\n"
             + "surface    height {sn_sf.sf_units} units ({(sn_sf.sf_units as float) * HEIGHT_SCALE} wu)"
             + "  layer {sn_sf.sf_layer}  occupied {sn_sf.sf_occ}  smooth {sn_sf.sf_smooth}\n"
             + "reference  {sn_ref} units — what every 'which layer' question is asked with\n"
-            + "outdoors   {terrain_h(sn_hx.ha_q, sn_hx.ha_r, wld)} units (the GROUND label)\n"
+            + "outdoors   {terrain_h(sn_hx_q, sn_hx_r, wld)} units (the GROUND label)\n"
             + "camera     boom {cam_dist}  free {cam_free_last}  pitch {cam_pitch}"
             + "  rested {cam_rested}  residual {cam_res_d},{cam_res_p}\n"
             + "modes      levelling {wk.wk_levelling} (grade {wk.wk_level_h})  roading {roading}"
@@ -4871,9 +4871,9 @@ fn main() {
           sn_txt += "\ncolumns around the character — heights / labels / owned edges\n";
           for sn_dr in (0 - 2)..3 {
             for sn_dq in (0 - 2)..3 {
-              sn_q = sn_hx.ha_q + sn_dq;
-              sn_r = sn_hx.ha_r + sn_dr;
-              if hex_grid::hex_distance(sn_q, sn_r, sn_hx.ha_q, sn_hx.ha_r) <= 2 {
+              sn_q = sn_hx_q + sn_dq;
+              sn_r = sn_hx_r + sn_dr;
+              if hex_grid::hex_distance(sn_q, sn_r, sn_hx_q, sn_hx_r) <= 2 {
                 sn_col = world_column(wld, sn_q, sn_r);
                 sn_hs = "";
                 for sn_e in sn_col.co_cells {
@@ -5058,7 +5058,7 @@ fn main() {
             xpy = xhg.hr_hinge.hg_oy * xscale;
             xpz = xhg.hr_hinge.hg_oz * xscale;
           }
-          xbb = moros_render::mesh_aabb(xbm);
+          xbb = mesh_aabb(xbm);
           srv.send_to(ev.cid,
             "S:exported {len(xbm.vertices)} vertices to {ev.payload} — extent "
           + "{xbb.aabb_max.x - xbb.aabb_min.x},{xbb.aabb_max.y - xbb.aabb_min.y},"
@@ -5095,15 +5095,15 @@ fn main() {
                 "S:import refused ({gr.gr_code}) {gr.gr_detail}");
               println("editor: import refused ({gr.gr_code}) {gr.gr_detail}");
             } else {
-              ihx = world_to_hex(wk.wk_x, wk.wk_z);
-              icol = world_column(wld, ihx.ha_q, ihx.ha_r);
+              (ihx_q, ihx_r) = px_to_hex(wk.wk_x, wk.wk_z);
+              icol = world_column(wld, ihx_q, ihx_r);
               itop = 0;
               for ie in icol.co_cells {
                 if hex_voxel::hex_occupied(ie) { itop = ie.h_height as integer ?? 0; }
               }
               // It is DRESSING, like any other prop — imported geometry is set
               // dressing, not landscape, so it goes where `D1` puts it.
-              icur = world_dressing(wld, ihx.ha_q, ihx.ha_r);
+              icur = world_dressing(wld, ihx_q, ihx_r);
               icells: vector<hex_voxel::Hex> = [];
               for ik in icur.co_cells {
                 if hex_voxel::hex_occupied(ik) { icells += [ik]; }
@@ -5111,17 +5111,17 @@ fn main() {
               icells += [hex_voxel::Hex { h_height: (itop as u16? ?? 0),
                                           h_material: (hex_editor::PROP_MAT as u8? ?? 0),
                                           h_item: (hex_editor::PROP_ITEM_MAX as u8? ?? 0) }];
-              world_set_dressing(wld, hex_voxel::Column { co_q: ihx.ha_q,
-                                                          co_r: ihx.ha_r,
+              world_set_dressing(wld, hex_voxel::Column { co_q: ihx_q,
+                                                          co_r: ihx_r,
                                                           co_cells: icells });
               imid = IMPORT_BASE + n_imported;
               n_imported = n_imported + 1;
-              iw = hex_to_world(ihx.ha_q, ihx.ha_r, itop);
+              iw = hex_to_world(ihx_q, ihx_r, itop);
               srv.broadcast("M:{imid};0;{hex_mesh::mesh_wire(gr.gr_mesh, 0.55, 0.45, 0.30)}");
               srv.broadcast("T:{imid};{hex_mesh::mat_wire(mat4_translate(iw.x, iw.y, iw.z))}");
               srv.send_to(ev.cid,
                 "S:imported {len(gr.gr_mesh.vertices)} vertices as mesh {imid} "
-                + "at {ihx.ha_q},{ihx.ha_r}");
+                + "at {ihx_q},{ihx_r}");
               println("editor: imported {len(gr.gr_mesh.vertices)} vertices as {imid}");
             }
           }
@@ -5132,8 +5132,8 @@ fn main() {
           // author stands and saying the sentence. The prop gate asked for this move
           // in its own header, and `tests/session.loft` holds the accumulation claim
           // that came with it.
-          phx = world_to_hex(wk.wk_x, wk.wk_z);
-          pdr = hex_editor::prop_at(wld, phx.ha_q, phx.ha_r,
+          (phx_q, phx_r) = px_to_hex(wk.wk_x, wk.wk_z);
+          pdr = hex_editor::prop_at(wld, phx_q, phx_r,
                                     ev.payload as integer ?? 1);
           if pdr.dr_code == hex_editor::DR_ITEM {
             // A prop's identity is a NAME in a palette, not a magnitude — so the
@@ -5189,14 +5189,14 @@ fn main() {
           println("editor: trigger refused — in part mode ('{part_name}')");
           } else {
           tname = ev.payload;
-          thx = world_to_hex(wk.wk_x, wk.wk_z);
-          tcol = world_column(wld, thx.ha_q, thx.ha_r);
+          (thx_q, thx_r) = px_to_hex(wk.wk_x, wk.wk_z);
+          tcol = world_column(wld, thx_q, thx_r);
           ttop = 0;
           for te in tcol.co_cells {
             if hex_voxel::hex_occupied(te) { ttop = te.h_height as integer ?? 0; }
           }
           tforeign = name_is_foreign(tname);
-          trigs += [Trigger { tg_id: next_trig, tg_q: thx.ha_q, tg_r: thx.ha_r,
+          trigs += [Trigger { tg_id: next_trig, tg_q: thx_q, tg_r: thx_r,
                               tg_h: ttop, tg_name: tname,
                               tg_broken: false, tg_foreign: tforeign }];
           if tforeign {
@@ -5205,8 +5205,8 @@ fn main() {
             println("editor: trigger {next_trig} foreign binding {tname}");
           } else {
             srv.send_to(ev.cid,
-              "S:trigger {next_trig} at {thx.ha_q},{thx.ha_r} height {ttop} bound to {tname}");
-            println("editor: trigger {next_trig} at ({thx.ha_q},{thx.ha_r}) height {ttop}");
+              "S:trigger {next_trig} at {thx_q},{thx_r} height {ttop} bound to {tname}");
+            println("editor: trigger {next_trig} at ({thx_q},{thx_r}) height {ttop}");
           }
           next_trig = next_trig + 1;
           }
@@ -5895,7 +5895,7 @@ fn main() {
             srv.send_to(ev.cid, "S:stencil refused — {fit_why(rfit)}");
             println("editor: stencil refused — {fit_why(rfit)}");
           } else {
-          shx2 = world_to_hex(wk.wk_x, wk.wk_z);
+          (shx2_q, shx2_r) = px_to_hex(wk.wk_x, wk.wk_z);
           anch = (wk.wk_y / HEIGHT_SCALE + 0.5) as integer ?? 0;
           if stamp_part != "" && in_part {
             // ── THE GESTURE THAT MAKES A REFERENCE — plan 17 `A7.3f` ────────
@@ -5936,7 +5936,7 @@ fn main() {
               // looking would refuse most placements for a reason about the lattice
               // that the gesture never mentioned. A turn is its own gesture, and it
               // does not exist yet.
-              ist_new += [hex_part::PartInst { pi_q: shx2.ha_q, pi_r: shx2.ha_r,
+              ist_new += [hex_part::PartInst { pi_q: shx2_q, pi_r: shx2_r,
                                                pi_h: anch, pi_facing: 0,
                                                pi_part: stamp_part }];
               ist_bind = hex_part::part_bindings(wld);
@@ -5956,17 +5956,17 @@ fn main() {
                   // `place_part` uses — and it is measured from the display world
                   // on the next rebuild, so a generous radius here is what makes
                   // the derived cells appear.
-                  mark_dirty(dirty, shx2.ha_q, shx2.ha_r, STENCIL_R + 2);
+                  mark_dirty(dirty, shx2_q, shx2_r, STENCIL_R + 2);
                   srv.send_to(ev.cid, "S:instance {len(ist_new) - 1} of '{stamp_part}' "
-                                    + "at ({shx2.ha_q},{shx2.ha_r},{anch}) — a reference, "
+                                    + "at ({shx2_q},{shx2_r},{anch}) — a reference, "
                                     + "not a stamp");
                   println("editor: instance {len(ist_new) - 1} '{stamp_part}' in part "
-                        + "'{part_name}' at ({shx2.ha_q},{shx2.ha_r},{anch})");
+                        + "'{part_name}' at ({shx2_q},{shx2_r},{anch})");
                 }
               }
             }
           } else if stamp_part != "" {
-            place_part(srv, ev.cid, wld, dirty, stamp_part, shx2.ha_q, shx2.ha_r, anch);
+            place_part(srv, ev.cid, wld, dirty, stamp_part, shx2_q, shx2_r, anch);
           } else {
           // ⚠ `A2.3` — THE PROCEDURE NO LONGER PLACES. It BUILDS a part in a
           // scratch world, and `part_place` stamps it, so every house that lands
@@ -5986,12 +5986,12 @@ fn main() {
             srv.send_to(ev.cid, "S:stencil refused — {swhy2}");
             println("editor: stencil refused — {swhy2}");
           } else {
-          stst = part_place(wld, spart, shx2.ha_q, shx2.ha_r, anch);
+          stst = part_place(wld, spart, shx2_q, shx2_r, anch);
           if stst.ps_code != PS_OK {
             srv.send_to(ev.cid, "S:stencil refused ({0 - 10 - stst.ps_fit}) {stst.ps_why}");
             println("editor: stencil refused ({0 - 10 - stst.ps_fit}) — {stst.ps_why}");
           } else {
-            mark_dirty(dirty, shx2.ha_q, shx2.ha_r, STENCIL_R + 2);
+            mark_dirty(dirty, shx2_q, shx2_r, STENCIL_R + 2);
             srv.send_to(ev.cid,
               "S:{say_stencil(stst.ps_cells, stst.ps_below, stst.ps_above)}");
             println("editor: stencil placed {stst.ps_cells} cells, kept {stst.ps_below} "
@@ -6023,14 +6023,14 @@ fn main() {
             println("editor: scatter refused — {fit_why(sfit)}");
             continue;
           }
-          vhx = world_to_hex(wk.wk_x, wk.wk_z);
-          nv = scatter(wld, vhx.ha_q, vhx.ha_r, SCATTER_R, sc_sp, sc_dn);
-          mark_dirty(dirty, vhx.ha_q, vhx.ha_r, SCATTER_R + 1);
+          (vhx_q, vhx_r) = px_to_hex(wk.wk_x, wk.wk_z);
+          nv = scatter(wld, vhx_q, vhx_r, SCATTER_R, sc_sp, sc_dn);
+          mark_dirty(dirty, vhx_q, vhx_r, SCATTER_R + 1);
           srv.send_to(ev.cid, "S:{say_scattered(nv, sc_sp, sc_dn)}");
           println("editor: scattered {nv} of species {sc_sp} at density {sc_dn}");
         } else if ev.msg_id == MSG_FIELD {
-          fhx = world_to_hex(wk.wk_x, wk.wk_z);
-          nfilled = field_fill(wld, fhx.ha_q, fhx.ha_r);
+          (fhx_q, fhx_r) = px_to_hex(wk.wk_x, wk.wk_z);
+          nfilled = field_fill(wld, fhx_q, fhx_r);
           if nfilled == 0 - 2 {
             // The cap is its own refusal, and unlike the open-enclosure one it
             // HAS an offer to make: the cap itself. Wearing the other message
@@ -6047,16 +6047,16 @@ fn main() {
               "S:field refused — grew past the cap {FIELD_CAP} without closing "
               + "(offer {FIELD_CAP}; the boundary is open, or the enclosure is "
               + "larger than this tool will claim)");
-            println("editor: field refused at ({fhx.ha_q},{fhx.ha_r}) — over cap");
+            println("editor: field refused at ({fhx_q},{fhx_r}) — over cap");
           } else if nfilled == 0 {
             // Reachable only if `field_fill` gains another way to decline. Kept
             // as a fallback rather than a claim about the boundary.
             srv.send_to(ev.cid, "S:field refused — nothing to fill here");
-            println("editor: field refused at ({fhx.ha_q},{fhx.ha_r})");
+            println("editor: field refused at ({fhx_q},{fhx_r})");
           } else {
             // Everything the fill touched changed, and it is bounded by
             // construction — so one dirty mark over its extent is honest.
-            mark_dirty(dirty, fhx.ha_q, fhx.ha_r, DRAW_HEXES);
+            mark_dirty(dirty, fhx_q, fhx_r, DRAW_HEXES);
             srv.send_to(ev.cid, "S:{say_field(nfilled)}");
             println("editor: field filled {nfilled} cells");
           }
@@ -6958,11 +6958,11 @@ fn main() {
     // is a function of the cell you stand in, so re-deriving it per frame would
     // be work with no observable effect. This is the bounded, incremental
     // re-derivation `L3` asks for, at the granularity the field itself has.
-    hxa = world_to_hex(wk.wk_x, wk.wk_z);
-    if !have_hex || hxa.ha_q != last_hq || hxa.ha_r != last_hr {
+    (hxa_q, hxa_r) = px_to_hex(wk.wk_x, wk.wk_z);
+    if !have_hex || hxa_q != last_hq || hxa_r != last_hr {
       have_hex = true;
-      last_hq = hxa.ha_q;
-      last_hr = hxa.ha_r;
+      last_hq = hxa_q;
+      last_hr = hxa_r;
 
       // ⚠ THE LEVEL STAMP USED TO BE HERE, AND ONLY BECAUSE `last_hq`/`last_hr`
       // WERE — plan 22 `T1`. It is the walker's business, not the streamer's: it is
@@ -6975,7 +6975,7 @@ fn main() {
       // does now. `cellar.keys` teleports four times with levelling ON and its world
       // is `c96b2ce7a569fa2dd88577a71a507f48` either way — which is what says the
       // difference is a pass of the pump and not a pad.
-      home = gm::chunk_of(hxa.ha_q, hxa.ha_r, CHUNK_SHIFT);
+      home = gm::chunk_of(hxa_q, hxa_r, CHUNK_SHIFT);
       next_loaded: vector<integer> = [];
       // ⚠ THE COORDS BESIDE THE IDS, because `enc_coord` packs and nothing unpacks.
       // The digest needs `(cx, cz)` and this is the one loop that has them for the
@@ -6990,7 +6990,7 @@ fn main() {
       added = 0;
       for scz in home.cy - CHUNK_R..home.cy + CHUNK_R + 1 {
         for scx in home.cx - CHUNK_R..home.cx + CHUNK_R + 1 {
-          if chunk_in_range(scx, scz, hxa.ha_q, hxa.ha_r) {
+          if chunk_in_range(scx, scz, hxa_q, hxa_r) {
             cid = gm::enc_coord(scx, scz);
             next_loaded += [cid];
             next_coords += [DirtyChunk { id: cid, cx: scx, cz: scz }];

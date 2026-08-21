@@ -310,3 +310,44 @@ pub fn emit_cylinder_post(
     m.triangles += [Triangle { a: cp_base, b: cp_base + 2, c: cp_base + 3 }];
   }
 }
+
+// The box a mesh occupies — plan 19 `L6.3a`.
+//
+// ⚠ IT WAS IN `moros_render` AND HAS NO MOROS CONTENT. `Mesh` is `graphics`'s and the
+// answer is two corners; the only reason a lavition program imported a Moros package for
+// its last two call sites was where this happened to be written. It joins the drawing
+// primitives, which is what `B1b.2c.2` moved here and for the same reason.
+//
+// ⚠ AN EMPTY MESH ANSWERS THE ORIGIN, NOT AN ERROR — a degenerate box at (0,0,0), so a
+// caller that forgot to check gets a zero-size box rather than a wrong one.
+pub struct Aabb {
+  aabb_min: Vec3,
+  aabb_max: Vec3,
+}
+
+pub fn mesh_aabb(m: Mesh) -> Aabb {
+  if len(m.vertices) == 0 {
+    return Aabb {
+      aabb_min: vec3(0.0, 0.0, 0.0),
+      aabb_max: vec3(0.0, 0.0, 0.0),
+    };
+  }
+  ma_mn_x = m.vertices[0].pos.x;
+  ma_mn_y = m.vertices[0].pos.y;
+  ma_mn_z = m.vertices[0].pos.z;
+  ma_mx_x = ma_mn_x;
+  ma_mx_y = ma_mn_y;
+  ma_mx_z = ma_mn_z;
+  for ma_mv in m.vertices {
+    if ma_mv.pos.x < ma_mn_x { ma_mn_x = ma_mv.pos.x; }
+    if ma_mv.pos.y < ma_mn_y { ma_mn_y = ma_mv.pos.y; }
+    if ma_mv.pos.z < ma_mn_z { ma_mn_z = ma_mv.pos.z; }
+    if ma_mv.pos.x > ma_mx_x { ma_mx_x = ma_mv.pos.x; }
+    if ma_mv.pos.y > ma_mx_y { ma_mx_y = ma_mv.pos.y; }
+    if ma_mv.pos.z > ma_mx_z { ma_mx_z = ma_mv.pos.z; }
+  }
+  Aabb {
+    aabb_min: vec3(ma_mn_x, ma_mn_y, ma_mn_z),
+    aabb_max: vec3(ma_mx_x, ma_mx_y, ma_mx_z),
+  }
+}
