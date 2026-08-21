@@ -518,6 +518,38 @@ nearest decidable thing instead (no gate names Moros in code) and says so at the
    is really arithmetic**: 11 sites is small enough that *move the five modules*, *rename the
    package* and *give the editor its own rig vocabulary* are all affordable, and the choice should
    be made on which one leaves `moros_sim` coherent — not on which is least work.
+   ✅ **ANSWERED 2026-08-21 — SPLIT, NOT RENAME, and the measurement reversed the first
+   reading.** *Rename the package* looked right on the plan's own criterion: 139 public names
+   and **not a game concept among them** — `asm_cart`, `asm_balloon`, `asm_trailer`, `asm_wing`,
+   `camera_apply_input`, `editor_tick`, `hitch_*` — which is decision 11's shape a third time,
+   and both earlier instances (`moros_ui`, `moros_terrain`) were renames. ⛔ **It is not
+   affordable.** `moros_sim` itself needs **36 names across three Moros packages**: 15 from
+   `moros_map` (`Map`, `map_get_hex`, `HexAddress`, `stencil_*`), 12 from `moros_editor`
+   (`UndoStack`, `StencilDef`, `builtin_*`), 9 from `moros_render` (`RenderCamera`, `CameraMode`,
+   `camera_*`, `pick_hex`). A `hex_*` package depending on `moros_*` is the exact violation
+   `tools/layering.sh` exists to catch — the rename would have moved the package INTO the check
+   it fails.
+
+   ✅ **THE RIG THIRD MOVES, AND IT IS CLEAN.** `assembly` (750), `frames` (309) and `ground`
+   (544) — 1,603 of 3,148 lines, and the eight names the server still imports all live in them —
+   use **nothing** from `moros_map`, `moros_editor` or `moros_render`. Measured name by name,
+   all three answer *NOTHING*. What they import is `graphics` and **`hex_body`** — the sibling's
+   published rig model — so they are a layer ON TOP of `Rig`/`Joint` rather than a second rig
+   vocabulary, which is what open question 5 feared.
+
+   ⚠ **THE SEAM IS NOT FREE AND THE PLAN SHOULD SAY SO.** `bend`, `shape`, `tether` and `skin`
+   all use `Assembly`/`Frame`, so the remainder becomes a CONSUMER of the moved package —
+   `moros_sim` → new package, the same arrow `moros_render` → `hex_proj` took at `L6.3a`. That
+   is layering, not breakage, but it is not a clean halving and the estimate should not pretend
+   otherwise.
+
+   ⏭ **WHAT IS LEFT IS THE MOVE**: three modules and their tests into a lavition package, the
+   remainder rewired to depend on it, the server's `msim::` → the new name, and `CONSUMERS` /
+   `PROGRAM_DEBT` in `tools/layering.sh` lowered. ⚠ The NAME is the one thing to settle before
+   `L7` publishes anything — `hex_rig` and `hex_sim` are both free in `lib/`, the registry and
+   the siblings (checked), but `hex_body` already publishes `Rig`/`Joint`, so a name that claims
+   the rig concept outright would read as a competitor to a package it builds on.
+
 6. **Does `moros_render` split, or does the editor stop needing it?** ⚠ **New, from `L6`'s probe.**
    42 sites over 6 names, and they are two different problems wearing one import: `world_to_hex`
    (29) is a **projection** whose home already exists (`hex_proj` holds its inverse) and whose only
