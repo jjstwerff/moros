@@ -1,11 +1,18 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
 # JOURNAL — how the editor got here, newest first
 
-⚠ **THE RECORD HAS A GAP: 2026-08-12 … 08-19 WERE NEVER WRITTEN HERE.** The entries jump
-from Session 19 (08-11) to Session 20 (08-20), and what happened between lives only in
-STATE.md — which thins, because it is the handoff. So the numbering counts *journalled*
-sessions, not sessions. Flagged rather than quietly renumbered: a reader counting entries
-would otherwise read the gap as nothing having happened.
+⚠ **SESSIONS 20–26 ARE RECONSTRUCTIONS, NOT CONTEMPORANEOUS RECORD.** 2026-08-12 … 08-19
+were never written here; they were backfilled on 08-21 **from STATE.md**, which is the
+*thinned* handoff. So those seven entries are necessarily thinner than an entry written on
+the day, and anything STATE.md had already dropped is gone rather than recoverable. They are
+grouped **by date** because STATE.md records findings and dates and not session boundaries —
+one date may have been two sittings, and the file's own numbering was already imperfect
+(there are two Session 14s). Everything from Session 19 down, and Session 27, was written
+at the time.
+
+⚠ **AND THE BACKFILL IS WHAT MAKES STATE.md SAFE TO THIN.** Those sections are the only
+copy of that work today, which is why they are still in the handoff a reader is told to
+open first. Now that they are here, cutting them from STATE.md loses nothing.
 
 **Why this is a separate file.** [STATE.md](STATE.md) says *read it first after a break*,
 and it had grown to 2,446 lines of session log — so the one document a reader is told to
@@ -20,7 +27,7 @@ sections that were durable in form and stale in fact (§ *What exists*, § *What
 
 ---
 
-## Session 20 — 2026-08-20: a library nobody had agreed to, and three checks that could not fail
+## Session 27 — 2026-08-20: a library nobody had agreed to, and three checks that could not fail
 
 ⚠ **THE JOURNAL SKIPS 2026-08-12 … 08-19.** Those sessions are in STATE.md and were never
 written here, so this is the next *journalled* session rather than the twentieth. Said out
@@ -161,6 +168,245 @@ a tampered index produces, so the natural first move is trust roots. Filed as
 [#1045](https://github.com/loft-lang/loft/issues/1045); the loft side then measured the layer
 underneath, where `std::fs::write` truncates before it fills — **a partial index in 194 of
 200 concurrent reads.** I named a real symptom and stopped one level above the cause.
+
+---
+
+## Session 26 — 2026-08-19: the camera stayed where the author left it, and three builds in one day
+
+⚠ *Reconstructed from STATE.md.*
+
+**`local_tick` re-solved the camera when the YAW changed and at no other time.** A walk moves
+the pose and not the yaw, so the view stayed put: six `w` presses walked the author to
+**(2.347, 0)** while the camera still aimed at **x = 0**, solved once at boot. **The author
+walks out of their own frame.**
+
+⚠ **THE COMMENT ABOVE THE GUARD SAID THE RIGHT THING AND THE CONDITION UNDER IT DID NOT** —
+*the camera is DERIVED from the pose, so it is re-solved on any tick that moved one*,
+implemented as `if turned.au_yaw != a.au_yaw`. Nobody compared the two, because a turn is the
+only case the author pictured; the comment's second clause is entirely about turning. The
+guard is the pose now.
+
+⚠ **AND IT WAS A TWO-DRIVER DIVERGENCE.** The server has always re-solved every tick. This is
+the plan whose one invariant is *the page is the same editor with the authority local instead
+of remote*.
+
+### Three of my own checks were wrong before the subject was
+
+| | |
+|---|---|
+| `D4` v1 | a second screen RECT holding still — a pixel answering a question about a camera |
+| `D4` v2 | *solved once* — true only because the camera was **broken**; the fix makes a count of one the bug asserting itself |
+| `G1b` v1 | `aim x == author x` — holds only at yaw 0, and **my own comment one line above said the claim was a difference, not a position** |
+
+✅ **What survives all three is the invariant: `|aim − author|` is CONSTANT** — 0.6870 at yaw 0
+after a 0.32 walk and 0.6870 at yaw 0.58 after a 2.35 walk. One number, two poses, no
+convention to get wrong.
+
+### The toolchain moved twice inside one session
+
+`~/.local/bin/loft` rebuilt at 20:29 (`cebf52d0…`), then again at 21:15 (`98262fdb…`) — three
+builds in one day, one version string, no announcement. **Record the hash, never the date and
+never the version.** Two source constructs stopped compiling and both were deliberate
+tightenings with committed expected output, not regressions.
+
+⛔ **And `loft verify-self` could not verify either install, exiting 0 to say so** —
+[#1012](https://github.com/loft-lang/loft/issues/1012). For a corruption detector, *verified
+intact* and *could not verify anything* were the same answer.
+
+---
+
+## Session 25 — 2026-08-18: the house had two of its four walls missing, and nobody could see it
+
+⚠ *Reconstructed from STATE.md.*
+
+**Read this one first.** `place_house` printed `84 wall edges` and the store held **23** — the
+near wall complete at 12, the left at 9, the right 4 of ~9, and **the far wall reduced to its
+two corner posts.** An author standing inside their own house, facing that wall, was refused
+*no wall here to open — stand against one*.
+
+⚠ **It was pre-existing**, controlled against a worktree at `3e3ac22` and identical there. The
+printed number came from the producer's own count rather than from the store, which is why a
+green suite never saw it — *measure what was emitted, never a number the producer re-derives*
+in its purest form.
+
+### A house type could be read and not written
+
+`T1b` set out to give a house type its default OPENING and finished by finding that **no
+driver could declare a type at all**: the palette was readable by `press_verb` and writable by
+nothing but a loft test. `declare` is the way one gets into a world now.
+
+### The server cut a different door than the runner
+
+`editor_server.loft`'s `36:` handler was a **second body** of
+`hex_editor::session_open_kind` — the assembly order reversed against the library's, the
+one-edge width it replaced, and a store write that happened *before* the refusal was known.
+Two bodies of one gesture, disagreeing.
+
+### Two siblings claimed one module file name
+
+`moros_sim` and `hex_part` each held a `src/skin.loft` with **no name in common**, each saying
+a bare `use skin;`. Both suites green forever, because a package's own graph holds only
+itself — and a consumer pulling both loses one of them, decided by its own `use` line order.
+[loft#976](https://github.com/loft-lang/loft/issues/976); `use self::` is the cure, and
+`tools/basenames.sh` the guard.
+
+⚠ **`hex_way` has a one-sided angle wrap** — `while aa < lo` and never the other direction —
+in both copies, unreported, and we build against a `hex_way` the sibling has already fixed.
+
+### An instrument trap that cost four false greens
+
+`make X 2>&1 | tail -N; echo "rc=$?"` reports **`tail`'s** exit code, which is always 0. Four
+`rc=0` lines meant nothing, exposed only by a stale `.test-logs` showing 587 tests where 589
+were expected. ⚠ **The same bug reappeared twice more the same day** — in a helper's status
+read through `| head -1`, and in a "scoped" test run that was the full sweep because a
+Makefile edit had silently not applied.
+
+---
+
+## Session 24 — 2026-08-17: the mode's own premise refuted its table
+
+⚠ *Reconstructed from STATE.md.*
+
+**`D2` was going to bind verbs to the derived mode; its own premise refutes the table.** Over
+25 stations the design's table would refuse **8** where the gesture works and grant **4** where
+there is no wall. The mode and the opening verb disagree **in both directions**, so the mode is
+not the authority — the gesture is.
+
+**`es_roofs` had exactly one writer and it sat at the SOCKET**, five lines after `press_verb`
+returned. So `editor_run` and the page placed houses that entered no registry at all — and the
+registry is what `hex_mesh` draws a gable from. The roof plan is `place_house`'s now, filed
+from the footprint it stamped the walls on.
+
+⚠ **THE TOOLCHAIN HAD CHANGED UNDER THE DAY'S WORK.** `/usr/local/bin/loft` was replaced at
+2026-08-16 23:08 with the version string unmoved, so every measurement behind the `T1`/`T2`
+commits had run on the *previous* binary. Re-checked: `make fast` 157 files, exit 0. ⛔ **And
+that re-check could not see the browser** — the `--html` page had stopped working entirely
+(loft#950) and nothing said so for a day.
+
+---
+
+## Session 23 — 2026-08-15: the keyboard becomes the person's
+
+⚠ *Reconstructed from STATE.md.*
+
+**The binding is DATA and the verbs are on screen.** `hex_editor::KeyMap` is the definition
+layer and both drivers read it: `editor_run` resolves a script's `key` line through the map,
+and every input site in the client names a **verb** while `st.keys` says which finger reaches
+it.
+
+- **`M3`** — arm with `Escape`, click a slot, press a key. The client's whole share is **two
+  fences**, `act` for verbs and `wire` for everything without one, rather than a condition on
+  each of ten edge detectors.
+- **`M5a`** — `rebind_scan` is the rising edge the hardware does not have: `graphics` offers
+  `gl_key_pressed(code)` and no event queue, so *did they just press it* is built from two
+  looks at the whole keyboard. Walking forward on `w` while pressing `Escape` used to bind `w`
+  before the person had chosen anything.
+- **`M5b`** — the keyboard survives a reload. `keymap_delta` writes only the rows that DIFFER
+  from the default, so a map restores onto *today's* default rather than yesterday's.
+- **`M4`** — `verb_of` deleted. ⚠ **The suite read 522 → 522, which is the wrong instrument**:
+  a deletion makes tests pass by removing their subject.
+- **`K3` · `X` and `B`+`C`** — the last keys. Every key the scripts press is a verb now.
+- **`B4`** — build, close the tab, come back. `local_persist` compares `w_tau` **in the frame
+  loop, not on the gesture path**, because a hook on the gesture path persists what that path
+  writes and silently stops covering whatever later writes another way.
+- **`K2b`** — 91 lines over 32 files converted, each script run beside its own pre-conversion
+  self **out of git**, equal on the world key, the session digest, the saved bytes and the
+  transcript.
+
+---
+
+## Session 22 — 2026-08-14: five families of keys, and three different answers to one shape
+
+⚠ *Reconstructed from STATE.md.*
+
+**`K3` is *drop the `key` spelling from scripts*, blocked on eleven keys with no verb** — and
+every underlying gesture was already in `hex_editor`, so the work was naming rather than
+building. The interesting part is that *two keys on one message* produced **three different
+answers in four slices**:
+
+| | |
+|---|---|
+| `Y`/`T` seats · `J`/`K`/`V` annexes | **collapse** — they differ by the THING, which is a selection |
+| `E`/`Q` stairs | **two verbs** — they differ by DIRECTION, which is part of the gesture |
+| `Z`/`X` hole and slab | **two verbs for a third reason** — not mirror images |
+
+⚠ **A global stood in for the world, twice.** `hex_proj::HEIGHT_SCALE` is right on the
+landscape and wrong on a part world authored at another unit — found in the stair slice, and
+again in the mesher, where **all 72 sites** multiplied by it.
+
+**The demo grew a catalogue with pictures**: 20 part thumbnails and 11 material swatches
+composed by the page from its own baked library, 23 files baked to `/data/parts`.
+
+⛔ **The client was sending `44:` where it meant `51:`** — part MODE rather than part CHOICE.
+Caught by reading the server's id table, not by anything going red: both are "a message about
+a part", and the wrong one is a plausible-looking editor doing something drastic.
+
+**`B1c.3` closed the walk**: two gravities became honest by becoming two packages.
+
+---
+
+## Session 21 — 2026-08-13: the page becomes an editor, and three instruments were blind first
+
+⚠ *Reconstructed from STATE.md.*
+
+The largest reconstructed session — plan 22's `B1a` through `B2`/`B3`, plus the mesher
+extraction.
+
+**`B1b.1a` — the sabotage PASSED, and its passing is the finding.** The client's status line
+read `ps_status: "moros editor — connected"`, a literal set at panel construction *before any
+socket existed*, with no other writer in the file. The panel claimed a connection it had never
+made. It is derived now.
+
+**`B1b.0` — the tree held two answers to *what world is this*.** `ε` and `θ` are `world_new`'s
+last two arguments and `ε` is the fold rule: a world at 8 accepts a storey stack a world at 10
+refuses. The server said 10/4 and `editor_run` said otherwise.
+
+**`B1b.2` — the page draws what it wrote**, and ⛔ nothing had been on screen at all, with
+`draw_world` saying why in one line.
+
+**The mesher moved out in four steps and each found something.** `c.2` put the drawing
+primitives in the wrong package because ⛔ **a grep concluded the editor was their only
+consumer while excluding the file that used them.** `c.4a` took 1,744 lines out of
+`editor_server.loft` (9,508 → 7,764) — *what the probe measured, the compiler now enforces*.
+`c.4b` found a shipped server bug: a chunk's surfaces reach a client two ways — the dirty
+flush and the chunk stream — and they were two copies of one loop that had drifted.
+
+**`B2`/`B3` — the demo exists**, and most of it was already true: `_site/index.html` opens
+from `file://` with no listener at either end, goes local in 180 dials, draws its own world.
+
+⛔ **`P6` cancelled a phase.** `--html` bound **0 of 20** `fs_*` names — *a page that draws
+cannot store* — raised [loft#851](https://github.com/loft-lang/loft/issues/851).
+
+**`B1c.1` — a continuous turn, a quantised gesture.** One run holds both the refusal that has
+stood in front of the page since `B1b.1b` and the 27 cells that follow a single turn.
+
+---
+
+## Session 20 — 2026-08-12: a deletion is not proved by a green suite
+
+⚠ *Reconstructed from STATE.md.*
+
+**`hex_editor::press(key)` and its private `open_press` are gone**, leaving two levels:
+`verb_of(key)` names a verb, `press_verb(…, verb)` runs it.
+
+⚠ **A DELETION MAKES TESTS PASS BY REMOVING THEIR SUBJECT**, so `make fast` going green
+proves nothing about it. That is the session's rule, and `V2b` is where it bit: no equality
+could see the step it took, because the thing removed was the last production caller.
+
+⚠ **And `K1`'s own negative control was blind** — the row meant to catch a regression could
+not have.
+
+**GROUND_DEFAULT `G4`** — `w_ground` on `VoxelWorld`, `world_set_ground` with `R1` checked, a
+`GRND` section in the codec. The default exists and nothing reads it yet, which the entry says
+in its title rather than leaving to be discovered.
+
+⚠ **The profiler cannot be pointed at the tests.** `LOFT_PROFILE=1` arms on a program and on
+nothing else — `loft test`, `loft test <name>` and `loft --tests <file>` all report nothing —
+so `probe/perf/fixture.loft` exists to give the sampler a program that does what a test does.
+
+**The camera is no longer the character.** All five camera modes are derived from the
+character's pose, so until `eye` the only way to change a view was to move the character — and
+moving the character moves where the next gesture lands.
 
 ---
 

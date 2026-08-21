@@ -10,6 +10,14 @@ read it first after a break.
 | the *order of work* | [EDITOR_LADDER.md § The order of work](EDITOR_LADDER.md#the-order-of-work) |
 | **how it got here** | **[JOURNAL.md](JOURNAL.md)** — eighteen sessions, newest first |
 
+✅ **AND THE SESSIONS BELOW ARE IN THE JOURNAL NOW — backfilled 2026-08-21.** 2026-08-12 …
+08-19 existed only here, which is why sections describing a *moment* are still in the file a
+reader is told to open first. They are [JOURNAL.md](JOURNAL.md) Sessions 20–26 now, so
+**cutting them from here loses nothing** — the next reader who finds this file too long
+should start there. ⚠ Those journal entries are reconstructions *from this file*, so anything
+this file had already thinned is gone rather than recoverable; what is here is the fuller
+copy until someone cuts it.
+
 ⚠ **This file was 2,446 lines**, which made the one document a reader is told to open the
 longest in the tree, with the current state buried in session logs. The record moved to
 JOURNAL.md unthinned; what stays here is what is true **now**. ⚠ **The per-STEP record belongs
