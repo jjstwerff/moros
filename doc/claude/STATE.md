@@ -603,9 +603,9 @@ edges — neither of which the mechanism's own eight gates had caught.
 
 ## The record
 
-Thirteen sessions of how this got here, newest first, is **[JOURNAL.md](JOURNAL.md)** — the
-per-session entries, the numbered item log, and the superseded planning sections. Nothing
-was thinned on the way out; ⚠ read a dated claim in it as dated. **Sessions 10–12** are the
+How this got here, newest first, is **[JOURNAL.md](JOURNAL.md)** — the per-session entries,
+the numbered item log, and the superseded planning sections. ⚠ Read a dated claim in it as
+dated, and ⚠ **its Sessions 20–26 WERE thinned on the way out** — see the exception below. **Sessions 10–12** are the
 arc from *a part is a world* to *a part with joints, a hinge and a mesh*; **session 13** is the
 door on screen, §P9 argued out, and six loft installs in eleven hours.
 
@@ -616,6 +616,29 @@ sessions 10–12 and came back to ~400 on 2026-08-04. It reached **907** in sess
 back to ~500 on 2026-08-06. **When a session ends, its entry moves out** — the handoff describes
 the present, and the record keeps the past. Moving is not thinning: a finding that cost a day is
 worth more than the lines it takes, which is why nothing is ever deleted on the way.
+
+⛔ **AND ON 2026-08-21 THAT RULE WAS BROKEN ON PURPOSE — READ THIS BEFORE THE NEXT CUT.** The
+file had reached 4,467 lines. 08-12 … 08-19 was **reconstructed** into JOURNAL Sessions 20–26
+rather than moved — the entries were written *from* these sections and are thinner than them —
+and plan 17's 535 lines, the gates section and three landed-plan sections were **deleted**
+outright against the plan READMEs that already carried them. 4,467 → 630.
+
+⚠ **THE JUSTIFICATION, AND IT IS A TRADE RATHER THAN A FREE MOVE:** a handoff nobody finishes
+reading costs more than a detail nobody looks up. Every design finding was checked to have a
+durable home before its section went — the table under *THE SESSIONS THAT WERE HERE* names
+each one. What is gone is the *reasoning* behind individual steps, and it is gone one-way.
+
+⛔ **WHAT IT COST, MEASURED RATHER THAN ESTIMATED: TWO LIVE GUARDS, AND THE SECTION BELOW
+PREDICTED BOTH.** A `B4` row pointing at *the section above* went dangling, and
+**`### Built and not yet called` was deleted entire** — a standing list of this tree's
+commonest defect, which survives only because a read-back of the thinned file went looking for
+what was missing. It is restored and re-verified at the top of this file. ⚠ A sweep of every
+other thinning in this repo's history found **no** guard lost anywhere else: the only ones
+were mine, in these two cuts.
+
+⚠ **SO THE RULE STANDS AND THE EXCEPTION IS NAMED.** If the file grows again, MOVE. If it is
+cut again, read every section before removing it — a cut by date missed 535 lines of the same
+thing, and a cut by section still took a guard out of the middle of one.
 
 ⚠ **AND EVERY TIME, MOST OF WHAT GREW BACK WAS ALREADY WRITTEN DOWN TWICE.** The 447 lines moved
 out on 2026-08-04 were per-step findings that `plans/17-parts/README.md` already carried, section
