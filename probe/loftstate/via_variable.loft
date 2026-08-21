@@ -1,0 +1,8 @@
+// The exact shape: text indexed by arithmetic on a callee declared LOWER.
+fn main() {
+  s = "abcdef";
+  start = hlevel() + 1;
+  println("{s[start..start + 2]}");
+}
+
+fn hlevel() -> integer { 2 }

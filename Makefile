@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -838,6 +838,13 @@ probe-t4:
 # script can make, that pressing a KEY reaches a verb, because `editor_run` speaks
 # verbs and held-key bits and skips the keymap layer by design. What moved is what
 # never needed a browser: cells written, worlds keyed, refusals worded, feet, landings.
+# ⚠ WHICH LOFT AM I ON — two cells, three states. Run it after any `make install-user`,
+# because `loft --version` says `2026.8.0` for every build on this box and cannot tell them
+# apart. Deliberately NOT in `make fast`: it reports on somebody else's binary, and a red
+# there would be the wrong signal in our own loop.
+loft-state:
+	@sh probe/loftstate/run.sh
+
 probe-headless:
 	@sh probe/headless/run.sh
 
