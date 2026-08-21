@@ -32,6 +32,84 @@ grows back.
 > [EDITOR_SUBSTRATE.md § Why this exists](EDITOR_SUBSTRATE.md).
 
 
+## ⏭ WHAT THE EDITOR DOES TODAY — the thing itself, before any of the findings
+
+**You walk around inside a hex-voxel world and build in it.** Not a map you edit from above:
+there is an author standing in the world, gestures land where they are standing and facing,
+and the camera is derived from their pose.
+
+⚠ **THE VERBS ARE WHAT IT CAN DO, AND THE LIST IS THE WHOLE LIST.**
+
+| | |
+|---|---|
+| the ground | `raise` · `lower` · `level` (freeze a grade and cut it as you walk) |
+| runs | `run` — open, walk, close; a road or a wall along the path taken |
+| enclosure | `fence` · `wall` |
+| buildings | `place` (a procedural house, or the chosen PART instead) · `storey` above · `cellar` below · `opening` (door or window, profile from the selection) |
+| fittings | `seat` · `annex` · `slab` · `hole` · `stair_up` · `stair_down` |
+
+**A catalogue decides what a verb makes.** Eleven materials (`grass` `road` `field` `tree`
+`roof` `wall` `floor` `frame` `soffit` `rock` `water`) and 20 parts under `data/parts`, drawn
+in the side panel with a rendered thumbnail each — never a loaded image. Choosing a part makes
+`place` build **that** instead of the procedural house.
+
+**Everything is rebindable.** A key names a *verb*; the binding is data, edited from inside the
+editor (`Escape`, click a slot, press a key) and written to disk, so it survives a reload. The
+wire carries the verb and never the key.
+
+**Five camera modes over one query** — AUTO, FOLLOW, SNUG, CUTAWAY (de-roofed, for editing) and
+EYES (first person). The mode decides; `shelter_at` only observes.
+
+**It runs three ways over one library**, and that is the point rather than a convenience:
+
+| | |
+|---|---|
+| `src/editor_server.loft` | a socket. Multi-client, the authority remote |
+| `src/editor_client.loft` | the picture. `--html` in a browser, **or** the same client against a server — the authority is LOCAL or REMOTE, one program |
+| `src/editor_run.loft` | a script, headless. `verb`/`keys`/`step`, no clock but the script's |
+
+⚠ **THE PAGE NEEDS NOTHING.** `_site/index.html` opens from `file://` with no server, no port
+and no toolchain, carries its own part library, and the world you build in it survives closing
+the tab. It attaches to a server if it is told about one.
+
+✅ **AND THE THREE AGREE, MEASURED RATHER THAN ASSERTED** — `deck.keys` run headless is
+`cea971a0…`, the server's own world **to the byte**, with no server, no socket, no browser and
+no clock. It holds because the tick body, the gestures and the store are one library
+(`hex_editor`, `hex_voxel`, `hex_mesh`) and the drivers are only I/O; `probe/k3d` keeps `deck`
+against its baseline in `make fast`.
+
+### ⛔ What it does NOT do, so nobody goes looking
+
+| | |
+|---|---|
+| a part cannot be opened for editing from either renderer | `44:` has no client binding — a script or `wscat` only |
+| a material cannot be CHOSEN | there is no `session_select_*` for materials; the panel lists them and a click says so out loud |
+| the toolbar's six buttons do nothing | superseded by the verb bar; a click is consumed and says so |
+| the editor program is not lavition-only | `tools/layering.sh`: *still imports Moros — 2 of them*. Plan 19 `L6.3` |
+| five camera scripts are checked by nothing | `K3f` — `ceiling` `cutaway` `eyes` `floorprobe` `lamp` leave the same world and session to the byte |
+
+### ⚠ Built and not yet called — re-verified 2026-08-21
+
+**This tree's commonest defect gets a standing list, because it passes CI.** A function
+written, tested green and wired to no consumer is a claim about nothing.
+
+⛔ **`hex_editor::names` — all EIGHT public functions have ZERO production callers.**
+`names_new` `name_generated` `label_named` `name_taken` `name_of` `name_free` `name_set`
+`name_refusal`. Tested at `B4`, invoked by nothing. It gets a consumer when catalogue entries
+carry author-given names. ⚠ `hex_part::meta` persists a name and the server reads it
+(`14:<roof>,<part>` acknowledges with `PART.name`), so the two want reconciling rather than
+both existing — `PART.name` is the saved one.
+
+⛔ **`44:` part mode has no client binding**, so nothing in either renderer can open a part.
+Named here rather than left to be discovered.
+
+⚠ **Thirteen of `lavition_ui`'s 33 public functions have no production caller** — listed in
+that package's README, and labelled a proposal rather than a surface, since it is published now.
+
+✅ **This session's three additions each have exactly one**: `pointer_step`, `list_row_rect`,
+`panel_hit_test`. Checked rather than assumed — that is the whole point of the list.
+
+
 ## ⚠ WHERE IT LANDED — 2026-08-20
 
 **`lavition_ui` 0.1.0 is PUBLISHED**, which closes @PLN145 `D0` — the only phase of that
