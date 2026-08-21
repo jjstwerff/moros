@@ -189,6 +189,39 @@ qualifies. Two sites dropped the qualifier instead;
 [loft#1043](https://github.com/loft-lang/loft/issues/1043), and it is in loft's own
 `LIBRARY_AUTHORING.md` §2a2 now.
 
+### ⚠ The toolchain, and how to tell one build from another
+
+⛔ **`loft --version` SAYS `2026.8.0` FOR EVERY BUILD ON THIS BOX** — five in two days, three
+on the morning of 08-21 alone, two of them eleven minutes apart. **The sha is the handle.**
+
+**Installed now: `eb4581d9…` (2026-08-21 10:38).** Everything current is measured on it —
+`make fast`, the browser tier, `lavition_ui`'s gate.
+
+✅ **`make loft-state` ANSWERS *WHICH LOFT AM I ON* IN ONE COMMAND**, stamped with the sha, and
+it is the thing to run after any `make install-user`. Two cells, three states:
+
+| | |
+|---|---|
+| both PASS | widening + deferral, complete — where we are |
+| `via_variable` PASS, `callee_direct` FAIL | pre-widening: safe by AGE, not by cure |
+| `via_variable` FAIL | ⛔ widening without a complete deferral — a text slice whose bound comes from a lower declaration will not compile |
+
+⛔ **A ONE-CELL PROBE CANNOT TELL *FIXED* FROM *TOO OLD TO BE BROKEN*, and those want opposite
+actions.** Mine had one cell and reported the toolchain sound while measuring a binary that
+predated the defect. The second cell must **FAIL** on a pre-widening build; that is what makes
+three states readable instead of two, and it came from the loft side correcting the first
+attempt. ⚠ A state is a property of a BINARY — a reading cached across a swap is silently
+wrong.
+
+⛔ **AND THE FIRST `make fast` AFTER A SWAP CAN BE RED FOR NOTHING.** `registry index signature
+INVALID — refusing to install`, un-bypassable, with the identical re-run green: the index and
+its `.sig` are rewritten non-atomically and a crossing reader catches them torn.
+**Re-run before diagnosing** — [#1045](https://github.com/loft-lang/loft/issues/1045), fix
+unmerged. Seen twice in two days on this box. ⚠ *doesn't verify against any known key* is what
+a tampered index produces, so the wrong next move is trust roots.
+
+⚠ **WARM THE TOOLCHAIN ONCE AFTER ANY LOFT INSTALL** — see § *How to run things*.
+
 ### Filed, and two already fixed
 
 | | | |
