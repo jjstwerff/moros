@@ -5,7 +5,7 @@
 
 ## Status
 
-**Designed, nothing built.** The editor keeps a **second authority**: `EditSession` holds
+**`A0p` run and it refuted its own prediction; nothing else built.** The editor keeps a **second authority**: `EditSession` holds
 shapes the store also holds, in a different form. Both reach the mesher, so **every wall is
 drawn twice** — once hugging the hex lattice, once straight; only the store is saved, so **a
 reload deletes one of the two copies**; and nothing caches per chunk, so **a single key press
@@ -58,8 +58,8 @@ Exact-invariant work — this is geometry and a round trip, not an open space.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **`A0p`** — probe: is a straight run recoverable from its own edge stamp, at all 24 headings? | XS | `probe/a0p` — stamp a run at each heading, recover, compare heading and endpoints. **Prints the worst endpoint error**, which is the number `A2`'s tolerance is set from | Open |
-| **`A1`** — the recovery pass as pure functions, with tests | M | `lib/hex_editor/tests/recover.loft` — straight runs at 24 headings, an L-bend, a ring, a one-edge stub, a gap. Fixtures whose answer is known by construction, never by calling the recovery twice | Blocked on `A0p` |
+| **`A0p`** — probe: is a straight run recoverable from its own edge stamp, at all 24 headings? | XS | `make probe-a0p` · [result](../../probe/a0p/README.md) | ✅ **Done 2026-08-21 — and it REFUTED its own prediction.** 19 of 24, five wrong by 10.46° against a 15° quantiser. The design survives; the obvious `A1` does not |
+| **`A1`** — the recovery pass as pure functions, with tests | M | `lib/hex_editor/tests/recover.loft` — straight runs at 24 headings, an L-bend, a ring, a one-edge stub, a gap. Fixtures whose answer is known by construction, never by calling the recovery twice. ⚠ **And a LENGTH sweep**, because `A0p` found end effects dominate | **Ready** — `A0p` says what it must be, see below |
 | **`A2`** — grade the recovery against every wall the gates already build | S | a harness that, for each gate scene, compares recovered runs to `es_runs`. ⚠ **It must FIND something first** — run it with the recovery deliberately off by one step and see the divergences it reports, before trusting a clean run | Blocked on `A1` |
 | **`A3`** — mesher emits from recovered runs, `es_runs` path still present | M | the two meshes compared **byte for byte**, both paths live, switchable | Blocked on `A2` |
 | **`A4`** — the switch: recovered runs become the mesher's input | S | every gate green, and `A3`'s comparison still runs beside it | Blocked on `A3` |
@@ -76,6 +76,35 @@ those fields needs its own answer to *what does the store hold, and is it enough
 shape* — which is why they are separate phases and why `A9` may turn out to need a store change
 that `A7` did not.
 
+## ⚠ What `A0p` changed — `A1` is an INTERSECTION, not a fit
+
+**[probe/a0p](../../probe/a0p/README.md) ran and refuted `P1`.** A principal-axis fit through
+edge midpoints recovers 19 of 24 headings; the five that fail are the 60° family, wrong by
+**10.458°** against a **15°** quantiser.
+
+⚠ **AND ITS CONTROL IS WHAT MAKES THAT READ CORRECTLY.** A deliberate one-step rotation of the
+fitted axis left **4 of 24 still matching** — so the fit's error is the same size as the step it
+is resolving, and `19 of 24` is *a method at the wrong resolution*, not five edge cases to
+polish. Without that control, `A1` would have been built on a fit and tuned until the count
+reached 24, which is curve-fitting to a fixture.
+
+**The information was never missing; the method discarded it.** A marked edge does not mean *the
+line passed near this midpoint* — it means **the line CROSSES this edge**, which is exactly what
+`wall_stamp`'s halfplane test decided. So `A1` is:
+
+- each marked edge → a **constraint** on the line's two parameters;
+- the satisfying set is a **convex region** in `(angle, offset)`;
+- the recovery is that region's centre, and **its extent is the error bar** — which a fit cannot
+  produce at all;
+- an **empty** region means *not one straight line*, so the bend test comes free and **exact**,
+  where `A0p`'s straightness ratio (0.452 bent against 0.000 straight — cleanly separable, but a
+  threshold) is only good enough for a probe.
+
+⚠ **AND THE END ERROR DOES NOT GO TO ZERO, HOWEVER GOOD THE RECOVERY IS.** `A0p` measured
+**0.653 even on headings whose angle is perfect**. That is a quantisation floor: the store does
+not record where between two cells the author stopped. It is [open question 1](#open-questions)'s
+answer, and `A2`'s tolerance is set from it rather than tuned until it passes.
+
 ## What is NOT in this plan
 
 - **`es_draft`, `es_trunk`, `es_open_kind`, `es_author` stay.** They are the **gesture in
@@ -90,12 +119,14 @@ that `A7` did not.
 
 ## Open questions
 
-1. **What endpoint error is acceptable?** The author's stroke is continuous; the store quantised
-   it. A recovered wall's ends land at the chain's ends, up to a lattice step from where they
-   were drawn — so *what you drew* and *what comes back* differ. **`A0p` measures the worst
-   case; the number decides whether this design ships as-is.** ⚠ If it is unacceptable, the
-   alternative is that the store carries the heading — and an edge byte is a full `u8` material
-   index with no spare bits, so that is a record change, not a tweak.
+1. ◐ **What endpoint error is acceptable? — `A0p` measured it: a floor of `0.653` world units,
+   worst `1.220`.** The author's stroke is continuous and the store quantised it, so the ends
+   come back inside where they were drawn and **no recovery can fix that** — it is missing
+   information, not lost precision. ⚠ **Still open, because it is now a JUDGEMENT and not a
+   measurement**: is a wall whose ends move by ~0.65 acceptable? At `w_unit 0.25` that is under
+   three height units, and a wall is drawn between cell boundaries anyway — but it must be
+   looked at in a picture before `A5` deletes the alternative. If it is not acceptable, the
+   store must carry the heading, and an edge byte is a full `u8` with no spare bits.
 2. **Where does a door's angle live?** Not the store, not a mesh cache. Decided by whichever
    phase first needs an open door drawn — not by this plan, which says only that it must not go
    back into a session record.

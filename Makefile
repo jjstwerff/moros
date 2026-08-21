@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -752,6 +752,17 @@ probe-b1a:
 # the page the server serves are one artifact, because two would have to be kept in
 # step. Refuses an engine older than its own sources rather than shipping last week's
 # editor behind a build step.
+# A0p (plan 24) — IS A STRAIGHT WALL RECOVERABLE FROM ITS OWN EDGE STAMP? The whole
+# of plan 24 rests on the `WallRun` record being redundant, so this stamps a run at
+# each of the 24 headings, reads the marked edges back out of the STORE and tries to
+# recover the line. ⚠ IT REFUTED ITS OWN PREDICTION — 19 of 24, five wrong by 10.46°
+# against a 15° quantiser — and its control 1 is why that reads as *the method is
+# wrong* rather than *five edge cases to polish*: a deliberate one-step rotation left
+# 4 of 24 still matching, so the fit's error is the size of the step it resolves.
+# probe/a0p/README.md has what `A1` must do instead.
+probe-a0p:
+	@loft --interpret --lib lib/ probe/a0p/a0p.loft 2>/dev/null | sed -n '/^A0p/,$$p'
+
 pages:
 	@node tools/build-pages.mjs
 

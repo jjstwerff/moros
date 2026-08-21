@@ -1,0 +1,302 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PLAN 24 `A0p` — IS A STRAIGHT WALL RECOVERABLE FROM ITS OWN EDGE STAMP?
+//
+//   loft --interpret --lib lib/ probe/a0p/a0p.loft     (or `make probe-a0p`)
+//
+// The whole of plan 24 rests on one claim: a wall's line can be recovered from the
+// hex edges that line stamped, so the `WallRun` record is redundant. This is the
+// cheapest thing that could refute it. Predictions are in `PREDICTION.md` and were
+// written before this ran.
+//
+// ⚠ THE RECOVERY HERE IS A THROWAWAY, and saying so matters. `A1` builds the real
+// one, with tests, in the library. This is a fit good enough to answer *is the
+// information there at all* — if a crude fit finds the line, a careful one will.
+// If a crude fit does NOT, that is not yet a refutation, which is why the controls
+// below matter more than the numbers.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+// The run's own length, and the world it is stamped into. Long enough that the
+// zigzag is small against it — a short run is a different question and `A1`'s
+// fixtures own it.
+const HALF_LEN = 6.0;
+const SCAN = 24;
+
+fn world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - SCAN, 0 - SCAN, 2 * SCAN + 1, 2 * SCAN + 1, 8,
+                          hex_editor::SURFACE_MAT);
+  w
+}
+
+// ── The marked edges, read back out of the store ────────────────────────────
+//
+// ⚠ EACH EDGE ONCE. An edge belongs to two cells and `wall_of` resolves the owner
+// from either side, so scanning six directions per cell counts every edge twice and
+// doubles the weight of nothing in particular. A cell owns exactly three slots —
+// `SLOT_NW`/`SLOT_NE`/`SLOT_E`, which are lattice directions 4, 5 and 0 — so those
+// three per cell is the whole set, each exactly once.
+fn edge_mids(w: VoxelWorld, xs: &vector<float>, zs: &vector<float>) -> integer {
+  n = 0;
+  dirs: vector<integer> = [4, 5, 0];
+  for q in 0 - SCAN..SCAN + 1 {
+    for r in 0 - SCAN..SCAN + 1 {
+      for d in dirs {
+        if hex_editor::wall_of(w, q, r, d, 2.0) != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (cx, cz) = hex_editor::hex_to_px(q, r);
+          (nx2, nz2) = hex_editor::hex_to_px(nq, nr);
+          xs += [(cx + nx2) * 0.5];
+          zs += [(cz + nz2) * 0.5];
+          n = n + 1;
+        }
+      }
+    }
+  }
+  n
+}
+
+// ── The fit: a principal axis through the midpoints ─────────────────────────
+//
+// ⚠ AN AXIS, NOT A DIRECTION — `PREDICTION.md`'s `P3`, and it is a property of the
+// data rather than of this arithmetic. A set of points has no start and no end, so
+// nothing here can say which way the author drew. Written as a limit rather than
+// discovered as a surprise.
+//
+// The angle of the principal axis of a 2x2 covariance is `0.5 * atan2(2*sxz,
+// sxx - szz)`. Returns the angle; `spread` comes back as the ratio of the minor
+// axis to the major, which is the straightness measure the bend control needs.
+fn fit_axis(xs: vector<float>, zs: vector<float>, spread: &float) -> float {
+  n = len(xs);
+  if n < 2 { spread = 1.0; return 0.0; }
+  sx = 0.0;
+  sz = 0.0;
+  for x in xs { sx = sx + x; }
+  for z in zs { sz = sz + z; }
+  mx = sx / (n as float) ?? 0.0;
+  mz = sz / (n as float) ?? 0.0;
+  sxx = 0.0;
+  szz = 0.0;
+  sxz = 0.0;
+  for i in 0..n {
+    dx = (xs[i] ?? 0.0) - mx;
+    dz = (zs[i] ?? 0.0) - mz;
+    sxx = sxx + dx * dx;
+    szz = szz + dz * dz;
+    sxz = sxz + dx * dz;
+  }
+  ang = 0.5 * atan2(2.0 * sxz, sxx - szz);
+  // The two eigenvalues, for the straightness ratio. A chain that bends has a
+  // minor axis comparable to its major one; a straight chain's minor axis is the
+  // zigzag amplitude and is small.
+  tr = sxx + szz;
+  df = sxx - szz;
+  rt = sqrt(df * df + 4.0 * sxz * sxz) ?? 0.0;
+  hi = (tr + rt) * 0.5;
+  lo = (tr - rt) * 0.5;
+  if lo < 0.0 { lo = 0.0; }
+  if hi <= 0.0 { spread = 1.0; } else { spread = sqrt(lo / hi ?? 0.0) ?? 0.0; }
+  ang
+}
+
+// The extreme projections along the fitted axis — the recovered ends.
+fn fit_ends(xs: vector<float>, zs: vector<float>, ang: float,
+            ax: &float, az: &float, bx: &float, bz: &float) {
+  n = len(xs);
+  ux = cos(ang);
+  uz = sin(ang);
+  sx = 0.0;
+  sz = 0.0;
+  for x in xs { sx = sx + x; }
+  for z in zs { sz = sz + z; }
+  mx = sx / (n as float) ?? 0.0;
+  mz = sz / (n as float) ?? 0.0;
+  lo = 0.0;
+  hi = 0.0;
+  for i in 0..n {
+    t = ((xs[i] ?? 0.0) - mx) * ux + ((zs[i] ?? 0.0) - mz) * uz;
+    if i == 0 { lo = t; hi = t; }
+    if t < lo { lo = t; }
+    if t > hi { hi = t; }
+  }
+  ax = mx + ux * lo;
+  az = mz + uz * lo;
+  bx = mx + ux * hi;
+  bz = mz + uz * hi;
+}
+
+fn dist(x0: float, z0: float, x1: float, z1: float) -> float {
+  sqrt((x1 - x0) * (x1 - x0) + (z1 - z0) * (z1 - z0)) ?? 0.0
+}
+
+// How far the recovered pair of ends is from the stamped pair, taking the better
+// of the two pairings. ⚠ BOTH PAIRINGS, because of `P3`: the fit has no direction,
+// so comparing end-to-end in one order alone would report a full run length of
+// error on half the headings and read as a catastrophe.
+fn end_error(rx0: float, rz0: float, rx1: float, rz1: float,
+             sx0: float, sz0: float, sx1: float, sz1: float) -> float {
+  a = dist(rx0, rz0, sx0, sz0);
+  b = dist(rx1, rz1, sx1, sz1);
+  fwd = a; if b > fwd { fwd = b; }
+  c = dist(rx0, rz0, sx1, sz1);
+  d = dist(rx1, rz1, sx0, sz0);
+  rev = c; if d > rev { rev = d; }
+  if rev < fwd { return rev; }
+  fwd
+}
+
+// ── One heading, stamped and recovered ──────────────────────────────────────
+//
+// `rot` is the sabotage: the fitted axis is turned by that many of the 24 steps
+// before it is compared. At 0 it is the measurement; at 1 it is the control that
+// proves the comparison can go red.
+fn one(k: integer, rot: integer, worst_deg: &float, worst_end: &float,
+       ok_n: &integer, say: boolean) {
+  ang = (k as float) * 2.0 * PI / 24.0 ?? 0.0;
+  x0 = 0.0 - cos(ang) * HALF_LEN;
+  z0 = 0.0 - sin(ang) * HALF_LEN;
+  x1 = cos(ang) * HALF_LEN;
+  z1 = sin(ang) * HALF_LEN;
+  step = 0;
+  res = 0.0;
+  hex_editor::snap_heading(x1 - x0, z1 - z0, step, res);
+
+  w = world();
+  runs = hex_editor::WallRuns { items: [] };
+  marked = 0;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                           wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1,
+                           wr_mat: hex_editor::WALL_MAT, wr_step: step },
+                         hex_editor::WALL_MAT, 8, runs, marked);
+
+  xs: vector<float> = [];
+  zs: vector<float> = [];
+  n = edge_mids(w, xs, zs);
+  if n < 2 {
+    println("  k={k} step={step} ⛔ RECOVERED NOTHING — {marked} stamped, {n} read back");
+    return;
+  }
+
+  spread = 0.0;
+  fang = fit_axis(xs, zs, spread);
+  fang = fang + (rot as float) * 2.0 * PI / 24.0 ?? 0.0;
+
+  // The recovered heading, put through the SAME quantiser the gesture uses, so the
+  // comparison is against `wr_step` and not against a second spelling of it.
+  fstep = 0;
+  fres = 0.0;
+  hex_editor::snap_heading(cos(fang), sin(fang), fstep, fres);
+
+  ax = 0.0; az = 0.0; bx = 0.0; bz = 0.0;
+  fit_ends(xs, zs, fang, ax, az, bx, bz);
+  eerr = end_error(ax, az, bx, bz, x0, z0, x1, z1);
+
+  // ⚠ MOD 12, WHICH IS `P3`. An axis cannot distinguish a heading from its
+  // opposite, so `k` and `k+12` stamp the same edges and must recover the same way.
+  hit = (fstep % 12 ?? 0) == (step % 12 ?? 0);
+  if hit { ok_n = ok_n + 1; }
+
+  // The angular error against the line actually stamped, in degrees.
+  da = fang - ang;
+  while da > PI / 2.0 ?? 0.0 { da = da - PI; }
+  while da < 0.0 - (PI / 2.0 ?? 0.0) { da = da + PI; }
+  if da < 0.0 { da = 0.0 - da; }
+  deg = da * 180.0 / PI ?? 0.0;
+  if deg > worst_deg { worst_deg = deg; }
+  if eerr > worst_end { worst_end = eerr; }
+
+  if say {
+    // ⚠ BOTH COUNTS, because they differ and the difference is a fact about the
+    // stamp, not about this probe. `wall_stamp` walks all SIX directions of every
+    // cell, so it calls `wall_set` twice for every edge — once from each side.
+    // Printing only its count made one straight run read as 28 here and 14 in
+    // control 2, for identical coordinates.
+    mark = "ok ";
+    if !hit { mark = "MISS"; }
+    println("  {mark} k={k} step={step} → {fstep} (mod 12: {step % 12 ?? 0} → "
+            + "{fstep % 12 ?? 0}) · {n} edges ({marked} wall_set calls) · off {deg}° · ends off {eerr} "
+            + "· spread {spread}");
+  }
+}
+
+fn main() {
+  println("A0p — plan 24: is a straight wall recoverable from its own edge stamp?");
+  println("");
+  println("── the 24 headings, stamped and recovered ──────────────────────");
+  worst_deg = 0.0;
+  worst_end = 0.0;
+  ok_n = 0;
+  for k in 0..24 { one(k, 0, worst_deg, worst_end, ok_n, true); }
+  println("");
+  println("  {ok_n} of 24 headings recovered · worst angle {worst_deg}° · "
+          + "worst end error {worst_end}");
+
+  // ── CONTROL 1: the comparison can go red ──────────────────────────────────
+  //
+  // ⚠ RUN BEFORE THE RESULT ABOVE IS BELIEVED. A heading check that stays green
+  // under a deliberate one-step rotation is not measuring the heading, and every
+  // number above it would be decoration.
+  println("");
+  println("── control 1: the same 24, fitted axis turned by ONE of the 24 ──");
+  c_deg = 0.0;
+  c_end = 0.0;
+  c_ok = 0;
+  for k in 0..24 { one(k, 1, c_deg, c_end, c_ok, false); }
+  if c_ok == 0 {
+    println("  ✅ {c_ok} of 24 — a one-step rotation turns every heading red, so the");
+    println("     comparison above is measuring the heading");
+  } else {
+    println("  ⛔ {c_ok} of 24 STILL MATCHED under a one-step rotation — the check");
+    println("     above is not measuring what it claims, and its green means nothing");
+  }
+
+  // ── CONTROL 2: a bend must not fit a line ─────────────────────────────────
+  //
+  // Two runs at right angles, stamped into ONE world and recovered as if they were
+  // one wall. ⚠ THIS IS THE ONE THAT DECIDES WHAT `A1` IS. If the straightness
+  // ratio here is indistinguishable from a straight run's, a fit alone cannot tell
+  // a wall from a corner and `A1` must SEGMENT before it fits.
+  println("");
+  println("── control 2: an L-bend, recovered as if it were one wall ──────");
+  w2 = world();
+  runs2 = hex_editor::WallRuns { items: [] };
+  m2 = 0;
+  hex_editor::wall_stamp(w2, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                           wr_x0: 0.0 - HALF_LEN, wr_z0: 0.0, wr_x1: 0.0, wr_z1: 0.0,
+                           wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+                         hex_editor::WALL_MAT, 8, runs2, m2);
+  hex_editor::wall_stamp(w2, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                           wr_x0: 0.0, wr_z0: 0.0, wr_x1: 0.0, wr_z1: HALF_LEN,
+                           wr_mat: hex_editor::WALL_MAT, wr_step: 6 },
+                         hex_editor::WALL_MAT, 8, runs2, m2);
+  bxs: vector<float> = [];
+  bzs: vector<float> = [];
+  bn = edge_mids(w2, bxs, bzs);
+  bspread = 0.0;
+  bang = fit_axis(bxs, bzs, bspread);
+  bstep = 0;
+  bres = 0.0;
+  hex_editor::snap_heading(cos(bang), sin(bang), bstep, bres);
+  println("  {bn} edges over two runs · fitted step {bstep} · spread {bspread}");
+
+  // The straight case's spread, for the same length, to compare against.
+  sxs: vector<float> = [];
+  szs: vector<float> = [];
+  w3 = world();
+  runs3 = hex_editor::WallRuns { items: [] };
+  m3 = 0;
+  hex_editor::wall_stamp(w3, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                           wr_x0: 0.0 - HALF_LEN, wr_z0: 0.0, wr_x1: HALF_LEN, wr_z1: 0.0,
+                           wr_mat: hex_editor::WALL_MAT, wr_step: 0 },
+                         hex_editor::WALL_MAT, 8, runs3, m3);
+  sn = edge_mids(w3, sxs, szs);
+  sspread = 0.0;
+  fit_axis(sxs, szs, sspread);
+  println("  a STRAIGHT run of the same length · {sn} edges · spread {sspread}");
+  println("");
+  println("  → `A1` must SEGMENT before it fits if these two spreads are close;");
+  println("    a fit alone can only tell them apart if the bend's is much larger.");
+}
