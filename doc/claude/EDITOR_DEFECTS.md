@@ -57,6 +57,8 @@ its axles and rolling wheels. A character is that, with different joints.
 | 4 | every wall is drawn **twice** — hex-edge and straight | ⚠ **verified** | two emitters, and the gesture writes **both** records |
 | 5 | after a reload the straight walls are gone | ⚠ **verified** | the save carries the **cells**; the run record is not saved |
 
+✅ **1, 4 and 5 are ONE defect, and it is decided — see [the decision](#-the-decision--2026-08-21-there-is-no-session-record-only-a-mesh-cache).**
+
 ⚠ **4 and 5 are ONE defect seen from two sides.** A wall exists twice over — as edge bytes in
 the store and as a `WallRun` in the session — and both are drawn. Only the store is persisted,
 so a reload deletes exactly one of the two copies. Fixing 4 by dropping an emitter decides 5;
@@ -284,20 +286,106 @@ world. Count the runs before and after.
 
 ---
 
+## ✅ The decision — 2026-08-21: there is no session record, only a mesh cache
+
+**Taken by the reporter, in two sentences, and it is the answer to the open question above
+rather than a preference:**
+
+> *"The mesh that is built from the world should interpret the walls directly as the correct
+> straight version, with no outside hex version anywhere in a mesh."*
+>
+> *"There should not be a session record at all — just a cache of the meshes that are created,
+> one per chunk."*
+
+⚠ **THIS IS [WORLD_MODEL.md](WORLD_MODEL.md)'S OWN INVARIANT, ENFORCED** — *the store is the
+only authority, everything else is derived, writes go in place.* The `EditSession` is a **second
+authority**: it holds shapes the store also holds, in a different form, and the two can
+disagree. That is why a wall draws twice (they both reach the mesher) and why a reload loses one
+(only the store is saved). Neither is a bug in the drawing — **both are the second authority
+being a second authority.**
+
+### Three of the five collapse into one change
+
+| defect | what the decision does to it |
+|---|---|
+| **1** whole world re-meshes per write | ✅ **fixed by the cache.** One mesh per chunk, invalidated when that chunk's cells change, means a write re-meshes the chunks it touched and no others — instead of 49 tiles × 11 surfaces every time |
+| **4** wall drawn twice | ✅ **fixed by deletion.** One emitter, straight, derived from the store. `emit_wall_panel` goes; no hex-edge wall geometry survives anywhere |
+| **5** reload loses the straight walls | ✅ **fixed by not existing.** There is nothing to lose — everything drawn came out of the store, and the store is saved |
+
+Entries **2** (the character) and **3** (the floor) are untouched by it and stay open.
+
+### What has to be true for it to work, and one of them is not free
+
+⚠ **THE STORE'S WALL DATA IS HEX-ALIGNED BY CONSTRUCTION, AND HOLDS NOTHING ELSE.**
+`lib/hex_voxel/src/hex_voxel.loft:54` — a `StoredHex` carries three edge bytes,
+`sv_wall_nw` / `sv_wall_ne` / `sv_wall_e`, and each is a bare `u8` **material index**. There is
+no heading, no run identity, no endpoint. So *"interpret the walls as the correct straight
+version"* is a **recovery**: the mesher gets a zigzag chain of marked hex edges and has to fit
+the line they approximate. `hex_editor::run_wall` already does line → band (`rw_half` is the
+offset from the centreline); this is its inverse, and it does not exist yet.
+
+⚠ **AND THE AUTHOR'S EXACT STROKE IS NOT RECOVERABLE, which is a design consequence rather than
+an obstacle.** `wr_x0,wr_z0 → wr_x1,wr_z1` are continuous floats; the store quantised them to a
+set of edges. A fit through those edges gives *a* straight wall, with its ends at the chain's
+ends. **That is a different wall from the one drawn**, by up to a lattice step at each end. It
+is almost certainly the right trade — it is what makes the world the only authority — but it
+must be decided knowingly, because it means *what you drew* and *what comes back* differ, and a
+gate comparing them byte for byte would be asserting something false.
+
+⚠ **THIS IS THE README'S OWN FEATURE, NOT NEW WORK.** `lavition/lavition`'s front page already
+promises *"curve detection — recognises round and curved structures from chains of short
+straight segments"* and *"24 directions for walls, cliffs and roads."* The recovery pass is that
+feature; today the editor sidesteps it by keeping the author's line in a record instead.
+
+### `EditSession` is three different things wearing one name
+
+Deleting *the record* is right; deleting *the struct* would throw away two things that are not
+records. The fields sort into three groups and only the first goes:
+
+| group | fields | where it goes |
+|---|---|---|
+| **derived — DELETE** | `es_runs`, `es_awalls`, `es_roofs`, `es_open`, `es_annex`, `es_props`, `es_slabs`, `es_holes` | the store already holds this, or must; the mesher recovers the shape |
+| **the gesture in flight** | `es_draft` (the stroke being drawn), `es_trunk` (the last ring, to attach to), `es_open_kind` (the standing choice), `es_author` | ⚠ **not a record** — it is what the editor is doing right now, and it has no meaning after the gesture ends. It stays, and calling it a session record is what makes it look deletable |
+| **genuinely dynamic** | `es_leaves` — how far a door stands open | ⚠ **needs a home that is neither.** `editor_server.loft` says it outright: *"A door's ANGLE is not in the world — the store says an edge is a door, which is the boundary's business, and how far it stands open is the fitting's."* It is not derivable from the store and it is not a cache. This is the one field the decision does not answer |
+
+### The cache, and the one thing that must not be got wrong
+
+One mesh per chunk, invalidated when the chunk changes. ⚠ **Key it on the chunk's own version,
+never on a dirty flag set by the writer** — a flag has a setter that can be forgotten, and
+CLAUDE.md's most-repeated defect is exactly that shape. `w_tau` already bumps once per write
+that changed something; a per-chunk equivalent is the key.
+
+⚠ **AND THE CACHE MUST BE CHECKED AGAINST A SABOTAGE THAT LEAVES THE WORLD IDENTICAL** — which
+[WALK_TICK.md](WALK_TICK.md)'s probe 4 records as the case three instruments were blind to:
+asked whether the collision proxy was a cache, `deck.keys` gave *the same world* for the cache,
+for rebuilding every tick, and for never rebuilding at all. A mesh cache has the same property:
+a stale mesh keys a correct world. **The instrument is the mesh, not the world key.**
+
+---
+
 ## What to do, in the order the facts force
 
-1. **Decide 4/5 together — which representation is the authority.** Everything else is
-   downstream of that one answer, and either fix alone makes the other permanent. The design
-   note in [WORLD_MODEL.md](WORLD_MODEL.md) (*the store is the only authority, everything else
-   is derived*) and the roof comment in `editor_server.loft` (*the drawn shape is the PLAN's,
-   so the renderer needs the plan rather than the cells*) **point opposite ways** for walls —
-   that contradiction is the actual open question, not the drawing.
+1. ✅ **Decided — see above.** The store is the authority; the mesher recovers the straight
+   wall from the edge chain; the only derived state kept is one mesh per chunk. ⚠ The roof
+   comment in `editor_server.loft` (*the drawn shape is the PLAN's, so the renderer needs the
+   plan rather than the cells*) is **now wrong** and should be corrected where it sits, not left
+   to argue the opposite from inside the source.
+   **Build it in this order, because each step can go red on its own:**
+   a. the **recovery pass** — edge chain → straight segment — as pure `hex_editor` functions
+      with tests, against fixtures whose answer is known by construction;
+   b. the **mesher** switched to it, with `emit_wall_panel` still present, so the two can be
+      compared in one picture before either is deleted;
+   c. `emit_wall_panel` **deleted**, and a gate that counts triangles rather than naming
+      surfaces;
+   d. the **per-chunk cache**, keyed on the chunk's version;
+   e. the **session record** deleted, field group by field group.
 2. **Make the figure an ASSET plus a RIG** (entry 2) and call it from both drivers. Independent
    of 1, and it is the one the reporter sees first — but do not shortcut it into a hardcoded
    body in a library, because the constraint above says there are hundreds of them.
 3. **Build the sloped-house fixture** (entry 3) — it may answer its own entry.
-4. **Give `local_surfaces` a disc** (entry 1). The disc is already carried in `TickOut`. ⚠ And
-   this one moves UP the list the moment the asset count does.
+4. **Entry 1 is step 1d**, not a separate task — the per-chunk cache is what stops the whole
+   neighbourhood re-meshing. ⚠ The disc carried in `TickOut` is still the cheap interim if the
+   cache is further off than the reporter can wait.
 
 ⚠ **AND ADD THE FOUR MISSING INSTRUMENTS BEFORE THE FIXES, not after.** Every one of them is a
 line or two, every one of them would be red right now, and a fix landed against a suite that
