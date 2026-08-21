@@ -721,6 +721,17 @@ struct Client {
   // runs at ratio 1, which is why no gate ever saw it.
   win_w: integer,
   win_h: integer,
+  // ⚠ **A RESIZE MOVES RECTS, NOT PICTURES — and conflating the two cost `probe/b2`
+  // a red row.** `panel_dirty` rebuilds the layout AND re-renders every row image:
+  // 20 part thumbnails and 11 material swatches, each an offscreen pass. That is
+  // right when the LIST changes and wrong when only the window did — a swatch is
+  // rendered at `SWATCH_W`/`THUMB_W` and does not know how wide the page is.
+  // ⚠ THE COST WAS NOT THEORETICAL. The page sizes its canvas a moment after
+  // `gl_create_window`, so every boot took one extra full rebuild, and `O4` — the
+  // walker's feet after a reload — came back vacuous because the report it reads
+  // had not been reached inside the run's window. A row that reads `''` and says
+  // *"so a different reading after the reload says nothing"* is the gate working.
+  layout_dirty: boolean,
   // What arrived, for the gate and for a person watching the console.
   c_thumb: integer,
   c_mesh: integer,
@@ -3489,6 +3500,7 @@ fn main() {
     was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
     ptr: hex_editor::pointer_new(), last_x: 0.0, last_y: 0.0,
     win_w: graphics::gl_window_width(), win_h: graphics::gl_window_height(),
+    layout_dirty: false,
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
@@ -3767,9 +3779,10 @@ fn main() {
       // resize draws the old rectangle into the new surface unless this says otherwise.
       graphics::gl_viewport(0, 0, new_w, new_h);
       ui_painter = graphics::create_painter_2d(new_w as float, new_h as float);
-      // The panel, the verb bar and their textures are laid out against the surface,
-      // so they are rebuilt by the same flag every other layout change uses.
-      st.panel_dirty = true;
+      // The panel, the verb bar and their text textures are laid out against the
+      // surface, so they are rebuilt — but the ROW IMAGES are not, which is what
+      // `layout_dirty` exists to separate.
+      st.layout_dirty = true;
       // ⚠ AND THE CAMERA, because the aspect is part of the solve. Locally this
       // re-solves on the next tick; against a server it is the server's answer, and
       // the server will not re-solve until it is told the shape changed.
@@ -3896,24 +3909,32 @@ fn main() {
     // owns what it returns; dropping the vector and re-filling it would leak a
     // GL texture per label per toggle, which is invisible in the picture and
     // unbounded over a session.
-    if st.panel_dirty {
+    if st.panel_dirty || st.layout_dirty {
       for old in ui_texts { graphics::gl_delete_texture(old.ut_tex); }
-      for olds in ui_swatches { graphics::gl_delete_texture(olds.sw_tex); }
       ui_panel = panel_build(client_panel_spec(st), st.win_w, st.win_h, ui_m);
       ui_bar = verbbar_build(client_verb_specs(st), st.win_w, st.win_h, PANEL_WIDTH, ui_m);
       ui_texts = build_ui_text(ui_panel, ui_bar, ui_font, UI_SIZE);
-      // ⚠ CACHED PER MATERIAL, and rendered only when the list changes — §C4
+      // ⚠ CACHED PER MATERIAL, and rendered only when the LIST changes — §C4
       // asks for the swatch to be the material, not for it to be re-rendered
-      // every frame. The list arrives once, so in practice this runs once.
-      ui_swatches = render_row_images(st, ui_panel.p_list.lb_items);
+      // every frame. A resize is not a list change, so it does not come through
+      // here; `layout_dirty` above is the whole reason the two are separable.
+      // ⚠ AND THE INDICES SURVIVE, which is what makes the split safe: `lb_items`
+      // is the full item list from the spec, never truncated to the rows that fit,
+      // so a shorter window does not shorten it and the swatch at index `i` is
+      // still row `i`'s.
+      redrew = st.panel_dirty;
+      if st.panel_dirty {
+        for olds in ui_swatches { graphics::gl_delete_texture(olds.sw_tex); }
+        ui_swatches = render_row_images(st, ui_panel.p_list.lb_items);
+      }
       st.panel_dirty = false;
+      st.layout_dirty = false;
       // ⚠ **RE-REPORTED, BECAUSE A REBIND MOVES IT — plan 22 `M3`.** This line at boot
       // alone described a keyboard that could not change; it can now, and the whole
       // claim of the step is that the bar follows the map. Read out of the REBUILT bar,
       // so a rebind that moved the binding and not the picture is visible here.
       say_verb_bar(ui_bar);
       say_catalogue_rows(ui_panel);
-  say_catalogue_rows(ui_panel);
       println("client: subject line ← {st.hud}");
       println("client: status ← {ui_panel.p_status.ss_text}");
       // ⚠ THE TWO FAMILIES ARE COUNTED APART, because one number cannot say which
@@ -3934,9 +3955,15 @@ fn main() {
       // draw both houses on top of each other — a picture that has certainly
       // CHANGED, so the row-diff passes it, and a count of arrivals that has
       // certainly gone up. Only the held count can say the old set went away.
-      println("client: {n_swatch} swatches and {n_thumb} thumbnails rendered "
-            + "with the world shader ({st.c_thumb} thumbnail meshes arrived, "
-            + "{len(st.thumbs)} held, {len(st.tcams)} cameras)");
+      // ⚠ SAID ONLY WHEN IT HAPPENED. This line is `probe/b2`'s `P2`/`P3`, and a
+      // re-layout that re-reported the same counts without re-rendering would be a
+      // claim about work nobody did — the exact shape of a gate reading a number
+      // its producer re-derived.
+      if redrew {
+        println("client: {n_swatch} swatches and {n_thumb} thumbnails rendered "
+              + "with the world shader ({st.c_thumb} thumbnail meshes arrived, "
+              + "{len(st.thumbs)} held, {len(st.tcams)} cameras)");
+      }
     }
     // ⚠ THE BAR GOES IN BECAUSE A CLICK PICKS A SLOT — plan 22 `M3`. It is the LAID-OUT
     // bar rather than the specs: where a slot is on screen is the only thing that can
