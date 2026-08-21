@@ -497,6 +497,13 @@ address (or the hostname `make browser` prints) cannot connect.
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.
   **All built and gated**; the doc records which of its own design sentences the measurements
   refuted, which is most of its value
+- [House rooms](doc/claude/HOUSE_ROOMS.md) — **a house is a floor plan of boxes**: rooms are the
+  house we already have, placed again adjacent, and a stair adds a LEVEL. ⚠ Its two live findings:
+  `place_house`'s `D2b` guard **refuses exactly this** (it asks *does the footprint overlap a
+  filed plan* where it means *would two ROOFS cover one cell*), and `hex_place::combine_cut` —
+  the exact, float-free, order-free primitive that does the whole job — has **zero callers in
+  this tree**. ⚠ And one question not to guess: `X52` says two adjacent boxes **FUSE** into one
+  space, so whether adding a box defaults to a hall or to a room is a decision for hexbody
 - [Formal core](doc/claude/FORMAL_CORE.md) — ⛔ **the definitions lavition is built from, copied
   in, and NOT the authority.** `../hexbody/ROUNDTRIP.md` is *"the settled formal core"*; this is
   the binding extract. The lattice, the **three direction sets that are not interchangeable**
