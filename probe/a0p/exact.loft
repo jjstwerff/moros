@@ -1,0 +1,196 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PLAN 24 `A0p2` — CAN THE LIBRARIES ALREADY DO THIS? THE EXACT METHOD, MEASURED.
+//
+//   loft --interpret --lib lib/ probe/a0p/exact.loft   (or `make probe-a0p-exact`)
+//
+// `A0p` fitted a principal axis through edge MIDPOINTS and got 19 of 24, five wrong
+// by 10.458°. `hex_draw::surface_of` does the same job a completely different way,
+// and its own comment says why mine failed:
+//
+//   *"the averaged direction equals the nominal side direction EXACTLY, as an
+//    integer multiple of a heading step. Any other value would mean the average had
+//    drifted off the lattice, WHICH IS WHAT A FIT WOULD DO and an average must not."*
+//
+// It sums the EDGE VECTORS in exact doubled-lattice integers. An edge contributes
+// its own direction, so nothing depends on where the ends fall inside their cells —
+// which is precisely the end-effect bias that cost `A0p` its five headings.
+//
+// ⚠ THIS RUNS BOTH METHODS OVER THE SAME STAMPS, so the comparison is exact rather
+// than two runs read side by side. That is `plans/README`'s parallel-run shape, at
+// probe scale.
+//
+// ⚠ AND THERE IS A SECOND QUESTION, WHICH IS THE ONE THAT COULD STILL BITE.
+// `hex_form::HEAD_N` is **12**. `hex_editor::HEADINGS` is **24**. A wall may be laid
+// at any of 24, and `surface_heading` only recognises a direction that is an exact
+// multiple of one of 12. So *"is it exact"* and *"is it one of the 24"* are two
+// different questions and this asks both.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+use hex_field;
+use hex_form;
+use hex_draw;
+
+const HALF_LEN = 6.0;
+const SCAN = 24;
+
+fn world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - SCAN, 0 - SCAN, 2 * SCAN + 1, 2 * SCAN + 1, 8,
+                          hex_editor::SURFACE_MAT);
+  w
+}
+
+// ── The chain, and the library's own arithmetic over it ─────────────────────
+//
+// This is `hex_draw::surface_of`'s body with the `Plan` taken out. ⚠ THAT IS THE
+// WHOLE OF WHAT IS MISSING UPSTREAM, and it is worth being precise about: the
+// integer sums below are copied from it verbatim, and the ONLY thing the `Plan` was
+// doing there is deciding WHICH edges belong to one side. A free-drawn wall has no
+// plan and no sides, so the grouping has to come from somewhere else — but the
+// recovery itself needs nothing but the edge list.
+//
+// It returns a real `hex_draw::WallSurface`, so `surface_heading` and the rest of
+// the library's own predicates can be asked about it. Nothing here re-implements a
+// judgement; it only assembles the input the library cannot currently be handed.
+fn surface_of_chain(w: VoxelWorld) -> WallSurface {
+  sdk = 0;
+  sdm = 0;
+  smk = 0;
+  smm = 0;
+  n = 0;
+  dirs: vector<integer> = [4, 5, 0];
+  for r in 0 - SCAN..SCAN + 1 {
+    for q in 0 - SCAN..SCAN + 1 {
+      for d in dirs {
+        if hex_editor::wall_of(w, q, r, d, 2.0) != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (c1, c2) = hex_grid::hex_edge_corners(hex_grid::hex_neighbor_dir(q, r, nq, nr));
+          sdk = sdk + hex_field::corner_k(c2) - hex_field::corner_k(c1);
+          sdm = sdm + hex_field::corner_m(c2) - hex_field::corner_m(c1);
+          smk = smk + 2 * hex_field::lattice_k(q, r)
+                    + hex_field::corner_k(c1) + hex_field::corner_k(c2);
+          smm = smm + 2 * hex_field::lattice_m(q, r)
+                    + hex_field::corner_m(c1) + hex_field::corner_m(c2);
+          n = n + 1;
+        }
+      }
+    }
+  }
+  hex_draw::WallSurface { ws_dk: sdk, ws_dm: sdm, ws_num_k: smk, ws_num_m: smm,
+                          ws_den: 2 * n, ws_n: n }
+}
+
+// ⚠ THE SIGN IS NOT THE LIBRARY'S PROBLEM, IT IS THE CHAIN'S. `surface_of` walks a
+// side of a plan in a known reading order, so every edge vector points the same way
+// round the outside. A chain read out of the STORE has no such order — the scan
+// above visits cells in row order and each edge contributes whichever way its own
+// `(c1, c2)` happens to run, so opposite-pointing edges CANCEL.
+//
+// This folds every edge into the same half-plane before summing, which is the
+// minimum needed to make the sum meaningful without an ordered walk. ⚠ It is also
+// exactly the information `P3` said is not there: a folded sum is an AXIS.
+fn surface_of_chain_folded(w: VoxelWorld) -> WallSurface {
+  sdk = 0;
+  sdm = 0;
+  smk = 0;
+  smm = 0;
+  n = 0;
+  dirs: vector<integer> = [4, 5, 0];
+  for r in 0 - SCAN..SCAN + 1 {
+    for q in 0 - SCAN..SCAN + 1 {
+      for d in dirs {
+        if hex_editor::wall_of(w, q, r, d, 2.0) != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+          (c1, c2) = hex_grid::hex_edge_corners(hex_grid::hex_neighbor_dir(q, r, nq, nr));
+          ek = hex_field::corner_k(c2) - hex_field::corner_k(c1);
+          em = hex_field::corner_m(c2) - hex_field::corner_m(c1);
+          // Fold to the half-plane km >= 0, breaking the tie on k. Exact integers,
+          // no angle, no tolerance.
+          if em < 0 || (em == 0 && ek < 0) { ek = 0 - ek; em = 0 - em; }
+          sdk = sdk + ek;
+          sdm = sdm + em;
+          smk = smk + 2 * hex_field::lattice_k(q, r)
+                    + hex_field::corner_k(c1) + hex_field::corner_k(c2);
+          smm = smm + 2 * hex_field::lattice_m(q, r)
+                    + hex_field::corner_m(c1) + hex_field::corner_m(c2);
+          n = n + 1;
+        }
+      }
+    }
+  }
+  hex_draw::WallSurface { ws_dk: sdk, ws_dm: sdm, ws_num_k: smk, ws_num_m: smm,
+                          ws_den: 2 * n, ws_n: n }
+}
+
+// The world angle of a doubled-lattice vector. `lattice_k` scales by sqrt(3)/2 and
+// `lattice_m` by 1/4 in `edge_point`, so the same weights turn a lattice direction
+// into a world direction.
+fn lat_angle(dk: integer, dm: integer) -> float {
+  atan2((dm as float) * 0.25, (dk as float) * 0.4330127018922193)
+}
+
+fn main() {
+  println("A0p2 — plan 24: can `hex_draw`'s EXACT method do what the fit could not?");
+  println("");
+  println("  hex_form::HEAD_N = {hex_form::HEAD_N} · hex_editor::HEADINGS = "
+          + "{hex_editor::HEADINGS}");
+  println("");
+  println("  k  stamped  raw-sum    folded-sum  surface_heading  angle err");
+  println("  ─────────────────────────────────────────────────────────────");
+  exact_n = 0;
+  head_ok = 0;
+  worst = 0.0;
+  for k in 0..24 {
+    ang = (k as float) * 2.0 * PI / 24.0 ?? 0.0;
+    x0 = 0.0 - cos(ang) * HALF_LEN;
+    z0 = 0.0 - sin(ang) * HALF_LEN;
+    x1 = cos(ang) * HALF_LEN;
+    z1 = sin(ang) * HALF_LEN;
+    step = 0;
+    res = 0.0;
+    hex_editor::snap_heading(x1 - x0, z1 - z0, step, res);
+
+    w = world();
+    runs = hex_editor::WallRuns { items: [] };
+    marked = 0;
+    hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                             wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1,
+                             wr_mat: hex_editor::WALL_MAT, wr_step: step },
+                           hex_editor::WALL_MAT, 8, runs, marked);
+
+    raw = surface_of_chain(w);
+    fold = surface_of_chain_folded(w);
+
+    // The library's OWN predicate, asked about a surface this probe assembled.
+    sh = hex_draw::surface_heading(fold);
+    if sh >= 0 { exact_n = exact_n + 1; }
+
+    // What the folded direction says in the world, against what was stamped.
+    fa = lat_angle(fold.ws_dk, fold.ws_dm);
+    fstep = 0;
+    fres = 0.0;
+    hex_editor::snap_heading(cos(fa), sin(fa), fstep, fres);
+    if (fstep % 12 ?? 0) == (step % 12 ?? 0) { head_ok = head_ok + 1; }
+
+    da = fa - ang;
+    while da > PI / 2.0 ?? 0.0 { da = da - PI; }
+    while da < 0.0 - (PI / 2.0 ?? 0.0) { da = da + PI; }
+    if da < 0.0 { da = 0.0 - da; }
+    deg = da * 180.0 / PI ?? 0.0;
+    if deg > worst { worst = deg; }
+
+    mark = "ok  ";
+    if (fstep % 12 ?? 0) != (step % 12 ?? 0) { mark = "MISS"; }
+    println("  {mark} k={k} n={fold.ws_n} raw=({raw.ws_dk},{raw.ws_dm}) "
+            + "fold=({fold.ws_dk},{fold.ws_dm}) surface_heading={sh} "
+            + "step {step}→{fstep} off {deg}°");
+  }
+  println("");
+  println("  EXACT on a 12-heading: {exact_n} of 24   ·   heading recovered "
+          + "(mod 12): {head_ok} of 24   ·   worst angle {worst}°");
+  println("");
+  println("  A0p's float fit, for comparison: 19 of 24, worst 10.458°");
+}

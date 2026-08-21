@@ -152,6 +152,39 @@ renamed (`lavition_ui`, `hex_mesh`) and the skip is now an explicit `CONSUMERS` 
 package is checked unless somebody names it on purpose.** When a guard has an exemption rule,
 ask what the rule exempts *by accident*.
 
+⛔ **THE ALGORITHMS ARE NEVER OURS. This is the ground rule, and it outranks the ones
+below it.** lavition is a universal editor; the `hex_*` family is where geometry lives. The
+editor **consumes** those algorithms and never re-derives one — not in `src/`, not in
+`lib/hex_editor/`, not "just for a probe". A gap is a **library** gap: name it, build it
+**there**, and call it from here. ⚠ **AND NEVER IN FLOATS**: the lattice is exact integer
+arithmetic (`hex_field::lattice_k/corner_k`, `hex_form::head_step`), and a float fit is the
+tell that an algorithm was invented rather than found.
+
+⚠ **THIS RULE WAS EARNED TWICE IN ONE HOUR, THE SECOND TIME AFTER IT WAS STATED.** Plan 24
+`A0p` needed a wall's line recovered from the hex edges it stamped. Attempt 1 fitted a
+principal axis through edge midpoints — **19 of 24 headings, five wrong by 10.458° against a
+15° quantiser.** Attempt 2 knew better and still lost: it copied `hex_draw::surface_of`'s
+integer body into the probe, *"with the `Plan` taken out"*, and invented a fold to replace the
+ordering the `Plan` was providing — **8 of 24, worse than the float fit it was correcting**,
+with `surface_heading` answering `-1` on 22 of 24. ⚠ **Neither run is evidence about
+`hex_draw`, because `hex_draw` was never called.** A due-east wall summed to `(-14, 0)`: the
+edge vectors cancelled, because `surface_of` walks a side **in reading order** and a scan of
+the store has no order at all.
+
+⚠ **SO THE GAP IS NEVER WHERE THE FIRST GUESS PUTS IT.** It looked like *we need a line-fitting
+algorithm*; the arithmetic already existed and was exact. What is actually missing is an entry
+point that accepts what the STORE has — an unordered set of marked edges — and the ordered
+chain-walk that turns it into what `surface_of` already consumes. **Find the library's entry
+point first; the shape of the gap is the difference between what it takes and what you hold.**
+
+⚠ **AND OUR OWN 24 HEADINGS ARE AN INVENTED ALGORITHM ALREADY IN THE TREE.**
+`hex_editor::HEADINGS = 24` with `WALL_SNAP = 2*pi/24` and an `atan2` is ours;
+`hex_form::HEAD_N = 12` with integer `head_step` is the library's, exact, in doubled
+coordinates. **15 degrees is not representable on this lattice** — `tan 15° = 2 - sqrt3`, so
+`m/k = 2*sqrt3 - 3`, irrational, and no integer `(dk, dm)` gives it. So the editor can snap a
+wall to a direction the lattice cannot express, and no exact recovery of it can exist.
+[Plan 24](plans/24-one-authority/README.md) carries this.
+
 **A missing library capability is ours to build**, never an upstream ask — verification is
 only possible where the consumer lives. Build it under `lib/<name>/`, gate it with tests
 that have been seen red. Fixing and republishing a shared library is allowed too; the gate

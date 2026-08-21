@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -762,6 +762,16 @@ probe-b1a:
 # probe/a0p/README.md has what `A1` must do instead.
 probe-a0p:
 	@loft --interpret --lib lib/ probe/a0p/a0p.loft 2>/dev/null | sed -n '/^A0p/,$$p'
+
+# A0p, attempt 2 — AND IT SCORED WORSE, WHICH IS THE POINT. It copied
+# `hex_draw::surface_of`'s exact integer body into the probe "with the `Plan` taken
+# out", then invented a fold to replace the ordering the `Plan` had been providing:
+# 8 of 24 against the float fit's 19, and `surface_heading` = -1 on 22 of 24. ⚠ A
+# due-east wall sums to (-14, 0) — the edge vectors CANCEL, because `surface_of`
+# walks a side in reading order and a scan of the store has no order at all.
+# Kept as the record of the ground rule being broken: the algorithms are never ours.
+probe-a0p-exact:
+	@loft --interpret --lib lib/ probe/a0p/exact.loft 2>/dev/null | sed -n '/^A0p2/,$$p'
 
 pages:
 	@node tools/build-pages.mjs

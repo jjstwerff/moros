@@ -8,7 +8,35 @@ this file is what happened.
 make probe-a0p          # or: loft --interpret --lib lib/ probe/a0p/a0p.loft
 ```
 
-## The verdict in one line
+## ⛔ CORRECTION, 2026-08-22 — BOTH RUNS BELOW MEASURE MY OWN CODE, NOT A LIBRARY
+
+**The ground rule is: the algorithms are never ours.** Everything below violated it, twice, and
+the numbers are void as evidence about `hex_draw` — which was never called.
+
+| attempt | what it did | result |
+|---|---|---|
+| **1** — the run below | fitted a principal axis through edge **midpoints**, in floats | 19 of 24, five wrong by 10.458° |
+| **2** — [`exact.loft`](exact.loft) | copied `hex_draw::surface_of`'s **integer body** into the probe *"with the `Plan` taken out"*, and invented a fold to replace the ordering the `Plan` had been providing | **8 of 24 — worse**, `surface_heading` = `-1` on 22 of 24 |
+
+⚠ **A DUE-EAST WALL SUMMED TO `(-14, 0)`.** The edge vectors **cancelled**, and that is the
+whole diagnosis: `surface_of` walks a plan's side **in reading order**, so every edge vector
+points consistently around the outside. A scan of the store has no order at all. Attempt 2 saw
+the cancellation and invented a fold into a half-plane to patch it — which destroys direction
+and is why it scored below the float fit it was written to correct.
+
+✅ **AND THAT MISDIAGNOSIS IS THE USEFUL PART.** The gap looked like *we need a line-fitting
+algorithm*. It is not: the arithmetic exists and is exact. What is missing is **an entry point
+that accepts what the store has** — an unordered set of marked edges — and **the ordered
+chain-walk** that turns it into the `SideRun` `surface_of` already consumes. Both belong in
+`loft-libs-world`, not here. Plan 24 `A1` is rewritten accordingly.
+
+⚠ **The measurements are kept, not deleted**, because they are the record of how the rule was
+broken, and because attempt 2 scoring *below* attempt 1 is the cleanest evidence there is that
+a better algorithm applied to the wrong input beats nothing.
+
+---
+
+## The verdict in one line, ON MY OWN FIT — read as a record, not as a finding
 
 ⚠ **`P1` IS REFUTED. 19 of 24 headings, not 24** — and the five that fail are wrong by
 **10.46°** against a **15°** quantiser, so they snap to the neighbouring heading.
@@ -85,6 +113,14 @@ A corner and a wall are **cleanly separable** by the straightness ratio — 0.45
 near thing. So `A1` does not need a separate corner detector: a straightness test on the fitted
 region is enough to refuse a bend, which is the negative control the
 [invariant gate](../../plans/24-one-authority/README.md#invariant-gate) asks for at `A1`.
+
+## ⛔ What `A1` must do instead — SUPERSEDED, see the correction at the top
+
+⚠ **The section below proposed that `A1` compute a convex region in `(angle, offset)` space.
+That is an invented algorithm and it is not `A1`.** It is kept because the *observation* under
+it is still true and is what points at the real gap — a marked edge means the line **crosses**
+it, which is a hard geometric fact the midpoint fit softened. But the conclusion drawn from it
+was to write geometry here, and the answer is to call `hex_draw`.
 
 ## What `A1` must do instead
 
