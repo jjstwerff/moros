@@ -28,8 +28,7 @@
 // points: whatever a body is bolted to, its proxy covers. Only the GIRTH is
 // declared, because a wheel's width is a choice independent of its radius and
 // there is nothing to derive it from.
-use self::assembly;
-use self::frames;
+use hex_rig;
 use graphics;
 
 // An axis-aligned box in the BODY's own frame — `A-PLANE`'s frame, so a disc's

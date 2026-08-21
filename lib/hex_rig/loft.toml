@@ -1,0 +1,23 @@
+[package]
+name    = "hex_rig"
+version = "0.1.0"
+loft    = ">=0.8"
+description = "Articulated rigs over hex_body: an assembly of bodies, the frames it poses into, and how its axles sit on ground."
+
+# ⚠ NO MOROS DEPENDENCY, AND THAT IS WHY THE MOVE WAS POSSIBLE — plan 19 open question 5,
+# answered 2026-08-21. `assembly`, `frames` and `ground` were measured name by name against
+# `moros_map`, `moros_editor` and `moros_render`: all three answer NOTHING. What they need is
+# `graphics` and `hex_body`.
+#
+# ⚠ IT BUILDS ON `hex_body` RATHER THAN COMPETING WITH IT. That package publishes the rig
+# model — *a body is a RIG, bones and the limits in the joints between them, never a pose* —
+# and this one is the layer above: an ASSEMBLY of bodies, the frames a pose resolves to, and
+# the ground under the axles. ⏭ The name was the open part of the decision and it is a claim
+# to check before publishing: a `Rig` lives in `hex_body`, so `hex_rig` must read as *rigs
+# assembled*, not as a second answer to what a rig is.
+[library]
+entry = "src/hex_rig.loft"
+
+[dependencies]
+graphics = ">=0.1"
+hex_body = ">=0.1"

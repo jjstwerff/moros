@@ -38,7 +38,7 @@
 // anyway. Where a margin is negative the overlap protrudes, which is `P7`'s wing
 // result in miniature. So it is reported as an approximation with its residual,
 // `K-FIT`'s third state, and not as a refusal.
-use self::frames;
+use hex_rig;
 use graphics;
 
 // An asymmetric box, because a joint's parent is not centred on its pivot.

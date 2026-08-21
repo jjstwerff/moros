@@ -5,7 +5,7 @@
 // Two claims, two controls. `iota` scales the plane and breaks the isometry;
 // `warp` tilts z with x and breaks the planarity. Neither knob can fail the
 // other's clause, which is why there are two of them.
-use moros_sim;
+use hex_rig;
 use hex_body::(Rig, rig_new, rig_bone, rig_world_seg, wheel_value, wheel_angle);
 
 const HALF = 0.55;

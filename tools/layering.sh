@@ -113,13 +113,20 @@ PROGRAMS="src/editor_server.loft src/editor_client.loft src/editor_run.loft
 # rule `moros_ui` and `moros_terrain` already taught: a universal package wearing a
 # consumer's prefix. Whether they are renamed or the program is weaned off them is
 # plan 19 `L6.3` and its open question 5, and it is not decided here.
-# ⚠ `moros_render` IS PAID — plan 19 `L6.3a`, 2026-08-21. `world_to_hex` was a Moros
-# wrapper around `hex_grid::px_to_hex` returning a struct whose third field no caller read;
-# the 13 sites take the pair directly, which is what `hex_mesh` had already done and
-# recorded. `Aabb`/`mesh_aabb` had no Moros content at all and joined the drawing
-# primitives in `hex_proj`. ⚠ A REMOVED DEBT HAS TO BE RECORDED AS PROGRESS OR THE NUMBER
-# ROTS — this list fails in BOTH directions.
-PROGRAM_DEBT="src/editor_server.loft:moros_sim"
+# ✅ **BOTH DEBTS ARE PAID — plan 19 `L6.3a` and `L6.3b`, 2026-08-21.** `src/editor_server.loft`
+# imports no Moros package at all, so this list is EMPTY and the check below now asserts that
+# rather than tracking a number.
+#
+# ⚠ **AN EMPTY LIST IS A CLAIM, NOT AN ABSENCE.** It fails in both directions exactly as a
+# populated one did: add an import and the run reds, naming the file and the package. The line
+# it used to print — *the editor program still imports Moros — N of them* — is what a reader
+# looked for, so its disappearance has to be as loud as its presence was.
+#
+# `moros_render` went at `L6.3a`: `world_to_hex` was a wrapper around `hex_grid::px_to_hex`
+# returning a struct whose third field no caller read, and `Aabb`/`mesh_aabb` joined `hex_proj`.
+# `moros_sim` went at `L6.3b`: `assembly`, `frames` and `ground` were measured to use NOTHING
+# from any Moros package and left for `hex_rig`.
+PROGRAM_DEBT=""
 
 fail=0
 

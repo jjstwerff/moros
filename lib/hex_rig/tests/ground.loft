@@ -2,7 +2,7 @@
 //
 // The terrain arrives as a function, so every clause is a pure function of its
 // arguments and the answers are known in closed form.
-use moros_sim;
+use hex_rig;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

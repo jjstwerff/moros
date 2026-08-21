@@ -27,7 +27,7 @@
 // a terrain sampler, which is the point. `A6`'s first draft of this design said
 // *"one frame solved from the ground contacts"*; a dangling crate has no ground
 // contacts at all, and that is the case that broke it.
-use self::frames;
+use hex_rig;
 use graphics;
 
 pub enum RopeState { Slack, Taut }

@@ -5,7 +5,7 @@
 // one cart and eyeballing one distance. Float composition drifts, so every
 // clause asserts a BOUND, the way `wheel_skid` records machine-ε instead of
 // claiming an algebraic zero.
-use moros_sim;
+use hex_rig;
 use hex_body as hb;
 
 const HALF = 0.55;

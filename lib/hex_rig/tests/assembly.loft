@@ -3,7 +3,7 @@
 // Every clause here is paired with a control: a valid assembly that must be
 // accepted, and a single-field mutation of it that must be REFUSED. A parser
 // nobody has seen refuse is not a strict parser.
-use moros_sim;
+use hex_rig;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

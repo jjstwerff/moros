@@ -120,31 +120,37 @@ done
 # are on different footings, so collapsing them would lose the distinction: the
 # `moros_render` half is a projection that `L3′` half-moved, the `moros_sim` half
 # is open question 5 and is not settled.
-# ✅ **`C` IS PAID — plan 19 `L6.3a`, 2026-08-21 — AND IT IS A SOURCE CHECK, NOT A BUILD
-# ONE.** `world_to_hex` was a wrapper around `hex_grid::px_to_hex` returning a struct whose
-# third field no caller read; its 13 sites take the pair directly. `Aabb`/`mesh_aabb` had no
-# Moros content at all and joined the drawing primitives in `hex_proj`.
+# ✅ **BOTH IMPORTS ARE PAID — plan 19 `L6.3a` + `L6.3b`, 2026-08-21 — SO `C` AND `D` BECOME
+# ONE BUILD CHECK, WHICH IS WHAT THIS PROBE WANTED ALL ALONG.** They were two rows asking for
+# a FAILURE each, naming the package in the error so a bare `err` could not pass on the wrong
+# one. Now `src/editor_server.loft` imports no Moros package at all, so the honest question is
+# the goal itself: does the program build with the Moros tree ABSENT?
 #
-# ⛔ **AND IT CANNOT BE A BUILD CHECK UNTIL `D` IS PAID, WHICH IS THE FINDING.** `moros_sim`
-# DEPENDS ON `moros_render`, so the server's remaining `use moros_sim as msim;` drags it back
-# in transitively: staging everything-but-`moros_render` still answers *Library
-# 'moros_render' not found*, three times, from `moros_sim`'s own sources. Measured, not
-# assumed. So the two halves of the debt were never independent — paying `C` removes the
-# DIRECT import and nothing more, and `L6.3b` is what makes this a build check.
-#
-# ⚠ **A PAID ROW FLIPS, IT IS NOT DELETED** — deleted, nothing would notice a re-import, and
-# `use moros_render;` is one line away for anyone who wants a name that happens to live there.
-if grep -qE '^use moros_render;' src/editor_server.loft; then
-  echo "FAIL  C moros_render         the server imports moros_render again — a re-import, and"
-  echo "                             PROGRAM_DEBT in tools/layering.sh must rise to match"
-  fail=1
-else
-  printf 'ok    %-22s %s\n' "C moros_render" "no direct import — PAID (a build check needs D; moros_sim pulls it in)"
-fi
-
-check "D moros_sim" err "Library 'moros_sim' not found" \
-  "the server no longer imports moros_sim — PAID; lower PROGRAM_DEBT in tools/layering.sh" \
+# ⛔ **AND IT COULD NOT HAVE BEEN ASKED BEFORE BOTH WERE PAID.** `moros_sim` DEPENDED ON
+# `moros_render`, so paying only `moros_render` left the import coming back transitively —
+# staging everything-but-`moros_render` still answered *Library 'moros_render' not found*, out
+# of `moros_sim`'s own sources. The two halves of the debt were never independent, and only
+# this row measured that.
+check "C+D the program travels" ok "" \
+  "the program does NOT build without the Moros tree — an import came back; raise PROGRAM_DEBT" \
   --check --lib "$STAGE/" src/editor_server.loft
+
+# ⚠ **AND THE SOURCE CHECK STAYS BESIDE THE BUILD CHECK, because they fail differently.** A
+# re-import of a package the program does not yet NEED compiles fine against the full `lib/`
+# and would sail past `A`; only a grep sees it. A paid row flips rather than being deleted —
+# deleted, nothing notices the line coming back.
+# ⚠ THE `ok` IS GUARDED. Written unqualified it printed *none present* on the same run that
+# had just named one — a summary contradicting the line above it, which is how a reader learns
+# to skim past both.
+srcfail=0
+for pkg in moros_render moros_sim moros_map moros_editor; do
+  if grep -qE "^use $pkg( as [a-z_]+)?;" src/editor_server.loft; then
+    echo "FAIL  source $pkg"
+    echo "      the program imports $pkg again — PROGRAM_DEBT in tools/layering.sh must rise"
+    fail=1; srcfail=1
+  fi
+done
+[ "$srcfail" -eq 0 ] && printf 'ok    %-22s %s\n' "C+D no Moros import" "all four checked by name, none present"
 
 # ── E — the gates carry Moros in PROSE only ──────────────────────────────────
 # 21 of the 53 gate files say "moros"; every one of them is inside a comment. That
@@ -186,6 +192,6 @@ if [ "$fail" -ne 0 ]; then
   echo "probe/l6: FAILED — read each line above; every one says what its flip means."
   exit 1
 fi
-echo "probe/l6: the split is ONE FILE away — src/editor_server.loft, 1 import, 9 call sites (was 2 and 53 — L6.3a paid moros_render)."
-echo "          Four programs and 53 gates already travel. Plan 19 L6.3 is what pays it."
+echo "probe/l6: the program TRAVELS — no Moros import anywhere in src/, and it builds with lib/moros_* absent."
+echo "          All five programs and 53 gates travel now. What is left of L6.3 is the REPO."
 exit 0

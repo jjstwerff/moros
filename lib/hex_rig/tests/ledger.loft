@@ -4,7 +4,7 @@
 // requires the count to reproduce every row — including the two the prose calls
 // out by hand: a four-wheel trailer over-constrained by its fourth wheel, and
 // today's unhitched cart short by one.
-use moros_sim;
+use hex_rig;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

@@ -54,7 +54,11 @@ use fixstep;      // approach — the ease, one copy for every game (plan 22 `E1
 //
 // `A10`: the cart's structure and its transforms come from the assembly library.
 // `CART_HALF_W` and `CART_RADIUS` are named ONCE, in `asm_cart`.
-use moros_sim as msim;
+// ⚠ `hex_rig`, NOT `moros_sim` — plan 19 `L6.3b`, and it is the last Moros import the
+// program had. The eight names it needs (`Assembly`, `Frame`, `asm_cart`, `asm_frames`,
+// `frame_apply`, `body_axle`, `ground_axle`, `ground_gap`) put a cart on the wire, and none
+// of them was ever Moros: their three modules used nothing from any `moros_*` package.
+use hex_rig;
 
 // THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
 // wherever you ask for one, and the ground you can see is derived around the
@@ -1522,7 +1526,7 @@ fn name_is_foreign(n: text) -> boolean { n.find("::") != null }
 // A `Frame` on the wire: the same twelve numbers in the same column-major order as
 // a mesh3d `Mat4`, so it goes straight out rather than through a conversion that
 // could transpose something — which is exactly the class `A5` found.
-fn frame_wire(f: msim::Frame) -> text {
+fn frame_wire(f: hex_rig::Frame) -> text {
   "{f.fm_r.r11},{f.fm_r.r21},{f.fm_r.r31},0,"
     + "{f.fm_r.r12},{f.fm_r.r22},{f.fm_r.r32},0,"
     + "{f.fm_r.r13},{f.fm_r.r23},{f.fm_r.r33},0,"
@@ -1531,13 +1535,13 @@ fn frame_wire(f: msim::Frame) -> text {
 
 // `cval` is in TURNS — `hex_body`'s unit and the library's, so `wheel_value`'s
 // output drops straight in with no conversion to get wrong.
-fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
+fn cart_send(srv: Server, casm: hex_rig::Assembly, cx: float, cz: float,
              cyaw: float, cval: float, wld: VoxelWorld) {
   // The axle runs ACROSS the travel direction: yaw, turned a quarter.
   // the axle runs ACROSS the travel direction. ⚠ `+sin`, matching `ground_axle`'s
   // own convention — the old `−sin` matched mesh3d's transposed `rotate_y`, and the
   // solve must sample where the FRAME will actually put the wheels.
-  ax = msim::body_axle(casm, 0);
+  ax = hex_rig::body_axle(casm, 0);
   cs_rad = ax.ax_radius;
   cs_half = ax.ax_half;
   // ── `A10`, FINISHED: the SOLVE is the library's too ────────────────────────
@@ -1557,9 +1561,9 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   // compiler says so and names the fix; a lambda passed straight into a call can
   // stay in the short form.
   cs_sample = fn(sx: float, sz: float) -> float { hex_mesh::terrain_y(sx, sz, wld) };
-  cs_rest = msim::ground_axle(cs_sample, cx, cz, cyaw, cs_half, cs_rad);
+  cs_rest = hex_rig::ground_axle(cs_sample, cx, cz, cyaw, cs_half, cs_rad);
   cs_bank = cs_rest.rt_bank;
-  cs_y = msim::frame_apply(cs_rest.rt_frame, vec3(0.0, 0.0, 0.0)).y;
+  cs_y = hex_rig::frame_apply(cs_rest.rt_frame, vec3(0.0, 0.0, 0.0)).y;
   if !cs_rest.rt_ok {
     // `K-FIT`: named, with the offer and the residual, instead of a silent hold.
     srv.broadcast("S:cart approximated — {cs_rest.rt_reason} "
@@ -1593,7 +1597,7 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   // a literal in the gate. `asm_frames` reads it from the assembly, `body_axle`
   // derives the solve's half-axle from the same mounts, and `cart.mjs` has lost
   // its `1.1`. One home, in `asm_cart`.
-  cf = msim::asm_frames(casm, [0.0, cval, cval], base);
+  cf = hex_rig::asm_frames(casm, [0.0, cval, cval], base);
   if len(cf) < 3 {
     println("editor: the cart assembly is not poseable");
     return;
@@ -1609,8 +1613,8 @@ fn cart_send(srv: Server, casm: msim::Assembly, cx: float, cz: float,
   // zero while the wheels were 9 cm out. `ground_gap` is that expression, and it
   // is now CALLED rather than copied: `side: 0.0` asks for the gap under a frame's
   // own origin, which is where `asm_frames` has already put each hub.
-  cs_el = msim::ground_gap(cf[1] ?? base, cs_half, cs_rad, 0.0, cs_sample);
-  cs_er = msim::ground_gap(cf[2] ?? base, cs_half, cs_rad, 0.0, cs_sample);
+  cs_el = hex_rig::ground_gap(cf[1] ?? base, cs_half, cs_rad, 0.0, cs_sample);
+  cs_er = hex_rig::ground_gap(cf[2] ?? base, cs_half, cs_rad, 0.0, cs_sample);
   srv.broadcast("S:cart pose y {cs_y} bank {cs_bank} gapl {cs_el} gapr {cs_er}");
 }
 
@@ -3325,7 +3329,7 @@ fn main() {
   hd = head_wu();
   // ⚠ THE CART, AS DATA, BUILT ONCE — the only place its half-axle and radius are
   // named on the whole path. `A10`.
-  cart_asm = msim::asm_cart(CART_HALF_W, CART_RADIUS);
+  cart_asm = hex_rig::asm_cart(CART_HALF_W, CART_RADIUS);
   leg = limb_mesh("leg", hip_wu(), leg_w(), leg_w());
   arm = limb_mesh("arm", shoulder_wu() - fh * 0.40, hd * 0.42, hd * 0.42);
   body = body_mesh();

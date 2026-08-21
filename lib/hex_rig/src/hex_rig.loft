@@ -1,0 +1,14 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// hex_rig — an ASSEMBLY of bodies, the frames it poses into, and how its axles sit on ground.
+//
+// Left `moros_sim` at plan 19 `L6.3b`. It was never Moros: measured name by name, these three
+// modules use nothing from `moros_map`, `moros_editor` or `moros_render`, and the editor
+// server imported eight of their names to put a cart on the wire.
+//
+// ⚠ `use self::` ON EVERY MODULE — loft#976. `assembly`, `frames` and `ground` are ordinary
+// enough basenames that a consumer's graph could hold another of each.
+use self::assembly;
+use self::frames;
+use self::ground;

@@ -4,7 +4,7 @@
 // The design calls A7 and A8 the steps where it earns or loses: *"A7 is the
 // first SECOND FRAME … if the structure holds for both without a special case,
 // `A-DOF` was the right invariant."*
-use moros_sim;
+use hex_rig;
 use hex_body::(rig_new, rig_bone);
 
 const HALF = 0.55;

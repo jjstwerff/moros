@@ -8,9 +8,13 @@ use self::player;
 use self::collide;
 use self::editor;
 
-use self::assembly;
-use self::frames;
-use self::ground;
+// ⚠ `assembly`, `frames` and `ground` LEFT FOR `hex_rig` — plan 19 `L6.3b`. They were never
+// Moros: measured name by name, none of them used anything from `moros_map`, `moros_editor`
+// or `moros_render`, and the editor server imported eight of their names to put a cart on the
+// wire. What stays here is the character and the tools, which BUILD on them — so this package
+// is a consumer of the one that left, the same arrow `moros_render` → `hex_proj` took at
+// `L6.3a`.
+use hex_rig;
 use self::tether;
 use self::shape;
 use self::skin;
