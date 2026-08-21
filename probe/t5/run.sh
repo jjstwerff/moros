@@ -131,7 +131,7 @@ drive() {                          # drive <tag>
   # produces exactly the transcript a broken remote mode produces.
   timeout 400 node probe/b1b/press.mjs "http://127.0.0.1:$PORT/client" "$KEYS" \
     --await "$ATTACHED" --wait-ms 60000 > "$OUT/$dr_tag.raw" 2>&1 || true
-  grep -E '^(client|moros editor client)' "$OUT/$dr_tag.raw" > "$OUT/$dr_tag.log" || true
+  grep -E '^(client|lavition editor client)' "$OUT/$dr_tag.raw" > "$OUT/$dr_tag.log" || true
   grep '^editor: client cache' "$OUT/$dr_tag.server" > "$OUT/$dr_tag.digest" || true
   make -s stop-editor > /dev/null 2>&1 || true
   wait "$dr_pid" 2>/dev/null || true
@@ -156,12 +156,12 @@ c_agree=$(last_agree control | num); c_walk=$(walker control)
 say "   digests: $(wc -l < "$OUT/control.digest") · last: $(tail -1 "$OUT/control.digest")"
 say "   walker:  ${c_walk:-<none>}"
 
-if grep -q '^moros editor client' "$OUT/control.log"; then
+if grep -q '^lavition editor client' "$OUT/control.log"; then
   ok "C0 the page booted — what follows is about a running client"
 else
   bad "C0 the page never booted; every row below would be vacuous"
 fi
-if grep -q "client: status ← moros editor — $ATTACHED" "$OUT/control.log"; then
+if grep -q "client: status ← lavition editor — $ATTACHED" "$OUT/control.log"; then
   ok "C1 and it ATTACHED — the authority is the server's, which is the subject"
 else
   bad "C1 the page never attached: $(grep -c 'client: status ←' "$OUT/control.log") status lines, last '$(grep 'client: status ←' "$OUT/control.log" | tail -1)'"
@@ -207,8 +207,8 @@ say "   walker:  ${s_walk:-<none>}"
 # ⚠ THE SABOTAGE NEEDS ITS OWN POSITIVE CONTROLS. A page that crashed, or never
 # attached, also reports no agreement — and that would read as the divergence this
 # row is looking for.
-if grep -q '^moros editor client' "$OUT/sabotage.log" \
-   && grep -q "client: status ← moros editor — $ATTACHED" "$OUT/sabotage.log"; then
+if grep -q '^lavition editor client' "$OUT/sabotage.log" \
+   && grep -q "client: status ← lavition editor — $ATTACHED" "$OUT/sabotage.log"; then
   ok "S0 the sabotaged page booted and attached — it diverged, it did not fall over"
 else
   bad "S0 the sabotaged page never booted or never attached; S2 would be about a crash"

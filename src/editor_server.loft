@@ -3699,7 +3699,7 @@ fn main() {
 
   last_us = ticks();
 
-  println("moros editor — W0 (an infinite plane, a character, the camera behind it)");
+  println("lavition editor — W0 (an infinite plane, a character, the camera behind it)");
   println("  world: INFINITE, drawn to {DRAW_HEXES} hexes in {CHUNK}x{CHUNK} chunks");
   println("  listening on port {port}  — MULTI-CLIENT (open as many tabs as you like)");
   println("    http://localhost:{port}/");

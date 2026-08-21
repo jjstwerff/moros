@@ -29,7 +29,7 @@ client's own claim about the client.
 
 | | prediction | confidence |
 |---|---|---|
-| **P0** | the page attaches — the panel reaches `moros editor — edits go to the server` | high |
+| **P0** | the page attaches — the panel reaches `lavition editor — edits go to the server` | high |
 | **P1** | the digest runs: `agree > 0` and `layers > 0` | high |
 | **P2** | **control, as built: every answer says `bad 0`** | high |
 | **P3** | attached, the page's own walker is idle — `0` steps, `walked 0` | **medium — see below** |

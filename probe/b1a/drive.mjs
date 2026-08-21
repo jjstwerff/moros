@@ -102,7 +102,7 @@ for (let i = 0; i < Math.ceil(waitMs / 250); i++) {
     expression: `(document.getElementById('out')||{}).textContent || ''`,
     returnByValue: true,
   }))?.result?.value ?? '';
-  if (t.includes('moros editor client')) { ready = true; break; }
+  if (t.includes('lavition editor client')) { ready = true; break; }
   await sleep(250);
 }
 if (!ready) bye(1, 'B1a FAIL — the client never booted; nothing was pressed');

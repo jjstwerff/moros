@@ -708,6 +708,19 @@ struct Client {
   ptr: hex_editor::Pointer,
   last_x: float,
   last_y: float,
+  // ⚠ **THE SURFACE THE PROGRAM ACTUALLY DRAWS INTO, NOT THE ONE IT ASKED FOR.**
+  // `gl_create_window(w, h)` is a REQUEST; the shell allocates `w x devicePixelRatio`
+  // and the page's own stylesheet may size the element again. `graphics.loft` states
+  // the contract — *"query after creating a window so projection / 2D ortho /
+  // overlays use the real resolution rather than a windowed hint"* — and the browser
+  // shell repeats it: *"one that stores the size it ASKED for and reuses it as a
+  // viewport renders into part of the surface."* That was this client, exactly: it
+  // reused `WIN_W`/`WIN_H` for the projection aspect, the painter, the panel layout
+  // and the viewport restore, so on any display with a ratio above 1 the world drew
+  // into a corner of its own canvas and every click missed by the ratio. The harness
+  // runs at ratio 1, which is why no gate ever saw it.
+  win_w: integer,
+  win_h: integer,
   // What arrived, for the gate and for a person watching the console.
   c_thumb: integer,
   c_mesh: integer,
@@ -1258,7 +1271,7 @@ fn local_camera(st: Client, a: hex_editor::Author) {
     graphics::vec3(lc_px, lc_py, lc_pz),
     graphics::vec3(0.0, 1.0, 0.0)).m;
   st.proj = graphics::mat4_perspective(LOCAL_FOV * PI / 180.0,
-                                       (WIN_W as float) / (WIN_H as float),
+                                       (st.win_w as float) / (st.win_h as float),
                                        LOCAL_NEAR, LOCAL_FAR).m;
   st.has_cam = true;
   // ── WHERE THE CAMERA ENDED UP, FOR THE WALKER'S OWN REPORT ─────────────────
@@ -1695,7 +1708,7 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
       else if tag == "E" {
         // End of world: the server has sent everything it means to send for this
         // connection, and wants an aspect back before it will solve a camera.
-        send_aspect(h);
+        send_aspect(h, st.win_w, st.win_h);
       }
     }
     msg = web::try_recv(h) ?? "";
@@ -1706,15 +1719,19 @@ fn drain(h: web::WsHandler, st: Client) -> integer {
 // The viewport, as the server's camera needs it — sent on `E:`, because the server
 // will not solve a camera before it knows the shape of what it is solving for.
 //
-// ⚠ A CONSTANT, where the JavaScript read the live canvas size and re-sent on every
-// resize. That is not a shortcut: `gl_create_window(w, h)` in the browser shell sets
-// `canvas.width`/`canvas.height` to exactly those numbers and nothing else changes
-// them, so the canvas IS `WIN_W x WIN_H` for the life of the page. The two calls
-// that could report otherwise — `gl_window_width` / `gl_window_height` — are not in
-// the browser's host-import set at all, and calling one is not a compile error but a
-// LinkError at instantiate (loft-lang/loft#668).
-fn send_aspect(h: web::WsHandler) {
-  web::send(h, "2:{(WIN_W as float) / (WIN_H as float)},");
+// ⚠ **THIS WAS A CONSTANT, AND THE ARGUMENT FOR IT HAS EXPIRED.** It read: *"the two
+// calls that could report otherwise — `gl_window_width` / `gl_window_height` — are not
+// in the browser's host-import set at all, and calling one is not a compile error but a
+// LinkError at instantiate (loft-lang/loft#668)."* **Measured against the installed
+// toolchain: both are bound**, at `loft_gl_window_width() { return canvas.width; }` in
+// the shell's own import table, and #668 closed on 2026-07-29. So the aspect is the
+// SURFACE's now and travels with it — which it has to, because the page sizes its
+// canvas to the window and the window is resized by the person, not by this program.
+// ⚠ **AND THE OLD SENTENCE WAS FALSE IN A SECOND WAY THAT NOBODY CHECKED**: even at a
+// fixed request, `gl_create_window(w, h)` sets `canvas.width = w * devicePixelRatio`,
+// so the canvas was never `WIN_W x WIN_H` on any display with a ratio above 1.
+fn send_aspect(h: web::WsHandler, aw: integer, ah: integer) {
+  web::send(h, "2:{(aw as float) / (ah as float)},");
 }
 
 // Input, all of it edge-triggered against last frame.
@@ -2929,7 +2946,7 @@ fn render_row_images(st: Client, items: vector<Entry>) -> vector<Swatch> {
   // draws the entire next frame into a 66x48 texture, which reads as a client
   // that stopped rendering.
   graphics::gl_bind_framebuffer(0);
-  graphics::gl_viewport(0, 0, WIN_W, WIN_H);
+  graphics::gl_viewport(0, 0, st.win_w, st.win_h);
   graphics::gl_enable(graphics::GL_DEPTH_TEST);
   // The scratch buffers are this pass's, not the row images' — those are returned
   // and belong to the caller, which deletes them when the list changes.
@@ -2998,9 +3015,9 @@ fn draw_panel(p: Panel, b: VerbBar, painter: Painter2D) {
 // its own world, and the difference between the two authorities is a fact on
 // screen rather than a silent swap. Route 2 was rejected for exactly the hazard
 // this line removes.
-const AUTH_CONNECTING = "moros editor — connecting to the server";
-const AUTH_SERVER     = "moros editor — edits go to the server";
-const AUTH_LOCAL      = "moros editor — edits stay in this page";
+const AUTH_CONNECTING = "lavition editor — connecting to the server";
+const AUTH_SERVER     = "lavition editor — edits go to the server";
+const AUTH_LOCAL      = "lavition editor — edits stay in this page";
 
 // How many frames of dialling before this page decides it is on its own — plan 22
 // `B1b.1b`.
@@ -3419,9 +3436,9 @@ fn client_metrics(font: integer) -> Metrics {
 }
 
 fn main() {
-  println("moros editor client — S1 (plan #16): the wire, in loft");
+  println("lavition editor client — S1 (plan #16): the wire, in loft");
 
-  if !graphics::gl_create_window(WIN_W, WIN_H, "Moros editor — S1 client") {
+  if !graphics::gl_create_window(WIN_W, WIN_H, "lavition editor — S1 client") {
     println("client: no window — this build needs a display (or run it with --html)");
     return;
   }
@@ -3471,6 +3488,7 @@ fn main() {
     was_step_up: false, was_step_down: false,
     was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
     ptr: hex_editor::pointer_new(), last_x: 0.0, last_y: 0.0,
+    win_w: graphics::gl_window_width(), win_h: graphics::gl_window_height(),
     hello: false,
     local: false, dials: 0, cand: 0, said_local: [],
     saved_tau: 0 - 1, loaded: false,
@@ -3680,9 +3698,9 @@ fn main() {
       println("client: the UI font fell back to the generic monospace family");
     }
   }
-  ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
-  ui_bar = verbbar_build(client_verb_specs(st), WIN_W, WIN_H, PANEL_WIDTH, ui_m);
-  ui_painter = graphics::create_painter_2d(WIN_W as float, WIN_H as float);
+  ui_panel = panel_build(client_panel_spec(st), st.win_w, st.win_h, ui_m);
+  ui_bar = verbbar_build(client_verb_specs(st), st.win_w, st.win_h, PANEL_WIDTH, ui_m);
+  ui_painter = graphics::create_painter_2d(st.win_w as float, st.win_h as float);
   ui_texts = build_ui_text(ui_panel, ui_bar, ui_font, UI_SIZE);
   ui_swatches: vector<Swatch> = [];
   drift_s = "";
@@ -3726,6 +3744,38 @@ fn main() {
   reported = 0;
   while graphics::gl_poll_events() {
     frames = frames + 1;
+    // ── THE SURFACE MAY HAVE CHANGED SINCE LAST FRAME — plan 22 `B5` ──────────
+    //
+    // ⚠ **POLLED, BECAUSE THERE IS NO EVENT.** `gl_poll_events` answers *should this
+    // window close* and nothing else; a resize arrives only as a different answer from
+    // `gl_window_width`. This is the same shape as `LOCAL_AFTER` two hundred lines up —
+    // *the socket did not open* is observable only as *it has not opened yet* — and the
+    // reason both are polls rather than callbacks is that loft's surface has neither.
+    //
+    // ⚠ **AND IT IS DEBOUNCED ON THE PAGE, NOT HERE.** A browser fires `resize`
+    // continuously through a drag, and this block's rebuild re-renders 49 offscreen
+    // images (20 thumbnails, 11 swatches). The prelude that sizes the canvas waits for
+    // the drag to settle before it writes a new size, so this sees ONE change per
+    // resize rather than one per frame — the cost belongs where the events are.
+    new_w = graphics::gl_window_width();
+    new_h = graphics::gl_window_height();
+    if new_w > 0 && new_h > 0 && (new_w != st.win_w || new_h != st.win_h) {
+      st.win_w = new_w;
+      st.win_h = new_h;
+      // ⚠ THE VIEWPORT IS NOT REALLOCATED WITH THE BUFFER. Resizing a canvas resets
+      // its drawing buffer but leaves `gl.viewport` where it was, so a frame after a
+      // resize draws the old rectangle into the new surface unless this says otherwise.
+      graphics::gl_viewport(0, 0, new_w, new_h);
+      ui_painter = graphics::create_painter_2d(new_w as float, new_h as float);
+      // The panel, the verb bar and their textures are laid out against the surface,
+      // so they are rebuilt by the same flag every other layout change uses.
+      st.panel_dirty = true;
+      // ⚠ AND THE CAMERA, because the aspect is part of the solve. Locally this
+      // re-solves on the next tick; against a server it is the server's answer, and
+      // the server will not re-solve until it is told the shape changed.
+      if st.local { st.has_cam = false; } else { send_aspect(h, new_w, new_h); }
+      println("client: surface {new_w}x{new_h}");
+    }
     // ⚠ AND IT STOPS DIALLING ONCE IT HAS GONE LOCAL — that `!st.local` is the
     // one-way rule made of code rather than of a comment. A page that kept dialling
     // would attach to a server that came up later while its own world already held
@@ -3849,8 +3899,8 @@ fn main() {
     if st.panel_dirty {
       for old in ui_texts { graphics::gl_delete_texture(old.ut_tex); }
       for olds in ui_swatches { graphics::gl_delete_texture(olds.sw_tex); }
-      ui_panel = panel_build(client_panel_spec(st), WIN_W, WIN_H, ui_m);
-      ui_bar = verbbar_build(client_verb_specs(st), WIN_W, WIN_H, PANEL_WIDTH, ui_m);
+      ui_panel = panel_build(client_panel_spec(st), st.win_w, st.win_h, ui_m);
+      ui_bar = verbbar_build(client_verb_specs(st), st.win_w, st.win_h, PANEL_WIDTH, ui_m);
       ui_texts = build_ui_text(ui_panel, ui_bar, ui_font, UI_SIZE);
       // ⚠ CACHED PER MATERIAL, and rendered only when the list changes — §C4
       // asks for the swatch to be the material, not for it to be re-rendered

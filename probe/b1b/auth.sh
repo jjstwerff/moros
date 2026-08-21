@@ -95,9 +95,9 @@ SAB="${AUTH_SABOTAGE:-}"
 FIX="${AUTH_FIXTURE:-}"
 mkdir -p "$OUT"
 
-CONNECTING="moros editor — connecting to the server"
-SERVER="moros editor — edits go to the server"
-LOCAL="moros editor — edits stay in this page"
+CONNECTING="lavition editor — connecting to the server"
+SERVER="lavition editor — edits go to the server"
+LOCAL="lavition editor — edits stay in this page"
 
 # The keys run B presses, and the verbs they name. ⚠ `w` IS LAST AND IS NOT A
 # GESTURE: it is the walk, which local mode has no answer for (`B1c`), and it is
@@ -151,7 +151,7 @@ if [ -n "$SAB" ]; then
     # prompt went in front of it. A sabotage whose `sed` no longer matches edits
     # nothing and reports a clean run, which is the *NOTHING went red* sentence a
     # useless control produces; the guard below is what refuses to run one.
-    literal) sed -i 's/^    ps_status: status_line(st),$/    ps_status: "moros editor — edits go to the server",/' "$SRC" ;;
+    literal) sed -i 's/^    ps_status: status_line(st),$/    ps_status: "lavition editor — edits go to the server",/' "$SRC" ;;
     # The fact moves and nothing tells the panel. ⚠ INVISIBLE TO A AND B BOTH,
     # measured — A's server marks the panel a frame later with `N:`/`H:` for its
     # own reasons, and B has no change to miss. Run C exists because of this one.
@@ -288,7 +288,7 @@ if ! grep -q 'listening on port' "$OUT/server.log"; then
 fi
 node tools/page_console.mjs "http://127.0.0.1:$PORT/client" \
   --wait-ms 25000 --tail 100000 > "$OUT/a.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/a.raw" > "$OUT/a.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/a.raw" > "$OUT/a.log" || true
 make -s stop-editor > /dev/null 2>&1 || true
 wait "$srv" 2>/dev/null || true
 
@@ -296,7 +296,7 @@ echo "   what the panel said:"
 statuses "$OUT/a.log" | sort | uniq -c | sed 's/^/     /'
 echo "   $(grep '^client: connected' "$OUT/a.log" | head -1)"
 
-if grep -q '^moros editor client' "$OUT/a.log"; then
+if grep -q '^lavition editor client' "$OUT/a.log"; then
   ok "A0 the page booted, so what follows is about a running client"
 else
   bad "A0 the page never booted — every check below is vacuous"
@@ -364,7 +364,7 @@ static_run() {
     node tools/page_console.mjs "http://127.0.0.1:$SPORT/editor_client.html" \
       --wait-ms 25000 --tail 100000 > "$OUT/$sr_tag.raw" 2>&1 || true
   fi
-  grep -E '^(client|moros editor client)' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.log" || true
+  grep -E '^(client|lavition editor client)' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.log" || true
   grep -E '^SHOT ' "$OUT/$sr_tag.raw" > "$OUT/$sr_tag.shots" || true
   kill "$sr_pid" 2>/dev/null || true
   wait "$sr_pid" 2>/dev/null || true
@@ -380,7 +380,7 @@ static_run b "" "$KEYS"
 echo "   what local mode did:"
 grep '^client: local' "$OUT/b.log" | sed 's/^/     /' || true
 
-if grep -q '^moros editor client' "$OUT/b.log"; then
+if grep -q '^lavition editor client' "$OUT/b.log"; then
   ok "B0 the page booted with no server — the run has a subject"
 else
   bad "B0 the page never booted; 'it never claimed a server' would be vacuous"
@@ -746,7 +746,7 @@ echo "── B1b  run C — the socket OPENS and says nothing ──────
 # on the other end of an open socket.
 static_run c "--ws-silent" ""
 
-if grep -q '^moros editor client' "$OUT/c.log"; then
+if grep -q '^lavition editor client' "$OUT/c.log"; then
   ok "C0 the page booted"
 else
   bad "C0 the page never booted"
