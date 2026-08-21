@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -772,6 +772,15 @@ probe-a0p:
 # Kept as the record of the ground rule being broken: the algorithms are never ours.
 probe-a0p-exact:
 	@loft --interpret --lib lib/ probe/a0p/exact.loft 2>/dev/null | sed -n '/^A0p2/,$$p'
+
+# H1 (plan 24) — WHICH DIRECTIONS CAN A RUN OF n EDGES POINT IN? ⚠ NOT a measurement
+# of `D`: the 24 linework directions are DEFINED and gated in hexbody (12 exact + 12
+# at a uniform 1.1021 deg bias, vector (7,-2)) — see doc/claude/FORMAL_CORE.md. What
+# this measures is the run-length law, which is what DERIVES the house/world split
+# from the lattice: a side of 1-2 edges can only point 12 ways, so a short-walled
+# house is a 12-heading object by construction.
+probe-headings:
+	@python3 probe/headings/enumerate.py
 
 pages:
 	@node tools/build-pages.mjs

@@ -177,13 +177,27 @@ point that accepts what the STORE has — an unordered set of marked edges — a
 chain-walk that turns it into what `surface_of` already consumes. **Find the library's entry
 point first; the shape of the gap is the difference between what it takes and what you hold.**
 
-⚠ **AND OUR OWN 24 HEADINGS ARE AN INVENTED ALGORITHM ALREADY IN THE TREE.**
-`hex_editor::HEADINGS = 24` with `WALL_SNAP = 2*pi/24` and an `atan2` is ours;
-`hex_form::HEAD_N = 12` with integer `head_step` is the library's, exact, in doubled
-coordinates. **15 degrees is not representable on this lattice** — `tan 15° = 2 - sqrt3`, so
-`m/k = 2*sqrt3 - 3`, irrational, and no integer `(dk, dm)` gives it. So the editor can snap a
-wall to a direction the lattice cannot express, and no exact recovery of it can exist.
-[Plan 24](plans/24-one-authority/README.md) carries this.
+⚠ **AND THE FORMAL DEFINITION EXISTED THE WHOLE TIME, IN A TREE NOBODY HAD OPENED.**
+`../hexbody/ROUNDTRIP.md` is *"the settled formal core"* — §6.1 says **a wall surface is the
+exact AVERAGE of its edges, never a fit**, with a gate (`X47`) whose control is *"the scatter a
+least-squares fit would threshold is 0 east and 0.9167 north, so averaging vs fitting is
+measured, not rhetorical."* §6 even names the trap by hand: *"using R2's machinery where R1
+applies — fitting a line to a stencil whose description we hold throws away an exact answer."*
+**Both attempts above are that sentence.** ⚠ And §2.4.3 already states plan 24's whole decision —
+*"the canonical text is not a second editor representation, and must not become one — that is
+exactly the second layer the editor is not allowed to have"*, with layer 2 *"derived on demand,
+never persisted"* per chunk. **The editor was not proposing an architecture; it was paying a debt
+against one already written down.** [FORMAL_CORE.md](doc/claude/FORMAL_CORE.md) is the binding
+extract, and it is a **pointer, not an authority** — hexbody is read-only from here.
+
+⚠ **SO OUR OWN 24 HEADINGS ARE AN INVENTED ALGORITHM ALREADY SHIPPED, AND MY CORRECTION OF IT WAS
+WRONG TOO.** `hex_editor::HEADINGS = 24` with `WALL_SNAP = 2*pi/24` and an `atan2` asks for
+directions that **do not exist** — `X31`: *no odd multiple of 15° is reachable at all*. But the
+answer is **not** "use `hex_form`'s 12": `H₁₂` (stencil sides) and `D` (world linework, `|D| = 24`)
+are **different sets for different domains**, and `D` is 12 exact + 12 carrying a **uniform**
+`1.1021°` bias at vector `(7,-2)`, chosen by an exhaustive search over `N <= 400` (`X29`, `X56`).
+⚠ **Guessing the replacement is the same error as guessing the algorithm** — a measured
+enumeration of *"directions reachable in n edges"* looked like `D` and is not.
 
 **A missing library capability is ours to build**, never an upstream ask — verification is
 only possible where the consumer lives. Build it under `lib/<name>/`, gate it with tests
@@ -483,6 +497,15 @@ address (or the hostname `make browser` prints) cannot connect.
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.
   **All built and gated**; the doc records which of its own design sentences the measurements
   refuted, which is most of its value
+- [Formal core](doc/claude/FORMAL_CORE.md) — ⛔ **the definitions lavition is built from, copied
+  in, and NOT the authority.** `../hexbody/ROUNDTRIP.md` is *"the settled formal core"*; this is
+  the binding extract. The lattice, the **three direction sets that are not interchangeable**
+  (`O` placements, `H₁₂` stencil sides, `D` world linework with `|D| = 24`), the two domains —
+  **a house is domain A and a road is domain B**, which is the whole 12-vs-24 question — and §6's
+  two recovery regimes with the trap named in one line. ⚠ Read it **before** writing geometry:
+  §6.1 (*a wall surface is the exact average of its edges, never a fit*) and §2.4.3 (*the
+  canonical text must not become a second editor representation; layer 2 is derived per chunk and
+  never persisted*) are plan 24's two conclusions, already normative and already gated
 - [Editor defects](doc/claude/EDITOR_DEFECTS.md) — **five defects found by USING the editor on
   2026-08-21, none of which any gate went red on**: the whole neighbourhood re-meshes on every
   write, the page editor has **no character** (the figure is built and posed server-side only),
