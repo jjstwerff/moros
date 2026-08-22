@@ -32,6 +32,9 @@ use hex_part;
 // the family's, and both already depended on by the package's other half.
 use hex_way;
 use hex_edge;
+// Plan 24 `H1` — `D`, the 24 linework directions, and the admissibility rules
+// that go with them. See `run_between`.
+use hex_shape;
 
 // Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
 //
@@ -1894,6 +1897,27 @@ pub struct RunDraft {
   rd_resid: float = 0.0,       // how far off it the author actually walked, degrees
   rd_reach: float = 0.0,       // the length, ALONG the heading
   rd_why:   text = "",
+  // ── PLAN 24 `H1a` — THE LIBRARY'S ANSWER, BESIDE OURS ────────────────────
+  //
+  // ⚠ **BOTH ARE COMPUTED AND ONLY OURS IS USED — DELIBERATELY, FOR ONE STEP.**
+  // `plans/README`'s upper bound: a step is safe when the old path and the new one
+  // can both run and be compared exactly. Switching the geometry in the same commit
+  // that introduces it would leave nothing to compare against.
+  //
+  // ⚠ **AND THEY ARE NOT TWO SPELLINGS OF ONE ANSWER.** Ours snaps an ANGLE onto a
+  // `2*pi/24` grid, **half of whose directions do not exist on this lattice**
+  // (`X31`: no odd multiple of 15 degrees is reachable). `hex_shape` asks a
+  // different question — *which admissible run best reaches where you pointed* —
+  // and answers with a direction, a period count and a legal endpoint pair.
+  // `probe/h1` measured them agreeing on 12 of 24.
+  //
+  // `rd_d24 < 0` or `rd_p == 0` means the library REFUSED: the near end was not a
+  // triangle-lattice vertex, or no legal run reaches the target. That is a real
+  // answer and the field carries it rather than a substitute.
+  rd_d24:   integer = 0 - 1,   // the library's direction, `D`; -1 = refused
+  rd_p:     integer = 0,       // its period count; 0 = no legal run
+  rd_a0:    integer = 0,       // the anchor it snapped to, in triangle-lattice
+  rd_b0:    integer = 0,
 }
 
 pub fn run_between(x0: float, z0: float, x1: float, z1: float,
@@ -1908,11 +1932,49 @@ pub fn run_between(x0: float, z0: float, x1: float, z1: float,
   rb_res = 0.0;
   rb_ang = snap_heading(rb_dx, rb_dz, rb_step, rb_res);
   rb_reach = rb_dx * cos(rb_ang) + rb_dz * sin(rb_ang);
+
+  // ── `H1a` — the same run, asked of `hex_shape` ────────────────────────────
+  //
+  // ⚠ THE NEAR END IS SNAPPED TO A VERTEX FIRST, and that is the half our own
+  // path has never had. A run starts wherever the author pressed; the lattice
+  // admits runs only between triangle-lattice VERTICES, so an unsnapped anchor
+  // makes every downstream question unanswerable. `probe/l1` measured exactly
+  // this: our stamp's markings read back 12 of 24 from a gesture anchor and
+  // **24 of 24** from an admissible one.
+  //
+  // ⚠ AND `snap_run_d24` TAKES A WORLD TARGET POINT, not a direction — it does
+  // `target - tri_xy(a0, b0)` itself. Passing a unit vector puts every answer
+  // ~300 degrees out, which cost `probe/h1` a run to find.
+  (rb_va, rb_vb) = hex_shape::nearest_vertex(x0, z0);
+  rb_d24 = 0 - 1;
+  rb_p = 0;
+  if hex_shape::tri_is_vertex(rb_va, rb_vb) {
+    rb_d24 = hex_shape::snap_run_d24(rb_va, rb_vb, x1, z1);
+    if rb_d24 >= 0 { rb_p = hex_shape::snap_run_p(rb_d24, rb_va, rb_vb, x1, z1); }
+  }
+
   return RunDraft { rd_ok: true, rd_step: rb_step, rd_resid: rb_res, rd_reach: rb_reach,
+    rd_d24: rb_d24, rd_p: rb_p, rd_a0: rb_va, rd_b0: rb_vb,
     rd_run: WallRun { wr_base: 0, wr_up: 0, wr_x0: x0, wr_z0: z0,
                       wr_x1: x0 + cos(rb_ang) * rb_reach,
                       wr_z1: z0 + sin(rb_ang) * rb_reach,
                       wr_mat: mat, wr_step: rb_step } };
+}
+
+// ── `H1a` — WHERE THE LIBRARY'S RUN WOULD PUT ITS ENDS ──────────────────────
+//
+// Derived on demand rather than stored on the draft: the endpoints follow from
+// `(rd_d24, rd_a0, rd_b0, rd_p)` exactly, and a second copy of a derived quantity
+// is what this whole plan is about removing.
+//
+// Returns `ok = false` when the library refused, so a caller cannot mistake an
+// unset pair of zeroes for an answer.
+pub fn draft_lib_ends(d: RunDraft) -> (float, float, float, float, boolean) {
+  if !d.rd_ok || d.rd_d24 < 0 || d.rd_p <= 0 { return (0.0, 0.0, 0.0, 0.0, false); }
+  ea = hex_shape::wall_end_a(d.rd_d24, d.rd_a0, d.rd_p);
+  eb = hex_shape::wall_end_b(d.rd_d24, d.rd_b0, d.rd_p);
+  (hex_shape::tri_x(d.rd_a0, d.rd_b0), hex_shape::tri_y(d.rd_a0, d.rd_b0),
+   hex_shape::tri_x(ea, eb), hex_shape::tri_y(ea, eb), true)
 }
 
 // ── THE TWO-PRESS MACHINE — `25:`, the headless thread ─────────────────────

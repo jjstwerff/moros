@@ -1,0 +1,85 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PLAN 24 `H1a` — OUR SNAP AND THE LIBRARY'S, SIDE BY SIDE ON ONE DRAFT.
+//
+// `run_between` now computes both: `rd_step` from our `2*pi/24` `snap_heading`,
+// and `rd_d24`/`rd_p` from `hex_shape`'s `snap_run_d24`/`snap_run_p`. Only ours is
+// used. These tests pin what the second one answers, so the switch in `H1b` is a
+// comparison against a recorded fact rather than a look.
+//
+// ⚠ THEY ARE NOT TWO SPELLINGS OF ONE ANSWER, and the tests say so rather than
+// asserting agreement: ours snaps an ANGLE onto a grid half of whose directions do
+// not exist on this lattice (`X31`), the library's asks which admissible run best
+// reaches the target. `probe/h1` measured them agreeing on 12 of 24.
+use hex_editor;
+use hex_shape;
+
+fn draft(x1: float, z1: float) -> RunDraft {
+  hex_editor::run_between(0.0, 0.0, x1, z1, hex_editor::WALL_MAT)
+}
+
+fn test_the_library_answers_at_all_for_a_plain_east_run() {
+  // ⚠ THE FIRST THING THAT COULD BE FALSE. If the anchor never snaps to a vertex,
+  // `rd_d24` is -1 for every run ever drawn and `H1b` has nothing to switch to.
+  d = draft(6.0, 0.0);
+  assert(d.rd_ok, "the draft itself must be ok, got '{d.rd_why}'");
+  assert(d.rd_d24 >= 0,
+         "the library refused a plain 6-unit east run — d24 {d.rd_d24}, so the "
+       + "anchor (0,0) did not snap to a triangle-lattice vertex");
+  assert(d.rd_p > 0,
+         "the library found direction {d.rd_d24} but no legal period count");
+}
+
+fn test_the_librarys_ends_are_derivable_and_flagged_when_not() {
+  d = draft(6.0, 0.0);
+  (ax, az, bx, bz, ok) = hex_editor::draft_lib_ends(d);
+  assert(ok, "the ends must be derivable once d24 and p are set");
+  // ⚠ THE FAR END IS NOT WHERE THE AUTHOR POINTED, AND MUST NOT BE. It is the
+  // nearest LEGAL endpoint, which is the whole difference from our projection.
+  assert(bx != ax || bz != az, "the two ends must differ");
+  // and a refused draft must not hand back a plausible pair of zeroes
+  r = draft(0.05, 0.0);
+  assert(!r.rd_ok, "a run shorter than RUN_SHORT must be refused outright");
+  (_, _, _, _, rok) = hex_editor::draft_lib_ends(r);
+  assert(!rok, "a refused draft must report ok=false, not (0,0)-(0,0)");
+}
+
+fn test_the_two_snaps_disagree_and_that_is_the_point() {
+  // ⚠ A TEST THAT ASSERTED AGREEMENT WOULD BE ASSERTING THE DEFECT. Half of our
+  // 24 headings name directions the lattice cannot express, so on those the two
+  // MUST differ — and if they ever fully agreed, either our snap had been fixed
+  // silently or the library's had been broken to match.
+  n_same = 0;
+  n_all = 0;
+  for t in 0..24 {
+    ang = (t as float) * 15.0 / 57.29577951308232;
+    d = draft(cos(ang) * 6.0, sin(ang) * 6.0);
+    if !d.rd_ok { continue; }
+    n_all = n_all + 1;
+    if d.rd_d24 == d.rd_step { n_same = n_same + 1; }
+  }
+  assert(n_all == 24, "all 24 sample runs must draft, got {n_all}");
+  assert(n_same < n_all,
+         "our snap and the library's agreed on all {n_all} — that cannot be true "
+       + "while WALL_SNAP asks for directions X31 says are unreachable");
+  assert(n_same > 0,
+         "they agreed on none of {n_all} — the exact headings must coincide, so "
+       + "this says one of the two is being read wrongly");
+}
+
+fn test_every_direction_the_library_returns_is_a_d24_index() {
+  // The library's own predicate, over whatever our drafts produce — so a value
+  // that is not a `D` index cannot be recorded and read back later as one.
+  for t in 0..24 {
+    ang = (t as float) * 15.0 / 57.29577951308232;
+    d = draft(cos(ang) * 7.0, sin(ang) * 7.0);
+    if d.rd_d24 >= 0 {
+      assert(d.rd_d24 < hex_shape::D24,
+             "d24 {d.rd_d24} is outside D ({hex_shape::D24}) at sample {t}");
+      assert(hex_shape::wall_run_ok(d.rd_d24, d.rd_a0, d.rd_b0, d.rd_p),
+             "the library returned d24 {d.rd_d24} p {d.rd_p} from ({d.rd_a0},"
+           + "{d.rd_b0}), which its own `wall_run_ok` refuses");
+    }
+  }
+}
