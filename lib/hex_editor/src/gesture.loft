@@ -1918,6 +1918,13 @@ pub struct RunDraft {
   rd_p:     integer = 0,       // its period count; 0 = no legal run
   rd_a0:    integer = 0,       // the anchor it snapped to, in triangle-lattice
   rd_b0:    integer = 0,
+  // ⚠ **OUR OLD ANSWER, KEPT AFTER THE SWITCH — and `H1b` is why it has to be.**
+  // `rd_step` was ours and is the library's now, so a test comparing `rd_step` to
+  // `rd_d24` compares the library to ITSELF and passes for no reason. That is this
+  // tree's *a test that repairs its own subject* defect, and it appeared the moment
+  // the switch landed: `test_the_two_snaps_disagree` went green-by-tautology.
+  // While `WALL_SNAP` still exists, the comparison must have both sides.
+  rd_ours:  integer = 0 - 1,   // `snap_heading`'s step, for the comparison only
 }
 
 pub fn run_between(x0: float, z0: float, x1: float, z1: float,
@@ -1953,12 +1960,68 @@ pub fn run_between(x0: float, z0: float, x1: float, z1: float,
     if rb_d24 >= 0 { rb_p = hex_shape::snap_run_p(rb_d24, rb_va, rb_vb, x1, z1); }
   }
 
-  return RunDraft { rd_ok: true, rd_step: rb_step, rd_resid: rb_res, rd_reach: rb_reach,
+  // ── `H1b` — THE LIBRARY'S ANSWER IS NOW THE RUN ──────────────────────────
+  //
+  // ⚠ **A REFUSAL NAMES ITS RESTRICTION (`K-FIT`), because this can now refuse
+  // where the old path never did.** Our snap always produced a run: any angle
+  // rounded to the nearest of 24, any length projected onto it. The lattice is
+  // stricter — a run exists between admissible VERTICES in a direction that is
+  // actually representable — so *there is no legal wall from here in that
+  // direction* is a real answer and the author has to be told which of the two
+  // it was.
+  // ⚠ **BOTH OF THESE REFUSALS ARE UNREACHED BY THE SUITE, MEASURED — plan 24
+  // `H1b`'s sabotage row 3.** Replacing the `rb_p <= 0` guard with `if false`
+  // left all 628 tests GREEN, so nothing in the corpus makes `snap_run_p` fail:
+  // it searches ±3 periods and a legal `p` is always inside that window for a
+  // draft long enough to pass `RUN_SHORT`. The `rb_d24 < 0` branch is the same
+  // shape — `nearest_vertex` always lands on a vertex, so `snap_run_d24` always
+  // answers.
+  //
+  // ⚠ **THEY ARE KEPT AND FLAGGED RATHER THAN DELETED**, because *unreached by
+  // this corpus* is not *unreachable*: `snap_run_p`'s window is a library
+  // constant that can change, and an author standing somewhere these fixtures
+  // never put them is exactly the case a defensive branch is for. But an untested
+  // refusal is this tree's commonest defect wearing a refusal's clothes, and a
+  // reader deserves to know these two have never fired.
+  if rb_d24 < 0 {
+    return RunDraft { rd_ok: false,
+      rd_why: "no wall direction from here — step to a corner and try again" };
+  }
+  if rb_p <= 0 {
+    return RunDraft { rd_ok: false,
+      rd_why: "no wall of a legal length reaches there on heading {rb_d24} of "
+            + "{hex_shape::D24} — walk a little further or a little less" };
+  }
+  rb_ea = hex_shape::wall_end_a(rb_d24, rb_va, rb_p);
+  rb_eb = hex_shape::wall_end_b(rb_d24, rb_vb, rb_p);
+
+  // ⚠ **THE REACH IS NOW A LEGAL LENGTH, NOT A PROJECTION — and that is a real
+  // change of contract, not a refinement.** It was `d·cos(residual)`: the walk
+  // measured along the snapped heading, chosen so a run could never end past
+  // where the author stopped. `wall_run_len` is the nearest ADMISSIBLE length,
+  // which may be slightly longer than the walk. **The never-overshoot guarantee
+  // is spent**, and it is spent for exactness: a run that ends where the author
+  // stopped cannot be recovered from the field, and one that ends on a vertex can.
+  rb_len = hex_shape::wall_run_len(rb_d24, rb_p);
+  // How far off the run the author actually walked, in degrees — the same number
+  // the acknowledgement has always quoted, now measured against `D`'s true angle
+  // rather than against a nominal 15-degree grid.
+  rb_act = hex_shape::wall_angle_actual(rb_d24) * PI / 180.0 ?? 0.0;
+  rb_walk = atan2(rb_dz, rb_dx);
+  rb_off = rb_walk - rb_act;
+  while rb_off > PI { rb_off = rb_off - 2.0 * PI; }
+  while rb_off < 0.0 - PI { rb_off = rb_off + 2.0 * PI; }
+  if rb_off < 0.0 { rb_off = 0.0 - rb_off; }
+
+  return RunDraft { rd_ok: true, rd_step: rb_d24, rd_ours: rb_step,
+    rd_resid: rb_off * 180.0 / PI ?? 0.0, rd_reach: rb_len,
     rd_d24: rb_d24, rd_p: rb_p, rd_a0: rb_va, rd_b0: rb_vb,
-    rd_run: WallRun { wr_base: 0, wr_up: 0, wr_x0: x0, wr_z0: z0,
-                      wr_x1: x0 + cos(rb_ang) * rb_reach,
-                      wr_z1: z0 + sin(rb_ang) * rb_reach,
-                      wr_mat: mat, wr_step: rb_step } };
+    rd_run: WallRun { wr_base: 0, wr_up: 0,
+                      wr_x0: hex_shape::tri_x(rb_va, rb_vb),
+                      wr_z0: hex_shape::tri_y(rb_va, rb_vb),
+                      wr_x1: hex_shape::tri_x(rb_ea, rb_eb),
+                      wr_z1: hex_shape::tri_y(rb_ea, rb_eb),
+                      wr_mat: mat, wr_step: rb_d24 } };
 }
 
 // ── `H1a` — WHERE THE LIBRARY'S RUN WOULD PUT ITS ENDS ──────────────────────

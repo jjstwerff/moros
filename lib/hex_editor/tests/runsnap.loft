@@ -57,7 +57,10 @@ fn test_the_two_snaps_disagree_and_that_is_the_point() {
     d = draft(cos(ang) * 6.0, sin(ang) * 6.0);
     if !d.rd_ok { continue; }
     n_all = n_all + 1;
-    if d.rd_d24 == d.rd_step { n_same = n_same + 1; }
+    // ⚠ `rd_ours`, NOT `rd_step`. Since `H1b` switched the gesture, `rd_step` IS
+    // the library's answer, so comparing it to `rd_d24` compares the library to
+    // itself — and this test went green by tautology the moment the switch landed.
+    if d.rd_d24 == d.rd_ours { n_same = n_same + 1; }
   }
   assert(n_all == 24, "all 24 sample runs must draft, got {n_all}");
   assert(n_same < n_all,

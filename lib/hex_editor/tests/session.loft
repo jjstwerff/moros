@@ -15,6 +15,7 @@
 //     residual"* is a claim about the server. `doorstep.mjs` owns it.
 //   · anything that ticks — the walk, the fall, the camera's ease.
 //   · anything a viewer decides — which chunks were streamed.
+use hex_shape;
 use hex_editor;
 use hex_voxel;
 
@@ -790,14 +791,38 @@ fn test_a_run_snaps_to_one_of_the_twenty_four_headings() {
   // Dead along the axis, so there is nothing to snap away and no residual.
   assert(got.rd_resid < 0.001,
          "a run straight down an axis has residual {got.rd_resid}°");
-  assert(got.rd_reach > 5.99 && got.rd_reach < 6.01,
-         "the reach is {got.rd_reach} for a six-unit walk");
+  // ⚠ **THE REACH IS A LEGAL LENGTH, NOT THE WALK — plan 24 `H1b`.** This asserted
+  // `≈ 6.0` for a six-unit walk. It is `5.196` now, which is `3√3`: the nearest
+  // ADMISSIBLE length on this heading. A run must end on a triangle-lattice vertex
+  // or it cannot be read back out of the field (`probe/l1`: 12 of 24 from a gesture
+  // anchor, 24 of 24 from an admissible one), so the length is quantised by the
+  // lattice rather than chosen by the author.
+  //
+  // ⚠ AND THE NEW CLAIM IS STRONGER, which is the only reason to accept the change:
+  // `≈ 6.0` was a float window; this is an exact identity against the library's own
+  // length function, plus its admissibility predicate.
+  assert(got.rd_reach == hex_shape::wall_run_len(got.rd_d24, got.rd_p),
+         "the reach {got.rd_reach} is not `wall_run_len({got.rd_d24}, {got.rd_p})` "
+       + "= {hex_shape::wall_run_len(got.rd_d24, got.rd_p)}");
+  assert(hex_shape::wall_run_ok(got.rd_d24, got.rd_a0, got.rd_b0, got.rd_p),
+         "the run the gesture produced is one its own library refuses");
 }
 
 // ⚠ THE ROW WITH TEETH. The author drifts off the line; the run must end where the
 // PROJECTION says, not where they stood. Straight-line distance here is 6.32 —
 // which is a way running past the end of the walk.
-fn test_the_length_is_measured_along_the_heading_and_not_as_the_distance() {
+// ⛔ **THIS TEST'S OLD CLAIM IS SPENT, AND WHAT IT GUARDED IS NAMED HERE RATHER
+// THAN DELETED — plan 24 `H1b`.** It asserted `reach = d·cos(residual)`: the walk
+// measured along the snapped heading, an identity a straight-line distance does not
+// satisfy. Its purpose was one guarantee — **a run never ends past where the author
+// stopped.**
+//
+// ⚠ **THAT GUARANTEE IS GONE, MEASURED: over 168 sample runs, 65 OVERSHOOT the
+// walk**, by up to 2.0 world units, and undershoot by up to 2.755. It is spent
+// deliberately — a run ending where the author stopped cannot be recovered from the
+// field, one ending on a lattice vertex can — but *spent* is the word, and a reader
+// who found this test merely relaxed would not know that.
+fn test_the_run_ends_on_a_legal_endpoint_near_the_walk() {
   drift = run_between(0.0, 0.0, 6.0, 2.0, WALL_MAT);
   assert(drift.rd_ok, "the drifted run was refused: {drift.rd_why}");
   straight = sqrt(6.0 * 6.0 + 2.0 * 2.0) ?? 0.0;
@@ -807,17 +832,52 @@ fn test_the_length_is_measured_along_the_heading_and_not_as_the_distance() {
   // short whatever the walk: here 6.3132 against 6.3246, a difference of 0.011.
   // The claim with teeth is the IDENTITY the projection satisfies and a distance
   // does not: reach = d·cos(residual), which separates them at any residual at all.
-  along = straight * cos(drift.rd_resid * PI / 180.0 ?? 0.0);
-  assert(drift.rd_reach > along - 0.005 && drift.rd_reach < along + 0.005,
-         "the reach is {drift.rd_reach} and d·cos(residual) is {along} — a run "
-       + "measured as the straight-line distance ({straight}) runs past where the "
-       + "author stopped, by exactly their drift");
-  assert(drift.rd_reach < straight - 0.005,
-         "and it must be SHORTER than the distance: {drift.rd_reach} against {straight}");
+  // What replaces the identity is a bound derived from the lattice, not a tuned
+  // tolerance: the end is within a few PERIODS of the direction's own family, and
+  // `wall_run_len(d, 1)` is that period.
+  period = hex_shape::wall_run_len(drift.rd_d24, 1);
+  off = drift.rd_reach - straight;
+  if off < 0.0 { off = 0.0 - off; }
+  assert(off < 3.0 * period,
+         "the run is {drift.rd_reach} against a {straight} walk — off by {off}, "
+       + "more than three periods of {period} on heading {drift.rd_d24}");
+  assert(hex_shape::wall_run_ok(drift.rd_d24, drift.rd_a0, drift.rd_b0, drift.rd_p),
+         "the drifted run is one its own library refuses");
   // …and the residual says how far off the line they were, which is the number the
   // acknowledgement quotes.
   assert(drift.rd_resid > 0.5,
          "a two-unit drift over six reported residual {drift.rd_resid}°");
+}
+
+// ⚠ **THE GUARD THE TEST ABOVE GAVE UP, RE-ARMED AS A SWEEP.** A single fixture
+// cannot see a bound. This walks 24 headings at 7 lengths and holds every run the
+// gesture makes to one its own library admits — which is the property the old
+// never-overshoot claim was really protecting, stated where it is still true.
+fn test_no_run_the_gesture_makes_is_one_the_library_refuses() {
+  n_ok = 0;
+  worst = 0.0;
+  for t in 0..24 {
+    for lw in 3..10 {
+      ang = (t as float) * 15.0 / 57.29577951308232;
+      d = (lw as float);
+      r = run_between(0.0, 0.0, cos(ang) * d, sin(ang) * d, WALL_MAT);
+      if !r.rd_ok { continue; }
+      n_ok = n_ok + 1;
+      assert(hex_shape::wall_run_ok(r.rd_d24, r.rd_a0, r.rd_b0, r.rd_p),
+             "heading {t} at length {lw} produced d24 {r.rd_d24} p {r.rd_p}, which "
+           + "`wall_run_ok` refuses — the gesture built an illegal run");
+      off = r.rd_reach - d;
+      if off < 0.0 { off = 0.0 - off; }
+      if off > worst { worst = off; }
+    }
+  }
+  assert(n_ok > 150, "only {n_ok} of 168 sample runs drafted at all");
+  // ⚠ A MEASURED FIGURE, NOT A DERIVED ONE — 2.755 wu on 2026-08-22 — so it is
+  // allowed to move, with a reason. What it catches is a change that quietly makes
+  // walls land much further from where they were drawn.
+  assert(worst < 3.0,
+         "the worst deviation from the walk is {worst} wu over {n_ok} runs, and it "
+       + "was 2.755 when this was written");
 }
 
 // ⚠ AND TWO PRESSES IN ONE PLACE IS A REFUSAL, NOT A DEGENERATE RUN — a heading
@@ -945,8 +1005,16 @@ fn test_the_second_press_builds_the_run_and_closes_the_draft() {
   session_at(s, w, 6.0, 0.0, 0.0);
   got = session_run(s, w, s.es_author, WALL_MAT);
   assert(got.rl_code == RL_LAID, "the second press answered {got.rl_code}");
-  assert(got.rl_reach > 5.99 && got.rl_reach < 6.01,
-         "the run is {got.rl_reach} long for a six-unit walk");
+  // ⚠ `H1b`: a legal length, not the walk. `RunLaid` carries the heading but not
+  // the period, so this asks the weaker question the field can answer — is this
+  // length one the heading actually admits?
+  rl_legal = false;
+  for rl_p in 1..9 {
+    if got.rl_reach == hex_shape::wall_run_len(got.rl_step, rl_p) { rl_legal = true; }
+  }
+  assert(rl_legal,
+         "the run is {got.rl_reach} long, which is not any legal multiple on "
+       + "heading {got.rl_step} — one period is {hex_shape::wall_run_len(got.rl_step, 1)}");
   assert(!s.es_draft.wd_open, "the draft is still open after a run was built");
 }
 
