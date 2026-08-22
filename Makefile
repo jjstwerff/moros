@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -781,6 +781,14 @@ probe-a0p-exact:
 # house is a 12-heading object by construction.
 probe-headings:
 	@python3 probe/headings/enumerate.py
+
+# A0q (plan 24) — CALL `hex_draw` ON INPUT IT ACCEPTS: the control `A0p` never ran.
+# 48 of 48 side-runs exact over 12 orientations, and the clean least-squares scatter
+# comes out 0.9166666666666679 — `X47`'s own gated control number, to the digit, from
+# a different tree. ⚠ Its finding is that `surface_heading` TELESCOPES to the chord and
+# is blind to a notch by construction; straightness is `surface_lsq_residual`.
+probe-a0q:
+	@loft --interpret --lib lib/ probe/a0q/a0q.loft 2>/dev/null | sed -n '/^A0q/,$$p'
 
 pages:
 	@node tools/build-pages.mjs

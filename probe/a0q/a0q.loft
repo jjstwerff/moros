@@ -1,0 +1,226 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PLAN 24 `A0q` — CALL `hex_draw`, ON INPUT IT ACCEPTS.
+//
+//   loft --interpret --lib lib/ probe/a0q/a0q.loft     (or `make probe-a0q`)
+//
+// ⚠ THIS IS THE CONTROL `A0p` NEVER RAN. `A0p` tried to recover a wall's line
+// twice and invented the geometry both times — a float fit through edge midpoints
+// (19 of 24), then `surface_of`'s integer body copied out with the `Plan` removed
+// and a fold invented to replace the ordering the `Plan` had been providing (8 of
+// 24, worse). **Neither run called `hex_draw` at all.** So nothing in this tree has
+// ever asked the library to do this job on its own terms.
+//
+// [FORMAL_CORE](../../doc/claude/FORMAL_CORE.md) §6.1 is what is being checked, and
+// it is gated upstream as `X47`. ⚠ **This re-measures it HERE**, which is not
+// redundant: a consumer's registry versions, its toolchain and its own build are
+// where a library claim either holds or does not, and "green in the workshop" is a
+// fact about the workshop.
+//
+// ⚠ NO TOLERANCE APPEARS IN §1 OR §2. `surface_heading` is a zero cross product in
+// exact integers — the answer is an index or it is `-1`.
+use hex_field;
+use hex_grid;
+use hex_form;
+use hex_draw;
+
+const W = 61;
+const H = 61;
+const Q0 = 0 - 30;
+const R0 = 0 - 30;
+
+// One plan's footprint, filled the way the library fills it.
+fn plan_cells(pl: Plan) -> HexSet {
+  cells = hexset_chunk(Q0, R0, W, H);
+  types = labels_new(Q0, R0, W, H);
+  draw_floor(pl, cells, types, 1);
+  cells
+}
+
+fn main() {
+  println("A0q — plan 24: `hex_draw::surface_of` on input it accepts");
+  println("");
+
+  // ── §1  EVERY SIDE OF EVERY ORIENTATION IS AN EXACT LATTICE DIRECTION ──────
+  //
+  // `|O| = 12` — six rotations times the mirror — and a rectangle has four sides,
+  // so 48 side-runs. §6.1's claim is that each summed edge vector is exactly
+  // parallel to one of the 12 headings, with NO residual perpendicular component.
+  println("── §1  48 side-runs: is each an exact heading? ──────────────────");
+  n_ok = 0;
+  n_all = 0;
+  worst_n = 999999;
+  for mir in 0..2 {
+    for rt in 0..6 {
+      pl = plan_new(0, 0, 5, 4, rt, mir == 1);
+      cells = plan_cells(pl);
+      for sd in 0..4 {
+        ws = surface_of(pl, cells, sd);
+        h = surface_heading(ws);
+        n_all = n_all + 1;
+        if h >= 0 { n_ok = n_ok + 1; }
+        if ws.ws_n < worst_n { worst_n = ws.ws_n; }
+        if rt < 2 && mir == 0 {
+          println("   rot {rt} mir {mir} side {sd}: {ws.ws_n} edges · "
+                  + "dir ({ws.ws_dk},{ws.ws_dm}) · heading {h} · "
+                  + "mean ({ws.ws_num_k}/{ws.ws_den},{ws.ws_num_m}/{ws.ws_den})");
+        }
+        if ws.ws_n <= 0 {
+          println("   ⛔ rot {rt} mir {mir} side {sd} has NO edges — the run is empty");
+        }
+      }
+    }
+  }
+  println("");
+  if n_ok == n_all {
+    println("   ✅ {n_ok} of {n_all} exact · shortest run {worst_n} edges");
+  } else {
+    println("   ⛔ {n_ok} of {n_all} exact — §6.1 does NOT hold in this tree");
+  }
+
+  // ── §2  THE CONTROLS — and the first one FAILING is the finding ──────────
+  //
+  // ⚠ THE OBVIOUS CONTROL DOES NOT FIRE, AND IT CANNOT. The first version of this
+  // probe bumped one cell out of a side and expected `surface_heading` to answer
+  // `-1`. It answers `3`, unchanged, with the run 9 edges longer.
+  //
+  // **A boundary run's summed edge vector TELESCOPES to the chord.** The edges of
+  // one side form a path, so their sum is (end corner − start corner) and nothing
+  // in between survives: a notch is a closed detour whose vectors cancel exactly.
+  // So §1's exactness is a statement about where a run's ENDS are, and it is blind
+  // by construction to what the run does between them.
+  //
+  // ⚠ THAT IS NOT A DEFECT — it is why §6.1 is exact at all — but it means
+  // `surface_heading` must never be read as a straightness test. The plan's own
+  // invariant-gate row for `A0q` said *"a deliberately bent side must return -1"*,
+  // and that row was wrong.
+  println("");
+  println("── §2a  control: ONE notch must NOT move the heading (telescoping) ──");
+  tele = 0;
+  tele_all = 0;
+  for rt2 in 0..6 {
+    pl2 = plan_new(0, 0, 5, 4, rt2, false);
+    c_clean = plan_cells(pl2);
+    w_clean = surface_of(pl2, c_clean, 0);
+    c_notch = plan_cells(pl2);
+    sr = side_edges(pl2, c_notch, 0);
+    if side_run_len(sr) > 0 {
+      i = side_run_len(sr) / 2 ?? 0;
+      hexset_set(c_notch, sr.sr_qa[i] ?? 0, sr.sr_ra[i] ?? 0, false);
+      w_notch = surface_of(pl2, c_notch, 0);
+      // ⚠ ONLY THE ROTATIONS WHERE THE FIXTURE ACTUALLY BIT. Removing the
+      // middle cell of a side does not lengthen the run in every rotation —
+      // on some the cell sits where its loss shortens two sides instead of
+      // notching one. Counting those as failures reported `4 of 6` and blamed
+      // the LIBRARY for the fixture, which is the same error one layer down
+      // from the one this whole probe exists to correct.
+      same = w_notch.ws_dk == w_clean.ws_dk && w_notch.ws_dm == w_clean.ws_dm;
+      if w_notch.ws_n > w_clean.ws_n {
+        tele_all = tele_all + 1;
+        if same { tele = tele + 1; }
+      }
+      if rt2 < 2 {
+        println("   rot {rt2}: {w_clean.ws_n} → {w_notch.ws_n} edges · dir "
+                + "({w_clean.ws_dk},{w_clean.ws_dm}) → ({w_notch.ws_dk},{w_notch.ws_dm}) "
+                + "· heading {surface_heading(w_clean)} → {surface_heading(w_notch)}");
+      }
+    }
+  }
+  if tele == tele_all && tele_all >= 3 {
+    println("   ✅ {tele} of {tele_all} notched fixtures: the run got LONGER and the");
+    println("      direction did NOT move — the sum telescopes, as a path sum must");
+  } else if tele_all < 3 {
+    println("   ⛔ only {tele_all} of 6 fixtures notched at all — this says nothing");
+    println("      about telescoping, it says the control did not run");
+  } else {
+    println("   ⛔ {tele} of {tele_all} — the sum is not telescoping, and everything");
+    println("      said about §1 above rests on the wrong model of what it measures");
+  }
+
+  // ⚠ AND A CONTROL THAT DOES FIRE, because a check which can never say `-1` is
+  // not a check. Two notches that do NOT cancel move the chord itself.
+  println("");
+  println("── §2b  control: a deviation that does NOT cancel must give -1 ──────");
+  neg = 0;
+  neg_all = 0;
+  for rt3 in 0..6 {
+    pl3 = plan_new(0, 0, 5, 4, rt3, false);
+    c3 = plan_cells(pl3);
+    sr3 = side_edges(pl3, c3, 0);
+    n3 = side_run_len(sr3);
+    if n3 >= 3 {
+      hexset_set(c3, sr3.sr_qa[1] ?? 0, sr3.sr_ra[1] ?? 0, false);
+      hexset_set(c3, sr3.sr_qa[n3 - 1] ?? 0, sr3.sr_ra[n3 - 1] ?? 0, false);
+      w3 = surface_of(pl3, c3, 0);
+      // ⚠ AND HERE TOO: two removals do not always fail to cancel. Where they
+      // do cancel the chord is unchanged and the heading is rightly exact —
+      // that is the telescoping again, not a check that missed.
+      w3c = surface_of(pl3, plan_cells(pl3), 0);
+      if w3.ws_dk != w3c.ws_dk || w3.ws_dm != w3c.ws_dm {
+        neg_all = neg_all + 1;
+        if surface_heading(w3) < 0 { neg = neg + 1; }
+      }
+      if rt3 < 2 {
+        println("   rot {rt3}: dir ({w3.ws_dk},{w3.ws_dm}) · heading {surface_heading(w3)}");
+      }
+    }
+  }
+  if neg == neg_all && neg_all > 0 {
+    println("   ✅ {neg} of {neg_all} fixtures that MOVED the chord answered -1 —");
+    println("      the check can fail, so §1's 48 of 48 is a result");
+  } else if neg_all == 0 {
+    println("   ⛔ no fixture moved the chord — this control did not run");
+  } else {
+    println("   ⛔ {neg} of {neg_all} moved the chord and still answered a heading");
+    println("      — §1 cannot be trusted");
+  }
+
+  // ── §2c  THE STRAIGHTNESS INSTRUMENT, WHICH IS A DIFFERENT FUNCTION ───────
+  //
+  // ⚠ AND ITS CLEAN VALUE IS THE CORROBORATION THAT MATTERS. `X47`'s own control
+  // reads *"the scatter a least-squares fit would threshold is 0 east and 0.9167
+  // north"*. If this tree reproduces that number to the digit, then §1 is calling
+  // the same function hexbody gated, on the same geometry — which is the whole
+  // point of re-measuring a library claim in the consumer.
+  println("");
+  println("── §2c  straightness is `surface_lsq_residual`, not the heading ─────");
+  pl4 = plan_new(0, 0, 5, 4, 0, false);
+  c_ok = plan_cells(pl4);
+  c_bad = plan_cells(pl4);
+  sr4 = side_edges(pl4, c_bad, 0);
+  hexset_set(c_bad, sr4.sr_qa[side_run_len(sr4) / 2 ?? 0] ?? 0,
+                    sr4.sr_ra[side_run_len(sr4) / 2 ?? 0] ?? 0, false);
+  lo = surface_lsq_residual(pl4, c_ok, 0);
+  hi = surface_lsq_residual(pl4, c_bad, 0);
+  println("   side 0 (north family): clean lsq {lo} · one notch {hi}");
+  println("   `X47`'s gated control for the north family is 0.9166666666666679");
+  if hi > lo {
+    println("   ✅ the residual SEES the notch the heading could not");
+  } else {
+    println("   ⛔ the residual is blind too — nothing here can tell a wall from a notch");
+  }
+
+  // ── §3  DOES THE AVERAGE GIVE THE ENDS? — plan 24 open question 1 ─────────
+  //
+  // §6.1 states the direction and the position exactly and says nothing about
+  // where a run STOPS. `A0p` invented a number for this (an "endpoint floor of
+  // 0.653") from a fit that was wrong twice over, so the plan marks it
+  // ask-upstream. `surface_span` is the library's own answer and it has simply
+  // never been called here — asking it is cheaper than asking a person.
+  println("");
+  println("── §3  `surface_span` — the ends, for open question 1 ───────────");
+  pl3 = plan_new(0, 0, 5, 4, 0, false);
+  cells3 = plan_cells(pl3);
+  for sd3 in 0..4 {
+    (ax, ay, bx, by) = surface_span(pl3, cells3, sd3);
+    ws3 = surface_of(pl3, cells3, sd3);
+    println("   side {sd3}: span ({ax},{ay}) → ({bx},{by}) · {ws3.ws_n} edges");
+  }
+  println("");
+  println("   ⚠ read these against the plan's own corners before concluding —");
+  println("     `X62` says the miter recovers the CELL-REGION corner, not the");
+  println("     continuous model corner, which is quantised away before any");
+  println("     surface exists. A span that differs from the model rectangle is");
+  println("     therefore expected, and is not an endpoint error.");
+}

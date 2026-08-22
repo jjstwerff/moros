@@ -83,7 +83,7 @@ average of exact rationals *is* the answer.
 
 | phase | expected result | invariant | negative control |
 |---|---|---|---|
-| `A0q` | `surface_of` on a plan side gives `surface_heading >= 0`, every side, every rotation | §6.1 / `X47`, re-measured **in this tree** | a bent side must give `-1` |
+| `A0q` | ✅ **48 of 48**, and the clean lsq scatter reproduces `X47`'s `0.9166666666666679` to the digit | §6.1 / `X47`, re-measured **in this tree** | ⛔ **the row said *a bent side must give `-1`* and that was WRONG** — the sum telescopes to the chord, so a notch cancels. The control that fires is a deviation that MOVES the chord (5 of 5), and straightness is `surface_lsq_residual` |
 | `H1` | every stored wall direction is a `d ∈ D` | §2.2 | a request off `D` is snapped or refused, never stored |
 | `L1` | recovery of a stamped run returns the run's own `d`, exactly | §6.1, `ρ = 0` | ⚠ an **unordered** input must be refused, not silently summed — `(-14, 0)` for a due-east wall is the case |
 | `A3` | mesh from recovered runs **byte-identical** to mesh from `es_runs` | substitution is invisible | sabotage by one lattice step → red |
@@ -95,9 +95,9 @@ average of exact rationals *is* the answer.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **`A0p`** — probe: recover a wall from its edge stamp | XS | [result](../../probe/a0p/README.md) | ✅ **Done, and it broke the ground rule twice.** Value: the located gap |
-| **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | `Plan` + `HexSet` → `surface_of` → `surface_heading >= 0`, every side, every rotation. ⚠ **The control nothing has run** — `X47` gates this upstream; this re-measures it **here**, which is where the consumer lives | Open |
+| **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | [result](../../probe/a0q/README.md) · `make probe-a0q` | ✅ **Done 2026-08-22.** 48 of 48 exact; `X47`'s control number reproduced to the digit. ⚠ **And it corrected this plan**: `surface_heading` is blind to a notch by construction |
 | **`H1`** — adopt `D`; delete `WALL_SNAP` | M | every gate green with the snap delegating to the library's `D`. ⚠ Parallel run: keep the 2π/24 answer beside `D`'s and compare what each **stores** | Blocked on `A0q` |
-| **`L1`** — the library gap: recovery of **world linework** from the field | M | ⚠ **This is an upstream gap, not just a missing entry point.** §2.2's own note: *"`rebuild` returns the turtle form alone, so embedded linework would be silently dropped and `rt_trip` would not even notice."* `X27` says the straight line is *"`rebuild`'s job"*; `X55` measured one E–W world line recovering exactly (`eave_spread 0`). **Raise it with hexbody before building**, then land it in `loft-libs-world` with tests there | Blocked on `H1` |
+| **`L1`** — the library gap: recovery of **world linework** from the field | M | ⚠ **`A0q` SHARPENED THIS: `L1` needs TWO answers, not one.** `surface_heading` gives the **chord** and telescopes, so it will hand back an exact heading for a chain that zigzags, doglegs or doubles back as long as the ends line up — *is this one straight wall* is `surface_lsq_residual`'s question, and the recovery needs both. ⚠ **And this is an upstream gap, not just a missing entry point.** §2.2's own note: *"`rebuild` returns the turtle form alone, so embedded linework would be silently dropped and `rt_trip` would not even notice."* `X27` says the straight line is *"`rebuild`'s job"*; `X55` measured one E–W world line recovering exactly (`eave_spread 0`). **Raise it with hexbody before building**, then land it in `loft-libs-world` with tests there | Blocked on `H1` |
 | **`A3`** — mesher emits from recovered runs, `es_runs` still present | M | two meshes, byte for byte, both paths live | Blocked on `L1` |
 | **`A4`** — the switch | S | every gate green, `A3`'s comparison still running | Blocked on `A3` |
 | **`A5`** — delete `emit_wall_panel` | S | ⚠ **first visible change.** Triangle count + a screenshot pair. `probe/b2`'s `E2` reads `grass,wall` either way | Blocked on `A4` |
