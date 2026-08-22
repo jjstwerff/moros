@@ -14,9 +14,12 @@ NORMATIVE** — [FORMAL_CORE.md](../../doc/claude/FORMAL_CORE.md), the binding e
 | walls draw straight, recovered from the store | **§6.1** *a wall surface is the exact **AVERAGE** of its edges, never a fit* | `X47` |
 | no session record; one mesh per chunk | **§2.4.3** *the canonical text is not a second editor representation, and must not become one — that is exactly the second layer the editor is not allowed to have*; layer 2 is *derived on demand, **never persisted***, and *an edit dirties the chunks it touches, and their layer-2 meshes rebuild* | `SPEC` L3 |
 
-**Nothing built.** The symptoms are in
-[EDITOR_DEFECTS.md](../../doc/claude/EDITOR_DEFECTS.md); the work is to make the editor obey a
-model it has been diverging from.
+**Three probes run, nothing wired yet — and every one of them corrected this plan.** `A0p` broke
+the ground rule twice and located the gap; `A0q` found the plan's own invariant-gate row was
+wrong; `H1` found that `D` is a library table, that `L1` is a **call** rather than the upstream
+change it was written as, and that **open question 4's migration does not exist**. The symptoms
+are in [EDITOR_DEFECTS.md](../../doc/claude/EDITOR_DEFECTS.md); the work is to make the editor
+obey a model it has been diverging from.
 
 ## Goal
 
@@ -76,6 +79,16 @@ search over `N ≤ 400` found nothing better. **So `D` is adopted, never derived
 ⚠ **AND `hex_editor::WALL_SNAP = 2π/24` ASKS FOR DIRECTIONS THAT DO NOT EXIST**, which is why
 `H1` sits ahead of the recovery work.
 
+⚠ **`H1` IS A SEMANTIC CHANGE, NOT A SWAP — measured.** Ours quantises an *angle* onto a grid with
+no lattice behind it. `hex_shape::snap_run_d24(a0, b0, tx, ty)` takes a **triangle-lattice vertex**
+and a **world target point** and answers *which direction's nearest **legal** endpoint lands
+closest* — accounting for run admissibility (`wall_run_ok`, `wall_min_p`, the `δ` class) that ours
+knows nothing about. They agree on 12 of 24.
+
+⚠ **AND `hex_editor::wall_stamp` IS A SECOND IMPLEMENTATION OF `hex_shape::wall_write`.** Both
+mark the edges a wall crosses; ours in floats from a `WallRun`'s endpoints via a halfplane, the
+library's from a `Wall` via `wall_separates`. One of them is ours and should not be.
+
 ## Invariant gate
 
 Exact-invariant work. **`ρ = 0` is the target, not a tolerance** — §6.1's whole claim is that an
@@ -96,8 +109,8 @@ average of exact rationals *is* the answer.
 |---|---|---|---|
 | **`A0p`** — probe: recover a wall from its edge stamp | XS | [result](../../probe/a0p/README.md) | ✅ **Done, and it broke the ground rule twice.** Value: the located gap |
 | **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | [result](../../probe/a0q/README.md) · `make probe-a0q` | ✅ **Done 2026-08-22.** 48 of 48 exact; `X47`'s control number reproduced to the digit. ⚠ **And it corrected this plan**: `surface_heading` is blind to a notch by construction |
-| **`H1`** — adopt `D`; delete `WALL_SNAP` | M | every gate green with the snap delegating to the library's `D`. ⚠ Parallel run: keep the 2π/24 answer beside `D`'s and compare what each **stores** | Blocked on `A0q` |
-| **`L1`** — the library gap: recovery of **world linework** from the field | M | ⚠ **`A0q` SHARPENED THIS: `L1` needs TWO answers, not one.** `surface_heading` gives the **chord** and telescopes, so it will hand back an exact heading for a chain that zigzags, doglegs or doubles back as long as the ends line up — *is this one straight wall* is `surface_lsq_residual`'s question, and the recovery needs both. ⚠ **And this is an upstream gap, not just a missing entry point.** §2.2's own note: *"`rebuild` returns the turtle form alone, so embedded linework would be silently dropped and `rt_trip` would not even notice."* `X27` says the straight line is *"`rebuild`'s job"*; `X55` measured one E–W world line recovering exactly (`eave_spread 0`). **Raise it with hexbody before building**, then land it in `loft-libs-world` with tests there | Blocked on `H1` |
+| **`H1`** — adopt `D`; delete `WALL_SNAP` | M | [probe run](../../probe/h1/README.md) · `make probe-h1` · then every gate green with the snap delegating to `hex_shape`. ⚠ Parallel run: the two agree on **12 of 24** and are **different questions**, so expect divergence on purpose | ◐ **Measured, not wired.** `D` is `hex_shape::hexwall` — `D24`, `wall_step_k/m`, `wall_is_exact`, `snap_run_d24` |
+| **`L1`** — recovery of **world linework** from the field | S | ⛔ **`H1` COLLAPSED THIS TO A CALL.** `hex_shape::wall_read_run(edges, …)` reads a run out of an `EdgeSet` and returns `(d24, a0, b0, p, ok)` — **measured 24 of 24** round-tripping through `wall_write` → `wall_read_run`. ⚠ Compare **endpoints, not `d`**: the library canonicalises to `p > 0`, so a run returns as `d24` or `d24 + 12` — `A0p`'s `P3`, stated by the code that owns it | ✅ **Unblocked, and far smaller than written** |
 | **`A3`** — mesher emits from recovered runs, `es_runs` still present | M | two meshes, byte for byte, both paths live | Blocked on `L1` |
 | **`A4`** — the switch | S | every gate green, `A3`'s comparison still running | Blocked on `A3` |
 | **`A5`** — delete `emit_wall_panel` | S | ⚠ **first visible change.** Triangle count + a screenshot pair. `probe/b2`'s `E2` reads `grass,wall` either way | Blocked on `A4` |
@@ -136,6 +149,9 @@ plan's does not.** Each needs its own answer to *what does the store hold, and i
 3. **`OD-13` is contested upstream** — the standing requirement that the in-between 12 of `D`
    become *first class*, *"because a city/castle needs more directions to be believable."* `H1`
    must not be built in a way that forecloses it.
-4. ⚠ **Do walls already stored need migrating?** They were snapped to a uniform 15° grid, which
-   `X31` says is unreachable. Every world in `worlds/` and every gate fixture is affected. **A
-   store migration is a store change and this plan has been assuming there is none.**
+4. ✅ **ANSWERED — there is no migration.** Every stored section checked: a world holds
+   `WTTH`/`GRND` (magic, ground default, cells), a part holds `WALL`/`OPEN`/`PART` (a wall's
+   *height and surface name*, openings, meta). **Nothing stored carries a direction.** `wr_step`
+   lives only in the live `WallRun`, and the session record is never saved — which is
+   [EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) entry 5. ⚠ **So the migration does not
+   exist BECAUSE of the bug**, and `H1` and entry 5 may be done in either order.

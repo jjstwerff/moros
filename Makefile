@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -789,6 +789,14 @@ probe-headings:
 # is blind to a notch by construction; straightness is `surface_lsq_residual`.
 probe-a0q:
 	@loft --interpret --lib lib/ probe/a0q/a0q.loft 2>/dev/null | sed -n '/^A0q/,$$p'
+
+# H1 (plan 24) — `D`, THE 24 LINEWORK DIRECTIONS, PRINTED FROM `hex_shape` RATHER
+# THAN DERIVED: 12 exact + 12 at a uniform 1.1021137519860 deg bias (`X29`, to 13
+# significant figures). ⚠ Its §3 is the one that moved the plan: a run written with
+# `wall_write` and read back with `wall_read_run` round-trips 24 of 24, so `L1` is a
+# CALL and not the upstream library change the plan had it as.
+probe-h1:
+	@loft --interpret --lib lib/ probe/h1/h1.loft 2>/dev/null | sed -n '/^H1 —/,$$p'
 
 pages:
 	@node tools/build-pages.mjs

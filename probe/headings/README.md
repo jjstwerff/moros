@@ -1,7 +1,10 @@
 # `H1` — how heading resolution depends on run length
 
 ⛔ **CORRECTION, 2026-08-22 — THIS DOES NOT MEASURE `D`, AND AN EARLIER VERSION OF THIS FILE
-CLAIMED IT DID.** The 24 linework directions are **defined and gated upstream**, in
+CLAIMED IT DID.** ✅ **`D` HAS SINCE BEEN PRINTED FROM THE LIBRARY — see
+[probe/h1](../h1/README.md).** Its odd members are `(7,3)`, `(5,9)`, `(2,12)` — the `N = 39`
+family — at 13.898°, 46.102°, 73.898°. **Not one of them appears in the enumeration below**, which
+is the clearest possible statement that a plausible derivation is not an adoption. The 24 linework directions are **defined and gated upstream**, in
 `hexbody/ROUNDTRIP.md` — see [FORMAL_CORE.md](../../doc/claude/FORMAL_CORE.md). They are:
 
 | | |
