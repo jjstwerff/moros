@@ -164,16 +164,41 @@ const bye = async (code, msg) => {
 //   world   spans the horizon: sky above, ground below → 2+ colours means DRAWN
 //   ground  entirely below it: its checksum is what a gesture has to move
 //   panel   the positive control, drawn by a path this step does not touch
+// ⚠ **TWO KINDS OF REGION, AND MIXING THEM IS WHAT BROKE THIS ONCE.** The page
+// sizes its canvas to the window now (`build-pages.mjs`'s fit prelude, plan 22
+// `B5`), so a region written as a fixed pixel offset points at a different part of
+// the picture in every window. Measured, at 1100x617 instead of 1200x660: the
+// `ground` region came back ONE colour and unchanged across a raise — which reads
+// exactly like a world that stopped redrawing, and was an instrument looking at the
+// sky. Hence:
+//
+//   `fy`/`fh` — a FRACTION of the canvas, for the two regions that read the WORLD.
+//               The horizon sits at a fraction of the frame, not at a pixel, so a
+//               fraction is what follows it.
+//   `dx`/`w`  — PIXELS, for the panel, because the panel is `PANEL_WIDTH` wide in
+//               any window. A fraction would slide off it on a wide screen.
+//
+// ⚠ `fy` CLEARS THE SUBJECT BAR, and the sabotage is what found that. The bar is
+// full-canvas-width and 24 px high (`lavition_ui::SUBJECT_HEIGHT`), so a region
+// starting at the top caught four rows of it — and `AUTH_SABOTAGE=nocam`, a page
+// with no camera at all, passed the *is anything drawn* check on the BAR's colours.
+// An instrument that includes the UI cannot report on the world.
 const REGIONS = {
-  // ⚠ `dy` CLEARS THE SUBJECT BAR, and the sabotage is what found that. The bar
-  // is full-canvas-width and 24 px high (`lavition_ui::SUBJECT_HEIGHT`), so a
-  // region starting at 20 caught four rows of it — and `AUTH_SABOTAGE=nocam`, a
-  // page with no camera at all, passed the *is anything drawn* check on the
-  // BAR's colours. An instrument that includes the UI cannot report on the world.
-  world:  { dx: 420, dy: 40,  w: 420, h: 200 },
-  ground: { dx: 420, dy: 300, w: 420, h: 220 },
-  panel:  { dx: 20,  dy: 40,  w: 200, h: 200 },
+  world:  { fx: 0.35, fy: 0.06, fw: 0.35, fh: 0.30 },
+  ground: { fx: 0.35, fy: 0.45, fw: 0.35, fh: 0.33 },
+  panel:  { dx: 20,   fy: 0.06, w: 200,   fh: 0.30 },
 };
+
+// One region against one canvas rect. ⚠ CLAMPED TO AT LEAST ONE PIXEL: a fraction
+// of a tiny canvas can round to zero, and `captureScreenshot` with a zero-width
+// clip returns a PNG that decodes to nothing — reported as a region with no
+// colours, which is the same sentence a blank world produces.
+const regionAt = (r, rect) => ({
+  dx: r.dx ?? Math.round(rect.w * r.fx),
+  dy: Math.round(rect.h * r.fy),
+  w:  Math.max(1, r.w ?? Math.round(rect.w * r.fw)),
+  h:  Math.max(1, Math.round(rect.h * r.fh)),
+});
 
 const shot = async (tag) => {
   const rect = (await call('Runtime.evaluate', {
@@ -195,7 +220,8 @@ const shot = async (tag) => {
   // captures black, which reads exactly like a world that was never drawn.
   const out = [`rect ${Math.round(rect.x)},${Math.round(rect.y)},` +
                `${Math.round(rect.w)}x${Math.round(rect.h)}`];
-  for (const [name, r] of Object.entries(REGIONS)) {
+  for (const [name, spec] of Object.entries(REGIONS)) {
+    const r = regionAt(spec, rect);
     // ⚠ CLAMPED TO THE DOCUMENT. This canvas's own origin is NEGATIVE — it is
     // wider than the window and the shell centres it — so a region near its left
     // edge starts off the page, and a clip that starts off the page is captured
@@ -251,7 +277,7 @@ await call('Page.navigate', { url });
 // The page boots a 1.8 MB wasm; a key pressed before that is dropped on the floor.
 let ready = false;
 for (let i = 0; i < Math.ceil(waitMs / 250); i++) {
-  if ((await out()).includes('moros editor client')) { ready = true; break; }
+  if ((await out()).includes('lavition editor client')) { ready = true; break; }
   await sleep(250);
 }
 if (!ready) await bye(1, 'B1b FAIL — the client never booted; nothing was pressed');
@@ -430,7 +456,7 @@ for (const k of keysArg.split(',')) {
     await call('Page.navigate', { url });
     let back = false;
     for (let i = 0; i < Math.ceil(waitMs / 250); i++) {
-      if ((await out()).includes('moros editor client')) { back = true; break; }
+      if ((await out()).includes('lavition editor client')) { back = true; break; }
       await sleep(250);
     }
     if (!back) await bye(1, 'B1b FAIL — the page never booted after the reload');

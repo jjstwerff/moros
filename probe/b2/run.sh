@@ -357,7 +357,7 @@ echo "── D1  open it from file://, no server at either end ─────�
 # does not work.
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/demo.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/demo.raw" > "$OUT/demo.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/demo.raw" > "$OUT/demo.log" || true
 grep -E '^SHOT ' "$OUT/demo.raw" > "$OUT/demo.shots" || true
 sed -n '1,40p' "$OUT/demo.log" | sed 's/^/   /'
 cat "$OUT/demo.shots" | sed 's/^/   /'
@@ -366,7 +366,7 @@ cat "$OUT/demo.shots" | sed 's/^/   /'
 field() { awk -v t="$1" -v r="$2" -v f="$3" \
   '$2==t { for (i=3;i<NF;i++) if ($i==r) { split($(i+1),p,":"); print p[f]; } }' "$OUT/demo.shots"; }
 
-boot=$(grep -c '^moros editor client' "$OUT/demo.log" || true)
+boot=$(grep -c '^lavition editor client' "$OUT/demo.log" || true)
 local_line=$(grep -m1 'no server answered' "$OUT/demo.log" || true)
 drew=$(grep -m1 'client: local drew' "$OUT/demo.log" || true)
 wrote=$(grep -m1 'client: local raise' "$OUT/demo.log" || true)
@@ -454,9 +454,21 @@ else no "D7 the page never named a surface it drew"; fi
 # have the second.
 p_lib=$(grep -m1 'client: local library' "$OUT/demo.log" || true)
 p_n=$(printf '%s' "$p_lib" | sed -n 's/.*library — \([0-9]*\) parts.*/\1/p')
-p_sw=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/^client: \([0-9]*\) swatches.*/\1/p')
-p_th=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/.*and \([0-9]*\) thumbnails.*/\1/p')
-p_arr=$(grep -m1 'swatches and' "$OUT/demo.log" | sed -n 's/.*(\([0-9]*\) thumbnail meshes arrived.*/\1/p')
+# ⚠ **THE LAST REPORT, NOT THE FIRST — and `-m1` cost this row a red.** The panel is
+# re-rendered on every `panel_dirty`, and it prints this line each time. At boot the
+# catalogue is EMPTY for the first few frames, so the first report is honestly
+# `0 swatches and 0 thumbnails`; the composed catalogue arrives a frame later and the
+# next report is `11 and 20`. Which one `-m1` caught was decided by how many rebuilds
+# happened before the list was filled — one, until the page started sizing its canvas
+# to the window (plan 22 `B5`), and then two. **The page was rendering its catalogue
+# perfectly and this row read zero.**
+# ⚠ AND IT IS THE SAME RULE `press.mjs` ALREADY WRITES DOWN for `verb slots` — *"it is
+# the LAST such line, because a rebind rebuilds the bar and reprints it"*. A per-rebuild
+# report has no first answer worth reading; it has a latest one.
+p_last=$(grep 'swatches and' "$OUT/demo.log" | tail -1)
+p_sw=$(printf '%s' "$p_last" | sed -n 's/^client: \([0-9]*\) swatches.*/\1/p')
+p_th=$(printf '%s' "$p_last" | sed -n 's/.*and \([0-9]*\) thumbnails.*/\1/p')
+p_arr=$(printf '%s' "$p_last" | sed -n 's/.*(\([0-9]*\) thumbnail meshes arrived.*/\1/p')
 
 if [ -n "$p_n" ] && [ "$p_n" -gt 0 ] 2>/dev/null; then
   say "P1 library: ${p_lib#client: local }"
@@ -519,7 +531,7 @@ F_KEYS="h,d,h,d,h,d,h,d,h"
 case ",$SAB," in *,noturn,*) F_KEYS="h,h,h,h,h"; echo "   SABOTAGE noturn — the same attempts with no turn between them" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$F_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/house.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/house.raw" > "$OUT/house.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/house.raw" > "$OUT/house.log" || true
 grep -E '^client: local (place|walker|drew)' "$OUT/house.log" | sed 's/^/   /'
 
 f_first_refusal=$(grep -m1 'local place refused' "$OUT/house.log" || true)
@@ -626,7 +638,7 @@ Q_KEYS="d,Tab,h,d,h,d,h"
 case ",$SAB," in *,nochoose,*) Q_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nochoose — the same run without the choosing key" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$Q_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/part.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/part.raw" > "$OUT/part.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/part.raw" > "$OUT/part.log" || true
 grep -E "^client: local (part|place)" "$OUT/part.log" | sed 's/^/   /'
 
 q_chosen=$(grep -m1 "client: local part '" "$OUT/part.log" || true)
@@ -694,7 +706,7 @@ G_KEYS="w,w,w,w,w,w,d,h,d,h,d,h"
 case ",$SAB," in *,nowalk,*) G_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nowalk — the same run with the walk keys removed" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$G_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/walk.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/walk.raw" > "$OUT/walk.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/walk.raw" > "$OUT/walk.log" || true
 grep -E '^client: local (walker|place)' "$OUT/walk.log" | sed 's/^/   /'
 
 g_walker=$(grep 'local walker' "$OUT/walk.log" | tail -1 || true)
@@ -793,7 +805,7 @@ H_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*60))")
 case ",$SAB," in *,noraise,*) H_KEYS=$(python3 -c "print(','.join(['w']*60))"); echo "   SABOTAGE noraise — the same walk with nothing raised to fall off" ;; esac
 timeout 400 node probe/b1b/press.mjs "file://$SITE" "$H_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/fall.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/fall.raw" > "$OUT/fall.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/fall.raw" > "$OUT/fall.log" || true
 grep -E '^client: local walker' "$OUT/fall.log" | tail -3 | sed 's/^/   /'
 
 h_line=$(grep 'local walker' "$OUT/fall.log" | tail -1 || true)
@@ -845,7 +857,7 @@ L_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['l'] + ['w']*60 + ['l']))")
 case ",$SAB," in *,nolevel,*) L_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*60))"); echo "   SABOTAGE nolevel — the same walk with the level key removed" ;; esac
 timeout 400 node probe/b1b/press.mjs "file://$SITE" "$L_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/level.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/level.raw" > "$OUT/level.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/level.raw" > "$OUT/level.log" || true
 grep -E '^client: local level' "$OUT/level.log" | sed 's/^/   /'
 
 l_on=$(grep -c 'local level on' "$OUT/level.log" || true)
@@ -895,7 +907,7 @@ R_KEYS="r,w,w,w,w,w,w,r"
 case ",$SAB," in *,norun,*) R_KEYS="w,w,w,w,w,w"; echo "   SABOTAGE norun — the same walk with the run key removed" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$R_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/run.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/run.raw" > "$OUT/run.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/run.raw" > "$OUT/run.log" || true
 grep -E '^client: local run' "$OUT/run.log" | sed 's/^/   /'
 
 r_first=$(grep -m1 'client: local run' "$OUT/run.log" || true)
@@ -971,7 +983,7 @@ B_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*30 + ['b','c']))")
 case ",$SAB," in *,nostorey,*) B_KEYS=$(python3 -c "print(','.join(['ArrowUp'] + ['w']*30))"); echo "   SABOTAGE nostorey — the same raise and walk with the storey keys removed" ;; esac
 timeout 400 node probe/b1b/press.mjs "file://$SITE" "$B_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/storey.raw" 2>&1 || true
-grep -E '^(client|moros editor client)' "$OUT/storey.raw" > "$OUT/storey.log" || true
+grep -E '^(client|lavition editor client)' "$OUT/storey.raw" > "$OUT/storey.log" || true
 grep -E '^client: local (storey|cellar)|^client: local —' "$OUT/storey.log" | sed 's/^/   /'
 
 b_up=$(grep -m1 'client: local storey — ' "$OUT/storey.log" || true)
@@ -1478,7 +1490,7 @@ else
     fi
     timeout 300 node probe/b1b/press.mjs "file://$SITE" ArrowUp \
       --await "$2" --wait-ms 90000 > "$OUT/$1.raw" 2>&1 || true
-    grep -E '^(client|moros editor client)' "$OUT/$1.raw" > "$OUT/$1.log" || true
+    grep -E '^(client|lavition editor client)' "$OUT/$1.raw" > "$OUT/$1.log" || true
     # ⚠ KILL BY THE PID WE RECORDED, AND THEN WAIT FOR THE PORT — NOT FOR THE
     # PROCESS. `wait "$e_pid"` hung this script for the whole of an 800-second
     # timeout with `E1` already green in its log: the browser still holds the

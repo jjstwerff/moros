@@ -154,13 +154,66 @@ if (servers.length) {
                            + `# The page's own origin is always tried first.\n`
                            + servers.map((s) => s + '\n').join('');
 }
-const prelude = (Object.keys(parts).length || Object.keys(baseText).length)
-  ? Buffer.from(`<script>globalThis.loftBaseFS = (() => {
+const fsChunk = (Object.keys(parts).length || Object.keys(baseText).length)
+  ? `globalThis.loftBaseFS = (() => {
   const t = ${JSON.stringify(baseText)}, b = ${JSON.stringify(parts)}, o = {};
   for (const k in t) o[k] = t[k];
   for (const k in b) { const s = atob(b[k]); const u = new Uint8Array(s.length);
     for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); o[k] = u; }
-  return o; })();</script>\n`, 'utf8')
+  return o; })();`
+  : '';
+
+// -- THE CANVAS FILLS THE WINDOW -- plan 22 `B5` ----------------------------
+//
+// The shell asks the program what size to be and the program answers with two
+// constants, so the page it produces is a 1200x660 rectangle centred on black
+// whatever the window is. This makes the canvas the window instead, and the
+// client reads the size back through `gl_window_width`/`gl_window_height` rather
+// than trusting the size it asked for.
+//
+// WHY IT IS HERE AND NOT IN THE PROGRAM: a loft program cannot reach the DOM.
+// `gl_create_window` sets `canvas.width`, `canvas.style.width` and `display` and
+// nothing else ever changes them; the element's box is the page's business.
+//
+// THE BACKING STORE IS SET AT ONE DEVICE PIXEL PER CSS PIXEL, DELIBERATELY. The
+// shell allocates `w * devicePixelRatio` so a program that follows its advice is
+// crisp on a dense display -- but this client lays its PANEL out in the same
+// pixels, so honouring the ratio would render the toolbar and the catalogue at
+// half size on a 2x screen. Matching CSS pixels keeps the UI the size it was
+// designed at; the cost is that the picture is not retina-sharp, and that is a
+// trade to revisit when the panel can scale.
+//
+// AND IT IS DEBOUNCED, because a drag fires `resize` continuously and every
+// change costs the client a rebuild of 49 offscreen images. 150 ms after the
+// person stops is one rebuild per resize instead of one per frame.
+//
+// THE POLL EXISTS BECAUSE THERE IS NO BOOT EVENT. The canvas is `display:none`
+// until `gl_create_window` runs, which is several seconds into a 5.6 MB wasm
+// boot; sizing it before then would be overwritten by the shell's own inline
+// style. It stops at the first success, and it is the only loop here.
+const fitChunk = `(() => {
+  var deb = 0;
+  var fit = function () {
+    var c = document.getElementById('c');
+    if (!c || c.style.display === 'none') return false;
+    var w = Math.max(320, document.documentElement.clientWidth);
+    var h = Math.max(240, document.documentElement.clientHeight);
+    c.style.width = w + 'px'; c.style.height = h + 'px';
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    return true;
+  };
+  var t = setInterval(function () { if (fit()) clearInterval(t); }, 100);
+  addEventListener('resize', function () {
+    clearTimeout(deb); deb = setTimeout(fit, 150);
+  });
+  var st = document.createElement('style');
+  st.textContent = 'html,body{height:100%;overflow:hidden}';
+  document.head.appendChild(st);
+})();`;
+
+const chunks = [fsChunk, fitChunk].filter(Boolean);
+const prelude = chunks.length
+  ? Buffer.from(`<script>${chunks.join('\n')}</script>\n`, 'utf8')
   : null;
 
 // ── The copy, and the assertion that it is one ──────────────────────────────
