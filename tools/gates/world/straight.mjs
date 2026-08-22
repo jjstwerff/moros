@@ -62,12 +62,22 @@ const rebuilt = [...g.says].reverse().find((x) => x.startsWith('rebuilt')) ?? ''
 
 const m = laid.match(/heading (\d+) of 24 \(snapped, residual ([0-9.]+)/);
 const step = m ? Number(m[1]) : -1;
-// The run the server actually laid: from A along the snapped heading, for the
-// walked distance projected onto it. Re-derived here rather than trusted.
-const ang = step * (2 * Math.PI / 24);
-const [ax, az] = cellXZ(...A), [bx, bz] = cellXZ(...B);
-const reach = (bx - ax) * Math.cos(ang) + (bz - az) * Math.sin(ang);
-const ex = ax + Math.cos(ang) * reach, ez = az + Math.sin(ang) * reach;
+// ⚠ **THE RUN'S ENDS COME OFF THE WIRE NOW — plan 24 `H1d`. This block used to
+// RE-DERIVE them**, from `step * 15°` and the walked distance projected onto that
+// heading, with the comment *"re-derived here rather than trusted"*. Trusting was
+// the right instinct and re-deriving was the bug: it is a second implementation of
+// `run_between`'s geometry living in a gate.
+//
+// ⚠ **AND IT WAS WRONG FOR HALF THE HEADINGS ALL ALONG.** `D`'s in-between twelve
+// sit 1.1021° off their nominal 15° (`X29`), so over this gate's 24.98-unit run the
+// reconstruction fans away from the true line by `24.98 * tan(1.1021°) = 0.48`. It
+// agreed only while the editor's own snap was bent the same way; the moment `H1b`
+// put the editor on `D`, the ruler and the wall parted and this reported
+// `straight: false` about a wall that had not moved.
+const ends = laid.match(/from (-?[0-9.]+),(-?[0-9.]+) to (-?[0-9.]+),(-?[0-9.]+)/);
+if (!ends) { report(g, { fatal: 'the ack carries no run ends — did `rl_say` change?', ok: false }); }
+const ax = Number(ends[1]), az = Number(ends[2]);
+const ex = Number(ends[3]), ez = Number(ends[4]);
 // perpendicular distance from a point to the infinite line through A and E
 const L = Math.hypot(ex - ax, ez - az);
 const nx = -(ez - az) / L, nz = (ex - ax) / L;

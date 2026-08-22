@@ -875,8 +875,24 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
     return RunLaid { rl_code: RL_LAID, rl_wall: true, rl_n: sr_marked,
       rl_step: sr_step, rl_resid: sr_resid, rl_reach: sr_reach,
       rl_q0: sr_q0, rl_r0: sr_r0, rl_q1: sr_q1, rl_r1: sr_r1, rl_pad: 4,
+      // ⚠ **THE RUN'S OWN ENDS ARE IN THE SENTENCE — plan 24 `H1d`.** They were not,
+      // and `tools/gates/world/straight` therefore RE-DERIVED the line it measures
+      // against: *"the run the server actually laid: from A along the snapped
+      // heading, for the walked distance projected onto it. Re-derived here rather
+      // than trusted."* That is a second implementation of `run_between`'s geometry,
+      // in JavaScript, and `H1b` moved the real one out from under it — the wall went
+      // on being straight and the gate's ruler stopped agreeing, reported as
+      // `straight: false`.
+      //
+      // ⚠ AND IT WAS ALWAYS WRONG FOR THE ODD HEADINGS, WHICH IS THE PART TO KEEP.
+      // The gate reconstructs at `step * 15°`; `D`'s in-between twelve sit
+      // `1.1021°` off nominal (`X29`). Over the 24.98-unit run this gate walks that
+      // is a perpendicular fan of `24.98 * tan(1.1021°) = 0.48` — so the ruler was
+      // bent before `H1b` and only happened to agree while our own snap was bent the
+      // same way.
       rl_say: "wall laid {sr_marked} edges, heading {sr_step} of {HEADINGS} "
-            + "(snapped, residual {sr_resid}°), length {sr_reach}" };
+            + "(snapped, residual {sr_resid}°), length {sr_reach}"
+            + ", from {sr_run.wr_x0},{sr_run.wr_z0} to {sr_run.wr_x1},{sr_run.wr_z1}" };
   }
 
   sr_fenced = 0;
@@ -887,9 +903,13 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
     rl_fenced: sr_fenced, rl_cut: sr_cut,
     rl_step: sr_step, rl_resid: sr_resid, rl_reach: sr_reach,
     rl_q0: sr_q0, rl_r0: sr_r0, rl_q1: sr_q1, rl_r1: sr_r1, rl_pad: ROAD_HALF + 4,
+    // ⚠ THE RUN'S ENDS, FOR THE SAME REASON THE WALL'S CARRIES THEM — plan 24
+    // `H1d`. `tools/gates/world/straight` lays a ROAD and measures its fences, and
+    // it was reconstructing the centreline from `step * 15°` and a projection.
     rl_say: "road laid {sr_paved} cells and {sr_fenced} fence edges, "
           + "cut {sr_cut}, heading {sr_step} of {HEADINGS} "
-          + "(snapped, residual {sr_resid}°), length {sr_reach}" }
+          + "(snapped, residual {sr_resid}°), length {sr_reach}"
+          + ", from {sr_run.wr_x0},{sr_run.wr_z0} to {sr_run.wr_x1},{sr_run.wr_z1}" }
 }
 
 // `19:` — a prop where the author is STANDING.

@@ -19,9 +19,11 @@ the ground rule twice and located the gap; `A0q` found the plan's own invariant-
 wrong; `H1` found `D` is a library table and that **open question 4's migration does not exist**;
 `L1` found the recovery is a call, and — ⛔ **after a published wrong answer, corrected** — that
 our stamp reads back **24 of 24** once its geometry is admissible, so it is the **gesture's**
-choice of anchor, length and angle that cannot be read. **`H1a` is built**: the library's answer
-is computed beside ours on every draft, used by nothing yet, and pinned by tests that were each
-seen red. The symptoms
+choice of anchor, length and angle that cannot be read. ✅ **`H1a`–`H1d` are built and green** — 628 library tests and 49 gates. The gesture takes its
+geometry from `hex_shape`, and the one gate that went red was **the diff this plan said must be
+read**: `tools/gates/world/straight` had been re-deriving the run's line in JavaScript at the
+nominal 15° grid, so it was wrong for `D`'s in-between twelve all along and agreed only while our
+own snap was bent the same way. It reads the emitted ends now. The symptoms
 are in [EDITOR_DEFECTS.md](../../doc/claude/EDITOR_DEFECTS.md); the work is to make the editor
 obey a model it has been diverging from.
 
@@ -125,8 +127,9 @@ average of exact rationals *is* the answer.
 | **`A0p`** — probe: recover a wall from its edge stamp | XS | [result](../../probe/a0p/README.md) | ✅ **Done, and it broke the ground rule twice.** Value: the located gap |
 | **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | [result](../../probe/a0q/README.md) · `make probe-a0q` | ✅ **Done 2026-08-22.** 48 of 48 exact; `X47`'s control number reproduced to the digit. ⚠ **And it corrected this plan**: `surface_heading` is blind to a notch by construction |
 | **`H1a`** — the library's answer computed **beside** ours | S | `lib/hex_editor/tests/runsnap.loft` — 4 tests, 627 green. ⚠ **Sabotage sweep, every row red against a 627 control**: anchor not snapped to a vertex → 3 failed; the library's direction replaced by ours → 1; a refused draft returning zeroes instead of `ok=false` → 1 | ✅ **Done.** `RunDraft` carries `rd_d24`/`rd_p`/`rd_a0`/`rd_b0`; `draft_lib_ends` derives the endpoints. **Only ours is used** |
-| **`H1b`** — switch the gesture to the library's answer | M | 628 library tests green; sabotage rows red for *keeps our endpoints* and *reach reverts to the projection*. ⛔ **`tools/gates/world/straight` goes RED and it passed at HEAD** — measured as a controlled pair, identical command both ways | ⛔ **BUILT AND HELD.** Do not carry forward until `straight` is understood |
-| **`H1c`** — read the `straight` diff | S | that gate's claim is *"every vertex of the wall mesh must lie on the run's line"*, and it reports `worstSpreadWithinASide 0.26`, `straight: false`. Either the drawn wall genuinely bends, or the gate's reference line is the one the AUTHOR walked while the run now ends on a lattice vertex — those are different defects and the numbers do not yet separate them | Open — blocks `H1b` |
+| **`H1b`** — switch the gesture to the library's answer | M | 628 library tests green; sabotage rows red for *keeps our endpoints* and *reach reverts to the projection*. **49 gates green** once `H1d` landed | ✅ **Done** |
+| **`H1c`** — read the `straight` diff | S | ✅ **The wall was straight; the RULER was bent.** The gate re-derived the line it measures against — *"from A along the snapped heading, for the walked distance projected onto it"* — a second implementation of `run_between`'s geometry, in JavaScript. Predicted fan `24.98 × tan(1.1021°) = 0.48`, measured `worstSpreadWithinASide 0.26`, the spread within one face | ✅ **Done** |
+| **`H1d`** — the ack carries the run's ends; the gate stops deriving them | S | `straight` green, measuring **what was emitted**. ⚠ Only `straight` parsed that sentence — `road`/`surface`/`shapecheck` wait for the phrase and `probe/headless` extracts the edge count — so appending was safe | ✅ **Done** |
 | **`L1`** — recovery of world linework from the field | S | [probe run](../../probe/l1/README.md) · `make probe-l1`. `hex_shape::wall_read_run(edges, …)` → `(d24, a0, b0, p, ok)`, **24 of 24** on the library's marking **and 24 of 24 on ours once the geometry is admissible**. ⚠ Needs a world→`EdgeSet` bridge on the **material** channel — none exists; `edges_around` fills the *surface* channel for collision. ⚠ Compare **endpoints, not `d`** | ✅ **Proven as a call.** Follows `H1`, which is what makes it sound |
 | **`A3`** — mesher emits from recovered runs, `es_runs` still present | M | two meshes, byte for byte, both paths live | Blocked on `L1` |
 | **`A4`** — the switch | S | every gate green, `A3`'s comparison still running | Blocked on `A3` |
