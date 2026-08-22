@@ -22,7 +22,7 @@
 // probe scale.
 //
 // ⚠ AND THERE IS A SECOND QUESTION, WHICH IS THE ONE THAT COULD STILL BITE.
-// `hex_form::HEAD_N` is **12**. `hex_editor::HEADINGS` is **24**. A wall may be laid
+// `hex_form::HEAD_N` is **12**. The editor's old `HEADINGS` was **24**. A wall may be laid
 // at any of 24, and `surface_heading` only recognises a direction that is an exact
 // multiple of one of 12. So *"is it exact"* and *"is it one of the 24"* are two
 // different questions and this asks both.
@@ -32,6 +32,29 @@ use hex_grid;
 use hex_field;
 use hex_form;
 use hex_draw;
+
+// ── `WALL_SNAP`'s ARITHMETIC, INLINED — plan 24 `H1e` DELETED IT ────────────
+//
+// ⚠ THIS PROBE IS A RECORD OF THE OLD APPROACH, so it has to keep the old
+// quantiser to be a record of anything. `hex_editor::snap_heading` and
+// `WALL_SNAP` are gone — the editor takes its headings from `hex_shape::D` now —
+// and a probe that measured the 2*pi/24 grid cannot import a grid that no longer
+// exists. Copied verbatim rather than approximated; `probe/h1` carries the same
+// helper for the same reason.
+fn old_snap(dx: float, dz: float, step: &integer, residual: &float) -> float {
+  os_wall_snap = 0.26179938779914946;
+  os_a = atan2(dz, dx);
+  os_k = os_a / os_wall_snap ?? 0.0;
+  os_ki = 0;
+  if os_k >= 0.0 { os_ki = (os_k + 0.5) as integer; } else { os_ki = (os_k - 0.5) as integer; }
+  os_snapped = (os_ki as float) * os_wall_snap;
+  os_d = os_a - os_snapped;
+  if os_d < 0.0 { os_d = 0.0 - os_d; }
+  residual = os_d * 180.0 / PI ?? 0.0;
+  step = ((os_ki % 24 ?? 0) + 24) % 24 ?? 0;
+  os_snapped
+}
+
 
 const HALF_LEN = 6.0;
 const SCAN = 24;
@@ -135,8 +158,9 @@ fn lat_angle(dk: integer, dm: integer) -> float {
 fn main() {
   println("A0p2 — plan 24: can `hex_draw`'s EXACT method do what the fit could not?");
   println("");
-  println("  hex_form::HEAD_N = {hex_form::HEAD_N} · hex_editor::HEADINGS = "
-          + "{hex_editor::HEADINGS}");
+  // ⚠ 24 AS A LITERAL: `hex_editor::HEADINGS` was deleted by `H1e`, and the point
+  // of this line is the CONTRAST between the library's 12 and the editor's old 24.
+  println("  hex_form::HEAD_N = {hex_form::HEAD_N} · the editor's old count = 24");
   println("");
   println("  k  stamped  raw-sum    folded-sum  surface_heading  angle err");
   println("  ─────────────────────────────────────────────────────────────");
@@ -151,7 +175,7 @@ fn main() {
     z1 = sin(ang) * HALF_LEN;
     step = 0;
     res = 0.0;
-    hex_editor::snap_heading(x1 - x0, z1 - z0, step, res);
+    old_snap(x1 - x0, z1 - z0, step, res);
 
     w = world();
     runs = hex_editor::WallRuns { items: [] };
@@ -172,7 +196,7 @@ fn main() {
     fa = lat_angle(fold.ws_dk, fold.ws_dm);
     fstep = 0;
     fres = 0.0;
-    hex_editor::snap_heading(cos(fa), sin(fa), fstep, fres);
+    old_snap(cos(fa), sin(fa), fstep, fres);
     if (fstep % 12 ?? 0) == (step % 12 ?? 0) { head_ok = head_ok + 1; }
 
     da = fa - ang;
