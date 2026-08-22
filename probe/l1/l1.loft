@@ -22,6 +22,36 @@ use hex_voxel;
 const REACH = 14;
 const SCAN = 20;
 
+// ⚠ **THE BRIDGE, AND THE FIRST VERSION OF IT WAS WRONG IN A WAY THAT PRODUCED A
+// FALSE FINDING.** It used `hex_editor::edges_around`, which is the COLLISION
+// bridge: it calls `edge_block_surf`/`edge_block`, filling `EdgeSet`'s SURFACE
+// channel. `wall_read_run` and `wall_chain_ends` read `edge_mat` — the MATERIAL
+// channel. So `eg_count` was a correct 8 while `edge_mat` answered 0 everywhere,
+// and the probe reported *our stamp cannot be read* when it had never been asked.
+//
+// ⚠ **AND THAT IS A REAL GAP, NOT ONLY A PROBE BUG.** `hex_voxel` keeps wall bytes
+// in `StoredHex.sv_wall_*` and every `hex_*` linework function takes a
+// `hex_field::EdgeSet`. There is no world→EdgeSet transcription for the MATERIAL
+// channel anywhere in this tree, so one is written here — and that absence is
+// itself a thing to name upstream rather than keep re-writing per probe.
+fn edges_mat(wld: VoxelWorld, q0: integer, r0: integer, n: integer,
+             ref: float) -> EdgeSet {
+  e = edgeset_new(q0, r0, n, n);
+  slot_dir: vector<integer> = [4, 5, 0];
+  for r in q0..q0 + n {
+    for q in r0..r0 + n {
+      for si in 0..3 {
+        m = hex_editor::wall_of(wld, q, r, slot_dir[si] ?? 0, ref);
+        if m != 0 {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, slot_dir[si] ?? 0);
+          edge_set_mat(e, q, r, nq, nr, m);
+        }
+      }
+    }
+  }
+  e
+}
+
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;
   hex_editor::ground_fill(w, 0 - SCAN, 0 - SCAN, 2 * SCAN + 1, 2 * SCAN + 1, 8,
@@ -89,7 +119,7 @@ fn main() {
                              wr_mat: hex_editor::WALL_MAT, wr_step: st },
                            hex_editor::WALL_MAT, 8, runs, marked);
 
-    e2 = hex_editor::edges_around(wld, 0, 0, REACH, false, no_runs, sf, 8.0);
+    e2 = edges_mat(wld, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2.0);
     (rd, ra, rb, rp, ok) = wall_read_run(e2, 0 - REACH, 0 - REACH,
                                          2 * REACH + 1, 2 * REACH + 1);
     tried = tried + 1;
@@ -137,7 +167,7 @@ fn main() {
                              wr_x1: tri_x(ea, eb),   wr_z1: tri_y(ea, eb),
                              wr_mat: hex_editor::WALL_MAT, wr_step: d3 },
                            hex_editor::WALL_MAT, 8, runs3, m3);
-    e3 = hex_editor::edges_around(wld3, 0, 0, REACH, false, no_runs, sf, 8.0);
+    e3 = edges_mat(wld3, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2.0);
     (rd3, ra3, rb3, rp3, ok3) = wall_read_run(e3, 0 - REACH, 0 - REACH,
                                               2 * REACH + 1, 2 * REACH + 1);
     t3 = t3 + 1;
@@ -192,7 +222,7 @@ fn main() {
                              wr_x1: tri_x(ea4, eb4), wr_z1: tri_y(ea4, eb4),
                              wr_mat: hex_editor::WALL_MAT, wr_step: d4 },
                            hex_editor::WALL_MAT, 8, runs4, m4);
-    eo = hex_editor::edges_around(wld4, 0, 0, REACH, false, no_runs, sf, 8.0);
+    eo = edges_mat(wld4, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2.0);
     oe = wall_chain_ends(eo, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
     ob = wall_chain_branches(eo, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
     if d4 < 8 {

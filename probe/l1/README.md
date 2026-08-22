@@ -1,4 +1,4 @@
-# `L1` — the reader works; **our stamp is what it cannot read**
+# `L1` — the recovery is a call; **the GESTURE's geometry is the defect**
 
 **Run 2026-08-22.** Plan [24](../../plans/24-one-authority/README.md) `L1`.
 Predictions in [PREDICTION.md](PREDICTION.md), written first.
@@ -7,88 +7,93 @@ Predictions in [PREDICTION.md](PREDICTION.md), written first.
 make probe-l1
 ```
 
-## The result that decides the phase
+## ⛔ CORRECTION — the first version of this file was WRONG, and it was committed
+
+It reported **0 of 24** and concluded *"our stamp is what the library cannot read"*, which moved
+the phase to *replace `wall_stamp`*. **That conclusion was false.**
+
+The bridge was wrong. It used `hex_editor::edges_around`, which is the **collision** bridge: it
+calls `edge_block_surf` / `edge_block`, filling `EdgeSet`'s **surface** channel. `wall_read_run`
+and `wall_chain_ends` read **`edge_mat`** — the **material** channel. So `eg_count` was a correct
+`8` while `edge_mat` answered `0` everywhere, and the probe reported that our stamp could not be
+read **when it had never been asked**.
+
+⚠ **`ends = 0` IS WHAT MADE IT PLAUSIBLE**, because it reads identically as *a closed loop* and as
+*nothing there*. The previous write-up flagged that ambiguity and declined to explain the shape —
+and then drew a phase-level conclusion from the same number anyway. **Naming an instrument as
+ambiguous is not the same as refusing to build on it.**
+
+## The corrected result
 
 | § | what | result |
 |---|---|---|
-| **1** | **control** — `wall_write` → our bridge → `wall_read_run` | ✅ **24 of 24** |
-| **2** | our `wall_stamp` → world → bridge → `wall_read_run` | ⛔ **0 of 24**, all refused |
-| **3** | …with **admissible** endpoints (a real vertex, a legal `p`) | ⛔ **still 0 of 24** |
+| **1** | control — `wall_write` → bridge → `wall_read_run` | ✅ **24 of 24** |
+| **2** | our `wall_stamp`, gesture-style geometry (any angle, any length, from a non-vertex) | ◐ **12 of 24** |
+| **3** | our `wall_stamp`, **admissible** geometry (a real vertex, a legal `p`, a `d ∈ D`) | ✅ **24 of 24** |
 
-⚠ **§1 AND §2 TOGETHER ARE THE FINDING.** The same reader, the same `EdgeSet` shape, the same
-bounds — 24 of 24 on the library's marking, 0 of 24 on ours. **`L1` is not blocked on the
-library; it is blocked on `hex_editor::wall_stamp`.**
+**So the stamp is not the defect.** Give it geometry the lattice admits and every run reads back.
+What the *gesture* chooses — an anchor wherever the author stands, a length wherever they stop, an
+angle off a `2π/24` grid — is what cannot be read.
 
-## Predictions, scored
+**`snap_run_d24` + `wall_snap_p` are the two missing calls**, and they are `H1`. The plan's
+original ordering was right; the `S1` phase this probe invented is withdrawn.
+
+## Predictions, scored against the corrected run
 
 | # | prediction | verdict |
 |---|---|---|
 | **P1** | the control passes | ✅ 24 of 24 |
-| **P2** | our stamp mostly does not recover | ✅ **stronger than predicted — none of it does** |
-| **P3** | the ones that recover are the even `d24` | ⛔ **refuted.** Nominal 0° and 60° fail too, and those *are* exact headings |
-| **P4** | failures are `ok = false`, not a wrong direction | ✅ every one refused. The library never guessed |
+| **P2** | our stamp mostly does not recover | ◐ **half-right**: 12 of 24 with gesture geometry, but **24 of 24** once the geometry is admissible — so the cause is not the stamp |
+| **P3** | the recoveries are the even `d24` | ⛔ refuted — nominal 0° and 60° fail, 15° and 30° succeed |
+| **P4** | failures are `ok = false`, never a wrong direction | ⛔ **REFUTED, and this is the finding to keep** — see below |
 
-**`P3`'s refutation is what redirected the phase.** If only the in-between directions had failed,
-`L1` would have been waiting on `H1` and nothing more. Exact headings failing says the direction
-set is not the cause, and `§3` then removed endpoint admissibility as the cause too.
+## ⚠ `wall_read_run` can return a WRONG direction rather than refusing
 
-## ◐ What the shape is — MEASURED, NOT YET EXPLAINED
+In §2 our 15° wall reads back as **`d = 2`** (30°), and our 30° wall as `d = 2` as well. Both
+report `ok = true`.
 
-Asked with the library's own graph instruments (`wall_chain_ends`, `wall_chain_branches`, whose
-contract is *"2 for a single chain, 0 for empty, 4 after a break, 2k for a comb"*):
+`wall_read_run` finds the chain's two **ends** and asks which `d24` step is exactly parallel to
+the vector between them. **It does not check the path in between.** So a chain that wanders reads
+back as whatever straight run its endpoints happen to describe.
 
-| the same run | edges | ends | branches |
-|---|---|---|---|
-| `wall_write` | 2 | **2** | 0 |
-| `wall_stamp` → bridge | 4 written / 14 for a long run | **0** | 0 |
+⚠ **THAT IS `A0q`'S TELESCOPING FINDING, ONE LIBRARY OVER.** `surface_heading` sums edge vectors
+and gets the chord; `wall_read_run` takes the ends and gets the chord. Both are exact about the
+ends and blind to the middle, and both will answer confidently about a shape that is not a
+straight wall.
 
-So our marking has **no degree-1 vertex**. On 14 edges with no branch that is a closed cycle —
-**but it is equally what an EMPTY set reads as**, and a follow-up dump of a short run found **zero
-edges in range** while the stamp reported 4 writes. ⚠ **Those two do not agree, so the shape is
-not established and no claim is made here.** The obvious reading — *our stamp marks both sides of
-the band, the library marks one line* — fits the 2× edge count and would explain everything, and
-it is **exactly the kind of tidy explanation this plan has already been punished for three times.**
-It is written down as a hypothesis, not a result.
+**The consequence for the editor:** recovery is only trustworthy for a wall that was laid at a
+`d ∈ D` from an admissible vertex. Reading back a wall drawn on our `2π/24` grid does not fail
+loudly — **it returns a plausible wrong answer**, which is worse. `H1` is therefore not a tidy-up
+ahead of `L1`; it is what makes `L1` sound at all.
 
-**The next measurement, precisely:** dump both markings edge-by-edge for one run where our stamp
-is known to mark (the 12-unit due-east run that yielded 14 edges), and compare the sets. If ours
-is a superset of the library's at 2×, the both-sides reading is confirmed; if it is disjoint, it
-is something else.
+⚠ **Worth raising with hexbody**: whether `wall_read_run` should verify the path, or document that
+it answers *"what run do these ends describe"* rather than *"is this a run"*. `wall_chain_ends`
+and `wall_chain_branches` exist and would catch a comb or a branch, but neither catches a bend.
 
-## Two facts that are solid regardless
+## The real gap this found: there is no world→`EdgeSet` bridge for the material channel
 
-**`wall_stamp` writes every edge twice** — 28 writes for 14 distinct edges. It walks all six
-directions of every cell, so each edge is set once from each side. Harmless to the world (the
-second write is idempotent) and it makes every `marked` count this tree prints exactly double.
-`A0p` found the same thing from the other end.
+`hex_voxel` keeps wall bytes in `StoredHex.sv_wall_*`; every `hex_*` linework function takes a
+`hex_field::EdgeSet`. The only transcription in this tree is `edges_around`, which fills the
+**surface** channel for collision. **Nothing fills the material channel**, so this probe had to
+write one.
 
-**The bridge is sound.** `edges_around` returned `eg_count = 14` against 14 wall bytes read
-straight out of the world, at three different `ref_units`. Whatever §2 is failing on, it is not
-the world→`EdgeSet` transcription.
+That is a genuine missing piece and it belongs somewhere shared, not re-written per probe — and
+it is the fourth *second-implementation* this plan has turned up, after `HEADINGS` against `D`,
+`wall_stamp` against `wall_write`, and our edge bytes against `EdgeSet` itself.
 
-## What this does to the plan
+## Solid regardless
 
-`L1` was *"add an entry point"*, then `H1` made it *"a call"*. It is now:
+**`wall_stamp` writes every edge twice** — 16 writes for 8 distinct edges, confirmed against
+`wall_of` scanning the world directly. Every `marked` count this tree prints is double.
 
-> **replace `hex_editor::wall_stamp` with `hex_shape::wall_write`** — and `L1` follows, because
-> the library reads its own markings 24 of 24.
+## ⚠ Fixture errors: five, and this is the second to reach a commit
 
-⚠ **That is a bigger change than `H1` and it should be sequenced before it.** `H1` adopts `D` for
-the *direction*; this replaces the *stamp*. Adopting `D` while still marking edges our own way
-would leave `wall_read_run` refusing exactly as it does today — `H1` alone buys nothing readable.
+`(0,0)` as a run anchor · a direction vector where a target point was wanted · `surface_heading`
+expected to see a notch · `ends = 0` read as a loop · **and this one, the wrong `EdgeSet`
+channel.**
 
-⚠ **AND IT IS THE THIRD SECOND-IMPLEMENTATION FOUND IN THIS PLAN**, after `hex_editor::HEADINGS`
-against `D`, and our `VoxelWorld` edge bytes against `hex_field::EdgeSet`. The pattern is not that
-the editor calls the wrong library function — it is that it has its own of everything.
-
-## ⚠ Fixture errors: four now, and this one would have PUBLISHED a false finding
-
-The running count in this plan: `(0,0)` as a run anchor (a hex centre), a direction vector where a
-world target point was wanted, `surface_heading` expected to see a notch. All three were **caught
-by the library refusing**.
-
-This one was different: `ends = 0` reads as *a closed loop* and as *an empty set*, and I nearly
-wrote up the first. Nothing refused it — the number was simply ambiguous. ⚠ **A library that
-declines bad input cannot protect you from a measurement you interpret wrongly**, and the guard
-for that is the one this tree already writes down: check the instrument against something it
-should find before believing what it reports.
+The first three were caught by a library refusing. The last two were not — both were **numbers
+that were true and meant something else**. ⚠ **The lesson is not "read the docs harder": it is
+that a control which passes tells you the instrument works *for the control's input*.** §1 passed
+throughout, on an `EdgeSet` built by `wall_write` — which fills the material channel — so it could
+never have caught a bridge that fills the surface one.
