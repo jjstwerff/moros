@@ -19,7 +19,8 @@ the ground rule twice and located the gap; `A0q` found the plan's own invariant-
 wrong; `H1` found `D` is a library table and that **open question 4's migration does not exist**;
 `L1` found the recovery is a call, and — ⛔ **after a published wrong answer, corrected** — that
 our stamp reads back **24 of 24** once its geometry is admissible, so it is the **gesture's**
-choice of anchor, length and angle that cannot be read. ✅ **`H1a`–`H1d` are built and green** — 628 library tests and 49 gates. The gesture takes its
+choice of anchor, length and angle that cannot be read. ✅ **`H1a`–`H1e` are built and green** — 628 library tests and 49 gates, and
+**`WALL_SNAP` is deleted**: the editor has no heading arithmetic of its own left. The gesture takes its
 geometry from `hex_shape`, and the one gate that went red was **the diff this plan said must be
 read**: `tools/gates/world/straight` had been re-deriving the run's line in JavaScript at the
 nominal 15° grid, so it was wrong for `D`'s in-between twelve all along and agreed only while our
@@ -130,6 +131,7 @@ average of exact rationals *is* the answer.
 | **`H1b`** — switch the gesture to the library's answer | M | 628 library tests green; sabotage rows red for *keeps our endpoints* and *reach reverts to the projection*. **49 gates green** once `H1d` landed | ✅ **Done** |
 | **`H1c`** — read the `straight` diff | S | ✅ **The wall was straight; the RULER was bent.** The gate re-derived the line it measures against — *"from A along the snapped heading, for the walked distance projected onto it"* — a second implementation of `run_between`'s geometry, in JavaScript. Predicted fan `24.98 × tan(1.1021°) = 0.48`, measured `worstSpreadWithinASide 0.26`, the spread within one face | ✅ **Done** |
 | **`H1d`** — the ack carries the run's ends; the gate stops deriving them | S | `straight` green, measuring **what was emitted**. ⚠ Only `straight` parsed that sentence — `road`/`surface`/`shapecheck` wait for the phrase and `probe/headless` extracts the edge count — so appending was safe | ✅ **Done** |
+| **`H1e`** — `ring_runs` too, then **delete `WALL_SNAP`** | S | 628 tests + 49 gates. ⚠ Here the two snaps must **agree** — a ring's six chords are 60° multiples, all even `d24` — which is the opposite claim from `run_between`'s, and both are pinned. Sabotage: every chord recorded as heading 0 → 1 failed; recorded as an odd heading → 2 failed | ✅ **Done.** `WALL_SNAP`, `HEADINGS` and `snap_heading` are gone |
 | **`L1`** — recovery of world linework from the field | S | [probe run](../../probe/l1/README.md) · `make probe-l1`. `hex_shape::wall_read_run(edges, …)` → `(d24, a0, b0, p, ok)`, **24 of 24** on the library's marking **and 24 of 24 on ours once the geometry is admissible**. ⚠ Needs a world→`EdgeSet` bridge on the **material** channel — none exists; `edges_around` fills the *surface* channel for collision. ⚠ Compare **endpoints, not `d`** | ✅ **Proven as a call.** Follows `H1`, which is what makes it sound |
 | **`A3`** — mesher emits from recovered runs, `es_runs` still present | M | two meshes, byte for byte, both paths live | Blocked on `L1` |
 | **`A4`** — the switch | S | every gate green, `A3`'s comparison still running | Blocked on `A3` |

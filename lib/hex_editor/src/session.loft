@@ -33,6 +33,7 @@
 // If one ever did, the two paths could disagree and the headless answer would be
 // worth nothing — which is the trap `editor_run.loft` was written to avoid and this
 // inherits. `make headless-same` is the check that they still agree.
+use hex_shape;
 use self::gesture;
 // What a world DECLARES a house type to be — plan 22 `T1b`. A type carries the
 // opening an author gets when they have chosen none, and the reader of that default
@@ -890,7 +891,7 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
       // is a perpendicular fan of `24.98 * tan(1.1021°) = 0.48` — so the ruler was
       // bent before `H1b` and only happened to agree while our own snap was bent the
       // same way.
-      rl_say: "wall laid {sr_marked} edges, heading {sr_step} of {HEADINGS} "
+      rl_say: "wall laid {sr_marked} edges, heading {sr_step} of {hex_shape::D24} "
             + "(snapped, residual {sr_resid}°), length {sr_reach}"
             + ", from {sr_run.wr_x0},{sr_run.wr_z0} to {sr_run.wr_x1},{sr_run.wr_z1}" };
   }
@@ -907,7 +908,7 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
     // `H1d`. `tools/gates/world/straight` lays a ROAD and measures its fences, and
     // it was reconstructing the centreline from `step * 15°` and a projection.
     rl_say: "road laid {sr_paved} cells and {sr_fenced} fence edges, "
-          + "cut {sr_cut}, heading {sr_step} of {HEADINGS} "
+          + "cut {sr_cut}, heading {sr_step} of {hex_shape::D24} "
           + "(snapped, residual {sr_resid}°), length {sr_reach}"
           + ", from {sr_run.wr_x0},{sr_run.wr_z0} to {sr_run.wr_x1},{sr_run.wr_z1}" }
 }

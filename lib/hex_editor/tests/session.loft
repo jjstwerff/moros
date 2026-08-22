@@ -786,8 +786,8 @@ fn test_a_seat_kind_the_editor_does_not_have_is_refused_at_both_doors() {
 fn test_a_run_snaps_to_one_of_the_twenty_four_headings() {
   got = run_between(0.0, 0.0, 6.0, 0.0, WALL_MAT);
   assert(got.rd_ok, "a run six units long was refused: {got.rd_why}");
-  assert(got.rd_step >= 0 && got.rd_step < HEADINGS,
-         "the heading is {got.rd_step}, and there are {HEADINGS}");
+  assert(got.rd_step >= 0 && got.rd_step < hex_shape::D24,
+         "the heading is {got.rd_step}, and there are {hex_shape::D24}");
   // Dead along the axis, so there is nothing to snap away and no residual.
   assert(got.rd_resid < 0.001,
          "a run straight down an axis has residual {got.rd_resid}°");

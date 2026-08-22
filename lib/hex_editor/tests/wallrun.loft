@@ -94,23 +94,20 @@ fn test_the_wall_run_stays_on_the_authors_line() {
   assert(worst < 0.9, "every marked edge sits on the line, worst {worst} wu off");
 }
 
-fn test_the_heading_snaps_to_one_of_twenty_four_and_reports_the_residual() {
-  // 15 degrees apart, and the residual is what the author gave up by pressing
-  // where they did — reported, never silently kept.
-  step = 0;
-  resid = 0.0;
-  hex_editor::snap_heading(1.0, 0.0, step, resid);
-  assert(step == 0 && resid < 0.0001, "due east is heading 0, residual {resid}");
-  step2 = 0;
-  resid2 = 0.0;
-  a = hex_editor::snap_heading(cos(0.2), sin(0.2), step2, resid2);
-  assert(step2 == 1, "0.2 rad snaps to heading 1, got {step2}");
-  want = (0.2 - hex_editor::WALL_SNAP) * 180.0 / PI ?? 0.0;
-  if want < 0.0 { want = 0.0 - want; }
-  d = resid2 - want;
-  if d < 0.0 { d = 0.0 - d; }
-  assert(d < 0.0001, "and the residual is the angle it moved: {resid2} vs {want}");
-}
+// ⛔ **`test_the_heading_snaps_to_one_of_twenty_four_and_reports_the_residual` IS
+// GONE — plan 24 `H1e`, and this note is what it left behind.** It exercised
+// `hex_editor::snap_heading` and `WALL_SNAP` directly: *due east is heading 0*, and
+// *0.2 rad snaps to heading 1 with residual `0.2 - WALL_SNAP`*.
+//
+// Both are now false about the editor. `WALL_SNAP`'s `2*pi/24` grid asks for
+// directions the lattice cannot express — `X31`: no odd multiple of 15 degrees is
+// reachable — so heading 1 is `13.898` degrees and not `15`, and a residual measured
+// against `15` was measuring against a direction no wall can take.
+//
+// ⚠ **WHAT IT GUARDED IS NOT LOST, IT MOVED**: that a run records a heading and the
+// heading matches the run. `tests/runsnap.loft` holds that now, against `D` — every
+// direction the gesture produces is a `d24` its own `wall_run_ok` admits, and each
+// ring chord points where its recorded heading says.
 
 fn test_a_run_of_no_length_writes_nothing() {
   w = world();

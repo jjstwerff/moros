@@ -626,9 +626,19 @@ pub fn ring_runs(cq: integer, cr: integer, rad: integer, mat: integer, runs: Wal
     z0 = rgz + rg_d * sin(a0);
     x1 = rgx + rg_d * cos(a1);
     z1 = rgz + rg_d * sin(a1);
-    rg_step = 0;
-    rg_res = 0.0;
-    snap_heading(x1 - x0, z1 - z0, rg_step, rg_res);
+    // ⚠ **THE HEADING IS `D`'s NOW — plan 24 `H1e`.** This was `snap_heading`, the
+    // `2*pi/24` grid, and here it happened to be right: a ring's six chords run at
+    // exact multiples of 60 degrees, which are all EVEN `d24` and therefore among
+    // the twelve `D` gets exactly (`X29`). That is why this conversion is an
+    // agreement rather than a change — and why it is worth doing anyway, because
+    // *right by coincidence* is what `run_between` also looked like until it was
+    // measured.
+    //
+    // ⚠ THE GEOMETRY IS UNTOUCHED. The corners are `sqrt(3)*(rad+1/2)` from the
+    // centre at 0, 60, … 300 degrees, derived above and gated by `probe/d2/ring`
+    // at worst miss 0 over three radii. Only the recorded heading moves.
+    (rg_va, rg_vb) = hex_shape::nearest_vertex(x0, z0);
+    rg_step = hex_shape::snap_run_d24(rg_va, rg_vb, x1, z1);
     // ⚠ `wr_base` AND `wr_up` OF 0 MEAN *from the ground, by the material* — the
     // struct's own words, and the behaviour every run that does not ask for a base
     // already had. A ring stands on the ground like any other wall.
@@ -1852,8 +1862,6 @@ pub fn scatter(wld: VoxelWorld, cq: integer, cr: integer, rad: integer,
 // headings. ⚠ The MATERIAL decides which of the two this is — a wall is the line
 // itself, a road is a centreline with a WIDTH and a fence down each offset — and
 // until S3 both laid a road whatever they were told.
-pub const HEADINGS  = 24;                    // 15 degrees apart
-pub const WALL_SNAP = 0.26179938779914946;   // 2 pi / 24
 pub const ROAD_MAT  = 2;                     // the road surface
 pub const ROAD_HALF = 2;                     // road half-width, in hexes
 
@@ -1877,7 +1885,7 @@ pub struct WallRuns { items: vector<WallRun> }
 // The nearest of the 24 headings to (dx, dz), and how far off the author was.
 // ── A RUN FROM TWO ENDS — `25:`, the headless thread ────────────────────────
 //
-// ⚠ THE ONE CLAIM HERE THAT IS NOT `snap_heading`'s IS THE LENGTH, and it is a
+// ⚠ THE ONE CLAIM HERE THAT IS NOT `hex_shape`'s IS THE LENGTH, and it is a
 // decision with a reason the handler already wrote down: the reach is what the
 // author walked **measured along the snapped heading**, not the straight-line
 // distance — *"which would run the way past where they stopped whenever they
@@ -1893,7 +1901,7 @@ pub const RUN_SHORT = 0.25;   // …squared: half a world unit between the two e
 pub struct RunDraft {
   rd_ok:    boolean,
   rd_run:   WallRun = WallRun {},
-  rd_step:  integer = 0,       // the snapped heading, 0..HEADINGS
+  rd_step:  integer = 0,       // the heading, one of `hex_shape::D24`
   rd_resid: float = 0.0,       // how far off it the author actually walked, degrees
   rd_reach: float = 0.0,       // the length, ALONG the heading
   rd_why:   text = "",
@@ -1918,13 +1926,6 @@ pub struct RunDraft {
   rd_p:     integer = 0,       // its period count; 0 = no legal run
   rd_a0:    integer = 0,       // the anchor it snapped to, in triangle-lattice
   rd_b0:    integer = 0,
-  // ⚠ **OUR OLD ANSWER, KEPT AFTER THE SWITCH — and `H1b` is why it has to be.**
-  // `rd_step` was ours and is the library's now, so a test comparing `rd_step` to
-  // `rd_d24` compares the library to ITSELF and passes for no reason. That is this
-  // tree's *a test that repairs its own subject* defect, and it appeared the moment
-  // the switch landed: `test_the_two_snaps_disagree` went green-by-tautology.
-  // While `WALL_SNAP` still exists, the comparison must have both sides.
-  rd_ours:  integer = 0 - 1,   // `snap_heading`'s step, for the comparison only
 }
 
 pub fn run_between(x0: float, z0: float, x1: float, z1: float,
@@ -1935,11 +1936,6 @@ pub fn run_between(x0: float, z0: float, x1: float, z1: float,
     return RunDraft { rd_ok: false,
       rd_why: "a way needs two ends; walk away from the first" };
   }
-  rb_step = 0;
-  rb_res = 0.0;
-  rb_ang = snap_heading(rb_dx, rb_dz, rb_step, rb_res);
-  rb_reach = rb_dx * cos(rb_ang) + rb_dz * sin(rb_ang);
-
   // ── `H1a` — the same run, asked of `hex_shape` ────────────────────────────
   //
   // ⚠ THE NEAR END IS SNAPPED TO A VERTEX FIRST, and that is the half our own
@@ -2013,7 +2009,7 @@ pub fn run_between(x0: float, z0: float, x1: float, z1: float,
   while rb_off < 0.0 - PI { rb_off = rb_off + 2.0 * PI; }
   if rb_off < 0.0 { rb_off = 0.0 - rb_off; }
 
-  return RunDraft { rd_ok: true, rd_step: rb_d24, rd_ours: rb_step,
+  return RunDraft { rd_ok: true, rd_step: rb_d24,
     rd_resid: rb_off * 180.0 / PI ?? 0.0, rd_reach: rb_len,
     rd_d24: rb_d24, rd_p: rb_p, rd_a0: rb_va, rd_b0: rb_vb,
     rd_run: WallRun { wr_base: 0, wr_up: 0,
@@ -2081,18 +2077,6 @@ pub fn wall_step(draft: WallDraft, x: float, z: float, mat: integer) -> DraftSte
   return DraftStep { ds_code: DS_RUN, ds_run: rb };
 }
 
-pub fn snap_heading(dx: float, dz: float, step: &integer, residual: &float) -> float {
-  a = atan2(dz, dx);
-  k = a / WALL_SNAP ?? 0.0;
-  ki = 0;
-  if k >= 0.0 { ki = (k + 0.5) as integer; } else { ki = (k - 0.5) as integer; }
-  snapped = (ki as float) * WALL_SNAP;
-  d = a - snapped;
-  if d < 0.0 { d = 0.0 - d; }
-  residual = d * 180.0 / PI ?? 0.0;
-  step = ((ki % HEADINGS ?? 0) + HEADINGS) % HEADINGS ?? 0;
-  snapped
-}
 
 // ── A WALL IS THE LINE ITSELF (S3) ──────────────────────────────────────────
 //
@@ -4943,7 +4927,7 @@ pub const WATER_NOBACK = 6;      // not a direction: `hex_grid` has six, 0..5
 // Which of `hex_grid`'s six directions a facing points along — the tie-breaker a
 // waterway's walk hands to `water_next`.
 //
-// ⚠ IT IS THE SIX AND NOT THE TWENTY-FOUR. `snap_heading` snaps a wall run to `d24`,
+// ⚠ IT IS THE SIX AND NOT THE TWENTY-FOUR. A wall run snaps to `d24`,
 // which is a space of LINE directions a run may staircase along; a river steps from
 // cell to cell and there are six of those. Using the wrong one would hand the tie
 // a number that is not a neighbour.

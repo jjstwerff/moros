@@ -45,31 +45,14 @@ fn test_the_librarys_ends_are_derivable_and_flagged_when_not() {
   assert(!rok, "a refused draft must report ok=false, not (0,0)-(0,0)");
 }
 
-fn test_the_two_snaps_disagree_and_that_is_the_point() {
-  // ⚠ A TEST THAT ASSERTED AGREEMENT WOULD BE ASSERTING THE DEFECT. Half of our
-  // 24 headings name directions the lattice cannot express, so on those the two
-  // MUST differ — and if they ever fully agreed, either our snap had been fixed
-  // silently or the library's had been broken to match.
-  n_same = 0;
-  n_all = 0;
-  for t in 0..24 {
-    ang = (t as float) * 15.0 / 57.29577951308232;
-    d = draft(cos(ang) * 6.0, sin(ang) * 6.0);
-    if !d.rd_ok { continue; }
-    n_all = n_all + 1;
-    // ⚠ `rd_ours`, NOT `rd_step`. Since `H1b` switched the gesture, `rd_step` IS
-    // the library's answer, so comparing it to `rd_d24` compares the library to
-    // itself — and this test went green by tautology the moment the switch landed.
-    if d.rd_d24 == d.rd_ours { n_same = n_same + 1; }
-  }
-  assert(n_all == 24, "all 24 sample runs must draft, got {n_all}");
-  assert(n_same < n_all,
-         "our snap and the library's agreed on all {n_all} — that cannot be true "
-       + "while WALL_SNAP asks for directions X31 says are unreachable");
-  assert(n_same > 0,
-         "they agreed on none of {n_all} — the exact headings must coincide, so "
-       + "this says one of the two is being read wrongly");
-}
+// ⛔ **`test_the_two_snaps_disagree_and_that_is_the_point` IS GONE — `H1e`.** It
+// compared `rd_ours` against `rd_d24` and asserted they differ, which was the whole
+// parallel run: our `2*pi/24` snap beside `D`. `snap_heading` and `WALL_SNAP` are
+// deleted, so there is no second side left to compare — and a comparison with one
+// side is the tautology this very test caught `H1b` producing.
+//
+// ⚠ **THE PARALLEL RUN ENDS WHEN THE OLD PATH DOES.** Keeping it would have meant
+// keeping `snap_heading` alive purely to be disagreed with.
 
 fn test_every_direction_the_library_returns_is_a_d24_index() {
   // The library's own predicate, over whatever our drafts produce — so a value
@@ -83,6 +66,52 @@ fn test_every_direction_the_library_returns_is_a_d24_index() {
       assert(hex_shape::wall_run_ok(d.rd_d24, d.rd_a0, d.rd_b0, d.rd_p),
              "the library returned d24 {d.rd_d24} p {d.rd_p} from ({d.rd_a0},"
            + "{d.rd_b0}), which its own `wall_run_ok` refuses");
+    }
+  }
+}
+
+// ── `H1e` — THE RING'S SIX CHORDS ──────────────────────────────────────────
+//
+// ⚠ **HERE THE TWO SNAPS MUST AGREE, AND THAT IS THE POINT — the opposite claim
+// from the test above.** A ring's chords run at exact multiples of 60 degrees, so
+// every one is an EVEN `d24` and `D` carries those exactly. If the conversion
+// moved any of them, the ring's geometry and its recorded heading have parted.
+fn test_the_rings_six_headings_are_the_exact_even_ones() {
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::ring_runs(0, 0, 2, hex_editor::FENCE_MAT, runs);
+  assert(len(runs.items) == 6, "a ring is six runs, got {len(runs.items)}");
+  for r in runs.items {
+    assert(hex_shape::wall_is_exact(r.wr_step),
+           "ring chord recorded heading {r.wr_step}, which is one of `D`'s "
+         + "in-between twelve — a ring's chords are all 60-degree multiples");
+  }
+}
+
+// ⚠ AND THE HEADING MUST MATCH THE CHORD IT IS RECORDED FOR. `wall_is_exact` alone
+// would pass if every chord were recorded as heading 0.
+fn test_each_ring_chord_points_where_its_heading_says() {
+  runs = hex_editor::WallRuns { items: [] };
+  hex_editor::ring_runs(0, 0, 3, hex_editor::FENCE_MAT, runs);
+  seen: vector<integer> = [];
+  for r in runs.items {
+    want = hex_shape::wall_angle_actual(r.wr_step);
+    got = atan2(r.wr_z1 - r.wr_z0, r.wr_x1 - r.wr_x0) * 180.0 / PI ?? 0.0;
+    if got < 0.0 { got = got + 360.0; }
+    d = got - want;
+    if d < 0.0 { d = 0.0 - d; }
+    if d > 180.0 { d = 360.0 - d; }
+    assert(d < 0.001,
+           "a chord pointing {got}deg is recorded as heading {r.wr_step}, which "
+         + "points {want}deg");
+    seen += [r.wr_step];
+  }
+  // six distinct headings, 60 degrees apart — not one repeated six times
+  for i in 0..6 {
+    for j in 0..6 {
+      if i != j {
+        assert((seen[i] ?? 0) != (seen[j] ?? 0),
+               "chords {i} and {j} share heading {seen[i] ?? 0}");
+      }
     }
   }
 }
