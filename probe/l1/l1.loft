@@ -1,0 +1,206 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PLAN 24 `L1` — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID?
+//
+//   loft --interpret --lib lib/ probe/l1/l1.loft      (or `make probe-l1`)
+//
+// `H1` measured `wall_write` → `wall_read_run` at 24 of 24. That is the library
+// talking to itself. The editor's walls are laid by `hex_editor::wall_stamp` — a
+// float halfplane sweep from a `WallRun`, snapped by `WALL_SNAP = 2*pi/24` — and
+// whether THOSE can be read back is what `L1` actually turns on.
+//
+// Predictions are in `PREDICTION.md` and were written first.
+use hex_field;
+use hex_grid;
+use hex_form;
+use hex_shape;
+use hex_edge;
+use hex_editor;
+use hex_voxel;
+
+const REACH = 14;
+const SCAN = 20;
+
+fn world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - SCAN, 0 - SCAN, 2 * SCAN + 1, 2 * SCAN + 1, 8,
+                          hex_editor::SURFACE_MAT);
+  w
+}
+
+fn main() {
+  println("L1 — plan 24: reading back a wall that OUR stamp laid");
+  println("");
+
+  // ── §1  CONTROL: the library's own stamp, through OUR bridge ──────────────
+  //
+  // ⚠ WITHOUT THIS, §2 SAYS NOTHING. `edges_around` filters by
+  // `wall_stops_walk` — a physics predicate the recovery does not care about — so
+  // a bridge that drops edges would fail §2 for a reason that is not the stamp.
+  println("── §1  control: `wall_write` → our bridge → `wall_read_run` ─────");
+  ta0 = hex_corner_tri_a(0, 0, 0);
+  tb0 = hex_corner_tri_b(0, 0, 0);
+  c_ok = 0;
+  c_all = 0;
+  for d in 0..24 {
+    p = wall_min_p(d, ta0, tb0);
+    if p <= 0 { continue; }
+    e = edgeset_new(0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    w = wall_from_run(d, ta0, tb0, p, hex_editor::WALL_MAT);
+    wall_write(w, e, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    (rd, ra, rb, rp, ok) = wall_read_run(e, 0 - REACH, 0 - REACH,
+                                         2 * REACH + 1, 2 * REACH + 1);
+    c_all = c_all + 1;
+    if ok { c_ok = c_ok + 1; }
+  }
+  if c_ok == c_all && c_all > 0 {
+    println("   ✅ {c_ok} of {c_all} — the reader and the EdgeSet shape are sound");
+  } else {
+    println("   ⛔ {c_ok} of {c_all} — the CONTROL failed; §2 below is meaningless");
+  }
+
+  // ── §2  THE REAL QUESTION: our own `wall_stamp` ───────────────────────────
+  println("");
+  println("── §2  our `wall_stamp` → world → bridge → `wall_read_run` ──────");
+  no_runs = hex_editor::WallRuns { items: [] };
+  sf = hex_edge::surfaces_new();
+  got = 0;
+  tried = 0;
+  refused = 0;
+  wrongd = 0;
+  detail = "";
+  for t in 0..24 {
+    ang = (t as float) * 15.0 / 57.29577951308232;
+    len = 6.0;
+    x0 = 0.0;
+    z0 = 0.0;
+    x1 = cos(ang) * len;
+    z1 = sin(ang) * len;
+    st = 0;
+    res = 0.0;
+    hex_editor::snap_heading(x1 - x0, z1 - z0, st, res);
+
+    wld = world();
+    runs = hex_editor::WallRuns { items: [] };
+    marked = 0;
+    hex_editor::wall_stamp(wld, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                             wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1,
+                             wr_mat: hex_editor::WALL_MAT, wr_step: st },
+                           hex_editor::WALL_MAT, 8, runs, marked);
+
+    e2 = hex_editor::edges_around(wld, 0, 0, REACH, false, no_runs, sf, 8.0);
+    (rd, ra, rb, rp, ok) = wall_read_run(e2, 0 - REACH, 0 - REACH,
+                                         2 * REACH + 1, 2 * REACH + 1);
+    tried = tried + 1;
+    if ok { got = got + 1; } else { refused = refused + 1; }
+    mark = "  ";
+    if !ok { mark = "✗ "; }
+    if t < 6 || ok {
+      println("   {mark}nominal {t * 15:>3}deg · our step {st:>2} · {marked} edges "
+              + "· read ok={ok} d={rd} p={rp}");
+    }
+  }
+  println("");
+  println("   {got} of {tried} recovered · {refused} refused");
+  if got < tried {
+    println("");
+    println("   ⚠ THAT IS THE RESULT, NOT A PROBLEM — but `P3` is REFUTED: nominal");
+    println("     0 and 60 degrees fail too, and those ARE exact headings. So the");
+    println("     direction set is not the whole cause. §3 isolates the rest.");
+  }
+
+  // ── §3  IS IT THE DIRECTION, OR THE ENDPOINTS? ────────────────────────────
+  //
+  // ⚠ `wall_read_run` needs the run's ENDS to be triangle-lattice vertices — it
+  // checks `a1 + 3*p*tri_a(d) == a2` exactly. Our gesture starts a run wherever
+  // the author is standing and stops it wherever they stop, so even a run in a
+  // `D` direction lands on nothing the reader can name.
+  //
+  // This feeds OUR OWN `wall_stamp` a run whose ends are an admissible vertex pair
+  // — same stamp, library-legal geometry. If it recovers, the stamp is innocent
+  // and the gesture's CHOICE of endpoints is the whole defect.
+  println("");
+  println("── §3  our stamp, given ADMISSIBLE endpoints ────────────────────");
+  g3 = 0;
+  t3 = 0;
+  for d3 in 0..24 {
+    p3 = wall_min_p(d3, ta0, tb0);
+    if p3 <= 0 { continue; }
+    ea = wall_end_a(d3, ta0, p3);
+    eb = wall_end_b(d3, tb0, p3);
+    wld3 = world();
+    runs3 = hex_editor::WallRuns { items: [] };
+    m3 = 0;
+    hex_editor::wall_stamp(wld3, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                             wr_x0: tri_x(ta0, tb0), wr_z0: tri_y(ta0, tb0),
+                             wr_x1: tri_x(ea, eb),   wr_z1: tri_y(ea, eb),
+                             wr_mat: hex_editor::WALL_MAT, wr_step: d3 },
+                           hex_editor::WALL_MAT, 8, runs3, m3);
+    e3 = hex_editor::edges_around(wld3, 0, 0, REACH, false, no_runs, sf, 8.0);
+    (rd3, ra3, rb3, rp3, ok3) = wall_read_run(e3, 0 - REACH, 0 - REACH,
+                                              2 * REACH + 1, 2 * REACH + 1);
+    t3 = t3 + 1;
+    if ok3 { g3 = g3 + 1; }
+    if d3 < 6 {
+      mk = "✗ ";
+      if ok3 { mk = "  "; }
+      println("   {mk}d24 {d3:>2} p={p3} · {m3} edges · read ok={ok3} d={rd3} p={rp3}");
+    }
+  }
+  println("");
+  println("   {g3} of {t3} recovered when the ENDS are admissible");
+  if g3 > got {
+    println("   → the stamp is not the defect. What the GESTURE chooses is:");
+    println("     an anchor that is not a vertex, and a length that is not a legal");
+    println("     multiple. `snap_run_d24` + `wall_snap_p` are the two calls missing.");
+  } else if g3 == 0 {
+    println("   → admissible ends did not help either, so the stamp itself marks a");
+    println("     different edge set from `wall_write`. §4 asks the library WHY.");
+  }
+
+  // ── §4  WHAT SHAPE IS OUR MARKING? — asked with the library's instruments ─
+  //
+  // ⚠ `wall_chain_ends` AND `wall_chain_branches` EXIST FOR EXACTLY THIS, and
+  // their doc says what the numbers mean: *"exactly two vertices have degree 1
+  // (the ends) and none has degree > 2 … 2 for a single chain, 0 for empty, 4
+  // after a break, 2k for a comb"*, and a branch is *"any vertex where three or
+  // more marked edges meet — a straight wall's boundary never has one"*.
+  //
+  // So instead of guessing why the reader refused, this asks the two questions the
+  // reader itself asks. Same run, both stamps, side by side.
+  println("");
+  println("── §4  the same run, both stamps, measured as a GRAPH ───────────");
+  println("   d24   library: edges ends branches   ours: edges ends branches");
+  for d4 in 0..24 {
+    p4 = wall_min_p(d4, ta0, tb0);
+    if p4 <= 0 { continue; }
+    // the library's marking
+    el = edgeset_new(0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    wl = wall_from_run(d4, ta0, tb0, p4, hex_editor::WALL_MAT);
+    nl = wall_write(wl, el, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    le = wall_chain_ends(el, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    lb = wall_chain_branches(el, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    // ours
+    ea4 = wall_end_a(d4, ta0, p4);
+    eb4 = wall_end_b(d4, tb0, p4);
+    wld4 = world();
+    runs4 = hex_editor::WallRuns { items: [] };
+    m4 = 0;
+    hex_editor::wall_stamp(wld4, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                             wr_x0: tri_x(ta0, tb0), wr_z0: tri_y(ta0, tb0),
+                             wr_x1: tri_x(ea4, eb4), wr_z1: tri_y(ea4, eb4),
+                             wr_mat: hex_editor::WALL_MAT, wr_step: d4 },
+                           hex_editor::WALL_MAT, 8, runs4, m4);
+    eo = hex_editor::edges_around(wld4, 0, 0, REACH, false, no_runs, sf, 8.0);
+    oe = wall_chain_ends(eo, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    ob = wall_chain_branches(eo, 0 - REACH, 0 - REACH, 2 * REACH + 1, 2 * REACH + 1);
+    if d4 < 8 {
+      println("   {d4:>3}          {nl:>5} {le:>4} {lb:>8}         {m4:>5} {oe:>4} {ob:>8}");
+    }
+  }
+  println("");
+  println("   ⚠ `ends` must be 2 and `branches` 0 for a single chain. Read ours");
+  println("     against the library's on the same run — a comb reads 2k ends, and a");
+  println("     branch is a marking that is not a path at all.");
+}

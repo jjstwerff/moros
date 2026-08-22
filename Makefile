@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -797,6 +797,14 @@ probe-a0q:
 # CALL and not the upstream library change the plan had it as.
 probe-h1:
 	@loft --interpret --lib lib/ probe/h1/h1.loft 2>/dev/null | sed -n '/^H1 —/,$$p'
+
+# L1 (plan 24) — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID? Control: the
+# library's own `wall_write` through our world→EdgeSet bridge, 24 of 24. Ours:
+# `hex_editor::wall_stamp`, 0 of 24, every one refused — and still 0 with admissible
+# endpoints. ⚠ So `L1` is blocked on OUR STAMP, not on the library, and the phase is
+# now "replace `wall_stamp` with `wall_write`" rather than "add a call".
+probe-l1:
+	@loft --interpret --lib lib/ probe/l1/l1.loft 2>/dev/null | sed -n '/^L1 —/,$$p'
 
 pages:
 	@node tools/build-pages.mjs

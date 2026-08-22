@@ -14,10 +14,11 @@ NORMATIVE** — [FORMAL_CORE.md](../../doc/claude/FORMAL_CORE.md), the binding e
 | walls draw straight, recovered from the store | **§6.1** *a wall surface is the exact **AVERAGE** of its edges, never a fit* | `X47` |
 | no session record; one mesh per chunk | **§2.4.3** *the canonical text is not a second editor representation, and must not become one — that is exactly the second layer the editor is not allowed to have*; layer 2 is *derived on demand, **never persisted***, and *an edit dirties the chunks it touches, and their layer-2 meshes rebuild* | `SPEC` L3 |
 
-**Three probes run, nothing wired yet — and every one of them corrected this plan.** `A0p` broke
+**Four probes run, nothing wired yet — and every one of them corrected this plan.** `A0p` broke
 the ground rule twice and located the gap; `A0q` found the plan's own invariant-gate row was
-wrong; `H1` found that `D` is a library table, that `L1` is a **call** rather than the upstream
-change it was written as, and that **open question 4's migration does not exist**. The symptoms
+wrong; `H1` found `D` is a library table and that **open question 4's migration does not exist**;
+`L1` found the recovery is a call **and that our own stamp is what it cannot read** — which turned
+`L1` into `S1`, a replacement, and moved it ahead of `H1`. The symptoms
 are in [EDITOR_DEFECTS.md](../../doc/claude/EDITOR_DEFECTS.md); the work is to make the editor
 obey a model it has been diverging from.
 
@@ -85,9 +86,15 @@ and a **world target point** and answers *which direction's nearest **legal** en
 closest* — accounting for run admissibility (`wall_run_ok`, `wall_min_p`, the `δ` class) that ours
 knows nothing about. They agree on 12 of 24.
 
-⚠ **AND `hex_editor::wall_stamp` IS A SECOND IMPLEMENTATION OF `hex_shape::wall_write`.** Both
-mark the edges a wall crosses; ours in floats from a `WallRun`'s endpoints via a halfplane, the
-library's from a `Wall` via `wall_separates`. One of them is ours and should not be.
+⚠ **AND `hex_editor::wall_stamp` IS A SECOND IMPLEMENTATION OF `hex_shape::wall_write`** — now
+measured, not just observed. They mark **different edge sets**: `wall_read_run` reads the
+library's 24 of 24 and ours 0 of 24, through the same bridge, with admissible endpoints, in exact
+`D` directions. ⚠ **So `H1` alone buys nothing readable**, and `S1` — the replacement — comes
+first.
+
+⚠ **THAT IS THE THIRD SECOND-IMPLEMENTATION THIS PLAN HAS FOUND**, after `HEADINGS = 24` against
+`D`, and our `VoxelWorld` edge bytes against `hex_field::EdgeSet`. The pattern is not that the
+editor calls the wrong library function — **it is that it has its own of everything.**
 
 ## Invariant gate
 
@@ -110,7 +117,8 @@ average of exact rationals *is* the answer.
 | **`A0p`** — probe: recover a wall from its edge stamp | XS | [result](../../probe/a0p/README.md) | ✅ **Done, and it broke the ground rule twice.** Value: the located gap |
 | **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | [result](../../probe/a0q/README.md) · `make probe-a0q` | ✅ **Done 2026-08-22.** 48 of 48 exact; `X47`'s control number reproduced to the digit. ⚠ **And it corrected this plan**: `surface_heading` is blind to a notch by construction |
 | **`H1`** — adopt `D`; delete `WALL_SNAP` | M | [probe run](../../probe/h1/README.md) · `make probe-h1` · then every gate green with the snap delegating to `hex_shape`. ⚠ Parallel run: the two agree on **12 of 24** and are **different questions**, so expect divergence on purpose | ◐ **Measured, not wired.** `D` is `hex_shape::hexwall` — `D24`, `wall_step_k/m`, `wall_is_exact`, `snap_run_d24` |
-| **`L1`** — recovery of **world linework** from the field | S | ⛔ **`H1` COLLAPSED THIS TO A CALL.** `hex_shape::wall_read_run(edges, …)` reads a run out of an `EdgeSet` and returns `(d24, a0, b0, p, ok)` — **measured 24 of 24** round-tripping through `wall_write` → `wall_read_run`. ⚠ Compare **endpoints, not `d`**: the library canonicalises to `p > 0`, so a run returns as `d24` or `d24 + 12` — `A0p`'s `P3`, stated by the code that owns it | ✅ **Unblocked, and far smaller than written** |
+| **`S1`** — replace `hex_editor::wall_stamp` with `hex_shape::wall_write` | M | [probe run](../../probe/l1/README.md) · `make probe-l1`. ⛔ **`L1` MEASURED THIS INTO EXISTENCE.** Same reader, same bridge, same bounds: the library's marking reads back **24 of 24**, ours **0 of 24** — and still 0 with admissible endpoints, so it is neither the direction set nor the ends. ⚠ **Sequence this BEFORE `H1`**: adopting `D` while still marking edges our own way leaves the reader refusing exactly as it does today | Open — the phase `L1` turned into |
+| **`L1`** — recovery of world linework from the field | XS | `hex_shape::wall_read_run(edges, …)` → `(d24, a0, b0, p, ok)`. ⚠ Compare **endpoints, not `d`**: the library canonicalises to `p > 0`, so a run returns as `d24` or `d24 + 12` — `A0p`'s `P3`, stated by the code that owns it | ✅ **Proven as a call**, 24 of 24 — it follows from `S1` and costs nothing extra |
 | **`A3`** — mesher emits from recovered runs, `es_runs` still present | M | two meshes, byte for byte, both paths live | Blocked on `L1` |
 | **`A4`** — the switch | S | every gate green, `A3`'s comparison still running | Blocked on `A3` |
 | **`A5`** — delete `emit_wall_panel` | S | ⚠ **first visible change.** Triangle count + a screenshot pair. `probe/b2`'s `E2` reads `grass,wall` either way | Blocked on `A4` |
