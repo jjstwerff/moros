@@ -1105,16 +1105,27 @@ if (view === null || meshLen.size === 0) {
             + `camera ${view === null ? 'MISSING' : 'present'}`);
 }
 
-// ⚠ **THE BROWSER ATTACHES BEFORE THE FIRST LINE RUNS, NOT AT THE FIRST `snap`.**
-// It used to attach lazily, on the first picture — and the server broadcasts a mesh
-// once, to whoever is connected, so everything built before that moment never reached
-// the page at all. Measured 2026-08-24 once the page could report what it HOLDS: at
-// the first `snap` of `eyes.keys` it held 61 of the runner's 66 non-empty meshes and
-// was still 5 short after 30 seconds, because those five predated the attach.
+// The browser attaches before the first line runs, not at the first `snap`.
 //
-// ⚠ **LAZY WAS NOT AN ACCIDENT — it kept a socket-only run from paying for a browser
-// it never used.** That is preserved: this only fires under `--shots`, which is the
-// flag that says pictures are coming. What changes is WHEN, not WHETHER.
+// ⛔ **THE REASON FIRST GIVEN HERE WAS WRONG, AND THE CORRECTION IS THE USEFUL PART.**
+// It said the server broadcasts a mesh once to whoever is connected, so everything
+// built before a lazy attach never reached the page — citing one run of `eyes.keys`
+// that held 61 of 66 non-empty meshes and stayed short for 30 seconds.
+//
+// ⚠ **THAT DOES NOT REPRODUCE.** Measured 2026-08-25, lazily attached, `held == wire`
+// on every frame: `eyes.keys` 58/58 then 66/66 four times; a stationary minimal script
+// 60/60; one that moves the character far away and back BEFORE the snap 66/66; and two
+// scripts run in parallel against two servers, both clean. `editor_server.loft`'s
+// `MSG_READY` handler already restarts the whole chunk stream for a joining client
+// (`loaded = []`, `have_hex = false`, `moved = true`) and invalidates `disp_tau` so the
+// limbs re-send. The join re-send works. The single short run was a transient nobody
+// has since been able to provoke.
+//
+// ⚠ **SO THIS IS KEPT FOR A SMALLER, TRUE REASON**: it removes the race entirely rather
+// than fixing a defect. A page that has been connected since before the world was built
+// has followed the same stream the runner did, so the first judged frame is never the
+// one racing an attach — and that is worth having when the thing being judged is a
+// photograph. It fires only under `--shots`, so a socket-only run still pays nothing.
 if (shots) {
   if (!(await browser())) {
     console.log('  !! the browser did not attach — no row that judges a picture can run');
