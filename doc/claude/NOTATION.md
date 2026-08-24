@@ -161,8 +161,8 @@ tags.**
 
 | # | step | why now |
 |---|---|---|
-| **1** | **a citation checker for `X…` against `../hexbody`** — resolve every `X<n>` in `doc/`, `plans/`, `probe/` against `ROUNDTRIP.md`/`SPEC.md`; SKIP if the tree is absent | 102 sites, 22 tags, zero checking. All resolve today, so this lands green and stays a tripwire rather than a cleanup |
-| **2** | **namespace the tag** — a bare `X47` collides with nothing today but is not searchable; the loft lesson is that families are designed as a set. Whatever prefix, decide it before there are 300 sites | the 4142-false-citation measurement is the argument |
+| **1** | ✅ **BUILT — `tools/citations.py`, in `make fast`.** 98 sites, 20 upstream tags, all resolve; SKIPs when `../hexbody` is absent | ⚠ **And it found a collision before it ran once**: `WORLD_MODEL.md` defines its OWN `X1`–`X5` (plan #8's `CW_EXTENT`, `CW_CONCURRENT`, churn), which a naive checker would have resolved against hexbody **by coincidence** and reported green |
+| **2** | **namespace the tag** — ⚠ **now urgent rather than tidy.** The two `X` namespaces overlap in 1–5 and only miss each other because this tree's hexbody citations happen to start at `X24`. That is luck; hexbody numbers upward and plan #8 could add `X6` any day | the 4142-false-citation measurement, and the live collision `citations.py check` now prints on every run |
 | **3** | **read the library example tags** — `@HXS-…`, `@HXP-…` already exist in `loft-libs-world` and answer *"show me this function used correctly"*, which is what every probe in plan 24 spent a run rediscovering | zero cost: they are already written |
 | **4** | **`dups` by meaning** — once citations exist, ask which rule is enforced from two sites | plan 24 found four second-implementations by hand |
 

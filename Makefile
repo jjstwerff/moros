@@ -485,6 +485,12 @@ fast:
 # own file, and **the consumer's `use` line order decides which**. Measured on
 # `moros_sim` + `hex_part`, 2026-08-18 — see `probe/skin/README.md`.
 	@sh tools/basenames.sh
+# ⚠ THE CITATIONS INTO THE FORMAL CORE, WHICH LIVES IN ANOTHER REPO. 98 sites here
+# cite `X<n>` rows in `../hexbody/ROUNDTRIP.md`, and a citation rots SILENTLY — the
+# prose goes on reading correctly while the number names something else. ⚠ It SKIPS
+# when the sibling tree is absent: this is a consistency check, not a capability the
+# build depends on, and a clone without hexbody must not go red.
+	@python3 tools/citations.py check
 # ⚠ **AND WHAT WE BUILD AGAINST IS NOT WHAT THE SIBLING TESTS.** Three manifests here
 # said the registry was *byte-identical to the checkout (diffed, not assumed)*; measured
 # 2026-08-18, all fourteen `hex_*` differ and **three differ in CODE** — including a
