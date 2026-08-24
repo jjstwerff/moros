@@ -279,6 +279,21 @@ if [ -s "$OUT/typo-wire.said" ]; then
 else
   ok "the server did not act on it"
 fi
+#
+# ── THE SWEEP THAT CHECKED THESE TWO, 2026-08-24 ────────────────────────────
+#
+#   row 0  control                          all four ok
+#   row 1  the server's refusal `println`   ONLY "refused BY NAME" red
+#          deleted — a SILENT server
+#   row 2  `hoist` routed to `raise` — a    all four red, incl.
+#          server that genuinely ACTS       "the server ACTED: editor: hoist: 1"
+#   control  restored                       all four ok
+#
+# ⚠ **ROW 1 IS WHY THE SECOND CHECK EXISTS.** A silent server passes every other row
+# here — the driver still complains, the run still fails, nothing was acted on — and
+# before this half was added it passed row E outright. The two checks are
+# INDEPENDENTLY sensitive, which is what makes them two checks rather than one written
+# twice.
 if grep -q '^editor: no gesture for hoist$' "$OUT/typo-wire.server"; then
   ok "…and refused it BY NAME: no gesture for hoist"
 else
