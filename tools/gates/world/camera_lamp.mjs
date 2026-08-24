@@ -26,6 +26,14 @@
 // Measured while writing this: `indoors` re-run against a server that had already run
 // it answers `apart 5.864` where a fresh server answers `6.095` — same commit, same
 // script, a different world underneath.
+//
+// ✅ **RE-MEASURED 2026-08-25 WITH THE BROWSER ATTACHED EARLY, AND NOTHING MOVED.** The
+// bands above were taken while the browser attached LAZILY at the first `snap`, so the
+// frames behind them could have been missing meshes broadcast before it connected —
+// `eyes.keys` was demonstrably five short. Every value here is identical to four
+// decimals under the early attach, with `held == wire` on every frame. The risk was
+// real and it did not materialise for this script: the bands are confirmed, not
+// merely un-refuted.
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
