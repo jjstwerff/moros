@@ -28,6 +28,35 @@ rather than re-derived.
 > *"And we allow octagon towers too, they are large enough for a unique deduction of the octagon
 > shape."*
 
+## 0. ⚠ WHAT IT IS FOR — and it is not mainly an authoring tool
+
+> *"One reason why I am so interested in the blueprints is that we can really hone the current
+> implementations of our libraries in an **easy to review format**. Concentrate on buildings
+> first, but eventually I want to allow all possible shapes here — roads, railroads, designs for
+> vehicles."*
+
+**So the blueprint is an INSTRUMENT before it is a feature.** A plan view is the cheapest place to
+see what the libraries actually do, and this session is the argument: every one of these was found
+by reading source or by writing a one-off probe, and every one is a *picture* in plan view —
+
+| what was found | how it was found | what a plan view shows |
+|---|---|---|
+| every wall drawn **twice** — hex-edge and straight | reading two emitters | two walls where one was drawn |
+| `rebuild_construct` returns a **confident hexagon** for an octagon ([`B0p`](../../probe/b0p/README.md)) | a probe written for a different question | a six-sided outline over an eight-sided one |
+| a wall laid at 15° reads back as 30° ([probe/l1](../../probe/l1/README.md)) | a round-trip harness | the recovered line beside the drawn one |
+| `D`'s in-between twelve are 1.1021° off nominal | printing a library table | a wall that does not meet its neighbour |
+
+⚠ **THAT REFRAMES THE ORDER OF WORK.** A review surface is worth most *before* the library work
+it reviews, not after — so the blueprint is not a reward for finishing plan 24, it is how plan 24
+gets checked. And it argues for building the **view** first and the **authoring** second.
+
+⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
+railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
+assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what
+it draws is *surfaces, features and assemblies*, and a house is one arrangement of those. Anything
+that only works for a `Plan` is a wrong turn — which is exactly the trap §2.4 avoided by making a
+bay a feature of a wall rather than a fourth kind of house part.
+
 ## 1. What the blueprint IS — and it already has a name
 
 ⚠ **THE FIRST QUESTION IS WHETHER THIS IS A SECOND AUTHORITY, AND THE ANSWER IS NO — BUT ONLY
@@ -59,15 +88,29 @@ editing"*. **Re-opening a blueprint means rebuilding it from the field**, which 
 authority. ⚠ If that round trip is lossy, the design fails — and §2 below names exactly where it
 is lossy today.
 
-⛔ **AND THE ROUND TRIP IS GATED FOR THE FOXEL BUT NOT FOR THE PALETTE — which is precisely the
-half this editor edits.** `@HB-X63` proves
+✅ **MEASURED — [`B1p`](../../probe/b1p/README.md): the palette ROUND-TRIPS.** Seven entries out,
+seven identical back, alongside cells and edges that survive to an identical world key. ⚠ **And
+the finding was a COMPILE ERROR**: `world_to_bytes(w, **palette**, owner)` takes one, which this
+design had assumed did not exist. So a wall's body and thickness have a home in the editor's own
+format — as **opaque integers the consumer interprets**, which is also what keeps `OCTAGON` from
+becoming a Moros word.
+
+⚠ **AND IT RESOLVED A CONTRADICTION RATHER THAN CONFIRMING ONE.** `hex_voxel/tests/boundary.loft`
+asserts `wd_body` must **never appear** in the substrate — *"the day this package knows what a
+stair is, it has stopped being one"* — which read as a blocker. It is not: the test forbids the
+substrate **understanding** a body, not **carrying** one, and an opaque palette is exactly *"the
+library owns how a thing attaches to geometry, never the payload"*.
+
+⛔ **WHAT REMAINS UNGATED IS UPSTREAM, NOT HERE.** `@HB-X63` proves
 `write(rebuild(load(store(draw(read(T)))))) = T` byte-for-byte over six in-between directions, and
 then says in its own words: *"⚠ **`@HB-X12` and `@HB-X13` are NOT covered** — the palette
 (`wd_body`, `wd_thickness`, `ItemDef`/`MaterialDef` categories) is untouched and stays **T4**."*
 
-**So a blueprint's cells round-trip and its wall TYPES are untested.** A design whose whole
-premise is *author, extrude, recover* cannot rest on that quietly: `B1p` below must cover the
-palette, or the invariant is proven for the half that was never in doubt.
+`@HB-X63` still leaves the palette at **T4** in hexbody's own model, and `B1p` measures *moros's
+encoder* rather than the model. ⚠ **The run record is the half that genuinely does not survive** —
+a wall's authored line is lost on reload while its stamped edges remain, which is
+[EDITOR_DEFECTS](EDITOR_DEFECTS.md) 4 and 5 and the defect plan 24 removes. **A blueprint inherits
+that fix and does not need one of its own.**
 
 ## 2. Three wall types, and the octagon is a MATERIAL because 45° is not a direction
 
@@ -293,7 +336,7 @@ All four already have their answer written down and none of them is new work her
 | probe | question | why it could kill the design |
 |---|---|---|
 | **`B0p`** | ✅ **RUN — and it refuted its own question.** [result](../../probe/b0p/README.md) | No threshold exists; the shape is stored in the palette, not deduced. ⚠ Its live finding is the **confident hexagon** |
-| **`B1p`** | **does a bay round-trip — INCLUDING ITS PALETTE?** Author a wall + bay, `draw`, `rebuild`, compare. ⚠ **The palette half is the point**: `@HB-X63` gates the foxel and explicitly leaves `wd_body`/`wd_thickness` at **T4**, so a fixture that only compares cells re-proves the half that was never in doubt | if the parent's feature list does not survive, §2.4's recovery is fiction and the bay needs its own record — the second authority §1 forbids. And if the wall TYPE does not survive, every blueprint reopens as `SOLID` |
+| **`B1p`** | ✅ **RUN** — [result](../../probe/b1p/README.md) | cells, edges **and the palette** all survive; the **run record** does not. The feared *"every blueprint reopens as `SOLID`"* is not what happens |
 | **`B2p`** | **can `cut_arb` place a 45° face at all, exactly?** One wall, one bay, count the edges each surface claims. Control: a fixed "always the parent" rule must strand edges | this is `@HB-X55`'s measurement one shape over — it found 112/112 with a stencil against world linework, so the mechanism is proven; the bay is a harder case |
 | **`B3p`** | **does the walker move with no collision `EdgeSet`?** | trivial, and it is the one that says §3.1 is an absence rather than a flag |
 

@@ -1,0 +1,125 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BLUEPRINT `B1p` — WHAT SURVIVES A WALL'S ROUND TRIP, AND WHERE WOULD A TYPE GO?
+//
+//   loft --interpret --lib lib/ probe/b1p/b1p.loft     (or `make probe-b1p`)
+//
+// §1's invariant is *author, extrude, recover*. `@HB-X63` gates the foxel round trip
+// and explicitly leaves the PALETTE at T4 — and the palette is the half a blueprint
+// edits. This measures the editor's own format: lay a wall, round-trip the world,
+// and ask what came back.
+//
+// ⚠ THE TYPE HALF IS ANSWERED BY A TEST RATHER THAN BY THIS PROBE, and the answer is
+// not the one BLUEPRINT assumed. `hex_voxel/tests/boundary.loft` asserts that
+// `wd_body` — the wall shape vocabulary — must NEVER appear in the substrate: *"these
+// are the names the ownership audit put firmly on the CONSUMER's side ... the day
+// this package knows what a stair is, it has stopped being one."* So the palette
+// `@HB-X12` names lives in `moros_map`, which the editor does not depend on.
+use hex_field;
+use hex_grid;
+use hex_voxel;
+use hex_editor;
+use hex_shape;
+
+const S = 14;
+
+fn world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - S, 0 - S, 2 * S + 1, 2 * S + 1, 8,
+                          hex_editor::SURFACE_MAT);
+  w
+}
+
+fn wall_edges(w: VoxelWorld, mat: &integer) -> integer {
+  n = 0;
+  dirs: vector<integer> = [4, 5, 0];
+  for q in 0 - S..S + 1 {
+    for r in 0 - S..S + 1 {
+      for d in dirs {
+        m = hex_editor::wall_of(w, q, r, d, 2.0);
+        if m != 0 { n = n + 1; mat = m; }
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  println("B1p — what survives a wall's round trip through the editor's own format?");
+  println("");
+
+  // ── lay a wall through the real gesture ───────────────────────────────────
+  w = world();
+  (ax, az) = hex_grid::hex_to_px(0, 0);
+  (bx, bz) = hex_grid::hex_to_px(9, 0);
+  d = hex_editor::run_between(ax, az, bx, bz, hex_editor::WALL_MAT);
+  if !d.rd_ok { println("  ⛔ the wall was refused: {d.rd_why}"); return; }
+  runs = hex_editor::WallRuns { items: [] };
+  marked = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, runs, marked);
+  m0 = 0;
+  n0 = wall_edges(w, m0);
+  k0 = hex_voxel::world_key(w);
+  println("── before ──────────────────────────────────────────────────────");
+  println("   run d24={d.rd_d24} p={d.rd_p} · {n0} edges · material {m0} · world {k0}");
+  println("   the session ALSO holds: {len(runs.items)} run record(s)");
+
+  // ── ✅ AND THERE **IS** SOMEWHERE TO PUT A WALL TYPE, WHICH THIS PROBE FOUND
+  // BY FAILING TO COMPILE.  `world_to_bytes(w, palette, owner)` takes a PALETTE —
+  // `vector<integer>`, opaque to the substrate and handed back as `wl_palette`.
+  //
+  // ⚠ SO THE BOUNDARY TEST FORBIDS `hex_voxel` UNDERSTANDING `wd_body`, NOT
+  // CARRYING IT. *"The library owns how a thing attaches to geometry, never the
+  // payload"* — a palette of integers the CONSUMER interprets is exactly that
+  // shape, and it is the slot a blueprint's wall types belong in.
+  //
+  // ⚠ AND IT IS THE HALF `@HB-X63` LEAVES AT T4: hexbody gates the foxel round trip
+  // and says in the same row that the palette is *untouched*. So this is the
+  // measurement nobody has taken.
+  pal: vector<integer> = [7, 3, 1, 9, 4, 2, 8];   // stand-in for a WallDef table
+  by = hex_voxel::world_to_bytes(w, pal);
+  ld = hex_voxel::world_from_bytes(by);
+  if ld.wl_code != hex_voxel::WL_OK {
+    println("  ⛔ the world would not decode: {ld.wl_code} {ld.wl_detail}");
+    return;
+  }
+  w2 = ld.wl_world;
+  pal2 = ld.wl_palette;
+  pal_same = len(pal2) == len(pal);
+  if pal_same {
+    for pi in 0..len(pal) {
+      if (pal2[pi] ?? 0) != (pal[pi] ?? 0) { pal_same = false; }
+    }
+  }
+  m1 = 0;
+  n1 = wall_edges(w2, m1);
+  k1 = hex_voxel::world_key(w2);
+  println("");
+  println("── after ───────────────────────────────────────────────────────");
+  println("   {len(by)} bytes · {n1} edges · material {m1} · world {k1}");
+  println("");
+
+  if n1 == n0 && m1 == m0 && k1 == k0 {
+    println("   ✅ the CELLS and EDGES survive exactly — edges, material and world key");
+  } else {
+    println("   ⛔ the field itself did not survive: {n0}→{n1} edges, mat {m0}→{m1}");
+  }
+
+  // ⚠ THE HALF THAT DOES NOT SURVIVE, AND IT IS NOT A DEFECT IN THE FORMAT.
+  println("");
+  println("── what did NOT come back ──────────────────────────────────────");
+  println("   the run record: {len(runs.items)} before, and a loaded world carries no");
+  println("   session at all — EDITOR_DEFECTS entry 5, the defect plan 24 removes.");
+  println("");
+  println("── and the PALETTE, which is where a wall TYPE would live ──────");
+  println("   sent {len(pal)} entries, got {len(pal2)} back · identical={pal_same}");
+  if pal_same && len(pal) > 0 {
+    println("   ✅ the palette ROUND-TRIPS — so a blueprint's wall bodies and");
+    println("      thicknesses have a home in the format, as integers the CONSUMER");
+    println("      interprets. `@HB-X63` leaves this at T4; here it is, measured.");
+  } else {
+    println("   ⛔ the palette did NOT survive — and every wall type a blueprint sets");
+    println("      would be lost on reload, which is `B1p`'s whole question.");
+  }
+}

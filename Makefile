@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -811,6 +811,13 @@ probe-h1:
 # PALETTE, so a tower is stored rather than deduced.
 probe-b0p:
 	@loft --interpret --lib lib/ probe/b0p/b0p.loft 2>/dev/null | sed -n '/^B0p/,$$p'
+
+# B1p (BLUEPRINT §1) — WHAT SURVIVES A WALL'S ROUND TRIP? Cells, edges and the
+# PALETTE all do; the run record does not. ⚠ Its finding was a COMPILE ERROR:
+# `world_to_bytes(w, palette, owner)` takes a palette, which the design had assumed
+# did not exist — so a wall's body and thickness have a home after all.
+probe-b1p:
+	@loft --interpret --lib lib/ probe/b1p/b1p.loft 2>/dev/null | sed -n '/^B1p/,$$p'
 
 # L1 (plan 24) — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID? Control: the
 # library's own `wall_write` through our world→EdgeSet bridge, 24 of 24. Ours:
