@@ -497,6 +497,16 @@ address (or the hostname `make browser` prints) cannot connect.
   opposite answers from the same facts, so the mode decides and `shelter_at` only observes.
   **All built and gated**; the doc records which of its own design sentences the measurements
   refuted, which is most of its value
+- [Blueprint editor](doc/claude/BLUEPRINT.md) — **a plan you perfect, then EXTRUDE**, and the
+  formal definition of the three wall types. ⛔ **Proposed, not settled — §2 is a ticket for
+  hexbody**, which owns the formal core. Its load-bearing arithmetic: **45° is not a lattice
+  direction at all** (`tan 45° = 1` ⇒ `m/k = √3`, irrational), so an octagonal face can never be
+  a `D` wall — which is *why* it is its own material rather than another heading. ⚠ A **bay** is
+  therefore a projecting **feature of its parent wall** (`X70`'s taxonomy extended from
+  *perforates* to *projects*), recovered from the parent's feature list because **45° was never
+  stored**; a **tower** has no parent and must be deduced from the field, which is `§6`'s R1/R2
+  boundary and the one number this design lacks. ⚠ And a regular octagon **is not a `Form`** —
+  eight 45° turns need 1.5 twelfths each, so law J refuses it and `rebuild` cannot return it
 - [House rooms](doc/claude/HOUSE_ROOMS.md) — **a house is a floor plan of boxes**: rooms are the
   house we already have, placed again adjacent, and a stair adds a LEVEL. ⚠ Its two live findings:
   `place_house`'s `D2b` guard **refuses exactly this** (it asks *does the footprint overlap a
