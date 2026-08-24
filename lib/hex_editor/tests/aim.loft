@@ -13,6 +13,25 @@
 // not two spellings of one. `test_aiming_and_tracing_disagree` is that made
 // executable at editor scale — the library-scale measurement is `probe/m2p`, 77.7%.
 //
+// ── THE SABOTAGE SWEEP, 2026-08-24 — every row caught, none missed ──────────
+//
+// ⚠ RUN AGAINST THE COMMITTED SUBJECT AND RESTORED FROM COPIES, never `git checkout`:
+// the thing under test is the step just built, so it is uncommitted by definition and
+// a checkout between rows deletes it — which then reports every row as a miss.
+//
+//   row 0  control, nothing touched            all rows GREEN
+//   row 1  `sa_deg = 0.0` — ignore the facing  facing_decides · residual · residual_exact
+//   row 2  the aim closes `es_draft`           does_not_disturb_an_open_trace
+//   row 3  `bind_of("T", VB_AIM)` deleted      key_reaches_the_aim_verb
+//   row 4  aim delegates to `snap_run_d24`     aiming_and_tracing_disagree · residual ×2
+//   control  restored                          all rows GREEN, files byte-identical
+//
+// ⚠ ROW 4 IS THE ONE THAT MATTERED. It makes the aim build a target point and call the
+// TRACE's snap — the obvious implementation, and the one that would make this verb a
+// second key for `run`. Three rows go red, so `X108` is not decoration here.
+// ⚠ AND ROW 3 IS THE "BUILT AND NEVER CALLED" CHECK: the verb still exists and every
+// geometry row still passes; only the wiring row notices.
+//
 // ⚠ `W_RESERVE` IS THE PACKAGE'S OWN — `gesture.loft` exports it, so a test file
 // redeclaring it is a name collision the compiler names on sight.
 use hex_editor;
