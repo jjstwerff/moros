@@ -531,6 +531,17 @@ address (or the hostname `make browser` prints) cannot connect.
   command a person runs** so the two cannot drift, and `dups` — duplication asked **by meaning**
   rather than by code shape, which is what plan 24 did by hand four times. ⚠ And the doctrine to
   steal verbatim: **`OPEN: 0` is a claim to re-measure, not a fact**
+- [Authoring map](doc/claude/AUTHORING_MAP.md) — **from a controller to an exact shape, and it is
+  a FORMAL object because both its ends are.** `FORMAL_CORE` says what shapes exist; this says how
+  an author reaches one — the half that has been decided in code four separate times instead. Its
+  four laws (total, exact, **predictable**, **memoryless**) plus the factorisation `X107`, and the
+  one that has teeth: ⚠ **the wheel is a SELECTOR, never a mode** — read the other way it flattens
+  WHERE and WHAT into one axis, which is invisible until a house sits in a cave. ⚠ Its §5.2 is
+  measured and refutes the obvious assumption — `|D| = 24` does **not** mean 15° cells
+  ([`M1p`](probe/m1p/README.md)): they are **13.898 / 15 / 16.102**, twice `@HB-X29`'s bias, so the
+  authoring resolution is **6.949°** and no input precision improves it. ⛔ And the deleted
+  `WALL_SNAP` picked a *different* direction on **3.70%** of headings — `H1e` was a correctness
+  fix, and a probe asking *"does it snap to 24 things"* would have passed both
 - [Formal core](doc/claude/FORMAL_CORE.md) — ⛔ **the definitions lavition is built from, copied
   in, and NOT the authority.** `../hexbody/ROUNDTRIP.md` is *"the settled formal core"*; this is
   the binding extract. The lattice, the **three direction sets that are not interchangeable**

@@ -1,0 +1,169 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `M1p` — THE DIRECTION QUANTISER'S CELLS, AND WHAT A CONTROLLER MUST RESOLVE.
+//
+//   loft --interpret --lib lib/ probe/m1p/m1p.loft   (or `make probe-m1p`)
+//
+// [AUTHORING_MAP.md](../../doc/claude/AUTHORING_MAP.md) says the author's FACING must
+// determine the shape's direction exactly, and that the author must be able to
+// PREDICT which direction they will get. Both are properties of one map,
+//
+//     theta  ->  nearest d in D
+//
+// and both are decided by the shape of its PREIMAGE CELLS. This measures them.
+//
+// ⚠ THE CELLS ARE NOT 15 DEGREES WIDE, AND THAT IS THE WHOLE REASON THIS PROBE
+// EXISTS. `D` is 12 exact headings plus 12 in-betweens that carry a uniform bias
+// (`@HB-X29`, `@HB-X56`), so `wall_angle_actual` and `wall_angle_nominal` disagree on
+// every odd `d24`. The editor's deleted `WALL_SNAP` divided by `2*pi/24` — a UNIFORM
+// grid — which is the assumption this file is written to falsify or confirm.
+//
+// Three questions, each with its own control:
+//
+//   Q1  how wide is each cell, and how narrow is the narrowest?  → the resolution
+//       a stick must beat, and the reason it is not simply "half a step"
+//   Q2  does nearest-in-D ever differ from nearest-multiple-of-15?  → if never, the
+//       old uniform quantiser was harmless and its deletion bought nothing
+//   Q3  is the map MONOTONE in theta?  → a controller cannot steer to a target if
+//       turning further can skip backwards
+use hex_shape;
+use hex_form;
+
+const N = 24;
+
+// The angle of `d24` in degrees, as the library reports it.
+fn act(d: integer) -> float { hex_shape::wall_angle_actual(d) }
+
+// Nearest `d24` to a world angle, by ACTUAL angle — the honest quantiser.
+fn nearest_actual(deg: float) -> integer {
+  best = 0;
+  bd = 1000.0;
+  for d in 0..N {
+    x = deg - act(d);
+    while x > 180.0 { x = x - 360.0; }
+    while x < 0.0 - 180.0 { x = x + 360.0; }
+    x = hex_form::fabs(x);
+    if x < bd { bd = x; best = d; }
+  }
+  best
+}
+
+// The DELETED quantiser: a uniform 15-degree grid. `hex_editor::WALL_SNAP` was
+// `2*pi/24` and `snap_heading` divided by it. Kept here because a probe measuring the
+// difference has to be able to compute both.
+fn nearest_nominal(deg: float) -> integer {
+  k = deg / 15.0 ?? 0.0;
+  ki = 0;
+  if k >= 0.0 { ki = (k + 0.5) as integer; } else { ki = (k - 0.5) as integer; }
+  ((ki % N) + N) % N
+}
+
+fn main() {
+  println("M1p — the direction quantiser's cells");
+  println("");
+
+  // ── Q1: the cells ────────────────────────────────────────────────────────
+  //
+  // A cell boundary sits on the BISECTOR of two neighbouring actual angles, so a
+  // cell's width is half the gap on each side. Sorted order is `d` order here
+  // because `wall_angle_actual` is increasing — asserted rather than assumed.
+  println("── Q1: cell widths ─────────────────────────────────────────────");
+  println("   d24  exact?   nominal   actual     gap to next   cell width");
+  gaps: vector<float> = [];
+  ok_sorted = true;
+  for d in 0..N {
+    nxt = act((d + 1) % N);
+    g = nxt - act(d);
+    if g < 0.0 { g = g + 360.0; }
+    gaps = gaps + [g];
+    if g <= 0.0 { ok_sorted = false; }
+  }
+  narrow = 1000.0;
+  wide = 0.0;
+  nd = 0 - 1;
+  for d in 0..N {
+    pg = gaps[((d - 1) % N + N) % N] ?? 0.0;
+    wdt = ((gaps[d] ?? 0.0) + pg) * 0.5;
+    if wdt < narrow { narrow = wdt; nd = d; }
+    if wdt > wide { wide = wdt; }
+    ex = "odd ";
+    if hex_shape::wall_is_exact(d) { ex = "EVEN"; }
+    println("   {d}    {ex}   {hex_shape::wall_angle_nominal(d)}   {act(d)}   "
+            + "{gaps[d] ?? 0.0}   {wdt}");
+  }
+  println("");
+  if !ok_sorted {
+    println("   ⛔ the actual angles are NOT increasing in `d24` — every cell width");
+    println("      above is wrong, and the bisector model does not apply.");
+    return;
+  }
+  println("   ✅ actual angles increase with d24, so the bisector model holds");
+  println("   narrowest cell {narrow} deg at d24={nd} · widest {wide} deg");
+  println("   ⇒ a stick must resolve better than {narrow * 0.5} deg to reach every d24");
+  println("");
+
+  // ── Q2: does the deleted uniform quantiser ever disagree? ────────────────
+  //
+  // ⚠ THE CONTROL IS THE POINT. If the two agree everywhere, the uniform grid was
+  // harmless and `H1e` deleted it for tidiness rather than correctness.
+  println("── Q2: nearest-in-D vs the deleted uniform 15-degree grid ──────");
+  diff = 0;
+  tot = 0;
+  firstd = 0.0 - 1.0;
+  deg = 0.0;
+  while deg < 360.0 {
+    a = nearest_actual(deg);
+    b = nearest_nominal(deg);
+    tot = tot + 1;
+    if a != b {
+      diff = diff + 1;
+      if firstd < 0.0 { firstd = deg; }
+    }
+    deg = deg + 0.01;
+  }
+  pct = (diff as float) * 100.0 / (tot as float) ?? 0.0;
+  println("   {diff} of {tot} sampled headings disagree ({pct}%)");
+  if diff == 0 {
+    println("   ⛔ THEY NEVER DISAGREE — the uniform grid picked the same `d24`");
+    println("      everywhere, so `WALL_SNAP`'s deletion changed no author's result.");
+  } else {
+    println("   ✅ they disagree first at {firstd} deg. The uniform grid selects the");
+    println("      WRONG `d24` on a band around every in-between, so an author aiming");
+    println("      at one direction was given its neighbour.");
+  }
+  println("");
+
+  // ── Q3: monotone? ────────────────────────────────────────────────────────
+  //
+  // Sweep theta and record the selected `d24`. It must advance by exactly one at each
+  // boundary and never go back — otherwise turning further to the left can hand the
+  // author a direction further to the RIGHT, which no amount of practice fixes.
+  println("── Q3: is the map monotone in theta? ───────────────────────────");
+  back = 0;
+  jump = 0;
+  pd = nearest_actual(0.0);
+  deg = 0.0;
+  changes = 0;
+  while deg < 360.0 {
+    cur = nearest_actual(deg);
+    if cur != pd {
+      changes = changes + 1;
+      step = ((cur - pd) % N + N) % N;
+      if step != 1 {
+        if step == N - 1 { back = back + 1; } else { jump = jump + 1; }
+      }
+      pd = cur;
+    }
+    deg = deg + 0.01;
+  }
+  println("   {changes} boundaries crossed in one full turn · {back} backward · "
+          + "{jump} skipped");
+  if back == 0 && jump == 0 && changes == N {
+    println("   ✅ MONOTONE and complete: exactly {N} boundaries, each +1. Turning");
+    println("      further never hands back an earlier direction, and every `d24` is");
+    println("      reachable by aiming.");
+  } else {
+    println("   ⛔ NOT a clean sweep — {changes} boundaries for {N} directions.");
+  }
+}

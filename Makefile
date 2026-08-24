@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -833,6 +833,13 @@ probe-b2p:
 # property the API does NOT have today.
 probe-b3p:
 	@loft --interpret --lib lib/ probe/b3p/b3p.loft 2>/dev/null | sed -n '/^B3p/,$$p'
+
+# M1p (AUTHORING_MAP §5.2) — THE DIRECTION QUANTISER'S CELLS. They are NOT 15 deg:
+# 13.898 / 15 / 16.102 with period 4, exactly twice `@HB-X29`'s 1.1021 bias. The
+# authoring resolution is 6.949 deg. ⛔ And the deleted uniform `WALL_SNAP` grid picks
+# a DIFFERENT d24 on 3.70% of headings — so `H1e` changed results, it did not tidy.
+probe-m1p:
+	@loft --interpret --lib lib/ probe/m1p/m1p.loft 2>/dev/null | sed -n '/^M1p/,$$p'
 
 # L1 (plan 24) — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID? Control: the
 # library's own `wall_write` through our world→EdgeSet bridge, 24 of 24. Ours:

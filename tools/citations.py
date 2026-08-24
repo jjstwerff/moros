@@ -60,8 +60,20 @@ SKIP = ("/out", "/.out", "/node_modules", "/native-auto", "/.loft", "/.git", "/t
 #     pixel coordinate, and the first version reported it as citing a formal rule.
 CITE_UP = re.compile(r"@HB-X([0-9]{1,3})(?![0-9])")
 CITE_LOCAL = re.compile(r"(?<![A-Za-z0-9_-])X([0-9]{1,3})(?![0-9])")
-# A tag is DEFINED by a table row that OPENS with it, here and upstream alike.
-DEFN = re.compile(r"^\|\s*\*\*X([0-9]{1,3})\*\*")
+# A tag is DEFINED by a table row that OPENS with it, here and upstream alike — OR,
+# locally, by a BLOCKQUOTE LAW that opens with it.
+#
+# ⚠ THE SECOND FORM WAS ADDED BECAUSE THE FIRST WAS SILENTLY SHAPING THE PROSE.
+# `AUTHORING_MAP.md` states its four short laws in a table and its four long ones as
+# blockquotes, which is the right presentation for each — and the checker called the
+# blockquoted four UNDEFINED, so the only way to satisfy it was to flatten a law with
+# a paragraph of argument into a table cell. A gate that can only see one shape of
+# definition does not enforce rigour; it enforces a layout.
+#
+# The em-dash is what keeps it exact: `> **X107 — ...` is a definition, while
+# ``> **`X107` is violated...`` is a citation inside a quote. A tag in backticks is
+# never a definition in either form.
+DEFN = re.compile(r"^(?:\|\s*\*\*X([0-9]{1,3})\*\*|>\s*\*\*X([0-9]{1,3})\s*[—-])")
 
 
 def defined_in(path):
@@ -71,7 +83,8 @@ def defined_in(path):
             for n, line in enumerate(fh, 1):
                 m = DEFN.match(line)
                 if m:
-                    out.setdefault(int(m.group(1)), (path, n))
+                    tag = int(m.group(1) or m.group(2))
+                    out.setdefault(tag, (path, n))
     except OSError:
         return {}
     return out
@@ -88,11 +101,25 @@ def walk():
 
 
 def local_defs():
+    """Every locally defined tag, and every tag defined MORE THAN ONCE.
+
+    ⚠ THE DUPLICATE HALF IS NOT DEFENSIVE.  The first version was a bare
+    `setdefault`, so a second document defining `X4` was ignored in silence and every
+    citation of it resolved — to whichever file `os.walk` happened to reach first.
+    That is the same shape as the `Surface` collision this tree spent months on: two
+    declarations of one name, merged by whoever declared last, reported by nothing.
+    Two docs numbering their own rules from 1 is the OBVIOUS thing to do, so this is
+    a matter of when rather than whether.
+    """
     defs = {}
+    dupes = {}
     for p in walk():
         for tag, where in defined_in(p).items():
-            defs.setdefault(tag, where)
-    return defs
+            if tag in defs and defs[tag][0] != where[0]:
+                dupes.setdefault(tag, [defs[tag]]).append(where)
+            else:
+                defs.setdefault(tag, where)
+    return defs, dupes
 
 
 def citations():
@@ -126,7 +153,7 @@ def main():
         return 0
 
     up = defined_in(UPSTREAM)
-    loc = local_defs()
+    loc, dupes = local_defs()
     cites = citations()
 
     if cmd == "list":
@@ -169,13 +196,19 @@ def main():
               "— did you mean `@HB-X…`?")
         for t, rel, n, text in stray:
             print(f"     X{t}  {rel}:{n}  {text[:85]}")
-    if bad or stray:
+    if dupes:
+        print(f"citations: ⛔ {len(dupes)} local tag(s) defined in more than one file "
+              "— every citation of these resolves to whichever was walked first:")
+        for t in sorted(dupes):
+            for path, ln in dupes[t]:
+                print(f"     X{t}  {os.path.relpath(path, ROOT)}:{ln}")
+    if bad or stray or dupes:
         return 1
 
     n_up = len({t for t, _, _, _, u in cites if u})
     n_lo = len({t for t, _, _, _, u in cites if not u})
     print(f"citations: ok — {len(cites)} sites · {n_up} upstream tags all resolve "
-          f"· {n_lo} local tags all defined here")
+          f"· {n_lo} local tags all defined here, {len(loc)} uniquely")
     return 0
 
 
