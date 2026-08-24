@@ -514,6 +514,16 @@ address (or the hostname `make browser` prints) cannot connect.
   the exact, float-free, order-free primitive that does the whole job — has **zero callers in
   this tree**. ⚠ And one question not to guess: `X52` says two adjacent boxes **FUSE** into one
   space, so whether adding a box defaults to a hall or to a room is a decision for hexbody
+- [Notation](doc/claude/NOTATION.md) — **how formal rules, feature tags and worked examples are
+  tagged, cited and GATED**, read from `../loft2` where it is built. ⚠ **This tree has 102
+  citation sites over 22 `X` tags into `../hexbody` and no checker at all** — they all resolve
+  today and nothing would say when one stops, which is the gate's whole reason: *"a citation rots
+  silently — the comment goes on reading correctly."* Its transferable parts: a namespaced tag
+  (`@FR-` was chosen because a bare `@` read of `src/` returned **4142 false citations**),
+  boundary-exact matching (23 rules are a prefix of another), a gate that **shells out to the same
+  command a person runs** so the two cannot drift, and `dups` — duplication asked **by meaning**
+  rather than by code shape, which is what plan 24 did by hand four times. ⚠ And the doctrine to
+  steal verbatim: **`OPEN: 0` is a claim to re-measure, not a fact**
 - [Formal core](doc/claude/FORMAL_CORE.md) — ⛔ **the definitions lavition is built from, copied
   in, and NOT the authority.** `../hexbody/ROUNDTRIP.md` is *"the settled formal core"*; this is
   the binding extract. The lattice, the **three direction sets that are not interchangeable**
