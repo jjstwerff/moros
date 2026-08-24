@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -503,6 +503,13 @@ fast:
 	@$(MAKE) -s probe-k3c
 	@$(MAKE) -s probe-t3
 	@$(MAKE) -s probe-t4
+# ⚠ **IN THE LOOP BECAUSE A TARGET ALONE FIXES NOTHING.** `probe/k1` had no target at
+# all and was red for four days: `T1d` changed how an unknown verb travels and row E
+# read the server's refusal as the server ACTING. A check nobody runs drifts red in
+# silence, and this tree has now found that three times — k1, four `k3d` scripts whose
+# baselines blessed a crash, and `K3f`'s five camera scripts. 42s, against the 100s
+# `headless-same` already costs here.
+	@$(MAKE) -s probe-k1
 	@$(MAKE) -s probe-k3d
 	@$(MAKE) -s probe-headless
 # ⚠ **AND THIS IS THE ONLY THING IN `fast` THAT COMPILES EITHER PROGRAM UNDER `src/`.**
@@ -952,6 +959,18 @@ loft-state:
 
 probe-headless:
 	@sh probe/headless/run.sh
+
+# K1 (plan 22) — A SCRIPT SAYS A VERB, and neither driver survives a typo. Runs the
+# twin pair through BOTH drivers, and reads a session difference the world cannot show
+# (`wrong.keys` builds a byte-identical world with a different profile chosen).
+#
+# ⛔ **IT HAD NO TARGET UNTIL 2026-08-24 AND WAS RED FOR FOUR DAYS.** `T1d` made an
+# unknown verb travel on `55:` for the server to resolve — deliberate, so a house type
+# can declare verbs no compiler saw — and the server's refusal `no gesture for hoist`
+# landed in a capture row E read as *the server acted*. Nothing ran it, so nothing said
+# so. That is the finding the target exists for, not the row.
+probe-k1:
+	@sh probe/k1/run.sh
 
 probe-k3d:
 	@sh probe/k3d/run.sh

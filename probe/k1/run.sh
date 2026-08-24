@@ -237,8 +237,11 @@ wire_run() {
   # an earlier version compared those too: it reported **25 sentences identical** of
   # which four were anything a gesture did. A count that is mostly boilerplate reads
   # as coverage, which is worse than a small number.
+  # ⚠ `no gesture for` IS EXCLUDED BECAUSE A REFUSAL IS NOT THE SERVER ACTING, and
+  # leaving it in is what made row E red for four days (see there). It is not swept
+  # under the filter: row E asserts it is PRESENT, which the filter cannot do.
   sed -n '/listening on port/,$p' "$OUT/$1.server" | grep '^editor: ' \
-    | grep -vE '^editor: (rebuilt|hex \(|brush |client )' > "$OUT/$1.said"
+    | grep -vE '^editor: (rebuilt|hex \(|brush |client |no gesture for )' > "$OUT/$1.said"
   # ⚠ EXPLICIT, BECAUSE `grep` EXITS 1 WHEN IT MATCHES NOTHING. Without this the
   # function's status is the last filter's, so the run that is SUPPOSED to produce an
   # empty capture — this one — reported failure to its caller and had its whole `if`
@@ -256,13 +259,31 @@ else
   bad "tools/script.mjs sent something for 'verb hoist'"
   sed -n '1,10p' "$OUT/typo-wire.wire"
 fi
-# ⚠ THE SERVER IS THE NON-CIRCULAR HALF. A driver that prints a complaint and sends
-# the frame anyway would pass the check above and fail this one; `undefined` on the
-# wire is a message id of its own kind.
+# ⚠ THE SERVER IS THE NON-CIRCULAR HALF: the driver's own complaint proves only what
+# the driver thinks.
+#
+# ⛔ **THIS ROW ASSERTED A DESIGN THAT WAS DELIBERATELY REPLACED, AND WENT RED FOR FOUR
+# DAYS UNSEEN.** It read *"and the server was asked nothing"* — written 2026-08-12,
+# when `script.mjs` held a constant verb table and refused an unknown word locally.
+# `T1d` (2026-08-20) changed that on purpose: a house type declares verbs no compiler
+# ever saw, so a table cannot have a row for them, and the word now travels verbatim on
+# `55:` for the SERVER to resolve. The server then prints `no gesture for hoist` — its
+# refusal — which this row read as *the server acted*.
+#
+# ⚠ **SO THE CLAIM IS REWRITTEN RATHER THAN THE FILTER WIDENED.** Being asked is no
+# longer the fault; ACTING is. And the refusal must be PRESENT, because the old shape
+# asked only whether a capture was empty — a question whose default answer is *pass*,
+# so a server that silently swallowed an unknown verb would have satisfied it.
 if [ -s "$OUT/typo-wire.said" ]; then
-  bad "the server acted on an unknown verb: $(head -1 "$OUT/typo-wire.said")"
+  bad "the server ACTED on an unknown verb: $(head -1 "$OUT/typo-wire.said")"
 else
-  ok "and the server was asked nothing"
+  ok "the server did not act on it"
+fi
+if grep -q '^editor: no gesture for hoist$' "$OUT/typo-wire.server"; then
+  ok "…and refused it BY NAME: no gesture for hoist"
+else
+  bad "the server never said it refused 'hoist' — silence is not a refusal, and this"
+  bad "  row cannot tell it apart from a server that quietly did nothing"
 fi
 # ⚠ `K3b.1`, and it is `K3a`'s finding rebuilt in JavaScript. Measured against a real
 # server before the guard was written: `verb hoist` printed `!! no verb 'hoist'` and
