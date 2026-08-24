@@ -175,14 +175,23 @@ be deduced **from the field**, which puts it squarely in §6's two regimes:
 | **R1** grammar-guided | the shape is in the admitted set and the field determines it uniquely | `ρ = 0` |
 | **R2** trace | it is not, or the field is ambiguous | `ρ > 0`, **reported** |
 
-**"Large enough for a unique deduction" is exactly the R1/R2 boundary, and it is a measurable
-threshold rather than a judgement.** A small octagon's rasterisation is ambiguous — at radius 1
-or 2 the cell set it produces may be indistinguishable from a hexagon's or a disc's, and
-`hex_shape::arc_is_disk` would claim it. A large one is not.
+⛔ **MEASURED, AND THE PREMISE IS WITHDRAWN — [`B0p`](../../probe/b0p/README.md).** There is no
+such size, because there is nothing to cross: **`rebuild_construct` never returns an eight-sided
+form for an octagon at any radius.** Up to inradius 4 the field is byte-identical to a **disc**'s;
+at 2, 3, 4, 5 and 5.5 it returns **`R1`, `ρ = 0`, `sides = 6`** — *confidently a hexagon* — and at
+4.5 and 6 it refuses with `ρ = n`. ⚠ **And distinguishability is not monotonic** (4.5 separates,
+5.5 collapses back onto a hexagon), so *"large enough"* cannot be turned into a rule.
 
-⚠ **THIS IS THE ONE NUMBER THIS DESIGN DOES NOT HAVE, AND IT IS CHEAP TO GET.** See `B0p` below.
-Until it is measured, *"large enough"* is a hypothesis, and shipping an octagon tower smaller than
-the threshold means shipping a shape that reloads as something else.
+✅ **BUT THE QUESTION WAS MALFORMED, AND THE ANSWER WAS IN THE PALETTE.** §2.5 asked how an
+octagon could be **deduced from cells**. `@HB-X12` puts the shape in the **palette** — a cell
+stores a wall **id**, and the `WallDef` behind it carries `wd_body`. **So an octagon tower is
+never deduced; it is stored.** `rebuild`'s inability to return eight sides was never the
+mechanism, and the number this design "lacked" is not needed.
+
+⚠ **THE CONFIDENT HEXAGON IS A LIVE HAZARD, THOUGH.** Anything that recovers a tower's shape from
+GEOMETRY rather than from the palette gets `sides = 6` with nothing unexplained and no warning —
+the same plausible-wrong-answer shape [probe/l1](../../probe/l1/README.md) caught in
+`wall_read_run`. `rebuild_construct` must not be pointed at a walled structure and believed.
 
 ⚠ **AND A REGULAR OCTAGON IS NOT A `Form`.** `hex_form`'s law J: a turtle cycle closes when
 `sum(turn) = 12` twelfths, one turn per side, each an integer number of 30° steps. Eight sides at
@@ -283,14 +292,19 @@ All four already have their answer written down and none of them is new work her
 
 | probe | question | why it could kill the design |
 |---|---|---|
-| **`B0p`** | **at what size is an octagon uniquely deducible from its cells?** Rasterise octagons at radii 1…12, and for each ask `rebuild_construct` and `arc_is_disk` what they see. ⚠ The control: a hexagon and a disc of the same radius must be told apart from the octagon, or "unique" means nothing | if the threshold is large, small towers reload as discs — and §2.5's whole claim is that a threshold exists |
+| **`B0p`** | ✅ **RUN — and it refuted its own question.** [result](../../probe/b0p/README.md) | No threshold exists; the shape is stored in the palette, not deduced. ⚠ Its live finding is the **confident hexagon** |
 | **`B1p`** | **does a bay round-trip — INCLUDING ITS PALETTE?** Author a wall + bay, `draw`, `rebuild`, compare. ⚠ **The palette half is the point**: `@HB-X63` gates the foxel and explicitly leaves `wd_body`/`wd_thickness` at **T4**, so a fixture that only compares cells re-proves the half that was never in doubt | if the parent's feature list does not survive, §2.4's recovery is fiction and the bay needs its own record — the second authority §1 forbids. And if the wall TYPE does not survive, every blueprint reopens as `SOLID` |
 | **`B2p`** | **can `cut_arb` place a 45° face at all, exactly?** One wall, one bay, count the edges each surface claims. Control: a fixed "always the parent" rule must strand edges | this is `@HB-X55`'s measurement one shape over — it found 112/112 with a stencil against world linework, so the mechanism is proven; the bay is a harder case |
 | **`B3p`** | **does the walker move with no collision `EdgeSet`?** | trivial, and it is the one that says §3.1 is an absence rather than a flag |
 
-⚠ **`B0p` FIRST, AND IT CAN BE RUN BEFORE ANYTHING IS BUILT.** It is the only one whose answer
-could change the *design* rather than the schedule — if an octagon is not uniquely deducible at
-usable sizes, a tower must carry a description and §1's one-authority invariant needs re-arguing.
+✅ **`B0p` RAN FIRST AND DID CHANGE THE DESIGN**, which is what a falsifying probe is for: it
+removed §2.5's threshold rather than measuring it, and moved the octagon from *deduced* to
+*stored*.
+
+⚠ **SO `B1p` IS NOW THE LOAD-BEARING ONE.** If the body lives in the palette and `@HB-X63` leaves
+the palette at **T4**, the entire recovery of an octagon tower — and of every wall type a
+blueprint sets — rests on the one part of the round trip that is **not gated**. A fixture that
+compares only cells would re-prove the half that was never in doubt.
 
 ## 5. What must go to hexbody first
 

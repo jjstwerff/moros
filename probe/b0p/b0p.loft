@@ -1,0 +1,138 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BLUEPRINT `B0p` — AT WHAT SIZE IS AN OCTAGON UNIQUELY DEDUCIBLE FROM ITS CELLS?
+//
+//   loft --interpret --lib lib/ probe/b0p/b0p.loft     (or `make probe-b0p`)
+//
+// §2.5 rests on the reporter's claim that octagon towers are "large enough for a
+// unique deduction of the octagon shape" — FORMAL_CORE §6's R1/R2 boundary, and a
+// threshold, so it can be measured. Predictions are in `PREDICTION.md`, written
+// first.
+use hex_field;
+use hex_grid;
+use hex_edge;
+use hex_shape;
+use hex_form;
+use hex_recover;
+
+const Q0 = 0 - 26;
+const N = 53;
+
+fn blank() -> HexSet { hexset_chunk(Q0, Q0, N, N) }
+
+// ⚠ **THE PROBE'S OWN FILL, AND ITS ABSENCE IS A FINDING.** The family fills a disc
+// (`arc_fill`), a box (`box_fill`), a turtle form (`form_fill`) and a line — and
+// `cut_arb` cuts EDGES against a `Surfaces` set, never cells. So an octagon footprint
+// has no library fill today. The membership test below is `surf_distance`, the
+// library's own predicate and the one `cut_arb` uses internally; the loop around it
+// is a filter, not an algorithm.
+//
+// ⚠ **AND IT MUST NOT BECOME THE EDITOR'S.** If this probe says an octagon tower is
+// viable, the fill belongs upstream beside `arc_fill`.
+fn oct_fill(rad: float, cells: HexSet) -> integer {
+  sf = surfaces_new();
+  ids: vector<integer> = [];
+  for k in 0..8 {
+    a = (k as float) * PI / 4.0 ?? 0.0;
+    // a half-plane whose inward side holds the centre, at inradius `rad`
+    ids += [surf_straight(sf, cos(a), sin(a), rad)];
+  }
+  n = 0;
+  for r in Q0..Q0 + N {
+    for q in Q0..Q0 + N {
+      (px, pz) = hex_grid::hex_to_px(q, r);
+      inside = true;
+      for id in ids {
+        // `surf_distance` is unsigned, so the side is decided by the plane equation
+        // itself — the same `nx*px + ny*py - c` the library evaluates.
+        k2 = id;
+        d = (sf.sf_a[k2] ?? 0.0) * px + (sf.sf_b[k2] ?? 0.0) * pz - (sf.sf_c[k2] ?? 0.0);
+        if d > 0.0 { inside = false; }
+      }
+      if inside { hexset_set(cells, q, r, true); n = n + 1; }
+    }
+  }
+  n
+}
+
+fn hexagon(side: integer, cells: HexSet) -> integer {
+  f = form_new(0, [side, side, side, side, side, side], [2, 2, 2, 2, 2, 2]);
+  if !form_closes(f) { println("  ⛔ the hexagon fixture does not close at side {side}"); }
+  form_fill(f, 0, 0, cells)
+}
+
+fn describe(cells: HexSet, tag: text) -> text {
+  rb = hex_recover::rebuild_construct(cells);
+  reg = "R2";
+  if rb.rb_regime == hex_recover::REGIME_R1 { reg = "R1"; }
+  disk = arc_is_disk(cells, 0, 0);
+  "{tag} n={hexset_count(cells)} {reg} rho={rb.rb_rho} sides={form_sides(rb.rb_form)} disk={disk}"
+}
+
+fn main() {
+  println("B0p — is an octagon uniquely deducible from its cells, and above what size?");
+  println("");
+
+  // ── CONTROLS FIRST. A disc must read as a disc and a hexagon must differ from it,
+  // or nothing below can be read as a fact about the OCTAGON.
+  println("── controls ────────────────────────────────────────────────────");
+  cd = blank();
+  arc_fill(0, 0, 48, cd);
+  ch = blank();
+  hexagon(4, ch);
+  sd_txt = describe(cd, "disc  shell 48:");
+  sh_txt = describe(ch, "hexagon side 4:");
+  println("   {sd_txt}");
+  println("   {sh_txt}");
+  dd = hex_recover::field_digest(cd);
+  dh = hex_recover::field_digest(ch);
+  if hex_recover::digest_eq(dd, dh) {
+    println("   ⛔ the disc and the hexagon are THE SAME FIELD — the comparison cannot");
+    println("      separate two shapes it should, so every octagon row below is void");
+  } else {
+    println("   ✅ disc and hexagon are distinct fields — the comparison discriminates");
+  }
+
+  println("");
+  println("── the octagon, by inradius ────────────────────────────────────");
+  println("   rad   octagon                                      vs disc  vs hex");
+  for ri in 1..13 {
+    rad = (ri as float) * 0.5;
+    co = blank();
+    no = oct_fill(rad, co);
+    if no == 0 { continue; }
+    dob = hex_recover::field_digest(co);
+    // the disc and hexagon whose cell COUNT is nearest this octagon's — the fair
+    // comparison, since "unique" means unlike anything else of the same size
+    best_d = blank();
+    bd_gap = 100000;
+    for sh in 0..80 {
+      t = blank();
+      nt = arc_fill(0, 0, sh, t);
+      g = nt - no;
+      if g < 0 { g = 0 - g; }
+      if g < bd_gap { bd_gap = g; best_d = t; }
+    }
+    best_h = blank();
+    bh_gap = 100000;
+    for sd in 1..8 {
+      t2 = blank();
+      nt2 = hexagon(sd, t2);
+      g2 = nt2 - no;
+      if g2 < 0 { g2 = 0 - g2; }
+      if g2 < bh_gap { bh_gap = g2; best_h = t2; }
+    }
+    same_d = hex_recover::digest_eq(dob, hex_recover::field_digest(best_d));
+    same_h = hex_recover::digest_eq(dob, hex_recover::field_digest(best_h));
+    md = "differs"; if same_d { md = "SAME   "; }
+    mh = "differs"; if same_h { mh = "SAME   "; }
+    row = describe(co, "");
+    println("   {rad:>4}  {row}  {md}  {mh}");
+  }
+  println("");
+  println("   ⚠ `SAME` means the octagon's field is byte-identical to a disc's or a");
+  println("     hexagon's of the nearest size, up to the 12 orientations — so at that");
+  println("     size there is nothing to deduce. The threshold is the first radius");
+  println("     where BOTH columns read `differs`.");
+}
