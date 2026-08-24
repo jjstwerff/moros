@@ -1,7 +1,7 @@
 rc: 0
-world: 49370:3767121609
-md5: fda433a08ad37b0c4f1d8824725305d3
-tau: 195
+world: 49370:2926337248
+md5: 656a8fcd6d662c374b4795f5607148d7
+tau: 198
 chunks: 4
 code: 0
 session: runs 5 roofs 1 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
@@ -12,7 +12,7 @@ chosen: opening 1
   placed -4,0
   road started at -4,0
   placed 4,0
-  wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8
+  wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8.660254037844386, from -4.330127018922193,0.5 to 4.330127018922193,0.5
   placed 0,6
   placed -8,-8
   house placed 27 cells, 84 wall edges, ridge at 23, seated at 0 (0 from your feet, cut and fill 0)

@@ -12,7 +12,7 @@ chosen: opening 21
   placed -8,0
   road started at -8,0
   placed 8,0
-  wall laid 36 edges, heading 0 of 24 (snapped, residual 0°), length 16
+  wall laid 36 edges, heading 0 of 24 (snapped, residual 0°), length 15.588457268119894, from -7.794228634059947,-0.5 to 7.794228634059947,-0.5
   placed -4,-0.9
   opening 1 selected
   opening: 1
@@ -25,6 +25,6 @@ chosen: opening 21
   placed 2,9
   placed 2,-9
   opening kind 1 at -4,-0.75 half 0.65 band 0..9 spring 7 depth 0..1
-  opening kind 1 at 2,-0.75 half 0.65 band 2..11 spring 9 depth 0..0.55
-  opening kind 1 at 2,-0.75 half 0.44999999999999996 band 4..10 spring 9 depth 0.55..1
+  opening kind 1 at 2.000000000000001,-0.75 half 0.65 band 2..11 spring 9 depth 0..0.55
+  opening kind 1 at 2.000000000000001,-0.75 half 0.44999999999999996 band 4..10 spring 9 depth 0.55..1
 --- what the runner refused

@@ -1,6 +1,6 @@
 rc: 0
-world: 24727:4013804812
-md5: 23d3f79779eb8177a6353e169d07f9ab
+world: 24727:598106686
+md5: 7efc461857585a2fb83bd48c15538df7
 tau: 191
 chunks: 3
 code: 0
@@ -27,6 +27,6 @@ chosen: opening 1
   placed -3,-3
   road started at -3,-3
   placed 3,-3
-  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 6
+  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 5.196152422706632, from -2.598076211353316,-2.5 to 2.598076211353316,-2.5
   stepped 40
 --- what the runner refused

@@ -1,7 +1,7 @@
 rc: 0
-world: 24727:2224036410
-md5: 65079d2f3a1f005e799b794021b53a52
-tau: 107
+world: 24727:2006164387
+md5: 588f65b2a23ece623ee982f8c6df6cad
+tau: 105
 chunks: 3
 code: 0
 session: runs 2 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
@@ -12,9 +12,9 @@ chosen: opening 1
   placed -3,-3
   road started at -3,-3
   placed 3,-3
-  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 6
+  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 5.196152422706632, from -2.598076211353316,-2.5 to 2.598076211353316,-2.5
   placed 3,-3
   road started at 3,-3
   placed 3,3
-  wall laid 18 edges, heading 6 of 24 (snapped, residual 0.000000000000012722218725854067°), length 6
+  wall laid 14 edges, heading 6 of 24 (snapped, residual 0°), length 5, from 2.598076211353316,-2.5 to 2.598076211353316,2.5
 --- what the runner refused

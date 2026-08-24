@@ -12,7 +12,7 @@ chosen: opening 11
   placed -6,4
   road started at -6,4
   placed 6,4
-  wall laid 28 edges, heading 0 of 24 (snapped, residual 0°), length 12
+  wall laid 28 edges, heading 0 of 24 (snapped, residual 0°), length 12.12435565298214, from -6.06217782649107,3.5 to 6.06217782649107,3.5
   placed -2,2.5
   opening 11 selected
   opening: 1
