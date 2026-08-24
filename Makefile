@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -840,6 +840,14 @@ probe-b3p:
 # a DIFFERENT d24 on 3.70% of headings — so `H1e` changed results, it did not tidy.
 probe-m1p:
 	@loft --interpret --lib lib/ probe/m1p/m1p.loft 2>/dev/null | sed -n '/^M1p/,$$p'
+
+# M2p (AUTHORING_MAP §4) — DOES AIMING A RUN AGREE WITH TRACING IT? ⛔ No: 77.7%,
+# control 11.6%. They minimise different things ON PURPOSE, so `X108` is rewritten from
+# "they agree" to "pick one per gesture". ⚠ THE `--lib` IS LOAD-BEARING: moros reads
+# hex_shape from the REGISTRY at 0.1.0 and `snap_run_from_heading` is only in the
+# loft-libs-world checkout, so this measures the checkout. It comes off at 0.1.1.
+probe-m2p:
+	@loft --interpret --lib /home/jurjens/workspace/loft-libs-world/ probe/m2p/m2p.loft 2>/dev/null | sed -n '/^M2p/,$$p'
 
 # L1 (plan 24) — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID? Control: the
 # library's own `wall_write` through our world→EdgeSet bridge, 24 of 24. Ours:

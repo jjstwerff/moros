@@ -1,0 +1,160 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `M2p` — THE AGREEMENT LAW `X108`: DOES AIMING A RUN GIVE WHAT TRACING IT GIVES?
+//
+//   make probe-m2p
+//   loft --interpret --lib /home/jurjens/workspace/loft-libs-world/ probe/m2p/m2p.loft
+//
+// ⚠ THE `--lib` IS NOT DECORATION — READ THIS BEFORE THE NUMBERS. `hex_shape` reaches
+// moros from the REGISTRY (`hex_shape = ">=0.1"`, resolved at ~/.loft/registry), and
+// `snap_run_from_heading` is not in the published 0.1.0. It was written into the
+// `loft-libs-world` CHECKOUT, so this probe resolves `hex_shape` from there instead.
+//
+// ⚠ SO THIS MEASURES THE CHECKOUT, NOT WHAT MOROS BUILDS AGAINST. That is a real
+// difference — `lib/hex_editor/loft.toml` records that all fourteen `hex_*` packages
+// now differ from the registry and three differ in CODE. The probe is deliberately
+// narrowed to `hex_shape` alone (no editor, no world, no store) so the swap reaches
+// exactly one package. Once 0.1.1 is published and the floor is raised, the `--lib`
+// comes off and nothing else changes.
+//
+// ── THE QUESTION ────────────────────────────────────────────────────────────
+//
+// [AUTHORING_MAP.md](../../doc/claude/AUTHORING_MAP.md) `X108` says tracing a run and
+// aiming the same run must produce the same shape, exactly:
+//
+//   *"Walking due east from `v` to `v + 7·e` and standing at `v` facing east with
+//    extent 7 are the same author intent, so they must be the same integers."*
+//
+// ⚠ AND THE TWO SNAPS MINIMISE DIFFERENT THINGS ON PURPOSE, so this is a real
+// question and not a tautology. `snap_run_d24` picks the direction whose best legal
+// ENDPOINT lands nearest the target — one 2-D distance, in which a direction error
+// and a length error trade freely. `snap_run_from_heading` quantises the two axes
+// SEPARATELY: the angle against `D`, the length against the legal runs.
+//
+// A law that holds because one function calls the other would be worth nothing. This
+// one can fail, and the interesting outcome is finding out where.
+use hex_shape;
+
+const DEG = 0.017453292519943295;
+
+fn main() {
+  println("M2p — `X108`: does aiming a run agree with tracing it?");
+  println("");
+
+  (va, vb) = nearest_vertex(0.0, 0.0);
+  ax = tri_x(va, vb);
+  ay = tri_y(va, vb);
+  println("   anchor ({va},{vb}) at ({ax},{ay}) · vertex={tri_is_vertex(va, vb)}");
+  println("");
+
+  // ── the sweep ─────────────────────────────────────────────────────────────
+  agree = 0;
+  dir_only = 0;
+  len_only = 0;
+  both = 0;
+  refused = 0;
+  n = 0;
+  worst_gap = 0.0;
+  worst_txt = "none";
+  first_txt = "none";
+  for i in 0..120 {
+    deg = (i as float) * 3.0;
+    rad = deg * DEG;
+    for j in 1..13 {
+      dist = (j as float) * 1.31;
+      tx = ax + cos(rad) * dist;
+      ty = ay + sin(rad) * dist;
+
+      // TRACE: the author walked to (tx, ty) and committed.
+      dt = snap_run_d24(va, vb, tx, ty);
+      pt = 0;
+      if dt >= 0 { pt = snap_run_p(dt, va, vb, tx, ty); }
+
+      // AIM: the author stood still, faced `deg`, and pushed `dist`.
+      (da, pa) = snap_run_from_heading(va, vb, deg, dist);
+
+      n = n + 1;
+      if pt == 0 || pa == 0 { refused = refused + 1; continue; }
+      if da == dt && pa == pt { agree = agree + 1; continue; }
+
+      // ⚠ A DISAGREEMENT IS NOT ONE THING. Two runs can differ in the integers and
+      // still end in almost the same place, or agree on direction and be a long way
+      // apart in length. The endpoint gap is what an author would actually see.
+      ea_x = tri_x(wall_end_a(da, va, pa), wall_end_b(da, vb, pa));
+      ea_y = tri_y(wall_end_a(da, va, pa), wall_end_b(da, vb, pa));
+      et_x = tri_x(wall_end_a(dt, va, pt), wall_end_b(dt, vb, pt));
+      et_y = tri_y(wall_end_a(dt, va, pt), wall_end_b(dt, vb, pt));
+      gap = sqrt((ea_x - et_x) * (ea_x - et_x) + (ea_y - et_y) * (ea_y - et_y)) ?? 0.0;
+
+      tag = "";
+      if da != dt && pa != pt { both = both + 1; tag = "both"; }
+      if da != dt && pa == pt { dir_only = dir_only + 1; tag = "dir"; }
+      if da == dt && pa != pt { len_only = len_only + 1; tag = "len"; }
+      line = "{deg}deg x {dist}: aim d{da} p{pa} · trace d{dt} p{pt} · {tag} · "
+           + "ends {gap} apart";
+      if first_txt == "none" { first_txt = line; }
+      if gap > worst_gap { worst_gap = gap; worst_txt = line; }
+    }
+  }
+
+  scored = n - refused;
+  pct = (agree as float) * 100.0 / (scored as float) ?? 0.0;
+  println("── the sweep ───────────────────────────────────────────────────");
+  println("   {n} aims · {refused} refused by one side or both · {scored} scored");
+  println("   AGREE {agree} of {scored} ({pct}%)");
+  println("   disagree: direction only {dir_only} · length only {len_only} · "
+          + "both {both}");
+  println("");
+  if agree < scored {
+    println("   first  : {first_txt}");
+    println("   worst  : {worst_txt}");
+    println("");
+  }
+
+  // ── THE CONTROL, AND IT COMES BEFORE THE VERDICT ─────────────────────────
+  //
+  // ⚠ AN INSTRUMENT GETS CHECKED AGAINST SOMETHING IT SHOULD FIND. If the comparison
+  // above could not see a difference, 100% agreement would mean nothing at all. This
+  // aims one `D` step off and requires the SAME comparison to reject nearly all of it.
+  println("── control: aim one `D` step away from the trace ───────────────");
+  cagree = 0;
+  cn = 0;
+  for i in 0..120 {
+    deg = (i as float) * 3.0;
+    rad = deg * DEG;
+    for j in 1..13 {
+      dist = (j as float) * 1.31;
+      tx = ax + cos(rad) * dist;
+      ty = ay + sin(rad) * dist;
+      dt = snap_run_d24(va, vb, tx, ty);
+      pt = 0;
+      if dt >= 0 { pt = snap_run_p(dt, va, vb, tx, ty); }
+      // the same aim, turned by one of the 24
+      (da, pa) = snap_run_from_heading(va, vb, deg + 15.0, dist);
+      if pt == 0 || pa == 0 { continue; }
+      cn = cn + 1;
+      if da == dt && pa == pt { cagree = cagree + 1; }
+    }
+  }
+  cpct = (cagree as float) * 100.0 / (cn as float) ?? 0.0;
+  println("   a deliberately wrong aim still matches {cagree} of {cn} ({cpct}%)");
+  if cpct > 20.0 {
+    println("   ⛔ THE CONTROL FAILED — the comparison cannot tell a one-step error");
+    println("      from a correct aim, so the agreement figure above says nothing.");
+    return;
+  }
+  println("   ✅ the comparison can see a one-step error, so the figure above means");
+  println("      something");
+  println("");
+
+  println("── the verdict on `X108` ───────────────────────────────────────");
+  if agree == scored {
+    println("   ✅ HOLDS — every aim reproduced its trace exactly, across {scored}");
+    println("      cases, though the two snaps minimise different quantities.");
+  } else {
+    println("   ⛔ REFUTED as an equality — {agree} of {scored} ({pct}%). Aiming and");
+    println("      tracing are DIFFERENT MAPS, and `X108` must say which one an");
+    println("      author's intent is defined by rather than assert they coincide.");
+  }
+}

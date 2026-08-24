@@ -113,14 +113,42 @@ A character can specify a line in two ways, and both are wanted:
 | **I1 — trace** | *walk the shape* | a sequence of committed **anchors**, each a position | position → vertex |
 | **I2 — aim** | *stand and face* | one anchor plus **facing** and an extent | facing → direction |
 
-> **X108 — the agreement law.** Tracing a run and aiming the same run must produce **the same
-> shape**, exactly. Walking due east from `v` to `v + 7·e` and standing at `v` facing east with
-> extent 7 are the same author intent, so they must be the same integers.
+> **X108 — the two idioms are DIFFERENT MAPS, and one gesture must use exactly one of them.**
+> Mixing them — begin by aiming, finish by tracing — produces a shape neither idiom would, and
+> the author has no way to predict it.
 
-⚠ **THIS IS NOT AUTOMATIC AND IT IS CHEAP TO TEST.** `I1` snaps two points and derives a
-direction; `I2` snaps a direction and derives a point. Those are different code paths through
-different library entry points — `hex_shape::snap_run_d24` takes an endpoint, and there is **no
-`snap_run_from_heading`** today. A gap, and §7 names it.
+⛔ **THIS LAW SAID THE OPPOSITE UNTIL IT WAS MEASURED, AND THE ORIGINAL IS WORTH KEEPING VISIBLE.**
+It read:
+
+> *"Tracing a run and aiming the same run must produce **the same shape**, exactly. Walking due
+> east from `v` to `v + 7·e` and standing at `v` facing east with extent 7 are the same author
+> intent, so they must be the same integers."*
+
+**[`M2p`](../../probe/m2p/README.md) refutes it: they agree on 1026 of 1320 aims — 77.7%.** The
+control (aim one `D` step off) matches on 11.6%, so the comparison discriminates and the figure
+means something.
+
+⚠ **AND THEY DISAGREE BY DESIGN, NOT BY DEFECT.** The two snaps minimise different quantities:
+`snap_run_d24` picks the direction whose best legal **endpoint** lands nearest the target — one
+2-D distance, in which a direction error and a length error trade freely. `snap_run_from_heading`
+quantises the two axes **separately**: the angle against `D`, the length against the legal runs.
+An author who **aims** is making two statements, *this way* and *this far*, and expects the first
+to be honoured as a direction. An author who **traces** is making one, *to here*.
+
+The cleanest case, and it is now `@HXS-010` in the library — aim 9°, push 3.93 wu:
+
+| | direction | length | what it honoured |
+|---|---|---|---|
+| **aim** | `d24 1` (13.898°) | **6.245 wu** | the angle, to 4.9° — and overshot the push by **59%** |
+| **trace** | `d24 0` (0°) | 3.464 wu | the point, to 0.74 wu — and lost the whole 9° |
+
+Their far ends are **3.0 wu apart**. ⚠ **Neither is wrong.** So the law cannot be *make them
+equal*; it must be *say which one this gesture is*, and never switch inside one.
+
+✅ **AND THIS PROMOTES `X104` FROM A NICETY TO THE LOAD-BEARING REQUIREMENT.** While the two maps
+were assumed to coincide, a live preview was a convenience. Now it is **the only thing that tells
+an author which map they are in** — the same push and the same facing give two different walls,
+and nothing else on screen distinguishes them.
 
 ⚠ **AND `I1` IS WHERE `X103` IS EASIEST TO BREAK.** The tempting implementation reads the walked
 *path*; the lawful one reads the committed *anchors*. A path is history, carries frame rate, and
@@ -157,6 +185,24 @@ back an earlier direction.
 > arbitrary heading is given a direction within 6.949° of it, worst case, **and no amount of input
 > precision improves that** — it is the lattice's own granularity, not the controller's.
 
+### §5.3 — a short run in an in-between direction **does not exist**
+
+> **X111 — `D`'s 24 directions are not uniformly available; below about 6 wu the reachable set is
+> effectively the 12 exact ones.** One period is not one size: the twelve exact directions have
+> periods of **1.0** or **1.732** world units, while all twelve in-betweens have a period of
+> **6.245** — roughly **3.6× coarser**. An author aiming along an in-between can make walls of
+> 6.245, 12.49, 18.73 wu and nothing shorter.
+
+⚠ **THIS IS WHAT ACTUALLY CAUSES `X108`'s DISAGREEMENT**, and it was found by a library test going
+red rather than by reasoning. The trace notices that a short run is better served by an exact
+direction and silently leaves the heading; the aim cannot, and rounds the length up instead.
+
+⚠ **AND THE LENGTH AXIS IS NOT EVEN EVENLY SPACED WITHIN A DIRECTION.** Six of the 24 refuse
+**one run in three** — the legal `p` are `{1, 3, 4, 6, 7, 9, …}` — so the gaps alternate 2, 1.
+Two wrong models of that died in the library's own tests before the third was measured:
+`wall_min_p` (which says where the legal runs *start*, not their spacing), then *the first gap*
+(which assumed an arithmetic progression; the set is the **complement** of one).
+
 ⛔ **AND THE DELETED UNIFORM QUANTISER WAS NOT HARMLESS.** Nearest-in-`D` and the old
 `WALL_SNAP` 15° grid select a **different `d24` on 3.70%** of headings, first disagreeing at
 6.95°. So `H1e`'s deletion changed what authors get; it was a correctness fix, not a tidy-up.
@@ -184,9 +230,9 @@ that does not. **`X110` is the rule that says so before the buttons run out**, r
 
 | | | |
 |---|---|---|
-| **`M2p`** | **the agreement law `X108`** — trace a run and aim the same run, compare the integers | ⛔ not run. The sharpest test here and the cheapest |
+| **`M2p`** | **the agreement law `X108`** — trace a run and aim the same run, compare the integers | ✅ **RUN, and it refuted the law** — [result](../../probe/m2p/README.md). 77.7%, control 11.6%. `X108` is rewritten from *they agree* to *pick one* |
 | **`M3p`** | **`X103` under a varying tick** — build one shape at two tick rates, compare | ⛔ not run. `deck.keys`'s byte-identity is the instrument that already exists |
-| **library gap** | **`snap_run_from_heading(v, d24, n)`** — `hex_shape` snaps from an *endpoint* only, so `I2` has no lawful entry point and `X108` cannot yet be satisfied | ours to build, in `loft-libs-world` |
+| ✅ **built** | **`hex_shape::snap_run_from_heading(a0, b0, deg, dist)`** and **`wall_nearest_d24(deg)`** — the aim idiom's entry point, quantising the two axes separately so it is a **peer** of the endpoint snap and not a wrapper on it. 10 tests, `@HXS-010`, seen red three times | in the `loft-libs-world` checkout. ⛔ **Not published**: moros reads `hex_shape` from the registry at 0.1.0, so `M2p` runs with an explicit `--lib` until 0.1.1 exists |
 | **library gap** | **a continuous axis in `input`** — `AxisBinding` is a pair of key codes returning −1/0/+1, which discards exactly what a stick adds. And `graphics` exposes no gamepad at all | upstream, [BLUEPRINT](BLUEPRINT.md) §3.2 |
 | **to hexbody** | **`X109`** — *the authoring resolution of `D` is 6.949°* is a property of the core's own direction set, not of our editor. If `|D| = 24` is ever revisited, this is the number that decides whether it is enough | a ticket, not an edit |
 | **to hexbody** | **`X108` as a core law** — that two derivations of one line must agree is a statement about the representation, and §6's *"using R2's machinery where R1 applies"* is the same family | a ticket |
