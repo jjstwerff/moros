@@ -181,9 +181,25 @@ is one highlighted vertex. **Nothing here is at risk.**
 So `X104`'s live preview can be a simple "current `d24`" readout, and turning further never hands
 back an earlier direction.
 
-> **X109 — the authoring resolution is 6.949°.** Half the narrowest cell. An author aiming at an
-> arbitrary heading is given a direction within 6.949° of it, worst case, **and no amount of input
-> precision improves that** — it is the lattice's own granularity, not the controller's.
+> **X109 — the authoring resolution is 8.051°.** An author aiming at an arbitrary heading is given
+> a direction within 8.051° of it, worst case, **and no amount of input precision improves that** —
+> it is the lattice's own granularity, not the controller's.
+
+⛔ **THIS SAID 6.949° UNTIL A TEST REFUTED IT, AND THE ERROR IS WORTH KEEPING VISIBLE BECAUSE IT IS
+A CONFLATION, NOT A TYPO.** `D`'s cells come in three widths, so half-a-cell is not one number, and
+the two halves answer different questions:
+
+| | | |
+|---|---|---|
+| half the **narrowest** cell | **6.949°** | the **input precision** a stick needs to be able to *select* every direction. This is `M1p`'s own line and it was always right |
+| half the **widest** cell | **8.051°** | the worst **direction error** an author can be handed. This is what a residual is |
+
+Measured over a full turn at 0.001° steps: **worst 8.051°, at yaw 321.949°** — exactly half of
+16.102. ⚠ **The wrong one was quoted here for a week**, and what found it was
+`lib/hex_editor/tests/aim.loft` asserting the doc's bound and going red on a real aim. ⚠ **And it
+survived one round of scrutiny first**: the reported residual was `7`, which looks like a rounding
+artefact of 6.949 — it is not, because loft's `as integer` **truncates** (measured), so 7 meant
+the float was over 7 and the ceiling was simply wrong.
 
 ### §5.3 — a short run in an in-between direction **does not exist**
 

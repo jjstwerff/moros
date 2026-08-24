@@ -1,0 +1,96 @@
+# hex_place 0.1.0 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_place-0.1.0
+# use it with: use hex_place;
+
+## src/hexcombine.loft
+
+// The union footprint of two stencils sharing `a`'s chunk — a fresh HexSet, `a ∪ b`.
+pub fn field_union(a: HexSet, b: HexSet) -> HexSet
+
+// Combine two same-level stencils: union the footprints, cut the boundary of the union ONCE, and
+// tag each boundary edge with the material of the source stencil its bordering cell came from.
+// Order-free by construction (reads the finished union + source map, never stamp order); the shared
+// interior edge is never cut, so adjacent stencils fuse.  Returns the number of edges cut.
+// 
+// The tie-break is INTRINSIC, not positional: a cell in BOTH stencils (an overlap) takes the LOWER
+// material id, so `combine_cut(a,b) == combine_cut(b,a)` for overlapping stencils too, not only
+// disjoint ones — otherwise "order-free" would quietly hold only for the adjacency case gated here.
+// (crawler's full `cut_arb` breaks the same tie by nearest SURFACE then lower id; with no surfaces
+// in play the lower id is the whole rule.  Overlap itself is a separate, ungated A8 axis.)
+pub fn combine_cut(a: HexSet, ma: integer, b: HexSet, mb: integer, e: EdgeSet) -> integer
+
+// Combine two stencils **as seen at level `at`**: only those whose own level matches take part, and
+// the survivors are then cut exactly as `combine_cut` does.  Two stencils on different levels can
+// therefore never fuse, never arbitrate and never contend — at either level, one of them simply is
+// not there.  Returns the number of edges cut at this level.
+pub fn combine_cut_level(a: HexSet, la: integer, ma: integer,
+
+// The contention degree at one cell, counted **per level**: how many of the two stencils claim it
+// *at level `at`*.  This is `κ` (`X53`) made level-aware — two stencils that overlap in `(q,r)` but
+// sit on different sheets give `κ = 1` at each level, never `κ = 2` at either.
+pub fn kappa_at_level(a: HexSet, la: integer, b: HexSet, lb: integer,
+
+// How many marked edges separate an `a`-cell from a `b`-cell — the "shared wall" run.  Zero after
+// `combine_cut` (the seam fuses); non-zero after a per-body overlay (a spurious seam wall).  This
+// is the measurable form of "who owns the shared edge?": nobody, if the parts were combined right.
+pub fn shared_marked(a: HexSet, b: HexSet, e: EdgeSet) -> integer
+
+## src/hexframe.loft
+
+// A pose: a rotation (given as its cos/sin, so a Pythagorean angle can be represented EXACTLY) then
+// a translation.  Stored as cos/sin rather than θ so a gate can build a rational rotation and check
+// the float pipeline against an exact integer oracle.
+pub struct Pose
+
+pub fn pose_new(cs: float, sn: float, tx: float, ty: float) -> Pose
+
+// world → local.  THE sole float step (with `pose_fwd_*`).  A cross-frame query calls this once and
+// then tests in the body's own exact frame.
+pub fn pose_inv_x(p: Pose, wx: float, wy: float) -> float
+
+pub fn pose_inv_y(p: Pose, wx: float, wy: float) -> float
+
+// local → world.
+pub fn pose_fwd_x(p: Pose, lx: float, ly: float) -> float
+
+pub fn pose_fwd_y(p: Pose, lx: float, ly: float) -> float
+
+// The round-trip residual |p(p⁻¹(W)) − W|∞ at one world point — the transform's numerical error,
+// which is what `ε_seam` bounds.  Exactly 0 in exact arithmetic; ~machine ε in float.
+pub fn pose_residual(p: Pose, wx: float, wy: float) -> float
+
+// Is world point (wx,wy) inside the disk body posed by `p`?  The body is a disk of squared-radius
+// `rr` about its LOCAL centre (cx,cy) — a posed tower (its radius is a shell, `X49`).  Routes through
+// the transform, then the exact local test |l − c|² ≤ rr.  This is the general body test in
+// miniature: transform once, then decide in the body's own frame.
+pub fn disk_hit(p: Pose, cx: float, cy: float, rr: float, wx: float, wy: float) -> boolean
+
+// The fail-safe verdict at a point claimed by two frames: solid if EITHER is solid.  Order-free
+// (symmetric) and conservative — a gap only where both agree it is a gap.
+pub fn arb_solid(a_solid: boolean, b_solid: boolean) -> boolean
+
+// Which frame OWNS a contested point — its material/surface wins.  The lowest id among the frames
+// claiming *solid* (a total order on frames), or -1 if none is solid.  Intrinsic, so it does not
+// depend on the order the frames are visited.
+pub fn arb_owner(a_solid: boolean, a_id: integer, b_solid: boolean, b_id: integer) -> integer
+
+## src/hexseat.loft
+
+pub const SEAT_LOW  = 0
+
+pub const SEAT_MEAN = 1
+
+pub const SEAT_HIGH = 2
+
+// The height to seat at, under `policy`.  A pure read of the terrain under the footprint.
+pub fn seat_height(cells: HexSet, terr: Heights, policy: integer) -> float
+
+// THE RESIDUAL, and it is returned rather than swallowed (`G5`): the largest gap between the seat
+// height and the ground under any footprint cell.  Zero on flat ground; on a slope it is the
+// cut-and-fill the placement owes, and the editor must show it.
+pub fn seat_residual(cells: HexSet, terr: Heights, z: float) -> float
+
+// SEAT THE STENCIL: write the seat height into the `height` slot for every footprint cell.  Cells
+// and edges are untouched — that is the whole point, and it is what keeps `rebuild` exact.  Returns
+// the number of cells whose height was written.
+pub fn seat_write(cells: HexSet, terr: Heights, z: float) -> integer

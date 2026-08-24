@@ -1,0 +1,448 @@
+# hex_shape 0.1.1 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_shape-0.1.1
+# use it with: use hex_shape;
+
+## src/hexarc.loft
+
+// Fill the disk of shell `n24` about (cq, cr): every cell whose 4·squared-distance is at most
+// `n24`.  Entirely integer — the comparison that decides membership never touches a float.
+// 
+// `n24` is a SHELL, not a radius.  Hand it a value no `(k,m)` realises and it draws the
+// shell below without a word — `arc_shells_upto` is the grid to snap to first.
+// 
+// Example: @HXS-001
+pub fn arc_fill(cq: integer, cr: integer, n24: integer, cells: HexSet) -> integer
+
+// The outermost shell actually occupied, measured about (cq, cr).  This is the recoverable radius
+// parameter — the largest `N` present, not the continuous radius that was authored.
+// 
+// Example: @HXS-001
+pub fn arc_shell_max(cells: HexSet, cq: integer, cr: integer) -> integer
+
+// Is the set EXACTLY the disk of its own outermost shell about (cq, cr)?  A tower must be, and a
+// blob will not be — this is what stops an arbitrary round-ish region being read as an arc.
+// 
+// Example: @HXS-001
+// Example: @HXS-009
+pub fn arc_is_disk(cells: HexSet, cq: integer, cr: integer) -> boolean
+
+// Recover the centre: the unique cell about which the set IS a disk.  Searched over the cells of
+// the set itself — a disk's centre is always one of its own cells — so this is O(cells²) and needs
+// no guess.  Returns `found = false` when the region is not a disk about any of them, which is the
+// R2 answer for a shape that is not an arc.
+// 
+// Example: @HXS-001
+pub fn arc_recover_centre(cells: HexSet) -> (integer, integer, boolean)
+
+// The shells that actually exist out to `n24`, ascending — the admissible radius grid, i.e. `Sep`
+// made concrete.  A value of `N` that no `(k,m)` realises is not a shell and cannot be authored.
+// 
+// Example: @HXS-001
+pub fn arc_shells_upto(n24: integer) -> vector<integer>
+
+// Is cell (q,r) inside the angular wedge running CCW from ray `lo` up to ray `hi`, about centre
+// (cq,cr)?  The wedge must span less than 180°, so `lo` and `hi` bound one contiguous arc.
+// 
+// Example: @HXS-009
+pub fn arc_wedge_has(cq: integer, cr: integer, q: integer, r: integer,
+
+// Place a door on the wall: re-material every boundary edge whose inside cell lies in the wedge to
+// `mat`.  Annotation only — no cell or edge is removed — so the disk, and therefore the recovered
+// centre and shell, are untouched.  Returns the number of edges marked.  The arc analog of
+// `place_opening`.
+// 
+// Example: @HXS-009
+pub fn arc_door_wedge(cells: HexSet, edges: EdgeSet, cq: integer, cr: integer,
+
+// Recover the door: count the boundary edges carrying `mat`, each exactly once (only the inside
+// cell of a boundary edge is in the set, so iterating inside cells visits every boundary edge
+// once).  This is the R1 read of the feature straight off storage.
+// 
+// Example: @HXS-009
+pub fn arc_door_edges(cells: HexSet, edges: EdgeSet, mat: integer) -> integer
+
+## src/hexbox.loft
+
+pub const BOX_ROT = 12
+
+pub fn box_cos(n: integer) -> float
+
+pub fn box_sin(n: integer) -> float
+
+// Which of the two orbits `rot` belongs to: 0 = the EDGE family (`Plan`'s six),
+// 1 = the VERTEX family. Members of one orbit are exact lattice rotations of each other;
+// members of different orbits are not related by any exact map.
+// 
+// Example: @HXS-006
+pub fn box_orbit(rot: integer) -> integer
+
+pub struct Box
+
+pub fn box_new(cq: integer, cr: integer, wid: integer, dep: integer,
+
+pub fn box_hw(b: Box) -> float
+
+pub fn box_hd(b: Box) -> float
+
+// World point -> the box's local frame. Same convention as `housedraw::plan_to_local`, so
+// an even-rot Box and the Plan with rot/2 describe the SAME rectangle — which the gate
+// checks rather than assumes.
+pub fn box_to_local(b: Box, px: float, py: float) -> (float, float)
+
+// Example: @HXS-006
+pub fn box_fill(b: Box, cells: HexSet) -> integer
+
+// ── THE THICK WALL — a castle, not a cottage ───────────────────────────────
+// 
+// A cottage wall is an EDGE: it costs no floor, and 27 cells of house stay 27 cells of
+// house. A castle wall is different in kind — it is GROUND, wide enough to stand and walk
+// on, with an inside and an outside. So it is a ring of whole CELLS, and the only question
+// is which side of the selection it takes.
+// 
+// `box_ring_out` puts it OUTSIDE: the user's selection is the courtyard, untouched, and the
+// wall is the ring of cells around it. This is the one that matches the editor's gesture —
+// what you select is what you get to keep.
+// 
+// Example: @HXS-007
+pub fn box_ring_out(cells: HexSet, ring: HexSet) -> integer
+
+// `box_ring_in` takes it from INSIDE instead: the outermost layer of the selection becomes
+// wall and the courtyard shrinks. Same ring, opposite side — a town wall drawn to a
+// surveyed outer boundary wants this one.
+// 
+// Example: @HXS-007
+pub fn box_ring_in(cells: HexSet, ring: HexSet) -> integer
+
+// ── DOES THE WALL HOLD? ────────────────────────────────────────────────────
+// 
+// A ring that looks closed and is not is the exact defect `SPEC` I3's control names — "2
+// components, 0 enclosed, yet still 12/12 equivariant". For a thick wall the honest test is
+// not to count cells but to try to WALK IN: flood the outside and see whether it reaches the
+// courtyard. One hole and it does.
+// 
+// Relaxation rather than a queue: the region is a box, so sweeping until nothing changes
+// terminates in at most its perimeter in passes, and it needs no auxiliary storage.
+// 
+// Example: @HXS-007
+pub fn flood_outside(wall: HexSet, out: HexSet)
+
+// How many cells of `inner` the outside flood reached. Zero means the wall holds.
+// 
+// Example: @HXS-007
+pub fn leak_count(inner: HexSet, out: HexSet) -> integer
+
+// ── A THICK LINE — the town wall that is not a box ─────────────────────────
+// 
+// Same wall, no enclosure: a run of cells one hex wide, for a curtain wall or a rampart.
+// The cells are those the segment passes THROUGH — a hex is on the line iff the segment
+// enters it — so the chain is connected by construction and exactly one cell wide.
+// 
+// Stepping is by a third of a cell, which cannot skip one: consecutive samples are 0.577 wu
+// apart at most while a hex is 1.732 wu across, so every cell the segment crosses is
+// sampled at least twice.
+// 
+// Example: @HXS-007
+pub fn line_hexes(x0: float, y0: float, x1: float, y1: float, cells: HexSet) -> integer
+
+// Is every cell of the set reachable from every other, stepping only within the set?
+// A wall with a gap is not a wall; this is what makes "one hex wide" mean a CHAIN.
+// 
+// CONNECTED IS NOT CLOSED.  A ring with one cell taken out is still one connected chain, so
+// this answers true on a wall you can walk straight through.  For an ENCLOSURE the verdict is
+// `flood_outside` + `leak_count`; this one is the contract for an open run.
+// 
+// Example: @HXS-007
+pub fn set_connected(cells: HexSet) -> boolean
+
+## src/hexwall.loft
+
+// The wall is one triangle thick.  Triangle side = 1/3 hex edge, so the height — and the
+// wall's width — is sqrt(3)/6 world units = 1/4 m exactly.  (DESIGN.md §10.7.)
+pub const WALL_W = 0.28867513459481287
+
+pub const D24 = 24
+
+pub struct Wall
+
+pub fn wall_step_k(d24: integer) -> integer
+
+pub fn wall_step_m(d24: integer) -> integer
+
+// An even d24 is one of the 12 exact headings; an odd one is an in-between.
+// 
+// Example: @HXS-002
+pub fn wall_is_exact(d24: integer) -> boolean
+
+// Example: @HXS-008
+pub fn wall_new(d24: integer, ox: float, oy: float, half: float, mat: integer) -> Wall
+
+// The nominal angle of `d24` in degrees, and the angle its step actually points at.  The two
+// are EQUAL on every even d24 and differ by 1.1021 degrees on every odd one — the gate prints
+// both rather than hiding it.  (4.11 degrees was the pre-`N = 39` in-between; see the table.)
+pub fn wall_angle_nominal(d24: integer) -> float
+
+// Example: @HXS-002
+pub fn wall_angle_actual(d24: integer) -> float
+
+// ── writing into the foxel — ALONG the wall, not ACROSS it (OD-12) ─────────
+// 
+// THE FIRST TRY MARKED THE WRONG EDGES.  The band model asked "does the wall's thin
+// rectangle overlap this hex edge?" — and the edges a thin band overlaps are the ones lying
+// ACROSS it, roughly perpendicular.  A due-east wall came out as a comb of vertical pickets
+// (`X28`), because a hex has edges on only three lines (30/90/150) and none runs east, so a
+// wall going east cannot BE a run of hex edges pointing east.
+// 
+// THE WALL IS A BOUNDARY, NOT A BAND.  A straight line divides the plane into two
+// half-planes.  The hex edges that lie ALONG the line are exactly the ones that SEPARATE a
+// cell on one side from a cell on the other — the boundary between the two half-planes, which
+// for any direction is a single connected chain, straight in the three edge directions and an
+// alternating wobble otherwise.  This is `housedraw::draw_walls`' own rule (an edge between an
+// inside cell and an outside one), applied to a half-plane instead of a filled region — so it
+// inherits `I3`'s "closed by construction, one wide" for free.
+// 
+// Signed perpendicular offset of a world point from the wall's centre line.  Positive on the
+// side the normal (-dy, dx) points to; the sign is all that matters for separation.
+pub fn wall_offset_signed(w: Wall, px: float, py: float) -> float
+
+pub fn wall_separates(w: Wall, cx: float, cy: float, nx: float, ny: float) -> boolean
+
+// ── THE EDGE TABLE IS hex_grid's, NOT OURS ─────────────────────────────────
+// 
+// `hex_grid` already owns the moros edge-wall model — it says so in the file: "walls live
+// on hex edges, stored on 3 canonical edges per hex (dirs 0,1,2); dirs 3,4,5 belong to the
+// neighbour".  So `hex_edge_corners(dir)` IS the map from a neighbour direction to the two
+// corners bounding that edge, and `moros_render::emit_hex_walls` emits exactly those corner
+// pairs (N = 5->0, NE = 0->1, SE = 1->2) for the three stored slots.
+// 
+// A PRIVATE CORNER CONVENTION IS A SILENT WRONG ANSWER.  This file first carried its own
+// table (corner 0 at 30 degrees) and paired edge `c` with `nb_q/nb_r(q, r, c)` — but
+// hex_field's direction order is [E, W, SE, SW, NE, NW] and hex_grid's is
+// [E, SE, SW, W, NW, NE], so five of the six edges were stored against the WRONG
+// neighbour.  Every gate stayed green: a consistently wrong edge is still written once,
+// still idempotent, still non-empty.  Only measuring the marks back against the geometry
+// caught it, which is why `wall_edge_gap` below is a gate and not a comment.
+// 
+// Corner `c` of the hex at (q,r), in world units — hex_grid's table, hex_grid's indices.
+pub fn hex_corner_x(q: integer, r: integer, c: integer) -> float
+
+pub fn hex_corner_y(q: integer, r: integer, c: integer) -> float
+
+// Cell centre in world units.  hex_field's exact lattice and hex_grid's float world agree
+// term for term — k*sqrt(3)/2 = sqrt(3)*(q + (r&1)/2) and m/2 = 1.5r — so this is the
+// integer spelling of `hex_to_px`, not a second convention.
+pub fn cell_x_w(q: integer, r: integer) -> float
+
+pub fn cell_y_w(q: integer, r: integer) -> float
+
+// THE CHECK THAT WOULD HAVE CAUGHT IT: how far the midpoint of edge `dir` sits from the
+// midpoint between the two cell centres it is supposed to separate.  Zero for every
+// direction, or the edge table and the neighbour table disagree.
+// 
+// Example: @HXS-004
+pub fn wall_edge_gap(q: integer, r: integer, dir: integer) -> float
+
+pub fn hex_corner_tri_a(q: integer, r: integer, ci: integer) -> integer
+
+pub fn hex_corner_tri_b(q: integer, r: integer, ci: integer) -> integer
+
+// THE ROUTINE: draw the wall into the foxel's three wall slots per hex.
+// 
+// An edge is marked iff the wall's centre line SEPARATES its two owning cells, within the run.
+// `edge_set_mat` stores an edge once, under whichever cell owns it, so writing from both sides
+// is idempotent — which is what makes the three-slots-per-hex model hold.
+pub fn wall_write(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
+
+// ── READING THE CHAIN BACK: is it ALONG the wall, and is it ONE chain? ─────
+// 
+// These are the two properties that distinguish the fixed marking from the old picket comb,
+// and neither is visible in the perpendicular STRAY (a comb and a zigzag both swing ~1 hex off
+// the line).  They are what `tests/wall.loft` §6 asserts.
+// 
+// ALONG-NESS.  For a marked edge between cells C and N, the vector C->N is PERPENDICULAR to the
+// edge.  An edge lying ALONG the wall therefore has C->N pointing ACROSS the wall — a small
+// `|C->N . wall_dir|`.  The old picket marked edges lying ACROSS the wall, whose C->N pointed
+// ALONG it — `|C->N . wall_dir| ~ 1`.
+// 
+// ⚠ THAT MAKES THE WORST `|dot|` A DISCRIMINATOR ON HALF THE DIRECTIONS ONLY.  On the twelve
+// EXACT headings it tops out at 0.5 (N = 3) or 0.866 (N = 1), and nothing reaches 0.9.  On the
+// twelve IN-BETWEEN ones it reads **0.97** on completely correct output: a shallow line has to
+// cross the vertical edge between two cells of the SAME row wherever it steps up, and that
+// edge's dot is `cos(13.9 deg)`.  Measured, 3 of a 25-edge run are above 0.9.  So this number
+// describes the WOBBLE; it does not deliver a verdict, and a gate that thresholds it flags a
+// correct in-between wall.
+// 
+// The verdict is the CHAIN property below — two degree-1 vertices, no branches — which is exact
+// and holds for all 24 directions.
+// 
+// Example: @HXS-004
+pub fn wall_along_max(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
+
+// ONE CHAIN.  The marked edges form a connected path iff, keyed by their shared hex vertices
+// (exact triangle-lattice integers), exactly two vertices have degree 1 (the ends) and none has
+// degree > 2.  A picket comb of k disjoint edges has 2k degree-1 vertices — so this separates a
+// chain from a comb with no tolerance.  Returns the number of degree-1 vertices (2 for a single
+// chain, 0 for empty, 4 after a break, 2k for a comb).
+// 
+// Example: @HXS-004
+pub fn wall_chain_ends(edges: EdgeSet, q0: integer, r0: integer,
+
+// Any vertex where three or more marked edges meet — a branch, which a straight wall's boundary
+// never has.  Non-zero means the marking is not a simple path.
+// 
+// Example: @HXS-004
+pub fn wall_chain_branches(edges: EdgeSet, q0: integer, r0: integer,
+
+// The primitive triangle-lattice vector of direction `d24`.
+pub fn tri_a(d24: integer) -> integer
+
+pub fn tri_b(d24: integer) -> integer
+
+// N = |v|^2 / S^2 for direction `d24` — an exact integer, never a float comparison.
+// The direction's `N`.  Only THREE values occur over the 24 — measured, not assumed.
+// 
+// Example: @HXS-002
+pub fn tri_n2(d24: integer) -> integer
+
+pub fn is_square(n: integer) -> boolean
+
+// Are the two directions' lattice-line spacings COMMENSURABLE — i.e. can integer counts of
+// rows in each ever be exactly equal?  Only if sqrt(N2/N1) is rational, i.e. N1*N2 square.
+// Example: @HXS-002
+pub fn commensurable(n1: integer, n2: integer) -> boolean
+
+// The class of a triangle-lattice point: 0 = hex centre, 1 and 2 = the two vertex classes.
+// Only meaningful once `tri_on_hex_scale` holds.
+pub fn tri_class(a: integer, b: integer) -> integer
+
+pub fn tri_on_hex_scale(a: integer, b: integer) -> boolean
+
+pub fn tri_is_vertex(a: integer, b: integer) -> boolean
+
+// The endpoint of a run of `p` periods of direction `d24` from (a0, b0).  One period is
+// THREE primitive steps — the smallest displacement that can reach a hex-scale point at all.
+pub fn wall_end_a(d24: integer, a0: integer, p: integer) -> integer
+
+pub fn wall_end_b(d24: integer, b0: integer, p: integer) -> integer
+
+// THE DOORSTEP ITSELF.  `p` periods of `d24` from (a0,b0): admissible or not.
+// 
+// Example: @HXS-003
+pub fn wall_run_ok(d24: integer, a0: integer, b0: integer, p: integer) -> boolean
+
+// The smallest admissible run from this vertex in this direction — the editor's snap unit.
+// -1 if the start is not a vertex at all.
+// Example: @HXS-003
+pub fn wall_min_p(d24: integer, a0: integer, b0: integer) -> integer
+
+// A REFUSAL NAMES ITS RESTRICTION (K-FIT): given a wanted length in periods, the nearest
+// admissible one, searching outward so ties go to the shorter run.  0 if none exists.
+// Example: @HXS-003
+pub fn wall_snap_p(d24: integer, a0: integer, b0: integer, want: integer) -> integer
+
+// World position of a triangle-lattice point, in world units.
+pub fn tri_x(a: integer, _b: integer) -> float
+
+pub fn tri_y(a: integer, b: integer) -> float
+
+// The world length of `p` periods of `d24`, in world units.
+// Example: @HXS-003
+pub fn wall_run_len(d24: integer, p: integer) -> float
+
+// Build a wall from an ADMISSIBLE run: anchor vertex (a0,b0) in triangle coords, `p` periods of
+// direction `d24`.  The principled constructor — endpoints are hex vertices and the run is legal
+// (`wall_run_ok`), so the boundary chain terminates cleanly at both ends.  Defined here, below
+// `tri_x`/`wall_end_a`, so their float returns are known at the call site (see the note by
+// `wall_write`).
+pub fn wall_from_run(d24: integer, a0: integer, b0: integer, p: integer, mat: integer) -> Wall
+
+// Nearest HEX-SCALE lattice point (vertex OR centre) to a world point, in triangle
+// coordinates.  The hex-scale lattice is spanned by e1 = (sqrt3/2, 1/2) and e2 = (0, 1),
+// which is (a,b) = (3i, 3j) — a triangular lattice of spacing 1 wu.
+// 
+// Example: @HXS-008
+pub fn hex_scale_round(x: float, y: float) -> (integer, integer)
+
+// SNAP 1: the nearest HEX VERTEX to an arbitrary world point, in triangle coordinates.
+// Example: @HXS-008
+pub fn nearest_vertex(x: float, y: float) -> (integer, integer)
+
+// How far the endpoint of `p` periods of `d24` from (a0,b0) lands from a target point.
+pub fn run_end_dist(d24: integer, a0: integer, b0: integer, p: integer,
+
+// SNAP 2, direction part: the direction whose best legal endpoint lands nearest the target.
+// Example: @HXS-008
+pub fn snap_run_d24(a0: integer, b0: integer, tx: float, ty: float) -> integer
+
+// SNAP 2, length part: the legal period count in that direction nearest the target.
+// 0 when nothing legal was found, which the caller must treat as a refusal.
+// Example: @HXS-008
+pub fn snap_run_p(d24: integer, a0: integer, b0: integer, tx: float, ty: float) -> integer
+
+// The direction in `D` nearest a world angle in degrees.  The inverse of
+// `wall_angle_actual`, and it must be asked of the ACTUAL angles rather than of the nominal
+// 15-degree multiples: half of `D` sits 1.1021 degrees off its nominal (@HXS-002), so the
+// nearest-nominal answer and the nearest-actual answer differ on a band around every
+// in-between.  Monotone and complete over a full turn — 24 boundaries, each +1.
+// 
+// Example: @HXS-010
+pub fn wall_nearest_d24(deg: float) -> integer
+
+// The run an author reaches by AIMING: from vertex (a0,b0), facing `deg`, wanting `dist`
+// world units.  Returns `(d24, p)` — the same pair the endpoint snap returns, so both
+// idioms hand the rest of the library one shape of answer.
+// 
+// `p = 0` is a REFUSAL and the caller must treat it as one: it means no legal run exists
+// from that anchor in that direction near that length, which happens when (a0,b0) is not a
+// vertex at all, or when `dist` is shorter than the smallest admissible run.
+// 
+// Example: @HXS-010
+pub fn snap_run_from_heading(a0: integer, b0: integer, deg: float,
+
+// ── EVALUATING THE MARKS BACK TO THE MESH (crawler / moros' own rule) ───────
+// 
+// This is the second half of the round trip, and it is NOT ours to invent: moros already
+// evaluates the three wall slots to geometry in `moros_render::emit_hex_walls`, and the
+// rule is one line — a marked edge becomes the quad standing on the segment between its
+// two corners.  `hex_edge_corners` is that segment, so the mesh a marked field produces is
+// fully determined here with no renderer, no `Mesh`, no graphics import.
+// 
+// WHAT THAT MESH IS.  It is the SAWTOOTH — the chain of hex edges the band crossed — not
+// the straight line we drew.  That is the honest state of the round trip: the foxel stores
+// where the wall went, and recovering the straight line from it is `rebuild`'s job.  So
+// the measurement below is not "does the mesh equal the wall" (it cannot) but "how far
+// does the mesh stray from it", which is the quantity the recovery has to undo.
+// 
+// Perpendicular distance from (px,py) to the wall's infinite centre line.
+pub fn wall_offset_of(w: Wall, px: float, py: float) -> float
+
+// The worst perpendicular stray of any emitted segment endpoint, over the marked field.
+// Only edges whose midpoint lies within the run are measured — past the ends there is no
+// line to be near.
+// Example: @HXS-008
+pub fn wall_mesh_stray(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
+
+// How many distinct segments the mesh emitter would produce for the marked field — the
+// vertex count of moros' wall mesh divided by the per-edge quad, i.e. the segment count.
+// Example: @HXS-005
+pub fn wall_mesh_segments(edges: EdgeSet, q0: integer, r0: integer,
+
+// The two degree-1 vertices of the marked chain, in triangle coordinates.  `ok` is false unless
+// there are exactly two — a fragmented or branching marking is REFUSED, never averaged into an
+// answer.
+// 
+// Example: @HXS-005
+pub fn wall_read_ends(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer)
+
+// Recover the whole run: direction, anchor and period count, all exact integers.  One period of
+// `d24` displaces a run by `3·tri(d24)`, so the endpoint displacement pins both `d24` and `p`; the
+// answer is canonicalised to the end that gives `p > 0`.  `ok` is false when the marking is not a
+// single chain, or when no direction divides the displacement — an unreadable field is REFUSED, not
+// approximated (law **P4**).
+// 
+// WHAT IT CANNOT RECOVER IS THE ORIENTATION, because the field does not store one: A-to-B and
+// B-to-A mark the identical edges.  The answer is canonicalised to `p > 0`, so the direction
+// comes back as `d24` OR as `d24 + 12` with the other endpoint as the anchor — both naming the
+// same wall.  `read.d == d` is therefore the wrong round-trip assertion; compare the ENDPOINTS.
+// 
+// Example: @HXS-005
+pub fn wall_read_run(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer)

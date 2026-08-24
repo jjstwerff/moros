@@ -317,9 +317,19 @@ fn test_the_run_verb_is_not_the_ring_verb() {
 fn test_the_seat_family_is_one_verb_and_the_selection_decides() {
   m = keymap_default();
   assert(verb_in(m, "Y") == VB_SEAT, "the seat key names '{verb_in(m, \"Y\")}'");
-  assert(verb_in(m, "T") == VB_NONE,
-         "'T' names '{verb_in(m, \"T\")}' — the seat family has two keys again, and a "
-       + "second row is what a lost selection looks like from here");
+  // ⛔ **THIS USED TO REQUIRE `T` TO NAME *NOTHING*, AND THAT IS A DIFFERENT CLAIM.**
+  // `verb_in(m, "T") == VB_NONE` reads as *the seat family has one key* and is really
+  // *nobody has taken T*. The two came apart the moment a new verb spent one of the
+  // freed keys: this row went red saying "the seat family has two keys again" when what
+  // had actually happened was that `aim` moved in — an unrelated gesture.
+  //
+  // ⚠ **SO IT ASSERTS THE CLAIM INSTEAD OF A PROXY FOR IT.** `T` must not name a SEAT.
+  // That still goes red if the family regrows a second key — bind `T` to `VB_SEAT` and
+  // it fails — and no longer goes red when the editor merely gains a verb. A row that
+  // pins a freed key to *nothing* is pinning the editor's spare capacity to zero.
+  assert(verb_in(m, "T") != VB_SEAT,
+         "'T' names seat again — the family has two keys, and a second row is what a "
+       + "lost selection looks like from here");
 
   bw = flat();
   bs = seatable();
@@ -926,8 +936,9 @@ fn test_every_verb_the_definition_produces_is_bound() {
 // answers to. ⚠ It is written here rather than covered by a comment claiming otherwise,
 // which is what the retired row in `keymap.loft` did for four slices.
 fn the_vocabulary() -> vector<text> {
-  [VB_RAISE, VB_LOWER, VB_PLACE, VB_OPENING, VB_FENCE, VB_WALL, VB_RUN, VB_SEAT,
-   VB_ANNEX, VB_STAIR_UP, VB_STAIR_DOWN, VB_HOLE, VB_SLAB, VB_STOREY, VB_CELLAR]
+  [VB_RAISE, VB_LOWER, VB_PLACE, VB_OPENING, VB_FENCE, VB_WALL, VB_RUN, VB_AIM,
+   VB_SEAT, VB_ANNEX, VB_STAIR_UP, VB_STAIR_DOWN, VB_HOLE, VB_SLAB, VB_STOREY,
+   VB_CELLAR]
 }
 
 fn test_the_vocabulary_the_definition_and_press_verb_are_one_set() {

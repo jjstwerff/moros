@@ -183,6 +183,12 @@ const KEY_LEVEL = 108;        // l — toggle levelling
 const FENCE_CMD = "23:3,3";
 const WALL_CMD = "23:1,3";
 const RUN_CMD = "25:1";
+// ⚠ **`56:` CARRIES THE MATERIAL, LIKE `25:` — AND CARRIES NO LENGTH, WHICH IS THE
+// HONEST STATE.** The reach is `hex_editor::AIM_REACH`, a constant, because a key
+// press has no magnitude and `input` has no continuous axis to read one from
+// (BLUEPRINT §3.2, upstream). When a stick supplies a push this message grows a
+// second field; until then a client that sent one would be inventing a value.
+const AIM_CMD = "56:1";
 // `30:<±1>` — one tread into the cell ahead. ⚠ TWO CONSTANTS AND NOT ONE WITH A
 // SIGN, because the two are two VERBS: what separates `E` from `Q` is a direction,
 // which `hex_editor`'s `stair_ahead` says is part of the action rather than a
@@ -2108,6 +2114,7 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // would have to resolve again — `25:3` is the road, and it reaches the same
   // gesture with no key of its own.
   if verb == hex_editor::VB_RUN   { web::send(h, RUN_CMD);   return; }
+  if verb == hex_editor::VB_AIM   { web::send(h, AIM_CMD);   return; }
   // ⚠ THE PAIR THAT DID NOT COLLAPSE — plan 22 `K3`. `raise`/`lower` two rows up are
   // the precedent and the argument: a direction is part of the action, so the wire
   // keeps two messages and the verb layer keeps two names, rather than a `30:` bare

@@ -322,6 +322,11 @@ const MSG_WALLS = 16;     // read one cell's three owned wall edges back
 const MSG_FENCE = 23;     // fences: ring the disc you stand in (moros#10)
 const MSG_EDGE = 24;      // and the atomic half of it — one edge, one material
 const MSG_WALL = 25;      // walls: a STRAIGHT run on one of the 24 headings
+// ⚠ **THE FIRST MESSAGE THAT NEEDS THE YAW, AND `MSG_WALL`'s HANDLER THROWS IT AWAY.**
+// `do_wall` builds its author with `yaw 0.0` and says so — *"a run reads x and z and
+// nothing else"*, which was true of every gesture until this one. An aim reads the
+// FACING and nothing else about where the author walked, so `do_aim` takes it.
+const MSG_AIM = 56;       // aim: one press, a run along the author's own facing
 const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
@@ -1370,6 +1375,35 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
   }
   println("editor: road {wlaid.rl_n} cells, fence {wlaid.rl_fenced} edges, "
           + "heading {wlaid.rl_step}, residual {wlaid.rl_resid}°");
+}
+
+// `56:` — THE AIM. One press, no draft, and the FACING is the direction.
+//
+// ⚠ **IT TAKES A YAW WHERE `do_wall` HARDCODES ZERO, AND THAT IS THE WHOLE DIFFERENCE
+// AT THIS LAYER.** Everything else here is `do_wall`'s shape — the socket, the
+// sentence coming back whole, the two dirty discs — because an aim and a trace produce
+// the same `RunLaid` and a driver that composed its own sentence would be the fourth
+// site again. What separates them is upstream, in which map turns the author's state
+// into a run: AUTHORING_MAP `X108`, measured at 77.7% agreement.
+//
+// ⚠ **AND THERE IS NO `RL_STARTED` BRANCH BECAUSE AN AIM HAS NO DRAFT.** A handler
+// that copied `do_wall` wholesale would carry a dead branch that reads as a two-press
+// gesture to the next person to open this file.
+fn do_aim(srv: Server, cid: integer, payload: text, px: float, pz: float, pyaw: float,
+          wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
+  amat = payload as integer ?? hex_editor::WALL_MAT;
+  alaid = hex_editor::session_aim(sess, wld,
+                                  hex_editor::author_at(px, pz, pyaw, 0.0), amat);
+  if alaid.rl_code == hex_editor::RL_REFUSED {
+    srv.send_to(cid, "S:{alaid.rl_say}");
+    println("editor: {alaid.rl_say}");
+    return;
+  }
+  mark_dirty(dirty, alaid.rl_q0, alaid.rl_r0, alaid.rl_pad);
+  mark_dirty(dirty, alaid.rl_q1, alaid.rl_r1, alaid.rl_pad);
+  srv.send_to(cid, "S:{alaid.rl_say}");
+  println("editor: aim {alaid.rl_n} edges, heading {alaid.rl_step}, "
+          + "length {alaid.rl_reach}");
 }
 
 // The ground height at a world point, as an integer grade — a road is GRADED, so it
@@ -5867,6 +5901,12 @@ fn main() {
           }
         } else if ev.msg_id == MSG_WALL {
           do_wall(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wld, dirty, sess);
+        } else if ev.msg_id == MSG_AIM {
+          // ⚠ `wk.wk_yaw` — the walker's own facing, not a session pose. Same rule
+          // `do_wall`'s note states for x and z: this server HAS a walker, and a
+          // second authority on where the author is looking is how the two drift.
+          do_aim(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wk.wk_yaw,
+                 wld, dirty, sess);
         } else if ev.msg_id == MSG_STENCIL {
           // payload: `<roof_up>` — the roof height above the floor, in height
           // units — or `<roof_up>,<part>`, which places a SAVED part instead of

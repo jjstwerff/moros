@@ -1,0 +1,295 @@
+# hex_form 0.1.0 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_form-0.1.0
+# use it with: use hex_form;
+
+## src/formtext.loft
+
+// ── C2/C4: the layout ──────────────────────────────────────────────────────
+// 
+// One element per line, single-space separators, no trailing space. Fields in declaration order:
+// `stencil <name> h0 <n>` then one `side <i> len <l> turn <t>` per side, in index order.
+pub fn form_write(f: Form, name: text) -> text
+
+// THE CANONICAL SPELLING — smallest `(turns, lens, h0)` over the n cyclic starts.
+pub fn form_canon(f: Form) -> Form
+
+// The canonical text of a form, whichever corner it happened to be written from.
+pub fn form_canon_text(f: Form, name: text) -> text
+
+pub fn form_read_name(t: text) -> text
+
+// Parse a canonical text back into a Form. Returns a 0-sided form if the text does not have the
+// canonical shape — the caller checks, and the gate treats that as a refusal.
+pub fn form_read(t: text) -> Form
+
+pub fn form_eq(a: Form, b: Form) -> boolean
+
+## src/hexform.loft
+
+pub const HEAD_N = 12
+
+// 4 * the squared world length of one edge step and one vertex step.  From
+// x = k*sqrt(3)/2 and y = m/2, len^2 = (3k^2 + m^2)/4, so scaling by 4 keeps it integral.
+pub const EDGE_N2_4   = 12
+
+pub const VERTEX_N2_4 = 36
+
+// Normalise a heading to 0..11.
+// 
+// EVERY index of the table goes through here.  A running heading is `h0 + sum(turn)` and the
+// turns are -5..6, so it leaves 0..11 constantly — a 4-sided cycle turning 3 each time
+// reaches h = 12 on its last side.  Two things then go wrong SILENTLY if the raw value is
+// used: in loft a negative index reads from the END of a vector instead of returning null,
+// and an index at or past the length returns null rather than wrapping.  Both hand back a
+// plausible wrong answer, which is why this is the first function in the file.
+pub fn head_norm(h: integer) -> integer
+
+// The step for heading `h`, as (dk, dm) in doubled coordinates.
+// 
+// Ordered counter-clockwise from +x: h = 0 is due east, and each step is +30 degrees.  Even
+// h are the edge neighbours, odd h the vertex directions.
+pub fn head_step(h: integer) -> (integer, integer)
+
+// 4 * the squared world length of the step — EDGE_N2_4 or VERTEX_N2_4, exactly.
+pub fn head_n2_4(h: integer) -> integer
+
+// An even heading is an edge-neighbour direction; an odd one points at a vertex.
+pub fn head_is_edge(h: integer) -> boolean
+
+// The exact 60-degree rotation on doubled coordinates (ROUNDTRIP.md §1, constraint X1).
+// 
+// Both halves stay integral because every lattice point satisfies k = m (mod 2): k's parity
+// is `r & 1` and m = 3r has the same parity.  On the heading table this acts as h -> h + 2,
+// which is what makes the six rotations of O a subgroup of the twelve headings.
+pub fn rot60_k(k: integer, m: integer) -> integer
+
+pub fn rot60_m(k: integer, m: integer) -> integer
+
+// The exact reflection (constraint X2).  On the heading table this acts as h -> 6 - h.
+pub fn refl_k(k: integer) -> integer
+
+pub fn refl_m(m: integer) -> integer
+
+// The heading whose step is (dk, dm), or -1 if no heading has that step.  Used by the gate
+// to check the table against hex_field's neighbours, and later by recovery.
+pub fn head_of_step(dk: integer, dm: integer) -> integer
+
+// ── LAW J — A STENCIL BOUNDARY IS A CLOSED TURTLE CYCLE (step S1) ───────────
+// 
+// A Form is a walk: start facing `fm_h0`, and for each side walk `fm_len[i]` steps in the
+// current heading, then turn by `fm_turn[i]`.  It is admissible only if it CLOSES, and that
+// is two independent conditions:
+// 
+// sum(len_i * e(h_i)) = (0, 0)     the walk returns to its start
+// sum(turn_i)         = 12         it turned through exactly one revolution
+// 
+// NEITHER IMPLIES THE OTHER, and the gate proves it both ways.  The last turn happens AFTER
+// the last side, so it cannot move the endpoint — a wrong final turn leaves the vector sum
+// at (0,0) and is caught only by the turn total.  Conversely a wrong LENGTH leaves the turn
+// total at 12 and is caught only by the vector sum.
+// 
+// THE TURN TOTAL IS +12, NOT -12.  A cycle walked the other way round is the same shape with
+// turn total -12, so requiring +12 picks one spelling of the two — the canonical-form rule
+// C3 (`DESIGN.md` §3) applied at its cheapest point, before anything is written down.
+pub struct Form
+
+// One full revolution, in twelfths.
+pub const TURN_FULL = 12
+
+pub fn form_new(h0: integer, lens: vector<integer>, turns: vector<integer>) -> Form
+
+pub fn form_sides(f: Form) -> integer
+
+// The heading side `i` runs in: the start heading plus every turn taken before it.
+pub fn form_heading(f: Form, i: integer) -> integer
+
+pub fn form_turn_sum(f: Form) -> integer
+
+// Where the walk ends up, relative to where it started, in doubled coordinates.
+pub fn form_close(f: Form) -> (integer, integer)
+
+// Law J.  Both conditions, and a side count that can bound a region at all.
+pub fn form_closes(f: Form) -> boolean
+
+// ── WHY A LATTICE POLYGON CANNOT BE A RECTANGLE (step S1, OD-11) ────────────
+// 
+// Two headings 90 degrees apart exist (0 and 3), so a turtle cycle CAN turn a right angle.
+// What it cannot do is make both sides quantise the same way, and that is a property of the
+// hex lattice rather than of this table:
+// 
+// the perpendicular of (k, m) is (-m, 3k)          3*k*(-m) + m*(3k) = 0
+// its 4*len^2 is  3m^2 + 9k^2 = 3 * (3k^2 + m^2)   EXACTLY 3x the original
+// 
+// Any lattice vector along that perpendicular is an integer multiple of the primitive one,
+// so its length is sqrt(3) * (a rational) times the original — never equal, because sqrt(3)
+// is irrational.  THERE IS NO SQUARE SUBLATTICE OF A HEXAGONAL LATTICE (a lattice cannot
+// carry both 4-fold and 6-fold symmetry), so no choice of headings gives a rectangle whose
+// two sides are counted in the same unit.
+// 
+// That is why `housedraw`'s Plan is a CONTINUOUS rectangle rasterised centre-in-region, and
+// why it — not a turtle cycle — is domain A's shape primitive.  See DESIGN.md §10.4.
+pub fn perp_k(_k: integer, m: integer) -> integer
+
+pub fn perp_m(k: integer, _m: integer) -> integer
+
+// 4 * the squared world length of an arbitrary doubled-coordinate vector.
+pub fn vec_n2_4(k: integer, m: integer) -> integer
+
+// Is the cell at doubled offset (k, m) from the plan's centre inside a wid x dep plan?
+pub fn plan_holds(wid: integer, dep: integer, k: integer, m: integer) -> boolean
+
+// Can a cell centre ever lie exactly ON the boundary?  No — and this returns the reason as a
+// checkable fact rather than a comment: the u test compares an even to an odd number.
+pub fn plan_u_can_tie(wid: integer, k: integer) -> boolean
+
+// The turtle polygon's vertices, in doubled (k,m) RELATIVE to the start.  One vertex per side:
+// the point the walk is standing on before it walks that side.
+pub fn form_poly_k(f: Form) -> vector<integer>
+
+pub fn form_poly_m(f: Form) -> vector<integer>
+
+// Is (pk, pm) inside or ON the closed polygon?  Exact integer arithmetic throughout: the
+// on-edge test is a zero cross product, and the crossing test compares a cross product's SIGN
+// rather than computing an intersection, so there is no division and no epsilon anywhere.
+// 
+// ON THE BOUNDARY COUNTS AS INSIDE, and that is the whole reason the closed forms come out
+// integral: the turtle traces the centres of the boundary ring, so those cells ARE the shape.
+pub fn poly_holds(vk: vector<integer>, vm: vector<integer>,
+
+// THE ROUTINE: fill a closed Form into `cells`, anchored so the walk starts at cell (cq, cr).
+// 
+// A NON-CLOSING FORM IS REFUSED, NOT PATCHED (the control).  Law J is the admission test; a walk
+// that does not return to its start bounds no region, and silently filling "what it would have
+// enclosed" would invent a shape the author never wrote.
+pub fn form_fill(f: Form, cq: integer, cr: integer, cells: HexSet) -> integer
+
+// TWICE THE SIGNED AREA of the set's boundary, in doubled (k,m) units — summed over every
+// boundary edge directly, so it needs no loop tracing: the shoelace of a closed loop is the sum
+// over its edges, and summing over all loops is summing over all edges.
+// 
+// `hex_edge_corners(dir)` gives the edge's two corners in the winding order that makes the outer
+// boundary positive and an enclosed hole negative, which is what makes `= 12 * cells` a real
+// check on enclosure and not just on count.
+pub fn set_shoelace2(cells: HexSet) -> integer
+
+// ── THE CLOSED FORMS — predicted, not read off the fill ────────────────────
+// 
+// Each is the count of lattice points inside-or-on the shape in the CENTRE basis (spanned by one
+// edge step and the next-but-one), so each is a plain combinatorial identity rather than a
+// measurement:
+// 
+// triangle side n   the lattice points of a right triangle (n+1)(n+2)/2
+// rhombus a x b     a box in the centre basis, (a+1)(b+1)
+// hexagon side n    the hex region of radius n, 3n^2 + 3n + 1
+pub fn tri_cells(n: integer) -> integer
+
+pub fn rhombus_cells(a: integer, b: integer) -> integer
+
+pub fn hexagon_cells(n: integer) -> integer
+
+// PART 1a — dangling ends.  A closed loop has NONE: every boundary vertex is entered and left.
+pub fn boundary_ends(cells: HexSet) -> integer
+
+// PART 1b — pinches.  crawler's tracer relies on a hex boundary never pinching at a vertex
+// (each vertex touches exactly 3 mutually adjacent cells), verified there over 412 forms — a T2
+// claim, re-measured here as a gate rather than assumed.
+pub fn boundary_branches(cells: HexSet) -> integer
+
+// PART 1c — how many separate closed loops the boundary forms.  ONE means the region is a single
+// simply-connected shape; TWO means it has a hole (the outer loop plus the hole's), which is `I3`'s
+// named failure.  Label propagation over the edge graph — the edge count is small and this needs
+// no auxiliary structure.
+pub fn boundary_loops(cells: HexSet) -> integer
+
+// ── PARTS 2 AND 4 — WRITTEN NOW, ENFORCED LATER ────────────────────────────
+// 
+// CASHED IN.  The corner ANGLE (part 2) and the MITER POINT (part 4) needed the fitted analytic
+// surface; it landed at S4b (`X47`) and gained its extent at `G2` (`X61`), so `tests/form.loft` §17
+// now CHECKS them.  Part 4's original wording — *"the miter sits on the exact model corner"* — turned
+// out to be wrong: `Plan` is continuous-then-rasterised, so the continuous corner is quantised away
+// (I-QUANT) and what the miter recovers exactly is the CELL-REGION corner.  History kept below.
+// 
+// (was) The corner ANGLE (part 2) and the MITER POINT (part 4) need the fitted analytic surface, which
+// does not exist until S8.  `DESIGN.md` §10.4 says to write them into the gate red at S4.
+// 
+// A PERMANENTLY RED SUITE IS NOT A SIGNAL, so instead of failing every run from here to S8 they
+// are a TRIPWIRE: while `SURFACE_LANDED` is false the gate prints them as PENDING and asserts
+// nothing about them; flipping this to true at S8 makes the gate FAIL until the real checks are
+// written.  They cannot be forgotten, and `make test` stays a live signal in the meantime.
+// (If a red suite is wanted instead, flip this today — the gate section is already written.)
+pub const SURFACE_LANDED = true
+
+// The same discipline for `rebuild` (S8), which `tests/trip.loft` is written against BEFORE it
+// exists (`DESIGN.md` §8.0).  While this is false the trip gate is legitimately RED, and the
+// runner asserts that redness; flipping it at S8 makes the runner demand a GREEN trip gate.
+pub const REBUILD_LANDED = true
+
+// ── A4 — LAW J IS NOT A SUFFICIENT ADMISSION RULE ──────────────────────────
+// 
+// Law J asks only that the walk CLOSES: `Σ turn = 12` and the vector sum is zero.  Rung A4 grew
+// the space to unequal sides and REFLEX corners, and found law J admits two things it must not:
+// 
+// NON-SIMPLE walks — a repeated vertex, so the "polygon" crosses or touches itself and has no
+// well-defined inside.
+// NON-CONVEX forms — which VIOLATE LAW F.  Measured over the 70 simple non-convex 4-sided
+// forms: 62 of 70 at unit scale, and still 36 of 70 grown five times, draw
+// a field that some OTHER form also draws.  `draw` is not injective there,
+// so no recovery — hull, tracing, or anything else — can tell them apart.
+// Scaling shrinks the failure but never removes it.
+// 
+// THAT IS A MODEL-SPACE LIMIT, NOT A METHOD LIMIT, and it is why the fix is at the DOORSTEP
+// (`K-FIT`): the editor refuses a non-convex stencil at authoring time rather than letting one be
+// drawn and fail to come back.  `DESIGN.md` §5.2 — a restriction the census finds is a fact to
+// record, not a defect to engineer away.
+// 
+// A convex form is exactly one whose turns are all POSITIVE: every exterior angle turning the same
+// way, summing to one revolution.  A turn of 0 is a straight join, which is a re-spelling of a
+// longer side rather than a corner, so it is refused too.
+pub fn form_is_convex(f: Form) -> boolean
+
+// Does the walk visit any point twice?  A repeated vertex means the boundary is not a simple
+// closed curve, so "inside" is not defined and the fill is meaningless.
+pub fn form_is_simple(f: Form) -> boolean
+
+// THE ADMISSION RULE, as A4 leaves it: closed (law J), simple, and convex.
+pub fn form_admissible(f: Form) -> boolean
+
+pub fn cell_x(q: integer, r: integer) -> float
+
+pub fn cell_y(q: integer, r: integer) -> float
+
+pub fn fabs(v: float) -> float
+
+// ── the plan: a rectangle in its own frame ──────────────────────────────────
+pub struct Plan
+
+pub fn plan_new(cq: integer, cr: integer, wid: integer, dep: integer,
+
+// A flip toggles the chirality and NOTHING else — no side remapping, no t -> 1-t.
+// If an implementation finds itself remapping, the frame rule above is wrong somewhere.
+pub fn plan_flip(p: Plan) -> Plan
+
+pub fn plan_hw(p: Plan) -> float
+
+pub fn plan_hd(p: Plan) -> float
+
+pub fn plan_to_world(p: Plan, lu: float, lv: float) -> (float, float)
+
+pub fn plan_to_local(p: Plan, px: float, py: float) -> (float, float)
+
+pub fn plan_side_point(p: Plan, side: integer, t: float) -> (float, float)
+
+// Outward, unit — taken from the MASSING (centre -> side midpoint), never from the
+// endpoint order.  Reading it off B - A lets a broken endpoint rule supply its own
+// definition of outward, and the facade gate can then never fire.
+pub fn plan_side_normal(p: Plan, side: integer) -> (float, float)
+
+// ── the boundary edges lying on one side, with their reading parameter ──────
+pub struct SideRun
+
+pub fn side_run_len(sr: SideRun) -> integer
+
+// Which side an edge lies on, and where along it.  An edge's midpoint is the midpoint
+// of the two cell centres it separates — the shared edge bisects that line — so no
+// corner table is needed.
+pub fn side_edges(p: Plan, cells: HexSet, side: integer) -> SideRun

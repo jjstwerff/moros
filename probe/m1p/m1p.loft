@@ -100,7 +100,26 @@ fn main() {
   }
   println("   ✅ actual angles increase with d24, so the bisector model holds");
   println("   narrowest cell {narrow} deg at d24={nd} · widest {wide} deg");
-  println("   ⇒ a stick must resolve better than {narrow * 0.5} deg to reach every d24");
+  // ⚠ **TWO HALVES, TWO QUESTIONS, AND GIVING THEM ONE NAME COST A WEEK.** This probe
+  // printed only the first line below, correctly labelled — and `AUTHORING_MAP` `X109`
+  // read it as the RESIDUAL bound, which it is not. The residual is half the WIDEST
+  // cell, and it is measured here rather than divided out, so the two can never be
+  // mistaken for each other again by a reader of this output.
+  println("   ⇒ INPUT PRECISION: a stick must resolve better than {narrow * 0.5} deg");
+  println("     to be able to SELECT every d24 (half the narrowest cell)");
+  wr = 0.0;
+  wat = 0.0;
+  sd = 0.0;
+  while sd < 360.0 {
+    x = sd - act(nearest_actual(sd));
+    while x > 180.0 { x = x - 360.0; }
+    while x < 0.0 - 180.0 { x = x + 360.0; }
+    if x < 0.0 { x = 0.0 - x; }
+    if x > wr { wr = x; wat = sd; }
+    sd = sd + 0.001;
+  }
+  println("   ⇒ DIRECTION ERROR: the worst residual is {wr} deg, at {wat} deg");
+  println("     (half the widest cell — this is `X109`, and it is NOT the line above)");
   println("");
 
   // ── Q2: does the deleted uniform quantiser ever disagree? ────────────────

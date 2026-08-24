@@ -1593,6 +1593,18 @@ pub const VB_WALL    = "wall";
 // default material is wall is the mistake `S3` already measured once, at the other
 // end: `25:1` and `25:3` both answered *road laid* for months.
 pub const VB_RUN     = "run";
+// ⚠ **`aim` IS NOT `run`, AND THE REASON IS ARITHMETIC RATHER THAN TASTE.** Both lay a
+// wall run; they are DIFFERENT MAPS from what the author did to what gets stored.
+// `run` traces — two presses, and the direction is whatever fell out of the walk, so
+// `snap_run_d24` minimises one 2-D endpoint distance in which a direction error and a
+// length error trade freely. `aim` takes the FACING as a direction and fits a length
+// afterwards. Measured, they agree on **77.7%** of aims (`probe/m2p`, control 11.6%),
+// so a key that meant "either" would mean neither.
+//
+// ⚠ **AND THEY MUST NOT MIX INSIDE ONE GESTURE** — AUTHORING_MAP `X108`. `aim` never
+// touches `es_draft`, so an aim in the middle of an open trace leaves that trace
+// exactly where it was rather than closing it with a different geometry.
+pub const VB_AIM     = "aim";
 // ⚠ **THE SECOND FAMILY TO COLLAPSE, AND THE FIRST SINCE `opening`.** `Y` and `T` are
 // two keys on ONE message (`38:0` a bed, `38:1` a figure) differing by the thing
 // seated — so they are one verb and the kind comes from `es_seat_kind`, exactly as six
@@ -1684,6 +1696,11 @@ pub fn keymap_default() -> KeyMap {
     bind_of("F", VB_FENCE),
     bind_of("G", VB_WALL),
     bind_of("R", VB_RUN),
+    // ⚠ **`T` IS ONE OF THE EIGHT THE COLLAPSES FREED, AND SPENDING ONE IS THE POINT
+    // OF HAVING THEM.** It was `seat`'s alias until `Y` took that verb alone. Every
+    // other letter is a primary already or is `W A S D` — so `keymap.loft`'s freed
+    // list is the editor's only spare capacity, and a new verb costs one of it.
+    bind_of("T", VB_AIM),
     bind_of("H", VB_PLACE),
     bind_of("O", VB_OPENING),
     bind_of("Y", VB_SEAT),
@@ -1716,6 +1733,7 @@ pub fn verb_short(verb: text) -> text {
   if verb == VB_FENCE      { return "fenc"; }
   if verb == VB_WALL       { return "wall"; }
   if verb == VB_RUN        { return "run"; }
+  if verb == VB_AIM        { return "aim"; }
   if verb == VB_SEAT       { return "seat"; }
   if verb == VB_ANNEX      { return "anex"; }
   if verb == VB_STAIR_UP   { return "st+"; }
@@ -1886,6 +1904,23 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
     if vr_laid.rl_code == RL_REFUSED { return ack_no(vr_laid.rl_say); }
     return ack_at(ack_about(vr_laid.rl_n, vr_laid.rl_say, vr_laid.rl_resid as integer),
                   vr_laid.rl_q1, vr_laid.rl_r1);
+  }
+  // ⚠ **ONE PRESS, AND THERE IS NO `RL_STARTED` BRANCH BECAUSE THERE IS NO DRAFT.**
+  // That absence is the verb: a trace needs two presses to have two ends, and an aim
+  // has a facing instead. A handler here that fell through to `session_run`'s shape
+  // would be the two idioms sharing a state machine, which is exactly what `X108`
+  // says they must not do.
+  //
+  // ⚠ **AND THE REFUSAL IS REACHABLE, unlike the trace's twin.** `X111`: the twelve
+  // in-between directions have a period of 6.245 world units against the exact ones'
+  // 1.0 or 1.732, so an aim of about `AIM_REACH` along one of them has no legal run
+  // at all and the author is told which way to turn. `run`'s two refusals have never
+  // fired in this corpus (`H1b`'s sabotage row 3); this one fires in its own test.
+  if verb == VB_AIM {
+    va_laid = session_aim(sess, w, a, WALL_MAT);
+    if va_laid.rl_code == RL_REFUSED { return ack_no(va_laid.rl_say); }
+    return ack_at(ack_about(va_laid.rl_n, va_laid.rl_say, va_laid.rl_resid as integer),
+                  va_laid.rl_q1, va_laid.rl_r1);
   }
   // ⚠ THE KIND COMES FROM THE SELECTION AND FROM NOWHERE ELSE — `VB_OPENING`'s note
   // one family over. `session_seat` is the entry point built for exactly this;

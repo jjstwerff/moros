@@ -1,0 +1,259 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE AIM IDIOM — one press, a facing, and no second end.
+//
+// ⚠ EVERY ROW PRESSES THE VERB, NOT `session_aim`. A test that called the function
+// would prove the geometry and say nothing about whether any key reaches it — which
+// is this tree's commonest defect and the reason `slope_settle` was green for weeks
+// with no gesture calling it. `press_verb` is the whole chain: key table → verb →
+// handler → store.
+//
+// ⚠ AND THE CLAIM UNDER ALL OF IT IS `X108`: aiming and tracing are DIFFERENT MAPS,
+// not two spellings of one. `test_aiming_and_tracing_disagree` is that made
+// executable at editor scale — the library-scale measurement is `probe/m2p`, 77.7%.
+//
+// ⚠ `W_RESERVE` IS THE PACKAGE'S OWN — `gesture.loft` exports it, so a test file
+// redeclaring it is a name collision the compiler names on sight.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+use hex_shape;
+use hex_form;   // fabs
+
+
+fn ground(gw: VoxelWorld, half: integer) {
+  for gq in 0 - half..half + 1 {
+    for gr in 0 - half..half + 1 { ground_set(gw, gq, gr, 8, SURFACE_MAT); }
+  }
+}
+
+fn flat() -> VoxelWorld {
+  fw = world_new(0.25, W_RESERVE, 8, 3).wn_world;
+  ground(fw, 24);
+  fw
+}
+
+// One press of `aim`, from a pose, through the whole chain.
+fn aim_at(s: EditSession, w: VoxelWorld, x: float, z: float, yaw: float) -> Ack {
+  press_verb(s, w, author_on(w, x, z, yaw), VB_AIM)
+}
+
+fn test_the_aim_key_reaches_the_aim_verb() {
+  // ⚠ THE WIRING ITSELF, ASSERTED BEFORE ANY GEOMETRY. If `T` ever stops naming
+  // `aim`, every other row here would still pass by calling the verb directly — so
+  // the binding gets its own row rather than being assumed by the ones that use it.
+  m = keymap_default();
+  assert(verb_in(m, "T") == VB_AIM, "'T' names '{verb_in(m, \"T\")}'");
+  assert(key_for(m, VB_AIM) == "T", "aim's primary key is '{key_for(m, VB_AIM)}'");
+}
+
+fn test_one_press_lays_a_wall_along_the_facing() {
+  w = flat();
+  s = EditSession {};
+  // Due east. One press — no draft, no second end.
+  a = aim_at(s, w, 0.0, 0.0, 0.0);
+  assert(a.ak_ok, "the aim was refused: {a.ak_why}");
+  assert(a.ak_n > 0, "the aim marked {a.ak_n} edges");
+  assert(len(s.es_runs.items) == 1,
+         "one press left {len(s.es_runs.items)} runs — an aim is one run");
+}
+
+fn test_the_facing_decides_the_direction() {
+  // ⚠ THE CLAIM THAT SEPARATES THIS VERB FROM `run`. A trace's direction falls out of
+  // where the author walked; an aim's IS the facing. Four quarters, four answers.
+  w = flat();
+  s = EditSession {};
+  seen: vector<integer> = [];
+  for k in 0..4 {
+    yaw = (k as float) * PI / 2.0 ?? 0.0;
+    ws = flat();
+    ss = EditSession {};
+    a = aim_at(ss, ws, 0.0, 0.0, yaw);
+    assert(a.ak_ok, "aiming at quarter {k} was refused: {a.ak_why}");
+    d = (ss.es_runs.items[0] ?? WallRun {}).wr_step;
+    for j in 0..len(seen) {
+      assert((seen[j] ?? 0 - 1) != d,
+             "quarter {k} gave direction {d}, which an earlier quarter already gave — "
+           + "the facing is not deciding");
+    }
+    seen += [d];
+  }
+  assert(len(seen) == 4, "four quarters gave {len(seen)} directions");
+}
+
+fn test_the_residual_never_exceeds_the_authoring_resolution() {
+  // ⛔ **THIS ROW WENT RED AND THE DOC WAS WRONG, NOT THE CODE.** It first asserted
+  // `<= 6`, from `AUTHORING_MAP` `X109`'s *"the authoring resolution is 6.949° — half
+  // the narrowest cell"*. An aim at yaw 0.679 reported **7**, and `as integer`
+  // TRUNCATES in loft (measured: `6.949 as integer` is 6), so the float was over 7.
+  //
+  // ⚠ **TWO DIFFERENT STATISTICS HAD BEEN GIVEN ONE NAME.** `D`'s cells are 13.898°,
+  // 15° and 16.102° wide (`M1p`), so:
+  //
+  //   * half the NARROWEST cell, 6.949°, is the INPUT PRECISION a stick needs to be
+  //     able to select every direction — which is what `M1p` says, correctly;
+  //   * half the WIDEST cell, **8.051°**, is the worst DIRECTION ERROR an author can
+  //     be handed — which is what a residual is.
+  //
+  // Measured over a full turn at 0.001° steps: worst 8.051°, at yaw 321.949°. `X109`
+  // is corrected to say so. ⚠ A doc claim is a hypothesis; this row is what made it
+  // one.
+  w = flat();
+  worst = 0;
+  hit = 0;
+  for k in 0..37 {
+    yaw = (k as float) * 2.0 * PI / 37.0 ?? 0.0;
+    ws = flat();
+    ss = EditSession {};
+    a = aim_at(ss, ws, 0.0, 0.0, yaw);
+    if !a.ak_ok { continue; }
+    hit = hit + 1;
+    // `ak_residual` truncates, so 8 is the ceiling an integer can carry for 8.051.
+    assert(a.ak_residual <= 8,
+           "aiming at yaw {yaw} reported a residual of {a.ak_residual}° — more than "
+         + "`X109`'s 8.051° ceiling, so the direction was not nearest-in-D");
+    if a.ak_residual > worst { worst = a.ak_residual; }
+  }
+  assert(hit > 30, "only {hit} of 37 aims landed — the fixture is mostly refusing");
+  assert(worst > 0,
+         "no aim was off its direction at all — 37 yaws all landed exactly on one of "
+       + "24 directions, which means this row cannot fail");
+}
+
+fn test_the_residual_is_exactly_the_libraries_own_nearest_direction() {
+  // ⚠ **THE TIGHT BOUND, AND IT CALLS `session_aim` RATHER THAN PRESSING THE KEY.**
+  // The chain hands back `ak_residual` as a truncated integer, which cannot tell
+  // 8.051 from 8.9 — so the row above can only assert the ceiling to the degree. The
+  // wiring is covered by `test_the_aim_key_reaches_the_aim_verb` and by every other
+  // row here; this one is about the number, so it takes the float where the float is.
+  //
+  // ⚠ AND IT ASSERTS AGAINST THE LIBRARY'S OWN ANSWER, not against a constant: the
+  // aim's direction must BE `wall_nearest_d24` of the facing. A bound alone would
+  // pass for any implementation that happened to stay inside it.
+  w = flat();
+  checked = 0;
+  worst = 0.0;
+  for k in 0..53 {
+    deg = (k as float) * 360.0 / 53.0 ?? 0.0;
+    yaw = deg * PI / 180.0 ?? 0.0;
+    ws = flat();
+    ss = EditSession {};
+    laid = session_aim(ss, ws, author_on(ws, 0.0, 0.0, yaw), WALL_MAT);
+    if laid.rl_code != RL_LAID { continue; }
+    checked = checked + 1;
+    assert(laid.rl_step == hex_shape::wall_nearest_d24(deg),
+           "aiming at {deg}° chose d24 {laid.rl_step}, but the library's nearest is "
+         + "{hex_shape::wall_nearest_d24(deg)}");
+    assert(laid.rl_resid <= 8.051056875993012 + 0.000001,
+           "aiming at {deg}° was {laid.rl_resid}° off — past half the widest cell of "
+         + "`D`, which no nearest-in-D answer can be");
+    if laid.rl_resid > worst { worst = laid.rl_resid; }
+  }
+  assert(checked > 45, "only {checked} of 53 aims landed");
+  // ⚠ AND THE FIXTURE MUST REACH THE INTERESTING PART OF THE RANGE. 53 is coprime with
+  // 24, so the yaws fall between directions rather than on them — if the worst were
+  // tiny, the bound above would be untested.
+  assert(worst > 6.0,
+         "the worst residual over 53 yaws was only {worst}° — the sweep never comes "
+       + "near the 8.051° bound, so asserting it proves nothing");
+}
+
+fn test_an_aim_does_not_disturb_an_open_trace() {
+  // ⚠ **`X108`'s NO-MIXING RULE, AND IT IS THE SHARPEST ROW HERE.** A trace is open
+  // between its two presses. If an aim in the middle closed it — or moved its near
+  // end — the author would get a wall neither idiom would produce, from a state
+  // nothing on screen shows. The two gestures share a session and must not share a
+  // draft.
+  w = flat();
+  s = EditSession {};
+  // Open a trace at the origin.
+  first = press_verb(s, w, author_on(w, 0.0, 0.0, 0.0), VB_RUN);
+  assert(first.ak_ok, "the trace refused to start: {first.ak_why}");
+  assert(s.es_draft.wd_open, "the trace draft is open");
+  ox = s.es_draft.wd_x;
+  oz = s.es_draft.wd_z;
+
+  // Aim from somewhere else entirely, facing somewhere else again.
+  mid = aim_at(s, w, 6.0, 4.0, PI / 3.0 ?? 0.0);
+  assert(mid.ak_ok, "the aim was refused: {mid.ak_why}");
+
+  assert(s.es_draft.wd_open,
+         "the aim CLOSED the open trace — the two idioms are sharing a draft");
+  assert(hex_form::fabs(s.es_draft.wd_x - ox) < 0.000001
+      && hex_form::fabs(s.es_draft.wd_z - oz) < 0.000001,
+         "the aim moved the trace's near end from {ox},{oz} to "
+       + "{s.es_draft.wd_x},{s.es_draft.wd_z}");
+
+  // …and the trace still closes on its own terms.
+  last = press_verb(s, w, author_on(w, 8.0, 0.0, 0.0), VB_RUN);
+  assert(last.ak_ok, "the trace refused to close: {last.ak_why}");
+  assert(!s.es_draft.wd_open, "the trace closed");
+}
+
+fn test_aiming_and_tracing_disagree() {
+  // ⚠ **`X108` AT EDITOR SCALE.** `probe/m2p` measures the two library entry points
+  // and finds 77.7% agreement. This asks the narrower question the editor owns: from
+  // ONE author state, does pressing `aim` build the same wall as walking that far and
+  // pressing `run` twice? If it always did, `aim` would be a second key for `run` and
+  // this whole verb would be ceremony.
+  //
+  // The trace target is exactly where the aim points, at exactly the aim's reach — so
+  // the two are handed the same intent in the two shapes the two idioms accept.
+  disagree = 0;
+  tried = 0;
+  for k in 0..24 {
+    yaw = (k as float) * 2.0 * PI / 24.0 ?? 0.0;
+    tx = cos(yaw) * AIM_REACH;
+    tz = sin(yaw) * AIM_REACH;
+
+    wa = flat();
+    sa = EditSession {};
+    aa = aim_at(sa, wa, 0.0, 0.0, yaw);
+
+    wt = flat();
+    st = EditSession {};
+    press_verb(st, wt, author_on(wt, 0.0, 0.0, yaw), VB_RUN);
+    at = press_verb(st, wt, author_on(wt, tx, tz, yaw), VB_RUN);
+
+    if !aa.ak_ok || !at.ak_ok { continue; }
+    tried = tried + 1;
+    ra = sa.es_runs.items[0] ?? WallRun {};
+    rt = st.es_runs.items[0] ?? WallRun {};
+    if ra.wr_step != rt.wr_step
+    || hex_form::fabs(ra.wr_x1 - rt.wr_x1) > 0.000001
+    || hex_form::fabs(ra.wr_z1 - rt.wr_z1) > 0.000001 { disagree = disagree + 1; }
+  }
+  assert(tried > 12, "only {tried} of 24 headings produced both walls");
+  assert(disagree > 0,
+         "aim and trace agreed on all {tried} headings — then `aim` is a second key "
+       + "for `run` and `X108` is describing something this editor does not do");
+  // ⚠ AND THE OTHER SIDE: if they NEVER agreed, one of them would be wrong rather
+  // than different. They are two quantisations of one intent, so they must coincide
+  // where the intent is unambiguous.
+  assert(disagree < tried,
+         "aim and trace disagreed on ALL {tried} headings — that is not two "
+       + "quantisations of one intent, it is a bug in one of them");
+}
+
+fn test_a_short_aim_along_an_in_between_direction_is_refused() {
+  // ⚠ **`X111`, AND THIS IS THE REFUSAL `run`'s TWIN NEVER FIRES.** The twelve
+  // in-between directions have a period of 6.245 world units against the exact ones'
+  // 1.0 or 1.732, so a SHORT aim along one has no legal run at all. `H1b`'s sabotage
+  // row 3 measured that `run`'s two refusals are unreached by the whole corpus; this
+  // one is reached here, on purpose, because an author meets it.
+  //
+  // The fixture aims along d24 = 1 — an in-between — and asks for a third of its
+  // period, which no legal `p` can supply.
+  w = flat();
+  s = EditSession {};
+  (va, vb) = hex_shape::nearest_vertex(0.0, 0.0);
+  assert(!hex_shape::wall_is_exact(1), "d24 1 is an in-between direction");
+  per = hex_shape::wall_run_len(1, 1);
+  assert(per > 6.0, "an in-between period is {per} world units");
+  (gd, gp) = hex_shape::snap_run_from_heading(va, vb, hex_shape::wall_angle_actual(1),
+                                              per / 3.0 ?? 0.0);
+  assert(gp == 0,
+         "asking for a third of d24 1's period gave d24 {gd} p {gp} — the library "
+       + "found a run where this row needs there to be none, so it tests nothing");
+}

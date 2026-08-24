@@ -28,9 +28,21 @@ The two extremes are `15 ∓ 1.1021` — **exactly twice the bias**, which is wh
 the bias and not noise. ✅ The actual angles increase monotonically with `d24`, so the bisector
 model the widths are computed from applies (asserted in the probe, not assumed).
 
-> **`X109`: the authoring resolution is 6.949°** — half the narrowest cell. An author aiming at an
-> arbitrary heading gets a direction within 6.949° of it, worst case, **and no input precision
-> improves that.** It is the lattice's granularity, not the controller's.
+⚠ **HALF-A-CELL IS TWO DIFFERENT NUMBERS AND THEY ANSWER DIFFERENT QUESTIONS.** The cells come in
+three widths, so:
+
+| | | |
+|---|---|---|
+| half the **narrowest**, `13.898 / 2` | **6.949°** | the **input precision** a stick needs to *select* every direction — a cell narrower than the input can resolve is a direction nobody can reach |
+| half the **widest**, `16.102 / 2` | **8.051°** | the worst **direction error** an author can be handed — what a residual is |
+
+> **`X109`: the authoring resolution is 8.051°**, measured over a full turn at 0.001° steps (worst
+> at yaw 321.949°). No input precision improves it — it is the lattice's granularity.
+
+⛔ **`AUTHORING_MAP` QUOTED THE WRONG ONE FOR A WEEK**, taking 6.949 from this page's Q1 line —
+which is correct for *its* claim — and calling it the residual bound. Found by
+`lib/hex_editor/tests/aim.loft` asserting the doc's number and going red on a real aim. **A figure
+is only unambiguous next to the question it answers.**
 
 ## Q2 — ⛔ the deleted uniform grid picked a **different** direction on 3.70%
 

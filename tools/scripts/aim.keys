@@ -1,0 +1,42 @@
+# THE AIM IDIOM — one press, a facing, no second end.
+#
+# `wall.keys` traces: two presses with a walk between them, and the direction is
+# whatever fell out of the walk. This aims: the author stands still, faces a way, and
+# presses once.
+#
+# ⚠ THEY ARE DIFFERENT MAPS, NOT TWO SPELLINGS OF ONE — AUTHORING_MAP `X108`. Measured
+# at library scale they agree on 77.7% of aims (`probe/m2p`); the last block here is
+# that difference made visible in a picture, from ONE pose.
+#
+# ⚠ AND THE MIDDLE BLOCK IS THE RULE WITH TEETH: an aim in the middle of an open trace
+# must leave that trace exactly where it was. If the two ever shared a draft, the wall
+# the third press builds would move.
+
+echo --- flat ground to build on
+at 0 0 0
+verb raise
+wait rebuilt
+
+echo --- three aims from three corners, each along its own facing
+at -6 -6 0
+verb aim
+at -6 4 90
+verb aim
+at 6 -2 30
+verb aim
+
+echo --- an aim in the middle of an open trace must not disturb it
+at 0 8 0
+verb run
+at 4 10 45
+verb aim
+at 10 8 0
+verb run
+
+echo --- and the same intent, aimed and traced, from one pose
+at 0 -10 15
+verb aim
+at 0 -14 15
+verb run
+at 5.796 -12.448 15
+verb run
