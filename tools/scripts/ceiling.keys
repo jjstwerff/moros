@@ -7,6 +7,16 @@
 #
 # ⚠ THE CONTROL IS THE OUTDOOR ROW. Looking up from outside must show sky; if it does
 # not, the pitch never moved and every indoor row below is measuring the wrong frame.
+#
+# ⛔ **AND THE ANSWER IS THAT THE DESIGN'S PREDICTION IS WRONG — measured 2026-08-24,
+# which is what this file was written to find out.** From inside there is NO sky
+# overhead at all and the soffit is a quarter of the frame. `emit_roof_plan` does emit
+# one winding, but the client never enables backface culling, so the underside is drawn
+# from the inside exactly as the outside is. The rows below now ASSERT that rather than
+# photographing it: they were bare `frame` calls, which report and judge nothing.
+#
+# ⚠ **EVERY BAND HERE IS MEASURED, NOT CHOSEN.** Outside: sky 0.5066. Inside:
+# soffit 0.2458, sky 0. At the ridge: soffit 0.2258, sky 0.
 
 echo --- flat ground
 at 0 0 0
@@ -23,18 +33,25 @@ at 0 -10 90
 send 3:0,-4000
 step 90
 snap s11-up-outside
-frame
+# Sky must be most of the frame — this is the control, and it fails first if the pitch
+# fence stopped the look before it reached the sky.
+frame 0 0.85 sky 0.40 0.65
 
 echo --- inside, mid-floor, looking up at what should be a ceiling
 at 0 0 90
 send 3:0,-4000
 step 90
 snap s11-up-inside
-frame
+# ⚠ THE SOFFIT IS THERE AND THE SKY IS NOT. `sky 0 0.001` is the half that would catch
+# the design's own prediction coming true — a roof with no underside would show sky
+# through it from here.
+frame 0 0.85 soffit 0.15 0.35 sky 0 0.001
 
 echo --- and at the ridge, where the two slopes meet
 at 0 2 90
 send 3:0,-4000
 step 90
 snap s11-up-ridge
-frame
+# The ridge is the harder case: two slopes meet, so a gap between them would show as
+# sky in exactly this frame.
+frame 0 0.85 soffit 0.14 0.32 sky 0 0.001
