@@ -4,19 +4,18 @@
 // `M2p` — THE AGREEMENT LAW `X108`: DOES AIMING A RUN GIVE WHAT TRACING IT GIVES?
 //
 //   make probe-m2p
-//   loft --interpret --lib /home/jurjens/workspace/loft-libs-world/ probe/m2p/m2p.loft
+//   loft --interpret --lib lib/ probe/m2p/m2p.loft
 //
-// ⚠ THE `--lib` IS NOT DECORATION — READ THIS BEFORE THE NUMBERS. `hex_shape` reaches
-// moros from the REGISTRY (`hex_shape = ">=0.1"`, resolved at ~/.loft/registry), and
-// `snap_run_from_heading` is not in the published 0.1.0. It was written into the
-// `loft-libs-world` CHECKOUT, so this probe resolves `hex_shape` from there instead.
+// ✅ IT MEASURES THE PUBLISHED LIBRARY. `snap_run_from_heading` shipped in `hex_shape`
+// 0.1.1 on 2026-08-24 and `lib/hex_editor/loft.toml` requires it, so this resolves the
+// same registry copy the editor builds against.
 //
-// ⚠ SO THIS MEASURES THE CHECKOUT, NOT WHAT MOROS BUILDS AGAINST. That is a real
-// difference — `lib/hex_editor/loft.toml` records that all fourteen `hex_*` packages
-// now differ from the registry and three differ in CODE. The probe is deliberately
-// narrowed to `hex_shape` alone (no editor, no world, no store) so the swap reaches
-// exactly one package. Once 0.1.1 is published and the floor is raised, the `--lib`
-// comes off and nothing else changes.
+// ⚠ IT DID NOT AT FIRST, AND THE DIFFERENCE MATTERED. Before the publish this carried
+// an explicit `--lib` into the `loft-libs-world` CHECKOUT, because the function existed
+// only there — so the numbers described a tree moros does not build against. That is
+// not a small gap: `lib/hex_editor/loft.toml` records that all fourteen `hex_*`
+// packages differ from the registry and three differ in CODE. A measurement of the
+// wrong copy is not weaker evidence, it is evidence about something else.
 //
 // ── THE QUESTION ────────────────────────────────────────────────────────────
 //

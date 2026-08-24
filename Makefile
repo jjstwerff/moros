@@ -843,11 +843,11 @@ probe-m1p:
 
 # M2p (AUTHORING_MAP §4) — DOES AIMING A RUN AGREE WITH TRACING IT? ⛔ No: 77.7%,
 # control 11.6%. They minimise different things ON PURPOSE, so `X108` is rewritten from
-# "they agree" to "pick one per gesture". ⚠ THE `--lib` IS LOAD-BEARING: moros reads
-# hex_shape from the REGISTRY at 0.1.0 and `snap_run_from_heading` is only in the
-# loft-libs-world checkout, so this measures the checkout. It comes off at 0.1.1.
+# "they agree" to "pick one per gesture". ✅ The `--lib` into the loft-libs-world
+# checkout came OFF when hex_shape 0.1.1 published (2026-08-24) — this now measures the
+# same registry copy the editor builds against, which is what makes it evidence.
 probe-m2p:
-	@loft --interpret --lib /home/jurjens/workspace/loft-libs-world/ probe/m2p/m2p.loft 2>/dev/null | sed -n '/^M2p/,$$p'
+	@loft --interpret --lib lib/ probe/m2p/m2p.loft 2>/dev/null | sed -n '/^M2p/,$$p'
 
 # L1 (plan 24) — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID? Control: the
 # library's own `wall_write` through our world→EdgeSet bridge, 24 of 24. Ours:

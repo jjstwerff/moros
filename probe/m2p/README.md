@@ -6,12 +6,17 @@
 make probe-m2p
 ```
 
-⚠ **IT RUNS WITH AN EXPLICIT `--lib` AND THE REASON MATTERS.** `hex_shape` reaches moros from the
-**registry** (`hex_shape = ">=0.1"`), and `snap_run_from_heading` is not in the published 0.1.0 —
-it was written into the `loft-libs-world` checkout. So this probe resolves `hex_shape` from there,
-which means **it measures the checkout, not what moros builds against**. The probe is deliberately
-narrowed to `hex_shape` alone — no editor, no world, no store — so the swap reaches exactly one
-package. When 0.1.1 is published and the floor is raised, the `--lib` comes off.
+✅ **IT MEASURES THE PUBLISHED LIBRARY.** `snap_run_from_heading` shipped in **`hex_shape` 0.1.1**
+on 2026-08-24 and `lib/hex_editor/loft.toml` requires it, so this resolves the same registry copy
+the editor builds against.
+
+⚠ **IT DID NOT AT FIRST, AND THE RE-RUN IS WHY THAT IS WORTH SAYING.** Before the publish it
+carried an explicit `--lib` into the `loft-libs-world` checkout, because the function lived only
+there — so the numbers described a tree moros does not build against. `lib/hex_editor/loft.toml`
+records that all fourteen `hex_*` packages differ from the registry and **three differ in code**,
+so that is not a technicality: a measurement of the wrong copy is not weaker evidence, it is
+evidence about something else. Re-run against the published library it reproduces exactly —
+**1026 of 1320**, the same figure — which is a fact worth having rather than assuming.
 
 ## The question, and why it was not a tautology
 
