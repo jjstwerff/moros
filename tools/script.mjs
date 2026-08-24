@@ -770,19 +770,54 @@ const browserLag = async () => {
 // broadcasts, so "the page has caught up" is a comparison and not a guess about how
 // long a browser needs. A sleep here would be the same mistake as the `sleep(4000)`
 // this file's readiness check replaced.
-const settle = async (limitMs = 8000) => {
+// Wait until the page has stopped loading, then say whether it actually did.
+//
+// ⛔ **THIS ASKED AN UNANSWERABLE QUESTION UNTIL 2026-08-24, AND EVERY CAMERA GATE WAS
+// JUDGING FRAMES TAKEN AFTER IT GAVE UP.** The test was `page >= wire`, where `wire` is
+// the runner's count of DISTINCT LIVE mesh ids and `page` is the client's `c_mesh` — a
+// CUMULATIVE COUNTER OF `M:` MESSAGES RECEIVED. Two different quantities, and equality
+// between them means nothing. Worse, the browser attaches LAZILY and only for `--shots`,
+// so it can miss broadcasts sent before it connected — a shortfall no amount of waiting
+// recovers. Measured: the wait sat at `528/536` FLAT from t=10s to t=44s.
+//
+// ⚠ **SO THE QUESTION IS NOT "HAS THE PAGE CAUGHT UP WITH ME" BUT "HAS THE PAGE STOPPED
+// CHANGING".** That one the page can answer about itself, and it is what a photograph
+// actually needs: a scene that is no longer being built. `page`/`wire` are still
+// reported, because the gap is worth seeing — it just is not the verdict.
+//
+// ⚠ **AND IT ONLY BECAME MEASURABLE WHEN THE CLIENT STARTED REPORTING ON CHANGE.** The
+// HUD line refreshed every 300 frames, so "unchanged" meant "not reprinted lately" and a
+// stability window would have settled on a plateau that was pure reporting lag. The
+// client now prints whenever the count moves; see `editor_client.loft`.
+//
+// `SETTLE_MS` is settable because the right value is a property of the box — this one
+// runs two other projects' CI.
+const SETTLE_STABLE_MS = 1500;
+const settle = async (limitMs = Number(process.env.SETTLE_MS ?? 30000)) => {
   let last = { page: -1, wire: -1, cam: false };
+  let stableFor = 0;
+  let prev = -1;
   for (let t = 0; t < limitMs; t += 100) {
     last = await browserLag();
-    // ⚠ `waited` IS REPORTED, or this is an instrument nobody can falsify. A wait
-    // that never fires and a wait that is not wired look identical from outside, and
-    // the whole point is to know whether the page was ever behind.
-    if (last.page >= last.wire && last.cam) return { ...last, waited: t };
+    if (last.cam) {
+      stableFor = last.page === prev ? stableFor + 100 : 0;
+      prev = last.page;
+      // ⚠ THE CAMERA IS STILL REQUIRED. The client draws NOTHING before its first
+      // `C:`, so a "stable" count with no camera is a stable blank page.
+      if (stableFor >= SETTLE_STABLE_MS) {
+        return { ...last, waited: t, settled: true };
+      }
+    } else {
+      stableFor = 0;
+      prev = -1;
+    }
     await sleep(100);
   }
-  console.log(`  !! the page never caught up — parts ${last.page}/${last.wire}`
-            + `, camera ${last.cam ? 'current' : 'STALE'}`);
-  return { ...last, waited: limitMs };
+  console.log(`  !! the page never settled — ${last.page} meshes seen against the`
+            + ` runner's ${last.wire} live, camera ${last.cam ? 'current' : 'STALE'},`
+            + ' still moving after ' + limitMs + 'ms. This frame is of an UNKNOWN'
+            + ' scene and no row may judge it');
+  return { ...last, waited: limitMs, settled: false };
 };
 
 // ⚠ SETTLE, THEN PHOTOGRAPH, ONCE — and hand back BOTH the PNG and the lag, so the
@@ -934,7 +969,7 @@ async function frameStats(cap) {
     sd: +(v.sd ?? 0).toFixed(4),
     bsd: Object.fromEntries(Object.entries(v.bsd ?? {}).map(([k, x]) => [k, +x.toFixed(4)])),
     samples: v.total, share, parts: lag.page, wire: lag.wire,
-    cam: lag.cam, waited: lag.waited,
+    cam: lag.cam, waited: lag.waited, settled: lag.settled !== false,
   };
 }
 
@@ -1252,6 +1287,23 @@ for (const raw of lines) {
     let fs2 = lastShot.stats;
     if (fs2.ok === false) {
       console.log(`  !! ${fs2.why}`);
+      if (rest[0] !== undefined) { frameFails += 1; }
+      continue;
+    }
+    // ⚠ **AN UNSETTLED FRAME IS NOT A FRAME THIS ROW MAY JUDGE.** `settle` waits for
+    // the page to hold every mesh the runner has seen; when it gives up, the shot is
+    // of a partly-built scene and the histogram describes something nobody asked for.
+    // Reporting it is fine — a number is a number — but a BAND applied to it is a
+    // verdict about an unknown, which is worse than no verdict at all.
+    //
+    // ⛔ **IT USED TO JUDGE ANYWAY.** Every camera gate was passing on frames taken
+    // after a timeout: measured 2026-08-24, the wait sat at `528/536` flat from t=10s
+    // to t=44s because the page announced its mesh count only every 300 frames, so
+    // equality was unreachable except by luck. The client reports on CHANGE now, which
+    // is what makes this refusal a real gate rather than a permanent red.
+    if (fs2.settled === false) {
+      console.log(`  !! the page never settled (${fs2.parts} seen / ${fs2.wire} live) `
+                + '— this row is about an unknown scene and will not judge it');
       if (rest[0] !== undefined) { frameFails += 1; }
       continue;
     }

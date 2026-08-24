@@ -3766,6 +3766,10 @@ fn main() {
 
   frames = 0;
   reported = 0;
+  // ⚠ THE LAST MESH COUNT THIS PAGE ANNOUNCED, which is not the same as the count it
+  // HOLDS — see the report below. A runner comparing its own live tally against a
+  // number refreshed every 300 frames can only reach equality by luck.
+  reported_mesh = 0 - 1;
   while graphics::gl_poll_events() {
     frames = frames + 1;
     // ── THE SURFACE MAY HAVE CHANGED SINCE LAST FRAME — plan 22 `B5` ──────────
@@ -4023,8 +4027,23 @@ fn main() {
     graphics::gl_swap_buffers();
     // Report once every ~300 frames rather than per frame: a gate reads this, and
     // a person watching a console should see progress without a flood.
-    if frames - reported >= 300 {
+    //
+    // ⛔ **AND THAT PERIOD MADE THE LINE UNUSABLE AS A READINESS SIGNAL, WHICH IS WHAT
+    // A GATE ACTUALLY READS IT FOR.** `tools/script.mjs` waits for the page's `meshes`
+    // to catch up with its own live tally before photographing. Against a count
+    // refreshed every 300 frames that is unreachable except by coincidence: measured
+    // 2026-08-24, the wait sat at `528/536` — eight short — FLAT from t=10s to t=44s,
+    // and the eight were not missing meshes but meshes that had arrived since the last
+    // print. Every camera gate was therefore photographing after a TIMEOUT and judging
+    // the result anyway.
+    //
+    // ⚠ **SO IT ALSO REPORTS WHENEVER THE COUNT MOVES**, bounded to one line per 30
+    // frames so streaming cannot flood a console. In steady state nothing changes and
+    // this stays as quiet as it was.
+    if frames - reported >= 300
+    || (st.c_mesh != reported_mesh && frames - reported >= 30) {
       reported = frames;
+      reported_mesh = st.c_mesh;
       println("client: {frames} frames — meshes {st.c_mesh}, placements {st.c_place}, "
               + "drops {st.c_drop}, cameras {st.c_cam}, status {st.c_status}, "
               + "parts {len(st.parts)}");
