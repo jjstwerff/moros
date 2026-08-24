@@ -59,6 +59,16 @@ editing"*. **Re-opening a blueprint means rebuilding it from the field**, which 
 authority. ⚠ If that round trip is lossy, the design fails — and §2 below names exactly where it
 is lossy today.
 
+⛔ **AND THE ROUND TRIP IS GATED FOR THE FOXEL BUT NOT FOR THE PALETTE — which is precisely the
+half this editor edits.** `@HB-X63` proves
+`write(rebuild(load(store(draw(read(T)))))) = T` byte-for-byte over six in-between directions, and
+then says in its own words: *"⚠ **`@HB-X12` and `@HB-X13` are NOT covered** — the palette
+(`wd_body`, `wd_thickness`, `ItemDef`/`MaterialDef` categories) is untouched and stays **T4**."*
+
+**So a blueprint's cells round-trip and its wall TYPES are untested.** A design whose whole
+premise is *author, extrude, recover* cannot rest on that quietly: `B1p` below must cover the
+palette, or the invariant is proven for the half that was never in doubt.
+
 ## 2. Three wall types, and the octagon is a MATERIAL because 45° is not a direction
 
 ### 2.1 Straight — the only one that is a heading
@@ -68,7 +78,19 @@ by `wall_read_run`, endpoints on triangle-lattice vertices. Measured 24 of 24 ro
 ([probe/l1](../../probe/l1/README.md)), and the editor now takes its geometry from there
 (plan 24 `H1a`–`H1e`).
 
-### 2.2 Round — an arc surface, exact everywhere
+### 2.2 Round — ✅ **`THICK_CURVED` ALREADY EXISTS**, and I proposed it anyway
+
+⚠ **THE SHAPE VOCABULARY IS ALREADY THERE AND I DID NOT LOOK.** `@HB-X12` —
+*"wall shape vocabulary `WallDef.wd_body`; thickness in the palette"* — and hexbody spells the
+list out:
+
+> `SOLID · HALF_HEIGHT · FENCE · BATTLEMENT · THICK_FLAT · **THICK_CURVED** · ROAD_GUIDE` — *"so
+> `THICK_CURVED` **is** the rounded slot, and an **octagon body is a new value in this
+> enumeration**, exactly the extension shape."*
+
+**So the rounded wall is not a new type to design — it is a palette body that has existed all
+along**, in `lib/moros_map/src/palette.loft` in this very tree. What follows is how it is *drawn*,
+which is still worth stating, but §2.2 was never an open question.
 
 `hex_edge::surf_arc(cx, cy, r)`, whose own comment is the argument for it: *"the normal is
 **radial**, so it is exact everywhere along the curve — no faceting, no mesh."* A round wall is
@@ -87,6 +109,17 @@ absent from the lattice.
 **So an octagonal face can never be a straight wall, at any tolerance, and that is why it is its
 own material rather than another heading.** `hex_editor::WALL_MAT` carries a `d ∈ D`; the
 octagonal material carries a **construction** instead.
+
+✅ **AND HEXBODY HAS ALREADY NAMED THE MECHANISM — the ask is far smaller than §5 first said.**
+An octagon is *"a new value in this enumeration, **exactly the extension shape**"*. `@HB-X69` says
+why that is cheap: the vocabularies are **open** — *"`text` with the value lists only in comments
+… so this is an open vocabulary, and `fits?` is finite only **relative to a palette**, which is
+exactly why the palette is the designed extension point."*
+
+⚠ **SO WHAT IS NEW HERE IS THE ARITHMETIC, NOT THE PROPOSAL.** The 45° irrationality above is the
+*reason* an octagon needs a body of its own rather than a heading; the *place to put it* was
+already decided upstream, and this design would have been a page shorter had `@HB-X12` been read
+first.
 
 ⚠ **AND IT IS DRAWABLE, WHICH IS THE PART THAT MAKES THIS POSSIBLE AT ALL.**
 `hex_edge::surf_straight(s, nx, ny, c)` takes an **arbitrary float normal** — its own header says
@@ -202,14 +235,22 @@ door. **This is library work, upstream, and it should be raised before any of it
 
 > *"It should paint the exact thickness of walls."*
 
-The constants are the library's and they are exact in `ℚ(√3)` — `FORMAL_CORE` §6.2:
-`BAND_TOPS = 1/2`, `BAND_SIDES = √3/2`, ratio exactly `√3`, with the widening rule
-`(√3−1)/2` total and `(√3−1)/4` per face. `hex_shape::wall_new(d24, ox, oy, **half**, mat)`
-already takes a half-width, and `WALL_W = 0.28867513459481287` is `1/(2√3)`.
+⛔ **AND THIS SECTION HAD THE DATA MODEL WRONG.** It read *"the author can see and set it **per
+wall**"*. Thickness is **not** a per-wall value and cannot be: `@HB-X12` puts it in the
+**palette**, and `@HB-X69` shows that is forced rather than chosen —
 
-⚠ **SO THICKNESS IS ALREADY A PARAMETER AND MUST NOT BECOME A SECOND CONSTANT HERE.** What the
-blueprint adds is that the author can *see* and *set* it per wall — the number is the library's,
-the choice is the author's.
+> *"`wd_thickness` is palette-side **by necessity**: a uniform wall's 38 edges carry **1** distinct
+> id and nothing else, so a per-edge thickness would be an eighth slot, which `L13` forbids."*
+
+**A cell stores a wall *id*; the `WallDef` behind it carries `wd_body` and `wd_thickness: float`.**
+So the blueprint gesture is *choose or define a wall TYPE*, not *drag a thickness handle on this
+wall*. Two walls of different thickness are two palette entries, and that is the model working as
+designed — `@HB-X69` again: *"the palette is the designed extension point."*
+
+⚠ **THE DRAWING CONSTANTS ARE A SEPARATE LAYER AND BOTH ARE TRUE.** `hex_shape::wall_new(d24, ox,
+oy, **half**, mat)` takes a half-width because that is what a *renderer* needs; `FORMAL_CORE` §6.2
+gives the exact band constants in `ℚ(√3)`. What the palette decides is which half-width a given
+wall id resolves to. Conflating the two is how a second constant gets introduced.
 
 ### 3.4 Floors side by side
 
@@ -243,7 +284,7 @@ All four already have their answer written down and none of them is new work her
 | probe | question | why it could kill the design |
 |---|---|---|
 | **`B0p`** | **at what size is an octagon uniquely deducible from its cells?** Rasterise octagons at radii 1…12, and for each ask `rebuild_construct` and `arc_is_disk` what they see. ⚠ The control: a hexagon and a disc of the same radius must be told apart from the octagon, or "unique" means nothing | if the threshold is large, small towers reload as discs — and §2.5's whole claim is that a threshold exists |
-| **`B1p`** | **does a bay round-trip?** Author a wall + bay, `draw` it, `rebuild` it, compare. | if the parent's feature list does not survive, §2.4's recovery is fiction and the bay needs its own record — which is the second authority §1 forbids |
+| **`B1p`** | **does a bay round-trip — INCLUDING ITS PALETTE?** Author a wall + bay, `draw`, `rebuild`, compare. ⚠ **The palette half is the point**: `@HB-X63` gates the foxel and explicitly leaves `wd_body`/`wd_thickness` at **T4**, so a fixture that only compares cells re-proves the half that was never in doubt | if the parent's feature list does not survive, §2.4's recovery is fiction and the bay needs its own record — the second authority §1 forbids. And if the wall TYPE does not survive, every blueprint reopens as `SOLID` |
 | **`B2p`** | **can `cut_arb` place a 45° face at all, exactly?** One wall, one bay, count the edges each surface claims. Control: a fixed "always the parent" rule must strand edges | this is `@HB-X55`'s measurement one shape over — it found 112/112 with a stencil against world linework, so the mechanism is proven; the bay is a harder case |
 | **`B3p`** | **does the walker move with no collision `EdgeSet`?** | trivial, and it is the one that says §3.1 is an absence rather than a flag |
 
@@ -253,8 +294,11 @@ usable sizes, a tower must carry a description and §1's one-authority invariant
 
 ## 5. What must go to hexbody first
 
-1. **The octagonal material** (§2.3–§2.5) — a new material with a construction rather than a
-   heading, and a `Form` that provably cannot express it. That is formal-core territory.
+1. ◐ **The octagonal body** (§2.3–§2.5) — ⚠ **mostly answered already**: hexbody names an octagon
+   as *"a new value in this enumeration, exactly the extension shape"*, and `@HB-X69` makes the
+   vocabulary explicitly open. What is genuinely new to send is the **arithmetic** (45° is
+   irrational on this lattice, so it can never be a `D` heading) and the consequence that a
+   regular octagon is **not a `Form`** — law J needs 1.5 twelfths per turn.
 2. **The bay as a projecting feature** (§2.4) — an extension of `@HB-X70`'s taxonomy from *perforates*
    to *projects*.
 3. **The size threshold** (§2.5) — `B0p` measures it here; the *rule* belongs there.

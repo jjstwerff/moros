@@ -506,7 +506,14 @@ address (or the hostname `make browser` prints) cannot connect.
   *perforates* to *projects*), recovered from the parent's feature list because **45° was never
   stored**; a **tower** has no parent and must be deduced from the field, which is `§6`'s R1/R2
   boundary and the one number this design lacks. ⚠ And a regular octagon **is not a `Form`** —
-  eight 45° turns need 1.5 twelfths each, so law J refuses it and `rebuild` cannot return it
+  eight 45° turns need 1.5 twelfths each, so law J refuses it and `rebuild` cannot return it.
+  ⚠ **AND MOST OF ITS §2 WAS ALREADY ANSWERED UPSTREAM, FOUND ONLY AFTER IT WAS WRITTEN**:
+  `@HB-X12`'s `WallDef.wd_body` is a shape vocabulary that already carries `THICK_CURVED` — the
+  rounded slot — and hexbody names an octagon as *"a new value in this enumeration, exactly the
+  extension shape"*. Thickness is **palette-side by necessity** (`@HB-X69`: a uniform wall's 38
+  edges carry one id, so a per-edge thickness would be an eighth slot `L13` forbids), so the
+  gesture is *choose a wall TYPE*, never *drag a thickness handle*. ⛔ And `@HB-X63` gates the
+  round trip for the foxel while leaving the **palette** at T4 — the half a blueprint edits
 - [House rooms](doc/claude/HOUSE_ROOMS.md) — **a house is a floor plan of boxes**: rooms are the
   house we already have, placed again adjacent, and a stair adds a LEVEL. ⚠ Its two live findings:
   `place_house`'s `D2b` guard **refuses exactly this** (it asks *does the footprint overlap a
