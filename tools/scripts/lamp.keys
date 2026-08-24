@@ -6,6 +6,22 @@
 # already puts it 5 cm from the eye, and "in" from there costs depth precision that
 # is already 1:8000.
 #
+# ✅ **AND THE ANSWER IS YES, MEASURED 2026-08-24 — the lamp adds CONTRAST while
+# taking light away.** At the same place, mid-floor:
+#
+#   FOLLOW inside   lum 0.2706   sd 0.0857
+#   SNUG   inside   lum 0.1654   sd 0.1255     darker by a third, 46% more spread
+#
+# ⛔ **NONE OF THAT WAS BEING CHECKED, AND TWO ROWS PHOTOGRAPHED NOTHING.** Every
+# `frame` here was the bare form, which REPORTS and judges nothing — and the two FOLLOW
+# rows had no `snap` before them at all, so they were "a row about an unknown scene"
+# by `frame`'s own definition. They are the CONTROL the SNUG rows are read against, so
+# the comparison this file exists to make had never been made once.
+#
+# ⚠ **THE TWO `sd` BANDS ARE DISJOINT ON PURPOSE.** FOLLOW inside must stay under
+# 0.098 and SNUG must clear 0.105 — so a change that made SNUG light the room like
+# FOLLOW breaks one of them. A pair of overlapping bands would pass either way.
+#
 # ⚠ TWO NUMBERS THE MEAN CANNOT GIVE. A lamp lights what is NEAR and leaves what is
 # far, so what it adds is CONTRAST — and "a black frame is not atmosphere" has two
 # shapes, black and flat grey, both of which have a spread of zero. `sd` is the
@@ -27,29 +43,34 @@ echo --- FOLLOW outdoors, the control: full light, full boom
 send 40:1
 at 0 -10 90
 step 120
-frame
+snap s13-follow-out
+frame 0 0.85 lum 0.30 0.48 sd 0.09 0.16
 
 echo --- FOLLOW inside, mid-floor
 at 0 0 90
 step 120
-frame
+snap s13-follow-mid
+# ⚠ THE CEILING OF 0.098 IS HALF THE CLAIM — see the SNUG row below.
+frame 0 0.85 lum 0.20 0.34 sd 0.060 0.098
 
 echo --- SNUG, chosen, mid-floor: the SAME geometry, only the light differs
 send 40:2
 at 0 0 90
 step 120
 snap s13-snug-mid
-frame
+# ⚠ THE FLOOR OF 0.105 IS THE OTHER HALF: the same geometry, only the light differs,
+# and SNUG must come out DARKER and with MORE spread than the FOLLOW row above.
+frame 0 0.85 lum 0.11 0.22 sd 0.105 0.16
 
 echo --- SNUG close to the wall, where AUTO would have reached it anyway
 at 0 -1.5 90
 step 120
 snap s13-snug-wall
-frame
+frame 0 0.85 lum 0.10 0.19 sd 0.09 0.15
 
 echo --- SNUG at the ridge, looking up — where the near/far ratio would show
 at 0 2 90
 send 3:0,-4000
 step 120
 snap s13-snug-ridge
-frame
+frame 0 0.85 lum 0.11 0.21 sd 0.09 0.15
