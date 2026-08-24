@@ -61,7 +61,7 @@ eyes**, not a report: something to open, drive, and judge.
 | 8a | ↳ storeys and cellars — the layer stack, end to end | #12 | ✅ | `tools/gates/world/storey.mjs` |
 | 8b | ↳ stencils — a structure placed as a BAND (`P1`/`P2`) | #12 | ✅ | `tools/gates/world/stencil.mjs` + `hex_voxel/tests/stencil.loft` |
 | 8c | ↳ roofs — derived pitch, own material, own mesh | #12 | ✅ | eave 61 → mid 65 → ridge 69, exact |
-| 8d | ↳ openings — a door is a material, never a cleared edge (`X70`) | #12 | ✅ | `tools/gates/world/opening.mjs` |
+| 8d | ↳ openings — a door is a material, never a cleared edge (`@HB-X70`) | #12 | ✅ | `tools/gates/world/opening.mjs` |
 | 8e | ↳ the `K-FIT` doorstep — reason, offer, residual; nominal ≠ ordinal | #12 | ✅ | `tools/gates/world/doorstep.mjs`, both leak-site controls seen red |
 | 8f | ↳ **the stair** — `30:`, one stride a press, and the walk on the surface rule | #12 | ✅ | `tools/gates/character/deck.mjs`; three mutations seen red. An upper storey is somewhere you can STAND, which is what made the deck half of the camera's, the road's and the walk's rules testable at all |
 | 8g | ↳ **the floor has a picture** — the seventh surface, flat at its stored height, with a slab edge | #12 | ✅ | same gate. Found by standing on a deck and hanging in the air: every terrain mesh was built from the OUTDOORS, so a storey's deck and a cellar's floor were walkable and undrawn |
@@ -167,7 +167,7 @@ The gate mutation-checks both: reinstating the last-cell read turns it red, and 
 does removing the floor check.
 
 **Still open on #12**: stencils writing a whole column at once, roofs as their own
-geometry, openings (`X70` — an opening is not absence), and the `K-FIT` doorstep.
+geometry, openings (`@HB-X70` — an opening is not absence), and the `K-FIT` doorstep.
 
 ### Open: the gate harness, and a server that stops answering
 
@@ -350,11 +350,11 @@ seconds, is what identified the box rather than the code. The rule: before
 optimising the thing you just changed, measure the thing you did not.
 
 
-## What rung 8d settled — `X70`, and the number that proves it
+## What rung 8d settled — `@HB-X70`, and the number that proves it
 
 A door is a WALL MATERIAL (`DOOR_MAT`), not a missing wall. Moros used to store
 one as material 0, and hexbody measured the cost: the wall run breaks, **38 edges
-with 0 ends becoming 36 with 2**. `X70` turned that into a decision, and `L13`
+with 0 ends becoming 36 with 2**. `@HB-X70` turned that into a decision, and `L13`
 makes us the palette's owner, so the opening material is ours to define.
 
 The claim is countable, so the gate counts it: a radius-2 footprint has twelve
@@ -369,7 +369,7 @@ it the gate would pass just as well for an editor that put walls on everything.
 **Named, not hidden:** the wall set is "the three owned edges of every outer-ring
 cell", not a geometrically exact perimeter. Which edges truly bound a footprint is
 the `K-FIT` question and is still open — and `wall_n`/`wall_se` are still named for
-edges they do not hold (plan §10.4). What `X70` needs is only that a doorway holds
+edges they do not hold (plan §10.4). What `@HB-X70` needs is only that a doorway holds
 an opening rather than a zero, and that is what is gated.
 
 
@@ -396,7 +396,7 @@ for an ORDINAL parameter — a height, a length — where a nearest admissible v
 exists and the distance to it is a correction. For a NOMINAL one — a material, a
 species, a palette index — there is no "nearly": 255 is not almost 256, and
 offering it reads as a small correction while changing what the wall is made of
-(`X68`). So:
+(`@HB-X68`). So:
 
 > `scatter refused — species 9 is not a species; nominal, so there is no nearest one`
 
@@ -692,7 +692,7 @@ the same mistake. Two wrongs that agree read exactly like a right.
 | mutation | what the gate saw |
 |---|---|
 | mark the ring's own three edges (the naive loop) | 15 of 30 boundary edges, **0 stored outside**, and 36 bytes written — too many edges AND too few of the right ones |
-| store the gateway as absence (`X70`) | 29 edges, and the fill **leaks out and is refused** — "an enclosure with a doorway is still enclosed" is the difference between 19 cells and no field at all |
+| store the gateway as absence (`@HB-X70`) | 29 edges, and the fill **leaks out and is refused** — "an enclosure with a doorway is still enclosed" is the difference between 19 cells and no field at all |
 | the parity-blind distance, in the fence alone | 16 edges — and `7` outside at even rows against `9` at odd, which is the parity signature made visible, and why the gate rings four centres |
 
 ### The counts that are now pinned

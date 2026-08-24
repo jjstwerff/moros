@@ -32,7 +32,7 @@
 //   · raising the ground under it does not delete it, and the terrain write
 //     that raises it is exactly the one that used to blank a dressing slot;
 //   · props ACCUMULATE in a cell rather than replacing each other;
-//   · a prop index outside the palette is refused NOMINALLY — no offer (`X68`).
+//   · a prop index outside the palette is refused NOMINALLY — no offer (`@HB-X68`).
 
 import { connect, send, ask, report } from '../lib.mjs';
 

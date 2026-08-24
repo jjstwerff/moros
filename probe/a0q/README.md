@@ -19,7 +19,7 @@ make probe-a0q
 
 ## ⚠ The corroboration that makes §1 mean something
 
-`X47`'s own control, upstream, reads: *"the scatter a least-squares fit would threshold is `0`
+`@HB-X47`'s own control, upstream, reads: *"the scatter a least-squares fit would threshold is `0`
 east and **`0.9167`** north."*
 
 This tree measures the north family at **`0.9166666666666679`** — to the digit, from a different
@@ -68,7 +68,7 @@ side 1: span (4.33012701892,  3.75) → (-4.33012701892, 3.75) 10 edges
 The ends come out, exactly, and the two families differ as §6.2 says they must
 (`0.8660 = √3/2` against `0.5`). ⚠ **But this does not close plan 24's open question 1**, which
 is about a **free run** whose ends were quantised away by the stamp. Here the ends come from the
-plan's own corners, and `X62` is explicit that what a miter recovers is the **cell-region**
+plan's own corners, and `@HB-X62` is explicit that what a miter recovers is the **cell-region**
 corner, not the continuous model corner — *"the drift is `0.47946432048171` at every corner,
 spread `1.33e-15`, a uniform bias, not scatter"*. Domain A's ends are exact because a plan is
 there to be exact about. Question 1 stays open, and stays upstream.

@@ -3,7 +3,7 @@
 //
 // S5 — AN OPENING IS A MATERIAL, AND THE WALL STAYS WHOLE.
 //
-// ⚠ `X70`, measured before it was a rule. Moros stored a door as wall material 0
+// ⚠ `@HB-X70`, measured before it was a rule. Moros stored a door as wall material 0
 // once, and hexbody measured what that costs: the wall RUN breaks — 38 edges with
 // 0 ends becoming 36 with 2 — because a cleared edge cannot be told from no edge,
 // so the recovery that finds a wall loses its middle. The boundary is still there;
@@ -365,7 +365,7 @@ fn test_the_selection_decides_what_the_next_opening_cuts() {
 
 // ⚠ THE STORE IS WRITTEN TOO, and that is why this wraps `open_ahead` rather than
 // only `opening_make`. The edge material is the store's index of which boundary is
-// passable — `X70` — and a gesture that set the shape and left the wall solid would
+// passable — `@HB-X70` — and a gesture that set the shape and left the wall solid would
 // draw a hole nobody can walk through.
 fn test_the_opening_gesture_writes_the_edge_as_well_as_the_shape() {
   w = walled();

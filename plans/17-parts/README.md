@@ -481,7 +481,7 @@ answered `NameFit`; this answers `SocketFit`.
 ⚠ **AND THE COLLISION WAS NOT A COINCIDENCE — THE EDITOR HAD ALREADY SETTLED THE HARD PART.** Its
 `Fit` splits parameters into ORDINAL and NOMINAL: *"255 is not 'nearly' 256, it is a different
 thing entirely, and offering it reads as a small correction while changing what the wall is made
-of"* (`X68`). **A size class is nominal by exactly that argument** — which this step had already
+of"* (`@HB-X68`). **A size class is nominal by exactly that argument** — which this step had already
 concluded from §P3's own examples, independently, before the build broke.
 
 ⚠ **SO *"a leaf too wide is refused with … the NEAREST leaf that fits"* PRESUMES AN ORDERING THE

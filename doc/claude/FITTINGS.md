@@ -88,7 +88,7 @@ The hole is `(seg, s0, s1, y0, y1)` in the run's own parameter. The cells and ed
 crosses are an **index**, derived from it — the same relation `hex_way` already has between
 a way and its band.
 
-⚠ **This does not contradict `X70`.** *"A door is a material, never a cleared edge"* is about
+⚠ **This does not contradict `@HB-X70`.** *"A door is a material, never a cleared edge"* is about
 the FILL: an enclosure with a doorway is still enclosed, so the edge keeps `DOOR_MAT` and a
 field cannot leak out of it. The edge byte remains the index; the range is the truth. Both,
 and neither alone.

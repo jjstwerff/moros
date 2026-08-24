@@ -100,7 +100,7 @@ fn test_the_wall_run_stays_on_the_authors_line() {
 // *0.2 rad snaps to heading 1 with residual `0.2 - WALL_SNAP`*.
 //
 // Both are now false about the editor. `WALL_SNAP`'s `2*pi/24` grid asks for
-// directions the lattice cannot express — `X31`: no odd multiple of 15 degrees is
+// directions the lattice cannot express — `@HB-X31`: no odd multiple of 15 degrees is
 // reachable — so heading 1 is `13.898` degrees and not `15`, and a residual measured
 // against `15` was measuring against a direction no wall can take.
 //

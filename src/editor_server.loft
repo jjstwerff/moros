@@ -647,7 +647,7 @@ const W_THETA      = hex_editor::WORLD_THETA;
 // ⚠ AND ITS COLOUR IS `surfaces()`'s, with the argument that chose it: a floor in
 // the wall's own pale grey left a room with no corner in it and made
 // `camera-frame`'s *no single surface over 60%* unmeasurable.
-// ── `X70` — AN OPENING IS NEVER ABSENCE ─────────────────────────────────────
+// ── `@HB-X70` — AN OPENING IS NEVER ABSENCE ─────────────────────────────────────
 //
 // A door is a WALL MATERIAL, not a missing wall. Moros used to store one as
 // material 0, and hexbody measured what that costs: the wall run breaks, 38
@@ -658,7 +658,7 @@ const W_THETA      = hex_editor::WORLD_THETA;
 //
 // `L13` makes us the palette's owner, so the opening material is ours to define.
 // How tall each stands, in height units. A door draws NOTHING and is still a
-// boundary — `X70` is about the storage, and a doorway you can see through is
+// boundary — `@HB-X70` is about the storage, and a doorway you can see through is
 // what the geometry of an opening looks like.
 // WALL_MAT / DOOR_MAT / FENCE_MAT / FENCE_R are `hex_editor`'s now — the wall
 // vocabulary belongs with the gestures that write it.
@@ -5141,7 +5141,7 @@ fn main() {
                                     ev.payload as integer ?? 1);
           if pdr.dr_code == hex_editor::DR_ITEM {
             // A prop's identity is a NAME in a palette, not a magnitude — so the
-            // doorstep refuses it without an offer (`X68`).
+            // doorstep refuses it without an offer (`@HB-X68`).
             srv.send_to(ev.cid, "S:prop refused — {fit_why(pdr.dr_fit)}");
             println("editor: prop refused — {fit_why(pdr.dr_fit)}");
             continue;
@@ -5591,7 +5591,7 @@ fn main() {
           // outline — 0 flat, 1 round, 2 pointed, 3 segmental, 4 an oculus — and the
           // hole is cut to the SHAPE that goes in it rather than to a whole number
           // of hex edges. The edge material still changes, because that is the
-          // store's index of which boundary is passable and what `X70` protects;
+          // store's index of which boundary is passable and what `@HB-X70` protects;
           // the profile is what the picture and the fitting read.
           // ⚠ SHAPE AND DEPTH ARE INDEPENDENT AXES, so the payload carries both:
           // the units are the outline and the tens are how far it goes. `11` is a

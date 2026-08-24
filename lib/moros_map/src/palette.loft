@@ -13,7 +13,7 @@
 //
 // hexbody's `tests/palette.loft` gates exactly this split from the outside — it
 // asserts the cell types contain no `float` and that `wd_thickness: float` is
-// here.  `X12` is the rule; this file is the other half of it.
+// here.  `@HB-X12` is the rule; this file is the other half of it.
 //
 // ── SLOT 0 IS ABSENCE, IN ALL THREE TABLES ───────────────────────────────────
 //

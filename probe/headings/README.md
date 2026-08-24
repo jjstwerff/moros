@@ -10,10 +10,10 @@ is the clearest possible statement that a plausible derivation is not an adoptio
 | | |
 |---|---|
 | **12 exact** | the even ones, `0.0000°` off nominal |
-| **12 in-between** | a **uniform** `1.1021°` bias, spread `0.0000°` — vector `N = 39` `(7,−2)`, period `√39 u`, chosen so `δ = 0` and linework links to house angles unconditionally (`X56`) |
+| **12 in-between** | a **uniform** `1.1021°` bias, spread `0.0000°` — vector `N = 39` `(7,−2)`, period `√39 u`, chosen so `δ = 0` and linework links to house angles unconditionally (`@HB-X56`) |
 
-So `D` is **not** 24 exact directions, and it is **not** the set enumerated below. `X31` settles
-the part this probe got right — *no odd multiple of 15° is reachable at all* — and `X29` gates
+So `D` is **not** 24 exact directions, and it is **not** the set enumerated below. `@HB-X31` settles
+the part this probe got right — *no odd multiple of 15° is reachable at all* — and `@HB-X29` gates
 what the in-between twelve actually cost.
 
 ⚠ **WHAT IS BELOW IS STILL A REAL MEASUREMENT, OF A DIFFERENT QUESTION**: *which directions can a
@@ -90,9 +90,9 @@ answer to a different question.
 ## What this changes — as corrected
 
 - `hex_editor::HEADINGS = 24` / `WALL_SNAP = 2π/24` / `snap_heading`'s `atan2` — **our own float
-  algorithm, asking for directions that do not exist** (`X31`). It goes.
+  algorithm, asking for directions that do not exist** (`@HB-X31`). It goes.
 - What replaces it is **`D` as hexbody defines it**, from a library: 12 exact + 12 at `(7,−2)`
-  with a uniform `1.1021°` bias. ⚠ **Not a table we choose** — `X56` searched `N ≤ 400`
+  with a uniform `1.1021°` bias. ⚠ **Not a table we choose** — `@HB-X56` searched `N ≤ 400`
   exhaustively and reports that no vector improves the angle while keeping both the grid and
   `δ = 0`.
 - ⚠ **Walls already stored were snapped to the uniform 15° grid**, so their headings are off a

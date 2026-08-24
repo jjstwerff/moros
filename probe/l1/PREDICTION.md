@@ -13,7 +13,7 @@ library talking to itself. `L1`'s real question is different and is the one the 
 | # | prediction | confidence | if wrong |
 |---|---|---|---|
 | **P1** | the control passes — `wall_write` → `edges_around`'s bridge → `wall_read_run` recovers | high | the bridge is wrong and P2 says nothing |
-| **P2** | **our stamp mostly does NOT recover** — well under 24 | **high** | `D` and our grid coincide far more than `X31` suggests |
+| **P2** | **our stamp mostly does NOT recover** — well under 24 | **high** | `D` and our grid coincide far more than `@HB-X31` suggests |
 | **P3** | the ones that DO recover are the **even** `d24` — the 12 exact headings, where our nominal 15° grid and `D` agree | medium | the failure is not about the direction set |
 | **P4** | the failures are **`ok = false`** (no direction found), not a wrong direction | medium | `wall_read_run` guesses where it should refuse, which would be a defect worth filing |
 

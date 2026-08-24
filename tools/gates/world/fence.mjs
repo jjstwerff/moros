@@ -42,7 +42,7 @@ const reports = /^fenced (\d+) edges, (\d+) stored outside, radius (\d+) materia
 const saysCounts = laid.includes(`fenced ${6 * (2 * R + 1)} edges`)
                 && laid.includes(`${3 * (2 * R + 1)} stored outside`);
 
-// ⚠ THE DOORSTEP REACHES THE WIRE INTACT — `X68`. A nominal refusal must arrive WITHOUT
+// ⚠ THE DOORSTEP REACHES THE WIRE INTACT — `@HB-X68`. A nominal refusal must arrive WITHOUT
 // an offer and an ordinal one WITH it; the library decides that, and this is the only
 // place that checks it survives being said.
 await send(g, '7:20,20,0', ['placed']);

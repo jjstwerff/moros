@@ -78,7 +78,7 @@ the yard **two units above its own fence**.
 
 ⚠ **THE FLOOD NEEDS NO KNOWLEDGE OF EDGES.** A fence's owner cell is already fabric, so a flood
 walking only NON-fabric cells stops at the ring by construction — and a **gate** stops it too,
-because an opening is a `DOOR_MAT` edge on an owner that is still fabric. `X70` arriving for
+because an opening is a `DOOR_MAT` edge on an owner that is still fabric. `@HB-X70` arriving for
 free: *an opening is not an absence*. That is also what *"mostly"* buys — a doorway does not
 break an enclosure, only a missing stretch of fence does.
 

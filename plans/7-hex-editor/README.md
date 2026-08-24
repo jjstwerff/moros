@@ -152,7 +152,7 @@ is actually made of, all of it gated upstream:
 | edge blocking · passability | `hex_edge::collide`, `passable` | crawler's `edgetest` |
 | its own collision volume | `hex_body::bone_obb` — a proxy **⊇** its shape with a *stated* bound | `joint.loft` §5, 564/564 points |
 | footing | `hex_field::Heights` | `hex_field`'s suite |
-| exactness while moving | `I-FSEAM` — the pose transform is the sole float step, `ε ≈ 7.1e-15`, exact inside a frame | `seam.loft` (`X53`) |
+| exactness while moving | `I-FSEAM` — the pose transform is the sole float step, `ε ≈ 7.1e-15`, exact inside a frame | `seam.loft` (`@HB-X53`) |
 
 ⚠ **One piece is genuinely missing upstream**: hexbody's **`G3`/`I5`** — *two bodies interact iff
 their swept volumes cross, `dt`-independent, through one function* — is **not built**; it is
@@ -199,8 +199,8 @@ and every one of them is a silent-data-loss bug if we get it wrong.
 
 **This is the fifth instance of a pattern hexbody already earned four times:** *the round trip
 survives exactly when the feature lands in a slot the recovery does not read* — a door is a
-**material** (`X51`), a level is a **filter before the cut** (`X58`), terrain is a **height**
-(`X59`), an embedded run is a **material on interior edges** (`X60`). Every time, the tempting
+**material** (`@HB-X51`), a level is a **filter before the cut** (`@HB-X58`), terrain is a **height**
+(`@HB-X59`), an embedded run is a **material on interior edges** (`@HB-X60`). Every time, the tempting
 design changed the cells and the control was to do exactly that and watch recovery break. Reach
 for it **first** on every anchor kind below.
 
@@ -229,7 +229,7 @@ it changes. That keeps the layer count flat, which is where every narrowing toda
 The doorstep is already built and already the right shape: **a joint value is ordinal**, so a
 refusal **owes an offer** — `joint_fits` · `joint_offer` · `joint_residual` in `hex_body`, gated by
 `joint.loft` §3. Unlike a material id, clamping to a limit is a real correction the editor can
-show (`X68`).
+show (`@HB-X68`).
 
 **The three-way split, stated so nobody builds the wrong third:**
 
@@ -582,7 +582,7 @@ platform rather than an application.
 | # | inv | leak | control |
 |---|---|---|---|
 | 1 | I | a tool writes a cell without consulting `fits?` | bypass the doorstep → an off-grid value snaps silently |
-| 2 | I | a **nominal** parameter offered as if ordinal | offer material `255` for `256` → reads as a small correction, changes what the wall is made of (`X68`) |
+| 2 | I | a **nominal** parameter offered as if ordinal | offer material `255` for `256` → reads as a small correction, changes what the wall is made of (`@HB-X68`) |
 | 3 | I | the in-between quantum (`√39` wu = 5.408 m) applied without showing admissible lengths | author a length between multiples → must refuse, not snap |
 | 4 | I | a stamp drops content | asymmetric stencil only — a symmetric subject cannot detect a symmetric loss (17 walls stamped as 8) |
 | 5 | I | undo restores the field but not the model | undo an R1 edit → both halves return byte-identically |
@@ -853,7 +853,7 @@ becoming five prototypes.
    the wrong reason — it watches our round trip, not the format's capability, so it cannot fail
    while our own writer is what drops the data. **W0** (the round-trip obligation).
 3. **Moros stores a door as material 0.** hexbody measured that this *breaks the wall run*
-   (38 edges / 0 ends → 36 / 2); `X70` makes *an opening is never absence* a decision. Needs an
+   (38 edges / 0 ends → 36 / 2); `@HB-X70` makes *an opening is never absence* a decision. Needs an
    opening material and an opening `wd_body` — **ours**, since `L13` makes us the palette's owner.
    **W4** — a door needs surfaces; until then it is a fixture defect.
 4. **`wall_n` / `wall_se` are named for edges they do not hold** (NW / E) — #3.

@@ -356,7 +356,7 @@ pub fn session_select_part(s: EditSession, name: text) -> Ack {
 // handler there was nothing here to consume it.
 //
 // ⚠ BOTH HALVES, IN THE HANDLER'S OWN ORDER. `open_ahead` writes the store — the
-// edge material, which is what `X70` protects — and `opening_make` decides the
+// edge material, which is what `@HB-X70` protects — and `opening_make` decides the
 // SHAPE, which lives beside the store because a profile is the picture's business.
 // A wrapper that did only the second would leave a hole in the drawing and a whole
 // wall in the world.
@@ -887,7 +887,7 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
       //
       // ⚠ AND IT WAS ALWAYS WRONG FOR THE ODD HEADINGS, WHICH IS THE PART TO KEEP.
       // The gate reconstructs at `step * 15°`; `D`'s in-between twelve sit
-      // `1.1021°` off nominal (`X29`). Over the 24.98-unit run this gate walks that
+      // `1.1021°` off nominal (`@HB-X29`). Over the 24.98-unit run this gate walks that
       // is a perpendicular fan of `24.98 * tan(1.1021°) = 0.48` — so the ruler was
       // bent before `H1b` and only happened to agree while our own snap was bent the
       // same way.

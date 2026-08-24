@@ -13,7 +13,7 @@
 // ever asked the library to do this job on its own terms.
 //
 // [FORMAL_CORE](../../doc/claude/FORMAL_CORE.md) §6.1 is what is being checked, and
-// it is gated upstream as `X47`. ⚠ **This re-measures it HERE**, which is not
+// it is gated upstream as `@HB-X47`. ⚠ **This re-measures it HERE**, which is not
 // redundant: a consumer's registry versions, its toolchain and its own build are
 // where a library claim either holds or does not, and "green in the workshop" is a
 // fact about the workshop.
@@ -178,7 +178,7 @@ fn main() {
 
   // ── §2c  THE STRAIGHTNESS INSTRUMENT, WHICH IS A DIFFERENT FUNCTION ───────
   //
-  // ⚠ AND ITS CLEAN VALUE IS THE CORROBORATION THAT MATTERS. `X47`'s own control
+  // ⚠ AND ITS CLEAN VALUE IS THE CORROBORATION THAT MATTERS. `@HB-X47`'s own control
   // reads *"the scatter a least-squares fit would threshold is 0 east and 0.9167
   // north"*. If this tree reproduces that number to the digit, then §1 is calling
   // the same function hexbody gated, on the same geometry — which is the whole
@@ -194,7 +194,7 @@ fn main() {
   lo = surface_lsq_residual(pl4, c_ok, 0);
   hi = surface_lsq_residual(pl4, c_bad, 0);
   println("   side 0 (north family): clean lsq {lo} · one notch {hi}");
-  println("   `X47`'s gated control for the north family is 0.9166666666666679");
+  println("   `@HB-X47`'s gated control for the north family is 0.9166666666666679");
   if hi > lo {
     println("   ✅ the residual SEES the notch the heading could not");
   } else {
@@ -219,7 +219,7 @@ fn main() {
   }
   println("");
   println("   ⚠ read these against the plan's own corners before concluding —");
-  println("     `X62` says the miter recovers the CELL-REGION corner, not the");
+  println("     `@HB-X62` says the miter recovers the CELL-REGION corner, not the");
   println("     continuous model corner, which is quantised away before any");
   println("     surface exists. A span that differs from the model rectangle is");
   println("     therefore expected, and is not an endpoint error.");

@@ -107,13 +107,13 @@ reporter's two cases are genuinely two cases.
 > *"It can create a bay window from a straight wall."*
 
 A bay grows **out of** a parent straight wall. Formally it is the same category as an opening,
-which `X70` already settles: *"an opening is never 'no wall' — a door, a window and a real gap are
+which `@HB-X70` already settles: *"an opening is never 'no wall' — a door, a window and a real gap are
 all **materials on a wall that continues**"*, carried as spans by `hex_edge::Features`
 (`feature_add(surf, s0, s1, …)`, `apply_features`).
 
 **A bay is that, projecting instead of perforating:**
 
-| | opening (`X70`) | bay (proposed) |
+| | opening (`@HB-X70`) | bay (proposed) |
 |---|---|---|
 | carried as | a span on the parent wall's surface | a span on the parent wall's surface |
 | what it does to the wall | **perforates** — the wall continues past it | **projects** — the wall detours around it |
@@ -232,8 +232,8 @@ All four already have their answer written down and none of them is new work her
   to a partition. ⚠ **The blueprint makes that question urgent rather than answering it**: on a
   plan you can *see* the partition, so the default becomes visible the moment this ships.
 - **stairs** — a stair creates level `n+1`; `combine_cut_level` carries it.
-- **doors and windows** — `X70`'s palette (`OPEN_DOOR`, `OPEN_WINDOW`, `OPEN_GAP`), as spans via
-  `hex_edge::Features`. ⚠ And `X70` names a live defect first: `builtin_house_door` leaves the
+- **doors and windows** — `@HB-X70`'s palette (`OPEN_DOOR`, `OPEN_WINDOW`, `OPEN_GAP`), as spans via
+  `hex_edge::Features`. ⚠ And `@HB-X70` names a live defect first: `builtin_house_door` leaves the
   edge at material `0`, measured to **break the wall run** (36 edges / 2 dangling ends against
   38 / 0). Every door in a blueprint would inherit it.
 - **furniture** — parts and props, which the catalogue and `hex_part` already carry.
@@ -244,7 +244,7 @@ All four already have their answer written down and none of them is new work her
 |---|---|---|
 | **`B0p`** | **at what size is an octagon uniquely deducible from its cells?** Rasterise octagons at radii 1…12, and for each ask `rebuild_construct` and `arc_is_disk` what they see. ⚠ The control: a hexagon and a disc of the same radius must be told apart from the octagon, or "unique" means nothing | if the threshold is large, small towers reload as discs — and §2.5's whole claim is that a threshold exists |
 | **`B1p`** | **does a bay round-trip?** Author a wall + bay, `draw` it, `rebuild` it, compare. | if the parent's feature list does not survive, §2.4's recovery is fiction and the bay needs its own record — which is the second authority §1 forbids |
-| **`B2p`** | **can `cut_arb` place a 45° face at all, exactly?** One wall, one bay, count the edges each surface claims. Control: a fixed "always the parent" rule must strand edges | this is `X55`'s measurement one shape over — it found 112/112 with a stencil against world linework, so the mechanism is proven; the bay is a harder case |
+| **`B2p`** | **can `cut_arb` place a 45° face at all, exactly?** One wall, one bay, count the edges each surface claims. Control: a fixed "always the parent" rule must strand edges | this is `@HB-X55`'s measurement one shape over — it found 112/112 with a stencil against world linework, so the mechanism is proven; the bay is a harder case |
 | **`B3p`** | **does the walker move with no collision `EdgeSet`?** | trivial, and it is the one that says §3.1 is an absence rather than a flag |
 
 ⚠ **`B0p` FIRST, AND IT CAN BE RUN BEFORE ANYTHING IS BUILT.** It is the only one whose answer
@@ -255,7 +255,7 @@ usable sizes, a tower must carry a description and §1's one-authority invariant
 
 1. **The octagonal material** (§2.3–§2.5) — a new material with a construction rather than a
    heading, and a `Form` that provably cannot express it. That is formal-core territory.
-2. **The bay as a projecting feature** (§2.4) — an extension of `X70`'s taxonomy from *perforates*
+2. **The bay as a projecting feature** (§2.4) — an extension of `@HB-X70`'s taxonomy from *perforates*
    to *projects*.
 3. **The size threshold** (§2.5) — `B0p` measures it here; the *rule* belongs there.
 4. **Gamepad axes** (§3.2) — `graphics` and `input`, upstream, and unrelated to the geometry.

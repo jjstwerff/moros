@@ -45,7 +45,7 @@ pub const SF_NOTHING = 3;   // the part does not say what it fits at all
 // ⚠ AND THE COLLISION IS NOT A COINCIDENCE — THE EDITOR HAD ALREADY SETTLED THE
 // HARD PART. Its `Fit` splits parameters into ORDINAL and NOMINAL: *"255 is not
 // 'nearly' 256, it is a different thing entirely, and offering it reads as a small
-// correction while changing what the wall is made of"* (`X68`). A size class is
+// correction while changing what the wall is made of"* (`@HB-X68`). A size class is
 // **nominal** by exactly that argument, which is the same conclusion the header
 // above reaches from §P3's own three examples — reached twice, independently, and
 // the collision is what showed it. So `sf_offer` is not a NEAREST value; it is

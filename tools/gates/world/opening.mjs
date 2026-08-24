@@ -1,4 +1,4 @@
-// ⚠ THIS GATE'S CLAIM MOVED, AND THE GATE STAYS AS THE WIRE HALF OF IT. `X70` — a
+// ⚠ THIS GATE'S CLAIM MOVED, AND THE GATE STAYS AS THE WIRE HALF OF IT. `@HB-X70` — a
 // door is its own MATERIAL on the edge, never a cleared one, so the wall run keeps
 // every edge and one of them simply reads differently — is
 // `lib/hex_editor/tests/fence.loft` now: it rings a disc, turns one edge into a
@@ -8,11 +8,11 @@
 // What stays is that the editor's own `24:` gesture produces it end to end, and
 // says so — the count, the single door, and the interior cell that owns nothing
 // are the shape a script parses.
-// Opening gate (rung W4, moros#12) — `X70`: AN OPENING IS NEVER ABSENCE.
+// Opening gate (rung W4, moros#12) — `@HB-X70`: AN OPENING IS NEVER ABSENCE.
 //
 // Moros used to store a door as wall material 0. hexbody measured what that
 // costs — the wall run breaks, 38 edges with 0 ends becoming 36 with 2 — and
-// `X70` turned it into a decision: a door is its own MATERIAL on the edge, never
+// `@HB-X70` turned it into a decision: a door is its own MATERIAL on the edge, never
 // a cleared edge.
 //
 // The claim is therefore countable, and this gate counts it: putting a door into

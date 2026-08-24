@@ -180,7 +180,7 @@ pub fn run_wall_z(w: RunWall, i: integer) -> float { w.rw_cz[i] ?? 0.0 }
 // rectangle and `hex_shape::box_fill` its cells — no rasterisation of ours.
 //
 // ⚠ **TWELVE ORIENTATIONS, AND ONLY SIX OF THEM HAVE MITRED WALLS.** This is the
-// lattice's own `X24` — 6-fold symmetry, not 12 — and it decides what this gesture
+// lattice's own `@HB-X24` — 6-fold symmetry, not 12 — and it decides what this gesture
 // can promise. `Box` turns in 30° steps and splits into two orbits:
 //
 //   EVEN rot   local u on an EDGE heading. `Plan`'s six, exactly: an even-rot Box

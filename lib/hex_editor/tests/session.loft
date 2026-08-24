@@ -234,7 +234,7 @@ fn test_two_props_in_one_cell_accumulate_rather_than_replacing() {
 }
 
 // ⚠ A PROP IS A NAME IN A PALETTE, NOT A MAGNITUDE — so the doorstep refuses it
-// without an offer (`X68`). The gate reports the sentence; this holds the rule that
+// without an offer (`@HB-X68`). The gate reports the sentence; this holds the rule that
 // produces it.
 fn test_a_prop_outside_the_palette_is_refused_without_an_offer() {
   w = a_world();
@@ -250,7 +250,7 @@ fn test_a_prop_outside_the_palette_is_refused_without_an_offer() {
   // says nothing, and this one did until it went red for that reason.
   assert(!got.dr_fit.ft_ordinal,
          "a NOMINAL refusal was marked ordinal — a prop is a name in a palette, not "
-       + "a magnitude, so there is no nearest admissible value to offer (X68)");
+       + "a magnitude, so there is no nearest admissible value to offer (@HB-X68)");
   // …and nothing was written, which is the half a refusal string cannot say.
   (nq, nr) = hex_grid::px_to_hex(0.0, 0.0);
   assert(len(session_dressing(w, nq, nr)) == 0,

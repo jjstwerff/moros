@@ -10,7 +10,7 @@ make probe-h1
 
 | § | question | answer |
 |---|---|---|
-| **1** | what *is* `D`? | ✅ **12 exact + 12 at a uniform `1.1021137519860…°`** — `X29`, reproduced here to 13 significant figures |
+| **1** | what *is* `D`? | ✅ **12 exact + 12 at a uniform `1.1021137519860…°`** — `@HB-X29`, reproduced here to 13 significant figures |
 | **2** | does our `WALL_SNAP` agree with it? | ⚠ **12 of 24** — and they are **different questions**, not two implementations of one |
 | **3** | can a run be recovered from the field? | ✅ **24 of 24 round-trip.** `L1` is a **call**, not a library change |
 
@@ -31,7 +31,7 @@ make probe-h1
 | 6 | `(0,6)` | ✅ | 90° | 90° |
 
 **12 of 24 exact; the in-between twelve carry a bias between `1.1021137519859963` and
-`1.102113751986053`** — a spread of `6e-14`, i.e. uniform to floating point. That is `X29`
+`1.102113751986053`** — a spread of `6e-14`, i.e. uniform to floating point. That is `@HB-X29`
 (*"all twelve share it, spread `0.0000°`"*) measured in this tree.
 
 ⚠ **AND `probe/headings` IS DEFINITIVELY NOT THIS.** That enumeration found 24 directions
@@ -46,7 +46,7 @@ is why the ground rule says adopt it.
 
 - **ours** — `snap_heading` — quantises an *angle* onto a `2π/24` grid that has no lattice behind
   it. It cannot be right about where a wall goes, because half its answers name directions that
-  do not exist (`X31`).
+  do not exist (`@HB-X31`).
 - **the library's** — `snap_run_d24(a0, b0, tx, ty)` — takes a **triangle-lattice vertex** and a
   **world target point**, and returns *the direction whose best **legal** endpoint lands nearest
   that target*. It accounts for run admissibility (`wall_run_ok`, `wall_min_p`, the `δ` class

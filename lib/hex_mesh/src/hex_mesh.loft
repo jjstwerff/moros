@@ -1104,7 +1104,7 @@ const FLOOR_THICK  = hex_editor::SLAB_THICK;
 const SLAB_STEP    = 0.5;         // world units between a holed ceiling's ribs
 
 // How tall a wall of this material stands. A DOOR draws nothing: the boundary is
-// still there in the storage, which is what `X70` is about, and what an opening
+// still there in the storage, which is what `@HB-X70` is about, and what an opening
 // looks like is a hole you can see through.
 fn wall_up(mat: integer) -> integer {
   if mat == FENCE_MAT { return FENCE_UP; }

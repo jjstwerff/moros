@@ -10,7 +10,7 @@
 //
 // ⚠ THEY ARE NOT TWO SPELLINGS OF ONE ANSWER, and the tests say so rather than
 // asserting agreement: ours snaps an ANGLE onto a grid half of whose directions do
-// not exist on this lattice (`X31`), the library's asks which admissible run best
+// not exist on this lattice (`@HB-X31`), the library's asks which admissible run best
 // reaches the target. `probe/h1` measured them agreeing on 12 of 24.
 use hex_editor;
 use hex_shape;

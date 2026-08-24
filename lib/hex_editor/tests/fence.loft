@@ -118,7 +118,7 @@ fn test_a_cell_inside_the_ring_owns_no_wall() {
 }
 
 fn test_a_gateway_changes_a_material_and_never_removes_an_edge() {
-  // ⚠ `X70`. Moros stored a door as wall material 0 once, and hexbody measured what
+  // ⚠ `@HB-X70`. Moros stored a door as wall material 0 once, and hexbody measured what
   // that costs: the wall run BREAKS — 38 edges with 0 ends becoming 36 with 2. A
   // door is its own material on the edge, so the count cannot move.
   w = world();

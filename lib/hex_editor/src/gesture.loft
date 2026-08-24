@@ -130,7 +130,7 @@ pub fn ack_at(a: Ack, q: integer, r: integer) -> Ack {
 // length — has a nearest admissible value, so an offer is a correction. A
 // NOMINAL one — a material, a species, a palette index — does not: 255 is not
 // "nearly" 256, it is a different thing entirely, and offering it reads as a
-// small correction while changing what the wall is made of (`X68`). So nominal
+// small correction while changing what the wall is made of (`@HB-X68`). So nominal
 // parameters are refused WITHOUT an offer, and that is a distinction the type
 // carries rather than each caller remembering.
 pub struct Fit {
@@ -477,7 +477,7 @@ pub fn edge_owner(q: integer, r: integer, dir: integer) -> (integer, integer, in
 
 // The material on the edge between (q, r) and its neighbour in `dir`, at the
 // surface layer. 0 is no boundary at all — which is NOT the same as a doorway
-// (`X70`), and the difference is the reason a door has a material of its own.
+// (`@HB-X70`), and the difference is the reason a door has a material of its own.
 // ── WHICH LAYER STORES AN EDGE AT THIS HEIGHT ───────────────────────────────
 //
 // ⚠⚠ `world_surface` IS THE WRONG SELECTOR ON ITS OWN, and the fence count is what
@@ -629,7 +629,7 @@ pub fn ring_runs(cq: integer, cr: integer, rad: integer, mat: integer, runs: Wal
     // ⚠ **THE HEADING IS `D`'s NOW — plan 24 `H1e`.** This was `snap_heading`, the
     // `2*pi/24` grid, and here it happened to be right: a ring's six chords run at
     // exact multiples of 60 degrees, which are all EVEN `d24` and therefore among
-    // the twelve `D` gets exactly (`X29`). That is why this conversion is an
+    // the twelve `D` gets exactly (`@HB-X29`). That is why this conversion is an
     // agreement rather than a change — and why it is worth doing anyway, because
     // *right by coincidence* is what `run_between` also looked like until it was
     // measured.
@@ -1580,7 +1580,7 @@ pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
         // convention in this file; the loop was on the other one.
         (aq, ar) = hex_grid::hex_neighbor(fq[i], fr[i], d);
         m = world_ground_cell(wld, aq, ar).h_material;
-        // A BOUNDARY STOPS A FILL, whatever it is made of. `X70` says an opening is
+        // A BOUNDARY STOPS A FILL, whatever it is made of. `@HB-X70` says an opening is
         // not absence — "there is a boundary you can walk through" is a different
         // claim from "there is no boundary" — so a doorway holds the fill in
         // exactly as a wall does, and only a cleared edge lets it out.
@@ -1700,7 +1700,7 @@ pub fn stencil_place(wld: VoxelWorld, cq: integer, cr: integer, rad: integer,
         hi2 = roof_height(anchor, roof_up, rad, d2);
         // The outer ring is the wall. Every perimeter cell carries a wall on the
         // three edges it owns, and ONE of them carries a door instead — a
-        // different material on the same edge, never a cleared one (`X70`).
+        // different material on the same edge, never a cleared one (`@HB-X70`).
         //
         // ⚠ This is "the three owned edges of every outer-ring cell", not a
         // geometrically exact perimeter: which edges truly bound the footprint is
@@ -1914,7 +1914,7 @@ pub struct RunDraft {
   //
   // ⚠ **AND THEY ARE NOT TWO SPELLINGS OF ONE ANSWER.** Ours snaps an ANGLE onto a
   // `2*pi/24` grid, **half of whose directions do not exist on this lattice**
-  // (`X31`: no odd multiple of 15 degrees is reachable). `hex_shape` asks a
+  // (`@HB-X31`: no odd multiple of 15 degrees is reachable). `hex_shape` asks a
   // different question — *which admissible run best reaches where you pointed* —
   // and answers with a direction, a period count and a legal endpoint pair.
   // `probe/h1` measured them agreeing on 12 of 24.
@@ -2384,7 +2384,7 @@ pub fn roof_corners(w: VoxelWorld, q: integer, r: integer) -> vector<float> {
 
 // ── S5: OPENINGS — a door is a MATERIAL, never a cleared edge ───────────────
 //
-// ⚠ `X70`, and it was measured before it was a rule. Moros stored a door as wall
+// ⚠ `@HB-X70`, and it was measured before it was a rule. Moros stored a door as wall
 // material 0 once, and hexbody measured what that costs: the wall RUN breaks — 38
 // edges with 0 ends becoming 36 with 2 — because a cleared edge is indistinguishable
 // from no edge, so the recovery that finds a wall loses its middle. The boundary is
@@ -2460,7 +2460,7 @@ pub const DR_ITEM  = 1;        // not in the palette
 pub const DR_STORE = 2;        // the store declined the write
 
 // ⚠ THE `Fit` TRAVELS OUT, because the sentence is `fit_why`'s and the doorstep's
-// rule is that a NOMINAL refusal never grows an offer (`X68`). Handing back a
+// rule is that a NOMINAL refusal never grows an offer (`@HB-X68`). Handing back a
 // finished string here would put the wire's words in the library twice.
 pub struct Dressed {
   dr_code:   integer,
@@ -4470,7 +4470,7 @@ pub fn lift_column(w: VoxelWorld, q: integer, r: integer, delta: integer) -> int
 // ⚠ THE FLOOD NEEDS NO KNOWLEDGE OF EDGES, and that is what makes it cheap. A
 // fence's owner cell is already fabric, so a flood that walks only NON-fabric cells
 // stops at the ring by construction — and a GATE stops it too, because an opening
-// is a `DOOR_MAT` edge on an owner that is still fabric. That is `X70` arriving for
+// is a `DOOR_MAT` edge on an owner that is still fabric. That is `@HB-X70` arriving for
 // free: *an opening is not an absence*.
 //
 // ⚠ AND IT IS BOUNDED BY THE STROKE, not by a global cap. An enclosure that does

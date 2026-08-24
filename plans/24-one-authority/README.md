@@ -11,7 +11,7 @@ NORMATIVE** — [FORMAL_CORE.md](../../doc/claude/FORMAL_CORE.md), the binding e
 
 | this plan says | the formal core already says | gate |
 |---|---|---|
-| walls draw straight, recovered from the store | **§6.1** *a wall surface is the exact **AVERAGE** of its edges, never a fit* | `X47` |
+| walls draw straight, recovered from the store | **§6.1** *a wall surface is the exact **AVERAGE** of its edges, never a fit* | `@HB-X47` |
 | no session record; one mesh per chunk | **§2.4.3** *the canonical text is not a second editor representation, and must not become one — that is exactly the second layer the editor is not allowed to have*; layer 2 is *derived on demand, **never persisted***, and *an edit dirties the chunks it touches, and their layer-2 meshes rebuild* | `SPEC` L3 |
 
 **Four probes run, nothing wired yet — and every one of them corrected this plan.** `A0p` broke
@@ -78,9 +78,9 @@ attempt 3 was a measured enumeration that looked like `D` and was not.
 rock-faces and roads in the world — just not for houses, which should allow shorter walls."*
 `hex_form::HEAD_N = 12` is **correct for domain A** and is not a limitation to lift.
 
-⚠ **`D` IS NOT 24 EXACT DIRECTIONS.** `X31`: *no odd multiple of 15° is reachable at all.*
-`X29`: the in-between 12 carry a **uniform** `1.1021°` bias, spread `0.0000°`; the even 12 are
-exact. `X56`: the in-between vector is `(7,−2)`, `N = 39`, chosen so `δ = 0` — an exhaustive
+⚠ **`D` IS NOT 24 EXACT DIRECTIONS.** `@HB-X31`: *no odd multiple of 15° is reachable at all.*
+`@HB-X29`: the in-between 12 carry a **uniform** `1.1021°` bias, spread `0.0000°`; the even 12 are
+exact. `@HB-X56`: the in-between vector is `(7,−2)`, `N = 39`, chosen so `δ = 0` — an exhaustive
 search over `N ≤ 400` found nothing better. **So `D` is adopted, never derived here.**
 
 ⚠ **AND `hex_editor::WALL_SNAP = 2π/24` ASKS FOR DIRECTIONS THAT DO NOT EXIST**, which is why
@@ -114,7 +114,7 @@ average of exact rationals *is* the answer.
 
 | phase | expected result | invariant | negative control |
 |---|---|---|---|
-| `A0q` | ✅ **48 of 48**, and the clean lsq scatter reproduces `X47`'s `0.9166666666666679` to the digit | §6.1 / `X47`, re-measured **in this tree** | ⛔ **the row said *a bent side must give `-1`* and that was WRONG** — the sum telescopes to the chord, so a notch cancels. The control that fires is a deviation that MOVES the chord (5 of 5), and straightness is `surface_lsq_residual` |
+| `A0q` | ✅ **48 of 48**, and the clean lsq scatter reproduces `@HB-X47`'s `0.9166666666666679` to the digit | §6.1 / `@HB-X47`, re-measured **in this tree** | ⛔ **the row said *a bent side must give `-1`* and that was WRONG** — the sum telescopes to the chord, so a notch cancels. The control that fires is a deviation that MOVES the chord (5 of 5), and straightness is `surface_lsq_residual` |
 | `H1` | every stored wall direction is a `d ∈ D` | §2.2 | a request off `D` is snapped or refused, never stored |
 | `L1` | recovery of a stamped run returns the run's own `d`, exactly | §6.1, `ρ = 0` | ⚠ an **unordered** input must be refused, not silently summed — `(-14, 0)` for a due-east wall is the case |
 | `A3` | mesh from recovered runs **byte-identical** to mesh from `es_runs` | substitution is invisible | sabotage by one lattice step → red |
@@ -126,7 +126,7 @@ average of exact rationals *is* the answer.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **`A0p`** — probe: recover a wall from its edge stamp | XS | [result](../../probe/a0p/README.md) | ✅ **Done, and it broke the ground rule twice.** Value: the located gap |
-| **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | [result](../../probe/a0q/README.md) · `make probe-a0q` | ✅ **Done 2026-08-22.** 48 of 48 exact; `X47`'s control number reproduced to the digit. ⚠ **And it corrected this plan**: `surface_heading` is blind to a notch by construction |
+| **`A0q`** — probe: **call `hex_draw`** on input it accepts | XS | [result](../../probe/a0q/README.md) · `make probe-a0q` | ✅ **Done 2026-08-22.** 48 of 48 exact; `@HB-X47`'s control number reproduced to the digit. ⚠ **And it corrected this plan**: `surface_heading` is blind to a notch by construction |
 | **`H1a`** — the library's answer computed **beside** ours | S | `lib/hex_editor/tests/runsnap.loft` — 4 tests, 627 green. ⚠ **Sabotage sweep, every row red against a 627 control**: anchor not snapped to a vertex → 3 failed; the library's direction replaced by ours → 1; a refused draft returning zeroes instead of `ok=false` → 1 | ✅ **Done.** `RunDraft` carries `rd_d24`/`rd_p`/`rd_a0`/`rd_b0`; `draft_lib_ends` derives the endpoints. **Only ours is used** |
 | **`H1b`** — switch the gesture to the library's answer | M | 628 library tests green; sabotage rows red for *keeps our endpoints* and *reach reverts to the projection*. **49 gates green** once `H1d` landed | ✅ **Done** |
 | **`H1c`** — read the `straight` diff | S | ✅ **The wall was straight; the RULER was bent.** The gate re-derived the line it measures against — *"from A along the snapped heading, for the walked distance projected onto it"* — a second implementation of `run_between`'s geometry, in JavaScript. Predicted fan `24.98 × tan(1.1021°) = 0.48`, measured `worstSpreadWithinASide 0.26`, the spread within one face | ✅ **Done** |
@@ -139,7 +139,7 @@ average of exact rationals *is* the answer.
 | **`M1`** — the chunk mesher into a library, on §6.2's exact bands | MH | `hex_mesh`'s chunk→mesh path built from `BAND_TOPS`/`BAND_SIDES`/`WIDEN_*` and `hex_edge`'s surfaces rather than its own emitters. ⚠ Byte-identical meshes across the move | Blocked on `A5` |
 | **`A6`** — one mesh per chunk, keyed on the chunk's version | M | §2.4.3. Cache-on == cache-off; stale-cache sabotage red; **a boundary edit dirties both chunks** | Blocked on `M1` |
 | **`A7`** — delete `es_runs`, `es_awalls` | S | the suite, nothing feeding the old path. Deletion **is** the step | Blocked on `A6` |
-| **`A8`** — `es_open` → `hex_edge::Features` | M | ⚠ **`X70` first**: an opening is never *"no wall"* — a door, a window and a real gap are all **materials on a wall that continues**. moros's `builtin_house_door` leaves the edge at material `0`, measured to **break** the run (36 edges / 2 dangling ends against 38 / 0). Fix that before the format moves | Blocked on `A7` |
+| **`A8`** — `es_open` → `hex_edge::Features` | M | ⚠ **`@HB-X70` first**: an opening is never *"no wall"* — a door, a window and a real gap are all **materials on a wall that continues**. moros's `builtin_house_door` leaves the edge at material `0`, measured to **break** the run (36 edges / 2 dangling ends against 38 / 0). Fix that before the format moves | Blocked on `A7` |
 | **`A9`–`A10`** — `es_roofs`, then `es_annex`/`es_slabs`/`es_holes`/`es_props` | MH | one comparison each | Blocked on `A8` |
 
 ⚠ **`A8`–`A10` ARE NOT COPIES OF `A3`–`A7`.** A wall's edge byte exists in the store; **a roof
@@ -153,7 +153,7 @@ plan's does not.** Each needs its own answer to *what does the store hold, and i
 - **`es_leaves`** — how far a door stands open. Not derivable from the store, not a cache.
   ⚠ §2.4.3 forbids it becoming a second representation, so it is a **pose**, not a record.
 - **The character** ([EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) entry 2).
-- **The house floor** (entry 3) — ⚠ **already priced upstream by `X67`**: the height slot is an
+- **The house floor** (entry 3) — ⚠ **already priced upstream by `@HB-X67`**: the height slot is an
   integer at `HEIGHT_SCALE = 0.25` wu, and `SEAT_MEAN` lands **exactly half a unit off**
   (`1.125` = 4.5 units), so it must be **refused with an offer**, not truncated. That is the
   answer; it is a fix, not an investigation, and it does not belong in this plan.

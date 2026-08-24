@@ -6,7 +6,7 @@
 //   loft --interpret --lib lib/ probe/h1/h1.loft      (or `make probe-h1`)
 //
 // ⚠ THIS TREE HAS GUESSED THE 24 DIRECTIONS TWICE. `hex_editor::WALL_SNAP = 2*pi/24`
-// with an `atan2` asks for directions that do not exist (`X31`: no odd multiple of
+// with an `atan2` asks for directions that do not exist (`@HB-X31`: no odd multiple of
 // 15 degrees is reachable). Then `probe/headings` enumerated *"which directions can
 // a run of n edges point in"*, got a clean 24 at 3 edges, and that was not `D`
 // either. **`hex_shape::hexwall` holds the real one**, and this prints it rather
@@ -59,9 +59,9 @@ fn main() {
   println("");
   println("   {n_exact} of {D24} exact · in-between bias from {spread_lo} to {spread_hi}");
   if n_exact == 12 && spread_hi - spread_lo < 0.000001 {
-    println("   ✅ 12 exact and 12 at a UNIFORM bias — `X29`'s claim, measured here");
+    println("   ✅ 12 exact and 12 at a UNIFORM bias — `@HB-X29`'s claim, measured here");
   } else {
-    println("   ⛔ that is not `X29`'s shape (12 exact, 12 uniformly biased)");
+    println("   ⛔ that is not `@HB-X29`'s shape (12 exact, 12 uniformly biased)");
   }
 
   // ── §2  THE PARALLEL RUN — what OUR snap stores against what `D` stores ───

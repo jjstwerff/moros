@@ -6,7 +6,7 @@
 // Three claims, and the third is the one that decides what the gesture can promise:
 // the building goes in FRONT of the author, its facing snaps to one of the shape
 // family's twelve, and only SIX of those twelve can have walls that mitre. That
-// last is the lattice's own 6-fold symmetry (`X24`) surfacing in the editor's user
+// last is the lattice's own 6-fold symmetry (`@HB-X24`) surfacing in the editor's user
 // interface — an author has to be facing the right way to place a house — so it is
 // measured here rather than discovered in a picture.
 use hex_editor;
@@ -88,7 +88,7 @@ fn test_only_the_even_orbit_is_accepted_and_the_odd_one_gets_an_offer() {
     if f.fp_ok { yes = yes + 1; }
     assert(f.fp_ok == (i % 2 == 1), "facing {i} of 12: ok {f.fp_ok}");
   }
-  assert(yes == 6, "six of the twelve, which is X24 exactly, got {yes}");
+  assert(yes == 6, "six of the twelve, which is @HB-X24 exactly, got {yes}");
 }
 
 fn test_the_box_and_the_plan_are_the_same_rectangle() {

@@ -47,7 +47,7 @@ Measured: `combine_cut`, `field_union`, `flood_outside`, `leak_count` and `set_c
 | a next floor | `hex_place::combine_cut_level(a, la, ma, b, lb, mb, at, e)` — *different levels never contend*; the level is *"a filter applied BEFORE the cut"* |
 | is a room sealed / is there a way in | `hex_shape::flood_outside(wall, out)` + `leak_count(inner, out)` |
 | is every room reachable | `hex_shape::set_connected(cells)` |
-| a door, a window, a real gap | the `OPEN_*` palette — [FORMAL_CORE](FORMAL_CORE.md) `X70` |
+| a door, a window, a real gap | the `OPEN_*` palette — [FORMAL_CORE](FORMAL_CORE.md) `@HB-X70` |
 | the box itself | `hex_shape::box_new` / `box_fill`, `hex_form::Plan` |
 
 ⚠ **`combine_cut` IS EXACT AND FLOAT-FREE, AND ORDER-FREE BY CONSTRUCTION.** Its own words: *"the
@@ -57,7 +57,7 @@ positional — so `combine(a,b) == combine(b,a)` byte for byte.
 
 ## ⚠ The one question the model does not answer: does a shared edge FUSE or PARTITION?
 
-`X52` is explicit, and it is the opposite of what "rooms" sounds like:
+`@HB-X52` is explicit, and it is the opposite of what "rooms" sounds like:
 
 > **THE SHARED EDGE FUSES.** *"Between two adjacent stencils the shared edge is INTERIOR to the
 > union, so cutting the union's boundary never marks it — nobody owns it, and there is no seam
@@ -102,13 +102,13 @@ is a **level** as the formal model means one.
 ## What this needs before it is a plan
 
 1. **`A0q`-shaped probe first**: call `combine_cut` on two adjacent boxes here, and count what it
-   marks. ⚠ The fusing claim is gated upstream (`X52`), but *this tree has never called it* —
+   marks. ⚠ The fusing claim is gated upstream (`@HB-X52`), but *this tree has never called it* —
    and the ground rule's lesson is that a library's behaviour on input **you** hold is the thing
    to measure, not the claim.
 2. **The fuse-or-partition default** — decided with hexbody, not here.
 3. **`D2b`'s guard narrowed** from *footprint overlaps a plan* to *would leave two roofs over one
    cell*, with the `probe/d2` § 7 row C fixture kept: two stacked houses must still be refused.
-4. ⚠ **`X70` first, as plan 24 `A8` already says**: `builtin_house_door` leaves the doorway edge
+4. ⚠ **`@HB-X70` first, as plan 24 `A8` already says**: `builtin_house_door` leaves the doorway edge
    at material `0`, which is measured to **break the wall run** — 36 edges / 2 dangling ends
    against 38 / 0. Every door in a floor plan would inherit that.
 

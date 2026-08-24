@@ -1789,7 +1789,7 @@ name* is the same rule and it is **not only about siblings** — it holds inside
 
 ⚠ **AND THE COLLISION WAS THE FINDING, NOT AN OBSTACLE.** `hex_editor`'s `Fit` splits parameters
 into ORDINAL and NOMINAL — *"255 is not 'nearly' 256 … offering it reads as a small correction
-while changing what the wall is made of"* (`X68`). **A size class is nominal by exactly that
+while changing what the wall is made of"* (`@HB-X68`). **A size class is nominal by exactly that
 argument**, which `A4.2` had already concluded from §P3's own examples before the build broke.
 Two independent routes to one answer, and the name clash is what joined them up.
 
@@ -3922,7 +3922,7 @@ camera's occlusion class. **Every numbered rung of the ladder is now built.** 21
 `23:<mat>,<rad>` rings the disc you stand in · `24:<dir>,<mat>` sets one edge (which is what
 puts a gateway in a fence) · walls draw as a **sixth** chunk surface, and the stride is now a
 named `SURFACES` constant on both sides of the wire · a field fill stops at any edge, so
-`X70`'s "a doorway is still a boundary" is the difference between a fill of 19 and a refusal
+`@HB-X70`'s "a doorway is still a boundary" is the difference between a fill of 19 and a refusal
 · `F`/`G` in the browser fence and wall the ground you stand on.
 
 ## Since 2026-07-27 — rows 8-11 built, and the gates got honest
@@ -3947,7 +3947,7 @@ each on a freshly started server (`make gate-world`, `make gate-character`,
 | 8a | storeys and cellars — the layer stack end to end | `storey.mjs` |
 | 8b | stencils as a BAND, `P1`/`P2` | `stencil.mjs`, `hex_world/tests/stencil.loft` |
 | 8c | roofs — derived pitch, own material, own mesh | `stencil.mjs` (eave 61 → mid 65 → ridge 69) |
-| 8d | openings — a door is a material, never a cleared edge (`X70`) | `opening.mjs` |
+| 8d | openings — a door is a material, never a cleared edge (`@HB-X70`) | `opening.mjs` |
 | 8e | the `K-FIT` doorstep — reason, offer, residual; nominal ≠ ordinal | `doorstep.mjs` |
 | 9a | trees at density — the forest as a field | `vegetation.mjs` |
 | 10a | the cart — three rigs, one frame, a derived roll | `cart.mjs` |
@@ -3968,7 +3968,7 @@ each on a freshly started server (`make gate-world`, `make gate-character`,
 - **`D1`** gained a way in — `world_set_dressing` / `world_dressing`. Nothing could create a
   `KIND_DRESSING` layer before, so `P2` guarded a case that could not arise.
 - **`K-FIT` invariant I** — every author action ends applied exactly, refused with a reason
-  **plus an offer and a residual** (ordinal) or a reason alone (nominal, `X68`), or applied
+  **plus an offer and a residual** (ordinal) or a reason alone (nominal, `@HB-X68`), or applied
   as an explicit approximation with its residual on the wire. Every tool is through it.
 
 ### New protocol messages

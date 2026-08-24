@@ -13,7 +13,7 @@
 // Three legs of the same walk, from the centre of a hex, facing +x:
 //
 //   1. inside a fence ring   → it STOPS, and stops at the fence
-//   2. with a gateway in it  → it walks through (`X70`: an opening is passable and
+//   2. with a gateway in it  → it walks through (`@HB-X70`: an opening is passable and
 //                              is still a boundary — `fence.mjs` proves the second
 //                              half by filling through it)
 //   3. no fence at all       → the control: it does not stop

@@ -25,7 +25,7 @@
 //
 //   2. A NOMINAL parameter offered as if ordinal. A material or species is a
 //      name, not a magnitude: 255 is not "nearly" 256, and offering it reads as
-//      a small correction while changing what the thing is made of (`X68`). The
+//      a small correction while changing what the thing is made of (`@HB-X68`). The
 //      gate asks for species 9 and requires a refusal WITHOUT an offer.
 
 import { connect, send, ask, report } from '../lib.mjs';
@@ -62,7 +62,7 @@ const named    = short.includes(`roof ${asked}`) && Number.isFinite(min) && min 
 const offered  = short.includes(`offer ${min}`);
 const residual = short.includes(`residual ${min - asked}`);
 const wroteNothing = after === before;
-// the nominal refusal must NOT carry an offer — that is the whole of X68
+// the nominal refusal must NOT carry an offer — that is the whole of @HB-X68
 const nominalRefused = species.includes('refused') && species.includes('species 9');
 const noOffer = !species.includes('offer');
 const applied = good.startsWith('stencil placed');

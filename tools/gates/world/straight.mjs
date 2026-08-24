@@ -69,7 +69,7 @@ const step = m ? Number(m[1]) : -1;
 // `run_between`'s geometry living in a gate.
 //
 // ⚠ **AND IT WAS WRONG FOR HALF THE HEADINGS ALL ALONG.** `D`'s in-between twelve
-// sit 1.1021° off their nominal 15° (`X29`), so over this gate's 24.98-unit run the
+// sit 1.1021° off their nominal 15° (`@HB-X29`), so over this gate's 24.98-unit run the
 // reconstruction fans away from the true line by `24.98 * tan(1.1021°) = 0.48`. It
 // agreed only while the editor's own snap was bent the same way; the moment `H1b`
 // put the editor on `D`, the ruler and the wall parted and this reported

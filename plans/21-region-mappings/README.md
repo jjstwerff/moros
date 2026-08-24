@@ -233,4 +233,4 @@ target and a negative control.
 
 ⚠ **`0 = nothing` stays universal**, on all three axes. It is the one identity the store
 itself depends on: absence is how an unwritten cell, an unmarked edge and an empty item slot
-are all told apart from a written one, and `E1`/`X70` are built on it.
+are all told apart from a written one, and `E1`/`@HB-X70` are built on it.

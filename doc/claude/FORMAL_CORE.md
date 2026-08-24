@@ -15,7 +15,7 @@ file; never correct a clause here and carry on.
 
 ⚠ **AND IT IS WHY THE GROUND RULE EXISTS.** Plan 24 spent two probes deriving §6.1 from scratch,
 badly, while §6.1 sat here saying it — *"a wall surface is the exact AVERAGE of its edges, not a
-fit"* — with a gate (`X47`) behind it. **Read this before writing geometry.**
+fit"* — with a gate (`@HB-X47`) behind it. **Read this before writing geometry.**
 
 ---
 
@@ -126,7 +126,7 @@ residual on a straight wall: **0.81**.
 > **Nothing is fitted, so nothing has a tolerance.** Least-squares would introduce a residual to
 > threshold, while an average of exact rationals **is** the answer.
 
-Gated as **`X47`** (`hexbody/tests/surface.loft`): the summed edge vector is **exactly parallel**
+Gated as **`@HB-X47`** (`hexbody/tests/surface.loft`): the summed edge vector is **exactly parallel**
 to a heading (zero cross product) over all 24 side-runs across 6 rotations. ⚠ **Its control is
 the number to remember** — the scatter a least-squares fit would threshold is `0` east and
 `0.9167` north, *"so averaging vs fitting is measured, not rhetorical."*
@@ -148,14 +148,14 @@ closed form** — nothing measured, fitted or tuned. These are `hex_draw::BAND_T
 
 | id | what it settles | why lavition cares |
 |---|---|---|
-| **`X31`** | **no odd multiple of 15° is reachable at all** | `hex_editor::WALL_SNAP = 2π/24` asks for directions that do not exist |
-| **`X29`** | the in-between 12 of `D` are inexact by a **uniform bias**, `1.1021°` — spread `0.0000°`; the even 12 are exact | so **`D` is 12 exact + 12 uniformly biased**, not 24 exact. ⚠ **This is why a house is never drawn at an in-between angle** |
-| **`X56`** | the in-between vector is `N = 39` `(7,−2)`, period `√39 u`; chosen for `δ = 0` so linework **links to house angles unconditionally** | the 24 are a *designed* set, not "every direction a short chain can reach" |
-| **`X27`** | **the marks evaluate back to the SAWTOOTH, not the line** — the straight line is `rebuild`'s job | the store holds a zigzag by construction; recovery is a named map, not an afterthought |
-| **`X47`** | the wall surface is the exact average of its edges | §6.1's gate |
-| **`X24`** | **there is no square sublattice of a hexagonal lattice** — a lattice polygon cannot be a rectangle | `Plan` is continuous-then-rasterised; a rectangle's corner is quantised away |
-| **`X70`** | ⛔ **an opening is never "no wall"** — a door, a window and a real gap are all **materials on a wall that continues** | ⚠ **and it names a live moros defect**: `builtin_house_door` leaves the doorway edge at material `0`, its own comment calling that *"crawler's convention: a door is a gap"*. Measured: material 0 gives **36 edges / 2 dangling ends** where every real opening gives **38 / 0** — the wall is *broken* |
-| **`X67`** | the height slot is an integer at `HEIGHT_SCALE = 0.25` wu, and the doorstep enforces it | ⚠ **prices [EDITOR_DEFECTS](EDITOR_DEFECTS.md) entry 3**: `SEAT_MEAN` lands **exactly half a unit off** (`1.125` = 4.5 units), so it must be **refused with an offer**, not truncated |
+| **`@HB-X31`** | **no odd multiple of 15° is reachable at all** | `hex_editor::WALL_SNAP = 2π/24` asks for directions that do not exist |
+| **`@HB-X29`** | the in-between 12 of `D` are inexact by a **uniform bias**, `1.1021°` — spread `0.0000°`; the even 12 are exact | so **`D` is 12 exact + 12 uniformly biased**, not 24 exact. ⚠ **This is why a house is never drawn at an in-between angle** |
+| **`@HB-X56`** | the in-between vector is `N = 39` `(7,−2)`, period `√39 u`; chosen for `δ = 0` so linework **links to house angles unconditionally** | the 24 are a *designed* set, not "every direction a short chain can reach" |
+| **`@HB-X27`** | **the marks evaluate back to the SAWTOOTH, not the line** — the straight line is `rebuild`'s job | the store holds a zigzag by construction; recovery is a named map, not an afterthought |
+| **`@HB-X47`** | the wall surface is the exact average of its edges | §6.1's gate |
+| **`@HB-X24`** | **there is no square sublattice of a hexagonal lattice** — a lattice polygon cannot be a rectangle | `Plan` is continuous-then-rasterised; a rectangle's corner is quantised away |
+| **`@HB-X70`** | ⛔ **an opening is never "no wall"** — a door, a window and a real gap are all **materials on a wall that continues** | ⚠ **and it names a live moros defect**: `builtin_house_door` leaves the doorway edge at material `0`, its own comment calling that *"crawler's convention: a door is a gap"*. Measured: material 0 gives **36 edges / 2 dangling ends** where every real opening gives **38 / 0** — the wall is *broken* |
+| **`@HB-X67`** | the height slot is an integer at `HEIGHT_SCALE = 0.25` wu, and the doorstep enforces it | ⚠ **prices [EDITOR_DEFECTS](EDITOR_DEFECTS.md) entry 3**: `SEAT_MEAN` lands **exactly half a unit off** (`1.125` = 4.5 units), so it must be **refused with an offer**, not truncated |
 
 ## How to re-sync this file
 

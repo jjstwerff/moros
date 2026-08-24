@@ -52,9 +52,9 @@ is not; rebuild on validated primitives. · **DELETE** — superseded by somethi
 
 | routine | evidence today | verdict | the gate it must pass |
 |---|---|---|---|
-| `Hex` · `Chunk` · `HexAddress` | schema-checked by **hexbody's `palette.loft` on every run** (`X69`) | **KEEP, frozen** | none new — `L13` makes it the storage of record. It may not gain an eighth slot |
+| `Hex` · `Chunk` · `HexAddress` | schema-checked by **hexbody's `palette.loft` on every run** (`@HB-X69`) | **KEEP, frozen** | none new — `L13` makes it the storage of record. It may not gain an eighth slot |
 | chunk `get`/`set`/`ensure` | `negative_coords.loft` — 3 tests, signs only | **PROMOTE** | get/set across **both parities × both signs × a chunk boundary**; control: a parity-blind index must fail it (Q5) |
-| `map_set_wall_dir` dirs 3/4/5 | none | **RE-DERIVE** | parity-blind by inspection (`STATE.md` #3). Rebuild on `hex_grid::hex_neighbor` **with** `hex_edge_corners` — `L11`/`X26`'s exact mode, never mixed with `hex_field`'s `nb_q`/`nb_r` |
+| `map_set_wall_dir` dirs 3/4/5 | none | **RE-DERIVE** | parity-blind by inspection (`STATE.md` #3). Rebuild on `hex_grid::hex_neighbor` **with** `hex_edge_corners` — `L11`/`@HB-X26`'s exact mode, never mixed with `hex_field`'s `nb_q`/`nb_r` |
 | `map_write_field` / `map_read_field` | `field_io.loft`; tripwire **green for the wrong reason** | **RE-DERIVE** | never builds an `EdgeSet`, so walls are gone before the format sees them. Gate: a walled fixture survives write→read; control: the current writer must fail it (Q3) |
 | `map_to_stencil` / `stencil_into_map` | `stencil_bridge.loft`, post-17-wall fix | **PROMOTE** *(in flight, #5)* | counts stated over the **whole layer, halo included** — a rim edge is owned by a cell outside the extent (`L10`) |
 | `dir_hour` · `facing_*` · `hour_*` · `stencil_placed` | **`clock.loft`** — off-axis marker, twelve placements, mirror-axis collapse as negative control | **PROMOTE AS-IS** ✅ | **already passes all five.** The reference for everything else here |
@@ -76,7 +76,7 @@ is not; rebuild on validated primitives. · **DELETE** — superseded by somethi
 | routine | evidence today | verdict | the gate it must pass |
 |---|---|---|---|
 | `hex_to_world` · `hex_corner_world` · `world_to_hex` · `pick_hex` | `geometry.loft`, `picking.loft` | **PROMOTE after a cross-check** | a **second** implementation of `hex_grid` / `hex_field::hex_at`. `L11` says consult, never copy. Gate: 0 disagreements over both parities and both signs; control: perturb one side and it must fire |
-| `emit_wall_quad` · `emit_thick_flat_wall` · `emit_thick_curved_wall` | `geometry.loft` vertex counts | **DELETE** | a second derivation of the wall, and `hex_draw::surface_quad` is gated to **1 quad, `eave_spread` 0, miter gap 0** (`X61`/`X62`). This is exactly `X26`'s class |
+| `emit_wall_quad` · `emit_thick_flat_wall` · `emit_thick_curved_wall` | `geometry.loft` vertex counts | **DELETE** | a second derivation of the wall, and `hex_draw::surface_quad` is gated to **1 quad, `eave_spread` 0, miter gap 0** (`@HB-X61`/`@HB-X62`). This is exactly `@HB-X26`'s class |
 | stairs — linear · spiral · grand-arc | count assertions | **PROMOTE → `hex_entity`** | ⚠ **a vertex count is not a gate** (Q2). Needs an oracle: step rise × count = the height delta, exactly; control: an off-by-one step count must fail |
 | `emit_item_placeholder` · `emit_cylinder_post` · avatar | counts | **PROMOTE → `hex_entity`** | same — an independent property, not `len(vertices)` |
 | camera — orbit · pan · zoom · `camera_ray_dir` | `camera_modes.loft` | **PROMOTE** | pure math, low risk. Gate: ray → plane → hex round-trips to the picked cell |

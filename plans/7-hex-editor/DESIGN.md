@@ -245,7 +245,7 @@ to.
 | # | change | gate · control | why it is safe |
 |---|---|---|---|
 | **S23** | anchor storage + `resolve`/`refuse` for a **line endpoint**, routed to `hex_fit` | the offer equals `snap_run_d24`/`snap_run_p`; the residual equals `run_end_dist`; **0 false accepts** against `rebuild`. **Control:** author a length between admissible multiples → must refuse, not snap | one anchor kind only. The closed set arrives kind by kind, each with its own gate |
-| **S24** | the doorstep **shown** — reason, offer, residual on screen; nominal vs ordinal distinguished | a material refusal offers **nothing** and says so (`X68`); a length refusal offers the nearest. **Control:** offer `255` for `256` → the gate must reject the offer as a category error | presentation over S14 |
+| **S24** | the doorstep **shown** — reason, offer, residual on screen; nominal vs ordinal distinguished | a material refusal offers **nothing** and says so (`@HB-X68`); a length refusal offers the nearest. **Control:** offer `255` for `256` → the gate must reject the offer as a category error | presentation over S14 |
 | **S25** | **`re-derive-or-report` inside `doc_apply`** — §1's invariant gets its home | delete geometry under an anchor → it is **reported**. **Control:** let it silently reattach to the nearest surviving surface → red | the checker runs and reports before anything acts on the report |
 | **S26** | roads on terrain; **measure** `hex_way`'s lattice anchoring | either it anchors, or the failure is **recorded as a restriction** and carried forward | measurement, then a written restriction — hexbody's own census rule |
 
