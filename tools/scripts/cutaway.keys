@@ -21,28 +21,41 @@ echo --- FOLLOW, standing in the middle of the floor: a wall and a ceiling
 send 40:1
 at 0 0 90
 step 150
-cam
+# ⚠ THE BOOM IS THE OTHER HALF OF THE CLAIM, and `cam` alone REPORTS it. Indoors
+# FOLLOW is held close by the walls — 2.152 — and CUTAWAY may stand well back because
+# it has taken the roof off. The pair is what makes each number mean something.
+cam 1.8 2.5
 snap s14-follow-in
-frame
+# The roof's underside is a fifth of the frame and there is no grass in shot: this is
+# a room with a ceiling on it.
+frame 0 0.85 soffit 0.14 0.26 grass 0 0.001
 
 echo --- CUTAWAY, the SAME spot: roof off, steep, and the plan should be visible
 send 40:3
 at 0 0 90
 step 150
-cam
+cam 6.0 8.0
 snap s14-cutaway-in
-frame
+# ⚠ THE SAME SPOT, AND THE SOFFIT IS GONE. `soffit 0 0.001` is the whole verb: CUTAWAY
+# takes the roof off, so what was overhead is now sky-lit ground. Grass appearing from
+# INSIDE is the same fact read the other way, and the frame gets brighter for it.
+frame 0 0.90 soffit 0 0.001 grass 0.18 0.35 lum 0.36 0.52
 
 echo --- CUTAWAY from outside, where the whole building should be in shot
 at 0 -10 90
 step 150
-cam
+cam 6.0 8.0
 snap s14-cutaway-out
-frame
+frame 0 0.90 grass 0.75 0.92 soffit 0 0.001
 
 echo --- and back to FOLLOW, to prove the mode is not a one-way door
 send 40:1
 at 0 0 90
 step 150
-cam
-frame
+# ⚠ THE SAME NUMBERS AS THE FIRST ROW, WHICH IS WHAT "not a one-way door" MEANS. The
+# boom comes back in and the ceiling comes back.
+cam 1.8 2.5
+# ⛔ THIS ROW HAD NO `snap` AND SO JUDGED THE PREVIOUS STATION'S PICTURE — "a row about
+# an unknown scene", by `frame`'s own definition. It has one now.
+snap s14-back-to-follow
+frame 0 0.85 soffit 0.14 0.26 grass 0 0.001

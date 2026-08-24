@@ -24,33 +24,48 @@ echo --- THE CONTROL: outdoors, looking STRAIGHT UP. This must be sky and nothin
 at 0 -10 90
 send 3:0,-20000
 step 120
-cam
+# ⚠ EYES IS FIRST PERSON, so the eye sits ON the character — 0.959 — and FOLLOW does
+# not. The two bands are disjoint, so a mode that silently fell back to FOLLOW breaks
+# one of them.
+cam 0.7 1.3
 snap s15-eyes-up-outside
-frame
+# ⚠ `sky 1` IS NOT A ROUNDING. Straight up outdoors is sky and NOTHING else, which is
+# why this is the control: if the pitch fence stopped the look short, something else
+# is in shot and every row below is measuring the wrong frame.
+frame 0 1.0 sky 0.95 1.0
 
 echo --- indoors, looking STRAIGHT UP: a ceiling, and no sky at all
 at 0 0 90
 step 120
-cam
+cam 0.7 1.3
 snap s15-eyes-up-inside
-frame
+# The same look, indoors: the roof's underside fills it and there is no sky at all.
+frame 0 1.0 soffit 0.95 1.0 sky 0 0.001
 
 echo --- indoors, straight DOWN: the floor, and no sky through it either
 send 3:0,20000
 step 120
 snap s15-eyes-down
-frame
+frame 0 1.0 floor 0.95 1.0 sky 0 0.001
 
 echo --- indoors, LEVEL: the room from inside a head
 send 3:0,-250
 step 120
-cam
+cam 0.7 1.3
 snap s15-eyes-level
-frame
+frame 0 0.85 masonry 0.60 0.82 soffit 0.20 0.35
 
 echo --- and back to FOLLOW, which fences the pitch again
 send 40:1
 at 0 0 90
 step 150
-cam
-frame
+# ⚠ THE OTHER SIDE OF THE DISJOINT PAIR: out of a head, the eye stands off again.
+cam 1.6 2.4
+# ⛔ THIS ROW HAD NO `snap`, so it judged the previous station's picture — "a row about
+# an unknown scene" by `frame`'s own definition. It has one now.
+snap s15-back-to-follow
+# ⚠ THE ONLY BAND HERE THAT WAS GUESSED BEFORE IT WAS MEASURED, because the row had no
+# picture to measure FROM until it was given one. The guess held; these are the numbers
+# it actually reads — masonry 0.5766, soffit 0.2371 — so the row is now measured like
+# every other. A band that passes because it is wide is not a check.
+frame 0 0.85 masonry 0.48 0.68 soffit 0.16 0.32
