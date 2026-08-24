@@ -32,6 +32,29 @@
 // ⚠ AND ROW 3 IS THE "BUILT AND NEVER CALLED" CHECK: the verb still exists and every
 // geometry row still passes; only the wiring row notices.
 //
+// ── THE REACH SELECTION'S OWN SWEEP, same day ──────────────────────────────
+//
+//   row 0  control                             all rows GREEN
+//   row 1  the aim ignores `es_aim_reach`      longer_reach · short_reach_in_between
+//   row 2  the selection CLAMPS to `ft_offer`  ordinal_names_nearest · refused_leaves_alone
+//   row 3  the reach leaks into the TRACE,     ⚠ NOTHING RED — see below
+//          scaled by 0.01
+//   row 3b the same leak, scaled by 0.5        aiming_and_tracing_disagree · reach_does_not_touch_trace
+//   control  restored                          all rows GREEN, byte-identical
+//
+// ⚠ **ROW 3 IS NOT A MISS, AND THE DIFFERENCE MATTERED ENOUGH TO MEASURE.** A silent
+// row reads as *this test cannot fail*, which is the reading that retires a good test.
+// The other reading is that the sabotage changed nothing — and here a SECOND
+// instrument settles it: running `aim.keys` with that leak in place produces the world
+// `be8c337a61125fc27e2898b679e7ed9f`, **byte-identical to the baseline**. The anchor is
+// snapped to a hex vertex, so a perturbation smaller than the snap cannot reach the
+// store at all.
+//
+// ⚠ **SO THIS TEST'S RESOLUTION IS ONE VERTEX SNAP, AND THAT IS THE RIGHT RESOLUTION.**
+// It sees every leak that moves the anchor (row 3b) and none that does not — and one
+// that does not, does not change the wall either. Declared here rather than left for
+// the next reader to rediscover by writing row 3 again.
+//
 // ⚠ `W_RESERVE` IS THE PACKAGE'S OWN — `gesture.loft` exports it, so a test file
 // redeclaring it is a name collision the compiler names on sight.
 use hex_editor;
