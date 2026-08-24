@@ -17,16 +17,16 @@ verb run
 
 echo --- round, pointed, segmental, oculus
 at -7 -0.9 90
-select 1
+select opening 1
 verb opening
 at -2 -0.9 90
-select 2
+select opening 2
 verb opening
 at 3 -0.9 90
-select 3
+select opening 3
 verb opening
 at 8 -0.9 90
-select 4
+select opening 4
 verb opening
 
 echo --- look along the elevation

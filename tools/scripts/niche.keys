@@ -21,13 +21,13 @@ verb run
 
 echo --- a doorway, then two niches beside it
 at -5 -0.9 90
-select 1
+select opening 1
 verb opening
 # ⚠ CHOSEN ONCE AND CUT TWICE — a selection stands until something moves it, which
 # is what makes `select` a tool rather than an argument. Saying `select 11` again on
 # the next line would work and would teach the wrong thing.
 at 0 -0.9 90
-select 11
+select opening 11
 verb opening
 at 5 -0.9 90
 verb opening

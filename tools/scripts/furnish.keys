@@ -16,7 +16,7 @@ verb run
 at 6 4 0
 verb run
 at -2 2.5 90
-select 11
+select opening 11
 verb opening
 
 echo --- and a figure standing in the niche, sized by the niche

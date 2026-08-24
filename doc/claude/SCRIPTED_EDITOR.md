@@ -92,8 +92,12 @@ converted; **`key <K>` is now deleted from both readers.**
 ```
 verb <name>      raise · lower · place · opening · fence · wall · run · seat · annex
                  stair_up · stair_down · slab · hole · storey · cellar
-select <kind>    what the NEXT opening cuts — `49:<kind>` on the wire
-                 `select seat <kind>` · `select annex <kind>` name their own subject
+select opening <kind>   what the NEXT opening cuts — `49:<kind>` on the wire
+select reach <units>   how far an aim reaches — `57:<units>`, and the only ORDINAL one
+select seat <kind>     — `52:` · select annex <kind> — `53:`
+                 ⚠ THE SUBJECT IS REQUIRED. `select 2` used to mean an opening and now
+                 fails the run: an unknown subject has nowhere to fall, which is the
+                 same rule every other word in this vocabulary already followed
 declare <axis> <slot> <name…>
                  what a byte or a slot MEANS in the author's region — `54:` on the
                  wire, `material` · `edge` · `item` · `house`. A bare

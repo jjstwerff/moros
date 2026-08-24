@@ -25,7 +25,7 @@
 //   # a comment
 //   at <x> <z> [yawdeg]     teleport — exact, repeatable, the workhorse
 //   verb <name>             perform that gesture — `place`, `opening`, `raise` …
-//   select <kind>           what the NEXT `opening` cuts; `select seat|annex <kind>`
+//   select <subject> <n>    opening | reach | seat | annex — the subject is required
 //   hold <WASD> <wu>        hold a key until that much ground is covered
 //   turn <deg>              turn by that much, measured off the body's facing
 //   wait <prefix>           wait for a status line starting with this
@@ -1156,25 +1156,34 @@ for (const raw of lines) {
     // `select <kind>` — what the NEXT opening cuts, until something says otherwise.
     // `select seat <kind>` — what the next `seat` puts in a void.
     //
-    // ⚠ THE BARE FORM STAYS THE OPENING, which is a compatibility decision rather
-    // than a design one: `K2a` converted eight scripts to say `select <kind>` and
-    // giving the word a new meaning would move all of them for a spelling. ⏭ When a
-    // fourth selection lands, the bare form is the one to migrate — it is the only
-    // one whose subject is implied rather than named.
+    // ✅ **EVERY SUBJECT IS NAMED NOW — the bare form is gone.** It used to be this
+    // reader's fallthrough, and the note here said to migrate it "when a fourth
+    // selection lands". `reach` was the fifth, and this is that migration.
+    //
+    // ⚠ **AND THIS READER IS WHERE THE COST SHOWED.** `select reach 18` was added to
+    // `src/editor_run.loft` and not here, so a script saying it would have fallen
+    // through and sent `49:reach` — an OPENING selection carrying a word. A bare form
+    // does not merely permit that; it IS the mechanism, because an unknown subject has
+    // somewhere to fall. It now throws instead.
     //
     // ⚠ IT WAITS FOR AN ANSWER RATHER THAN SLEEPING, because a refusal is a real
     // outcome here: `5` is not an opening kind and the standing choice does not
     // move. Both wordings are waited for, so a refused selection reads as a
     // refusal instead of as a dead wire.
-    if (rest[0] === 'seat') {
+    if (rest[0] === 'opening') {
+      ws.send(`49:${rest[1]}`);
+      console.log('  ' + await ack(['opening ', 'selection refused'], 10000));
+    } else if (rest[0] === 'reach') {
+      ws.send(`57:${rest[1]}`);
+      console.log('  ' + await ack(['reach ', 'selection refused'], 10000));
+    } else if (rest[0] === 'seat') {
       ws.send(`52:${rest[1]}`);
       console.log('  ' + await ack(['seat ', 'selection refused'], 10000));
     } else if (rest[0] === 'annex') {
       ws.send(`53:${rest[1]}`);
       console.log('  ' + await ack(['annex ', 'selection refused'], 10000));
     } else {
-      ws.send(`49:${rest[0]}`);
-      console.log('  ' + await ack(['opening ', 'selection refused'], 10000));
+      throw new Error(`select needs a subject: opening, reach, seat or annex — got '${rest[0]}'`);
     }
   } else if (cmd === 'hold') {
     const bit = HELD[rest[0]];

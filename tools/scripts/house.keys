@@ -29,10 +29,10 @@ verb place
 
 echo --- a door and a window in its near wall (stand ON the wall's own cells)
 at -3 2 30
-select 1
+select opening 1
 verb opening
 at -1 3 30
-select 2
+select opening 2
 verb opening
 
 # ⚠ THE AUTHOR STEPS OUT BEFORE THEY ARE PHOTOGRAPHED, and the first attempt is why:

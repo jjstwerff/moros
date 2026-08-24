@@ -21,10 +21,10 @@ verb place
 
 echo --- a ROUND-headed door and a ROUND window where a POINTED one was meant
 at -3 2 30
-select 1
+select opening 1
 verb opening
 at -1 3 30
-select 1
+select opening 1
 verb opening
 
 echo --- a fence ring, and a wall ring, well clear of the house

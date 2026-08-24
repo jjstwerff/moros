@@ -842,6 +842,16 @@ twin-pair comparison it describes no longer exists and `keyed.keys` and `carried
 gone. What survives of `probe/k1` is the paragraph below this one — the read-back checked
 against a mis-converted script — because that half was never about two spellings.
 
+✅ **AND THE BARE `select <kind>` IS GONE — 2026-08-24.** It meant an opening by
+fallthrough, which the note here called a compatibility decision to revisit *"when a fourth
+selection lands"*. `reach` was the fifth. ⚠ **The implied subject was not a tidiness problem
+and the proof arrived before the fix**: `select reach` was added to `editor_run` and not to
+`script.mjs`, whose fallthrough would have sent `49:reach` — an **opening** selection carrying
+a word. A bare form does not merely permit that mistake, it is the mechanism, because an
+unknown subject has somewhere to fall. Both readers now require the subject and fail without
+one. ⚠ **21 lines over 10 scripts changed spelling and every world came back byte-identical**
+— `k3d` PASS on 34 scripts against unchanged baselines, which is what says it was a rename.
+
 **Built 2026-08-12.** Both readers took `verb <name>` and `select <kind>`:
 `src/editor_run.loft`, which calls the gestures, and `tools/script.mjs`, which drives the
 socket. `probe/k1/run.sh` (`make probe-verbs`) ran a twin pair of scripts —

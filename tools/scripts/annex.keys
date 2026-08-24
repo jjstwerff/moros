@@ -39,7 +39,7 @@ verb annex
 
 echo --- a niche in the cottage wall, and a figure standing in it
 at -3 4.2 90
-select 11
+select opening 11
 verb opening
 select seat 1
 verb seat

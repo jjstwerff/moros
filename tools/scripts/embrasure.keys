@@ -23,13 +23,13 @@ verb run
 
 echo --- a plain doorway to compare against, then the window seat
 at -4 -0.9 90
-select 1
+select opening 1
 verb opening
 at 2 -0.9 90
-select 11
+select opening 11
 verb opening
 at 2 -0.9 90
-select 21
+select opening 21
 verb opening
 
 # ⚠ THE SEAT SIDE IS +z. A wall run's front face is the side its normal points at,

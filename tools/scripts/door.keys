@@ -17,12 +17,12 @@ verb run
 
 echo --- a door, hung ajar
 at 0 -0.9 90
-select 1
+select opening 1
 verb opening
 
 echo --- and a window beside it, for the contrast
 at 3 -0.9 90
-select 2
+select opening 2
 verb opening
 
 echo --- stand where a person would: in front of the door, looking at it

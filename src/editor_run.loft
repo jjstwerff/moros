@@ -507,29 +507,40 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
     // ⚠ CHOOSING IS A GESTURE AND IT REFUSES LIKE ONE. `5` is not *nearly* an
     // oculus, so `session_select_open` says no without an offer and leaves the
     // standing choice alone — which is the server's `49:` behaviour, because it is
-    // the same call.
+    // the same call. ⚠ A REACH IS THE EXCEPTION and refuses like an ordinal: 40 HAS
+    // a nearest one, so `fit_ordinal` names it.
     //
-    // ⚠ `select seat <kind>` NAMES ITS SUBJECT AND THE BARE FORM DOES NOT — plan 22
-    // `K3`. The bare one stays the opening because `K2a` converted eight scripts to
-    // write it that way, and giving the word a new meaning would move all of them for
-    // a spelling. ⏭ It is the form to migrate when a fourth selection lands: it is the
-    // only one whose subject is implied.
-    if rest.starts_with("seat ") {
-      ssel = hex_editor::session_select_seat(sess, rest[5..].trim() as integer ?? 0 - 1);
-      if !ssel.ak_ok { said = "selection refused — {ssel.ak_why}"; return true; }
-      said = "seat {ssel.ak_n} selected";
+    // ✅ **EVERY SUBJECT IS NAMED NOW — the bare form is gone.** It used to be the
+    // fallthrough: `select 2` meant an opening, because `K2a` converted eight scripts
+    // to write it that way and re-spelling them was judged not worth a migration. The
+    // note here said to migrate it *"when a fourth selection lands"*; `reach` was the
+    // fifth, and this is that migration.
+    //
+    // ⚠ **THE IMPLIED SUBJECT WAS NOT A TIDINESS PROBLEM, AND THE PROOF ARRIVED
+    // BEFORE THE FIX DID.** `select reach 18` was added to THIS reader and not to
+    // `tools/script.mjs`, whose fallthrough would have sent `49:reach` — an OPENING
+    // selection carrying a word. A bare form does not merely permit that mistake; it
+    // is the mechanism, because an unknown subject has somewhere to fall.
+    //
+    // ⚠ **SO AN UNKNOWN SUBJECT FAILS THE RUN** rather than choosing something. That
+    // is `K3a`'s rule for every other word in this vocabulary — an unknown one is not
+    // understood and the run exits non-zero — and `select` was the last word exempt.
+    if rest.starts_with("opening ") {
+      osel = hex_editor::session_select_open(sess, rest[8..].trim() as integer ?? 0 - 1);
+      if !osel.ak_ok { said = "selection refused — {osel.ak_why}"; return true; }
+      said = "opening {osel.ak_n} selected";
       return true;
     }
-    // ⚠ **THE FIFTH SELECTION LANDS HERE AND THE ⏭ ABOVE IS NOW DUE.** That note says
-    // the BARE form — `select <n>`, meaning an opening — is the one to migrate "when a
-    // fourth selection lands", because it is the only one whose subject is implied.
-    // This is the fifth, and the migration is deliberately NOT bundled here: it moves
-    // eight scripts and their baselines for a spelling, which would bury a behaviour
-    // change under a rename. Filed as its own step rather than done quietly or dropped.
     if rest.starts_with("reach ") {
       rsel = hex_editor::session_select_reach(sess, rest[6..].trim() as integer ?? 0 - 1);
       if !rsel.ak_ok { said = "selection refused — {rsel.ak_why}"; return true; }
       said = "reach {rsel.ak_n} selected";
+      return true;
+    }
+    if rest.starts_with("seat ") {
+      ssel = hex_editor::session_select_seat(sess, rest[5..].trim() as integer ?? 0 - 1);
+      if !ssel.ak_ok { said = "selection refused — {ssel.ak_why}"; return true; }
+      said = "seat {ssel.ak_n} selected";
       return true;
     }
     if rest.starts_with("annex ") {
@@ -538,10 +549,8 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
       said = "annex {asel.ak_n} selected";
       return true;
     }
-    sel = hex_editor::session_select_open(sess, rest as integer ?? 0 - 1);
-    if !sel.ak_ok { said = "selection refused — {sel.ak_why}"; return true; }
-    said = "opening {sel.ak_n} selected";
-    return true;
+    said = "select needs a subject: opening, reach, seat or annex";
+    return false;
   }
 
   // `wait`, `snap` and `rate` are the SERVER's vocabulary: they wait for an

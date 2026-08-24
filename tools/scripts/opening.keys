@@ -18,12 +18,12 @@ wait wall
 
 echo --- stand against it and cut a door
 at 0 -0.9 90
-select 1
+select opening 1
 verb opening
 
 echo --- and a window, two hexes along
 at 3 -0.9 90
-select 2
+select opening 2
 verb opening
 
 echo --- look along the wall
