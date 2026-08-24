@@ -758,9 +758,24 @@ const browserLag = async () => {
     `(() => { const el = document.querySelector('#out');
               return el ? el.textContent : ''; })()` });
   const txt = st?.result?.value ?? '';
-  const m = [...txt.matchAll(/meshes (\d+),.*?cameras (\d+),.*?parts (\d+)/g)].pop();
-  if (!m) return { page: -1, wire: meshLen.size, cam: false };
-  return { page: +m[1], wire: meshLen.size, cam: +m[2] > 0 && +m[3] > 0 };
+  // ⚠ **`held` IS THE ONE TO COMPARE, AND IT IS THE NEWEST OF THE FOUR.** `meshes` is a
+  // cumulative counter of `M:` messages ever received — it counts a re-sent chunk twice
+  // and never falls. `parts` is the client's SLOT TABLE length, a high-water mark whose
+  // freed entries are kept for reuse. Neither is the number of meshes the page is
+  // holding, and `page >= wire` was reading `meshes` as if it were.
+  const m = [...txt.matchAll(
+    /meshes (\d+),.*?cameras (\d+),.*?parts (\d+), held (\d+)/g)].pop();
+  // ⚠ **AND THE RUNNER'S SIDE HAD TO CHANGE TOO — `meshLen.size` COUNTS CLEARS.** The
+  // server retires a surface by re-sending its id with a colour and NO vertices;
+  // `add_mesh` treats that as a clear and the page holds NOTHING for it, while this
+  // side kept a map entry with length 0. Measured on one house: 536 ids, of which 470
+  // are clears and **66 carry vertices — and the page held exactly 66**. Comparing a
+  // held count against 536 could never succeed; against the non-empty count it is a
+  // real question with a reachable answer.
+  const live = [...meshLen.values()].filter((n) => n > 0).length;
+  if (!m) return { page: -1, seen: -1, wire: live, ids: meshLen.size, cam: false };
+  return { page: +m[4], seen: +m[1], wire: live, ids: meshLen.size,
+           cam: +m[2] > 0 && +m[3] > 0 };
 };
 
 // Wait until the page is showing what the runner already knows — every mesh, and
@@ -792,31 +807,28 @@ const browserLag = async () => {
 //
 // `SETTLE_MS` is settable because the right value is a property of the box — this one
 // runs two other projects' CI.
-const SETTLE_STABLE_MS = 1500;
+// Two consecutive agreeing samples, not one: a burst can put the two counts level for
+// an instant on its way past. 200 ms is cheap insurance against reading that instant.
+const SETTLE_CONFIRM_MS = 200;
 const settle = async (limitMs = Number(process.env.SETTLE_MS ?? 30000)) => {
   let last = { page: -1, wire: -1, cam: false };
-  let stableFor = 0;
-  let prev = -1;
+  let heldFor = 0;
   for (let t = 0; t < limitMs; t += 100) {
     last = await browserLag();
-    if (last.cam) {
-      stableFor = last.page === prev ? stableFor + 100 : 0;
-      prev = last.page;
-      // ⚠ THE CAMERA IS STILL REQUIRED. The client draws NOTHING before its first
-      // `C:`, so a "stable" count with no camera is a stable blank page.
-      if (stableFor >= SETTLE_STABLE_MS) {
-        return { ...last, waited: t, settled: true };
-      }
+    // ⚠ THE CAMERA IS STILL REQUIRED. The client draws NOTHING before its first `C:`,
+    // so a page that has caught up and has no camera is a caught-up blank page.
+    if (last.cam && last.page >= last.wire) {
+      heldFor += 100;
+      if (heldFor >= SETTLE_CONFIRM_MS) return { ...last, waited: t, settled: true };
     } else {
-      stableFor = 0;
-      prev = -1;
+      heldFor = 0;
     }
     await sleep(100);
   }
-  console.log(`  !! the page never settled — ${last.page} meshes seen against the`
-            + ` runner's ${last.wire} live, camera ${last.cam ? 'current' : 'STALE'},`
-            + ' still moving after ' + limitMs + 'ms. This frame is of an UNKNOWN'
-            + ' scene and no row may judge it');
+  console.log(`  !! the page never caught up — holding ${last.page} of the runner's`
+            + ` ${last.wire} non-empty meshes (${last.ids} ids in all, ${last.seen}`
+            + ` messages seen), camera ${last.cam ? 'current' : 'STALE'}, after`
+            + ` ${limitMs}ms. This frame is of an UNKNOWN scene and no row may judge it`);
   return { ...last, waited: limitMs, settled: false };
 };
 
@@ -970,6 +982,7 @@ async function frameStats(cap) {
     bsd: Object.fromEntries(Object.entries(v.bsd ?? {}).map(([k, x]) => [k, +x.toFixed(4)])),
     samples: v.total, share, parts: lag.page, wire: lag.wire,
     cam: lag.cam, waited: lag.waited, settled: lag.settled !== false,
+    held: lag.page, seen: lag.seen,
   };
 }
 
@@ -1090,6 +1103,22 @@ while (Date.now() < upBy && (view === null || meshLen.size === 0)) await sleep(2
 if (view === null || meshLen.size === 0) {
   console.log(`  !! the world never came up — ${meshLen.size} meshes, `
             + `camera ${view === null ? 'MISSING' : 'present'}`);
+}
+
+// ⚠ **THE BROWSER ATTACHES BEFORE THE FIRST LINE RUNS, NOT AT THE FIRST `snap`.**
+// It used to attach lazily, on the first picture — and the server broadcasts a mesh
+// once, to whoever is connected, so everything built before that moment never reached
+// the page at all. Measured 2026-08-24 once the page could report what it HOLDS: at
+// the first `snap` of `eyes.keys` it held 61 of the runner's 66 non-empty meshes and
+// was still 5 short after 30 seconds, because those five predated the attach.
+//
+// ⚠ **LAZY WAS NOT AN ACCIDENT — it kept a socket-only run from paying for a browser
+// it never used.** That is preserved: this only fires under `--shots`, which is the
+// flag that says pictures are coming. What changes is WHEN, not WHETHER.
+if (shots) {
+  if (!(await browser())) {
+    console.log('  !! the browser did not attach — no row that judges a picture can run');
+  }
 }
 
 for (const raw of lines) {

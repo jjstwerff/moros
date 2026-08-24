@@ -990,6 +990,20 @@ fn add_mesh(st: Client, body: text) {
   }
 }
 
+// How many meshes this page is HOLDING right now.
+//
+// ⚠ **NOT `len(st.parts)`, AND NOT `c_mesh` — AND BOTH OF THOSE WERE BEING READ AS IF
+// THEY WERE THIS.** `st.parts` is a SLOT TABLE whose freed entries are kept and reused
+// (`vao < 0` marks one), so its length is a high-water mark that never falls. `c_mesh`
+// is a cumulative counter of `M:` messages ever received, which counts a chunk twice
+// when the server re-sends it. A runner asking "has the page caught up with me" needs
+// the number of meshes CURRENTLY HELD, which is neither of those and is this.
+fn held_meshes(st: Client) -> integer {
+  hm = 0;
+  for hp in st.parts { if hp.vao >= 0 { hm = hm + 1; } }
+  hm
+}
+
 // T:<i>;<16 floats, column-major>
 fn place_mesh(st: Client, body: text) {
   t1 = semi_from(body, 0);
@@ -4040,13 +4054,14 @@ fn main() {
     // ⚠ **SO IT ALSO REPORTS WHENEVER THE COUNT MOVES**, bounded to one line per 30
     // frames so streaming cannot flood a console. In steady state nothing changes and
     // this stays as quiet as it was.
+    held = held_meshes(st);
     if frames - reported >= 300
-    || (st.c_mesh != reported_mesh && frames - reported >= 30) {
+    || (held != reported_mesh && frames - reported >= 30) {
       reported = frames;
-      reported_mesh = st.c_mesh;
+      reported_mesh = held;
       println("client: {frames} frames — meshes {st.c_mesh}, placements {st.c_place}, "
               + "drops {st.c_drop}, cameras {st.c_cam}, status {st.c_status}, "
-              + "parts {len(st.parts)}");
+              + "parts {len(st.parts)}, held {held}");
       // ⚠ THE WALKER'S OWN NUMBERS — plan 22 `B1c.1`, AND THE ATTACHED HALF IS A
       // CLAIM RATHER THAN A REPORT (plan 22, probe 5). This read *"only where this
       // page is the walker … attached they would be zero and meaningless"*, which
