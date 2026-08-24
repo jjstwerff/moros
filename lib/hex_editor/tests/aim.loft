@@ -223,8 +223,8 @@ fn test_aiming_and_tracing_disagree() {
   tried = 0;
   for k in 0..24 {
     yaw = (k as float) * 2.0 * PI / 24.0 ?? 0.0;
-    tx = cos(yaw) * AIM_REACH;
-    tz = sin(yaw) * AIM_REACH;
+    tx = cos(yaw) * (AIM_REACH_DEFAULT as float);
+    tz = sin(yaw) * (AIM_REACH_DEFAULT as float);
 
     wa = flat();
     sa = EditSession {};
@@ -275,4 +275,123 @@ fn test_a_short_aim_along_an_in_between_direction_is_refused() {
   assert(gp == 0,
          "asking for a third of d24 1's period gave d24 {gd} p {gp} — the library "
        + "found a run where this row needs there to be none, so it tests nothing");
+}
+
+// ── THE REACH IS A SELECTION ────────────────────────────────────────────────
+//
+// ⚠ THE FIFTH SELECTION AND THE FIRST THAT IS A MAGNITUDE. The other four are
+// NOMINAL — `5` is not nearly an oculus — so they refuse without an offer. This one
+// is ORDINAL, so a value past the bound names the nearest thing that exists.
+
+fn test_an_unselected_session_aims_the_default_reach() {
+  w = flat();
+  s = EditSession {};
+  assert(s.es_aim_reach == AIM_REACH_DEFAULT,
+         "a fresh session's reach is {s.es_aim_reach}, not the default "
+       + "{AIM_REACH_DEFAULT}");
+  a = aim_at(s, w, 0.0, 0.0, 0.0);
+  assert(a.ak_ok, "the default aim was refused: {a.ak_why}");
+}
+
+fn test_a_longer_reach_builds_a_longer_wall() {
+  // ⚠ **THE ROW THAT SAYS THE SELECTION IS READ AT ALL.** Everything else here could
+  // pass with `session_aim` still holding a constant.
+  ws = flat();
+  ss = EditSession {};
+  aim_at(ss, ws, 0.0, 0.0, 0.0);
+  short_run = ss.es_runs.items[0] ?? WallRun {};
+
+  wl = flat();
+  sl = EditSession {};
+  sel = session_select_reach(sl, 18);
+  assert(sel.ak_ok, "selecting a reach of 18 was refused: {sel.ak_why}");
+  assert(sl.es_aim_reach == 18, "the session's reach is {sl.es_aim_reach}");
+  aim_at(sl, wl, 0.0, 0.0, 0.0);
+  long_run = sl.es_runs.items[0] ?? WallRun {};
+
+  // Compare the runs' own spans rather than a stored length — the endpoints are what
+  // the store keeps, and `H1d` is the reason a sentence carries them.
+  sdx = short_run.wr_x1 - short_run.wr_x0;
+  ldx = long_run.wr_x1 - long_run.wr_x0;
+  assert(ldx > sdx * 2.0,
+         "a reach of 18 spanned {ldx} against the default's {sdx} — the selection is "
+       + "not reaching `session_aim`");
+}
+
+fn test_the_reach_is_ordinal_so_a_refusal_names_the_nearest_that_exists() {
+  // ⚠ **THIS IS WHAT SEPARATES IT FROM THE OTHER FOUR SELECTIONS.** A seat kind of 9
+  // refuses with *nominal, so there is no nearest one*. A reach of 40 has a nearest
+  // one — the maximum — and `K-FIT` says a refusal names its restriction.
+  s = EditSession {};
+  over = session_select_reach(s, AIM_REACH_MAX + 16);
+  assert(!over.ak_ok, "a reach past the maximum was accepted");
+  assert(over.ak_why.find("{AIM_REACH_MAX}") != null,
+         "the refusal '{over.ak_why}' does not name the maximum {AIM_REACH_MAX}");
+  under = session_select_reach(s, AIM_REACH_MIN - 1);
+  assert(!under.ak_ok, "a reach below the minimum was accepted");
+  assert(under.ak_why.find("{AIM_REACH_MIN}") != null,
+         "the refusal '{under.ak_why}' does not name the minimum {AIM_REACH_MIN}");
+}
+
+fn test_a_refused_reach_leaves_the_standing_choice_alone() {
+  // ⚠ **`session_select_open`'s OWN RULE, AND IT MUST HOLD FOR AN ORDINAL TOO.** A
+  // refusal that half-applied would leave the author aiming a length they never chose
+  // and were told they could not have.
+  s = EditSession {};
+  ok = session_select_reach(s, 9);
+  assert(ok.ak_ok && s.es_aim_reach == 9, "the reach is {s.es_aim_reach}");
+  bad = session_select_reach(s, AIM_REACH_MAX + 1);
+  assert(!bad.ak_ok, "a reach past the maximum was accepted");
+  assert(s.es_aim_reach == 9,
+         "a REFUSED selection moved the standing reach to {s.es_aim_reach}");
+}
+
+fn test_a_short_reach_along_an_in_between_direction_refuses_and_says_what_it_has() {
+  // ⚠ **`X111` REACHED THROUGH THE SELECTION, WHICH IS WHAT MAKES THE MESSAGE
+  // ACTIONABLE.** The twelve in-between directions cannot make a run shorter than
+  // 6.245 world units, so a reach of 3 has no legal run along one — and *select a
+  // longer reach* is only advice if the author is told what they currently have.
+  w = flat();
+  s = EditSession {};
+  sel = session_select_reach(s, 3);
+  assert(sel.ak_ok, "a reach of 3 was refused: {sel.ak_why}");
+  // d24 1 is an in-between; aim along its own actual angle.
+  yaw = hex_shape::wall_angle_actual(1) * PI / 180.0 ?? 0.0;
+  a = aim_at(s, w, 0.0, 0.0, yaw);
+  assert(!a.ak_ok,
+         "a reach of 3 along an in-between direction built something: {a.ak_why}");
+  assert(a.ak_why.find("3") != null,
+         "the refusal '{a.ak_why}' does not name the reach the author has");
+  // …and the same direction with a reach that clears the period does build.
+  s2 = EditSession {};
+  session_select_reach(s2, 12);
+  w2 = flat();
+  b = aim_at(s2, w2, 0.0, 0.0, yaw);
+  assert(b.ak_ok,
+         "a reach of 12 along the same in-between direction was refused too: "
+       + "{b.ak_why} — then the refusal above is not about the reach at all");
+}
+
+fn test_the_reach_does_not_touch_the_trace() {
+  // ⚠ **THE SELECTION BELONGS TO ONE IDIOM.** A trace's length is the walk; if
+  // choosing a reach changed it, the two maps would be sharing a parameter and
+  // `X108`'s separation would be a comment rather than a fact.
+  wa = flat();
+  sa = EditSession {};
+  press_verb(sa, wa, author_on(wa, 0.0, 0.0, 0.0), VB_RUN);
+  press_verb(sa, wa, author_on(wa, 9.0, 0.0, 0.0), VB_RUN);
+  plain = sa.es_runs.items[0] ?? WallRun {};
+
+  wb = flat();
+  sb = EditSession {};
+  session_select_reach(sb, AIM_REACH_MAX);
+  press_verb(sb, wb, author_on(wb, 0.0, 0.0, 0.0), VB_RUN);
+  press_verb(sb, wb, author_on(wb, 9.0, 0.0, 0.0), VB_RUN);
+  chosen = sb.es_runs.items[0] ?? WallRun {};
+
+  assert(hex_form::fabs(plain.wr_x1 - chosen.wr_x1) < 0.000001
+      && hex_form::fabs(plain.wr_z1 - chosen.wr_z1) < 0.000001,
+         "the same walk traced to {plain.wr_x1},{plain.wr_z1} with the default reach "
+       + "and {chosen.wr_x1},{chosen.wr_z1} with a reach of {AIM_REACH_MAX} — the "
+       + "selection is reaching the trace");
 }

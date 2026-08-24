@@ -40,3 +40,20 @@ at 0 -14 15
 verb run
 at 5.796 -12.448 15
 verb run
+
+echo --- the reach is a SELECTION, and a longer one builds a longer wall
+select reach 18
+at -12 12 0
+verb aim
+
+echo --- a short reach has no run at all along an in-between heading (X111)
+select reach 3
+at 12 12 15
+verb aim
+
+echo --- and the same short reach builds fine on an exact one
+at 12 16 0
+verb aim
+
+echo --- past the maximum the refusal names the nearest that exists
+select reach 40

@@ -1,10 +1,10 @@
 rc: 0
-world: 32952:1321124190
-md5: d8896b041c7bd922707e1a3d2139fea4
-tau: 150
+world: 32952:835720475
+md5: be8c337a61125fc27e2898b679e7ed9f
+tau: 174
 chunks: 4
 code: 0
-session: runs 7 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+session: runs 9 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
 chosen: opening 1
 --- what the gestures reported
   placed 0,0
@@ -27,4 +27,13 @@ chosen: opening 1
   road started at 0,-14
   placed 5.796,-12.448
   wall laid 16 edges, heading 1 of 24 (snapped, residual 1.0925809675457276°), length 6.244997998398398, from 0,-14 to 6.06217782649107,-12.5
+  reach 18 selected
+  placed -12,12
+  wall aimed 40 edges, heading 0 of 24 (aimed, residual 0°), length 17.32050807568877, from -11.258330249197702,12.5 to 6.06217782649107,12.5
+  reach 3 selected
+  placed 12,12
+  refused: aim refused — no wall of about 3 reaches that way from here; turn a little, or select a longer reach
+  placed 12,16
+  wall aimed 8 edges, heading 0 of 24 (aimed, residual 0°), length 3.4641016151377544, from 12.12435565298214,16 to 15.588457268119894,16
+  selection refused — aim reach 40 is above the maximum 24 (offer 24, residual 16)
 --- what the runner refused

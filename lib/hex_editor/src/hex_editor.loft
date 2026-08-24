@@ -1913,7 +1913,7 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   //
   // ⚠ **AND THE REFUSAL IS REACHABLE, unlike the trace's twin.** `X111`: the twelve
   // in-between directions have a period of 6.245 world units against the exact ones'
-  // 1.0 or 1.732, so an aim of about `AIM_REACH` along one of them has no legal run
+  // 1.0 or 1.732, so an aim of about the SELECTED reach along one of them has no run
   // at all and the author is told which way to turn. `run`'s two refusals have never
   // fired in this corpus (`H1b`'s sabotage row 3); this one fires in its own test.
   if verb == VB_AIM {

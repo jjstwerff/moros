@@ -76,6 +76,31 @@ use self::say;
 // `yaw` from it, and a session author kept in step there would be a second authority
 // on where the author is. Read `es_author` as *this driver's pose*, never as *the
 // editor's*.
+// ── HOW FAR AN AIM REACHES ──────────────────────────────────────────────────
+//
+// ⚠ **DECLARED ABOVE `EditSession` BECAUSE ITS DEFAULT USES ONE, AND THAT IS AN
+// ORDERING RULE RATHER THAN A STYLE.** These sat beside `session_aim` at the bottom
+// of the file at first; a struct field default cannot see a `const` declared later,
+// and the failure is not a parse error — every test in the file reported
+// `Incorrect var AIM_REACH_DEFAULT[65535] versus 8`, an unresolved slot, at RUN time.
+// A key press has no magnitude, so the reach is a SELECTION rather than a gesture
+// parameter — `session_select_reach`, the fifth of exactly five and the first that is
+// ORDINAL. When a stick supplies a push it feeds the same field.
+//
+// ⚠ **WHOLE WORLD UNITS, NOT PERIODS, AND THE CHOICE IS FORCED.** A period means a
+// different LENGTH in every direction — 1.0 or 1.732 world units on the twelve exact
+// headings and 6.245 on the twelve in-betweens (`X111`) — so "3" would be 3 units east
+// and 18.7 units at 15°. An author asking for a length must be asking in a unit that
+// means the same thing everywhere, and the library fits it to what the lattice has.
+pub const AIM_REACH_MIN = 1;
+// ⚠ **THE CEILING IS OURS, NOT THE LATTICE'S, AND SAYING SO IS THE POINT.** Nothing in
+// `hex_shape` bounds a run's length; this is an authoring bound picked so the longest
+// in-between period (6.245) fits several times over. It is ORDINAL, so a value past it
+// names its offer rather than being silently clamped — `fit_ordinal`, and `fence_ring`
+// one gesture over does the same with its radius.
+pub const AIM_REACH_MAX = 24;
+pub const AIM_REACH_DEFAULT = 6;
+
 pub struct EditSession {
   es_author: Author,
   // The eight the server holds beside the store. Empty is a legal scene: a world with
@@ -118,6 +143,24 @@ pub struct EditSession {
   // one where six keys collapse to one verb, and inventing the split before then
   // would be designing a container for contents nobody has measured.
   es_open_kind: integer = OP_ROUND,
+  // ── HOW FAR AN AIM REACHES — plan 24, and it is `es_open_kind`'s category ───
+  //
+  // ⚠ **A SELECTION, NOT A GESTURE PARAMETER, AND THE REASON IS THE INPUT.** A key
+  // press has no magnitude; a controller's push does, and `input` has no continuous
+  // axis to carry one yet (BLUEPRINT §3.2, upstream). So the reach is chosen once and
+  // stands — the same shape as a door profile or a seat kind, and when a stick
+  // arrives it writes this field rather than growing the aim a second argument.
+  //
+  // ⚠ **IT IS THIS AUTHOR'S, NOT THE WORLD'S** — the note above `es_open_kind` states
+  // the rule and it holds here identically: two clients editing one world hold two
+  // reaches, and neither belongs in the world's bytes.
+  //
+  // ⚠ **AND IT NEEDS NO WHETHER-FIELD, unlike `es_open_kind`.** That pair exists
+  // because a house type can declare an opening *unless overridden*, and `OP_ROUND` is
+  // both a legal choice and the default so the two are indistinguishable. No house
+  // type declares a reach, so there is nothing for a default to be overridden BY —
+  // inventing the second field here would be a container for contents nobody has.
+  es_aim_reach: integer = AIM_REACH_DEFAULT,
   // ── …AND WHETHER THIS AUTHOR EVER CHOSE IT — plan 22 `T1b` ─────────────────
   //
   // ⚠ **A SECOND FIELD, BECAUSE `OP_ROUND` IS A LEGAL CHOICE AND ALSO THE DEFAULT.**
@@ -590,6 +633,23 @@ pub fn seat_kind_ok(kind: integer) -> boolean { kind == PROP_BED || kind == PROP
 
 // ⚠ NOMINAL, SO A REFUSAL OFFERS NOTHING — `session_select_open`'s wording, and for
 // its reason: `2` is not "the nearest seat kind to a statue", it is not a seat kind.
+// ⚠ **THE FIFTH SELECTION, AND THE FIRST THAT IS A MAGNITUDE.** The other four —
+// an opening profile, a part name, a seat kind, an annex kind — are all NOMINAL: `5`
+// is not *nearly* an oculus, so they refuse without an offer. A reach is ORDINAL: 40
+// is too long and 24 is the nearest thing to it that exists, so the refusal NAMES that
+// (`fit_ordinal` → `fit_why` renders *offer 24, residual 16*).
+//
+// ⚠ **IT REFUSES RATHER THAN CLAMPING, WHICH IS THE TREE'S EXISTING BEHAVIOUR AND WAS
+// CHECKED RATHER THAN ASSUMED**: no caller of `fit_ordinal` applies `ft_offer` — every
+// one returns `ack_no(fit_why(f))` and leaves the standing choice alone. A selection
+// that silently moved to 24 would be the one gesture in the editor that does.
+pub fn session_select_reach(s: EditSession, units: integer) -> Ack {
+  rfit = fit_ordinal(units, AIM_REACH_MIN, AIM_REACH_MAX, "aim reach");
+  if !rfit.ft_ok { return ack_no(fit_why(rfit)); }
+  s.es_aim_reach = units;
+  ack_ok(units)
+}
+
 pub fn session_select_seat(s: EditSession, kind: integer) -> Ack {
   if !seat_kind_ok(kind) {
     return ack_no("{kind} is not a seat kind; nominal, so there is no nearest one");
@@ -935,9 +995,6 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
 // ⚠ AND THE LENGTH IS A CONSTANT FOR NOW, WHICH IS THE HONEST STATE. A controller
 // supplies it as a push — a magnitude on the stick — and `input` has no continuous
 // axis to read one from ([BLUEPRINT](../../../doc/claude/BLUEPRINT.md) §3.2, upstream).
-// A key press has no magnitude, so this lays `AIM_REACH` and says so in the sentence.
-// The reach is the thing to make selectable next; the IDIOM is what this step wires.
-pub const AIM_REACH = 6.0;      // world units the aim asks for, before the lattice fits it
 
 // `56:` — a press of the aim key, at wherever this driver stands, along its facing.
 pub fn session_aim(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> RunLaid {
@@ -957,7 +1014,8 @@ pub fn session_aim(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
   // one: the walk integrates `cos(yaw), sin(yaw)` into `(x, z)`, and `wall_angle_actual`
   // measures `atan2(tri_y, tri_x)`. `run_between` already compares the two directly.
   sa_deg = a.au_yaw * 180.0 / PI ?? 0.0;
-  (sa_d24, sa_p) = hex_shape::snap_run_from_heading(sa_va, sa_vb, sa_deg, AIM_REACH);
+  sa_want = s.es_aim_reach as float;
+  (sa_d24, sa_p) = hex_shape::snap_run_from_heading(sa_va, sa_vb, sa_deg, sa_want);
   // ⚠ A REFUSAL NAMES ITS RESTRICTION (`K-FIT`), and this one is REACHABLE where the
   // trace's twin never fires: `X111` — the twelve in-between directions have a period
   // of 6.245 world units against the exact ones' 1.0 or 1.732, so a SHORT aim along an
@@ -965,8 +1023,12 @@ pub fn session_aim(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
   // defensive branch.
   if sa_d24 < 0 || sa_p <= 0 {
     return RunLaid { rl_code: RL_REFUSED,
-      rl_say: "aim refused — no wall of about {AIM_REACH} reaches that way from here; "
-            + "turn a little or ask for more" };
+      // ⚠ IT NAMES THE REACH THAT WAS ASKED FOR, not the constant it used to name.
+      // `X111` is why this fires — the twelve in-between directions cannot make a run
+      // shorter than 6.245 units — so *ask for more* is only actionable if the author
+      // is told what they currently have.
+      rl_say: "aim refused — no wall of about {s.es_aim_reach} reaches that way from "
+            + "here; turn a little, or select a longer reach" };
   }
   sa_ea = hex_shape::wall_end_a(sa_d24, sa_va, sa_p);
   sa_eb = hex_shape::wall_end_b(sa_d24, sa_vb, sa_p);

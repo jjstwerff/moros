@@ -520,6 +520,18 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
       said = "seat {ssel.ak_n} selected";
       return true;
     }
+    // ⚠ **THE FIFTH SELECTION LANDS HERE AND THE ⏭ ABOVE IS NOW DUE.** That note says
+    // the BARE form — `select <n>`, meaning an opening — is the one to migrate "when a
+    // fourth selection lands", because it is the only one whose subject is implied.
+    // This is the fifth, and the migration is deliberately NOT bundled here: it moves
+    // eight scripts and their baselines for a spelling, which would bury a behaviour
+    // change under a rename. Filed as its own step rather than done quietly or dropped.
+    if rest.starts_with("reach ") {
+      rsel = hex_editor::session_select_reach(sess, rest[6..].trim() as integer ?? 0 - 1);
+      if !rsel.ak_ok { said = "selection refused — {rsel.ak_why}"; return true; }
+      said = "reach {rsel.ak_n} selected";
+      return true;
+    }
     if rest.starts_with("annex ") {
       asel = hex_editor::session_select_annex(sess, rest[6..].trim() as integer ?? 0 - 1);
       if !asel.ak_ok { said = "selection refused — {asel.ak_why}"; return true; }

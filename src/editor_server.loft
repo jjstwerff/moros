@@ -327,6 +327,10 @@ const MSG_WALL = 25;      // walls: a STRAIGHT run on one of the 24 headings
 // nothing else"*, which was true of every gesture until this one. An aim reads the
 // FACING and nothing else about where the author walked, so `do_aim` takes it.
 const MSG_AIM = 56;       // aim: one press, a run along the author's own facing
+// ⚠ **THE FIFTH SELECTION, AND THE FIRST ORDINAL ONE.** `49:`/`51:`/`52:`/`53:` are
+// all nominal — a bad value has no nearest — so they refuse with nothing to offer.
+// A reach past the maximum HAS a nearest, and `K-FIT` says the refusal names it.
+const MSG_SELECT_REACH = 57;   // how far an aim reaches, in whole world units
 const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
@@ -5901,6 +5905,18 @@ fn main() {
           }
         } else if ev.msg_id == MSG_WALL {
           do_wall(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wld, dirty, sess);
+        } else if ev.msg_id == MSG_SELECT_REACH {
+          // ⚠ THE CHOOSING AND THE REFUSAL ARE THE LIBRARY'S, exactly as the other
+          // four are; what stays here is the sentence. A server that re-derived the
+          // bound would be the second site that decides how long a wall may be.
+          rsel = hex_editor::session_select_reach(sess, ev.payload as integer ?? 0 - 1);
+          if rsel.ak_ok {
+            srv.send_to(ev.cid, "S:reach {rsel.ak_n} selected");
+            println("editor: aim reach {rsel.ak_n}");
+          } else {
+            srv.send_to(ev.cid, "S:selection refused — {rsel.ak_why}");
+            println("editor: selection refused — {rsel.ak_why}");
+          }
         } else if ev.msg_id == MSG_AIM {
           // ⚠ `wk.wk_yaw` — the walker's own facing, not a session pose. Same rule
           // `do_wall`'s note states for x and z: this server HAS a walker, and a
