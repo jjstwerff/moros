@@ -261,6 +261,26 @@ tick body runs. Nothing forks. ⚠ **And it must stay the absence of a call**: a
 boolean threaded through the tick would be the fourth site that decides what a gesture means,
 which [EDITING_MODES.md](EDITING_MODES.md) already counts as a shipped mistake.
 
+◐ **MEASURED — [`B3p`](../../probe/b3p/README.md), AND THE PARAGRAPH ABOVE IS HALF TRUE.**
+
+✅ The **mechanism** is exactly as described. `walk_to` handed an **empty** `EdgeSet` walks
+straight through a fence that is in the store, covering `42.67773189849706` — the no-fence
+control's distance **to the last digit**. Collision really is the set and not a rule inside the
+walk.
+
+⛔ **But no caller of `walk_tick` can decline it.** The tick calls `walk_proxy`
+**unconditionally**, and `walk_proxy` assigns `wk_coll` on every rebuild. The only knob is
+`reach`, and **`reach = 0` still blocks**: `edges_around` scans a 3×3 neighbourhood into a 1×1
+set centred on the walker's own cell — which is the cell the fence crosses. Shrinking the proxy
+never empties it.
+
+⚠ **So the sentence above is a REQUIREMENT ON WORK NOT YET DONE, not a description of the API**,
+and it read as the latter for as long as it was unmeasured. The smallest change that honours it
+is not the boolean it warns against — `walk_proxy` already takes `reach`, so a **negative**
+`reach`, or a `walk_tick` that accepts the `EdgeSet` the way `walk_to` does, keeps the decision
+in one place. ⚠ **And the probe had to ask BOTH layers**: run only the tick and its shape gets
+reported as the library's.
+
 ### 3.2 Controller support — ⛔ this is the one real GAP
 
 `loft-libs-game/input` is the right abstraction and already matches the editor's verb design:
@@ -337,12 +357,18 @@ All four already have their answer written down and none of them is new work her
 |---|---|---|
 | **`B0p`** | ✅ **RUN — and it refuted its own question.** [result](../../probe/b0p/README.md) | No threshold exists; the shape is stored in the palette, not deduced. ⚠ Its live finding is the **confident hexagon** |
 | **`B1p`** | ✅ **RUN** — [result](../../probe/b1p/README.md) | cells, edges **and the palette** all survive; the **run record** does not. The feared *"every blueprint reopens as `SOLID`"* is not what happens |
-| **`B2p`** | **can `cut_arb` place a 45° face at all, exactly?** One wall, one bay, count the edges each surface claims. Control: a fixed "always the parent" rule must strand edges | this is `@HB-X55`'s measurement one shape over — it found 112/112 with a stencil against world linework, so the mechanism is proven; the bay is a harder case |
-| **`B3p`** | **does the walker move with no collision `EdgeSet`?** | trivial, and it is the one that says §3.1 is an absence rather than a flag |
+| **`B2p`** | ✅ **RUN — §2.3's mechanism holds** — [result](../../probe/b2p/README.md) | the bay's 13 edges go **5/4/4** to the two cants and the front and **not one** to the parent. A 45° face is placeable without being a `D` heading |
+| **`B3p`** | ◐ **RUN — and it split in two** — [result](../../probe/b3p/README.md) | ✅ the LIBRARY frees the walker exactly; ⛔ **`walk_tick` cannot be asked for it**, so §3.1 was describing work rather than the API |
 
 ✅ **`B0p` RAN FIRST AND DID CHANGE THE DESIGN**, which is what a falsifying probe is for: it
 removed §2.5's threshold rather than measuring it, and moved the octagon from *deduced* to
 *stored*.
+
+⚠ **AND `B2p` ALMOST PASSED WHILE MEASURING NOTHING.** Its first version reported a stray of
+**8.2** against a control of **10.0** — a green assertion, and a fact about the room's three
+walls the fixture never declared, not about the bay. The **histogram over `edge_surf`** is what
+made it an answer: *which surface claimed each edge* is the question, and *did a summary number
+improve* is not. **A ratio can improve for a reason unrelated to the claim.**
 
 ⚠ **SO `B1p` IS NOW THE LOAD-BEARING ONE.** If the body lives in the palette and `@HB-X63` leaves
 the palette at **T4**, the entire recovery of an octagon tower — and of every wall type a

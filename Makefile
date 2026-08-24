@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-demo page-check plan-check play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -818,6 +818,21 @@ probe-b0p:
 # did not exist — so a wall's body and thickness have a home after all.
 probe-b1p:
 	@loft --interpret --lib lib/ probe/b1p/b1p.loft 2>/dev/null | sed -n '/^B1p/,$$p'
+
+# B2p (BLUEPRINT §2.3) — CAN `cut_arb` PLACE A 45° FACE AT ALL? ✅ Yes: the bay's 13
+# boundary edges go 5/4/4 to the two cants and the front, and NOT ONE to the parent
+# wall. ⚠ Read its first-version note — measuring ALL the room's edges reported a
+# stray of 8.2 that was a fact about the three walls the fixture never declared.
+probe-b2p:
+	@loft --interpret --lib lib/ probe/b2p/b2p.loft 2>/dev/null | sed -n '/^B2p/,$$p'
+
+# B3p (BLUEPRINT §3.1) — DOES THE WALKER MOVE WITH NO COLLISION `EdgeSet`? ✅ The
+# LIBRARY can: `walk_to` with an empty set covers 42.67773189849706, the no-fence
+# control to the last digit. ⛔ But `walk_tick` cannot be asked for it — the proxy is
+# unconditional, and `reach = 0` still blocks. §3.1's "absence of a call" is a
+# property the API does NOT have today.
+probe-b3p:
+	@loft --interpret --lib lib/ probe/b3p/b3p.loft 2>/dev/null | sed -n '/^B3p/,$$p'
 
 # L1 (plan 24) — CAN THE LIBRARY READ BACK A WALL *OUR* STAMP LAID? Control: the
 # library's own `wall_write` through our world→EdgeSet bridge, 24 of 24. Ours:

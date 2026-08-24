@@ -1,0 +1,163 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PLAN 24 / BLUEPRINT `B3p` — DOES THE WALKER MOVE WITH NO COLLISION `EdgeSet`?
+//
+//   loft --interpret --lib lib/ probe/b3p/b3p.loft   (or `make probe-b3p`)
+//
+// [BLUEPRINT.md](../../doc/claude/BLUEPRINT.md) §3.1 says the blueprint editor's
+// unrestricted walk is
+//
+//   *"THE ABSENCE OF A CALL, NOT A FLAG. The blueprint editor builds **no**
+//    collision `EdgeSet` … ⚠ And it must stay the absence of a call: a `no_collide`
+//    boolean threaded through the tick would be the fourth site that decides what a
+//    gesture means."*
+//
+// ⚠ THAT SENTENCE IS A CLAIM ABOUT AN API, SO THE PROBE IS AIMED AT THE API AND NOT
+// AT THE GEOMETRY. `walk_tick` calls `walk_proxy` **unconditionally** — there is no
+// branch — and `walk_proxy` assigns `wk.wk_coll` every time it rebuilds. So the
+// question is not *can a walker cross a wall*; it is **can a caller of `walk_tick`
+// reach the free-movement state at all**, and if so, through what.
+//
+// The only knob is `reach`, so this walks the same walker into the same fence at
+// every `reach` from the editor's own `COLL_R` down to 0, and compares each against
+// a control with **no fence** — the distance free movement covers.
+//
+// ⚠ AND THE SECOND HALF IS THE ONE THAT SEPARATES TWO VERY DIFFERENT ANSWERS. If no
+// `reach` frees the walker, that could mean either *the library cannot express it*
+// or *the tick's signature cannot*. `walk_to` is the primitive under the tick and
+// takes the `EdgeSet` as a parameter, so handing it an empty one asks the library
+// directly. A probe that ran only the first half would report the tick's shape as
+// though it were the library's.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+use hex_form;
+use hex_field;
+use hex_edge;
+use hex_way;
+
+// ⚠ `COLL_R` IS NOT A LIBRARY CONSTANT — it is declared THREE TIMES in `src/`
+// (`editor_run.loft`, `editor_server.loft`, and `editor_client.loft` as
+// `LOCAL_COLL_R`), all 8. Copied here as a fourth rather than invented, and the
+// duplication is worth noticing on the way past: the reach a walker collides at is a
+// property of the walk, and it lives in every driver instead.
+const COLL_R  = 8;
+const GROUND_H = 8;
+const STEP_MAX = 4;
+const FENCE_X  = 4.0;
+const TICKS    = 400;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 20, 0 - 20, 41, 41, GROUND_H, hex_editor::SURFACE_MAT);
+  w
+}
+
+// A fence across the path, north-south, so a walk along +x meets it square. Into the
+// STORE and into the run list, exactly as `lib/hex_editor/tests/tick.loft` does it.
+fn fence_at(w: VoxelWorld, runs: WallRuns, at: float) -> integer {
+  marked = 0;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                           wr_x0: at, wr_z0: 0.0 - 6.0, wr_x1: at, wr_z1: 6.0,
+                           wr_mat: hex_editor::FENCE_MAT, wr_step: 0 },
+                         hex_editor::FENCE_MAT, GROUND_H, runs, marked);
+  marked
+}
+
+fn tick(wk: hex_editor::Walker, w: VoxelWorld, runs: WallRuns,
+        reach: integer) -> hex_editor::TickOut {
+  hex_editor::walk_tick(wk, w, runs, reach, STEP_MAX, hex_editor::LEVEL_R,
+                        fn(gx: float, gz: float, gref: float) -> float {
+                          (gq, gr) = hex_grid::px_to_hex(gx, gz);
+                          (hex_editor::terrain_h(gq, gr, w) as float) * w.w_unit
+                        })
+}
+
+// Walk due +x for `TICKS` ticks and report where the walker ended up.
+fn walk_x(reach: integer, with_fence: boolean) -> float {
+  w = flat_world();
+  runs = hex_editor::WallRuns { items: [] };
+  if with_fence { fence_at(w, runs, FENCE_X); }
+  wk = hex_editor::walker_new(0.0, (GROUND_H as float) * w.w_unit, 0.0);
+  wk.wk_held = hex_editor::HELD_FWD;
+  for i in 0..TICKS { tick(wk, w, runs, reach); }
+  wk.wk_x
+}
+
+fn main() {
+  println("B3p — does the walker move with no collision `EdgeSet`?");
+  println("");
+  step = hex_editor::walk_step_len(hex_editor::tick_dt());
+  println("  fence at x = {FENCE_X} · {TICKS} ticks of {step} · free travel would be "
+          + "{(TICKS as float) * step}");
+  println("");
+
+  // ── The control FIRST, because every other row is read against it ──────────
+  //
+  // ⚠ AN INSTRUMENT GETS CHECKED AGAINST SOMETHING IT SHOULD FIND. If the walker
+  // stopped short with no fence at all, every "blocked" row below would be measuring
+  // the world's edge or a bad fixture rather than the wall.
+  free = walk_x(COLL_R, false);
+  println("── control: no fence at all ────────────────────────────────────");
+  println("   reach {COLL_R}, no wall : x = {free}");
+  if free < FENCE_X {
+    println("   ⛔ THE FIXTURE IS BROKEN — the walker does not even REACH the fence "
+            + "line without one. Every row below is void.");
+    return;
+  }
+  println("   ✅ free movement crosses the fence line, so a stop below is the wall");
+  println("");
+
+  println("── the same walk into the fence, at every `reach` ───────────────");
+  println("   reach   x reached   crossed?");
+  freed = 0 - 1;
+  for reach in [COLL_R, 8, 4, 2, 1, 0] {
+    x = walk_x(reach, true);
+    mark = "BLOCKED";
+    if x > FENCE_X { mark = "crossed"; if freed < 0 { freed = reach; } }
+    println("   {reach}       {x}   {mark}");
+  }
+  println("");
+
+  // ── The library, asked directly ────────────────────────────────────────────
+  //
+  // `walk_to` is what `walk_tick` calls. Handing it an EMPTY `EdgeSet` is the
+  // "absence" §3.1 describes, expressed at the only layer that has a parameter for
+  // it. The world still holds the fence — only the proxy is gone.
+  println("── the primitive, with an EMPTY `EdgeSet` ──────────────────────");
+  w = flat_world();
+  runs = hex_editor::WallRuns { items: [] };
+  fence_at(w, runs, FENCE_X);
+  empty = hex_field::edgeset_new(0, 0, 1, 1);
+  sf = hex_edge::surfaces_new();
+  rt = hex_way::track_new();
+  px = 0.0;
+  pz = 0.0;
+  refu = GROUND_H as float;
+  for i in 0..TICKS {
+    (nx, nz) = hex_editor::walk_to(empty, sf, rt, w, px, pz, px + step, pz, refu);
+    px = nx;
+    pz = nz;
+  }
+  println("   walk_to with an empty set : x = {px}");
+  println("");
+
+  println("── the verdict ─────────────────────────────────────────────────");
+  if px > FENCE_X {
+    println("   ✅ THE LIBRARY CAN EXPRESS IT — an empty `EdgeSet` walks straight");
+    println("      through a fence that is in the store. Collision is genuinely the");
+    println("      SET, not a rule inside the walk.");
+  } else {
+    println("   ⛔ EVEN AN EMPTY SET STOPS AT {px} — collision is not only the set,");
+    println("      and §3.1's whole mechanism is wrong.");
+  }
+  if freed < 0 {
+    println("   ⛔ BUT NO `reach` REACHES IT THROUGH `walk_tick`. The tick calls");
+    println("      `walk_proxy` unconditionally and `walk_proxy` assigns `wk_coll`");
+    println("      every rebuild, so a CALLER of `walk_tick` cannot decline it.");
+    println("      §3.1's \"absence of a call\" is not a property the API has today.");
+  } else {
+    println("   ✅ and `reach = {freed}` reaches it through `walk_tick` itself.");
+  }
+}

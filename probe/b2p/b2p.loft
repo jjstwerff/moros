@@ -1,0 +1,134 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// BLUEPRINT `B2p` — CAN `cut_arb` PLACE A 45° FACE, EXACTLY?
+//
+//   loft --interpret --lib lib/ probe/b2p/b2p.loft     (or `make probe-b2p`)
+//
+// §2.3 rests on one mechanism: a 45° face is not a `D` heading and never can be
+// (`tan 45° = 1` ⇒ `m/k = √3`), but `hex_edge::surf_straight` takes an ARBITRARY
+// float normal — *"every one of the 24 headings, and for anything between them"* —
+// and `cut_arb` gives each boundary edge to its NEAREST surface. If that holds, a
+// bay is drawable even though it is not a heading.
+//
+// ⚠ THIS IS `@HB-X55`'s MEASUREMENT ONE SHAPE OVER. It found 112/112 boundary edges
+// taking the nearest surface with a stencil standing on world linework. A bay is the
+// harder case: its faces meet the parent wall at 45°, so the two surfaces compete for
+// the edges at the joint.
+use hex_field;
+use hex_grid;
+use hex_edge;
+use hex_shape;
+use hex_way;
+
+const Q0 = 0 - 16;
+const N = 33;
+
+// The footprint: a rectangular room with a bay bumped out of its east side.
+// Built from cell membership, which is the only thing `cut_arb` reads.
+fn footprint(cells: HexSet, with_bay: boolean) -> integer {
+  n = 0;
+  for r in 0 - 4..5 {
+    for q in 0 - 5..1 {
+      hexset_set(cells, q, r, true); n = n + 1;
+    }
+  }
+  if with_bay {
+    // three cells projecting east, centred — the canted bay
+    for r in 0 - 1..2 {
+      for q in 1..3 {
+        hexset_set(cells, q, r, true); n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+// Every blocked edge, its assigned surface, and how far it sits from that surface.
+// ⚠ **ONLY THE EDGES THE BAY OWNS, AND THE FIRST VERSION MEASURED ALL OF THEM.**
+// The room has four sides and this fixture declares surfaces for ONE of them, so
+// every west/north/south edge was assigned to whichever of the four was nearest —
+// eight units away — and the "worst stray" was a fact about the missing surfaces,
+// not about the 45-degree faces. Restricted to `q >= qmin`, it asks the question
+// the probe is for: can a cant claim the edges in front of it?
+fn worst_stray(cells: HexSet, e: EdgeSet, sf: Surfaces, tag: text, qmin: integer) -> float {
+  worst = 0.0;
+  n = 0;
+  unassigned = 0;
+  // ⚠ A FALLING STRAY IS NOT THE SAME CLAIM AS "THE CANTS OWN EDGES", and the first
+  // version of this probe reported only the stray. A histogram over `edge_surf` says
+  // which surface each edge actually went to — so a run where every edge still went
+  // to the parent, and the stray fell for some other reason, is distinguishable.
+  hist: vector<integer> = [0, 0, 0, 0, 0, 0, 0, 0];
+  for r in Q0..Q0 + N {
+    for q in Q0..Q0 + N {
+      if !hexset_get(cells, q, r) { continue; }
+      if q < qmin { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if hexset_get(cells, nq, nr) { continue; }
+        if edge_mat(e, q, r, nq, nr) == 0 { continue; }
+        n = n + 1;
+        sid = edge_surf(e, q, r, nq, nr);
+        if sid <= 0 { unassigned = unassigned + 1; continue; }
+        if sid < 8 { hist[sid] = hist[sid] + 1; }
+        (ex, ey) = edge_point(q, r, nq, nr);
+        dd = surf_distance(sf, sid, ex, ey);
+        if dd > worst { worst = dd; }
+      }
+    }
+  }
+  println("   {tag}: {n} edges cut · {unassigned} unassigned · worst stray {worst}");
+  hline = "     by surface:";
+  for i in 1..8 { if hist[i] > 0 { hline = hline + " s{i}={hist[i]}"; } }
+  println(hline);
+  worst
+}
+
+fn main() {
+  println("B2p — can `cut_arb` place a 45-degree face exactly?");
+  println("");
+
+  // ── the surfaces: the parent wall, and the bay's three faces ──────────────
+  //
+  // The parent runs north-south at x = 0.5 (east side of the room). The bay's
+  // faces are at +45, 0 and -45 to it — none of them a `D` heading.
+  full = surfaces_new();
+  s_par = surf_straight(full, 1.0, 0.0, 0.5);                 // the parent wall
+  r2 = 0.7071067811865476;
+  s_a = surf_straight(full, r2, r2, 0.5 * r2 + 1.6 * r2);      // +45 cant
+  s_f = surf_straight(full, 1.0, 0.0, 2.1);                    // the bay's front
+  s_b = surf_straight(full, r2, 0.0 - r2, 0.5 * r2 + 1.6 * r2); // -45 cant
+  println("   surfaces: parent {s_par}, cants {s_a}/{s_b}, front {s_f}");
+
+  cells = hexset_chunk(Q0, Q0, N, N);
+  nc = footprint(cells, true);
+  edges = edgeset_new(Q0, Q0, N, N);
+  cut_arb(cells, edges, full, full.sf_n, 1);
+  println("   footprint {nc} cells");
+  println("");
+  println("── with all four surfaces ──────────────────────────────────────");
+  w_all = worst_stray(cells, edges, full, "bay edges, all surfaces  ", 1);
+
+  // ── THE CONTROL: parent only. `@HB-X55`'s own control shape — a fixed rule
+  // must STRAND the edges the other surfaces would have claimed.
+  println("");
+  println("── control: the parent wall alone ──────────────────────────────");
+  one = surfaces_new();
+  surf_straight(one, 1.0, 0.0, 0.5);
+  cells2 = hexset_chunk(Q0, Q0, N, N);
+  footprint(cells2, true);
+  edges2 = edgeset_new(Q0, Q0, N, N);
+  cut_arb(cells2, edges2, one, one.sf_n, 1);
+  w_one = worst_stray(cells2, edges2, one, "bay edges, parent only   ", 1);
+
+  println("");
+  if w_all < w_one {
+    println("   ✅ the bay's faces CLAIM their edges — worst stray {w_all} with all");
+    println("      four surfaces against {w_one} with the parent alone. A 45-degree");
+    println("      face is placeable even though it is not a `D` heading.");
+  } else {
+    println("   ⛔ adding the bay's surfaces did not reduce the stray ({w_all} vs");
+    println("      {w_one}) — either the cut ignores them or the control is blind.");
+  }
+}
