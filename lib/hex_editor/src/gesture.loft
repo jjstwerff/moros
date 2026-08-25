@@ -4657,7 +4657,28 @@ pub struct GroundKind {
 // ⚠ THE ORDER IS NOT THE INDEX. A material is named by `tr_mat`, not by its position
 // here, because the constants are a wire-and-storage fact that predates this table —
 // so a row may be added or reordered without renumbering anything.
-pub fn ground_kinds() -> vector<GroundKind> {
+// ⚠ **A `const`, NOT A FUNCTION BODY — MEASURED, AND THE DIFFERENCE IS NOT SMALL.** A
+// vector literal inside a function is rebuilt on EVERY call, and this table is read by
+// `ground_kind_of` for every material question the brush and the slope rules ask.
+// Measured natively: 200 000 `ground_kind_of` calls cost 0.62 s over a 3.18 s baseline,
+// about 3.1 µs each to allocate twelve rows and then scan them. A loft `const` is
+// evaluated once.
+//
+// ⚠ **AND A MISS BUILT IT TWICE**, because `ground_kind_of` falls through to
+// `ground_kind_default`, which built its own copy to read one row out of.
+//
+// ⛔ **THIS COULD NOT BE WRITTEN UNTIL 2026-08-25, AND THE REASON IS WORTH KEEPING.**
+// A const vector of structs was silently mis-built by loft in two ways this table has
+// BOTH of: a field value computed by arithmetic (`WATER_FLOW + 3`) made the whole
+// constant come back EMPTY, and a `boolean` or `character` field (`tr_fabric`,
+// `tr_fixed`) was silently dropped to `false`/empty while the row count stayed right.
+// The first emptied this table and every lookup fell through to a default —
+// `tests/cave.loft` caught it with *"no cell of the strip was caved at all"*. The
+// second would have passed a length check and been wrong in the values.
+// [loft#1090](https://github.com/loft-lang/loft/issues/1090), fixed in `fa66d424`.
+// ⚠ So this declaration needs a toolchain of 2026-08-25 or later; on an older one the
+// cave tests go red rather than passing quietly.
+const GROUND_KINDS: vector<GroundKind> =
   [
     // Grass may be given any slope the author likes and stands at 41° before the
     // soil goes; past that the column is rock. That pair is what lets the raise
@@ -4699,7 +4720,13 @@ pub fn ground_kinds() -> vector<GroundKind> {
     GroundKind { tr_mat: WATER_FLOW + 4, tr_name: "water-nw", tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
     GroundKind { tr_mat: WATER_FLOW + 5, tr_name: "water-ne", tr_slope: 1, tr_face: FACE_NONE, tr_fabric: false, tr_fixed: true , tr_drawn: "water" },
   ]
-}
+;
+
+// ⚠ **KEPT AS A FUNCTION so the table has one public name and the callers that walk it
+// — including `tests/cave.loft` — do not change.** The scanners below read
+// `GROUND_KINDS` directly, which saves the call as well as the allocation; this is the
+// door for everyone else.
+pub fn ground_kinds() -> vector<GroundKind> { GROUND_KINDS }
 
 // ── WATER NEVER FLOWS UPWARDS ───────────────────────────────────────────────
 //
@@ -5086,7 +5113,7 @@ pub fn water_uphill(w: VoxelWorld, q: integer, r: integer) -> boolean {
 // `tr_slope` the copies stopped agreeing by inspection. It looks the row up by
 // material, never by position, for the reason the header three paragraphs up gives.
 fn ground_kind_default(mat: integer, name: text) -> GroundKind {
-  for g in ground_kinds() {
+  for g in GROUND_KINDS {
     if g.tr_mat == SURFACE_MAT {
       return GroundKind { tr_mat: mat, tr_name: name, tr_slope: g.tr_slope,
                           tr_face: g.tr_face, tr_fabric: g.tr_fabric };
@@ -5101,7 +5128,7 @@ fn ground_kind_default(mat: integer, name: text) -> GroundKind {
 // every stroke. A material this table has never heard of is the same case: it draws
 // as something, so it must slope as something.
 pub fn ground_kind_of(mat: integer) -> GroundKind {
-  for t in ground_kinds() {
+  for t in GROUND_KINDS {
     if t.tr_mat == mat { return t; }
   }
   ground_kind_default(mat, "grass")
@@ -5128,7 +5155,7 @@ pub fn ground_kind_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> Gr
   nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL,
                                      hex_voxel::world_region_at(w, q, r), mat);
   if nm == "" || nm == hex_voxel::PAL_ABSENT { return ground_kind_of(mat); }
-  for t in ground_kinds() {
+  for t in GROUND_KINDS {
     if t.tr_name == nm { return t; }
   }
   // ⚠ NAMED BUT UNKNOWN IS *GROUND*, NOT A REFUSAL — here. A world may legitimately
