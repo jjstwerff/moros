@@ -398,12 +398,38 @@ fi
 #
 # ⚠ **THE CLAIM WAS NEVER ABOUT 600 EXACTLY** — it is *did it run long enough to decide
 # anything*. So it reads the largest count the page reported and compares it.
+#
+# ⛔ **AND 600 WAS STILL A WALL CLOCK WEARING A FRAME COUNT'S HAT — MEASURED 2026-08-26.**
+# This run is bounded by TIME, not by frames: `press.mjs` waits for the page's own
+# sentence, presses 7 keys 600ms apart, then holds 3s. So the count it reaches is
+# `elapsed x FPS`, and FPS is whatever the box has left. Same commit, same page, two
+# windows on one afternoon:
+#
+#   | keys | elapsed | max frames | load1 | implied FPS |
+#   |------|---------|------------|-------|-------------|
+#   |   4  |   18s   |    427     |  9.0  |     ~24     |
+#   |  12  |   39s   |    548     | 20.8  |     ~14     |
+#
+# A 7-key run is a ~25-30s window, so 14-24 FPS spans **350-720 frames** — and the three
+# numbers this row has actually seen are 375, 393 and the **721** that made it pass when
+# it was written. **600 sits inside its own noise band**, so the row reported the box's
+# spare capacity and called it the page's health. `src/editor_client.loft` has not changed
+# since that 721 (bisected: only `editor_server.loft` and the `Xform` renames, and run B
+# has no server), which is what a green-then-red with no cause looks like.
+#
+# ⚠ CLAUDE.md already names this: *cost is measured in `w_tau`, not seconds — a wall clock
+# measures the machine*. The anti-freeze claim is machine-independent and is what this now
+# asks: **did the page keep rendering PAST its own local decision?** That decision is
+# `LOCAL_AFTER` frames after boot (`src/editor_client.loft`), so the bound is anchored to
+# the client's own constant plus a margin, not to a number somebody once observed.
+b1_local_after=180   # `LOCAL_AFTER` in src/editor_client.loft — the decision point
+b1_need=$((b1_local_after + 60))
 b1_frames=$(grep -oE '^client: [0-9]+ frames' "$OUT/b.log" | grep -oE '[0-9]+' \
             | sort -n | tail -1)
-if [ "${b1_frames:-0}" -ge 600 ] 2>/dev/null; then
-  ok "B1 and it ran — $b1_frames frames, past the 600 this row needs"
+if [ "${b1_frames:-0}" -ge "$b1_need" ] 2>/dev/null; then
+  ok "B1 and it ran — $b1_frames frames, past the $b1_need it needs (LOCAL_AFTER $b1_local_after + 60)"
 else
-  bad "B1 the client never reached 600 frames; it did not run long enough to decide anything"
+  bad "B1 the client stopped at ${b1_frames:-0} frames, short of $b1_need — it never rendered past its own local decision"
 fi
 # ⚠ THE CONTROL IS THE SERVER'S LOG, NOT THE CLIENT'S. The first version of this
 # read the client's own `connected` line as proof that no socket had opened — the
