@@ -386,9 +386,22 @@ else
   bad "B0 the page never booted; 'it never claimed a server' would be vacuous"
 fi
 # ⚠ THE FRAME COUNTER, because an absence measured over a page that froze is not
-# an absence. The client prints one every 300 frames.
-if grep -q '^client: 600 frames' "$OUT/b.log"; then
-  ok "B1 and it ran — past 600 frames"
+# an absence.
+#
+# ⛔ **IT MATCHED THE LITERAL `client: 600 frames`, AND THAT WAS A BET ON THE REPORT'S
+# CADENCE.** The line was printed every 300 frames exactly, so counts landed on 300,
+# 600, 900 — and this row read one of them. The client now also reports whenever its
+# mesh count MOVES (bounded to one line per 30 frames), because `tools/script.mjs`
+# waits on that number and a report refreshed only every 300 frames is unusable as a
+# readiness signal. Counts no longer land on round numbers, and this row went red on a
+# page that was running perfectly.
+#
+# ⚠ **THE CLAIM WAS NEVER ABOUT 600 EXACTLY** — it is *did it run long enough to decide
+# anything*. So it reads the largest count the page reported and compares it.
+b1_frames=$(grep -oE '^client: [0-9]+ frames' "$OUT/b.log" | grep -oE '[0-9]+' \
+            | sort -n | tail -1)
+if [ "${b1_frames:-0}" -ge 600 ] 2>/dev/null; then
+  ok "B1 and it ran — $b1_frames frames, past the 600 this row needs"
 else
   bad "B1 the client never reached 600 frames; it did not run long enough to decide anything"
 fi
@@ -767,8 +780,13 @@ fi
 # hand that can have marked the panel is the one at the connect site.
 c_last=$(grep '^client: [0-9]* frames' "$OUT/c.log" | tail -1)
 echo "   what arrived:  ${c_last:-<the client never reported a frame count>}"
+# ⛔ **THIS WAS A SUFFIX MATCH, so it broke the day the line grew a field.** `held` was
+# appended after `parts` and every counter was still zero; the row went red about a
+# page that had received nothing, which is exactly what it exists to confirm. It is a
+# SUBSTRING match now, and `held 0` is named alongside the rest — a new counter that
+# arrives non-zero still has to be added here, which is the part worth being strict on.
 case "$c_last" in
-  *"meshes 0, placements 0, drops 0, cameras 0, status 0, parts 0")
+  *"meshes 0, placements 0, drops 0, cameras 0, status 0, parts 0, held 0"*)
     ok "C3 and not one message arrived — nothing else can have marked the panel" ;;
   *) bad "C3 a message got through: ${c_last:-no frame line at all}" ;;
 esac

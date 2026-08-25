@@ -604,6 +604,22 @@ struct Client {
   // loader. The sentinel only has to be a value no world can carry; the reason it must
   // not survive into the frame loop is in that function's own note.
   saved_tau: integer,
+  // ── THE WORLD KEY, AND THE CLOCK IT WAS TAKEN AT ────────────────────────────
+  //
+  // ⚠ **A MEMO ON `w_tau` IS EXACT HERE, NOT AN APPROXIMATION.** `world_key` is a pure
+  // function of the world's bytes, and `hex_voxel`'s edit clock bumps once per write
+  // that changed something — so the same tau IS the same bytes and therefore the same
+  // key. Nothing is being guessed.
+  //
+  // ⚠ **AND IT IS WORTH HAVING BECAUSE THE KEY IS NOT CHEAP.** It serialises the whole
+  // world: measured natively, ~24 ms on a 49x49 world, of which ~21 ms is the encode.
+  // This page asked for it once per gesture AND again on the save that follows, in the
+  // same tau — two full encodes for one edit, on top of the save's own.
+  //
+  // ⚠ `key_tau` STARTS AT A CLOCK NO WORLD HAS, so a page that loads a world whose tau
+  // happens to match a stale memo cannot read the previous world's key.
+  key_tau: integer,
+  key_text: text,
   // Has the disk been consulted at all? ⚠ It is not `saved_tau != 0 - 1`: a page that
   // read the disk and found NOTHING is a page that has consulted it, and that is
   // exactly the state where the seed above is still in place.
@@ -1221,7 +1237,7 @@ fn local_restore(st: Client, a: hex_editor::Author) -> hex_editor::Author {
   // that restored every cell and solved its camera against the height the ground used
   // to have keys a **byte-identical** world. It is the one number here that is about
   // where the person is standing rather than about the store.
-  println("client: local world — restored {world_key(st.cache)} from "
+  println("client: local world — restored {client_key(st)} from "
           + "'{WORLD_PATH}' at tau {st.cache.w_tau} · ground {ra.au_y} ⚠ its scene "
           + "records (runs, roofs, openings, props) are not in a world file");
   ra
@@ -1246,11 +1262,28 @@ fn local_restore(st: Client, a: hex_editor::Author) -> hex_editor::Author {
 // frame would flood the console and spend a whole encode per frame for as long as the
 // fault lasts — a page that is out of storage would go from *cannot save* to *cannot
 // draw*. It is reported per EDIT instead, which is bounded by the person's hands.
+// The world's key, computed at most once per edit.
+fn client_key(st: Client) -> text {
+  if st.key_tau == st.cache.w_tau { return st.key_text; }
+  // ⚠ THE ONE DIRECT CALL, and it must stay direct: a blanket rename of
+  // `world_key(st.cache)` to `client_key(st)` turned this line into unbounded
+  // recursion, and it COMPILED. The memo's own miss path cannot go through the memo.
+  st.key_text = world_key(st.cache);
+  st.key_tau = st.cache.w_tau;
+  st.key_text
+}
+
 fn local_persist(st: Client) {
   if !st.loaded { return; }
   if st.cache.w_tau == st.saved_tau { return; }
   st.saved_tau = st.cache.w_tau;
-  ps_code = world_save(st.cache, WORLD_PATH, []);
+  // ⚠ **THE KEY COMES OUT OF THE SAVE, WHICH IS ONE ENCODE RATHER THAN TWO.** This
+  // called `world_save` and then keyed the same world again for the line below —
+  // `editor_run` had the identical pair and `world_save_keyed` is what removed it. The
+  // key is now of the bytes that reached the disk, which is also the stronger claim for
+  // a line whose whole job is to say what was written.
+  ps_key = "";
+  ps_code = world_save_keyed(st.cache, WORLD_PATH, [], hex_voxel::OWNER_ANY, ps_key);
   if ps_code != WS_OK {
     println("client: local world ⚠ this edit could not be written (code {ps_code}) "
             + "— it is in the picture and will not survive a reload");
@@ -1260,7 +1293,9 @@ fn local_persist(st: Client) {
   // happens silently is a save nothing can distinguish from one that never ran — and
   // this line is what would report the failure mode the guard above exists for: a
   // world written on a frame nobody edited would show up here as a flood.
-  println("client: local world — saved {world_key(st.cache)} at tau {st.cache.w_tau}");
+  st.key_text = ps_key;
+  st.key_tau = st.cache.w_tau;
+  println("client: local world — saved {ps_key} at tau {st.cache.w_tau}");
 }
 
 fn local_camera(st: Client, a: hex_editor::Author) {
@@ -1871,7 +1906,7 @@ fn local_act(sess: hex_editor::EditSession, st: Client, a: hex_editor::Author,
   // A sentence in front of them would red a picture gate on a spelling change.
   say_why = "";
   if ack.ak_why != "" { say_why = " · {ack.ak_why}"; }
-  println("client: local {verb} — {ack.ak_n} · world {world_key(st.cache)} · "
+  println("client: local {verb} — {ack.ak_n} · world {client_key(st)} · "
           + "{redrawn} floats redrawn{say_why}");
   // ⚠ AND THE SESSION BESIDE IT, BECAUSE ONE INSTRUMENT CANNOT ANSWER. A ring
   // writes its edges into the store and its TRUNK into the session, so a page that
@@ -2350,7 +2385,7 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
         // the same thing on a page whose ground already matched, and this page spent
         // months in the first state while reporting success.
         println("client: local level off — {st.lv_stamped} cell(s) stamped · world "
-                + "{world_key(st.cache)} · feet back on the ground at {st.wk.wk_y}");
+                + "{client_key(st)} · feet back on the ground at {st.wk.wk_y}");
       } else {
         lres = 0.0;
         st.lv_stamped = 0;
@@ -3542,6 +3577,8 @@ fn main() {
     tick_begun: false,
     part_pick: 0, was_part: false,
     c_mesh: 0, c_place: 0, c_drop: 0, c_cam: 0, c_status: 0, c_thumb: 0,
+    // ⚠ A CLOCK NO WORLD HAS, so the first ask always computes. `0` is a real tau.
+    key_tau: 0 - 1, key_text: "",
     c_staging: false, c_pending: [],
   };
 
@@ -3901,7 +3938,7 @@ fn main() {
           // wrong is not a frame's worth of wrong. ⚠ Appended, because six greps in
           // `probe/b2` and `probe/b1b` match the head of this line.
           println("client: local — {lg_boot} ground floats in {len(st.parts)} "
-                  + "drawables · world {world_key(st.cache)} · author stands at "
+                  + "drawables · world {client_key(st)} · author stands at "
                   + "{author.au_y}");
         }
       }
