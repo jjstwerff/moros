@@ -27,9 +27,9 @@ source = "registry"
 
 [[package]]
 name = "hex_body"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.1.0/hex_body-0.1.0.tar.gz"
-sha256 = "d674a3ef332580daace28043d343931b2df467f2e1563ddb465e615364c91e27"
+version = "0.3.1"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.3.1/hex_body-0.3.1.tar.gz"
+sha256 = "01ed675eaace4763c6f8151f70bd5dd40c24d67458ece8e8c5d8720bd9f3bc01"
 source = "registry"
 
 [[package]]

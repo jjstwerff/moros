@@ -4,9 +4,9 @@ schema_version = 1
 
 [[package]]
 name = "hex_body"
-version = "0.3.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.3.0/hex_body-0.3.0.tar.gz"
-sha256 = "e43ae1c4b81ba3bc0edd9923d2af961582108dfab568c7e9392ab883ea70719e"
+version = "0.3.1"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.3.1/hex_body-0.3.1.tar.gz"
+sha256 = "01ed675eaace4763c6f8151f70bd5dd40c24d67458ece8e8c5d8720bd9f3bc01"
 source = "registry"
 
 [[package]]

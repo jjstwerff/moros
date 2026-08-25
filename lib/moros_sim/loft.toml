@@ -19,7 +19,7 @@ entry = "src/moros_sim.loft"
 # ⚠ `hex_rig` — plan 19 `L6.3b`. `assembly`, `frames` and `ground` left this package for it,
 # and the character half BUILDS on them, so this is now a consumer of what it used to hold.
 hex_rig      = { path = "../hex_rig" }
-hex_body     = ">=0.1"
+hex_body     = "0.3.1"
 moros_map    = { path = "../moros_map" }
 moros_editor = { path = "../moros_editor" }
 moros_render = { path = "../moros_render" }
