@@ -51,10 +51,19 @@ pub struct Rot {
 }
 
 // ⚠ **NAMED `Xform` BECAUSE `Frame` IS TAKEN — by `hex_body`, which this package
-// depends on.** `hex_body 0.3.1` declares its own `pub struct Frame` (a point plus a
-// row-major basis) and loft refuses two structs of one name in a graph, at the
-// declaration, naming both files. So the moment moros's `hex_body` floor moves past
-// `0.1`, a `Frame` here stops compiling.
+// depends on.** `hex_body` declares its own `pub struct Frame` from 0.3.0 (a point
+// plus a row-major basis), and this package's lock already resolves 0.3.x — measured,
+// `frame_point` and `rig_world_frame3` both resolve here, and they exist only from
+// 0.3.0. So both names are live in one graph today.
+//
+// ⛔ **AND IT DOES NOT CURRENTLY FAIL TO COMPILE, WHICH I ASSERTED AND COULD NOT
+// REPRODUCE.** loft refuses two structs of one name — measured, in a minimal package
+// with this exact shape (`use hex_body`, `pub struct Frame`, whether declared in the
+// entry file or in a module): *"struct 'Frame' conflicts with a struct of the same
+// name already defined at hex_body-0.3.1 — pick a different name"*. This package does
+// NOT get that error, on 0.3.0 or 0.3.1, before or after this rename. I could not
+// explain the difference and stopped looking. So the rename is justified by the
+// READING cost below, not by a build that was about to break.
 //
 // ⚠ **THE COLLISION IS NOT THE ONLY COST, AND THE OTHER ONE IS WHY THIS WAS RENAMED
 // BEFORE THE UPGRADE.** The two are the same IDEA — a rigid placement — in different
