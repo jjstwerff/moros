@@ -70,7 +70,7 @@ use graphics;
 
 pub struct Rest {
   rt_ok: boolean,
-  rt_frame: Frame,        // the solved base frame; the pose, not a description of it
+  rt_frame: Xform,        // the solved base frame; the pose, not a description of it
   rt_bank: float,         // radians
   rt_rounds: integer,     // rounds actually taken
   rt_resid: float,        // the last change in β — how far from settled
@@ -84,10 +84,10 @@ fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
 // The base frame for a given height and bank. ONE expression, used by the solve
 // and by the gap measurement alike — which is the whole point of `A6`.
 pub fn ground_frame(cx: float, cy: float, cz: float,
-                    yaw: float, bank: float) -> Frame {
-  frame_mul(frame_mul(frame_trans(cx, cy, cz),
-                      frame_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
-            frame_rot(rot_axis(1.0, 0.0, 0.0, bank / TURN ?? 0.0)))
+                    yaw: float, bank: float) -> Xform {
+  xform_mul(xform_mul(xform_trans(cx, cy, cz),
+                      xform_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
+            xform_rot(rot_axis(1.0, 0.0, 0.0, bank / TURN ?? 0.0)))
 }
 
 // ── `A-GROUND` ───────────────────────────────────────────────────────────────
@@ -99,11 +99,11 @@ pub fn ground_frame(cx: float, cy: float, cz: float,
 // floated `0.0914 wu` and the other sank the same, because the report computed
 // `y ± w·sin(bank)` — the solve's own arithmetic — while the wheels were placed
 // by a transposed rotation. Two homes for one quantity, and the check sat in the
-// wrong one. Here the hub comes out of `frame_apply`, so a wrong pose cannot
+// wrong one. Here the hub comes out of `xform_apply`, so a wrong pose cannot
 // report a right gap.
-pub fn ground_gap(f: Frame, half: float, radius: float, side: float,
+pub fn ground_gap(f: Xform, half: float, radius: float, side: float,
                   sample: fn(float, float) -> float) -> float {
-  hub = frame_apply(f, vec3(0.0, 0.0, side * half));
+  hub = xform_apply(f, vec3(0.0, 0.0, side * half));
   hub.y - radius - sample(hub.x, hub.z)
 }
 
@@ -272,20 +272,20 @@ pub fn body_axle(a: Assembly, i: integer) -> Axle {
 // A hitched body's frame: origin AT THE PIN, so the coupling holds by
 // construction and `A-HITCH` is unbreakable rather than merely checked.
 pub fn hitched_frame(px: float, py: float, pz: float,
-                     yaw: float, pitch: float, roll: float) -> Frame {
-  frame_mul(frame_mul(frame_mul(frame_trans(px, py, pz),
-                                frame_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
-                      frame_rot(rot_axis(0.0, 0.0, 1.0, pitch / TURN ?? 0.0))),
-            frame_rot(rot_axis(1.0, 0.0, 0.0, roll / TURN ?? 0.0)))
+                     yaw: float, pitch: float, roll: float) -> Xform {
+  xform_mul(xform_mul(xform_mul(xform_trans(px, py, pz),
+                                xform_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
+                      xform_rot(rot_axis(0.0, 0.0, 1.0, pitch / TURN ?? 0.0))),
+            xform_rot(rot_axis(1.0, 0.0, 0.0, roll / TURN ?? 0.0)))
 }
 
 // Where a hitched body's wheel sits, in the world: back along the drawbar, out
 // along the axle. Read from the FRAME, for the reason `A6` records.
-pub fn hitched_wheel(f: Frame, drawbar: float, half: float, side: float) -> Vec3 {
-  frame_apply(f, vec3(0.0 - drawbar, 0.0, side * half))
+pub fn hitched_wheel(f: Xform, drawbar: float, half: float, side: float) -> Vec3 {
+  xform_apply(f, vec3(0.0 - drawbar, 0.0, side * half))
 }
 
-pub fn hitched_gap(f: Frame, drawbar: float, half: float, radius: float,
+pub fn hitched_gap(f: Xform, drawbar: float, half: float, radius: float,
                    side: float, sample: fn(float, float) -> float) -> float {
   w = hitched_wheel(f, drawbar, half, side);
   w.y - radius - sample(w.x, w.z)
@@ -538,7 +538,7 @@ pub fn hitched_rest(sample: fn(float, float) -> float,
 // pin computed from the parent and the pin computed from the child must be the
 // same point — and a composition that merely *looks* right still moves
 // convincingly, which is why this is measured and not assumed.
-pub fn hitch_slack(parent: Frame, child: Frame, l: Link) -> float {
-  from_parent = frame_apply(parent, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
-  v3_dist(from_parent, frame_origin(child))
+pub fn hitch_slack(parent: Xform, child: Xform, l: Link) -> float {
+  from_parent = xform_apply(parent, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
+  v3_dist(from_parent, xform_origin(child))
 }

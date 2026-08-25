@@ -123,11 +123,11 @@ pub fn crate_swing(ax: float, ay: float, az: float, length: float,
 // A crate's frame: the position is the tether's, the orientation is its own three
 // states. `CARRIED` — no ground is consulted, and there is nowhere here it could
 // be.
-pub fn crate_frame(t: Rope, yaw: float, pitch: float, roll: float) -> Frame {
-  frame_mul(frame_mul(frame_mul(frame_trans(t.rp_pos.x, t.rp_pos.y, t.rp_pos.z),
-                                frame_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
-                      frame_rot(rot_axis(0.0, 0.0, 1.0, pitch / TURN ?? 0.0))),
-            frame_rot(rot_axis(1.0, 0.0, 0.0, roll / TURN ?? 0.0)))
+pub fn crate_frame(t: Rope, yaw: float, pitch: float, roll: float) -> Xform {
+  xform_mul(xform_mul(xform_mul(xform_trans(t.rp_pos.x, t.rp_pos.y, t.rp_pos.z),
+                                xform_rot(rot_axis(0.0, 1.0, 0.0, yaw / TURN ?? 0.0))),
+                      xform_rot(rot_axis(0.0, 0.0, 1.0, pitch / TURN ?? 0.0))),
+            xform_rot(rot_axis(1.0, 0.0, 0.0, roll / TURN ?? 0.0)))
 }
 
 // `A-TAUT` itself, as one number: how far the inequality is violated. Zero or

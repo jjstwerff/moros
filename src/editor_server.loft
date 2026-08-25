@@ -55,8 +55,8 @@ use fixstep;      // approach — the ease, one copy for every game (plan 22 `E1
 // `A10`: the cart's structure and its transforms come from the assembly library.
 // `CART_HALF_W` and `CART_RADIUS` are named ONCE, in `asm_cart`.
 // ⚠ `hex_rig`, NOT `moros_sim` — plan 19 `L6.3b`, and it is the last Moros import the
-// program had. The eight names it needs (`Assembly`, `Frame`, `asm_cart`, `asm_frames`,
-// `frame_apply`, `body_axle`, `ground_axle`, `ground_gap`) put a cart on the wire, and none
+// program had. The eight names it needs (`Assembly`, `Xform`, `asm_cart`, `asm_frames`,
+// `xform_apply`, `body_axle`, `ground_axle`, `ground_gap`) put a cart on the wire, and none
 // of them was ever Moros: their three modules used nothing from any `moros_*` package.
 use hex_rig;
 
@@ -1561,10 +1561,10 @@ fn name_is_foreign(n: text) -> boolean { n.find("::") != null }
 // nothing else. A cart that should also nose up a hill needs a second contact
 // along the travel axis — shafts, or a second axle — and inventing a pitch from
 // one axle would be a number with no measurement under it.
-// A `Frame` on the wire: the same twelve numbers in the same column-major order as
+// An `Xform` on the wire: the same twelve numbers in the same column-major order as
 // a mesh3d `Mat4`, so it goes straight out rather than through a conversion that
 // could transpose something — which is exactly the class `A5` found.
-fn frame_wire(f: hex_rig::Frame) -> text {
+fn xform_wire(f: hex_rig::Xform) -> text {
   "{f.fm_r.r11},{f.fm_r.r21},{f.fm_r.r31},0,"
     + "{f.fm_r.r12},{f.fm_r.r22},{f.fm_r.r32},0,"
     + "{f.fm_r.r13},{f.fm_r.r23},{f.fm_r.r33},0,"
@@ -1601,7 +1601,7 @@ fn cart_send(srv: Server, casm: hex_rig::Assembly, cx: float, cz: float,
   cs_sample = fn(sx: float, sz: float) -> float { hex_mesh::terrain_y(sx, sz, wld) };
   cs_rest = hex_rig::ground_axle(cs_sample, cx, cz, cyaw, cs_half, cs_rad);
   cs_bank = cs_rest.rt_bank;
-  cs_y = hex_rig::frame_apply(cs_rest.rt_frame, vec3(0.0, 0.0, 0.0)).y;
+  cs_y = hex_rig::xform_apply(cs_rest.rt_frame, vec3(0.0, 0.0, 0.0)).y;
   if !cs_rest.rt_ok {
     // `K-FIT`: named, with the offer and the residual, instead of a silent hold.
     srv.broadcast("S:cart approximated — {cs_rest.rt_reason} "
@@ -1640,9 +1640,9 @@ fn cart_send(srv: Server, casm: hex_rig::Assembly, cx: float, cz: float,
     println("editor: the cart assembly is not poseable");
     return;
   }
-  srv.broadcast("T:{CART_BODY};{frame_wire(cf[0] ?? base)}");
-  srv.broadcast("T:{CART_WHEEL_L};{frame_wire(cf[1] ?? base)}");
-  srv.broadcast("T:{CART_WHEEL_R};{frame_wire(cf[2] ?? base)}");
+  srv.broadcast("T:{CART_BODY};{xform_wire(cf[0] ?? base)}");
+  srv.broadcast("T:{CART_WHEEL_L};{xform_wire(cf[1] ?? base)}");
+  srv.broadcast("T:{CART_WHEEL_R};{xform_wire(cf[2] ?? base)}");
   // WHAT A GATE NEEDS AND A PICTURE CANNOT SHOW. A cart hovering a hand's width
   // over a slope reads as a perfectly good cart from every camera angle.
   //

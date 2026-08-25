@@ -99,7 +99,7 @@ pub fn asm_cantilever(n: integer, seg: float) -> Assembly {
   a
 }
 
-pub fn wing_bend(a: Assembly, root: Frame, w: float, ei: float,
+pub fn wing_bend(a: Assembly, root: Xform, w: float, ei: float,
                  rounds: integer = BEND_ROUNDS,
                  root_full: boolean = false) -> Bend {
   n = asm_count(a);
@@ -126,7 +126,7 @@ pub fn wing_bend(a: Assembly, root: Frame, w: float, ei: float,
         h = station_span(a, j);
         // the moment about hinge j of every load outboard of it. A force along
         // +x about the joint's z axis has lever arm −(y_k − y_j).
-        fj = fs[j] ?? frame_id();
+        fj = fs[j] ?? xform_id();
         yj = fj.fm_y;
         mm = 0.0;
         // ⚠ STRICTLY OUTBOARD, and the comment above already said so while the loop
@@ -138,13 +138,13 @@ pub fn wing_bend(a: Assembly, root: Frame, w: float, ei: float,
         // absolute answer was 29.6 % out at N=10 against `P6`'s predicted 1.0 %.
         for k in j + 1..n {
           hk = station_span(a, k);
-          fk = fs[k] ?? frame_id();
+          fk = fs[k] ?? xform_id();
           // ⚠ THE MIDPOINT IS INBOARD. Station `k` sits at the OUTBOARD end of the
           // bone it stands for, so that bone's centroid is half a span back toward
           // the parent — `+h/2` in the station's own frame, not `-h/2`. Taking it
           // outboard shifted every load a full bone past its geometry, which is the
           // indexing `A9c` recorded as unreconciled.
-          mid = frame_apply(fk, vec3(0.0, hk * 0.5, 0.0));
+          mid = xform_apply(fk, vec3(0.0, hk * 0.5, 0.0));
           mm = mm + w * hk * (yj - mid.y);
         }
         // half the span each side, so the ends get half and the interior a whole
@@ -195,8 +195,8 @@ pub fn wing_bend(a: Assembly, root: Frame, w: float, ei: float,
   flat = asm_frames(a, [for iw in 0..n { 0.0 }], root);
   tip = 0.0;
   if len(fs2) > 0 && len(flat) > 0 {
-    tip = v3_dist(frame_origin(fs2[n - 1] ?? frame_id()),
-                  frame_origin(flat[n - 1] ?? frame_id()));
+    tip = v3_dist(xform_origin(fs2[n - 1] ?? xform_id()),
+                  xform_origin(flat[n - 1] ?? xform_id()));
   }
   if worst_over > 0.0 {
     return Bend { bn_values: held, bn_rounds: used, bn_resid: resid, bn_tip: tip,

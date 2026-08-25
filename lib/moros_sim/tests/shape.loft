@@ -242,9 +242,9 @@ fn test_the_shape_round_trips() {
 
 fn test_the_proxy_travels_with_the_body() {
   c = asm_cart(HALF, RADIUS);
-  fs = asm_frames(c, [0.0, 0.31, 0.31], frame_trans(5.0, 0.4, 0.0 - 2.0));
+  fs = asm_frames(c, [0.0, 0.31, 0.31], xform_trans(5.0, 0.4, 0.0 - 2.0));
   p = body_proxy(c, 1);
-  hub = frame_origin(fs[1] ?? frame_id());
+  hub = xform_origin(fs[1] ?? xform_id());
   worst = 0.0;
   for k in 0..8 {
     sx = 1.0;
@@ -253,7 +253,7 @@ fn test_the_proxy_travels_with_the_body() {
     if k >= 4 { sx = 0.0 - 1.0; }
     if k % 2 == 1 { sy = 0.0 - 1.0; }
     if k == 2 || k == 3 || k == 6 || k == 7 { sz = 0.0 - 1.0; }
-    d = v3_dist(proxy_corner(fs[1] ?? frame_id(), p, sx, sy, sz), hub);
+    d = v3_dist(proxy_corner(fs[1] ?? xform_id(), p, sx, sy, sz), hub);
     if d > worst { worst = d; }
   }
   // every corner is the box's own half-diagonal from the hub, wherever the cart is

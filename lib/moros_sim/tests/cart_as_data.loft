@@ -55,20 +55,20 @@ fn editor_rot_z(radians: float) -> Rot {
 
 // `cart_send`, transcribed:
 //     base = translate(cx, y, cz) · rotate_y(yaw) · rotate_x(bank)
-fn old_base(cx: float, cy: float, cz: float, yaw: float, bank: float) -> Frame {
-  frame_mul(frame_mul(frame_trans(cx, cy, cz), frame_rot(mesh_rot_y(yaw))),
-            frame_rot(mesh_rot_x(bank)))
+fn old_base(cx: float, cy: float, cz: float, yaw: float, bank: float) -> Xform {
+  xform_mul(xform_mul(xform_trans(cx, cy, cz), xform_rot(mesh_rot_y(yaw))),
+            xform_rot(mesh_rot_x(bank)))
 }
 
 //     T_wheel = base · translate(0, 0, ±half) · rotate_z(roll)
-fn old_wheel(base: Frame, oz: float, roll: float) -> Frame {
-  frame_mul(frame_mul(base, frame_trans(0.0, 0.0, oz)),
-            frame_rot(editor_rot_z(roll)))
+fn old_wheel(base: Xform, oz: float, roll: float) -> Xform {
+  xform_mul(xform_mul(base, xform_trans(0.0, 0.0, oz)),
+            xform_rot(editor_rot_z(roll)))
 }
 
 // Exact, all twelve numbers. No tolerance: the two sides are the same expression
 // over the same arithmetic, so anything but equality is a structural difference.
-fn frame_same(a: Frame, b: Frame) -> boolean {
+fn frame_same(a: Xform, b: Xform) -> boolean {
   if a.fm_x != b.fm_x || a.fm_y != b.fm_y || a.fm_z != b.fm_z { return false; }
   if a.fm_r.r11 != b.fm_r.r11 || a.fm_r.r12 != b.fm_r.r12 { return false; }
   if a.fm_r.r13 != b.fm_r.r13 || a.fm_r.r21 != b.fm_r.r21 { return false; }
@@ -88,10 +88,10 @@ fn test_flat_ground_is_bit_identical() {
     yaw = 0.31 * (k as float);
     base = old_base(3.0, RADIUS, 0.0 - 2.0, yaw, 0.0);
     got = asm_frames(c, [0.0, v, v], base);
-    assert(frame_same(got[0] ?? frame_id(), base), "the body IS the root");
-    assert(frame_same(got[1] ?? frame_id(), old_wheel(base, 0.0 - HALF, roll)),
+    assert(frame_same(got[0] ?? xform_id(), base), "the body IS the root");
+    assert(frame_same(got[1] ?? xform_id(), old_wheel(base, 0.0 - HALF, roll)),
            "the left wheel, to the bit");
-    assert(frame_same(got[2] ?? frame_id(), old_wheel(base, HALF, roll)),
+    assert(frame_same(got[2] ?? xform_id(), old_wheel(base, HALF, roll)),
            "the right wheel, to the bit");
   }
 }
@@ -105,7 +105,7 @@ fn test_a_banked_cart_is_bit_identical_too() {
     v = wheel_value(2.3 * (k as float), RADIUS, 0.0);
     base = old_base(3.0, 0.6, 0.0 - 2.0, 0.4, 0.083 * (k as float));
     got = asm_frames(c, [0.0, v, v], base);
-    assert(frame_same(got[1] ?? frame_id(), old_wheel(base, 0.0 - HALF, wheel_angle(v))),
+    assert(frame_same(got[1] ?? xform_id(), old_wheel(base, 0.0 - HALF, wheel_angle(v))),
            "a banked cart's wheels agree too");
   }
 }
@@ -119,7 +119,7 @@ fn test_the_rim_comes_from_the_rig() {
   fs = asm_frames(c, [0.0, v, v], base);
   ri = c.am_bodyrig[1] ?? 0 - 1;
   assert(ri >= 0, "the wheel points at a rig");
-  seg = rig_seg_at(c.am_rig[ri] ?? rig_new(), [v], 0, fs[1] ?? frame_id());
+  seg = rig_seg_at(c.am_rig[ri] ?? rig_new(), [v], 0, fs[1] ?? xform_id());
   assert(fabs(v3_dist(seg.sg_a, seg.sg_b) - RADIUS) < BOUND,
          "the spoke is RADIUS long, read from rg_len and nowhere else");
   // and both wheels share ONE rig, so a description used twice is stored once
@@ -138,10 +138,10 @@ fn test_the_offset_is_read_from_the_mount() {
   base = old_base(3.0, RADIUS, 0.0, 0.4, 0.0);
   narrow = asm_frames(asm_cart(0.30, RADIUS), [0.0, 0.2, 0.2], base);
   wide = asm_frames(asm_cart(0.80, RADIUS), [0.0, 0.2, 0.2], base);
-  dn = v3_dist(frame_origin(narrow[1] ?? frame_id()),
-               frame_origin(narrow[2] ?? frame_id()));
-  dw = v3_dist(frame_origin(wide[1] ?? frame_id()),
-               frame_origin(wide[2] ?? frame_id()));
+  dn = v3_dist(xform_origin(narrow[1] ?? xform_id()),
+               xform_origin(narrow[2] ?? xform_id()));
+  dw = v3_dist(xform_origin(wide[1] ?? xform_id()),
+               xform_origin(wide[2] ?? xform_id()));
   assert(fabs(dn - 0.60) < BOUND, "a narrow cart's axle is 0.60");
   assert(fabs(dw - 1.60) < BOUND, "a wide one's is 1.60");
   assert(dw - dn > 0.9, "so the offset is read, not carried");
@@ -162,8 +162,8 @@ fn test_the_axis_is_read_from_the_mount() {
   fa = asm_frames(a, [0.0, 0.25], base);
   fb = asm_frames(b, [0.0, 0.25], base);
   u = vec3(0.3, 0.7, 0.0);
-  assert(v3_dist(frame_apply(fa[1] ?? frame_id(), u),
-                 frame_apply(fb[1] ?? frame_id(), u)) > 0.3,
+  assert(v3_dist(xform_apply(fa[1] ?? xform_id(), u),
+                 xform_apply(fb[1] ?? xform_id(), u)) > 0.3,
          "a wheel spinning about x is not a wheel spinning about z");
 }
 
@@ -173,8 +173,8 @@ fn test_the_radius_is_read_from_the_rig() {
   big = asm_cart(HALF, 0.90);
   fs = asm_frames(small, [0.0, 0.2, 0.2], base);
   fb = asm_frames(big, [0.0, 0.2, 0.2], base);
-  rs = rig_seg_at(small.am_rig[0] ?? rig_new(), [0.2], 0, fs[1] ?? frame_id());
-  rb = rig_seg_at(big.am_rig[0] ?? rig_new(), [0.2], 0, fb[1] ?? frame_id());
+  rs = rig_seg_at(small.am_rig[0] ?? rig_new(), [0.2], 0, fs[1] ?? xform_id());
+  rb = rig_seg_at(big.am_rig[0] ?? rig_new(), [0.2], 0, fb[1] ?? xform_id());
   assert(fabs(v3_dist(rs.sg_a, rs.sg_b) - 0.25) < BOUND, "a small wheel");
   assert(fabs(v3_dist(rb.sg_a, rb.sg_b) - 0.90) < BOUND, "and a big one");
 }
@@ -196,7 +196,7 @@ fn test_the_cart_survives_the_document_and_still_poses() {
   fa = asm_frames(c, [0.0, v, v], base);
   fb = asm_frames(back, [0.0, v, v], base);
   for i in 0..3 {
-    assert(frame_same(fa[i] ?? frame_id(), fb[i] ?? frame_id()),
+    assert(frame_same(fa[i] ?? xform_id(), fb[i] ?? xform_id()),
            "and poses identically after the round trip");
   }
   assert(asm_ledger_report(back) == asm_ledger_report(c), "with the same ledger");

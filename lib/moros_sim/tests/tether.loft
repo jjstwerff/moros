@@ -165,11 +165,11 @@ fn test_the_crate_is_carried_by_its_attachment() {
   p = crate_swing(AX, AY, AZ, L, 0.4, 1.1);
   t = resolve_at(p.x, p.y, p.z);
   f = crate_frame(t, 0.3, 0.0 - 0.2, 0.15);
-  assert(v3_dist(frame_origin(f), t.rp_pos) < BOUND,
+  assert(v3_dist(xform_origin(f), t.rp_pos) < BOUND,
          "the crate's frame sits where the tether put it");
   // its three rotations are its own, and they do not move it
   g = crate_frame(t, 2.0, 1.0, 0.0 - 1.5);
-  assert(v3_dist(frame_origin(g), frame_origin(f)) < BOUND,
+  assert(v3_dist(xform_origin(g), xform_origin(f)) < BOUND,
          "rotating a hanging crate does not move it");
   assert(fabs(f.fm_r.r11 - g.fm_r.r11) > 0.1, "but it does rotate it");
 }

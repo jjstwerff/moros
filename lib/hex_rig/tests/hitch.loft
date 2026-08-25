@@ -44,7 +44,7 @@ fn test_the_pin_is_one_point() {
   t = asm_towed(HALF, DRAWBAR);
   horse = ground_axle(hillside, 0.0, 0.0, 0.3, HALF, RADIUS, 30);
   l = t.am_link[1] ?? link_none();
-  pin = frame_apply(horse.rt_frame, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
+  pin = xform_apply(horse.rt_frame, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
   for k in 0..8 {
     yaw = 0.3 + 0.15 * (k as float);
     cart = hitched_rest(hillside, pin.x, pin.y, pin.z, yaw,
@@ -66,7 +66,7 @@ fn test_both_bodies_touch_the_ground() {
     assert(horse.rt_ok, "the horse rests");
     assert(ground_worst_gap(horse, HALF, RADIUS, hillside) < BOUND,
            "the horse's own contacts are on the ground");
-    pin = frame_apply(horse.rt_frame, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
+    pin = xform_apply(horse.rt_frame, vec3(l.lk_ox, l.lk_oy, l.lk_oz));
     cart = hitched_rest(hillside, pin.x, pin.y, pin.z, 0.25,
                         DRAWBAR, HALF, RADIUS, 30);
     assert(cart.rt_ok, "and so does the cart");
@@ -82,7 +82,7 @@ fn test_both_bodies_touch_the_ground() {
 // frame would get wrong, because the cart is not lying in the horse's plane.
 fn test_the_cart_pitches_independently_of_the_horse() {
   horse = ground_axle(flat_ground, 0.0, 0.0, 0.0, HALF, RADIUS, 30);
-  pin = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  pin = xform_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
   // ground that falls away behind the horse: the cart must pitch nose-up
   cart = hitched_rest(slope_x, pin.x, pin.y, pin.z, 0.0,
                       DRAWBAR, HALF, RADIUS, 30);
@@ -98,7 +98,7 @@ fn test_the_cart_pitches_independently_of_the_horse() {
 
 fn test_a_roll_and_a_pitch_at_once() {
   horse = ground_axle(hillside, 2.0, 1.0, 0.4, HALF, RADIUS, 30);
-  pin = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  pin = xform_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
   cart = hitched_rest(hillside, pin.x, pin.y, pin.z, 0.4,
                       DRAWBAR, HALF, RADIUS, 30);
   assert(cart.rt_ok, "a cross-slope is rideable");
@@ -220,8 +220,8 @@ fn test_rigid_shafts_are_over_constrained_and_the_wheels_show_it() {
   // and the geometry agrees: inheriting the horse's pitch and roll leaves the
   // cart's own wheels off the ground on a cross-slope
   horse = ground_axle(hillside, 0.0, 0.0, 0.3, HALF, RADIUS, 30);
-  pin = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
-  inherited = frame_mul(horse.rt_frame, frame_trans(0.0 - DRAWBAR - 0.2, 0.0, 0.0));
+  pin = xform_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  inherited = xform_mul(horse.rt_frame, xform_trans(0.0 - DRAWBAR - 0.2, 0.0, 0.0));
   gl = hitched_gap(inherited, 0.0, HALF, RADIUS, 0.0 - 1.0, hillside);
   gr = hitched_gap(inherited, 0.0, HALF, RADIUS, 1.0, hillside);
   assert(fabs(gl) > 0.01 || fabs(gr) > 0.01,
@@ -236,7 +236,7 @@ fn test_rigid_shafts_are_over_constrained_and_the_wheels_show_it() {
 
 fn test_a_second_cart_behind_the_first() {
   horse = ground_axle(hillside, 0.0, 0.0, 0.2, HALF, RADIUS, 30);
-  pin1 = frame_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
+  pin1 = xform_apply(horse.rt_frame, vec3(0.0 - 0.2, 0.0, 0.0));
   c1 = hitched_rest(hillside, pin1.x, pin1.y, pin1.z, 0.2, DRAWBAR, HALF, RADIUS, 30);
   assert(c1.rt_ok, "the first cart rests");
   // the second cart's pin hangs off the FIRST cart's own frame

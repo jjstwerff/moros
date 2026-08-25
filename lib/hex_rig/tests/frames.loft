@@ -46,14 +46,14 @@ fn test_a_turn_is_hex_bodys_turn() {
 // periodic, and the winding lives in the state rather than in the frame.
 fn test_a_whole_turn_returns_the_frame() {
   c = asm_cart(HALF, RADIUS);
-  z = asm_frames(c, [0.0, 0.0, 0.0], frame_id());
-  o = asm_frames(c, [0.0, 1.0, 0.0 - 3.0], frame_id());
+  z = asm_frames(c, [0.0, 0.0, 0.0], xform_id());
+  o = asm_frames(c, [0.0, 1.0, 0.0 - 3.0], xform_id());
   worst = 0.0;
   for i in 0..3 {
-    e = v3_dist(frame_origin(z[i] ?? frame_id()), frame_origin(o[i] ?? frame_id()));
+    e = v3_dist(xform_origin(z[i] ?? xform_id()), xform_origin(o[i] ?? xform_id()));
     if e > worst { worst = e; }
-    zi = z[i] ?? frame_id();
-    oi = o[i] ?? frame_id();
+    zi = z[i] ?? xform_id();
+    oi = o[i] ?? xform_id();
     assert(fabs(zi.fm_r.r11 - oi.fm_r.r11) < BOUND, "and the rotations agree");
     assert(fabs(zi.fm_r.r12 - oi.fm_r.r12) < BOUND, "off-diagonal too");
   }
@@ -72,11 +72,11 @@ fn test_axis_magnitude_is_ignored() {
   b = asm_add(b, 0 - 1, link_none(), body_of(SupportKind.Ground, 3, 0, 2));
   b = asm_add(b, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 2.0),
               body_of(SupportKind.Carried, 1, 0));
-  fa = asm_frames(a, [0.0, 0.31], frame_id());
-  fb = asm_frames(b, [0.0, 0.31], frame_id());
+  fa = asm_frames(a, [0.0, 0.31], xform_id());
+  fb = asm_frames(b, [0.0, 0.31], xform_id());
   u = probe_point(3);
-  assert(v3_dist(frame_apply(fa[1] ?? frame_id(), u),
-                 frame_apply(fb[1] ?? frame_id(), u)) < BOUND,
+  assert(v3_dist(xform_apply(fa[1] ?? xform_id(), u),
+                 xform_apply(fb[1] ?? xform_id(), u)) < BOUND,
          "a doubled axis vector is the same axis");
 }
 
@@ -87,10 +87,10 @@ fn test_every_frame_is_in_se3() {
   worst_o = 0.0;
   worst_d = 0.0;
   for k in 0..12 {
-    fs = asm_frames(w, probe_values(11, k), frame_id());
+    fs = asm_frames(w, probe_values(11, k), xform_id());
     assert(len(fs) == 11, "eleven frames");
     for i in 0..11 {
-      r = (fs[i] ?? frame_id()).fm_r;
+      r = (fs[i] ?? xform_id()).fm_r;
       o = rot_ortho_err(r);
       if o > worst_o { worst_o = o; }
       dd = fabs(rot_det(r) - 1.0);
@@ -107,7 +107,7 @@ fn test_a_rigid_chain_never_stretches() {
   w = asm_wing(10, SEG);
   worst = 0.0;
   for k in 0..12 {
-    fs = asm_frames(w, probe_values(11, k), frame_id());
+    fs = asm_frames(w, probe_values(11, k), xform_id());
     for j in 0..8 {
       e = asm_rigid_err(fs, probe_point(j), probe_point(j + 5));
       if e > worst { worst = e; }
@@ -122,7 +122,7 @@ fn test_a_rigid_cart_never_stretches() {
   c = asm_cart(HALF, RADIUS);
   worst = 0.0;
   for k in 0..12 {
-    fs = asm_frames(c, probe_values(3, k), frame_trans(3.0, 0.4, 0.0));
+    fs = asm_frames(c, probe_values(3, k), xform_trans(3.0, 0.4, 0.0));
     for j in 0..8 {
       e = asm_rigid_err(fs, probe_point(j), probe_point(j + 5));
       if e > worst { worst = e; }
@@ -138,16 +138,16 @@ fn test_the_scale_knob_makes_it_stretch() {
   vals = probe_values(3, 2);
   u = probe_point(1);
   v = probe_point(6);
-  clean = asm_rigid_err(asm_frames(c, vals, frame_id(), 1.0), u, v);
-  bent = asm_rigid_err(asm_frames(c, vals, frame_id(), 1.01), u, v);
+  clean = asm_rigid_err(asm_frames(c, vals, xform_id(), 1.0), u, v);
+  bent = asm_rigid_err(asm_frames(c, vals, xform_id(), 1.01), u, v);
   assert(clean < BOUND, "at scale 1 it is an isometry");
   assert(bent > 0.001, "at 1.01 it is not");
   // one level of composition, so the separation grows by about one per cent
   grew = bent / v3_dist(u, v) ?? 0.0;
   assert(grew > 0.005 && grew < 0.02, "and it grows by about the scale");
   // and it shows up in the SE(3) membership directly, not only in a distance
-  bf = asm_frames(c, vals, frame_id(), 1.01);
-  assert(rot_ortho_err((bf[1] ?? frame_id()).fm_r) > 0.001,
+  bf = asm_frames(c, vals, xform_id(), 1.01);
+  assert(rot_ortho_err((bf[1] ?? xform_id()).fm_r) > 0.001,
          "a scaled linear part is no longer orthonormal");
 }
 
@@ -156,12 +156,12 @@ fn test_the_scale_knob_makes_it_stretch() {
 fn test_the_knob_compounds_with_depth() {
   w = asm_wing(10, SEG);
   flat = [for _ in 0..11 { 0.0 }];
-  clean = asm_frames(w, flat, frame_id(), 1.0);
-  bent = asm_frames(w, flat, frame_id(), 1.01);
-  tip_clean = v3_dist(frame_origin(clean[10] ?? frame_id()),
-                      frame_origin(clean[0] ?? frame_id()));
-  tip_bent = v3_dist(frame_origin(bent[10] ?? frame_id()),
-                     frame_origin(bent[0] ?? frame_id()));
+  clean = asm_frames(w, flat, xform_id(), 1.0);
+  bent = asm_frames(w, flat, xform_id(), 1.01);
+  tip_clean = v3_dist(xform_origin(clean[10] ?? xform_id()),
+                      xform_origin(clean[0] ?? xform_id()));
+  tip_bent = v3_dist(xform_origin(bent[10] ?? xform_id()),
+                     xform_origin(bent[0] ?? xform_id()));
   // straight and unscaled the tip is exactly ten segments out
   assert(fabs(tip_clean - 10.0 * SEG) < BOUND, "ten segments, exactly");
   assert(tip_bent > tip_clean * 1.02, "and a scaled chain reaches further");
@@ -175,8 +175,8 @@ fn test_the_knob_compounds_with_depth() {
 fn test_the_axle_cannot_stretch() {
   c = asm_cart(HALF, RADIUS);
   for k in 0..12 {
-    fs = asm_frames(c, probe_values(3, k), frame_trans(3.0, 0.4, 0.0));
-    d = v3_dist(frame_origin(fs[1] ?? frame_id()), frame_origin(fs[2] ?? frame_id()));
+    fs = asm_frames(c, probe_values(3, k), xform_trans(3.0, 0.4, 0.0));
+    d = v3_dist(xform_origin(fs[1] ?? xform_id()), xform_origin(fs[2] ?? xform_id()));
     assert(fabs(d - 2.0 * HALF) < BOUND,
            "the axle is 2 x half, whatever the wheels are doing");
   }
@@ -198,16 +198,16 @@ fn test_the_axle_cannot_stretch() {
 // every case this design started from.
 fn test_a_parallel_offset_hides_the_composition_order() {
   c = asm_cart(HALF, RADIUS);
-  body = frame_trans(3.0, 0.4, 0.0);
+  body = xform_trans(3.0, 0.4, 0.0);
   l1 = c.am_link[1] ?? link_none();
   worst = 0.0;
   for k in 1..9 {
     v = sin((k as float) * 0.9) * 0.4;
-    t = frame_rot(rot_axis(l1.lk_ax, l1.lk_ay, l1.lk_az, v));
-    fixed = frame_trans(l1.lk_ox, l1.lk_oy, l1.lk_oz);
-    reversed = frame_mul(frame_mul(body, t), fixed);
+    t = xform_rot(rot_axis(l1.lk_ax, l1.lk_ay, l1.lk_az, v));
+    fixed = xform_trans(l1.lk_ox, l1.lk_oy, l1.lk_oz);
+    reversed = xform_mul(xform_mul(body, t), fixed);
     right = asm_frames(c, [0.0, v, v], body);
-    d = v3_dist(frame_origin(reversed), frame_origin(right[1] ?? frame_id()));
+    d = v3_dist(xform_origin(reversed), xform_origin(right[1] ?? xform_id()));
     if d > worst { worst = d; }
   }
   assert(worst < BOUND,
@@ -216,18 +216,18 @@ fn test_a_parallel_offset_hides_the_composition_order() {
 
 fn test_a_perpendicular_offset_exposes_it() {
   w = asm_wing(3, SEG);
-  root = frame_trans(1.0, 2.0, 0.0 - 1.0);
+  root = xform_trans(1.0, 2.0, 0.0 - 1.0);
   l1 = w.am_link[1] ?? link_none();
   assert(l1.lk_oy != 0.0 && l1.lk_az != 0.0,
          "a station's offset is across its axis, not along it");
   worst = 0.0;
   for k in 1..9 {
     v = sin((k as float) * 0.9) * 0.4;
-    t = frame_rot(rot_axis(l1.lk_ax, l1.lk_ay, l1.lk_az, v));
-    fixed = frame_trans(l1.lk_ox, l1.lk_oy, l1.lk_oz);
-    reversed = frame_mul(frame_mul(root, t), fixed);
+    t = xform_rot(rot_axis(l1.lk_ax, l1.lk_ay, l1.lk_az, v));
+    fixed = xform_trans(l1.lk_ox, l1.lk_oy, l1.lk_oz);
+    reversed = xform_mul(xform_mul(root, t), fixed);
     right = asm_frames(w, [0.0, v, v, v], root);
-    d = v3_dist(frame_origin(reversed), frame_origin(right[1] ?? frame_id()));
+    d = v3_dist(xform_origin(reversed), xform_origin(right[1] ?? xform_id()));
     if d > worst { worst = d; }
   }
   assert(worst > 0.1, "so here the wrong order lands the joint somewhere else");
@@ -238,17 +238,17 @@ fn test_a_perpendicular_offset_exposes_it() {
 fn test_the_root_carries_the_assembly_rigidly() {
   w = asm_wing(6, SEG);
   vals = probe_values(7, 4);
-  here = asm_frames(w, vals, frame_id());
+  here = asm_frames(w, vals, xform_id());
   there = asm_frames(w, vals,
-                     frame_mul(frame_trans(7.0, 2.0, 0.0 - 3.0),
-                               frame_rot(rot_axis(0.3, 1.0, 0.2, 0.17))));
+                     xform_mul(xform_trans(7.0, 2.0, 0.0 - 3.0),
+                               xform_rot(rot_axis(0.3, 1.0, 0.2, 0.17))));
   worst = 0.0;
   for i in 0..7 {
     for j in 0..7 {
-      a = v3_dist(frame_origin(here[i] ?? frame_id()),
-                  frame_origin(here[j] ?? frame_id()));
-      b = v3_dist(frame_origin(there[i] ?? frame_id()),
-                  frame_origin(there[j] ?? frame_id()));
+      a = v3_dist(xform_origin(here[i] ?? xform_id()),
+                  xform_origin(here[j] ?? xform_id()));
+      b = v3_dist(xform_origin(there[i] ?? xform_id()),
+                  xform_origin(there[j] ?? xform_id()));
       e = fabs(a - b);
       if e > worst { worst = e; }
     }
@@ -262,10 +262,10 @@ fn test_non_mount_links_are_refused() {
   t = asm_towed(HALF, 1.6);
   assert(asm_admissible(t), "the towed cart is a valid assembly");
   assert(!asm_mount_chain(t), "but it is not a mount chain");
-  assert(len(asm_frames(t, [0.0, 0.0, 0.0, 0.0], frame_id())) == 0,
+  assert(len(asm_frames(t, [0.0, 0.0, 0.0, 0.0], xform_id())) == 0,
          "a HITCH does not determine its child's frame — refused, not guessed");
   b = asm_balloon(3.0);
-  assert(len(asm_frames(b, [0.0, 0.0], frame_id())) == 0,
+  assert(len(asm_frames(b, [0.0, 0.0], xform_id())) == 0,
          "and neither does a tether");
 }
 
@@ -275,7 +275,7 @@ fn test_inadmissible_assemblies_are_refused() {
   bad = asm_add(bad, 0, link_mount(0.0, 0.0, HALF, 0.0, 0.0, 0.0),
                 body_of(SupportKind.Carried, 1, 0));
   assert(!asm_admissible(bad), "a zero axis is inadmissible");
-  assert(len(asm_frames(bad, [0.0, 0.0], frame_id())) == 0,
+  assert(len(asm_frames(bad, [0.0, 0.0], xform_id())) == 0,
          "and A3 will not pose what A1 refuses");
-  assert(len(asm_frames(asm_new("empty"), [], frame_id())) == 0, "nor an empty one");
+  assert(len(asm_frames(asm_new("empty"), [], xform_id())) == 0, "nor an empty one");
 }

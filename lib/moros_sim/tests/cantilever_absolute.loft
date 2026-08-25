@@ -34,7 +34,7 @@ fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
 fn ratio(nb: integer, root_full: boolean) -> float {
   seg = LEN / (nb as float) ?? 0.0;
   a = moros_sim::asm_cantilever(nb + 1, seg);     // nb bones ⇒ nb+1 stations
-  b = moros_sim::wing_bend(a, moros_sim::frame_id(), W, EI, 400, root_full);
+  b = moros_sim::wing_bend(a, moros_sim::xform_id(), W, EI, 400, root_full);
   b.bn_tip / EXACT ?? 0.0
 }
 

@@ -29,9 +29,9 @@ fn arm() -> Rig {
 
 // A frame that is nowhere near the identity, so nothing passes because the
 // rotation happened to be trivial — the mistake `P1`'s flat-ground run made.
-fn awkward_frame() -> Frame {
-  frame_mul(frame_trans(3.0, 0.4, 0.0 - 2.0),
-            frame_rot(rot_axis(0.3, 1.0, 0.0 - 0.4, 0.19)))
+fn awkward_frame() -> Xform {
+  xform_mul(xform_trans(3.0, 0.4, 0.0 - 2.0),
+            xform_rot(rot_axis(0.3, 1.0, 0.0 - 0.4, 0.19)))
 }
 
 fn probe_values(n: integer, k: integer) -> vector<float> {
@@ -109,7 +109,7 @@ fn test_planarity_survives_the_mount_chain() {
   s = spoke();
   worst = 0.0;
   for i in 0..11 {
-    fi = fs[i] ?? frame_id();
+    fi = fs[i] ?? xform_id();
     seg = rig_seg_at(s, [0.37], 0, fi);
     if fabs(plane_off(fi, seg.sg_a)) > worst { worst = fabs(plane_off(fi, seg.sg_a)); }
     if fabs(plane_off(fi, seg.sg_b)) > worst { worst = fabs(plane_off(fi, seg.sg_b)); }
@@ -194,11 +194,11 @@ fn test_the_cart_wheel_as_a_rig_at_a_body() {
     vals = probe_values(3, k);
     fs = asm_frames(c, vals, awkward_frame());
     for b in 1..3 {
-      fb = fs[b] ?? frame_id();
+      fb = fs[b] ?? xform_id();
       seg = rig_seg_at(s, [vals[b] ?? 0.0], 0, fb);
       // the spoke's base is the hub, which is the body's own origin
-      assert(v3_dist(seg.sg_a, frame_origin(fb)) < BOUND, "the hub is the origin");
-      assert(fabs(v3_dist(seg.sg_b, frame_origin(fb)) - RADIUS) < BOUND,
+      assert(v3_dist(seg.sg_a, xform_origin(fb)) < BOUND, "the hub is the origin");
+      assert(fabs(v3_dist(seg.sg_b, xform_origin(fb)) - RADIUS) < BOUND,
              "and the rim is RADIUS away, whatever the wheel is doing");
       // the rig's plane is the wheel's plane, so the spoke never leaves it
       assert(fabs(plane_off(fb, seg.sg_b)) < BOUND, "in the wheel's own plane");

@@ -30,7 +30,7 @@ fn limited_wing(n: integer, lim: float) -> Assembly {
 // ── it reuses A6's shape, and A3's poser ────────────────────────────────────
 
 fn test_no_load_means_no_bend() {
-  b = wing_bend(free_wing(10), frame_id(), 0.0, EI);
+  b = wing_bend(free_wing(10), xform_id(), 0.0, EI);
   assert(b.bn_ok, "an unloaded wing solves");
   assert(fabs(b.bn_tip) < BOUND, "and does not move");
   for i in 0..11 {
@@ -39,7 +39,7 @@ fn test_no_load_means_no_bend() {
 }
 
 fn test_a_load_bends_it_and_the_tip_moves() {
-  b = wing_bend(free_wing(10), frame_id(), 0.002, EI);
+  b = wing_bend(free_wing(10), xform_id(), 0.002, EI);
   assert(b.bn_ok, "it solves");
   assert(b.bn_tip > 0.0, "the tip moves");
   // every LOADED joint bends the same way — a wing does not kink under a uniform
@@ -62,7 +62,7 @@ fn test_a_load_bends_it_and_the_tip_moves() {
   assert(fabs(b.bn_values[10] ?? 1.0) < 0.000000001,
          "and the outermost hinge, with nothing outboard of it, does not turn");
   // heavier load, more deflection
-  h = wing_bend(free_wing(10), frame_id(), 0.004, EI);
+  h = wing_bend(free_wing(10), xform_id(), 0.004, EI);
   assert(h.bn_tip > b.bn_tip * 1.5, "twice the load bends it further");
 }
 
@@ -70,8 +70,8 @@ fn test_a_load_bends_it_and_the_tip_moves() {
 // `A3` with nothing in between — which is the "reuses the machinery" claim.
 fn test_the_solved_values_pose_through_a3() {
   w = free_wing(10);
-  b = wing_bend(w, frame_id(), 0.002, EI);
-  fs = asm_frames(w, b.bn_values, frame_trans(3.0, 2.0, 0.0 - 1.0));
+  b = wing_bend(w, xform_id(), 0.002, EI);
+  fs = asm_frames(w, b.bn_values, xform_trans(3.0, 2.0, 0.0 - 1.0));
   assert(len(fs) == 11, "the solved wing poses");
   // and A-RIGID still holds on the bent wing: bending is joints, not deformation
   worst = 0.0;
@@ -100,16 +100,16 @@ fn test_the_end_rule_changes_the_answer_measurably() {
   w = 0.00002;
   span = 5.77;
   seg = span / 16.0 ?? 0.0;
-  right = wing_bend(asm_cantilever(16, seg), frame_id(), w, EI, 400, false);
-  wrong = wing_bend(asm_cantilever(16, seg), frame_id(), w, EI, 400, true);
+  right = wing_bend(asm_cantilever(16, seg), xform_id(), w, EI, 400, false);
+  wrong = wing_bend(asm_cantilever(16, seg), xform_id(), w, EI, 400, true);
   assert(right.bn_tip > 0.0 && wrong.bn_tip > 0.0, "both bend");
   d = fabs(right.bn_tip - wrong.bn_tip) / right.bn_tip ?? 0.0;
   assert(d > 0.02, "the end rule is load-bearing, not a refinement");
   // and it only matters at the CLAMPED end: on asm_wing, whose first joint is a
   // span out, the knob has nothing to act on
   aw = span / 16.0 ?? 0.0;
-  same_a = wing_bend(asm_wing(16, aw), frame_id(), w, EI, 400, false);
-  same_b = wing_bend(asm_wing(16, aw), frame_id(), w, EI, 400, true);
+  same_a = wing_bend(asm_wing(16, aw), xform_id(), w, EI, 400, false);
+  same_b = wing_bend(asm_wing(16, aw), xform_id(), w, EI, 400, true);
   assert(fabs(same_a.bn_tip - same_b.bn_tip) < BOUND,
          "no joint of asm_wing is at a clamped end, so the knob does nothing there");
 }
@@ -125,12 +125,12 @@ fn test_the_answer_settles_as_n_grows() {
   // since the tip goes as L⁴ that alone is an 11 % gap at n=24. The old indexing
   // shifted the load a whole bone outboard, which compensated, and the two wrongs
   // let this pass. Holding the LENGTH fixed is what makes it a convergence test.
-  ref = wing_bend(asm_cantilever(80, span / 79.0 ?? 0.0), frame_id(), w, EI, 600);
+  ref = wing_bend(asm_cantilever(80, span / 79.0 ?? 0.0), xform_id(), w, EI, 600);
   assert(ref.bn_tip > 0.0, "the reference bent");
   prev = 9.0;
   for k in 0..3 {
     n = 8 * (k + 1);
-    b = wing_bend(asm_cantilever(n, span / ((n - 1) as float) ?? 0.0), frame_id(), w, EI, 600);
+    b = wing_bend(asm_cantilever(n, span / ((n - 1) as float) ?? 0.0), xform_id(), w, EI, 600);
     e = fabs(b.bn_tip - ref.bn_tip) / ref.bn_tip ?? 0.0;
     assert(e < prev, "more stations, closer to the limit");
     prev = e;
@@ -143,14 +143,14 @@ fn test_the_answer_settles_as_n_grows() {
 fn test_the_fixed_point_is_only_linearly_convergent() {
   w = 0.02;
   // three rounds is right for the ground contact and nowhere near enough here
-  three = wing_bend(free_wing(10), frame_id(), w, EI, 3);
-  many = wing_bend(free_wing(10), frame_id(), w, EI, 400);
+  three = wing_bend(free_wing(10), xform_id(), w, EI, 3);
+  many = wing_bend(free_wing(10), xform_id(), w, EI, 400);
   assert(three.bn_resid > many.bn_resid * 1000.0,
          "three rounds leaves a residual a thousand times the settled one");
   assert(many.bn_rounds > 20, "and it takes tens of rounds, not three");
   assert(many.bn_resid < 0.000000000001, "before it settles");
   // the default budget is the one that works
-  deflt = wing_bend(free_wing(10), frame_id(), w, EI);
+  deflt = wing_bend(free_wing(10), xform_id(), w, EI);
   assert(deflt.bn_resid < 0.000000000001, "which the default budget reaches");
 }
 
@@ -158,7 +158,7 @@ fn test_the_fixed_point_is_only_linearly_convergent() {
 
 fn test_a_load_past_a_joint_limit_is_refused_with_its_residual() {
   lim = 0.004;                                  // turns — a stiff spar
-  b = wing_bend(limited_wing(10, lim), frame_id(), 0.02, EI, 200);
+  b = wing_bend(limited_wing(10, lim), xform_id(), 0.02, EI, 200);
   assert(!b.bn_ok, "the load asks for more than the joints allow");
   assert(b.bn_reason.contains("past a joint limit"), "and says so");
   assert(b.bn_over > 0.0, "with the residual it wanted");
@@ -170,7 +170,7 @@ fn test_a_load_past_a_joint_limit_is_refused_with_its_residual() {
            "every joint the caller is handed is inside its own limit");
   }
   // the same wing under a load it CAN take is applied exactly
-  ok = wing_bend(limited_wing(10, 1000.0), frame_id(), 0.02, EI, 400);
+  ok = wing_bend(limited_wing(10, 1000.0), xform_id(), 0.02, EI, 400);
   assert(ok.bn_ok, "free joints take the same load");
   assert(ok.bn_reason == "", "with nothing to report");
   assert(ok.bn_tip > b.bn_tip, "and bend further than the limited wing could");
@@ -186,13 +186,13 @@ fn test_the_ledger_carries_the_solved_state() {
   assert(st.dg_driven == 0, "and nothing about it is commanded");
   assert(st.dg_links == 5 && st.dg_support == 0, "mount 5, Carried 0");
   // and the solve fills exactly that one state per station, no more
-  b = wing_bend(w, frame_id(), 0.002, EI);
+  b = wing_bend(w, xform_id(), 0.002, EI);
   assert(len(b.bn_values) == 11, "one value per body");
   assert((b.bn_values[0] ?? 1.0) == 0.0, "the clamped root has none of its own");
 }
 
 fn test_a_non_mount_chain_cannot_be_bent() {
-  b = wing_bend(asm_towed(0.55, 1.6), frame_id(), 0.002, EI);
+  b = wing_bend(asm_towed(0.55, 1.6), xform_id(), 0.002, EI);
   assert(!b.bn_ok, "a hitched assembly is not a bendable chain");
   assert(b.bn_reason.contains("mount chain"), "and it says why");
 }

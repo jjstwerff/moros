@@ -176,8 +176,8 @@ pub fn body_proxy(a: Assembly, i: integer, shrink: float = 1.0) -> Obb3 {
   shape_proxy(b.bd_shape, body_extent(a, i), b.bd_girth, shrink)
 }
 
-pub fn proxy_corner(f: Frame, o: Obb3, sx: float, sy: float, sz: float) -> Vec3 {
-  frame_apply(f, vec3(sx * o.ob_hx, sy * o.ob_hy, sz * o.ob_hz))
+pub fn proxy_corner(f: Xform, o: Obb3, sx: float, sy: float, sz: float) -> Vec3 {
+  xform_apply(f, vec3(sx * o.ob_hx, sy * o.ob_hy, sz * o.ob_hz))
 }
 
 // ── `P4`, kept as a function so the falsification cannot come back ──────────
