@@ -40,7 +40,24 @@ const agree = m ? +m[1] : -1, bad = m ? +m[2] : -1, layers = m ? +m[3] : -1;
 // legitimately holds more than the digest names, and demanding equality would fail on
 // a correct client. What still has to hold: nothing the digest names disagrees, and
 // the digest named something.
-const ok = m !== null && bad === 0 && agree > 0 && agree <= layers;
+//
+// ⛔ **AND THE BOUND BELOW CONTRADICTED THAT PARAGRAPH FOR MONTHS.** Relaxing `===` to
+// `<=` kept the same fault: it still forbids the cache holding more than the digest
+// names, which is the very thing the paragraph justifies. Measured 2026-08-25,
+// `agree 24 bad 0 layers 16` — nothing disagreed and the gate failed. `plans/16`
+// records `agree 24 bad 0 layers 24` from the day it was written, so it passed by
+// coincidence while the two numbers happened to be equal.
+//
+// ⚠ **AND THEY ARE NOT THE SAME QUANTITY, WHICH IS WHY NO INEQUALITY BETWEEN THEM IS A
+// CORRECTNESS CLAIM.** Read the client: `agree`/`bad` count entries in the `D:` DIGEST
+// it compared (`for dent in body.split(';')`), while `c_layers` counts `L:` messages
+// DELIVERED. A chunk the server reports empty with `K:` agrees without any `L:` ever
+// arriving, so `agree > layers` is ordinary. Comparing them asks whether the digest
+// named fewer things than were delivered, which is not a property of a correct client.
+//
+// ⚠ **`layers` IS STILL REPORTED**, because a reader wants it — it is just not a
+// verdict. This is the paragraph above turned into the expression it always described.
+const ok = m !== null && bad === 0 && agree > 0;
 console.log(JSON.stringify({ verdict: m ? m[0] : '(no cache report)',
                              agree, bad, layers, ok }));
 if (!ok) process.stderr.write(out.split('\n').slice(-20).join('\n'));
