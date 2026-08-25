@@ -422,12 +422,20 @@ fi
 # asks: **did the page keep rendering PAST its own local decision?** That decision is
 # `LOCAL_AFTER` frames after boot (`src/editor_client.loft`), so the bound is anchored to
 # the client's own constant plus a margin, not to a number somebody once observed.
-b1_local_after=180   # `LOCAL_AFTER` in src/editor_client.loft — the decision point
+# ⚠ READ FROM THE CLIENT, NOT COPIED. A second 180 sitting here would be a citation,
+# and a citation rots silently — `LOCAL_AFTER` could move and this row would go on
+# reading correctly against a decision point the page no longer has. If the constant is
+# ever renamed the grep finds nothing, so the row falls back to 180 and SAYS SO in its
+# own text — a silent fallback would be the rotted citation wearing a fresh coat.
+b1_local_after=$(grep -oE '^const LOCAL_AFTER *= *[0-9]+' src/editor_client.loft \
+                 | grep -oE '[0-9]+$')
+b1_src="src"
+if [ -z "$b1_local_after" ]; then b1_local_after=180; b1_src="FALLBACK — LOCAL_AFTER not found"; fi
 b1_need=$((b1_local_after + 60))
 b1_frames=$(grep -oE '^client: [0-9]+ frames' "$OUT/b.log" | grep -oE '[0-9]+' \
             | sort -n | tail -1)
 if [ "${b1_frames:-0}" -ge "$b1_need" ] 2>/dev/null; then
-  ok "B1 and it ran — $b1_frames frames, past the $b1_need it needs (LOCAL_AFTER $b1_local_after + 60)"
+  ok "B1 and it ran — $b1_frames frames, past the $b1_need it needs (LOCAL_AFTER $b1_local_after [$b1_src] + 60)"
 else
   bad "B1 the client stopped at ${b1_frames:-0} frames, short of $b1_need — it never rendered past its own local decision"
 fi
