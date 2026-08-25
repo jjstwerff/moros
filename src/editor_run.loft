@@ -810,10 +810,21 @@ fn main() {
   // a page in a browser: two programs each spelling their own digest is `W1`'s
   // two-encoders finding one layer out, and this one exists precisely so that a
   // difference between them means a difference in what they BUILT.
-  println("editor_run: world {world_key(w)}");
-
+  // ⚠ **THE KEY COMES OUT OF THE SAVE, WHICH IS ONE SERIALISATION RATHER THAN TWO.**
+  // `world_key` encodes the whole world and `world_save` encodes it again — measured
+  // natively at ~24 ms each on a 49x49 world, of which ~21 ms is the encode. This ran
+  // both on every scripted run, and `probe/k3d` makes 34 of them.
+  //
+  // ⚠ **AND IT IS NOW THE KEY OF THE BYTES THAT REACHED THE DISK**, not of a second
+  // encode of the same world. The two could not disagree before either — same function,
+  // same world — but "could not disagree" was an argument, and this is a fact.
   path = "{source_dir()}/../worlds/{name}.hxw";
-  code = world_save(w, path, []);
+  wkey = "";
+  code = world_save_keyed(w, path, [], hex_voxel::OWNER_ANY, wkey);
+  // ⚠ PRINTED IN THE SAME PLACE IT ALWAYS WAS, before the summary line. The record in
+  // `probe/k3d` reads named fields rather than positions, but `probe/headless` greps
+  // this transcript, and a step that reorders a log to save 21 ms is not a saving.
+  println("editor_run: world {wkey}");
   println("editor_run: {n} lines, {len(w.w_chunks)} chunks, τ {w.w_tau} -> {name}.hxw (code {code})");
 
   // ⚠ **AFTER THE SAVE AND AFTER EVERY DIAGNOSTIC, DELIBERATELY — plan 22 `K3a`.**
