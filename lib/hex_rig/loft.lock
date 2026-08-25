@@ -11,9 +11,9 @@ source = "registry"
 
 [[package]]
 name = "graphics"
-version = "0.5.5"
-url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphics-v0.5.5/graphics-0.5.5.tar.gz"
-sha256 = "465384b5532fe99bafb50f34da5819067041aedefdb6b7ea80827344ee49e5d3"
+version = "0.8.0"
+url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphics-v0.8.0/graphics-0.8.0.tar.gz"
+sha256 = "ffb0519e2fcc1939b119246b9941dd08e4feb5c248dd857cfbb0b7190df045a8"
 source = "registry"
 deps = ["glb", "mesh3d"]
 
