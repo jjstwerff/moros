@@ -62,8 +62,14 @@ pub struct Rot {
 // entry file or in a module): *"struct 'Frame' conflicts with a struct of the same
 // name already defined at hex_body-0.3.1 — pick a different name"*. This package does
 // NOT get that error, on 0.3.0 or 0.3.1, before or after this rename. I could not
-// explain the difference and stopped looking. So the rename is justified by the
+// explain the difference and stopped looking — filed as
+// [loft#1094](https://github.com/loft-lang/loft/issues/1094), with the four
+// hypotheses that were falsified on the way. So the rename is justified by the
 // READING cost below, not by a build that was about to break.
+//
+// ⚠ **AND THAT IS THE PART TO CARRY FORWARD: THE CHECK CANNOT BE RELIED ON TO WARN.**
+// The collision went unreported here for as long as both names have been in the graph.
+// Grep before adding a public name — the compiler may not be what tells you.
 //
 // ⚠ **THE COLLISION IS NOT THE ONLY COST, AND THE OTHER ONE IS WHY THIS WAS RENAMED
 // BEFORE THE UPGRADE.** The two are the same IDEA — a rigid placement — in different
