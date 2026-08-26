@@ -1,0 +1,152 @@
+// THE THICKNESS A WALL TYPE DECLARES, IN THE GEOMETRY THAT IS BUILT — plan 26 `B4f`.
+//
+// ⚠ EVERY NUMBER BELOW IS MEASURED OFF THE EMITTED MESH, never off the function
+// that decides it. `CLAUDE.md`: *measure what was actually emitted, never a number
+// the producer re-derives* — and a test that asked `wall_half` what `wall_half`
+// says could not be surprised by a mesher that never called it.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+
+const U = 0.25;
+// ⚠ TWO FIVES THAT ARE NOT THE SAME FIVE, and they sit two lines apart on purpose so
+// nobody reads one as the other. `SURF_WALL` is the `wall` surface's index in
+// `chunk_meshes_all`'s vector; `TYPE_SLOT` is an EDGE PALETTE slot, the byte a cell stores.
+const SURF_WALL = 5;
+const TYPE_SLOT = 5;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn typed_world(items: vector<hex_voxel::PalEntry>) -> VoxelWorld {
+  w = flat_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0, items);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  w
+}
+
+// ⚠ THE RUN IS REGISTERED AND ITS EDGES ARE NOT STAMPED, DELIBERATELY. `wall_stamp`
+// does both, and the per-edge panels `chunk_mesh_props` then draws from the store sit
+// on the hex edges — a second wall on top of this one (EDITOR_DEFECTS 4), whose
+// vertices would widen the spread measured here and hide the number being asked for.
+fn run_mesh(w: VoxelWorld, mat: integer) -> Mesh {
+  rs = hex_editor::WallRuns { items: [
+         hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                               wr_x0: 0.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
+                               wr_mat: mat, wr_step: 1 } ] };
+  ms = hex_mesh::chunk_meshes_all(0, 0, w, false, rs,
+         hex_editor::RoofPlans { items: [] }, hex_editor::DoorLeaves { items: [] },
+         hex_editor::Openings { items: [] }, hex_editor::Annexes { items: [] },
+         hex_editor::WallRuns { items: [] }, hex_editor::Props { items: [] },
+         hex_editor::Slabs { items: [] }, hex_editor::Holes { items: [] });
+  hex_mesh::chunk_mesh_slot(ms, SURF_WALL)
+}
+
+// The band, across. The run lies along +x, so the wall's two faces are the extreme
+// z of its vertices and the spread between them is the whole thickness.
+fn band_of(m: Mesh) -> float {
+  lo = 0.0;
+  hi = 0.0;
+  seen = false;
+  for v in m.vertices {
+    if !seen { lo = v.pos.z; hi = v.pos.z; seen = true; }
+    if v.pos.z < lo { lo = v.pos.z; }
+    if v.pos.z > hi { hi = v.pos.z; }
+  }
+  if !seen { return 0.0 - 1.0; }
+  hi - lo
+}
+
+fn about(a: float, b: float) -> boolean { a - b < 0.001 && b - a < 0.001 }
+
+// ⚠ THE INSTRUMENT, CHECKED AGAINST SOMETHING IT SHOULD FIND, BEFORE IT IS TRUSTED
+// TO REPORT A NUMBER. A plain wall has always been presented at `wall_band()`, so
+// this row must be green before and after the step — and if it is not, the spread
+// below is measuring something other than the wall's two faces.
+fn test_a_plain_wall_is_built_at_the_familys_band() {
+  b = band_of(run_mesh(flat_world(), hex_editor::WALL_MAT));
+  assert(b > 0.0, "the wall mesh is empty — nothing was measured at all");
+  assert(about(b, hex_editor::wall_band()),
+         "a plain wall is built {b} across against the family band "
+       + "{hex_editor::wall_band()} — the spread is not the wall's two faces");
+}
+
+// ⛔ THE ROW THE STEP EXISTS FOR. `wt_thick` reached the palette reader at `B4d` and
+// the PICTURE at `B4d`, and no geometry: `run_wall` resolved every wall id to one
+// constant, so a world could declare a curtain wall 0.7 across, watch the plan paint
+// it 0.7, and have the mesher build it at √3/2 anyway.
+fn test_a_declared_type_is_built_at_the_thickness_it_declares() {
+  w = typed_world([hex_voxel::PalEntry { pl_slot: TYPE_SLOT,
+                                         pl_name: "curtain body=SOLID thick=0.4" }]);
+  b = band_of(run_mesh(w, TYPE_SLOT));
+  assert(b > 0.0, "the wall mesh is empty");
+  assert(about(b, 0.4),
+         "a wall its world declares 0.4 across is built {b} across — the thickness "
+       + "reached the picture and not the geometry, which is this tree's commonest "
+       + "defect");
+  // …and it is not the default wearing a declaration, which is what the row would
+  // say if 0.4 happened to be the band.
+  assert(!about(0.4, hex_editor::wall_band()),
+         "the fixture declares the band itself — nothing here could be surprised");
+}
+
+// ── THE PICTURE AND THE BUILD ARE ONE NUMBER ────────────────────────────────
+//
+// ⚠ **THIS IS THE ROW THE STEP EXISTS TO MAKE TRUE, AND IT IS NOT VACUOUS BECAUSE
+// BOTH SIDES ARE READ OFF WHAT WAS EMITTED.** The two do share one resolver — that
+// is the fix — but they are two emitters over it, and an emitter that forgot to ask,
+// or asked and halved twice, is exactly what this can still see. The plan view is
+// this project's review surface (BLUEPRINT §0), and a review surface that disagrees
+// with the world it reviews is worse than none: it would have said *0.4* while the
+// mesher built √3/2, in a picture whose whole claim is that it can be compared
+// against the store digit for digit.
+
+const FIELD = "<line class='edge'";
+
+fn attr(ln: text, name: text) -> text {
+  at = ln.find("{name}='");
+  if at == null { return ""; }
+  rest = ln[(((at ?? 0) + name.size() + 2) as i32)..];
+  cut = rest.find("'");
+  if cut == null { return ""; }
+  rest[0..(cut ?? 0)]
+}
+
+fn edge_line(svg: text, q: integer, r: integer, slot: integer) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < (FIELD.size() as i32) { continue; }
+    if ln[0..(FIELD.size() as i32)] != FIELD { continue; }
+    if attr(ln, "data-q") == "{q}" && attr(ln, "data-r") == "{r}"
+       && attr(ln, "data-slot") == "{slot}" { return ln; }
+  }
+  ""
+}
+
+fn test_the_width_the_plan_paints_is_the_width_the_mesher_builds() {
+  decl = [hex_voxel::PalEntry { pl_slot: TYPE_SLOT,
+                                pl_name: "curtain body=SOLID thick=0.4" }];
+  // ⚠ TWO WORLDS FROM ONE DECLARATION, and the split is forced rather than tidy: a
+  // stamped edge draws a per-edge panel into the same wall mesh (EDITOR_DEFECTS 4),
+  // whose vertices would widen the spread and answer a question nobody asked.
+  built = band_of(run_mesh(typed_world(decl), TYPE_SLOT));
+
+  drawn = typed_world(decl);
+  hex_editor::wall_set(drawn, 1, 1, 0, TYPE_SLOT, 8, 2.0);
+  ln = edge_line(hex_mesh::plan_levels(drawn, 0 - 6, 0 - 6, 7, 7, [2.0],
+                                       hex_mesh::plan_bare(), "b4f"),
+                 1, 1, hex_editor::SLOT_E);
+  assert(ln != "", "the typed wall is not in the picture at all");
+  painted = attr(ln, "stroke-width") as float ?? 0.0;
+
+  assert(about(built, painted),
+         "the mesher builds {built} across and the plan paints {painted} — a review "
+       + "surface that disagrees with the world it reviews is worse than none");
+  assert(about(built, 0.4),
+         "both agree on {built}, and the declaration says 0.4 — agreeing on the wrong "
+       + "number is what two sites reading one broken resolver would do");
+}

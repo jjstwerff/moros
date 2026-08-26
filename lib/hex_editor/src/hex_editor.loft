@@ -145,26 +145,63 @@ pub struct RunWall {
   rw_cz:   vector<float>,
 }
 
-// The presented thickness of a wall, from `hex_draw`'s band table rather than from
-// a number chosen here. `BAND_SIDES` is the full extent of the wider family's
-// strip; a wall run is presented at that width whatever direction it took, which
-// is the same rule `WIDEN_TOTAL` states for the recovered case.
+// The presented thickness of a wall that DECLARES none, from `hex_draw`'s band table
+// rather than from a number chosen here. `BAND_SIDES` is the full extent of the wider
+// family's strip; an undeclared wall run is presented at that width whatever direction
+// it took, which is the same rule `WIDEN_TOTAL` states for the recovered case.
+//
+// ⚠ **IT IS THE DEFAULT AND NOT THE ANSWER — plan 26 `B4f`.** A world that declares a
+// wall type states its own thickness, and `wall_half` below is where an id is resolved;
+// this constant is what an id nothing declares falls back to. Calling it at a drawing
+// site is how the palette came to decide nothing for two whole steps.
 pub fn wall_band() -> float { BAND_SIDES }
 
-// The strip one run draws: the centreline offset both ways by half the band.
+// ── WHICH HALF-WIDTH A WALL ID RESOLVES TO — plan 26 `B4f`, BLUEPRINT §3.3 ──
+//
+// ⚠ **THE PALETTE DECIDES, AND THE BAND IS ONLY WHAT AN UNDECLARED ID FALLS BACK
+// TO.** §3.3 says it in one line — *"the drawing constants are a separate layer and
+// both are true … what the palette decides is which half-width a given wall id
+// resolves to"* — and until this function existed it decided the PICTURE alone. `wt_thick`
+// reached the palette reader at `B4d` and the PICTURE at `B4d`, and no geometry: a
+// world could declare a curtain wall 0.7 across, watch the plan paint it 0.7, and
+// have the mesher build it at √3/2 anyway, with the store, the palette and the
+// picture all agreeing and nothing red.
+//
+// ⚠ **A MALFORMED TYPE TAKES THE DEFAULT HERE AND IS NOT REFUSED**, and that is a
+// drawing site's rule rather than a second policy. `wall_type` already says what is
+// wrong and `plan_svg` already paints it magenta and counts it — a mesher has no way
+// to be loud, and a wall that vanished because its declaration said `thick=fat`
+// would be a hole in a house with nothing at all to read it by.
+//
+// ⚠ **AND `wt_thick == 0.0` IS *STATES NONE*, NOT *ZERO WIDE*** — `walltype.loft`
+// says so at the field itself. Nothing in `@HB-X12`'s vocabulary means a wall with
+// no width, so zero is free to mean unstated and the band stands.
+pub fn wall_half(w: VoxelWorld, region: integer, mat: integer) -> float {
+  wt = wall_type(w, region, mat);
+  if wt.wt_ok && wt.wt_thick > 0.0 { return wt.wt_thick * 0.5; }
+  wall_band() * 0.5
+}
+
+// The strip one run draws: the centreline offset both ways by `half`.
+//
+// ⚠ **THE HALF IS THE CALLER'S, BECAUSE THE PALETTE IS WHERE IT COMES FROM** — plan
+// 26 `B4f`. This function used to take `wall_band() * 0.5` itself, which made it a
+// SECOND answer to *how thick is this wall* beside `wall_half`'s, agreeing only by
+// having no reason to differ. Its one production caller is `hex_mesh::emit_run_wall`,
+// which holds the world the id has to be resolved against; a wall with no run and no
+// world — a test, a probe — passes `wall_band() * 0.5` and gets what it always did.
 //
 // A zero-length run is REFUSED rather than returned degenerate — an `rw_ok` of
 // false with no corners. The normal of a zero-length line is 0/0, and a renderer
 // that got one back would emit a NaN quad that draws as nothing while measuring
 // as something.
-pub fn run_wall(x0: float, z0: float, x1: float, z1: float) -> RunWall {
+pub fn run_wall(x0: float, z0: float, x1: float, z1: float, half: float) -> RunWall {
   t = hex_way::track_new();
   hex_way::track_straight(t, x0, z0, x1, z1);
   ln = hex_way::seg_len(t, 0);
   if ln <= 0.0 {
     return RunWall { rw_ok: false, rw_len: 0.0, rw_half: 0.0, rw_cx: [], rw_cz: [] };
   }
-  half = wall_band() * 0.5;
   l = hex_way::track_offset(t, half);
   r = hex_way::track_offset(t, 0.0 - half);
   (lx0, lz0) = hex_way::seg_point(l, 0, 0.0);

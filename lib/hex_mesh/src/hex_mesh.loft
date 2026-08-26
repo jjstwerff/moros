@@ -1287,8 +1287,20 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
   // wall type carries that slot in `wr_mat`, and a site that named byte 1 would drop
   // the half-width off every wall in such a world while the store, the palette and
   // the plan all went on calling it a wall.
+  //
+  // ⚠ **AND THE WIDTH IS THE PALETTE'S — plan 26 `B4f`.** `wall_half` resolves the id
+  // through the EDGE palette and falls back to the family band; before it, every id
+  // resolved to that band, so the thickness a world declared reached the plan view and
+  // stopped there. ⚠ **The region is the run's OWN START CELL**, not the chunk being
+  // meshed: `q0`/`r0` here are a mesh chunk, and a wall is meshed once per chunk it
+  // crosses, so resolving against the chunk would give one wall two thicknesses at a
+  // regional boundary. A run that itself crosses one takes the region it starts in —
+  // the same choice `wr_mat` already makes about its material.
   if hex_editor::edge_is_wall(run.wr_mat) {
-    rw = hex_editor::run_wall(run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+    (rwq, rwr) = px_to_hex(run.wr_x0, run.wr_z0);
+    rw = hex_editor::run_wall(run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1,
+                              hex_editor::wall_half(wld,
+                                hex_voxel::world_region_at(wld, rwq, rwr), run.wr_mat));
     if rw.rw_ok { half = rw.rw_half; }
   }
   ox = nrm.x * half;

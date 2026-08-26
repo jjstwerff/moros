@@ -263,7 +263,8 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
         // material does, and the caption counts it: silently falling back to the
         // drawing's own width is how a picture comes to disagree with the world it
         // claims to be of.
-        wt = hex_editor::wall_type(w, hex_voxel::world_region_at(w, q, r), emat);
+        ergn = hex_voxel::world_region_at(w, q, r);
+        wt = hex_editor::wall_type(w, ergn, emat);
         ewid = edge_width(emat);
         ecol = edge_colour(emat, wt.wt_ok);
         ebody = "";
@@ -271,7 +272,16 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
         if wt.wt_ok {
           ebody = wt.wt_body;
           ethick = wt.wt_thick;
-          if ethick > 0.0 { ewid = ethick; }
+          // ⚠ **THE WIDTH COMES BACK THROUGH `wall_half` — plan 26 `B4f`** — which is
+          // the same number `wt_thick` is and deliberately not read as one. That
+          // function is what the MESHER builds the wall at, so a picture deriving the
+          // width a second time here would be free to agree with the store and
+          // disagree with the world the store describes — which is the whole failure
+          // `B4d`'s own note warns about, one site further along.
+          // ⚠ **`data-thick` stays the DECLARATION, verbatim.** It is a store fact and
+          // the resolved width is a drawing one; a reader comparing the picture against
+          // the palette needs the first, and `B4d`'s *0 means states none* depends on it.
+          if ethick > 0.0 { ewid = hex_editor::wall_half(w, ergn, emat) * 2.0; }
         } else if wt.wt_why != "" && wt.wt_name != "" {
           // Declared and wrong — `wt_name` is empty only when nothing is declared.
           ebody = "?";

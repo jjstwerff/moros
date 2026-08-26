@@ -17,9 +17,11 @@ use hex_draw;
 // A run at 15° — deliberately NOT along a lattice axis. On an axis a staircase and
 // a line agree and a measurement says nothing, which is the same reason
 // `straight.mjs` walks an off-axis road.
-fn diagonal() -> RunWall { hex_editor::run_wall(0.0, 0.0, 9.6592582628906831, 2.5881904510252074) }
+fn diagonal() -> RunWall {
+  hex_editor::run_wall(0.0, 0.0, 9.6592582628906831, 2.5881904510252074, BAND_SIDES * 0.5)
+}
 
-fn axis() -> RunWall { hex_editor::run_wall(-4.0, 0.0, 4.0, 0.0) }
+fn axis() -> RunWall { hex_editor::run_wall(-4.0, 0.0, 4.0, 0.0, BAND_SIDES * 0.5) }
 
 fn test_a_run_is_one_strip_of_four_corners() {
   w = axis();
@@ -31,16 +33,29 @@ fn test_a_run_is_one_strip_of_four_corners() {
   assert(w.rw_len == 8.0, "the strip is as long as the run, got {w.rw_len}");
 }
 
-fn test_the_strip_is_the_family_band_thick() {
-  // THE POINT OF THE STEP. The thickness is `hex_draw`'s, not a number chosen
-  // here: BAND_SIDES is the full extent of the wider family's strip, and the
-  // widening rule presents every wall at it.
+fn test_the_strip_is_as_thick_as_it_was_asked_for() {
+  // THE POINT OF THE STEP, and at plan 26 `B4f` the subject of it moved. The band
+  // used to be chosen in here — `BAND_SIDES`, `hex_draw`'s, never a number invented
+  // locally — and it is the CALLER's now, because the palette is where a wall's
+  // thickness comes from and this function has no world to ask. So what is measured
+  // here is that the strip is `2 * half` across and symmetric about the line; that
+  // the default for an undeclared id is still the family band is `wall_half`'s claim
+  // and `wall_type.loft` asks it, off the mesh in `hex_mesh/tests/wall_thick.loft`.
   w = axis();
   d = run_wall_z(w, 0) - run_wall_z(w, 3);
   if d < 0.0 { d = 0.0 - d; }
   assert(d == BAND_SIDES, "the strip is one band across: {d} vs {BAND_SIDES}");
   assert(w.rw_half * 2.0 == BAND_SIDES, "half is half the band, got {w.rw_half}");
   assert(BAND_SIDES > 0.0, "a band with no width is the wall we are replacing");
+
+  // …and a DIFFERENT half gives a different strip, which is what says the number is
+  // read at all. Without this row every assertion in this file would pass on a
+  // function that had gone back to choosing the band itself.
+  n = hex_editor::run_wall(-4.0, 0.0, 4.0, 0.0, 0.2);
+  nd = run_wall_z(n, 0) - run_wall_z(n, 3);
+  if nd < 0.0 { nd = 0.0 - nd; }
+  assert(nd == 0.4 && n.rw_half == 0.2,
+         "a strip asked for 0.2 either side is {nd} across at half {n.rw_half}");
 }
 
 fn test_the_faces_are_exact_parallels_of_the_run() {
@@ -83,7 +98,7 @@ fn test_a_zero_length_run_is_refused() {
   // A run whose two presses landed in the same place. Refused with no corners,
   // because the normal of a zero-length line is 0/0 and a NaN quad draws as
   // nothing while measuring as something.
-  w = hex_editor::run_wall(3.0, 3.0, 3.0, 3.0);
+  w = hex_editor::run_wall(3.0, 3.0, 3.0, 3.0, BAND_SIDES * 0.5);
   assert(!w.rw_ok, "a run of no length is refused");
   assert(len(w.rw_cx) == 0, "and carries no corners, got {len(w.rw_cx)}");
 }

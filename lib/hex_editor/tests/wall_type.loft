@@ -330,3 +330,53 @@ fn test_an_aim_carries_the_chosen_type() {
   assert(ring_bytes(w, 0 - 2, 0 - 2, 30, WALL_MAT, 0.0) == 0,
          "an aim wrote plain walls beside the chosen type");
 }
+
+// ── `B4f` — WHICH HALF-WIDTH AN ID RESOLVES TO ──────────────────────────────
+//
+// ⚠ **`wt_thick` HAD ONE CONSUMER AND IT WAS A PICTURE.** `B4d` read the thickness
+// off the palette and `plan_svg` painted it; `run_wall` went on giving every wall id
+// the family band, so the world a plan claims to be OF was built at a width its own
+// palette contradicted. This is the resolver those two now share, and the rows below
+// are its answers rather than the geometry's — that a wall is BUILT at what this says
+// is measured off the emitted mesh, in `hex_mesh/tests/wall_thick.loft`.
+
+fn test_a_declared_thickness_resolves_to_half_of_itself() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "curtain body=SOLID thick=0.4" }]);
+  assert(wall_half(w, 0, 5) == 0.2,
+         "slot 5 resolves to {wall_half(w, 0, 5)} against the 0.2 its 0.4 declares");
+  // ⚠ AND IT IS NOT THE DEFAULT WEARING A DECLARATION, which is what this row would
+  // say if the fixture had happened to declare the band.
+  assert(wall_half(w, 0, 5) != wall_band() * 0.5,
+         "the fixture declares the band itself — nothing here could be surprised");
+}
+
+fn test_an_undeclared_id_falls_back_to_the_family_band() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "curtain thick=0.4" }]);
+  assert(wall_half(w, 0, WALL_MAT) == wall_band() * 0.5,
+         "a plain wall resolves to {wall_half(w, 0, WALL_MAT)}, not the band's half "
+       + "{wall_band() * 0.5} — every wall this editor has ever laid is that width, "
+       + "so this row is the upper bound of the step");
+  assert(wall_half(w, 0, 6) == wall_band() * 0.5,
+         "a slot nobody declared resolves to {wall_half(w, 0, 6)}");
+}
+
+// ⚠ **A MALFORMED DECLARATION TAKES THE DEFAULT HERE AND IS NOT REFUSED**, and the
+// reason is that a mesher has no way to be loud: a wall that vanished because its
+// palette entry said `thick=fat` is a hole in a house with nothing to read it by.
+// The loudness is the plan view's — magenta, and counted in the caption.
+fn test_a_damaged_type_is_built_at_the_default_rather_than_not_at_all() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "odd body=SOLID thick=fat" }]);
+  assert(!wall_type(w, 0, 5).wt_ok, "the fixture is not damaged after all");
+  assert(wall_half(w, 0, 5) == wall_band() * 0.5,
+         "a damaged type resolves to {wall_half(w, 0, 5)}");
+}
+
+// ⚠ **`thick=0` IS *STATES NONE*, NOT *ZERO WIDE*** — `walltype.loft` says so at the
+// field, and a resolver that took it literally would build a wall of no thickness:
+// two coincident faces, which draws as nothing and measures as something.
+fn test_a_type_that_states_no_thickness_keeps_the_band() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "plain body=SOLID" }]);
+  assert(wall_type(w, 0, 5).wt_ok, "the fixture's type was refused");
+  assert(wall_half(w, 0, 5) == wall_band() * 0.5,
+         "a type stating no thickness resolves to {wall_half(w, 0, 5)}");
+}
