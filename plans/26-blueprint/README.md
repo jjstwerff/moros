@@ -106,6 +106,11 @@ the window bound made inclusive (1) — with the control green either side of th
 taken from. Drawn flat, its house is **27 floor cells with a closed wall around them —
 and four wall edges that bound none of them.**
 
+![the house of `house.keys`, drawn flat](../../doc/claude/img-house-plan-b0.png)
+
+*Three black stubs hang off the corners and a fourth stray edge is the orange one below the
+south wall — the window. `make plan-view WORLD=headless Q0=-7 R0=-8 Q1=5 R1=5`.*
+
 | | |
 |---|---|
 | stray edges | `(-2,-6)` slot E · `(2,-4)` slot NE · `(-5,-1)` slot NE · `(-1,2)` slot E |

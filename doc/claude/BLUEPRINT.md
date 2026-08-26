@@ -60,6 +60,8 @@ openings is on one of those four**, so a window nobody has ever questioned bound
 that is a defect or a wall the description genuinely authors is exactly `B1`, which is the argument
 for building it.
 
+![the house of `house.keys`, drawn flat](img-house-plan-b0.png)
+
 ⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
 railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
 assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what
