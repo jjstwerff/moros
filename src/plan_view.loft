@@ -1,0 +1,77 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// A SAVED WORLD, AS A PLAN — plan 26 `B0`. `make plan-view WORLD=<name>`.
+//
+// The fourth driver over the same library, and the only one that needs no clock:
+// `editor_server` holds a socket, `editor_client` holds the picture, `editor_run`
+// holds a script, and this holds neither. It reads a `.hxw` off the disk and
+// writes an `.svg` beside it.
+//
+// ⚠ IT READS THE SAVED FILE ON PURPOSE, not a live world. What a save carries is
+// exactly what the store is the authority for — EDITOR_DEFECTS 5 is that the wall
+// RUNS are not in it — so a plan drawn from the file cannot accidentally show the
+// session's second copy of a wall and call it the field. When `B1` puts the
+// description in the picture it will have to say where it got it, and this is what
+// makes that a visible choice rather than a silent one.
+//
+// ⚠ NOTHING HERE COMPUTES ANY GEOMETRY. The window, the reference height and the
+// file names are this program's; every coordinate is `hex_mesh::plan_svg`'s, which
+// is `hex_proj`'s, which is `hex_grid`'s.
+use hex_voxel;
+use hex_mesh;
+
+fn env_int(name: text, fallback: integer) -> integer {
+  v = env_variable(name);
+  if v == "" { return fallback; }
+  v as integer ?? fallback
+}
+
+fn main() {
+  name = env_variable("WORLD");
+  if name == "" { name = "headless"; }
+  path = "{source_dir()}/../worlds/{name}.hxw";
+
+  ld = hex_voxel::world_load(path);
+  if ld.wl_code != 0 {
+    println("plan_view: cannot read {name}.hxw — code {ld.wl_code} {ld.wl_detail}");
+    return;
+  }
+  w = ld.wl_world;
+
+  q0 = env_int("Q0", 0 - 16);
+  r0 = env_int("R0", 0 - 16);
+  q1 = env_int("Q1", 17);
+  r1 = env_int("R1", 17);
+
+  // ⚠ THE DEFAULT REFERENCE IS THE WORLD'S OWN GROUND, not zero and not a
+  // constant. A world whose ground sits at height 8 has nothing at all at 0, and
+  // `world_surface` answers the LOWEST floor when the feet are under every one of
+  // them — which is a cellar in any world that has one. Asking the world where its
+  // ground is makes the default *the ground floor* in both.
+  rf = 0.0;
+  if hex_voxel::world_has_ground_default(w) {
+    rf = (hex_voxel::world_ground_default(w).h_height as float ?? 0.0) * w.w_unit;
+  }
+  rv = env_variable("REF");
+  if rv != "" { rf = rv as float ?? rf; }
+
+  svg = plan_svg(w, q0, r0, q1, r1, rf, "{name}");
+
+  out = "{source_dir()}/../worlds/{name}.svg";
+  f = file(out);
+  f.write(svg);
+
+  // ⚠ COUNTED OUT OF THE TEXT THAT WAS WRITTEN, not out of a variable the emitter
+  // filled in — the same rule the test obeys. A report that trusted the producer
+  // would say `5 edges` for a picture holding none.
+  ncell = 0;
+  nedge = 0;
+  for ln in svg.split('\n') {
+    if ln.size() < 9 { continue; }
+    if ln[0..6] == "<line " { nedge = nedge + 1; }
+    if ln[0..9] == "<polygon " { ncell = ncell + 1; }
+  }
+  println("plan_view: {name} q {q0}..{q1} r {r0}..{r1} ref {rf} "
+        + "-> {ncell} cells, {nedge} edges, {svg.size()} bytes in worlds/{name}.svg");
+}

@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -732,6 +732,26 @@ drift:
 # gate that demanded cut steps of every idea is one people route around.
 plan-check:
 	@sh tools/plans.sh $(P)
+
+# THE PLAN VIEW — plan 26 `B0`. A saved world, drawn flat, as SVG you open.
+#
+#   make plan-view                      # worlds/headless.hxw -> worlds/headless.svg
+#   make plan-view WORLD=deck Q0=-8 Q1=9 R0=-8 R1=9 REF=2.0
+#
+# ⚠ IT READS THE `.hxw` AND NOTHING ELSE, which is the boundary `B0` stops at: the
+# store is the authority a save carries, and the authored run is not in it at all
+# (EDITOR_DEFECTS 5). A picture that quietly mixed the two would be answering
+# neither question. `B1` adds the description and has to say where it got it.
+#
+# ⚠ NOT IN `make fast`, and not because it is slow. What it produces is a PICTURE,
+# and a picture is not a gate — the claims about it are `lib/hex_mesh/tests/planview.loft`,
+# which compares the emitted text against the store. This target is for a person.
+plan-view:
+	@WORLD=$(if $(WORLD),$(WORLD),headless) \
+	 $(if $(Q0),Q0=$(Q0),) $(if $(Q1),Q1=$(Q1),) \
+	 $(if $(R0),R0=$(R0),) $(if $(R1),R1=$(R1),) $(if $(REF),REF=$(REF),) \
+	 $(LOFT) --interpret --lib lib/ src/plan_view.loft 2>/dev/null \
+	  | grep -E '^plan_view:' || { echo "plan-view: the run said nothing — re-run without 2>/dev/null"; exit 1; }
 
 # P2 (plan 22) — can OUR javascript talk to loft inside a `--html` page?
 # The interim storage bridge (`W5`) rests entirely on this. Spawns headless Chrome

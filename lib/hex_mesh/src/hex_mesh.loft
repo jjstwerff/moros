@@ -32,6 +32,11 @@ use self::surfaces;
 // The catalogue — the join of what can be drawn and what parts exist. Plan 22 `B2c`.
 // ⚠ `choices`, not `catalogue`: `hex_part` already has a module of that name.
 use self::choices;
+// The plan view — the store drawn flat, as SVG. Plan 26 `B0`; BLUEPRINT.md §0.
+// ⚠ `planview`, one word: a module's BASENAME is global across the whole
+// dependency graph (loft#912), and `plan` is a word `hex_place` already owns a
+// struct by.
+use self::planview;
 
 // The renderer's tile, in hexes. See the banner: NOT the store's `CHUNK_W`.
 pub const MESH_CHUNK = 8;

@@ -1,0 +1,234 @@
+// THE PLAN VIEW DRAWS WHAT THE STORE HOLDS — plan 26 `B0`.
+//
+// ⚠ EVERY ASSERTION BELOW READS THE EMITTED TEXT. Not a count the emitter
+// returned, not a field it filled in: `CLAUDE.md` — *measure what was actually
+// emitted, never a number the producer re-derives*. `plan_svg` returns text and
+// nothing else for exactly this reason, and the parser here is the test's own.
+//
+// ⚠ AND THE PARSER IS CHECKED AGAINST SOMETHING IT SHOULD FIND BEFORE IT IS
+// TRUSTED TO REPORT AN ABSENCE. A grep over a picture has the same default answer
+// as a grep over a log — *absent* — so the first test below counts a world with
+// walls in it, and only then a world without.
+//
+// ⚠ THE ORACLE FOR EVERY POSITION IS THE MESHER'S OWN THREE CALLS, written out
+// here rather than taken from `plan_slot_seg`: `hex_edge_corners`, the `(6 - c) % 6`
+// join, `hex_corner_world`. A test that asked the helper what the helper says
+// could not be surprised by any of the four faults this file exists to catch.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+use hex_grid;
+use hex_proj;
+
+const U = 0.25;
+const UNKNOWN_MAT = 7;      // a wall byte the editor has no name for
+
+fn about(a: float, b: float) -> boolean { a - b < 0.0001 && b - a < 0.0001 }
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 4..10 {
+    for r in 0 - 4..10 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// ── The test's own reader ───────────────────────────────────────────────────
+
+fn attr(ln: text, name: text) -> text {
+  at = ln.find("{name}='");
+  if at == null { return ""; }
+  rest = ln[(((at ?? 0) + name.size() + 2) as i32)..];
+  cut = rest.find("'");
+  if cut == null { return ""; }
+  rest[0..(cut ?? 0)]
+}
+
+fn tag_count(svg: text, head: text) -> integer {
+  n = 0;
+  for ln in svg.split('\n') {
+    if ln.size() < head.size() { continue; }
+    if ln[0..(head.size() as i32)] == head { n = n + 1; }
+  }
+  n
+}
+
+// The emitted `<line>` for one slot of one cell, or "" when the picture does not
+// draw it. ⚠ THE ABSENCE IS THE ANSWER IN TWO TESTS BELOW, which is why the
+// count above is checked first.
+fn edge_line(svg: text, q: integer, r: integer, slot: integer) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 6 { continue; }
+    if ln[0..6] != "<line " { continue; }
+    if attr(ln, "data-q") == "{q}" && attr(ln, "data-r") == "{r}"
+       && attr(ln, "data-slot") == "{slot}" { return ln; }
+  }
+  ""
+}
+
+fn cell_poly(svg: text, q: integer, r: integer) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 9 { continue; }
+    if ln[0..9] != "<polygon " { continue; }
+    if attr(ln, "data-q") == "{q}" && attr(ln, "data-r") == "{r}" { return ln; }
+  }
+  ""
+}
+
+// ── The oracle: the three calls the mesher makes, spelled out ───────────────
+
+fn slot_dir(slot: integer) -> integer {
+  if slot == 0 { return 4; }        // SLOT_NW
+  if slot == 1 { return 5; }        // SLOT_NE
+  0                                 // SLOT_E
+}
+
+fn corner_a(q: integer, r: integer, slot: integer) -> Vec3 {
+  (ca, _) = hex_grid::hex_edge_corners(slot_dir(slot));
+  hex_proj::hex_corner_world(q, r, 0, (6 - ca) % 6)
+}
+
+fn corner_b(q: integer, r: integer, slot: integer) -> Vec3 {
+  (_, cb) = hex_grid::hex_edge_corners(slot_dir(slot));
+  hex_proj::hex_corner_world(q, r, 0, (6 - cb) % 6)
+}
+
+// ── 1. The reader finds a wall, and only then is its silence worth anything ──
+
+fn test_the_reader_counts_a_wall_before_it_is_trusted_to_count_none() {
+  w = flat_world();
+  hex_editor::wall_set(w, 2, 1, 0, hex_editor::WALL_MAT, 8, 2.0);
+  with_wall = plan_svg(w, 0, 0, 5, 5, 2.0, "one");
+  assert(tag_count(with_wall, "<line ") == 1,
+         "the reader found {tag_count(with_wall, \"<line \")} edges where one wall "
+         + "was written — if this is 0 every absence below is the reader's, not the picture's");
+
+  bare = plan_svg(flat_world(), 0, 0, 5, 5, 2.0, "none");
+  assert(tag_count(bare, "<line ") == 0,
+         "a world with no wall drew {tag_count(bare, \"<line \")} edges");
+  assert(tag_count(bare, "<polygon ") == 25,
+         "a 5x5 window drew {tag_count(bare, \"<polygon \")} cells, not 25 — every "
+         + "cell of the window is drawn, so an empty one reads as empty and not as absent");
+}
+
+// ── 2. One mark per stored byte, against a walk of the store ────────────────
+
+fn test_the_marks_are_the_stores_own_bytes_counted_a_second_way() {
+  w = flat_world();
+  // Five edges over four cells and all three slots, in three materials plus one
+  // the editor has no name for.
+  hex_editor::wall_set(w, 1, 1, 4, hex_editor::WALL_MAT,  8, 2.0);   // SLOT_NW
+  hex_editor::wall_set(w, 1, 1, 5, hex_editor::DOOR_MAT,  8, 2.0);   // SLOT_NE
+  hex_editor::wall_set(w, 1, 1, 0, hex_editor::WALL_MAT,  8, 2.0);   // SLOT_E
+  hex_editor::wall_set(w, 3, 2, 0, hex_editor::FENCE_MAT, 8, 2.0);
+  hex_editor::wall_set(w, 2, 3, 4, UNKNOWN_MAT,           8, 2.0);
+  svg = plan_svg(w, 0, 0, 6, 6, 2.0, "five");
+
+  // ⚠ THE SECOND COUNT READS THE CELL'S FIELDS, never `wall_of` — the emitter
+  // uses `wall_of`, so a count through it would be the same path twice and could
+  // not see a reader that named the wrong slot.
+  held = 0;
+  for r in 0..6 {
+    for q in 0..6 {
+      li = hex_editor::edge_layer(w, q, r, 2.0);
+      if li < 0 { continue; }
+      c = hex_voxel::world_cell(w, q, r, li);
+      if (c.h_wall_nw as integer ?? 0) != 0 { held = held + 1; }
+      if (c.h_wall_ne as integer ?? 0) != 0 { held = held + 1; }
+      if (c.h_wall_e  as integer ?? 0) != 0 { held = held + 1; }
+    }
+  }
+  assert(held == 5, "the fixture wrote {held} bytes, not the 5 it asked for");
+  assert(tag_count(svg, "<line ") == held,
+         "the picture drew {tag_count(svg, \"<line \")} edges and the store holds {held}");
+
+  // …and each one is the material it was written with, not a default.
+  assert(attr(edge_line(svg, 1, 1, hex_editor::SLOT_NE), "data-mat") == "{hex_editor::DOOR_MAT}",
+         "the door drew as material {attr(edge_line(svg, 1, 1, hex_editor::SLOT_NE), \"data-mat\")}");
+  assert(attr(edge_line(svg, 3, 2, hex_editor::SLOT_E), "data-mat") == "{hex_editor::FENCE_MAT}",
+         "the fence drew as material {attr(edge_line(svg, 3, 2, hex_editor::SLOT_E), \"data-mat\")}");
+}
+
+// ── 3. `plan_slot_seg` IS the mesher's three calls, over a range ─────────────
+
+fn test_the_segment_agrees_with_the_meshers_own_spelling() {
+  for r in 0 - 3..4 {
+    for q in 0 - 3..4 {
+      for slot in 0..3 {
+        s = plan_slot_seg(q, r, slot);
+        a = corner_a(q, r, slot);
+        b = corner_b(q, r, slot);
+        assert(about(s.ps_x1, a.x) && about(s.ps_z1, a.z)
+               && about(s.ps_x2, b.x) && about(s.ps_z2, b.z),
+               "slot {slot} of ({q},{r}) is ({s.ps_x1},{s.ps_z1})-({s.ps_x2},{s.ps_z2}); "
+               + "the mesher's own three calls give ({a.x},{a.z})-({b.x},{b.z})");
+      }
+    }
+  }
+}
+
+// ── 4. And the NUMBERS IN THE FILE are those numbers ─────────────────────────
+
+fn test_the_picture_carries_the_librarys_own_coordinates() {
+  w = flat_world();
+  hex_editor::wall_set(w, 2, 2, 0, hex_editor::WALL_MAT, 8, 2.0);
+  svg = plan_svg(w, 0, 0, 5, 5, 2.0, "one");
+  ln = edge_line(svg, 2, 2, hex_editor::SLOT_E);
+  assert(ln != "", "the wall on slot E of (2,2) is not in the picture at all");
+
+  a = corner_a(2, 2, hex_editor::SLOT_E);
+  b = corner_b(2, 2, hex_editor::SLOT_E);
+  x1 = attr(ln, "x1") as float ?? 0.0 - 999.0;
+  y1 = attr(ln, "y1") as float ?? 0.0 - 999.0;
+  x2 = attr(ln, "x2") as float ?? 0.0 - 999.0;
+  y2 = attr(ln, "y2") as float ?? 0.0 - 999.0;
+  assert(about(x1, a.x) && about(y1, a.z),
+         "the mark starts at ({x1},{y1}); the corner is at ({a.x},{a.z})");
+  assert(about(x2, b.x) && about(y2, b.z),
+         "the mark ends at ({x2},{y2}); the corner is at ({b.x},{b.z})");
+  // ⚠ THE VIEWBOX IS IN THE SAME UNITS, which is what makes the two lines above a
+  // comparison at all: a picture that scaled its geometry would need the test to
+  // know the scale, and a wrong scale would then agree with itself.
+  assert(svg.contains("viewBox='"), "no viewBox — the numbers above are in no frame");
+}
+
+// ── 5. The window is half-open, and nothing outside it is drawn ─────────────
+
+fn test_a_cell_outside_the_window_is_not_in_the_picture() {
+  w = flat_world();
+  hex_editor::wall_set(w, 4, 1, 0, hex_editor::WALL_MAT, 8, 2.0);   // inside [0,5)
+  hex_editor::wall_set(w, 5, 1, 0, hex_editor::WALL_MAT, 8, 2.0);   // the first cell outside
+  svg = plan_svg(w, 0, 0, 5, 5, 2.0, "bound");
+
+  assert(edge_line(svg, 4, 1, hex_editor::SLOT_E) != "",
+         "the wall at q=4 is inside a window of [0,5) and is not drawn");
+  assert(edge_line(svg, 5, 1, hex_editor::SLOT_E) == "",
+         "the wall at q=5 is outside a window of [0,5) and was drawn anyway — "
+         + "the bound is inclusive, so every window overreaches by one row and one column");
+  assert(cell_poly(svg, 5, 1) == "", "cell (5,1) is outside the window and was drawn");
+  assert(tag_count(svg, "<line ") == 1, "{tag_count(svg, \"<line \")} edges drawn, not 1");
+}
+
+// ── 6. A cell carries its own material, and an unknown edge is not a wall ────
+
+fn test_a_cell_draws_its_material_and_an_unknown_edge_is_loud() {
+  w = flat_world();
+  hex_editor::ground_set(w, 1, 1, 8, hex_editor::ROAD_MAT);
+  hex_editor::wall_set(w, 2, 2, 0, hex_editor::WALL_MAT, 8, 2.0);
+  hex_editor::wall_set(w, 3, 3, 0, UNKNOWN_MAT,          8, 2.0);
+  svg = plan_svg(w, 0, 0, 5, 5, 2.0, "mats");
+
+  assert(attr(cell_poly(svg, 1, 1), "data-mat") == "{hex_editor::ROAD_MAT}",
+         "the road cell drew as material {attr(cell_poly(svg, 1, 1), \"data-mat\")}");
+  assert(attr(cell_poly(svg, 0, 0), "data-mat") == "{hex_editor::SURFACE_MAT}",
+         "the grass cell drew as material {attr(cell_poly(svg, 0, 0), \"data-mat\")}");
+  assert(attr(cell_poly(svg, 1, 1), "fill") != attr(cell_poly(svg, 0, 0), "fill"),
+         "a road and a field drew the same fill — the plan cannot show what it is made of");
+
+  known = attr(edge_line(svg, 2, 2, hex_editor::SLOT_E), "stroke");
+  odd   = attr(edge_line(svg, 3, 3, hex_editor::SLOT_E), "stroke");
+  assert(known != "" && odd != "", "one of the two edges is missing from the picture");
+  assert(known != odd,
+         "a byte this editor has no name for drew exactly like a wall ({odd}) — an "
+         + "instrument that explains what it cannot explain is the confident hexagon again");
+}

@@ -1,1 +1,6 @@
 *.hxw
+
+# The plan view (plan 26 `B0`) — `make plan-view` draws the `.hxw` beside it, so it
+# is generated from a generated file. The claims about it are loft tests, not this
+# picture: `lib/hex_mesh/tests/planview.loft`.
+*.svg

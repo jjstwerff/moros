@@ -1,0 +1,203 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE PLAN VIEW — what the STORE holds, drawn flat, in a format a person opens.
+//
+// Plan 26 `B0`. [BLUEPRINT.md](../../../doc/claude/BLUEPRINT.md) §0: *the blueprint
+// is an INSTRUMENT before it is a feature* — a plan view is the cheapest place to
+// see what the libraries actually do. Four defects were found in the session that
+// wrote that design, every one of them by reading source or writing a one-off
+// probe, and every one of them a PICTURE here: a wall drawn twice, a six-sided
+// outline over an eight-sided one, a recovered line that misses the drawn one by
+// 15°, a wall that does not meet its neighbour.
+//
+// ⚠ IT DRAWS THE FIELD AND NOTHING ELSE, and the boundary is not tidiness. A
+// blueprint's other half is the DESCRIPTION — the authored run, what `rebuild`
+// says the cells mean — and that half is not in a saved world at all
+// (EDITOR_DEFECTS 5: the save carries the cells; the run record is not saved). So
+// `B1` is a different question with a different source, and a view that quietly
+// mixed the two would be answering neither.
+//
+// ⚠ NO GEOMETRY IS DERIVED HERE. The corners are `hex_grid`'s pairs through
+// `hex_proj`'s projection, the layer is `hex_editor::edge_layer`, the byte is
+// `hex_editor::wall_of`, the colour is `surfaces()`. What this file owns is the
+// SVG around them — and the coordinates it writes are the library's own floats,
+// untransformed, because a picture that rescales its numbers cannot be compared
+// against the library that produced them.
+use graphics;
+use hex_grid;
+use hex_proj;
+use hex_voxel;
+use hex_editor;
+use self::surfaces;
+
+// A hex edge in the page frame. The page frame IS the world's x/z plane — see
+// `plan_svg`'s `viewBox` — so these are `hex_corner_world`'s own numbers.
+pub struct PlanSeg {
+  ps_x1: float,
+  ps_z1: float,
+  ps_x2: float,
+  ps_z2: float,
+}
+
+// Pixels per world unit. A hex is 2.0 world units tall, so a 13x13 window is
+// about 620 px across — a picture that fits on a screen without being a thumbnail.
+pub const PLAN_PX = 24.0;
+
+// The margin round the drawn window, in world units. A stroke centred on the
+// boundary is half outside it, and a clipped wall reads as a missing one.
+pub const PLAN_MARGIN = 0.6;
+
+// The lattice direction of one of the three edge slots a hex owns.
+//
+// ⚠ THE TABLE IS `hex_editor`'s, WRITTEN AT ITS OWN CONSTANTS: *"`SLOT_NW` —
+// h_wall_nw — corners 5-0, lattice dir 4"*. It is spelled out rather than read
+// from a shared vector because `hex_mesh` and `hex_editor` each hold one already
+// (`slot_dir` in `chunk_mesh_props` and in `edges_around`) and a fourth copy that
+// disagreed would be silent — so the test asserts this against the mesher's own
+// three-call spelling instead.
+fn slot_dir_of(slot: integer) -> integer {
+  if slot == hex_editor::SLOT_NW { return 4; }
+  if slot == hex_editor::SLOT_NE { return 5; }
+  0
+}
+
+// Where slot `slot` of hex `(q, r)` is, as a segment in the page frame.
+//
+// ⚠ THE `(6 - c) % 6` IS NOT AN ADJUSTMENT, IT IS THE JOIN. `hex_grid` walks the
+// corner ring one way and `hex_proj` indexes it the other — `proj_corner_offset`
+// says so at its own definition — so a pair of corner INDICES from one has to be
+// mapped before it reaches the other. Drop it and every edge lands on a different
+// side of its cell, which still draws a plausible picture.
+pub fn plan_slot_seg(q: integer, r: integer, slot: integer) -> PlanSeg {
+  (pss_a, pss_b) = hex_grid::hex_edge_corners(slot_dir_of(slot));
+  pss_p = hex_proj::hex_corner_world(q, r, 0, (6 - pss_a) % 6);
+  pss_q = hex_proj::hex_corner_world(q, r, 0, (6 - pss_b) % 6);
+  PlanSeg { ps_x1: pss_p.x, ps_z1: pss_p.z, ps_x2: pss_q.x, ps_z2: pss_q.z }
+}
+
+// Four decimals, which is 0.1 mm at this lattice's scale. Rounded rather than
+// printed whole so a person can read the file; the precision it drops is below
+// anything a picture or a comparison can mean.
+fn fx(v: float) -> text {
+  "{round(v * 10000.0) / 10000.0 ?? 0.0}"
+}
+
+fn byte_of(v: float) -> integer {
+  bo_n = (v * 255.0) as integer;
+  if bo_n < 0 { return 0; }
+  if bo_n > 255 { return 255; }
+  bo_n
+}
+
+fn rgb_of(r: float, g: float, b: float) -> text {
+  "rgb({byte_of(r)},{byte_of(g)},{byte_of(b)})"
+}
+
+// The fill for a cell's material — the MESHER's own colour, so the plan and the
+// picture the editor draws cannot disagree about what grass is.
+//
+// ⚠ AND `surface_for_mat` IS THE ONLY JOIN THAT MAY BE USED HERE. A cell's
+// material and a wall's material are different numberings — `1` is grass on one
+// axis and a wall on the other, which `surfaces()` says in its own comment — so
+// asking this about an edge byte would return a confident wrong colour.
+fn cell_fill(mat: integer) -> text {
+  cf_i = surface_for_mat(mat);
+  if cf_i < 0 { return "none"; }
+  cf_s = surface_at(cf_i);
+  rgb_of(cf_s.sf_r, cf_s.sf_g, cf_s.sf_b)
+}
+
+// ⚠ AN UNKNOWN EDGE MATERIAL IS LOUD ON PURPOSE. The three the editor writes have
+// colours; anything else is magenta, because the whole point of an instrument is
+// that what it cannot explain looks different from what it can. A fallback to
+// `wall` here would be the confident hexagon in another costume.
+fn edge_colour(mat: integer) -> text {
+  if mat == hex_editor::WALL_MAT  { return "rgb(20,22,30)"; }
+  if mat == hex_editor::DOOR_MAT  { return "rgb(214,124,30)"; }
+  if mat == hex_editor::FENCE_MAT { return "rgb(60,140,70)"; }
+  "rgb(230,0,190)"
+}
+
+fn edge_width(mat: integer) -> float {
+  if mat == hex_editor::FENCE_MAT { return 0.06; }
+  0.13
+}
+
+// The window `[q0, q1) x [r0, r1)` of world `w`, at reference height `ref` (world
+// units, the same number the walker's feet carry), as a standalone SVG document.
+//
+// One `<polygon>` per cell of the window — every cell, so an empty one is visible
+// as empty rather than absent — and one `<line>` per non-zero wall byte those
+// cells own. Nothing else is drawn, and nothing outside the window is.
+//
+// ⚠ THE COORDINATES ARE WORLD UNITS AND THE `viewBox` DOES THE SCALING. That is
+// what makes this checkable: the numbers in the file are `hex_corner_world`'s
+// answers, so a test compares the picture against the library with no transform
+// in between to be wrong in the same direction as the emitter.
+pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+                ref: float, title: text) -> text {
+  cells = "";
+  edges = "";
+  minx = 0.0;
+  maxx = 0.0;
+  minz = 0.0;
+  maxz = 0.0;
+  have = false;
+  ncell = 0;
+  nedge = 0;
+  for r in r0..r1 {
+    for q in q0..q1 {
+      // ⚠ ONE LAYER FOR THE CELL AND ITS EDGES ALIKE. `edge_layer` is what every
+      // gesture writes through, so a plan view that took the ground for the fill
+      // and the surface for the walls would draw a deck's fence over the yard
+      // below it — which is the exact defect that function's comment records.
+      li = hex_editor::edge_layer(w, q, r, ref);
+      c = if li >= 0 { hex_voxel::world_cell(w, q, r, li) } else { hex_voxel::Hex {} };
+      pts = "";
+      for ci in 0..6 {
+        p = hex_proj::hex_corner_world(q, r, 0, ci);
+        if !have { minx = p.x; maxx = p.x; minz = p.z; maxz = p.z; have = true; }
+        if p.x < minx { minx = p.x; }
+        if p.x > maxx { maxx = p.x; }
+        if p.z < minz { minz = p.z; }
+        if p.z > maxz { maxz = p.z; }
+        pts += "{fx(p.x)},{fx(p.z)} ";
+      }
+      mat = c.h_material as integer ?? 0;
+      cells += "<polygon class='cell' data-q='{q}' data-r='{r}' data-mat='{mat}'"
+             + " points='{pts}' fill='{cell_fill(mat)}'"
+             + " stroke='rgb(180,184,192)' stroke-width='0.012'/>\n";
+      ncell = ncell + 1;
+      for slot in 0..3 {
+        emat = hex_editor::wall_of(w, q, r, slot_dir_of(slot), ref);
+        if emat == 0 { continue; }
+        s = plan_slot_seg(q, r, slot);
+        edges += "<line class='edge' data-q='{q}' data-r='{r}' data-slot='{slot}'"
+               + " data-mat='{emat}' x1='{fx(s.ps_x1)}' y1='{fx(s.ps_z1)}'"
+               + " x2='{fx(s.ps_x2)}' y2='{fx(s.ps_z2)}'"
+               + " stroke='{edge_colour(emat)}' stroke-width='{edge_width(emat)}'"
+               + " stroke-linecap='round'/>\n";
+        nedge = nedge + 1;
+      }
+    }
+  }
+  // An empty window still has a frame, so a caller that asked for nothing gets a
+  // picture of nothing rather than an SVG with a null viewBox in it.
+  if !have { minx = 0.0; maxx = 1.0; minz = 0.0; maxz = 1.0; }
+  vx = minx - PLAN_MARGIN;
+  vz = minz - PLAN_MARGIN;
+  vw = maxx - minx + PLAN_MARGIN * 2.0;
+  vh = maxz - minz + PLAN_MARGIN * 2.0;
+  head = "<svg xmlns='http://www.w3.org/2000/svg'"
+       + " viewBox='{fx(vx)} {fx(vz)} {fx(vw)} {fx(vh)}'"
+       + " width='{round(vw * PLAN_PX) ?? 0.0}' height='{round(vh * PLAN_PX) ?? 0.0}'>\n"
+       + "<rect x='{fx(vx)}' y='{fx(vz)}' width='{fx(vw)}' height='{fx(vh)}'"
+       + " fill='rgb(250,250,248)'/>\n";
+  // ⚠ THE COUNTS ARE IN A COMMENT, NOT IN AN ELEMENT, and they are for a person
+  // reading the file. A gate must count the elements it can see — `CLAUDE.md`:
+  // measure what was emitted, never a number the producer re-derives.
+  foot = "<!-- plan: {title} q {q0}..{q1} r {r0}..{r1} ref {ref}"
+       + " cells {ncell} edges {nedge} -->\n</svg>\n";
+  head + cells + edges + foot
+}
