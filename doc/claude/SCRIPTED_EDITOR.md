@@ -95,6 +95,11 @@ verb <name>      raise · lower · place · opening · fence · wall · run · s
 select opening <kind>   what the NEXT opening cuts — `49:<kind>` on the wire
 select reach <units>   how far an aim reaches — `57:<units>`, and the only ORDINAL one
 select seat <kind>     — `52:` · select annex <kind> — `53:`
+select wall <slot>     which EDGE PALETTE SLOT the next `wall`, `run` or `aim` stamps
+                 — `58:<slot>`, plan 26 `B4e`. It pairs with `declare edge <slot> …`
+                 below: the declaration says what an id MEANS, this says which id the
+                 verb writes. ⚠ `2` a door, `3` a fence and `4` a window are refused by
+                 name — they are edge materials and none of them is a wall TYPE
                  ⚠ THE SUBJECT IS REQUIRED. `select 2` used to mean an opening and now
                  fails the run: an unknown subject has nowhere to fall, which is the
                  same rule every other word in this vocabulary already followed

@@ -377,6 +377,34 @@ structurally wrong: a thickness that is not a number, or one below zero.
 
 ![a house whose walls carry a declared type](img-walltype-plan-b4d.png)
 
+✅ **AND THE GESTURE THAT CHOOSES ONE — `B4e`.** `WALL_MAT` is 1, so `declare edge 1 …`
+typed every wall already standing and a second type had nowhere to stand.
+`select wall <slot>` (`58:` on the wire) says which slot the next `wall`, `run` or `aim`
+stamps, and two declared types now stand in one world at their own two widths.
+
+![two declared wall types, side by side](img-walltype-plan-b4e.png)
+
+⚠ **AND IT WAS NOT ONE SITE.** An edge byte is a palette slot, so *what a wall IS* had to
+become one question — `hex_editor::edge_is_wall` — at six places that each hold a byte and
+no world. Without it a chosen type is a wall only where it is PAINTED: a person walks
+through it (`wall_stops_walk`), a camera sees through it (`wall_stops_view`), a door cuts
+nothing (`open_ahead`), and the run takes the FENCE's shape (`session_run`). ⚠ **None of
+those is in the plan view**, which is where this § looks — so a step that built the
+selection and the picture would have been green on its own acceptance.
+
+⛔ **AND THE WIRE ALREADY CARRIED A MATERIAL, WHICH OUTRANKED THE CHOICE.** Measured by
+`probe/s2c/walltype` on its first run: the server selected correctly and stamped byte 1
+anyway, because `tools/script.mjs` sent `25:1`. **Both drivers printed the identical
+sentence**, so only the saved world could see it. An empty material field on `23:`, `25:`
+and `56:` is *the wall type I chose* now — the contract `36:`/`37:`/`38:` have shared
+since plan 22 — and the resolution is the far end's, never the client's.
+
+⚠ **THE COST OF KEEPING THE KIND NUMERIC, SAID OUT LOUD**: `edge_is_wall(mat)` is
+`mat == WALL_MAT || mat > EDGE_MAT_LAST`, so a world can declare slot 7 to be a wall type
+and **cannot** declare it to be a fence. Deriving the kind from `@HB-X12`'s `body=FENCE`
+would allow that and is upstream's design to settle; every caller here holds a byte and no
+world, and the walk asks per edge per step.
+
 ⚠ **THE DRAWING CONSTANTS ARE A SEPARATE LAYER AND BOTH ARE TRUE.** `hex_shape::wall_new(d24, ox,
 oy, **half**, mat)` takes a half-width because that is what a *renderer* needs; `FORMAL_CORE` §6.2
 gives the exact band constants in `ℚ(√3)`. What the palette decides is which half-width a given

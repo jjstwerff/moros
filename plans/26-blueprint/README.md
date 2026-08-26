@@ -91,6 +91,15 @@ a teleport* — the `Author` is built at the picked spot and the walker does not
 **Negative control**: a pick that lands on no panel must author **nothing**, and the world
 key must be unchanged.
 
+**`B4e`** — **expected result**: a script that declares two edge types and chooses each in
+turn leaves a world holding **two distinct edge bytes**, drawn at the two thicknesses those
+declarations state. **Invariant**: *an edge byte is a palette slot, so what a wall IS is
+one question — `edge_is_wall` — and a chosen type is a wall everywhere, not only where it
+is painted.* **Negative controls**: a session that never chose stamps `WALL_MAT`, so every
+script in the corpus keys the same world; a door cut into a chosen type must consume
+exactly one of its edges; and a slot a world stamped but **declared nowhere** must still
+draw magenta, or the picture has simply stopped reading the palette.
+
 ## Phases
 
 | Phase | Effort | Verify | Status |
@@ -103,7 +112,7 @@ key must be unchanged.
 | **`B4b`** — a gesture from a picked spot, with the walker left where it is | M | `probe/plan` rows D–F — picked and stood-on key one world, the walker does not move, a pick off the page authors nothing; the teleport seen red | ✅ **SHIPPED** `e70efbf` |
 | **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | `planview.loft` — the highlight's outline is the cell's own **byte for byte**, the cross is the point asked for and not the snap, both marks survive an author on the same panel; `probe/plan` row G; four faults seen red | ✅ **SHIPPED** `e24a9b0` |
 | **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | `wall_type.loft` — a type round-trips through the encoder name/body/thickness identical; a damaged one is refused and an unknown BODY is carried; `planview.loft` — the wall is painted at the thickness its type declares; four faults seen red | ✅ **SHIPPED** `6e756c0` |
-| **`B4e`** — a gesture that stamps a CHOSEN wall type, so two can stand in one world | M | two walls of different declared types in one world, painted at their own two widths from a script | Open |
+| **`B4e`** — a gesture that stamps a CHOSEN wall type, so two can stand in one world | M | `wall_type.loft` — the chosen slot is the byte the verb writes, two declared types stand in one world, a chosen type stops a walker and takes a door, the vocabulary's own bytes refused by name; `planview.loft` — a declared type drawn as a wall at its own width and an undeclared one still loud; `probe/plan` row H and `probe/s2c/walltype`; five faults seen red | ✅ **SHIPPED** `10337dc` |
 
 ### Why `B0` is one phase and not two
 
@@ -491,6 +500,137 @@ would have to answer the same for *absent* and *unparseable*.
 The picture resolves the palette **per edge** — a text parse for each mark. At 42 marks
 that is nothing; at ten thousand it would be the slowest thing in the emitter. It is a
 file writer and not a frame loop, so this is a note rather than a defect.
+
+## What `B4e` turned up
+
+**Shipped `10337dc`.** `hex_editor::session_select_wall` + `session_wall_mat` (read by
+`wall`, `run` and `aim` from one place), `edge_is_wall`, `select wall <slot>` in the
+runner, `58:` on the wire, and `tools/scripts/walltype.keys` through both drivers.
+
+![two declared wall types, side by side](../../doc/claude/img-walltype-plan-b4e.png)
+
+*`declare edge 5 brick thick=0.2` and `declare edge 6 curtain thick=0.7`, each traced
+with `select wall <slot>` before it. One verb, two choices, two widths.*
+
+### The gap was never where `B4d`'s note put it
+
+`B4d` closed saying *"what is missing is a gesture that stamps a **chosen** slot"* — one
+selection, in the shape the other five already have. That half took an afternoon. What
+it did not say is that **an edge byte's meaning is asserted at six other places**, each
+holding a byte and no world:
+
+| the site | what it would have done with a chosen type |
+|---|---|
+| `wall_stops_walk` | a person walks through stone |
+| `wall_stops_view` | a camera sees through it |
+| `open_ahead` · `open_span` | a door cuts nothing, and reports the count |
+| `session_run` | a wall run takes the **FENCE's** shape |
+| `hex_mesh::emit_run_wall` | the run loses its half-width |
+| `planview::edge_colour` | the wall is painted as *I cannot explain this* |
+
+⚠ **Not one of those is in the plan view**, which is where the row's own acceptance
+looks. A step that had built the selection and the picture would have been green on its
+stated verify and shipped a wall you can walk through.
+
+### ⛔ And the wire already carried a material, which outranked the choice
+
+`probe/s2c/walltype` went red on its first run and the shape of the failure is the
+finding. The server **received `58:` and selected correctly** — its own log says
+`editor: wall 5 selected` — and then stamped byte 1 anyway, because `tools/script.mjs`
+sends `run` as `25:1` and `wall` as `23:1,3`. The material was on the wire, and a
+payload beats a session.
+
+| | runner | served |
+|---|---|---|
+| `WALL_MAT` bytes in the saved world | **0** | **12** |
+| what the driver printed | `wall laid 12 edges, heading 0 …` | `wall laid 12 edges, heading 0 …` |
+
+⚠ **THE TWO SENTENCES ARE IDENTICAL**, so no acknowledgement, no count, no log line and
+no gate that reads one could have found this. Only the saved world could — which is
+`probe/s2c`'s whole argument, made again on the first script added to it since `htverb`.
+
+✅ **And the fix was written down two years of notes ago.** `editor_client.loft`'s own
+comment: *"`fence`/`wall` are one `ring` verb waiting for a material selection, exactly
+as the opening family waited for `es_open_kind` — so until that selection exists they
+are two verbs, each implying its own material."* An **empty material field** on `23:`,
+`25:` and `56:` now means *the wall type I chose*, which is the contract `36:`, `37:`
+and `38:` have shared since plan 22. An explicit material stays a one-shot that does not
+move the selection; `25:3` is still the road and `tools/plan.mjs` still sends it.
+
+⚠ **AND THE RESOLUTION IS THE FAR END's, NOT THE CLIENT'S.** A client that put its own
+answer on the wire would need a copy of the session it is attached to, which is
+[EDITING_MODES](../../doc/claude/EDITING_MODES.md)'s four-site divergence in one line.
+
+### ⛔ `session_digest` reported one selection of six
+
+That is *why* the defect above had to be found in the bytes. The digest exists to say
+**what the editor remembers** beyond the store — it is the other half of `world_key`,
+and `probe/k3d`, `probe/s2c` and the page-versus-runner comparison all read it — and it
+printed `chosen: opening <k>` and nothing else. The seat, the annex, the aim's reach,
+the part and now the wall type were invisible to every one of them.
+
+It prints all six now, which moved 34 `probe/k3d` baselines on that one line and nothing
+else. ⚠ **The blindness was measured on the step that added the sixth**, which is the
+only reason it was found at all: four of the five were already there.
+
+### What a wall TYPE is, and the limit that comes with it
+
+`edge_is_wall(mat)` is `mat == WALL_MAT || mat > EDGE_MAT_LAST` — the four bytes this
+editor's vocabulary owns (`WALL_MAT` 1, `DOOR_MAT` 2, `FENCE_MAT` 3, `WINDOW_MAT` 4) are
+structural kinds, and everything past them is a wall a world declared. ⚠ **The kind stays
+NUMERIC deliberately**: every caller holds a byte and no world — the walk asks per edge
+per step — and `@HB-X12`'s body vocabulary is upstream's and open, so deriving
+fence-ness from `body=FENCE` would be a signature change at six sites for a capability
+nothing has asked for. **The cost, said out loud rather than discovered: a world cannot
+declare slot 7 to be a fence.** It declares slot 7 to be a wall type.
+
+⚠ **AND THE PICTURE'S LOUDNESS CHANGED SUBJECT RATHER THAN LOOSENING.** `B0` wrote *an
+unknown edge material is magenta, because the whole point of an instrument is that what
+it cannot explain looks different from what it can*. A declared slot 5 **is** explained,
+in full, by the palette — so shouting at it is shouting at the feature. What keeps the
+magenta is a byte **nothing declares**, and the pair is pinned by two tests one
+declaration apart.
+
+### The sabotage sweep, and the row that told the instruments apart
+
+Five faults, each restored from a copy taken before the sweep — never `git checkout`, and
+the subject was asserted **present** before row 0, because a sweep over an absent feature
+answers *nothing went red* to every question.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | `session_wall_mat` pinned to `WALL_MAT` — the choice never reaches the gesture | `wall_type` · `probe/plan` |
+| 2 | `edge_is_wall` back to `mat == WALL_MAT` | `wall_type` · `planview` · `probe/plan` |
+| 3 | a declared type stays magenta — the plan stops reading the palette | `planview` · `probe/plan` |
+| 4 | the wire's default back to `?? FENCE_MAT` | **`probe/s2c` alone** |
+| 5 | the selection accepts the vocabulary's own bytes | `wall_type` |
+
+⚠ **ROW 1 IS THE ONE WORTH READING, AND IT IS THE ROW `probe/s2c` DID *NOT* CATCH.** With
+the library's selection broken, both drivers are broken the same way, so the two saved
+worlds agree perfectly. **`probe/s2c` measures DIVERGENCE, never correctness** — which is
+exactly why row 4 is its alone: a default that lives only on the wire cannot make the two
+drivers agree, and nothing else in the tree looks at both.
+
+### What it deliberately does not reach, and who owns each
+
+`place_house` and `annexes_runs` still stamp `WALL_MAT`, so a house built after
+`select wall 5` has byte-1 walls. ⚠ **That is not the selection failing to reach a site —
+it is a different question with a different owner.** A house's walls belong to its TYPE
+(`declare house 1 castle wid=… dep=…`, plan 22 `T1a.1`), which is where *a castle is made
+of curtain wall* belongs; wiring the author's standing choice into it would make one
+gesture read two authorities. ⚠ **And it is what keeps `house.keys` byte-identical**,
+which is the whole upper bound of this step. `VB_FENCE` keeps `FENCE_MAT` for the same
+reason one level down: a fence is a KIND the vocabulary owns, not a type a world declares.
+
+### Four tests were asserting the opposite of the truth
+
+`9` was the tree's canonical *impossible material*, in `fence.loft`, `press.loft`,
+`session.loft` and `tools/gates/world/fence.mjs`. It is a wall type now. ⚠ **What is
+still impossible is what a BYTE cannot hold, and stating it found something the old
+ceiling hid**: `wall_set` widens with `mat as u8? ?? 0`, so a material of 256 does not
+fail — it stores **0**, the byte that means *no edge at all*. `fit_nominal(mat,
+FENCE_MAT, …)` never let one through; `edge_stamp_ok` has to say it.
 
 ## Open questions
 
