@@ -111,6 +111,18 @@ unmoved; a type stating **no** thickness and one whose declaration is **damaged*
 both take that same default rather than a wall of no width at all; and `run_wall` asked
 for a different half must give a different strip, or nothing here is reading the number.
 
+**`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
+exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
+stamped, no interior edge stamped — and the disk recovers to the author's own cell and
+its own shell. **Invariant**: *the round shape is the library's, never ours* — `arc_*`
+in exact integers, and `@HB-X49`'s round tower rim is what `THICK_CURVED` names.
+**Negative controls**: at shell 36 the rim must **differ** from the hexagon `fence_disc`
+builds, because a disk IS that hexagon at exactly the shells `12R²` and a fixture that
+picked one of those would be green on a gesture that never called `arc_fill`; a number
+naming no shell must be **refused with the nearest one**, since the library draws the
+shell below without a word; and the rim must carry the material it was handed, read back
+as a byte.
+
 ## Phases
 
 | Phase | Effort | Verify | Status |
@@ -125,6 +137,7 @@ for a different half must give a different strip, or nothing here is reading the
 | **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | `wall_type.loft` — a type round-trips through the encoder name/body/thickness identical; a damaged one is refused and an unknown BODY is carried; `planview.loft` — the wall is painted at the thickness its type declares; four faults seen red | ✅ **SHIPPED** `6e756c0` |
 | **`B4e`** — a gesture that stamps a CHOSEN wall type, so two can stand in one world | M | `wall_type.loft` — the chosen slot is the byte the verb writes, two declared types stand in one world, a chosen type stops a walker and takes a door, the vocabulary's own bytes refused by name; `planview.loft` — a declared type drawn as a wall at its own width and an undeclared one still loud; `probe/plan` row H and `probe/s2c/walltype`; five faults seen red | ✅ **SHIPPED** `10337dc` |
 | **`B4f`** — the declared thickness reaches the GEOMETRY, so the plan and the build are one number | S | `wall_type.loft` — the resolver's four answers (declared, undeclared, damaged, states-none); `hex_mesh/tests/wall_thick.loft` — the band measured off the EMITTED mesh, and the plan's stroke against it; `run.loft` — a different half gives a different strip; five faults seen red | ✅ **SHIPPED** `34cec07` |
+| **`B4g`** — a ROUND enclosure: the tower rim, from `hex_shape::arc_fill` | M | `tower.loft` — the boundary is the disk's and only the disk's, the centre and shell recover, a non-shell is refused with an offer, the rim carries its material, and the `12R²` coincidence is asserted before it is relied on; `probe/s2c/tower`; five faults seen red, **one of them only after the sweep demanded a sixth instrument** | ✅ **SHIPPED** `8e39a8a` |
 
 ### Why `B0` is one phase and not two
 
@@ -800,6 +813,140 @@ FAIL tests/run.loft::test_the_strip_is_as_thick_as_it_was_asked_for
 **Five passed.** Every assertion that pre-dates this step hands `BAND_SIDES * 0.5` in and
 asserts `BAND_SIDES` comes out, so the fault is exactly what they cannot see.
 
+
+## What `B4g` turned up
+
+**Shipped `8e39a8a`.** `hex_editor::tower_ring` — a ROUND enclosure, from
+`hex_shape::arc_fill` — with `fit_shell`, `tower_pad` and `tower_clipped` beside it,
+`tower <shell>` in the runner, `59:` on the wire, `tools/scripts/tower.keys` through
+both drivers, and `lib/hex_editor/tests/tower.loft`.
+
+### The editor's only enclosure was a hexagon wearing the name `disc`
+
+`fence_disc` asks `hex_grid::hex_distance(q, r, cq, cr) <= rad`. That is the lattice's
+own metric — six straight sides — which is exactly *why* `ring_runs` can describe the
+result as six runs. Nothing in this editor had ever built a round thing, and the
+`hex_shape::arc_*` family — an exact integer disk, an exactly recoverable centre — had
+**zero production callers in this tree**: `probe/b0p` called it once, for a different
+question, and nothing else ever did.
+
+⚠ **AND THE BODY VOCABULARY IS WHAT NAMED THE STEP.** `wd_body` was carried through
+`B4d` and read by nobody. Upstream's own producer table is what says which value means
+what — `SOLID` a thin edge wall, `ROAD_GUIDE` a linework band, `THICK_FLAT` a thick
+ring of cells, **`THICK_CURVED` a round tower rim (`@HB-X49`)** — so *round* was never
+ours to define. ⚠ It is also why `HALF_HEIGHT` and `BATTLEMENT` are still untouched:
+upstream has never produced them either, so a meaning invented here would be exactly
+the guess `AUTHORING_MAP` calls *"guessing the replacement is the same error as
+guessing the algorithm"*.
+
+### ⛔ A disk IS the hexagon at exactly the shells `12R²`
+
+Measured over every shell to 300, before a line was written:
+
+| shell | 12 | **36** | 48 | **84** | 108 | **144** | **156** | 192 | **228** | **252** | 300 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| cells | 7 | **13** | 19 | **31** | 37 | **43** | **55** | 61 | **73** | **85** | 91 |
+| a hexagon? | rad 1 | **no** | rad 2 | **no** | rad 3 | **no** | **no** | rad 4 | **no** | **no** | rad 5 |
+
+**So one shell in three builds exactly the ring this editor already had.** A test that
+picked its shell for convenience — 48 is the obvious *radius 2* — would have been green
+on a gesture that never called `arc_fill` at all. Every fixture states its shell and
+why; `ROUND_SHELL = 36` is the smallest that is not a hexagon, and `HEX_SHELL = 48` is
+kept as the instrument's own control.
+
+### ⚠ AND ROUNDNESS IS A PROPERTY OF THE SHELL, NOT OF THE GESTURE
+
+![four shells, drawn flat](../../doc/claude/img-tower-shells-b4g.png)
+
+*Shells 36, 84, 156 and 300 — 13, 31, 55 and 91 cells — through `make plan-view`.*
+
+**The smallest admissible round tower is a six-pointed star.** At 13 cells the disk's
+outer ring sticks out in the six lattice directions and there is nothing round about
+it; it takes **shell 156, 55 cells**, before a rim reads as a circle. ⚠ That is the
+same answer `probe/b0p` got one shape over — *"nineteen cells in, there is nothing to
+deduce because there is nothing distinct"* — and it is the honest reply to *"rounded
+structures like balconies/towers"*: the gesture is exact at every shell, and whether
+the result LOOKS round is a size question the author has to be told about.
+
+⚠ **It is recorded rather than legislated.** A gesture that refused a shell below 156
+would be enforcing a judgement, and the store is exact either way.
+
+### The plan view earned its keep again, and against this step
+
+`B0` argued a plan view is the cheapest place to see what the libraries do. The table
+above is arithmetic; the picture is what says *the first two of those are not round*,
+and no test in this file would ever have said so.
+
+### Three things the fixtures had to get right
+
+⚠ **`wall_of` RESOLVES THROUGH `edge_owner`, SO ONE EDGE IS VISIBLE FROM BOTH CELLS.**
+The first draft of the boundary test read *this cell is outside and the edge is marked*
+as a fault and reported **30 spurious errors** — every boundary edge, counted a second
+time from the other side. An edge is classified by BOTH its cells: interior (must not
+be marked), boundary (must be), outside (must not). The three-way test is stronger than
+the two-way one it replaced.
+
+⚠ **A WINDOW TOO SMALL CLIPS THE DISK AND BOTH INSTRUMENTS AGREE WITH IT.** `arc_fill`
+fills only inside the `HexSet`'s own window and `arc_is_disk` reads back over that same
+window — so a clipped disk is a disk to the checker. `tower_pad` sizes the window and
+`tower_clipped` checks the SET rather than the arithmetic that sized it, because a pad
+formula checked against the pad formula could not be surprised.
+
+⚠ **AND `arc_fill` DRAWS THE SHELL BELOW A NUMBER THAT NAMES NONE, SILENTLY** — its own
+comment says so. `fit_shell` is that guard, and it is `K-FIT`'s doorstep rather than a
+courtesy: without it `tower 40` builds the 13-cell star and reports success.
+
+### What it deliberately does not do
+
+⚠ **IT REGISTERS NO `WallRun`, AND THAT IS A FACT ABOUT `WallRun`.** A run is two
+endpoints and a `d24` heading; a circle has neither. The consequence is worth stating
+loudly: **this wall is drawn by the PER-EDGE emitter, which
+[EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 4 slates for deletion** — so
+"stop drawing the edges" is not the free simplification it reads as. It would take the
+only way a curved wall can be drawn with it, unless the run record first gains an arc.
+
+⚠ **AND THE MATERIAL RULE IS `fence_ring`'s, UNCHANGED.** `fit_edge_mat`'s own comment
+forbids narrowing here, so `0` is admitted and means *erase this rim* — the one place
+the gesture parameter and `session_select_wall` disagree, since the SELECTION refuses 0
+by name. Recorded, not fixed: choosing a type and writing a byte are different
+questions.
+
+### An unrelated thing the pictures found
+
+`verb raise` lands **ten cells ahead of the author's facing** — measured, q +10 at yaw 0
+and q −10 at yaw 180 — while `fence_ring` and `tower_ring` centre on the cell you stand
+in. Both are documented behaviours and neither is wrong, but a plan view of a script
+that raises and then rings shows the ground offset from the rim, which reads as a bug
+and is not one. Written down because it cost twenty minutes here.
+
+### ⛔ The sweep found a row NOTHING could catch, which is why it is run
+
+Five faults, restored from a copy taken before the sweep — never `git checkout` — with
+`tower_ring` asserted present **and both drivers asserted to reach it** before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the fill goes back to `hex_distance` — the algorithm becomes ours again | `tower.loft` |
+| 2 | the shell grid is not checked, so `arc_fill` draws the shell below in silence | `tower.loft` |
+| 3 | only the cell's own three edges — the approximation `fence_disc` warns of | `tower.loft` |
+| 4 | the window too small, so the disk is clipped and reads back as a disk | `tower.loft` · `probe/s2c` |
+| 5 | **the chosen wall type never reaches the rim** | ⛔ **NOTHING** |
+
+⚠ **ROW 5 IS THE REASON A SWEEP IS RUN RATHER THAN REASONED ABOUT.** With `tower_ring`
+stamping `WALL_MAT` instead of the material it was handed, **every row in the file was
+green**: the boundary rows build with `WALL_MAT` themselves so the fault is invisible
+to them, the refusal rows read an `Ack` and never the store, and `probe/s2c` compares
+two drivers that are broken identically and agree perfectly. ⚠ **It is `B4e` row 1 one
+gesture along** — *"`probe/s2c` measures DIVERGENCE, never correctness"* — and the
+answer is the same one: read the BYTE back out of the world.
+`test_the_rim_carries_the_material_it_was_handed` is that row, and it was written
+**because the sweep asked for it**, not before. Re-run against the same fault it now
+says *the rim holds no byte 7 at all*.
+
+⚠ **AND ROW 1 IS THE OTHER HALF OF THE SAME LESSON**: the algorithm reverting to a
+hexagon is caught by `tower.loft` **alone**, for exactly the reason row 5 was caught by
+nothing — both drivers would be wrong together.
 
 ## Open questions
 

@@ -164,6 +164,36 @@ therefore **not** a many-sided approximation; it is one surface with a centre an
 Drawn by `hex_way::cut_arb`, which takes a `Surfaces` set and gives every boundary edge to its
 **nearest** surface. Recovered by `hex_shape::arc_is_disk` / `arc_shell_max`.
 
+✅ **AND THE EDITOR CAN BUILD ONE — [plan 26](../../plans/26-blueprint/README.md) `B4g`.**
+`hex_editor::tower_ring` rings the author with the boundary of `hex_shape::arc_fill`'s disk;
+`tower <shell>` in the runner, `59:` on the wire. ⛔ **What it replaces is a hexagon wearing the
+name `disc`**: `fence_disc` asks `hex_grid::hex_distance <= rad`, which is six straight sides —
+which is exactly *why* `ring_runs` can describe it as six runs — and the whole `hex_shape::arc_*`
+family had **zero production callers** in this tree.
+
+⚠ **A SHELL, NOT A RADIUS, AND THAT IS `@HB-X49`'s MEASUREMENT RATHER THAN AN API CHOICE.** 161
+radii over `0.5 .. 4.5 wu` collapse to **four** distinct fields, so only the shell comes back —
+and `arc_fill` draws the shell *below* a number naming none **without a word**, which is why the
+gesture refuses with the nearest one instead.
+
+⛔ **AND A DISK IS THE HEXAGON AT EXACTLY THE SHELLS `12R²`** — 12, 48, 108, 192, 300, measured
+over every shell to 300 and nothing between them. One shell in three builds the ring this editor
+already had, so *round* cannot be tested at a shell chosen for convenience.
+
+⚠ **ROUNDNESS IS A PROPERTY OF THE SHELL, NOT OF THE GESTURE.** The smallest admissible round
+tower — shell 36, 13 cells — is a **six-pointed star**; it takes shell 156, 55 cells, before a rim
+reads as a circle. Same answer `B0p` got one shape over, and it is the honest reply to *"rounded
+structures like balconies/towers"*: exact at every shell, and whether it LOOKS round is a size the
+author has to be told. Recorded rather than legislated — refusing a small shell would enforce a
+judgement, and the store is exact either way.
+
+![four shells, drawn flat](img-tower-shells-b4g.png)
+
+⚠ **AND IT REGISTERS NO `WallRun`, WHICH IS A FACT ABOUT `WallRun`.** A run is two endpoints and a
+`d24`; a circle has neither. So a round wall is drawn by the **per-edge** emitter — the one
+[EDITOR_DEFECTS](EDITOR_DEFECTS.md) 4 slates for deletion — and deleting it would take the only
+way a curved wall can be drawn with it, unless the run record first gains an arc.
+
 ### 2.3 Octagonal — 45°, and therefore NOT a wall at all
 
 ⚠ **THE EXACT REASON, AND IT IS ARITHMETIC RATHER THAN TASTE.** A lattice direction has

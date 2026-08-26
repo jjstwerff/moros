@@ -257,6 +257,13 @@ the wall surface holds **one** band's worth of geometry. `probe/b2`'s `E2` alrea
 surfaces were drawn* (`grass,wall`) — it knows the wall is there, and cannot see that it is
 there twice. Names, not counts, is the blindness.
 
+⛔ **AND "STOP DRAWING THE EDGES" IS NOT FREE ANY MORE — plan 26 `B4g`.** The intended survivor
+is the RUN, and a `WallRun` is two endpoints and a `d24` heading. A **round** wall has neither:
+`tower_ring` registers no run at all, so its rim is drawn by the per-edge emitter and by nothing
+else. **Deleting that emitter would delete the only way a curved wall can be drawn**, unless the
+run record first gains an arc form. The fix this entry asks for now has a prerequisite it did not
+have when it was written.
+
 ⚠ **AND IT NOW BLOCKS A MEASUREMENT, WHICH IS THE FIRST CONCRETE COST BEYOND THE PICTURE** —
 [plan 26](../../plans/26-blueprint/README.md) `B4f`. A wall's thickness is the spread of its
 band, and the honest way to read one is off the emitted mesh; with both emitters writing into
