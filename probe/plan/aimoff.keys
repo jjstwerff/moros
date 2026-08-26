@@ -1,0 +1,5 @@
+# …AND AIMING AT NOTHING STILL DRAWS, which is the point of aiming: the picture says
+# why nothing would happen, where a silent no-op says only that nothing did.
+at 0 0 0
+verb raise
+pick 200,0

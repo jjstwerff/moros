@@ -73,7 +73,7 @@ fn main() {
   // whichever driver is running the tick, so a program that reads a `.hxw` has no
   // pose to draw and must not invent one from an argument. `editor_run`'s own `plan`
   // command is where the author appears, because that is the driver that holds one.
-  svg = plan_levels(w, q0, r0, q1, r1, refs, plan_nobody(), "{name}");
+  svg = plan_levels(w, q0, r0, q1, r1, refs, plan_bare(), "{name}");
 
   out = "{source_dir()}/../worlds/{name}.svg";
   f = file(out);

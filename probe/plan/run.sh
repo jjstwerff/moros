@@ -128,8 +128,55 @@ else
 fi
 
 echo ""
+echo "G  aiming draws the spot, authors nothing, and says why when it names none"
+ka=$(run_one probe/plan/aim.keys    b4aim)
+ko=$(run_one probe/plan/aimoff.keys b4aimoff)
+AIMSVG=worlds/b4aim-pick.svg
+OFFSVG=worlds/b4aimoff-pick.svg
+
+if [ "$ka" = "$kb" ]; then
+  ok "an aim left the bare world untouched ($ka)"
+else
+  bad "aiming authored something: $ka against the bare $kb"
+fi
+
+# ⚠ THE RUNNER'S LINE IS COMPUTED FROM THE PICK; THE FOOTER IS WRITTEN INTO THE FILE.
+# Comparing them is two paths, the same discipline row C uses.
+said=$(grep -oE "^  aim L[0-9]+ \([-0-9]+,[-0-9]+\)" "$OUT/b4aim.log" | head -1 | sed 's/^  aim //')
+drawn=$(grep -oE "aim L[0-9]+ \([-0-9]+,[-0-9]+\)" "$AIMSVG" 2>/dev/null | head -1 | sed 's/^aim //')
+if [ -z "$said" ] || [ -z "$drawn" ]; then
+  bad "the aim said '$said' and the picture says '$drawn' — one of them is missing, and \
+a comparison of nothing passes silently"
+elif [ "$said" = "$drawn" ]; then
+  ok "the runner and the picture both name $said"
+else
+  bad "the runner says $said and the picture says $drawn"
+fi
+
+# ⚠ AND THE INSTRUMENT: the two pictures must actually differ, or "the footer says X"
+# would be true of a file nothing wrote.
+if grep -q "class='aimcell'" "$AIMSVG" 2>/dev/null; then
+  ok "the aimed picture carries the highlight"
+else
+  bad "no highlight in $AIMSVG — the footer above could be about anything"
+fi
+if grep -q "class='aimcell'" "$OFFSVG" 2>/dev/null; then
+  bad "the refused aim drew a highlight in $OFFSVG"
+elif grep -q "aim refused (" "$OFFSVG" 2>/dev/null; then
+  ok "the refused aim drew no highlight and its caption says why"
+else
+  bad "the refused aim's picture says neither — an absent highlight means *nothing was \
+picked* and *that named no cell* at once"
+fi
+if [ "$ko" = "$kb" ]; then
+  ok "…and it authored nothing either ($ko)"
+else
+  bad "a refused aim changed the world: $ko against $kb"
+fi
+
+echo ""
 if [ "$BAD" -eq 0 ]; then
-  echo "PLAN: green — the plan draws the person the tick moved, and authors where you point"
+  echo "PLAN: green — the plan draws the person, shows what you aim at, and authors it"
   exit 0
 fi
 echo "PLAN: $BAD FAILED"

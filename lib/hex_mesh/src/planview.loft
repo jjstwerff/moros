@@ -196,6 +196,19 @@ pub struct PlanPanel {
   pp_maxz:  float,
 }
 
+// A cell's outline as an SVG `points` list, in world units. ⚠ ONE DERIVATION, because
+// `B4c` draws the SAME outline again to show which cell a pick landed on — and a
+// highlight built from its own copy of the corner walk could sit a hair off the cell it
+// claims to be highlighting, which is the one error in that feature nobody would see.
+fn cell_points(q: integer, r: integer) -> text {
+  cp_s = "";
+  for ci in 0..6 {
+    cp_p = hex_proj::hex_corner_world(q, r, 0, ci);
+    cp_s += "{fx(cp_p.x)},{fx(cp_p.z)} ";
+  }
+  cp_s
+}
+
 pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
               ref: float) -> PlanPanel {
   cells = "";
@@ -211,11 +224,7 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
       // below it — which is the exact defect that function's comment records.
       li = hex_editor::edge_layer(w, q, r, ref);
       c = if li >= 0 { hex_voxel::world_cell(w, q, r, li) } else { hex_voxel::Hex {} };
-      pts = "";
-      for ci in 0..6 {
-        p = hex_proj::hex_corner_world(q, r, 0, ci);
-        pts += "{fx(p.x)},{fx(p.z)} ";
-      }
+      pts = cell_points(q, r);
       mat = c.h_material as integer ?? 0;
       // ⚠ **THE HEIGHT IS ON THE CELL BECAUSE A LEVEL PICTURE IS UNREADABLE WITHOUT
       // IT** — plan 26 `B2`. A panel at `ref 3` draws the deck AND the lawn around it,
@@ -309,6 +318,35 @@ pub fn plan_author(a: hex_editor::Author) -> PlanWho {
 // read as one arrow rather than as a dot and a line.
 pub const PLAN_FACING = 0.85;
 
+// ── WHAT IS DRAWN OVER THE WORLD — plan 26 `B3` and `B4c` ──────────────────
+//
+// The author, and the spot they are pointing at. Both are TRANSIENT — neither is in
+// the store, neither survives the picture — which is why they are one parameter and
+// not two more: a plan draws a world, and then it draws what is happening to it.
+//
+// ⚠ `plan_bare()` IS THE DEFAULT AND IT IS NOT AN EMPTY STRUCT WITH A NICE NAME. A
+// picture with nobody on it and nothing picked is what every non-interactive caller
+// wants, and spelling that as `plan_over(plan_nobody(), plan_nopick())` at fifteen call
+// sites is how a wrong one gets written.
+pub struct PlanOver {
+  po_who:  PlanWho,
+  po_pick: PlanPick,
+}
+
+pub fn plan_nopick() -> PlanPick { pick_no("") }
+pub fn plan_bare() -> PlanOver {
+  PlanOver { po_who: plan_nobody(), po_pick: plan_nopick() }
+}
+pub fn plan_over_who(who: PlanWho) -> PlanOver {
+  PlanOver { po_who: who, po_pick: plan_nopick() }
+}
+pub fn plan_over_pick(pick: PlanPick) -> PlanOver {
+  PlanOver { po_who: plan_nobody(), po_pick: pick }
+}
+pub fn plan_over(who: PlanWho, pick: PlanPick) -> PlanOver {
+  PlanOver { po_who: who, po_pick: pick }
+}
+
 // ── LEVELS, SIDE BY SIDE — plan 26 `B2`, BLUEPRINT §3.4 ─────────────────────
 //
 // *"Multiple floors have a layout beside each other."* One panel per reference
@@ -330,7 +368,9 @@ pub const PLAN_FACING = 0.85;
 pub const PLAN_GUTTER = 1.2;
 
 pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
-               refs: vector<float>, who: PlanWho, title: text) -> text {
+               refs: vector<float>, over: PlanOver, title: text) -> text {
+  who = over.po_who;
+  pick = over.po_pick;
   // ⚠ AN EMPTY LIST IS ONE LEVEL AT ZERO, NOT AN EMPTY PICTURE. A caller that asked
   // for no levels has made a mistake, and a blank frame hides it; the caption says
   // which reference every panel was read at, so the wrong one is visible.
@@ -373,10 +413,38 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
     // transform as everything else and its `cx`/`cy` stay the author's own floats.
     mine = "";
     onme = "";
+    // ⚠ **THE PICK NAMES ITS OWN PANEL, so there is no rule here to get wrong.** The
+    // author needs a layer comparison because a pose is a height; a pick already
+    // carries the level it resolved on.
+    if pick.pk_ok && pick.pk_level == k {
+      onme += "  aim";
+      // ⚠ TWO MARKS, BECAUSE A PICK IS TWO FACTS. The outline is the CELL it resolved
+      // to and the cross is the POINT that was asked for; drawing only the first hides
+      // the snap, and hiding the snap is how an author blames the store for a gesture
+      // that landed where they actually pointed.
+      mine += "<polygon class='aimcell' data-q='{pick.pk_q}' data-r='{pick.pk_r}'"
+            + " points='{cell_points(pick.pk_q, pick.pk_r)}'"
+            + " fill='rgb(140,60,200)' fill-opacity='0.28'"
+            + " stroke='rgb(140,60,200)' stroke-width='0.09'/>\n"
+            + "<line class='aim' data-x='{fx(pick.pk_x)}' data-z='{fx(pick.pk_z)}'"
+            + " x1='{fx(pick.pk_x - 0.22)}' y1='{fx(pick.pk_z)}'"
+            + " x2='{fx(pick.pk_x + 0.22)}' y2='{fx(pick.pk_z)}'"
+            + " stroke='rgb(140,60,200)' stroke-width='0.07'/>\n"
+            + "<line class='aim' data-x='{fx(pick.pk_x)}' data-z='{fx(pick.pk_z)}'"
+            + " x1='{fx(pick.pk_x)}' y1='{fx(pick.pk_z - 0.22)}'"
+            + " x2='{fx(pick.pk_x)}' y2='{fx(pick.pk_z + 0.22)}'"
+            + " stroke='rgb(140,60,200)' stroke-width='0.07'/>\n";
+    }
     if inwin && hex_editor::edge_layer(w, aq, ar, kref) == alayer && !seen {
       seen = true;
-      onme = "  you";
-      mine = "<circle class='author' data-x='{fx(who.pw_x)}' data-z='{fx(who.pw_z)}'"
+      // ⚠ **`+=`, NOT `=`, AND THAT WAS A LIVE DEFECT FOR ONE COMMIT.** The aim block
+      // above writes into the same two strings; an assignment here wiped the highlight
+      // whenever the author happened to be standing on the panel they were aiming at —
+      // which is *every* aim taken by a person at their own plan. `probe/plan` row G
+      // caught it on the first run, because it asks whether the picture carries the
+      // mark rather than whether the caption says it does.
+      onme += "  you";
+      mine += "<circle class='author' data-x='{fx(who.pw_x)}' data-z='{fx(who.pw_z)}'"
            + " data-yaw='{fx(who.pw_yaw)}' cx='{fx(who.pw_x)}' cy='{fx(who.pw_z)}'"
            + " r='0.3' fill='rgb(220,40,40)' stroke='rgb(250,250,248)'"
            + " stroke-width='0.06'/>\n"
@@ -426,9 +494,18 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
     whosay = "({fx(who.pw_x)},{fx(who.pw_z)}) y {fx(who.pw_y)}";
     if !seen { whosay += " OFF-PLAN"; }
   }
+  // ⚠ THREE STATES AGAIN, AND FOR THE THIRD TIME IN THIS FILE: *nothing was picked*,
+  // *this was picked*, and *something was picked and named no cell*. An absent
+  // highlight says all three.
+  aimsay = "none";
+  if pick.pk_ok {
+    aimsay = "L{pick.pk_level} ({pick.pk_q},{pick.pk_r})";
+  } else if pick.pk_why != "" {
+    aimsay = "refused ({pick.pk_why})";
+  }
   foot = "<!-- plan: {title} q {q0}..{q1} r {r0}..{r1} levels {len(rs)}"
        + " pitch {fx(pitch)} cells {totcell} edges {totmark} run{verdicts}"
-       + " who {whosay} -->\n</svg>\n";
+       + " who {whosay} aim {aimsay} -->\n</svg>\n";
   head + bodies + foot
 }
 
@@ -493,5 +570,5 @@ pub fn plan_pick(q0: integer, r0: integer, q1: integer, r1: integer,
 // One level, which is what most callers want and what `B0` shipped.
 pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
                 ref: float, title: text) -> text {
-  plan_levels(w, q0, r0, q1, r1, [ref], plan_nobody(), title)
+  plan_levels(w, q0, r0, q1, r1, [ref], plan_bare(), title)
 }

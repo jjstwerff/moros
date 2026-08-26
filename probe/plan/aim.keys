@@ -1,0 +1,7 @@
+# AIMING DRAWS AND AUTHORS NOTHING — plan 26 `B4c`.
+#
+# `pick <x>,<y>` with no verb resolves the point, writes the plan with the spot marked,
+# and leaves the world alone. The world key must equal `bare.keys`'.
+at 0 0 0
+verb raise
+pick 0.4,0.2

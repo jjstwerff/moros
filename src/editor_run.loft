@@ -215,7 +215,7 @@ fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
   // that wants the storeys beside each other says so through `plan_view`, which reads
   // the world this run saves.
   rp_svg = plan_levels(w, rp_q0, rp_r0, rp_q1, rp_r1, [wk.wk_y],
-                       plan_author(walk_author(wk)), rp_name);
+                       plan_over_who(plan_author(walk_author(wk))), rp_name);
   rp_out = file("{source_dir()}/../worlds/{rp_name}.svg");
   rp_out.write(rp_svg);
 
@@ -251,13 +251,18 @@ fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
 // else about it.
 fn run_pick(w: VoxelWorld, wk: hex_editor::Walker, sess: hex_editor::EditSession,
             rest: text, said: &text) -> boolean {
+  // ⚠ **TWO ARITIES, AND THE DIFFERENCE IS *LOOK* AGAINST *DO*** — plan 26 `B4c`.
+  // `pick <x>,<y>` AIMS: it resolves the point, draws the plan with the spot marked on
+  // it and authors nothing. With a verb it authors. A picture you can take before
+  // committing is the whole of "see what you are about to author", and it is one word
+  // rather than two because it is one question asked twice.
   rk_sp = rest.find(" ");
-  if rk_sp == null {
-    said = "pick needs a page point and a verb — `pick <x>,<y> <verb>`";
-    return false;
+  rk_pt = rest.trim();
+  rk_verb = "";
+  if rk_sp != null {
+    rk_pt = rest[..(rk_sp ?? 0)];
+    rk_verb = rest[((rk_sp ?? 0) + 1)..].trim();
   }
-  rk_pt = rest[..(rk_sp ?? 0)];
-  rk_verb = rest[((rk_sp ?? 0) + 1)..].trim();
   rk_ci = rk_pt.find(",");
   if rk_ci == null {
     said = "pick needs `<x>,<y>` — a page point has two numbers";
@@ -272,6 +277,28 @@ fn run_pick(w: VoxelWorld, wk: hex_editor::Walker, sess: hex_editor::EditSession
   rk_r1 = 0;
   plan_window(wk, rk_q0, rk_r0, rk_q1, rk_r1);
   rk_pk = plan_pick(rk_q0, rk_r0, rk_q1, rk_r1, [wk.wk_y], rk_px, rk_py);
+  // ── AIM: draw it, author nothing ──────────────────────────────────────────
+  //
+  // ⚠ **A REFUSED AIM IS STILL DRAWN, AND THAT IS THE POINT OF AIMING.** The picture
+  // says `aim refused (in the gutter between levels)` in its own caption, which is the
+  // answer to *why did nothing happen* that a silent no-op cannot give.
+  if rk_verb == "" {
+    rk_aname = env_variable("WORLD");
+    if rk_aname == "" { rk_aname = "headless"; }
+    rk_aname = "{rk_aname}-pick";
+    rk_asvg = plan_levels(w, rk_q0, rk_r0, rk_q1, rk_r1, [wk.wk_y],
+                          plan_over(plan_author(walk_author(wk)), rk_pk), rk_aname);
+    file("{source_dir()}/../worlds/{rk_aname}.svg").write(rk_asvg);
+    if !rk_pk.pk_ok {
+      said = "aim ({rk_px},{rk_py}) refused — {rk_pk.pk_why} -> {rk_aname}.svg";
+      return true;
+    }
+    said = "aim L{rk_pk.pk_level} ({rk_pk.pk_q},{rk_pk.pk_r}) at "
+         + "{round(rk_pk.pk_x * 100.0) / 100.0 ?? 0.0},{round(rk_pk.pk_z * 100.0) / 100.0 ?? 0.0}"
+         + " -> {rk_aname}.svg";
+    return true;
+  }
+
   // ⚠ A REFUSAL IS AN ANSWER AND THE LINE STILL SUCCEEDS. The point was understood
   // and named no cell; that is not a script error, and failing the run would make a
   // deliberate probe of the gutter indistinguishable from a typo.

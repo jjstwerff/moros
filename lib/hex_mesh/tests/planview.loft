@@ -466,7 +466,7 @@ fn deck_ref() -> float { (8.0 + (hex_editor::STOREY_H as float)) * 0.25 }
 fn test_drawing_levels_does_not_touch_the_world() {
   w = two_storey_world();
   before = hex_voxel::world_key(w);
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_bare(), "levels");
   assert(svg.contains("data-level='1'"),
          "the second level was not drawn at all, so the comparison below is about a "
          + "world nothing was asked of");
@@ -484,7 +484,7 @@ fn test_drawing_levels_does_not_touch_the_world() {
 
 fn test_the_page_offset_is_declared_once_and_never_in_the_coordinates() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_bare(), "levels");
 
   a = cell_in(svg, 0, 3, 1);
   b = cell_in(svg, 1, 3, 1);
@@ -512,7 +512,7 @@ fn test_the_page_offset_is_declared_once_and_never_in_the_coordinates() {
 
 fn test_the_panels_do_not_overlap() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_bare(), "levels");
   dx = attr(group_line(svg, 1), "data-dx") as float ?? 0.0;
   wide = attr(panel_rect(svg, 0), "width") as float ?? 0.0;
   assert(wide > 0.0, "the first panel has no paper under it to measure");
@@ -524,7 +524,7 @@ fn test_the_panels_do_not_overlap() {
 
 fn test_the_two_levels_are_not_the_same_picture() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_bare(), "levels");
   low  = attr(cell_in(svg, 0, 0, 0), "data-mat");
   high = attr(cell_in(svg, 1, 0, 0), "data-mat");
   assert(low != "" && high != "", "cell (0,0) is missing from one of the panels");
@@ -543,7 +543,7 @@ fn test_the_two_levels_are_not_the_same_picture() {
 // by a colour a reader has to know is a picture that will be read wrong.
 fn test_a_cell_carries_the_height_the_level_read_it_at() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_bare(), "levels");
   deck = cell_in(svg, 1, 0, 0);
   lawn = cell_in(svg, 1, 6, 6);
   ground = cell_in(svg, 0, 0, 0);
@@ -607,7 +607,7 @@ fn foot(svg: text) -> text {
 fn test_the_marker_is_the_authors_own_two_floats() {
   w = two_storey_world();
   a = hex_editor::author_at(1.234, 2.5, 0.0, ground_ref());
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(a), "who");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_over_who(plan_author(a)), "who");
   m = author_mark(svg, 0);
   assert(m != "", "the author was not drawn on the only panel there is");
   assert(about(attr(m, "cx") as float ?? 0.0 - 99.0, a.au_x)
@@ -623,7 +623,7 @@ fn test_the_facing_points_where_the_walk_would_go() {
   // `(cos yaw, sin yaw)`. A page that flipped z would draw this arrow backwards and
   // look entirely deliberate.
   east = hex_editor::author_at(0.0, 0.0, 0.0, ground_ref());
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(east), "east");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_over_who(plan_author(east)), "east");
   f = facing_mark(svg, 0);
   assert(f != "", "no facing was drawn");
   x1 = attr(f, "x1") as float ?? 0.0 - 99.0;
@@ -636,7 +636,7 @@ fn test_the_facing_points_where_the_walk_would_go() {
 
   // …and a quarter turn puts it on the other axis, in the direction the tick walks.
   south = hex_editor::author_at(0.0, 0.0, PI / 2.0 ?? 0.0, ground_ref());
-  sv = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(south), "south");
+  sv = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_over_who(plan_author(south)), "south");
   g = facing_mark(sv, 0);
   assert((attr(g, "y2") as float ?? 0.0) > (attr(g, "y1") as float ?? 0.0)
          && about(attr(g, "x2") as float ?? 0.0, attr(g, "x1") as float ?? 0.0),
@@ -650,25 +650,25 @@ fn test_the_author_stands_on_one_level_and_it_is_the_one_they_are_on() {
   ondeck   = hex_editor::author_at(0.0, 0.0, 0.0, deck_ref());
   refs: vector<float> = [ground_ref(), deck_ref()];
 
-  lo = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_author(onground), "lo");
+  lo = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over_who(plan_author(onground)), "lo");
   assert(author_mark(lo, 0) != "", "standing on the ground, the author is not on L0");
   assert(author_mark(lo, 1) == "",
          "the author is drawn on BOTH levels — a plan that puts one person on every "
          + "floor is telling you nothing about which floor they are on");
 
-  hi = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_author(ondeck), "hi");
+  hi = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over_who(plan_author(ondeck)), "hi");
   assert(author_mark(hi, 1) != "", "standing on the deck, the author is not on L1");
   assert(author_mark(hi, 0) == "", "standing on the deck, the author is also on L0");
 }
 
 fn test_the_three_states_of_the_author_do_not_read_alike() {
   w = two_storey_world();
-  none = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_nobody(), "none");
+  none = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_bare(), "none");
   assert(author_mark(none, 0) == "", "nobody was given and somebody was drawn");
   assert(foot(none).contains("who none"), "the footer says {foot(none)}");
 
   here = hex_editor::author_at(1.0, 1.0, 0.0, ground_ref());
-  on = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(here), "on");
+  on = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_over_who(plan_author(here)), "on");
   assert(foot(on).contains("who (1,1)"), "the footer says {foot(on)}");
   assert(!foot(on).contains("OFF-PLAN"), "an author on the plan is reported off it");
 
@@ -676,7 +676,7 @@ fn test_the_three_states_of_the_author_do_not_read_alike() {
   // marker means *nobody was given* and *somebody is elsewhere* at once, which is
   // the collapse `probe/l1` lost a run to.
   far = hex_editor::author_at(60.0, 60.0, 0.0, ground_ref());
-  off = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(far), "off");
+  off = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_over_who(plan_author(far)), "off");
   assert(author_mark(off, 0) == "", "an author 60 units away was drawn on the plan");
   assert(foot(off).contains("OFF-PLAN"),
          "the author is outside the window and the picture does not say so: {foot(off)}");
@@ -765,9 +765,150 @@ fn test_three_places_that_are_no_cell_are_refused_and_say_why() {
 fn test_the_pick_divides_by_the_pitch_the_picture_declares() {
   w = two_storey_world();
   refs: vector<float> = [ground_ref(), deck_ref()];
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_nobody(), "frame");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_bare(), "frame");
   drawn = attr(group_line(svg, 1), "data-dx") as float ?? 0.0;
   mapped = plan_pitch(plan_bounds(0 - 6, 0 - 6, 7, 7));
   assert(about(drawn, mapped),
          "the picture places L1 at {drawn} and the pick divides by {mapped}");
+}
+
+// ── `B4c` — THE PICKED SPOT, DRAWN BACK ─────────────────────────────────────
+//
+// A pick is TWO facts — the point that was asked for and the cell it resolved to — and
+// the picture draws both. ⚠ Drawing only the cell hides the SNAP, and hiding the snap
+// is how an author blames the store for a gesture that landed exactly where they
+// pointed.
+
+const AIMCELL = "<polygon class='aimcell'";
+
+fn aim_cell(svg: text, level: integer) -> text {
+  at = 0 - 1;
+  for ln in svg.split('\n') {
+    if ln.size() > 17 {
+      if ln[0..17] == "<g class='level' " { at = attr(ln, "data-level") as integer ?? 0 - 1; }
+    }
+    if ln.size() < (AIMCELL.size() as i32) { continue; }
+    if ln[0..(AIMCELL.size() as i32)] != AIMCELL { continue; }
+    if at == level { return ln; }
+  }
+  ""
+}
+
+fn aim_cross(svg: text, level: integer) -> integer {
+  at = 0 - 1;
+  n = 0;
+  for ln in svg.split('\n') {
+    if ln.size() > 17 {
+      if ln[0..17] == "<g class='level' " { at = attr(ln, "data-level") as integer ?? 0 - 1; }
+    }
+    if ln.size() < 17 { continue; }
+    if ln[0..17] != "<line class='aim'" { continue; }
+    if at == level { n = n + 1; }
+  }
+  n
+}
+
+fn off_centre_pick() -> PlanPick {
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  c = hex_proj::hex_to_world(2, 1, 0);
+  // Deliberately off the cell's centre and on the SECOND panel, so both the snap and
+  // the level are visible in what comes back.
+  plan_pick(0 - 6, 0 - 6, 7, 7, refs,
+            c.x + plan_pitch(plan_bounds(0 - 6, 0 - 6, 7, 7)) + 0.31, c.z - 0.19)
+}
+
+fn test_the_highlight_is_the_cell_the_pick_named() {
+  w = two_storey_world();
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  pk = off_centre_pick();
+  assert(pk.pk_ok && pk.pk_q == 2 && pk.pk_r == 1,
+         "the fixture point picked ({pk.pk_q},{pk.pk_r}) on L{pk.pk_level}: {pk.pk_why}");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over_pick(pk), "aim");
+
+  hl = aim_cell(svg, 1);
+  assert(hl != "", "the pick was not drawn on the panel it named");
+  assert(attr(hl, "data-q") == "2" && attr(hl, "data-r") == "1",
+         "the highlight says ({attr(hl, \"data-q\")},{attr(hl, \"data-r\")})");
+  // ⚠ THE OUTLINE IS THE CELL'S OWN, BYTE FOR BYTE. A highlight built from its own copy
+  // of the corner walk could sit a hair off the cell it claims, which is invisible.
+  assert(attr(hl, "points") == attr(cell_in(svg, 1, 2, 1), "points"),
+         "the highlight's outline is not the cell's:\n  aim  {attr(hl, \"points\")}\n"
+         + "  cell {attr(cell_in(svg, 1, 2, 1), \"points\")}");
+  assert(aim_cell(svg, 0) == "",
+         "the pick is drawn on L0 as well — it resolved on L1 and names its own panel, "
+         + "so there is no rule here that could put it on two");
+}
+
+fn test_the_cross_is_the_point_that_was_asked_for_and_not_the_snap() {
+  w = two_storey_world();
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  pk = off_centre_pick();
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over_pick(pk), "aim");
+
+  assert(aim_cross(svg, 1) == 2, "{aim_cross(svg, 1)} cross strokes, not 2");
+  cr = "";
+  for ln in svg.split('\n') {
+    if ln.size() < 17 { continue; }
+    if ln[0..17] == "<line class='aim'" { cr = ln; }
+  }
+  assert(about(attr(cr, "data-x") as float ?? 0.0 - 99.0, pk.pk_x)
+         && about(attr(cr, "data-z") as float ?? 0.0 - 99.0, pk.pk_z),
+         "the cross is at ({attr(cr, \"data-x\")},{attr(cr, \"data-z\")}) and the pick "
+         + "was ({pk.pk_x},{pk.pk_z})");
+
+  // ⚠ AND IT IS NOT THE CELL CENTRE, which is the whole reason both marks are drawn.
+  ctr = hex_proj::hex_to_world(2, 1, 0);
+  assert(!about(pk.pk_x, ctr.x) || !about(pk.pk_z, ctr.z),
+         "the fixture point IS the cell centre, so this picture cannot show a snap and "
+         + "the test above would pass for a cross drawn at either");
+}
+
+fn test_the_three_states_of_a_pick_do_not_read_alike() {
+  w = two_storey_world();
+  refs: vector<float> = [ground_ref(), deck_ref()];
+
+  none = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_bare(), "none");
+  assert(aim_cell(none, 0) == "" && aim_cell(none, 1) == "", "nothing was picked and something was drawn");
+  assert(foot(none).contains("aim none"), "the footer says {foot(none)}");
+
+  on = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over_pick(off_centre_pick()), "on");
+  assert(foot(on).contains("aim L1 (2,1)"), "the footer says {foot(on)}");
+
+  // ⚠ A PICK THAT NAMED NO CELL MUST SAY SO. `probe/l1` lost a run to exactly this
+  // collapse, and this is the third place in one plan that has had to separate it.
+  box = plan_bounds(0 - 6, 0 - 6, 7, 7);
+  bad = plan_pick(0 - 6, 0 - 6, 7, 7, refs, box.pb_minx - PLAN_MARGIN - 1.0,
+                  (box.pb_minz + box.pb_maxz) / 2.0 ?? 0.0);
+  assert(!bad.pk_ok, "the fixture point was accepted, so there is no refusal to report");
+  off = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over_pick(bad), "off");
+  assert(aim_cell(off, 0) == "" && aim_cell(off, 1) == "", "a refused pick was drawn");
+  assert(foot(off).contains("aim refused (left of the page)"),
+         "a refused pick reads as {foot(off)} — an absent highlight means *nothing was "
+         + "picked* and *that named no cell* at once");
+}
+
+// ⚠ THE CASE THAT WAS BROKEN FOR ONE COMMIT, AND THE SUITE COULD NOT SEE IT. The author
+// and the aim are drawn into one panel's overlay, and an ASSIGNMENT in the second block
+// wiped the first — so an aim taken by a person standing on the plan they were aiming
+// at drew no highlight, while the caption cheerfully named the cell. Every test above
+// passes one overlay or the other and never both.
+fn test_the_author_and_the_aim_are_both_drawn_on_one_panel() {
+  w = two_storey_world();
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  pk = off_centre_pick();                       // resolves on L1
+  ondeck = hex_editor::author_at(0.0, 0.0, 0.0, deck_ref());   // stands on L1 too
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_over(plan_author(ondeck), pk), "both");
+
+  assert(author_mark(svg, 1) != "", "the author is missing from the panel they stand on");
+  assert(aim_cell(svg, 1) != "",
+         "the highlight is missing from the panel the pick named, with the author on "
+         + "the same one — one overlay has overwritten the other");
+  assert(aim_cross(svg, 1) == 2, "{aim_cross(svg, 1)} cross strokes beside the author");
+  cap = "";
+  for ln in svg.split('\n') {
+    if ln.size() < 6 { continue; }
+    if ln[0..6] == "<text " { cap = ln; }
+  }
+  assert(cap.contains("you") && cap.contains("aim"),
+         "the caption of the shared panel says {cap} — both marks are on it");
 }
