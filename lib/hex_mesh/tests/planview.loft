@@ -386,7 +386,7 @@ fn test_the_caption_says_what_the_picture_shows() {
   drawn = plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run");
   cap = caption(drawn);
   assert(cap != "", "the picture carries no caption at all");
-  assert(cap.contains("run d"),
+  assert(cap.contains("desc d"),
          "a run WAS drawn and the caption does not say so: {cap}");
 
   // …and a window with marks the reader refuses must say `refused`, not `none`.
@@ -401,7 +401,7 @@ fn test_the_caption_says_what_the_picture_shows() {
          + "`probe/l1` collapsed into a single number");
 
   bare = plan_svg(flat_world(), 0 - 8, 0 - 8, 9, 9, 2.0, "bare");
-  assert(caption(bare).contains("run none"),
+  assert(caption(bare).contains("desc none"),
          "a window with no marks at all says {caption(bare)}");
 }
 

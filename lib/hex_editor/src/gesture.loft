@@ -35,6 +35,9 @@ use hex_edge;
 // Plan 24 `H1` — `D`, the 24 linework directions, and the admissibility rules
 // that go with them. See `run_between`.
 use hex_shape;
+// `vec_n2_4` — the lattice's own squared distance, which `disc_holds` asks and
+// `hex_shape::arc_fill` is built from. Plan 26 `B4h`.
+use hex_form;
 
 // Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
 //
@@ -717,6 +720,228 @@ pub fn wall_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: 
             rr_z0: hex_shape::tri_y(wc_a, wc_b),
             rr_x1: hex_shape::tri_x(wc_ea, wc_eb),
             rr_z1: hex_shape::tri_y(wc_ea, wc_eb) }
+}
+
+// ── A ROUND WALL'S DESCRIPTION — plan 26 `B4h`, BLUEPRINT §2.2 ─────────────
+//
+// `wall_recover` above answers *what RUN do these marks describe*, and a circle is
+// not a run: `WallRun` is two endpoints and a `d24` heading, and a rim has neither.
+// So a tower drawn perfectly by `B4g` recovers as `refused (30 marks)` — the field
+// half without the description half, which is exactly the pairing `B1` exists for.
+//
+// ⚠ **IT IS `FORMAL_CORE` §6's R1 REGIME, GENERATE-AND-COMPARE, AND NOT A FIT.**
+// *"the shape is in the admitted set and the field determines it uniquely, `ρ = 0`"*.
+// A disc is `(centre, shell)` and nothing else, so a candidate can be DRAWN — by
+// `arc_fill` and the same boundary rule `tower_disc` stamps with — and compared to
+// the store edge for edge. What comes back is the pair that reproduces the field
+// exactly, or a refusal. ⚠ **Nothing here fits a circle to anything**, which is the
+// error `A0p` made twice in one hour and `§6.1` names by hand.
+//
+// ⚠ **AND IT NEEDS NO FLOOD, WHICH IS WHY IT DOES NOT USE ONE.** The obvious route —
+// fill the enclosure and ask `arc_recover_centre` — needs the cells INSIDE the rim,
+// and the only bounded flood here is `field_fill`, which paints rather than answers
+// **and cannot tell an open enclosure from a large one** (measured: open ground, and
+// a ring with one edge missing, both answer `-2`, the *"grew past the cap"* refusal,
+// because `escaped` and `capped` are set at the same site and `return 0` is
+// unreachable). Generating the candidate sidesteps that entirely.
+pub struct DiscRead {
+  dc_ok:    boolean,
+  dc_why:   text,
+  dc_cq:    integer,        // the centre CELL — exact, `@HB-X49`: the field pins it
+  dc_cr:    integer,
+  dc_shell: integer,        // …and the radius only as a SHELL, which is all that comes back
+  dc_x:     float,          // the centre in the drawing's own frame
+  dc_z:     float,
+  dc_rad:   float,          // `√N / 2` — measured to be `hex_to_px`'s own distance
+  dc_marks: integer,        // the stored edges it accounts for, all of them
+}
+
+// ⚠ **A REFUSAL CARRIES ITS MARK COUNT, AND THE FIRST VERSION OF THIS ZEROED IT** —
+// which rebuilt, inside the one function whose comment forbids it, the ambiguity `B0`
+// and `probe/l1` both paid for: *no marks at all* and *marks I could not explain* are
+// different facts, and a reader that answers `0` to both cannot tell an empty window
+// from a shape it refused. Its own test caught it.
+fn disc_no(why: text, marks: integer) -> DiscRead {
+  DiscRead { dc_ok: false, dc_why: why, dc_cq: 0, dc_cr: 0, dc_shell: 0 - 1,
+             dc_x: 0.0, dc_z: 0.0, dc_rad: 0.0, dc_marks: marks }
+}
+
+// Is `(q, r)` inside the disc of `shell` about `(cq, cr)`?
+//
+// ⚠ **THIS IS `arc_fill`'s OWN MEMBERSHIP TEST, CALLED RATHER THAN COPIED** — the
+// library's `lattice_k`/`lattice_m` and `hex_form::vec_n2_4`, which is what that
+// function is built from: *"a cell centre sits at `(k·√3/2, m/2)`, so its squared
+// distance is `(3k² + m²)/4`, and inside is the integer test `N' <= N`."* Exact
+// integers, no float, and `test_membership_agrees_with_the_library` pins it against
+// `arc_fill` cell for cell so the second site cannot drift from the first.
+//
+// ⛔ **AND IT EXISTS BECAUSE FILLING A `HexSet` PER CANDIDATE WAS UNUSABLY SLOW.**
+// `disc_recover` tries every centre in the marks' box against every plausible shell;
+// allocating and filling a `(2·pad+1)²` set for each — 1521 booleans at shell 300 —
+// turned one 21×21 plan panel into MINUTES. ⚠ It also removes a hazard rather than
+// adding one: with no window there is nothing to clip, so `tower_clipped` has no
+// question to answer here.
+fn disc_holds(cq: integer, cr: integer, shell: integer, q: integer, r: integer) -> boolean {
+  hex_form::vec_n2_4(lattice_k(q, r) - lattice_k(cq, cr),
+                     lattice_m(q, r) - lattice_m(cq, cr)) <= shell
+}
+
+// Does the disc of `shell` about `(cq, cr)` reproduce the window's wall bytes exactly?
+//
+// ⚠ **BOTH DIRECTIONS, OVER THE WHOLE WINDOW.** *Every boundary edge is marked* and
+// *every mark is a boundary edge* are two claims, and a check that asked only the
+// first would accept a disc with a wall drawn across it.
+//
+// ⚠ **AND A DISC LARGER THAN THE WINDOW CANNOT SNEAK THROUGH**, which is worth saying
+// because the direct test has no window to stop it: inside the window such a disc has
+// no boundary at all, so `want` is false everywhere — and `disc_recover` only asks
+// this when it has already counted marks, so `got` is true somewhere and the two
+// disagree. The `marks > 0` precondition is what rules it out.
+fn disc_fits(marks: vector<boolean>, cq: integer, cr: integer, shell: integer,
+             q0: integer, r0: integer, wq: integer, hr: integer) -> boolean {
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      base = (((r - r0) * wq) + (q - q0)) * 6;
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        want = disc_holds(cq, cr, shell, q, r) != disc_holds(cq, cr, shell, nq, nr);
+        if want != (marks[base + d] ?? false) { return false; }
+      }
+    }
+  }
+  true
+}
+
+// The window's wall bytes as a flat `(cell, direction)` table — read ONCE.
+//
+// ⛔ **THE STORE WAS BEING RE-READ FOR EVERY CANDIDATE, AND A PROFILE IS WHAT SAID
+// SO.** `disc_recover` tries every centre in the marks' box against every plausible
+// shell, and the first version asked `wall_of` inside that loop: six store reads per
+// cell per candidate. ⚠ **The cost was not the arithmetic** — `perf` put 14% in
+// `Stores::enum_parent_size` and the rest across `String::clone`, `Vec<Field>::clone`,
+// `malloc`/`free` and the store's claim bookkeeping, with the lattice test nowhere in
+// the profile. Four shells over a 33×33 window ran **past two minutes**; the guess
+// that would have been acted on without the profile — that the shell walk was hot —
+// was worth **4.5 s of the whole thing**.
+//
+// ⚠ **AND THE READ IS INVARIANT ACROSS CANDIDATES**, which is what makes hoisting it
+// correct rather than a trade: the store does not change while a window is being
+// described, so `candidates × window × 6` reads collapse to `window × 6`.
+fn disc_marks(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+              ref: float) -> vector<boolean> {
+  out: vector<boolean> = [];
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in 0..6 { out += [edge_is_wall(wall_of(wld, q, r, d, ref))]; }
+    }
+  }
+  out
+}
+
+// …and the membership test, public so its agreement with `arc_fill` can be measured.
+pub fn disc_has(cq: integer, cr: integer, shell: integer, q: integer, r: integer) -> boolean {
+  disc_holds(cq, cr, shell, q, r)
+}
+
+// The disc's OWN half-extent in cells, measured off the disc rather than off the pad.
+//
+// ⛔ **`tower_pad` IS NOT THIS, AND USING IT AS ONE MADE THE FIRST VERSION OF
+// `disc_recover` REFUSE EVERY DISC IT HAD JUST DRAWN.** The pad is deliberately
+// generous — `isqrt(shell) + 2`, room for the boundary walk to ask about cells
+// outside — so `tower_pad(36)` is **8** for a disc that reaches **2** cells. Filtering
+// candidate shells against it skipped shell 36 entirely, and the refusal said *no disc
+// of any shell reproduces them* about a rim the editor had stamped from that very
+// shell. ⚠ **A filter that narrows a search is a correctness surface**, not an
+// optimisation with a slow fallback.
+pub fn disc_span(shell: integer) -> integer {
+  pad = tower_pad(shell);
+  cells = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+  hex_shape::arc_fill(0, 0, shell, cells);
+  best = 0;
+  for r in 0 - pad..pad + 1 {
+    for q in 0 - pad..pad + 1 {
+      if !hexset_get(cells, q, r) { continue; }
+      aq = q; if aq < 0 { aq = 0 - aq; }
+      ar = r; if ar < 0 { ar = 0 - ar; }
+      if aq > best { best = aq; }
+      if ar > best { best = ar; }
+    }
+  }
+  best
+}
+
+// The disc these marks describe, or a refusal that says which silence it is.
+//
+// ⚠ **THE CANDIDATE CENTRES ARE THE MARKED CELLS' OWN EXTENT**, not the window's: a
+// rim in the corner of a large window would otherwise cost the whole window in
+// candidates, and the centre of a disc is always inside the cells its rim touches.
+pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                    ref: float) -> DiscRead {
+  lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
+  marks = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      // ⚠ **THE THREE LATTICE DIRECTIONS A CELL OWNS, NOT THE SLOT INDICES.**
+      // `edge_owner`'s table: dir 4 is `SLOT_NW`, dir 5 is `SLOT_NE`, dir 0 is
+      // `SLOT_E` — and `wall_of` takes a DIRECTION, so passing `SLOT_*` reads dirs
+      // 0/1/2 instead. Measured, both tile the plane and both count the same; it is
+      // written the documented way so the next reader is not left to find that out.
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }
+        if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
+        if q < lo_q { lo_q = q; }
+        if q > hi_q { hi_q = q; }
+        if r < lo_r { lo_r = r; }
+        if r > hi_r { hi_r = r; }
+        marks = marks + 1;
+      }
+    }
+  }
+  // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE — `B0`'s rule, and
+  // `probe/l1` lost a run to exactly this shape of ambiguity.
+  if marks == 0 { return disc_no("no wall marks in this window", 0); }
+  table = disc_marks(wld, q0, r0, wq, hr, ref);
+  // ⚠ **THE SHELLS ARE BOUNDED BY THE MARKS' OWN EXTENT, WHICH IS A CORRECTNESS
+  // STATEMENT BEFORE IT IS A SPEED ONE.** A disc whose own window is wider than the
+  // marks that are supposed to bound it cannot reproduce them, so trying it is not
+  // caution — it is asking a question whose answer is already known. Unbounded, this
+  // walks every shell to `TOWER_SHELL_MAX` for every candidate centre, which is
+  // minutes on one window.
+  span = hi_q - lo_q;
+  if hi_r - lo_r > span { span = hi_r - lo_r; }
+  for shell in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+    // ⚠ `disc_span`, NOT `tower_pad` — see that function for what the difference
+    // cost. The marks sit on the cells either side of the rim, so a disc of
+    // half-extent `sp` marks a box about `2·sp + 1` across; `+ 3` is slack, because
+    // a filter that is too tight refuses a real answer and one that is too loose
+    // only costs time.
+    //
+    // ⚠ **`break`, NOT `continue`, AND THAT IS WORTH 14 SECONDS A PANEL.** The shells
+    // arrive ascending and a disc only grows, so once one is too wide every later one
+    // is too — measured: `continue` called `disc_span` for all ~100 shells to
+    // `TOWER_SHELL_MAX`, each allocating and filling a set up to 87×87 just to learn
+    // it was too big, and one tower panel cost **16.3 s against 2.0 s** with the
+    // reader out. ⚠ The soundness is `disc_span` being **non-decreasing** in the
+    // shell, which `test_the_extent_only_grows_with_the_shell` measures rather than
+    // assumes — a `break` on a quantity that dipped would skip real answers, which is
+    // `disc_span`'s own lesson one line up.
+    if 2 * disc_span(shell) > span + 3 { break; }
+    for cr in lo_r..hi_r + 1 {
+      for cq in lo_q..hi_q + 1 {
+        if !disc_fits(table, cq, cr, shell, q0, r0, wq, hr) { continue; }
+        (dx, dz) = hex_to_px(cq, cr);
+        return DiscRead { dc_ok: true, dc_why: "", dc_cq: cq, dc_cr: cr,
+                          dc_shell: shell, dc_x: dx, dc_z: dz,
+                          // ⚠ `√N / 2` IS THE FIELD'S OWN NUMBER, not a fitted
+                          // radius: a cell centre sits at `(k·√3/2, m/2)`, so the
+                          // shell's distance is `√N / 2` — measured to match
+                          // `hex_to_px`'s furthest cell centre to the last digit.
+                          dc_rad: (sqrt(shell as float) ?? 0.0) * 0.5,
+                          dc_marks: marks };
+      }
+    }
+  }
+  disc_no("{marks} marks, and no disc of any shell reproduces them", marks)
 }
 
 // ── The exact perimeter ─────────────────────────────────────────────────────

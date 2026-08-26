@@ -316,10 +316,39 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
          + " stroke='rgb(30,90,220)' stroke-width='0.05' stroke-dasharray='0.32 0.18'"
          + " stroke-linecap='round'/>\n";
   } else if nedge > 0 {
-    // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
-    // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
-    // number, and it was read as the second.
-    say = "refused ({nedge} marks)";
+    // ── AND IF IT IS NOT A RUN, IS IT A DISC? — plan 26 `B4h` ────────────────
+    //
+    // ⚠ **THE ORDER IS NOT A PREFERENCE, IT IS WHAT KEEPS THE TWO READERS APART.**
+    // `wall_read_run` refuses a closed loop by construction — *"`ends = 0` is a
+    // closed loop"* — so a rim can never be a run, and a run can never be a disc.
+    // Asking the disc reader only where the run reader gave up means the two can
+    // never disagree about one window, and it costs nothing on every window that
+    // already had an answer.
+    //
+    // ⚠ **AND IT IS THE `refused` BRANCH THAT GAINS THIS, NOT THE `none` ONE.** A
+    // window with no marks at all has nothing to describe; a window with marks the
+    // run reader could not explain is exactly where a second description belongs.
+    // The two silences stay different, which is what this branch was written for.
+    dc = hex_editor::disc_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
+    if dc.dc_ok {
+      say = "disc {dc.dc_cq},{dc.dc_cr} shell {dc.dc_shell}";
+      // ⚠ **THE SAME DASHED BLUE THE RUN USES, AND DELIBERATELY SO.** Both are the
+      // DESCRIPTION drawn over the field it was recovered from; a second colour
+      // would say *this is a different kind of thing* when the only difference is
+      // which reader could explain the marks.
+      // ⚠ AND `r` IS `√N / 2` — the field's own distance, measured against
+      // `hex_to_px`'s furthest cell centre at six shells, never a fitted radius.
+      runs = "<circle class='disc' data-cq='{dc.dc_cq}' data-cr='{dc.dc_cr}'"
+           + " data-shell='{dc.dc_shell}' data-marks='{dc.dc_marks}'"
+           + " cx='{fx(dc.dc_x)}' cy='{fx(dc.dc_z)}' r='{fx(dc.dc_rad)}'"
+           + " fill='none' stroke='rgb(30,90,220)' stroke-width='0.05'"
+           + " stroke-dasharray='0.32 0.18'/>\n";
+    } else {
+      // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
+      // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
+      // number, and it was read as the second.
+      say = "refused ({nedge} marks)";
+    }
   }
   // ⚠ AN EMPTY WINDOW STILL HAS A FRAME — `plan_bounds` answers `0..1` for one, so a
   // caller that asked for nothing gets a picture of nothing rather than a panel with a
@@ -504,7 +533,11 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
     badsay = "";
     if pan.pp_bad > 0 { badsay = "  BAD TYPE {pan.pp_bad}"; }
     captext = "L{k}  ref {kref}  q {q0}..{q1}  r {r0}..{r1}  cells {pan.pp_cells}"
-            + "  marks {pan.pp_marks}  run {pan.pp_say}{badsay}{onme}";
+            // ⚠ **`desc`, NOT `run` — plan 26 `B4h`.** This field carries whatever
+            // reader could explain the marks, and since a rim recovers as a DISC the
+            // old label would have read `run disc 0,0 shell 156`: a caption asserting
+            // the one thing the picture disproves.
+            + "  marks {pan.pp_marks}  desc {pan.pp_say}{badsay}{onme}";
     // ⚠ SIZED TO FIT, because a caption that runs off its panel is a caption whose
     // LAST field is the one you cannot read — and the last field is the run verdict,
     // the one thing a reader cannot infer from the drawing.

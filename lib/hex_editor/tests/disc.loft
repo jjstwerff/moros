@@ -1,0 +1,284 @@
+// A ROUND WALL'S DESCRIPTION — plan 26 `B4h`, BLUEPRINT §2.2.
+//
+// `B1` put a straight run's description beside the field it was recovered from. A
+// circle is not a run — `WallRun` is two endpoints and a `d24` heading, and a rim has
+// neither — so a tower `B4g` draws perfectly recovers as *refused*. This is the other
+// half of that pairing.
+//
+// ⚠ **IT IS `FORMAL_CORE` §6's R1 REGIME AND NOT A FIT.** A disc is `(centre, shell)`,
+// so a candidate is DRAWN and compared to the store edge for edge; what comes back
+// reproduces the field exactly or is refused. §6.1's trap, named there by hand —
+// *"fitting a line to a stencil whose description we hold throws away an exact
+// answer"* — is the one thing this must not do.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+use hex_shape;
+use hex_proj;
+
+const U = 0.25;
+// The smallest disc that is NOT any hexagon. ⚠ At `12R²` a hexagon genuinely IS a
+// disc, so "a hexagonal ring must not recover as a circle" is FALSE at 12, 48, 108,
+// 192 and 300 — the negative controls below are a straight run and a broken rim,
+// which are discs at no shell at all.
+const ROUND_SHELL = 36;
+const BIG_SHELL = 156;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn at_origin(w: VoxelWorld) -> Author {
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  s.es_author
+}
+
+fn towered(shell: integer, mat: integer) -> VoxelWorld {
+  w = flat_world();
+  ack = tower_ring(w, at_origin(w), mat, shell, 0.0);
+  assert(ack.ak_ok, "the fixture's tower was refused: {ack.ak_why}");
+  w
+}
+
+fn read_it(w: VoxelWorld) -> DiscRead { disc_recover(w, 0 - 14, 0 - 14, 29, 29, 0.0) }
+
+// ⚠ **THE SECOND SITE, PINNED TO THE FIRST.** `disc_holds` is `arc_fill`'s own
+// membership test called through the library's primitives rather than filling a set —
+// which is what took one plan panel from MINUTES to nothing — and a second spelling of
+// *what is inside a disc* is exactly the drift this tree keeps paying for. So it is
+// measured against `arc_fill` cell for cell, at shells that are hexagons and shells
+// that are not, and about centres that are not the origin.
+fn test_membership_agrees_with_the_library() {
+  checked = 0;
+  inside = 0;
+  for shell in [12, 36, 48, 84, 156] {
+    for cr in [0 - 2, 0, 3] {
+      for cq in [0 - 1, 0, 4] {
+        pad = tower_pad(shell);
+        c = hexset_chunk(cq - pad, cr - pad, 2 * pad + 1, 2 * pad + 1);
+        hex_shape::arc_fill(cq, cr, shell, c);
+        for r in cr - pad..cr + pad + 1 {
+          for q in cq - pad..cq + pad + 1 {
+            a = hexset_get(c, q, r);
+            b = disc_has(cq, cr, shell, q, r);
+            assert(a == b,
+                   "shell {shell} about {cq},{cr}: `arc_fill` says {a} at {q},{r} and "
+                 + "`disc_has` says {b} — the two definitions of *inside* have drifted");
+            checked = checked + 1;
+            if a { inside = inside + 1; }
+          }
+        }
+      }
+    }
+  }
+  // ⚠ AND THE INSTRUMENT: a comparison over cells that are all OUTSIDE would agree
+  // perfectly and say nothing, so the fixtures have to contain discs.
+  assert(checked > 10000 && inside > 300,
+         "only {inside} of {checked} cells were inside any disc — the agreement above "
+       + "is about emptiness");
+}
+
+// ⚠ **WHAT MAKES THE SEARCH'S `break` SOUND.** `disc_recover` stops at the first shell
+// too wide for the marks, which is only correct if a disc never gets NARROWER as its
+// shell grows. That is obvious and it is still measured, because the cost of it being
+// false is a real disc silently refused — `disc_span`'s own lesson, one line up.
+fn test_the_extent_only_grows_with_the_shell() {
+  last = 0 - 1;
+  n = 0;
+  for shell in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+    sp = disc_span(shell);
+    assert(sp >= last,
+           "shell {shell} has extent {sp} after {last} — the extent dipped, and the "
+         + "`break` in `disc_recover` would step over real answers");
+    last = sp;
+    n = n + 1;
+  }
+  assert(n > 20 && last > 5,
+         "only {n} shells checked, reaching extent {last} — too few to say the "
+       + "sequence is monotonic");
+}
+
+// ── WHAT COMES BACK ────────────────────────────────────────────────────────
+
+fn test_a_rim_recovers_to_its_own_centre_and_its_own_shell() {
+  d = read_it(towered(ROUND_SHELL, WALL_MAT));
+  assert(d.dc_ok, "a rim this editor drew was not recovered: {d.dc_why}");
+  assert(d.dc_cq == 0 && d.dc_cr == 0,
+         "the centre recovers to {d.dc_cq},{d.dc_cr} — the tower was rung at 0,0");
+  assert(d.dc_shell == ROUND_SHELL,
+         "the shell recovers as {d.dc_shell}, not the {ROUND_SHELL} it was built at");
+  assert(d.dc_marks == 30,
+         "it accounts for {d.dc_marks} marks; the rim of shell {ROUND_SHELL} is 30");
+}
+
+// ⚠ **AND AT A SECOND SHELL, or the row above is true of a reader that answers 36 to
+// everything.** The whole point of a shell is that it is recovered, not assumed.
+fn test_a_bigger_rim_recovers_as_the_bigger_shell() {
+  d = read_it(towered(BIG_SHELL, WALL_MAT));
+  assert(d.dc_ok, "the bigger rim was not recovered: {d.dc_why}");
+  assert(d.dc_shell == BIG_SHELL, "it reads {d.dc_shell}");
+  assert(d.dc_cq == 0 && d.dc_cr == 0, "its centre reads {d.dc_cq},{d.dc_cr}");
+}
+
+// ⚠ **THE CENTRE IS RECOVERED, NOT ASSUMED TO BE THE WINDOW'S.** A disc rung off the
+// origin must come back at its own cell — measured, because a reader that answered
+// the window's midpoint would pass every row above.
+fn test_a_rim_away_from_the_origin_comes_back_where_it_stands() {
+  w = flat_world();
+  s = EditSession {};
+  (ox, oz) = hex_grid::hex_to_px(4, 2);
+  session_at(s, w, ox, oz, 0.0);
+  assert(tower_ring(w, s.es_author, WALL_MAT, ROUND_SHELL, 0.0).ak_ok, "refused");
+  d = disc_recover(w, 0 - 14, 0 - 14, 29, 29, 0.0);
+  assert(d.dc_ok, "an off-centre rim was not recovered: {d.dc_why}");
+  assert(d.dc_cq == 4 && d.dc_cr == 2,
+         "it recovers at {d.dc_cq},{d.dc_cr} against the 4,2 it was rung at");
+}
+
+// ⚠ **THE RADIUS IS THE FIELD'S OWN NUMBER.** `√N / 2` was measured against
+// `hex_to_px`'s furthest cell centre at six shells before it was written down; this
+// pins the two together so a change to either is seen.
+fn test_the_drawn_radius_is_the_shells_own_distance() {
+  d = read_it(towered(ROUND_SHELL, WALL_MAT));
+  far = 0.0;
+  pad = tower_pad(ROUND_SHELL);
+  c = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+  hex_shape::arc_fill(0, 0, ROUND_SHELL, c);
+  for r in 0 - pad..pad + 1 {
+    for q in 0 - pad..pad + 1 {
+      if !hexset_get(c, q, r) { continue; }
+      (x, z) = hex_grid::hex_to_px(q, r);
+      dd = sqrt(x * x + z * z) ?? 0.0;
+      if dd > far { far = dd; }
+    }
+  }
+  assert(d.dc_rad - far < 0.0001 && far - d.dc_rad < 0.0001,
+         "the description's radius {d.dc_rad} is not the furthest cell centre {far} — "
+       + "the shell and the drawing frame have come apart");
+  assert(d.dc_x == 0.0 && d.dc_z == 0.0, "the centre draws at {d.dc_x},{d.dc_z}");
+}
+
+// ⚠ **THE DRAWN CIRCLE MUST MEET THE WALL IT DESCRIBES** — `B1`'s *"within 0.6 wu of
+// every mark it was recovered from"*, one shape over, and it is the one claim a
+// picture can be wrong about while every number in it is right.
+//
+// ⚠ **A RIM IS JAGGED, SO THERE IS NO SINGLE RADIUS ON IT.** Measured, the boundary
+// edges' midpoints span a BAND — at shell 156, `6.062 .. 7.089` — and `√N / 2` is
+// `6.245`, inside it. That is what makes `√N / 2` honest to draw: it is the shell's
+// own exact number AND it passes through the rim rather than beside it. A radius that
+// fell outside the band would be a description that misses its own wall, which is
+// exactly what `B1`'s wandering-chain control exists to show.
+fn test_the_circle_passes_through_the_rim_it_describes() {
+  for shell in [36, 84, 156, 300] {
+    w = flat_world();
+    assert(tower_ring(w, at_origin(w), WALL_MAT, shell, 0.0).ak_ok, "shell {shell} refused");
+    d = disc_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+    assert(d.dc_ok, "shell {shell} was not recovered: {d.dc_why}");
+    lo = 999.0;
+    hi = 0.0;
+    n = 0;
+    for r in 0 - 16..17 {
+      for q in 0 - 16..17 {
+        for dir in [4, 5, 0] {
+          if !edge_is_wall(wall_of(w, q, r, dir, 0.0)) { continue; }
+          (ea, eb) = hex_grid::hex_edge_corners(dir);
+          c1 = hex_corner_world(q, r, 0, (6 - ea) % 6 ?? 0);
+          c2 = hex_corner_world(q, r, 0, (6 - eb) % 6 ?? 0);
+          mx = (c1.x + c2.x) * 0.5 - d.dc_x;
+          mz = (c1.z + c2.z) * 0.5 - d.dc_z;
+          dd = sqrt(mx * mx + mz * mz) ?? 0.0;
+          if dd < lo { lo = dd; }
+          if dd > hi { hi = dd; }
+          n = n + 1;
+        }
+      }
+    }
+    assert(n > 0, "shell {shell} marked nothing to measure against");
+    assert(d.dc_rad >= lo && d.dc_rad <= hi,
+           "shell {shell}: the description is drawn at {d.dc_rad} while its rim runs "
+         + "{lo} .. {hi} — the circle misses the wall it was recovered from");
+    // …and the band is a real band, or "inside it" means nothing.
+    assert(hi - lo > 0.3,
+           "shell {shell}: the rim's midpoints span only {lo}..{hi}, so containment "
+         + "says nothing about where the circle sits");
+  }
+}
+
+// ── WHAT IT REFUSES, AND THE TWO SILENCES ──────────────────────────────────
+
+fn test_an_empty_window_says_so_rather_than_refusing_a_shape() {
+  d = read_it(flat_world());
+  assert(!d.dc_ok, "an empty window described a disc");
+  assert(d.dc_why.contains("no wall marks"),
+         "an empty window and a refused shape must not read alike: {d.dc_why}");
+  assert(d.dc_marks == 0, "it counted {d.dc_marks} marks in an empty window");
+}
+
+// ⚠ **THE NEGATIVE CONTROL IS A RUN, NOT A HEXAGON.** At `12R²` a hexagon IS a disc,
+// so asking a hexagonal ring to be refused would be asking for the wrong answer at
+// exactly the shells `B4g` measured. A straight wall is a disc at no shell.
+fn test_a_straight_run_is_not_a_disc() {
+  w = flat_world();
+  d0 = run_between(0.0, 0.0, 6.0, 0.0, WALL_MAT);
+  assert(d0.rd_ok, "the fixture's run was refused: {d0.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d0.rd_run, WALL_MAT, 8, rs, m);
+  d = read_it(w);
+  assert(!d.dc_ok, "a straight wall was described as a disc of shell {d.dc_shell}");
+  assert(d.dc_marks > 0, "the fixture stamped nothing, so nothing was refused");
+  assert(d.dc_why.contains("no disc"),
+         "the refusal does not say what it could not do: {d.dc_why}");
+}
+
+// …and the one an author actually makes: a rim with a gap in it.
+fn test_a_rim_with_one_edge_missing_is_refused() {
+  w = towered(ROUND_SHELL, WALL_MAT);
+  whole = read_it(w);
+  assert(whole.dc_ok, "the fixture is not a disc before the gap is cut");
+  // knock one edge out — the same shape `field_fill` cannot tell from a large area
+  cut = false;
+  for r in 0 - 6..7 {
+    for q in 0 - 6..7 {
+      for dir in [SLOT_NW, SLOT_NE, SLOT_E] {
+        if cut { continue; }
+        if wall_of(w, q, r, dir, 0.0) == WALL_MAT {
+          wall_set(w, q, r, dir, 0, 8, 0.0);
+          cut = true;
+        }
+      }
+    }
+  }
+  assert(cut, "no edge was found to remove");
+  d = read_it(w);
+  assert(!d.dc_ok,
+         "a rim with a gap in it still described a disc of shell {d.dc_shell} — the "
+       + "comparison is not asking about every edge");
+}
+
+// …and the other direction: a disc with an extra wall drawn across it.
+fn test_a_disc_with_a_wall_through_it_is_refused() {
+  w = towered(BIG_SHELL, WALL_MAT);
+  assert(read_it(w).dc_ok, "the fixture is not a disc before the wall is added");
+  wall_set(w, 0, 0, SLOT_E, WALL_MAT, 8, 0.0);
+  d = read_it(w);
+  assert(!d.dc_ok,
+         "a disc with a wall across its middle still recovered — the check is asking "
+       + "*is every boundary marked* and not *is every mark a boundary*");
+}
+
+// ⚠ **A DECLARED WALL TYPE IS STILL A WALL HERE** — `edge_is_wall`, not `== WALL_MAT`,
+// which is `B4e`'s six sites and this is a seventh. A rim rung in a chosen type must
+// describe exactly as the plain one does.
+fn test_a_rim_in_a_chosen_wall_type_recovers_the_same() {
+  plain = read_it(towered(ROUND_SHELL, WALL_MAT));
+  typed = read_it(towered(ROUND_SHELL, 7));
+  assert(typed.dc_ok, "a rim in wall type 7 was not recovered: {typed.dc_why}");
+  assert(typed.dc_shell == plain.dc_shell && typed.dc_cq == plain.dc_cq
+         && typed.dc_cr == plain.dc_cr && typed.dc_marks == plain.dc_marks,
+         "the typed rim reads {typed.dc_cq},{typed.dc_cr} shell {typed.dc_shell} "
+       + "against the plain {plain.dc_cq},{plain.dc_cr} shell {plain.dc_shell}");
+}

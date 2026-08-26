@@ -93,6 +93,12 @@ fn main() {
     if ln.size() < 18 { continue; }
     if ln[0..18] == "<line class='edge'" { nedge = nedge + 1; }
     if ln[0..17] == "<line class='run'" { nrun = nrun + 1; }
+    // ⚠ **AND THE DISC IS A DESCRIPTION TOO — plan 26 `B4h`.** A `<circle>` is what a
+    // round rim recovers as, and a counter that read only `<line class='run'` reported
+    // `description refused` for a tower whose description was in the file three lines
+    // above. Measured on the first picture: `disc 0,0 shell 156` in the panel caption
+    // and `refused` on this line, in one run.
+    if ln.size() >= 20 { if ln[0..20] == "<circle class='disc'" { nrun = nrun + 1; } }
     if ln[0..9] == "<polygon " { ncell = ncell + 1; }
   }
   // The caption in the picture says the same thing, so the two cannot drift into
