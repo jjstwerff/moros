@@ -56,7 +56,19 @@ fn main() {
   rv = env_variable("REF");
   if rv != "" { rf = rv as float ?? rf; }
 
-  svg = plan_svg(w, q0, r0, q1, r1, rf, "{name}");
+  // ⚠ **`REFS` IS A LIST AND `REF` IS ONE, AND THE PAIR IS NOT REDUNDANT** — plan 26
+  // `B2`. A blueprint shows floors beside each other (BLUEPRINT §3.4), so the levels
+  // are a list of reference HEIGHTS; `REF` stays the one-panel spelling because that
+  // is what every caller before this asked for and none of them should have to learn
+  // a list to keep asking for one.
+  refs: vector<float> = [];
+  lv = env_variable("REFS");
+  if lv != "" {
+    for part in lv.split(',') { refs += [part.trim() as float ?? 0.0]; }
+  } else {
+    refs += [rf];
+  }
+  svg = plan_levels(w, q0, r0, q1, r1, refs, "{name}");
 
   out = "{source_dir()}/../worlds/{name}.svg";
   f = file(out);
@@ -83,7 +95,19 @@ fn main() {
   said = "refused";
   if nrun > 0 { said = "recovered"; }
   if nedge == 0 { said = "no marks"; }
-  println("plan_view: {name} q {q0}..{q1} r {r0}..{r1} ref {rf} "
+  // ⚠ THE LEVEL COUNT IS THE ELEMENT COUNT, not `len(refs)` — the same rule as the
+  // marks: report what reached the file.
+  nlev = 0;
+  for ln in svg.split('\n') {
+    if ln.size() < 17 { continue; }
+    if ln[0..17] == "<g class='level' " { nlev = nlev + 1; }
+  }
+  // ⚠ THE HEIGHTS ARE IN THE LINE, because *which floor is this* is the one question
+  // a level index cannot answer — a level is a sheet index and a ref is a height, and
+  // BLUEPRINT §3.4 exists because those two get conflated.
+  atsay = "";
+  for k in 0..len(refs) { atsay += " {refs[k] ?? 0.0}"; }
+  println("plan_view: {name} q {q0}..{q1} r {r0}..{r1} levels {nlev} at{atsay} "
         + "-> {ncell} cells, {nedge} marks, description {said}, "
         + "{svg.size()} bytes in worlds/{name}.svg");
 }

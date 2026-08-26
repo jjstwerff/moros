@@ -130,19 +130,33 @@ fn edge_width(mat: integer) -> float {
   0.13
 }
 
-// The window `[q0, q1) x [r0, r1)` of world `w`, at reference height `ref` (world
-// units, the same number the walker's feet carry), as a standalone SVG document.
+// ── ONE LEVEL'S PANEL, IN THE WORLD'S OWN FRAME ─────────────────────────────
 //
-// One `<polygon>` per cell of the window — every cell, so an empty one is visible
-// as empty rather than absent — and one `<line>` per non-zero wall byte those
-// cells own. Nothing else is drawn, and nothing outside the window is.
+// The window `[q0, q1) x [r0, r1)` at reference height `ref` (world units, the same
+// number the walker's feet carry): one `<polygon>` per cell — every cell, so an empty
+// one is visible as empty rather than absent — one `<line class='edge'>` per non-zero
+// wall byte those cells own, and one `<line class='run'>` for the description if the
+// reader gives one. Nothing else, and nothing outside the window.
 //
-// ⚠ THE COORDINATES ARE WORLD UNITS AND THE `viewBox` DOES THE SCALING. That is
-// what makes this checkable: the numbers in the file are `hex_corner_world`'s
-// answers, so a test compares the picture against the library with no transform
-// in between to be wrong in the same direction as the emitter.
-pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
-                ref: float, title: text) -> text {
+// ⚠ **THERE IS NO OFFSET IN HERE, AND THAT IS `B2`'s INVARIANT.** A panel is drawn in
+// the world's own frame and PLACED by a transform on the group that holds it, so the
+// numbers in the file stay `hex_corner_world`'s answers however many levels are shown
+// beside each other. BLUEPRINT §3.4: *"the offset must never reach the field"* — the
+// weaker half of that is that it must not reach the GEOMETRY either, or every
+// coordinate in the picture is a page position wearing a world position's clothes.
+pub struct PlanPanel {
+  pp_body:  text,        // the elements, unoffset
+  pp_cells: integer,
+  pp_marks: integer,
+  pp_say:   text,        // the description verdict: `d<n> p<n>`, `refused (n)`, `none`
+  pp_minx:  float,
+  pp_maxx:  float,
+  pp_minz:  float,
+  pp_maxz:  float,
+}
+
+pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+              ref: float) -> PlanPanel {
   cells = "";
   edges = "";
   minx = 0.0;
@@ -171,7 +185,14 @@ pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: intege
         pts += "{fx(p.x)},{fx(p.z)} ";
       }
       mat = c.h_material as integer ?? 0;
+      // ⚠ **THE HEIGHT IS ON THE CELL BECAUSE A LEVEL PICTURE IS UNREADABLE WITHOUT
+      // IT** — plan 26 `B2`. A panel at `ref 3` draws the deck AND the lawn around it,
+      // because `world_surface` answers *what would someone at this height be standing
+      // on* and outside the deck that is still the ground. That answer is right and it
+      // looks like grass on the first floor; `data-h` is what tells the two apart, and
+      // it is the store's own number rather than a rule invented here.
       cells += "<polygon class='cell' data-q='{q}' data-r='{r}' data-mat='{mat}'"
+             + " data-h='{c.h_height}'"
              + " points='{pts}' fill='{cell_fill(mat)}'"
              + " stroke='rgb(180,184,192)' stroke-width='0.012'/>\n";
       ncell = ncell + 1;
@@ -211,36 +232,100 @@ pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: intege
     // number, and it was read as the second.
     say = "refused ({nedge} marks)";
   }
-
   // An empty window still has a frame, so a caller that asked for nothing gets a
-  // picture of nothing rather than an SVG with a null viewBox in it.
+  // picture of nothing rather than a panel with a null size in it.
   if !have { minx = 0.0; maxx = 1.0; minz = 0.0; maxz = 1.0; }
+  PlanPanel { pp_body: cells + edges + runs, pp_cells: ncell, pp_marks: nedge,
+              pp_say: say, pp_minx: minx, pp_maxx: maxx, pp_minz: minz, pp_maxz: maxz }
+}
+
+// ── LEVELS, SIDE BY SIDE — plan 26 `B2`, BLUEPRINT §3.4 ─────────────────────
+//
+// *"Multiple floors have a layout beside each other."* One panel per reference
+// height, each in its own `<g>` with the level on it and the placement in **one**
+// `transform`.
+//
+// ⚠ **A LEVEL IS NOT A HEIGHT AND THE PAGE IS NOT THE WORLD**, which are two
+// different things this design has to keep apart at once. `FORMAL_CORE` §2.4.3:
+// *"the level is a discrete sheet index and nothing else"* — so `data-level` is the
+// index, `data-ref` is the height it was read at, and neither is the other. And the
+// page position is `data-dx`, declared once per group: ⚠ *"if it reaches the field,
+// two floors of one house become two buildings a hex-step apart, and the stair
+// between them stops being a stair."*
+//
+// ⚠ THE INVERSE IS WHY IT IS DECLARED RATHER THAN BAKED IN. Authoring on a plan needs
+// page → cell, and a translation that lives in the coordinates cannot be undone by a
+// reader that does not already know it. `hex_place::Pose` is the library's map for
+// that when the gestures arrive; today the picture states the number it would need.
+pub const PLAN_GUTTER = 1.2;
+
+pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+               refs: vector<float>, title: text) -> text {
+  // ⚠ AN EMPTY LIST IS ONE LEVEL AT ZERO, NOT AN EMPTY PICTURE. A caller that asked
+  // for no levels has made a mistake, and a blank frame hides it; the caption says
+  // which reference every panel was read at, so the wrong one is visible.
+  rs = refs;
+  if len(rs) < 1 { rs = [0.0]; }
+  bodies = "";
+  minx = 0.0;
+  maxx = 1.0;
+  minz = 0.0;
+  maxz = 1.0;
+  pitch = 0.0;
+  totcell = 0;
+  totmark = 0;
+  verdicts = "";
+  for k in 0..len(rs) {
+    kref = rs[k] ?? 0.0;
+    pan = plan_panel(w, q0, r0, q1, r1, kref);
+    if k == 0 {
+      minx = pan.pp_minx; maxx = pan.pp_maxx;
+      minz = pan.pp_minz; maxz = pan.pp_maxz;
+      pitch = maxx - minx + PLAN_MARGIN * 2.0 + PLAN_GUTTER;
+    }
+    dx = (k as float) * pitch;
+    px = minx - PLAN_MARGIN;
+    pz = minz - PLAN_MARGIN;
+    pw = maxx - minx + PLAN_MARGIN * 2.0;
+    ph = maxz - minz + PLAN_MARGIN * 2.0;
+    captext = "L{k}  ref {kref}  q {q0}..{q1}  r {r0}..{r1}  cells {pan.pp_cells}"
+            + "  marks {pan.pp_marks}  run {pan.pp_say}";
+    // ⚠ SIZED TO FIT, because a caption that runs off its panel is a caption whose
+    // LAST field is the one you cannot read — and the last field is the run verdict,
+    // the one thing a reader cannot infer from the drawing.
+    capfs = pw / ((captext.size() as float) * 0.62) ?? 0.45;
+    if capfs > 0.45 { capfs = 0.45; }
+    bodies += "<g class='level' data-level='{k}' data-ref='{kref}' data-dx='{fx(dx)}'"
+            + " transform='translate({fx(dx)} 0)'>\n"
+            + "<rect x='{fx(px)}' y='{fx(pz)}' width='{fx(pw)}' height='{fx(ph)}'"
+            + " fill='rgb(250,250,248)'/>\n"
+            + pan.pp_body
+            + "<text x='{fx(px + 0.3)}' y='{fx(pz + ph - 0.3)}' font-size='{fx(capfs)}'"
+            + " font-family='monospace' fill='rgb(70,74,82)'>{captext}</text>\n"
+            + "</g>\n";
+    totcell = totcell + pan.pp_cells;
+    totmark = totmark + pan.pp_marks;
+    verdicts += " L{k}={pan.pp_say}";
+  }
   vx = minx - PLAN_MARGIN;
   vz = minz - PLAN_MARGIN;
-  vw = maxx - minx + PLAN_MARGIN * 2.0;
+  vw = (len(rs) as float) * pitch - PLAN_GUTTER;
   vh = maxz - minz + PLAN_MARGIN * 2.0;
   head = "<svg xmlns='http://www.w3.org/2000/svg'"
        + " viewBox='{fx(vx)} {fx(vz)} {fx(vw)} {fx(vh)}'"
        + " width='{round(vw * PLAN_PX) ?? 0.0}' height='{round(vh * PLAN_PX) ?? 0.0}'>\n"
        + "<rect x='{fx(vx)}' y='{fx(vz)}' width='{fx(vw)}' height='{fx(vh)}'"
-       + " fill='rgb(250,250,248)'/>\n";
-  // ⚠ THE PICTURE SAYS WHAT IT IS, IN THE PICTURE. A plan that needs its caller's
-  // console line to be read is a plan nobody can pass on — and *which* silence the
-  // description is in is the one thing a reader cannot infer from an absent line.
-  captext = "{title}  q {q0}..{q1}  r {r0}..{r1}  ref {ref}  cells {ncell}"
-          + "  marks {nedge}  run {say}";
-  // ⚠ SIZED TO FIT, because a caption that runs off the viewBox is a caption whose
-  // LAST field is the one you cannot read — and the last field is the run verdict,
-  // the one thing a reader cannot infer from the drawing.
-  capfs = vw / ((captext.size() as float) * 0.62) ?? 0.45;
-  if capfs > 0.45 { capfs = 0.45; }
-  cap = "<text x='{fx(vx + 0.3)}' y='{fx(vz + vh - 0.3)}' font-size='{fx(capfs)}'"
-      + " font-family='monospace' fill='rgb(70,74,82)'>"
-      + "{captext}</text>\n";
+       + " fill='rgb(226,228,232)'/>\n";
   // ⚠ THE COUNTS ARE IN A COMMENT, NOT IN AN ELEMENT, and they are for a person
   // reading the file. A gate must count the elements it can see — `CLAUDE.md`:
   // measure what was emitted, never a number the producer re-derives.
-  foot = "<!-- plan: {title} q {q0}..{q1} r {r0}..{r1} ref {ref}"
-       + " cells {ncell} edges {nedge} run {say} -->\n</svg>\n";
-  head + cells + edges + runs + cap + foot
+  foot = "<!-- plan: {title} q {q0}..{q1} r {r0}..{r1} levels {len(rs)}"
+       + " pitch {fx(pitch)} cells {totcell} edges {totmark} run{verdicts} -->\n</svg>\n";
+  head + bodies + foot
+}
+
+// One level, which is what most callers want and what `B0` shipped.
+pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+                ref: float, title: text) -> text {
+  plan_levels(w, q0, r0, q1, r1, [ref], title)
 }

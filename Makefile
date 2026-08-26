@@ -737,6 +737,7 @@ plan-check:
 #
 #   make plan-view                      # worlds/headless.hxw -> worlds/headless.svg
 #   make plan-view WORLD=deck Q0=-8 Q1=9 R0=-8 R1=9 REF=2.0
+#   make plan-view WORLD=deck REFS=2.0,5.0        # two floors, side by side
 #
 # ⚠ IT READS THE `.hxw` AND NOTHING ELSE, which is the boundary `B0` stops at: the
 # store is the authority a save carries, and the authored run is not in it at all
@@ -750,6 +751,7 @@ plan-view:
 	@WORLD=$(if $(WORLD),$(WORLD),headless) \
 	 $(if $(Q0),Q0=$(Q0),) $(if $(Q1),Q1=$(Q1),) \
 	 $(if $(R0),R0=$(R0),) $(if $(R1),R1=$(R1),) $(if $(REF),REF=$(REF),) \
+	 $(if $(REFS),REFS=$(REFS),) \
 	 $(LOFT) --interpret --lib lib/ src/plan_view.loft 2>/dev/null \
 	  | grep -E '^plan_view:' || { echo "plan-view: the run said nothing — re-run without 2>/dev/null"; exit 1; }
 
