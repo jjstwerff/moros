@@ -768,6 +768,14 @@ plan-check:
 # SVG; `feet` prints the walker. Three stations, compared — with a control that the
 # three are not the same point, because a marker nailed to one place would otherwise
 # pass every row.
+# B4k (plan 26) — IS A BAY A FEATURE OF ITS WALL? BLUEPRINT §2.4 proposes a bay as a
+# span on its parent wall's surface, recovered from the parent's feature list. Measured:
+# a parent's feature cannot reach a projecting face at ANY span, because `apply_features`
+# re-materialises edges already on that surface and never places geometry. The bay is a
+# SURFACE; what it lacks is the association. See probe/b4k/README.md.
+probe-b4k:
+	@$(LOFT) --interpret --lib lib/ probe/b4k/b4k.loft 2>/dev/null
+
 probe-plan:
 	@sh probe/plan/run.sh
 

@@ -1,0 +1,104 @@
+// `B4k` — IS A BAY A FEATURE OF ITS WALL?  BLUEPRINT §2.4, measured.
+//
+// §2.4 proposes a bay as *"the same category as an opening … carried as a span on the
+// parent wall's surface"*, differing only in that it **projects** where an opening
+// **perforates**, and *"recovered from the parent's feature list"*. §2 is marked
+// PROPOSED, NOT SETTLED. This asks whether the mechanism it names can carry it.
+//
+// Predictions are in PREDICTION.md and were written before this ran.
+use hex_edge;
+use hex_field;
+
+const Q0 = 0 - 12;
+const W = 25;
+
+fn marked(e: EdgeSet, mat: integer) -> integer {
+  n = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..6 {
+        nq = nb_q(q, r, d);
+        nr = nb_r(q, r, d);
+        if edge_mat(e, q, r, nq, nr) == mat { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn on_surface(e: EdgeSet, sid: integer) -> integer {
+  n = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..6 {
+        nq = nb_q(q, r, d);
+        nr = nb_r(q, r, d);
+        if edge_surf(e, q, r, nq, nr) == sid { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  println("B4k — is a bay a feature of its wall?  BLUEPRINT §2.4");
+  println("");
+
+  // A straight wall along the x axis: normal (0,1), through the origin.
+  sf = surfaces_new();
+  wall = hex_edge::surf_straight(sf, 0.0, 1.0, 0.0);
+  e = edgeset_new(Q0, Q0, W, W);
+  hex_edge::edges_halfplane_surf(e, Q0, Q0, W, W, 0.0, 1.0, 0.0, wall);
+  total = on_surface(e, wall);
+  println("P1 the wall: {total} edges carry surface {wall}");
+
+  // ── P1: a WINDOW over a span of it — the control, and the mechanism working ──
+  f = hex_edge::features_new();
+  hex_edge::feature_add(f, wall, 0 - 2.0, 2.0, 0.0, 2.0,
+                        hex_edge::FEAT_WINDOW, 77);
+  hit = hex_edge::apply_features(e, sf, f, Q0, Q0, W, W);
+  println("P1 a WINDOW spanning -2..2: {hit} edges re-materialised, "
+        + "{marked(e, 77)} now carry its material");
+  println("   -> the mechanism PERFORATES: {if hit > 0 { \"yes\" } else { \"NO — nothing below is a fact about bays\" }}");
+  println("");
+
+  // ── P3: can any span reach an edge that is NOT on the parent surface? ────────
+  //
+  // A bay's three faces stand OFF the parent wall — that is what projecting means.
+  // Give the set a second wall, parallel and two units out, on its own surface, and
+  // ask the parent's feature list to reach it at any span at all.
+  bay = hex_edge::surf_straight(sf, 0.0, 1.0, 2.0);
+  e2 = edgeset_new(Q0, Q0, W, W);
+  hex_edge::edges_halfplane_surf(e2, Q0, Q0, W, W, 0.0, 1.0, 0.0, wall);
+  hex_edge::edges_halfplane_surf(e2, Q0, Q0, W, W, 0.0, 1.0, 2.0, bay);
+  println("P3 parent surface {wall}: {on_surface(e2, wall)} edges; "
+        + "projected face {bay}: {on_surface(e2, bay)} edges");
+
+  f2 = hex_edge::features_new();
+  // The widest span the parameter can take, on the PARENT's surface — if a feature of
+  // the parent can reach a projected face at all, this reaches it.
+  hex_edge::feature_add(f2, wall, 0 - 1000.0, 1000.0, 0.0, 9.0,
+                        hex_edge::FEAT_WINDOW, 88);
+  hex_edge::apply_features(e2, sf, f2, Q0, Q0, W, W);
+  reached = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..6 {
+        nq = nb_q(q, r, d);
+        nr = nb_r(q, r, d);
+        if edge_surf(e2, q, r, nq, nr) == bay
+           && edge_mat(e2, q, r, nq, nr) == 88 { reached = reached + 1; }
+      }
+    }
+  }
+  println("P3 an UNBOUNDED span on the parent re-materialised {marked(e2, 88)} edges,");
+  println("   of which {reached} lie on the projected face");
+  println("   -> a parent's feature {if reached == 0 { \"CANNOT reach a projecting face\" } else { \"reaches it after all — §2.4 stands\" }}");
+  println("");
+
+  // ── P2: what a Features row can say at all ──────────────────────────────────
+  println("P2 the kinds this vocabulary has: DOOR={hex_edge::FEAT_DOOR} "
+        + "WINDOW={hex_edge::FEAT_WINDOW} LOOPHOLE={hex_edge::FEAT_LOOPHOLE}");
+  println("   a row carries surf, s0..s1, z0..z1, kind, mat — an interval and a");
+  println("   material. There is no depth, so §2.4's third number has nowhere to go.");
+}

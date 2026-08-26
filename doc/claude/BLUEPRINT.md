@@ -288,6 +288,29 @@ makes it recoverable: `rebuild` reads the parent wall (a `D` run, exactly), then
 it, and cannot be authored where there is no wall. Those are consequences of the definition and
 should be refusals in the editor, not surprises.
 
+⛔ **MEASURED — [`B4k`](../../probe/b4k/README.md): THE MECHANISM THIS § NAMES CANNOT CARRY IT.**
+A parent's feature cannot reach a projecting face **at any span**: an unbounded interval on the
+parent re-materialised all 99 of its own edges and **0** on the face two units out. The control
+holds — a `FEAT_WINDOW` over `-2..2` re-materialises 8 edges — so that is a fact about projection.
+
+⚠ **The reason is `apply_features`' own comment**: *"an edge whose contact point falls inside a
+feature's interval takes that feature's material. The SURFACE is untouched — which is why the body
+never fragments."* **A feature RE-MATERIALISES; it does not place geometry.** Perforating is a
+material change on one surface; projecting is new surface. The table above put them in one
+category and they are two. ⚠ And a `Features` row is `surf, s0..s1, z0..z1, kind, mat` — **no
+depth**, so *"three numbers"* has nowhere to put the third, and all three kinds perforate.
+
+✅ **What IS true is the useful half: a bay's geometry is expressible as SURFACES.** The projected
+face took its own id and carried its edges exactly as the parent did — §2.3's argument unchanged,
+*the lattice constrains a wall's DIRECTION, not what a surface may be*. ⚠ **So what a bay lacks is
+not geometry but ASSOCIATION** — the thing that says *these faces belong to that wall*, which is
+what makes "recovered from the parent's feature list" attractive in the first place.
+
+⚠ **The ask on hexbody is therefore sharper than this § guessed**: not a heading, not a deduction
+from cells, but **a projecting KIND, a DEPTH on the row, and a placement path beside
+`apply_features`** — `@HB-X12`'s *"a new value in this enumeration"* one axis over. Upstream's to
+make; filed rather than built.
+
 ### 2.5 The tower — a FORM, and "large enough" is the whole claim
 
 > *"We allow octagon towers too, they are large enough for a unique deduction of the octagon
