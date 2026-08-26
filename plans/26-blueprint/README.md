@@ -111,6 +111,17 @@ unmoved; a type stating **no** thickness and one whose declaration is **damaged*
 both take that same default rather than a wall of no width at all; and `run_wall` asked
 for a different half must give a different strip, or nothing here is reading the number.
 
+**`B4h`** — **expected result**: the rim `B4g` stamps recovers to its own centre and its
+own shell, and the plan draws that as a circle where the run reader gave up.
+**Invariant**: *a disc is `(centre, shell)`, so it is GENERATED and compared to the field
+edge for edge* — `FORMAL_CORE` §6's R1 regime, never a circle fitted to marks (§6.1).
+**Negative controls**: a straight run and a rim with one edge missing must both be
+refused — and deliberately **not** a hexagon, because at `12R²` a hexagon genuinely IS a
+disc and demanding its refusal would be demanding the wrong answer; a disc with a wall
+across it must be refused too, which is the half a one-directional check cannot see; and
+the drawn radius must lie inside the band its own rim's edge midpoints span, or the
+description misses the wall it came from.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -138,6 +149,7 @@ as a byte.
 | **`B4e`** — a gesture that stamps a CHOSEN wall type, so two can stand in one world | M | `wall_type.loft` — the chosen slot is the byte the verb writes, two declared types stand in one world, a chosen type stops a walker and takes a door, the vocabulary's own bytes refused by name; `planview.loft` — a declared type drawn as a wall at its own width and an undeclared one still loud; `probe/plan` row H and `probe/s2c/walltype`; five faults seen red | ✅ **SHIPPED** `10337dc` |
 | **`B4f`** — the declared thickness reaches the GEOMETRY, so the plan and the build are one number | S | `wall_type.loft` — the resolver's four answers (declared, undeclared, damaged, states-none); `hex_mesh/tests/wall_thick.loft` — the band measured off the EMITTED mesh, and the plan's stroke against it; `run.loft` — a different half gives a different strip; five faults seen red | ✅ **SHIPPED** `34cec07` |
 | **`B4g`** — a ROUND enclosure: the tower rim, from `hex_shape::arc_fill` | M | `tower.loft` — the boundary is the disk's and only the disk's, the centre and shell recover, a non-shell is refused with an offer, the rim carries its material, and the `12R²` coincidence is asserted before it is relied on; `probe/s2c/tower`; five faults seen red, **one of them only after the sweep demanded a sixth instrument** | ✅ **SHIPPED** `8e39a8a` |
+| **`B4h`** — a round wall's DESCRIPTION: centre and shell, drawn on the plan | M | `disc.loft` — the rim recovers to its own centre and shell at two sizes and off-origin, the circle lies inside its rim's own band, a run / a gapped rim / a disc with a wall through it are refused, membership pinned against `arc_fill`, and the shell walk's monotonicity measured; five faults seen red, **one green because the fault was not one** | ✅ **SHIPPED** `b01fbd0` |
 
 ### Why `B0` is one phase and not two
 
@@ -947,6 +959,190 @@ says *the rim holds no byte 7 at all*.
 ⚠ **AND ROW 1 IS THE OTHER HALF OF THE SAME LESSON**: the algorithm reverting to a
 hexagon is caught by `tower.loft` **alone**, for exactly the reason row 5 was caught by
 nothing — both drivers would be wrong together.
+
+## What `B4h` turned up
+
+**Shipped `b01fbd0`.** `hex_editor::disc_recover` — a round wall's description —
+with `disc_span`, `disc_has` and `disc_marks` beside it, the circle drawn in
+`plan_svg`, and `lib/hex_editor/tests/disc.loft`.
+
+### A circle is not a run, so a tower described as nothing
+
+`B1` put a straight run's description beside the field it was recovered from, and a
+rim has no run to put there: a `WallRun` is two endpoints and a `d24` heading, and a
+circle has neither. So a tower `B4g` drew perfectly read back as **`refused (30
+marks)`** — the field half of the pairing with the description half missing, which is
+the gap `B1` exists to close for the other shape.
+
+### It generates and compares; it does not fit
+
+A disc is `(centre, shell)` and nothing else, so a candidate can be **drawn** — by
+`arc_fill`'s own membership test and the same boundary rule `tower_disc` stamps with —
+and compared to the store edge for edge. That is [FORMAL_CORE](../../doc/claude/FORMAL_CORE.md)
+§6's **R1** regime: *the shape is in the admitted set and the field determines it
+uniquely, `ρ = 0`*. ⚠ **Nothing here fits a circle to anything**, which is §6.1's named
+trap and the error `A0p` made twice in one hour.
+
+⚠ **AND IT NEEDS NO FLOOD, WHICH IS WHY IT DOES NOT USE ONE.** The obvious route — fill
+the enclosure and ask `arc_recover_centre` — wants the cells inside the rim, and the
+only bounded flood here is `field_fill`, which is measured below to be unable to tell an
+open enclosure from a large one. Generating the candidate sidesteps that entirely.
+
+### ⛔ `field_fill` cannot say *there is a gap in your fence*
+
+Found while looking for the entry point, measured rather than read:
+
+```
+open ground, no boundary at all -> -2      ← documented as "it grew past the cap"
+a closed ring of radius 3        -> 37     ← control: the instrument discriminates
+the same ring with a gap in it   -> -2     ← the case an author actually hits
+```
+
+Its own comment insists the two refusals must not wear one message — *"telling an
+author the wrong one sends them looking for a gap that is not there"* — and then sets
+`escaped` and `capped` **at the same site**, so `return 0` is unreachable and every
+unbounded fill reports *the area is too large*. ⚠ **The distinction cannot be made as
+written**: on open ground the flood only ever stops at the cap, so telling *open* from
+*too big* needs a BOUND — the shape `tower_pad`/`tower_clipped` already have one step
+back. Recorded rather than fixed: it is `field_fill`'s own step, and two changes wearing
+one diff is what `B4e` warns about.
+
+### `√N / 2` is the field's own radius, and a rim is jagged
+
+Verified against `hex_to_px`'s furthest cell centre at six shells **before** it was
+written down — identical to the last digit. And the drawn circle has to meet the wall it
+describes, which is `B1`'s *"within 0.6 wu of every mark"* one shape over:
+
+| shell | `√N/2` drawn | rim's nearest edge | furthest |
+|---|---|---|---|
+| 36 | 3.000 | 2.598 | 3.775 |
+| 84 | 4.583 | 4.330 | 5.408 |
+| 156 | 6.245 | 6.062 | 7.089 |
+| 300 | 8.660 | 8.261 | 9.526 |
+
+⚠ **There is no single radius ON a rim** — the edge midpoints span a band — and `√N/2`
+is inside it at every shell. That is what makes the shell's own exact number honest to
+draw, and any better-looking radius would be an offset invented here. The containment is
+a test, with the band's own width asserted so it cannot pass vacuously.
+
+### The order of the two readers is what keeps them apart
+
+`wall_read_run` refuses a closed loop by construction, so a rim can never be a run and a
+run can never be a disc. Asking the disc reader **only in the `refused` branch** means
+the two cannot disagree about one window — and every window that already had an answer
+pays nothing, which is the measured result below.
+
+### ⛔ THE PROFILER REFUTED THE FIX, AND NAMED A FUNCTION I HAD NOT CONSIDERED
+
+`disc.loft` pushed the `hex_editor` suite past **loft's own five-minute timeout** —
+`EXIT=124`, and the first sign of it was a grep that printed **nothing**, which reads
+exactly like a pass. *A grep over a log has `absent` for its default answer*, and
+believing that silence would have shipped a suite that cannot finish.
+
+The confident hypothesis was the shell walk allocating `87×87` sets. **Measured alone
+that whole workload is 4.5 s, and there are 28 shells to 1728 rather than the ~100
+assumed.** Acting on it would have trimmed the two rows that make the `break` and the
+second membership site sound — weakening real checks to chase a cost that was not there.
+
+`perf` on the actual workload:
+
+```
+14.10%  Stores::enum_parent_size          ← loft's store internals
+ 6.25%  getenv
+ 4.77%  String::clone      4.54% __strncmp_evex
+ 3.09%  Vec<Field>::clone  2.94% _int_free   2.09% malloc
+ 2.85%  Stores::copy_claims
+```
+
+**Store reads and the allocation they drag behind them — with the lattice arithmetic
+nowhere in the profile.** That is `wall_of`, called six times per cell **per candidate**,
+each pulling a `Hex` out of the store and cloning its fields. ⚠ **The store cannot change
+while one window is being described, so the whole read is loop-invariant**: `candidates ×
+window × 6` collapses to `window × 6`, read once into a flat table by `disc_marks`.
+
+| | before | after |
+|---|---|---|
+| four shells over a 33×33 window | **> 120 s** | **12.0 s** |
+| `disc.loft` | did not finish | **45 s** |
+| the `hex_editor` suite | **`EXIT=124` at 5m00** | **2m52, 690 passed** |
+
+⚠ **AND A WALL CLOCK HAD ALREADY LIED ABOUT THIS ONCE.** `probe/plan` A/B'd at **1m41
+WITH** the disc reader and **2m29 WITHOUT** it — less work, more seconds — because this
+box runs other agents' builds. [CLAUDE.md](../../CLAUDE.md) says cost is measured in
+`w_tau` and *"a wall clock measures the machine"*; min-of-3 on a single emit is what gave
+usable numbers, and the profiler is what named the function. ⚠ loft has **no profiler of
+its own** — no flag, and the log config is severity and rotation only — so this was
+`perf` on the interpreter, which the box permits (`perf_event_paranoid = 1`).
+
+**And the refusal path costs nothing**, measured: a house window is 2468 ms against 2862
+without the reader, because `disc_fits` bails on the first disagreement. That is the
+step's upper bound — every plan view already in the tree is unaffected.
+
+### Three more the writing turned up, all about narrowing
+
+⚠ **`disc_span` IS NOT `tower_pad`.** The pad is deliberately generous — `isqrt(shell)+2`,
+room for the boundary walk — so `tower_pad(36)` is **8** for a disc that reaches **2**
+cells. Re-used as a candidate bound it skipped the very shell the editor had just
+stamped, and `disc_recover` refused a rim it had drawn, saying *no disc of any shell
+reproduces them*. ⚠ **A filter that narrows a search is a correctness surface**, not an
+optimisation with a slow fallback — and the comparison it wrapped was right on the first
+try, which is what made it look like the algorithm was wrong.
+
+⚠ **`break`, NOT `continue`**, on the shell walk — worth 14 seconds a panel, and sound
+only because a disc's extent never shrinks as its shell grows. That monotonicity is
+**measured over the whole grid**, because a sequence that dipped would step over real
+answers, which is the paragraph above happening again.
+
+⚠ **A REFUSAL MUST CARRY ITS MARK COUNT.** `disc_no` zeroed it, so *no marks at all* and
+*marks I could not explain* both answered `0` — the ambiguity `B0` and `probe/l1` both
+paid for, rebuilt **inside the one function whose comment forbids it**. Its own test
+caught it.
+
+### Two captions that stopped being true
+
+Both the same shape: a label that was accurate until the thing it labels gained a second
+form.
+
+| where | said | now |
+|---|---|---|
+| the panel caption | `run disc 0,0 shell 156` | `desc disc 0,0 shell 156` |
+| the driver's summary | `description refused` | counts the `<circle>` too |
+
+⚠ The second is the one to read: it counted only `<line class='run'>`, so on the first
+picture it printed **`description refused`** for a tower whose description was three
+lines above it **in the same file** — `disc 0,0 shell 156` in the panel and `refused` on
+the summary, in one run. ⚠ And the slice length was caught before it ran:
+`<circle class='disc'` is **20** characters, not 21, and the comparison would have
+matched nothing while looking exactly like the bug being fixed.
+
+### The sabotage sweep, and a row that was green because the FAULT was wrong
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with
+`disc_recover` asserted present **and the plan view asserted to draw its circle** before
+row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | membership drifts from the library's by one shell (`<=` → `<`) | `disc.loft` |
+| 2 | the shell filter's slack removed (`span + 3` → `span`) | ⛔ **nothing** |
+| 2b | the shell filter genuinely too tight (`span - 2`) | `disc.loft`, four rows |
+| 3 | only half the comparison — every boundary marked, not every mark a boundary | `disc.loft` |
+| 4 | a refusal stops carrying its mark count | `disc.loft` |
+| 5 | the drawn radius doubled — `√N` instead of `√N / 2` | `disc.loft` |
+
+⚠ **ROW 2 IS THE ONE TO READ, AND THE ANSWER IS THAT MY FAULT WAS NOT A FAULT.** The
+first instinct on a green sabotage row is *the tests are blind*; measuring it says
+otherwise. The marks box of a disc is **exactly `2·disc_span + 1`** — measured at six
+shells, margin **1**, every time — so `2·disc_span > span + 3` can never reject the
+correct shell and neither can `> span`. **The `+ 3` is slack beyond necessity rather
+than a tuned constant**, and removing it changes no answer.
+
+✅ **The filter IS guarded, which row 2b measures**: at `span - 2` — the first value that
+genuinely excludes the answer — four rows go red with the same *"no disc of any shell
+reproduces them"* the `tower_pad` mistake produced. ⚠ **So a green sweep row is a claim
+to check, not a verdict**: it means *this fault*, not *this class*, and telling the two
+apart took one measurement of the geometry the filter is about.
 
 ## Open questions
 

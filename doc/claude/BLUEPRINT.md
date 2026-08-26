@@ -194,6 +194,21 @@ judgement, and the store is exact either way.
 [EDITOR_DEFECTS](EDITOR_DEFECTS.md) 4 slates for deletion — and deleting it would take the only
 way a curved wall can be drawn with it, unless the run record first gains an arc.
 
+✅ **AND ITS DESCRIPTION IS BACK — `B4h`.** A rim registers no run, so a tower the editor drew
+perfectly read back as *refused*. `hex_editor::disc_recover` answers `(centre, shell)` and the plan
+draws it as a dashed circle where the run reader gave up. ⚠ **It GENERATES and compares** — a
+candidate disc drawn by `arc_fill`'s own membership test, checked against the field edge for edge —
+which is `FORMAL_CORE` §6's **R1** regime and not §6.1's forbidden fit.
+
+⚠ **THE ORDER OF THE TWO READERS IS WHAT KEEPS THEM APART**: `wall_read_run` refuses a closed loop
+by construction, so a rim can never be a run and a run can never be a disc. Asking the disc reader
+only where the run reader gave up means they cannot disagree about one window — and every window
+that already had an answer pays nothing, measured.
+
+⚠ **AND A RIM IS JAGGED, SO NO SINGLE RADIUS LIES ON IT.** Its edge midpoints span a band — at
+shell 156, `6.062 .. 7.089` — and `√N / 2`, the shell's own exact distance, is inside it at every
+shell. That is what makes the library's number honest to draw rather than an offset invented here.
+
 ### 2.3 Octagonal — 45°, and therefore NOT a wall at all
 
 ⚠ **THE EXACT REASON, AND IT IS ARITHMETIC RATHER THAN TASTE.** A lattice direction has

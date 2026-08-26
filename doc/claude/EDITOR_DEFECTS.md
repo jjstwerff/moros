@@ -272,6 +272,24 @@ being measured**. `wall_thick.loft` gets round it by registering a run without s
 edges — a fixture that has to avoid a defect in order to see past it, which is a fair
 description of what a second drawing of one wall costs.
 
+⛔ **AND A SIXTH, FOUND LOOKING FOR SOMETHING ELSE — `field_fill` CANNOT SAY *THERE IS A GAP IN
+YOUR FENCE*.** Its own comment insists the two refusals must not wear one message — *"'it never
+closed' and 'it grew past the cap' are not the same fact … telling an author the wrong one sends
+them looking for a gap that is not there"* — and then sets `escaped` and `capped` **at the same
+site**, so `return 0` is unreachable. Measured 2026-08-26:
+
+```
+open ground, no boundary at all -> -2      ← reported as "it grew past the cap"
+a closed ring of radius 3        -> 37     ← control: the instrument discriminates
+the same ring with a gap in it   -> -2     ← the case an author actually hits
+```
+
+⚠ **The distinction cannot be made as written**: on open ground the flood only ever stops at the
+cap, so telling *open* from *too big* needs a BOUND — the shape `tower_pad` / `tower_clipped`
+already have one plan step back. Recorded rather than fixed here: plan 26 `B4h` routed around it
+(a disc's description generates a candidate instead of flooding), and fixing it is `field_fill`'s
+own step.
+
 ---
 
 ## 5. After a reload the straight walls are gone
