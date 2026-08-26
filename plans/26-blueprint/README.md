@@ -101,7 +101,7 @@ key must be unchanged.
 | **`B3`** — the author on the plan: pose and facing, from the walker | S | `probe/plan` — three stations of a committed script, `feet` against the marker READ BACK out of the picture, with a control that the three differ; four suite faults and the probe's own seen red | ✅ **SHIPPED** `9d81b93` |
 | **`B4a`** — page → cell: the inverse of the panel transform, refusing what is on no panel | S | `planview.loft` — round trip over all 338 cells of a two-level window; the gutter, the margin, past-the-end and a point left of the page each **refused** with a reason; four seeded faults seen red | ✅ **SHIPPED** `e70efbf` |
 | **`B4b`** — a gesture from a picked spot, with the walker left where it is | M | `probe/plan` rows D–F — picked and stood-on key one world, the walker does not move, a pick off the page authors nothing; the teleport seen red | ✅ **SHIPPED** `e70efbf` |
-| **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | the marker's own coordinates equal `plan_pick`'s answer for the page point that produced it | Open |
+| **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | `planview.loft` — the highlight's outline is the cell's own **byte for byte**, the cross is the point asked for and not the snap, both marks survive an author on the same panel; `probe/plan` row G; four faults seen red | ✅ **SHIPPED** `e24a9b0` |
 | **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | a wall authored as a second palette entry reads back with that entry's `wd_body`/`wd_thickness` | Blocked on `@HB-X63` |
 
 ### Why `B0` is one phase and not two
@@ -392,6 +392,52 @@ exercised. [`probe/plan/README.md`](../../probe/plan/README.md) carries the inca
 exits 0 with `probe/plan` green on the native path inside it, and `hex_mesh` is **94 on
 both backends**. ⚠ The window it took was between two of the sibling's rebuilds, so the
 green is a fact about this run and not a promise about the next one.
+
+## What `B4c` turned up
+
+**Shipped `e24a9b0`.** `pick <x>,<y>` with no verb **aims**: it resolves the point,
+writes the plan with the spot marked, and authors nothing. With a verb it authors — one
+word, two arities, and the difference is *look* against *do*.
+
+![the author, and the cell they are aiming at](../../doc/claude/img-aim-plan-b4c.png)
+
+*The house, the person at its south wall, and the violet cell they are pointing at with
+the cross showing where they actually pointed. The caption ends `aim you`.*
+
+### A pick is two facts and the picture draws both
+
+The cell it resolved to, as an outline; the point that was asked for, as a cross. ⚠
+**Drawing only the first hides the SNAP**, and hiding the snap is how an author blames the
+store for a gesture that landed exactly where they pointed. In the picture above the cross
+sits visibly off its cell's centre, which is the whole of it.
+
+### ⛔ Row G found a real defect on its first run
+
+The author's overlay **assigned** where it should have appended, so the highlight was
+wiped whenever the author stood on the panel they were aiming at — **which is every aim a
+person takes at their own plan** — while the caption cheerfully named the cell.
+
+⚠ **The suite could not see it.** Every test written before it passed one overlay or the
+other and never both; the case only exists where they meet. And ⚠ **the row caught it
+because of how it asks**: *does the PICTURE carry the mark*, not *does the caption say so*.
+A row phrased the second way would have been green on a file with nothing drawn in it —
+which is the same sentence this plan has now written three times, about three different
+instruments.
+
+It is fixed, pinned by a test that passes both overlays, and that test was seen red with
+the assignment put back.
+
+### Two extractions, both proven before use
+
+`cell_points` — one derivation of a cell's outline, so a highlight cannot sit a hair off
+the cell it claims to be highlighting — and `PlanOver`, which makes the author and the aim
+one parameter rather than pushing `plan_levels` past loft's own parameter nudge. **282
+emitted elements byte-for-byte identical across both.**
+
+⚠ **And a smaller one worth keeping**: the test helper that finds the highlight first used
+a hand-counted prefix length and silently matched nothing — the failure read as *the pick
+was not drawn*. It counts with `.size()` now. A reader that measures its own needle by hand
+is a reader whose default answer is *absent*.
 
 ## Open questions
 

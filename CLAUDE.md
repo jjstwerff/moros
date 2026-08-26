@@ -499,8 +499,9 @@ address (or the hostname `make browser` prints) cannot connect.
   refuted, which is most of its value
 - [Blueprint editor](doc/claude/BLUEPRINT.md) — **a plan you perfect, then EXTRUDE**, and the
   formal definition of the three wall types. ✅ **Its §0 — the view before the authoring — is
-  BUILT: [plan 26](plans/26-blueprint/README.md) `B0`–`B3`, `make plan-view WORLD=<name>`**, and
-  the field, the description, the levels side by side and the author are drawn together. The first picture found four wall edges that
+  BUILT: [plan 26](plans/26-blueprint/README.md) `B0`–`B4c`, `make plan-view WORLD=<name>`**, and
+  the field, the description, the levels, the author and what they are aiming at are drawn
+  together — and `pick <x>,<y> <verb>` authors there, leaving the walker where it stands. The first picture found four wall edges that
   bound no house cell, one of them carrying an opening `house.keys` has cut for as long as the
   script has existed; the second found what they cost — **a house eight hexes away makes an
   unrelated wall unrecoverable**, because one stray edge meets its chain at a vertex. ⛔ **The rest is proposed,

@@ -288,6 +288,15 @@ runs the tick, which is the same boundary `B1` met from the other side.
 
 ![the author standing at the wall of a house](img-author-plan-b3.png)
 
+✅ **AND YOU CAN SEE WHAT YOU ARE ABOUT TO AUTHOR — `B4a`–`B4c`.** `plan_pick` inverts the
+placement (page → level → cell), `pick <x>,<y> <verb>` authors there, and `pick <x>,<y>` alone
+AIMS: it draws the plan with the cell outlined and a cross at the point that was actually asked
+for. ⚠ **A pick is a TARGET, not a teleport** — the `Author` is built at the picked spot and the
+walker does not move, which is what `Author` being a type of its own is for. Measured: picked and
+stood-on key the same world, byte for byte.
+
+![the author, and the cell they are aiming at](img-aim-plan-b4c.png)
+
 ⚠ **SO "DOES NOT RESTRICT" IS THE ABSENCE OF A CALL, NOT A FLAG.** The blueprint editor builds
 **no** collision `EdgeSet` — the walker moves over the plan freely, at plan scale, and the same
 tick body runs. Nothing forks. ⚠ **And it must stay the absence of a call**: a `no_collide`
