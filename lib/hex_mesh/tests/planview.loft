@@ -912,3 +912,87 @@ fn test_the_author_and_the_aim_are_both_drawn_on_one_panel() {
   assert(cap.contains("you") && cap.contains("aim"),
          "the caption of the shared panel says {cap} — both marks are on it");
 }
+
+// ── `B4d` — A WALL'S TYPE, PAINTED AT ITS OWN THICKNESS ─────────────────────
+//
+// BLUEPRINT §3.3: *"it should paint the exact thickness of walls"*. ⚠ The thickness is
+// the PALETTE's — `@HB-X69`, a uniform wall's 38 edges carry one id — so the picture
+// resolves the id and paints what it resolves to. A plan that measured a width off the
+// cells would be inventing a number the store does not have.
+
+fn typed_world(items: vector<hex_voxel::PalEntry>) -> VoxelWorld {
+  w = flat_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0, items);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  w
+}
+
+fn test_two_wall_types_are_painted_at_two_thicknesses() {
+  w = typed_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "brick body=SOLID thick=0.2" },
+                   hex_voxel::PalEntry { pl_slot: 2, pl_name: "curtain body=THICK_CURVED thick=0.7" }]);
+  hex_editor::wall_set(w, 1, 1, 0, 1, 8, 2.0);
+  hex_editor::wall_set(w, 3, 1, 0, 2, 8, 2.0);
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "types");
+
+  thin = edge_line(svg, 1, 1, hex_editor::SLOT_E);
+  fat  = edge_line(svg, 3, 1, hex_editor::SLOT_E);
+  assert(thin != "" && fat != "", "one of the two typed walls is not in the picture");
+  assert(attr(thin, "data-body") == "SOLID" && attr(fat, "data-body") == "THICK_CURVED",
+         "the bodies read {attr(thin, \"data-body\")} and {attr(fat, \"data-body\")}");
+  tw = attr(thin, "stroke-width") as float ?? 0.0;
+  fw = attr(fat, "stroke-width") as float ?? 0.0;
+  assert(about(tw, 0.2) && about(fw, 0.7),
+         "the walls are painted {tw} and {fw} against the 0.2 and 0.7 their types "
+         + "declare — the picture is not resolving the id through the palette");
+
+  // ⚠ AND THE TWO DIFFER FROM THE DRAWING'S OWN DEFAULT, or this test would pass on a
+  // picture that ignored the palette and painted everything the same.
+  bare = flat_world();
+  hex_editor::wall_set(bare, 1, 1, 0, 1, 8, 2.0);
+  plain = edge_line(plan_levels(bare, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "plain"),
+                    1, 1, hex_editor::SLOT_E);
+  dw = attr(plain, "stroke-width") as float ?? 0.0;
+  assert(!about(dw, tw) && !about(dw, fw),
+         "an untyped wall is painted {dw}, which is one of the two typed widths — the "
+         + "fixture cannot show that the palette decided anything");
+}
+
+fn test_an_untyped_wall_keeps_the_drawings_own_width_and_says_it_has_no_type() {
+  w = flat_world();
+  hex_editor::wall_set(w, 1, 1, 0, hex_editor::WALL_MAT, 8, 2.0);
+  ln = edge_line(plan_levels(w, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "none"),
+                 1, 1, hex_editor::SLOT_E);
+  assert(ln != "", "the wall is not in the picture");
+  assert(attr(ln, "data-body") == "", "an undeclared wall reports body {attr(ln, \"data-body\")}");
+  assert(attr(ln, "data-thick") == "0",
+         "an undeclared wall reports thickness {attr(ln, \"data-thick\")} — 0 is *states "
+         + "none*, and there is no other number that could mean it");
+}
+
+// ⚠ A DECLARED-BUT-MALFORMED TYPE IS LOUD. Falling back to the drawing's own width is
+// how a picture comes to disagree with the world it claims to be of — and it is the
+// same failure `house_type` refuses a type on, one axis over.
+fn test_a_wall_whose_type_is_damaged_is_drawn_loudly_and_counted() {
+  w = typed_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "odd body=SOLID thick=fat" }]);
+  hex_editor::wall_set(w, 1, 1, 0, 1, 8, 2.0);
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "bad");
+  ln = edge_line(svg, 1, 1, hex_editor::SLOT_E);
+  assert(attr(ln, "data-body") == "?",
+         "a damaged type reports body {attr(ln, \"data-body\")}");
+  assert(attr(ln, "stroke") == "rgb(230,0,190)",
+         "a damaged type is painted {attr(ln, \"stroke\")} — the same magenta an "
+         + "unexplained material gets, because it is the same kind of fact");
+
+  cap = "";
+  for cln in svg.split('\n') {
+    if cln.size() < 6 { continue; }
+    if cln[0..6] == "<text " { cap = cln; }
+  }
+  assert(cap.contains("BAD TYPE 1"), "the caption does not count it: {cap}");
+
+  // …and a picture with nothing wrong does not say it, so the count is a measurement.
+  good = typed_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "brick thick=0.2" }]);
+  hex_editor::wall_set(good, 1, 1, 0, 1, 8, 2.0);
+  gsvg = plan_levels(good, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "good");
+  assert(!gsvg.contains("BAD TYPE"), "a sound palette is reported as damaged");
+}

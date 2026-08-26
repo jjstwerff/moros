@@ -190,6 +190,7 @@ pub struct PlanPanel {
   pp_cells: integer,
   pp_marks: integer,
   pp_say:   text,        // the description verdict: `d<n> p<n>`, `refused (n)`, `none`
+  pp_bad:   integer,     // marks whose palette declares a type this reader refused
   pp_minx:  float,
   pp_maxx:  float,
   pp_minz:  float,
@@ -216,6 +217,7 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
   box = plan_bounds(q0, r0, q1, r1);
   ncell = 0;
   nedge = 0;
+  nbad = 0;
   for r in r0..r1 {
     for q in q0..q1 {
       // ⚠ ONE LAYER FOR THE CELL AND ITS EDGES ALIKE. `edge_layer` is what every
@@ -241,10 +243,38 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
         emat = hex_editor::wall_of(w, q, r, slot_dir_of(slot), ref);
         if emat == 0 { continue; }
         s = plan_slot_seg(q, r, slot);
+        // ── THE WALL'S TYPE, OUT OF THE PALETTE — plan 26 `B4d` ─────────────
+        //
+        // ⚠ **THE THICKNESS IS THE PALETTE'S, AND THE EDGE BYTE IS ONLY AN ID.**
+        // `@HB-X69`: a uniform wall's 38 edges carry ONE id, so thickness cannot be
+        // per-edge — it is what the id RESOLVES to. A plan that measured a wall's
+        // width off its cells would be inventing a number the store does not have.
+        //
+        // ⚠ **AND A DECLARED-BUT-MALFORMED TYPE IS LOUD, NOT DEFAULTED.** An edge
+        // whose palette entry says `thick=fat` draws in the same magenta an unknown
+        // material does, and the caption counts it: silently falling back to the
+        // drawing's own width is how a picture comes to disagree with the world it
+        // claims to be of.
+        wt = hex_editor::wall_type(w, hex_voxel::world_region_at(w, q, r), emat);
+        ewid = edge_width(emat);
+        ecol = edge_colour(emat);
+        ebody = "";
+        ethick = 0.0;
+        if wt.wt_ok {
+          ebody = wt.wt_body;
+          ethick = wt.wt_thick;
+          if ethick > 0.0 { ewid = ethick; }
+        } else if wt.wt_why != "" && wt.wt_name != "" {
+          // Declared and wrong — `wt_name` is empty only when nothing is declared.
+          ebody = "?";
+          ecol = "rgb(230,0,190)";
+          nbad = nbad + 1;
+        }
         edges += "<line class='edge' data-q='{q}' data-r='{r}' data-slot='{slot}'"
-               + " data-mat='{emat}' x1='{fx(s.ps_x1)}' y1='{fx(s.ps_z1)}'"
+               + " data-mat='{emat}' data-body='{ebody}' data-thick='{fx(ethick)}'"
+               + " x1='{fx(s.ps_x1)}' y1='{fx(s.ps_z1)}'"
                + " x2='{fx(s.ps_x2)}' y2='{fx(s.ps_z2)}'"
-               + " stroke='{edge_colour(emat)}' stroke-width='{edge_width(emat)}'"
+               + " stroke='{ecol}' stroke-width='{fx(ewid)}'"
                + " stroke-linecap='round'/>\n";
         nedge = nedge + 1;
       }
@@ -277,7 +307,7 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
   // caller that asked for nothing gets a picture of nothing rather than a panel with a
   // null size in it.
   PlanPanel { pp_body: cells + edges + runs, pp_cells: ncell, pp_marks: nedge,
-              pp_say: say, pp_minx: box.pb_minx, pp_maxx: box.pb_maxx,
+              pp_say: say, pp_bad: nbad, pp_minx: box.pb_minx, pp_maxx: box.pb_maxx,
               pp_minz: box.pb_minz, pp_maxz: box.pb_maxz }
 }
 
@@ -453,8 +483,10 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
            + " y2='{fx(who.pw_z + sin(who.pw_yaw) * PLAN_FACING)}'"
            + " stroke='rgb(220,40,40)' stroke-width='0.1' stroke-linecap='round'/>\n";
     }
+    badsay = "";
+    if pan.pp_bad > 0 { badsay = "  BAD TYPE {pan.pp_bad}"; }
     captext = "L{k}  ref {kref}  q {q0}..{q1}  r {r0}..{r1}  cells {pan.pp_cells}"
-            + "  marks {pan.pp_marks}  run {pan.pp_say}{onme}";
+            + "  marks {pan.pp_marks}  run {pan.pp_say}{badsay}{onme}";
     // ⚠ SIZED TO FIT, because a caption that runs off its panel is a caption whose
     // LAST field is the one you cannot read — and the last field is the run verdict,
     // the one thing a reader cannot infer from the drawing.

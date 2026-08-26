@@ -20,6 +20,7 @@
 // and the half of it that is still live fires no advice at all when the collision is
 // fatal. `htype` is absent from `lib/*/src/`, `src/`, `~/.loft/registry/*/src/` and
 // `../loft-libs-world/*/src/`; `types.loft` is taken, which is why it is not that.
+use self::palfield;
 use self::gesture;
 use hex_voxel;
 
@@ -113,21 +114,10 @@ pub struct HouseType {
   ht_why:   text    = "",
 }
 
-// One `key=value` out of a declaration, or `miss` when it is not there.
-fn ht_field(body: text, key: text, miss: integer) -> integer {
-  at = body.find("{key}=");
-  if at == null { return miss; }
-  rest = body[(((at ?? 0) + key.size() + 1) as i32)..];
-  cut = rest.find(" ");
-  tok = rest;
-  if cut != null { tok = rest[0..(cut ?? 0)]; }
-  // ⚠ THE NULL IS DISCHARGED BEFORE THE WIDENING, not folded into a `??` with an
-  // `integer` on the other side: that asks loft to narrow `miss` to `i32` and it
-  // refuses, correctly.
-  v = tok as i32?;
-  if v == null { return miss; }
-  (v ?? 0) as integer
-}
+// ⚠ **THE FIELD READERS MOVED TO `palfield.loft` — plan 26 `B4d`.** They were here
+// while house types were the only payload with fields; a wall TYPE is the second axis
+// to have them, and two copies of *find `key=`, cut at the first space* would be wrong
+// in exactly the way nobody notices.
 
 // The type this world declares at `slot`, or `ht_ok: false` when it declares none.
 //
@@ -141,11 +131,9 @@ pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
   if raw == "" || raw == hex_voxel::PAL_ABSENT {
     return HouseType { ht_why: "no house type declared at slot {slot}" };
   }
-  sp = raw.find(" ");
-  nm = raw;
-  if sp != null { nm = raw[0..(sp ?? 0)]; }
-  wid = ht_field(raw, "wid", 0 - 1);
-  dep = ht_field(raw, "dep", 0 - 1);
+  nm = pal_word(raw);
+  wid = pal_int(raw, "wid", 0 - 1);
+  dep = pal_int(raw, "dep", 0 - 1);
   if wid < 1 || dep < 1 {
     return HouseType { ht_name: nm,
                        ht_why: "type '{nm}' declares wid {wid} dep {dep}; both must be >= 1" };
@@ -156,7 +144,7 @@ pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
   // `25` and `30` are nothing at all. A type quietly falling back to `OP_ROUND` would
   // cut a round-headed door in a castle that declared a pointed one and say nothing,
   // which is the failure `world_palette_check` exists to make impossible.
-  opn = ht_field(raw, "opening", 0 - 1);
+  opn = pal_int(raw, "opening", 0 - 1);
   if opn >= 0 && !opening_kind_ok(opn) {
     return HouseType { ht_name: nm,
                        ht_why: "type '{nm}' declares opening {opn}, which is not an "
@@ -177,11 +165,8 @@ pub fn house_type(w: VoxelWorld, region: integer, slot: integer) -> HouseType {
 // gave it); `portcullis:opening:F` is one a person can press.
 fn ht_verb_list(body: text) -> vector<TypeVerb> {
   out: vector<TypeVerb> = [];
-  at = body.find("verbs=");
-  if at == null { return out; }
-  rest = body[(((at ?? 0) + 6) as i32)..];
-  cut = rest.find(" ");
-  if cut != null { rest = rest[0..(cut ?? 0)]; }
+  rest = pal_token(body, "verbs");
+  if rest == "" { return out; }
   for pair in rest.split(',') {
     if pair == "" { continue; }
     c = pair.find(":");

@@ -1,0 +1,52 @@
+// A PALETTE PAYLOAD'S FIELDS — plan 26 `B4d`.
+//
+// `hex_voxel` carries a palette entry as `<slot>=<payload>` and says at its own
+// declaration that the payload is opaque to it: *"it carries `slot=payload` for house
+// types exactly as `PALM` carries "sand" — `hex_editor` parses what the payload
+// MEANS."* This is that parser, and it is one parser rather than one per axis.
+//
+// ⚠ **IT EXISTS BECAUSE THE SECOND AXIS ARRIVED.** `htype.loft` had these three reads
+// inside it, which was right while house types were the only payload with fields. A
+// wall TYPE is the second (`B4d`), and a second copy of *find `key=`, cut at the first
+// space* would be wrong in exactly the way nobody notices: two axes disagreeing about
+// what a trailing token is.
+//
+// ⚠ **AND A MISSING FIELD IS `miss`, NEVER A DEFAULT THAT LOOKS LIKE AN ANSWER.** The
+// callers use that to tell *this declaration says nothing* from *this declaration says
+// zero*, which is the distinction `house_type` refuses a malformed type on.
+use hex_voxel;
+
+// The leading word of a declaration — its name.
+pub fn pal_word(body: text) -> text {
+  pw_sp = body.find(" ");
+  if pw_sp == null { return body; }
+  body[0..(pw_sp ?? 0)]
+}
+
+// The raw token of `key=…`, or "" when the key is absent. ⚠ The value ends at the
+// first SPACE, so a payload's fields are order-free and a value may not contain one.
+pub fn pal_token(body: text, key: text) -> text {
+  pt_at = body.find("{key}=");
+  if pt_at == null { return ""; }
+  pt_rest = body[(((pt_at ?? 0) + key.size() + 1) as i32)..];
+  pt_cut = pt_rest.find(" ");
+  if pt_cut == null { return pt_rest; }
+  pt_rest[0..(pt_cut ?? 0)]
+}
+
+pub fn pal_int(body: text, key: text, miss: integer) -> integer {
+  pi_tok = pal_token(body, key);
+  if pi_tok == "" { return miss; }
+  // ⚠ THE NULL IS DISCHARGED BEFORE THE WIDENING, not folded into a `??` with an
+  // `integer` on the other side: that asks loft to narrow `miss` to `i32` and it
+  // refuses, correctly.
+  pi_v = pi_tok as i32?;
+  if pi_v == null { return miss; }
+  (pi_v ?? 0) as integer
+}
+
+// ⚠ **THERE IS NO `pal_float`, DELIBERATELY.** It would have to answer `miss` for both
+// *absent* and *unparseable*, and those are the two cases a palette exists to keep
+// apart — `house_type`'s rule: a malformed declaration is REFUSED, never defaulted.
+// A caller that wants a float reads the token and decides, which is where the refusal
+// belongs anyway because only the caller can name what was wrong.

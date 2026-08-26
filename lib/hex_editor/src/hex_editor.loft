@@ -41,7 +41,12 @@ use self::names;
 // `T1b`. ⚠ It is below `session` in the arrow, not beside it: `session.loft` uses it
 // so that `session_opening` can read the type's own opening, which is the whole
 // reason it stopped living in this file.
+// The palette-payload field readers, shared by every axis that has fields.
+use self::palfield;
 use self::htype;
+// The wall TYPE on the edge axis — plan 26 `B4d`. `htype`'s sibling: same palette,
+// different axis, and the same rule that a malformed declaration is refused.
+use self::walltype;
 // ⚠ AFTER `gesture`, because a session is the state those gestures are applied to.
 use self::session;
 // The sentences the editor says — plan: the wire becomes transport.

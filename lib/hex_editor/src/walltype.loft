@@ -1,0 +1,66 @@
+// A WALL TYPE, OUT OF THE EDGE PALETTE — plan 26 `B4d`, BLUEPRINT §3.3.
+//
+// > *"It should paint the exact thickness of walls … and allow for a different wall
+// > type that is rounded instead of straight."*
+//
+// ⚠ **THICKNESS IS PALETTE-SIDE BY NECESSITY, NOT BY CHOICE.** `@HB-X69`: *"a uniform
+// wall's 38 edges carry ONE distinct id and nothing else, so a per-edge thickness would
+// be an eighth slot, which `L13` forbids."* So a cell stores a wall **id**, the palette
+// says what that id IS, and the blueprint gesture is *choose or define a wall TYPE* —
+// never *drag a thickness handle on this wall*. Two walls of different thickness are
+// two palette entries, which is the model working as designed.
+//
+// ⛔ **THE VOCABULARY IS NOT OURS AND IS NOT CLOSED HERE.** `@HB-X12` names
+// `SOLID · HALF_HEIGHT · FENCE · BATTLEMENT · THICK_FLAT · THICK_CURVED · ROAD_GUIDE`,
+// and `@HB-X69` says why that list lives in a comment rather than in a type: *"an open
+// vocabulary … which is exactly why the palette is the designed extension point."* So
+// `wt_body` is carried through as TEXT and never checked against a list — an octagon
+// body is *"a new value in this enumeration"*, and a reader that refused unknown words
+// would refuse the extension the design is counting on.
+//
+// ⚠ **WHAT IS REFUSED IS WHAT IS STRUCTURALLY WRONG**: a thickness that is not a
+// number, or one below zero. `house_type`'s rule, one axis over — a declaration that
+// quietly fell back to a default would paint the wrong wall and say nothing.
+use hex_voxel;
+use self::palfield;
+
+pub struct WallType {
+  wt_ok:    boolean,
+  wt_name:  text,
+  // `@HB-X12`'s shape vocabulary, opaque here. "" when the type states none.
+  wt_body:  text,
+  // World units. ⚠ `0.0` is *this type states no thickness*, which is a different
+  // answer from *this type says zero* — nothing in the vocabulary means a wall with no
+  // width, so zero is free to mean unstated and the drawing keeps its own default.
+  wt_thick: float,
+  wt_why:   text,
+}
+
+fn wall_no(name: text, why: text) -> WallType {
+  WallType { wt_ok: false, wt_name: name, wt_body: "", wt_thick: 0.0, wt_why: why }
+}
+
+// The wall type this world declares at `slot` on the EDGE axis, or `wt_ok: false`.
+pub fn wall_type(w: VoxelWorld, region: integer, slot: integer) -> WallType {
+  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE, region, slot);
+  if raw == "" || raw == hex_voxel::PAL_ABSENT {
+    return wall_no("", "no wall type declared at slot {slot}");
+  }
+  nm = pal_word(raw);
+  tok = pal_token(raw, "thick");
+  th = 0.0;
+  if tok != "" {
+    // ⚠ READ THE TOKEN, THEN DECIDE — a `pal_float` with a fallback would answer the
+    // same for `thick=` absent and for `thick=fat`, and the second is damage.
+    v = tok as float?;
+    if v == null {
+      return wall_no(nm, "wall type '{nm}' declares thick '{tok}', which is not a number");
+    }
+    th = v ?? 0.0;
+    if th < 0.0 {
+      return wall_no(nm, "wall type '{nm}' declares thick {th}; a wall has no negative width");
+    }
+  }
+  WallType { wt_ok: true, wt_name: nm, wt_body: pal_token(raw, "body"),
+             wt_thick: th, wt_why: "" }
+}

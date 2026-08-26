@@ -1,0 +1,102 @@
+// A WALL TYPE, READ BACK OUT OF THE EDGE PALETTE — plan 26 `B4d`.
+//
+// ⚠ **THE VOCABULARY IS OPEN AND THIS FILE PINS THAT.** `@HB-X69` calls the palette
+// *"the designed extension point"* and `@HB-X12` names an octagon body as *"a new value
+// in this enumeration"* — so an unknown body must be CARRIED, not refused. A reader that
+// closed the list would refuse the extension the whole design is counting on, and it
+// would do it politely.
+use hex_editor;
+use hex_voxel;
+
+fn palette_world(items: vector<hex_voxel::PalEntry>) -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0, items);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  w
+}
+
+fn test_a_declared_wall_type_reads_back_whole() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "brick body=SOLID thick=0.25" },
+                     hex_voxel::PalEntry { pl_slot: 2, pl_name: "curtain body=THICK_CURVED thick=0.6" }]);
+  a = wall_type(w, 0, 1);
+  assert(a.wt_ok, "slot 1 was refused: {a.wt_why}");
+  assert(a.wt_name == "brick", "the name reads {a.wt_name}");
+  assert(a.wt_body == "SOLID", "the body reads {a.wt_body}");
+  assert(a.wt_thick > 0.2499 && a.wt_thick < 0.2501, "the thickness reads {a.wt_thick}");
+
+  b = wall_type(w, 0, 2);
+  assert(b.wt_ok && b.wt_body == "THICK_CURVED" && b.wt_thick > 0.599,
+         "slot 2 reads {b.wt_name}/{b.wt_body}/{b.wt_thick}: {b.wt_why}");
+}
+
+fn test_a_slot_nobody_declared_is_absent_and_says_which() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "brick thick=0.25" }]);
+  c = wall_type(w, 0, 3);
+  assert(!c.wt_ok, "an undeclared slot answered a type");
+  assert(c.wt_why.contains("slot 3"),
+         "the refusal does not name the slot: {c.wt_why}");
+}
+
+fn test_a_type_that_states_no_thickness_is_not_a_damaged_one() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "plain body=SOLID" }]);
+  a = wall_type(w, 0, 1);
+  assert(a.wt_ok, "a type with no thickness was refused: {a.wt_why}");
+  assert(a.wt_thick == 0.0, "it reads {a.wt_thick}");
+  assert(a.wt_why == "", "an ok type carries a complaint: {a.wt_why}");
+}
+
+fn test_a_thickness_that_is_not_a_number_is_refused_rather_than_defaulted() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "odd body=SOLID thick=fat" }]);
+  a = wall_type(w, 0, 1);
+  assert(!a.wt_ok, "`thick=fat` was accepted as a wall type");
+  assert(a.wt_why.contains("fat"),
+         "the refusal does not name what was wrong: {a.wt_why}");
+  // ⚠ AND IT IS DISTINGUISHABLE FROM *STATES NONE*, which is the whole reason this
+  // reader parses the token itself instead of taking a fallback.
+  assert(a.wt_name == "odd", "a refusal that cannot name the type is hard to act on");
+}
+
+fn test_a_negative_thickness_is_refused() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "hole thick=-0.5" }]);
+  a = wall_type(w, 0, 1);
+  assert(!a.wt_ok, "a wall of negative width was accepted");
+  assert(a.wt_why.contains("negative"), "the refusal says: {a.wt_why}");
+}
+
+fn test_a_body_nobody_here_has_heard_of_is_carried_and_not_refused() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "bay body=OCTAGON thick=0.3" }]);
+  a = wall_type(w, 0, 1);
+  assert(a.wt_ok,
+         "an unknown body was refused: {a.wt_why} — `@HB-X69` calls this vocabulary "
+         + "OPEN and `@HB-X12` names an octagon body as exactly the extension shape, so "
+         + "a reader that closed the list would refuse the design's own next value");
+  assert(a.wt_body == "OCTAGON", "the body reads {a.wt_body}");
+}
+
+// ⚠ **THE `@HB-X63` QUESTION, MEASURED HERE.** Upstream gates the foxel's round trip
+// and leaves the PALETTE at T4 — untouched — which is what plan 26 recorded this row as
+// blocked on. This asks the same question of THIS tree's encoder, which is the one the
+// editor actually saves through.
+fn test_a_wall_type_survives_the_round_trip() {
+  w = palette_world([hex_voxel::PalEntry { pl_slot: 1, pl_name: "brick body=SOLID thick=0.25" },
+                     hex_voxel::PalEntry { pl_slot: 2, pl_name: "bay body=OCTAGON thick=0.3" }]);
+  before = wall_type(w, 0, 2);
+  assert(before.wt_ok, "the fixture is wrong: {before.wt_why}");
+
+  bytes = hex_voxel::world_to_bytes(w, [], hex_voxel::OWNER_ANY);
+  ld = hex_voxel::world_from_bytes(bytes);
+  assert(ld.wl_code == 0, "the world did not load back: {ld.wl_detail}");
+
+  after = wall_type(ld.wl_world, 0, 2);
+  assert(after.wt_ok, "the type did not survive the round trip: {after.wt_why}");
+  assert(after.wt_name == before.wt_name && after.wt_body == before.wt_body
+         && after.wt_thick == before.wt_thick,
+         "out {before.wt_name}/{before.wt_body}/{before.wt_thick} against back "
+         + "{after.wt_name}/{after.wt_body}/{after.wt_thick}");
+
+  // …and the instrument: a world with no palette at all reads back as none, so the
+  // agreement above is about what was written rather than about a reader that always
+  // says the same thing.
+  bare = world_new(0.25, 0, 10, 4).wn_world;
+  assert(!wall_type(bare, 0, 2).wt_ok, "a world with no palette declared a wall type");
+}
