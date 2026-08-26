@@ -47,6 +47,10 @@ use self::htype;
 // The wall TYPE on the edge axis — plan 26 `B4d`. `htype`'s sibling: same palette,
 // different axis, and the same rule that a malformed declaration is refused.
 use self::walltype;
+// The octagonal tower's SHAPE — plan 26 `B4l`. It holds no world and no gesture: the
+// polygon, its fill and the palette body that selects it, so `gesture.loft` can build
+// one without a second definition of what an octagon is.
+use self::octagon;
 // ⚠ AFTER `gesture`, because a session is the state those gestures are applied to.
 use self::session;
 // The sentences the editor says — plan: the wire becomes transport.

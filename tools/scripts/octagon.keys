@@ -1,0 +1,40 @@
+# B4l — AN OCTAGONAL TOWER, AND THE PALETTE IS WHAT SAYS SO
+#
+# ⛔ **45° IS NOT A LATTICE DIRECTION AT ALL.** `tan 45° = 1` needs `m/k = √3`, which
+# is irrational, so no integer `(k, m)` gives it at any length — an octagonal face can
+# never be a `D` wall, which is why an octagon is its own BODY in the palette rather
+# than another heading (BLUEPRINT §2.3).
+#
+# ⚠ **AND IT NEEDS NO VERB OF ITS OWN.** `B4i` measured the body shut for `verb wall`
+# — *a body says a wall is round; it cannot say how big* — and `verb tower` is the one
+# gesture that already HAS a size. So the shape comes from the type and the size from
+# `select shell`, each through its one reader.
+#
+# ⚠ **SHELL 468 IS CHOSEN, NOT CONVENIENT.** At seven shells below it — 12, 48, 144,
+# 192, 300, 432, 444 — a regular octagon quantises back onto the DISK and the two
+# bodies build one world; the gesture refuses those. 468 is the first shell above all
+# of them, and the first that reads as an octagon in plan.
+
+# ⚠ `verb raise` PUTS ITS HILL TEN HEXES AHEAD, NOT UNDERFOOT — `raise_ahead`'s own
+# rule, and the plan view is where that becomes visible: the 91-cell disc this line
+# leaves sits east of both towers rather than under either. It is here for parity with
+# `tower.keys` and to give the picture something with a material in it; the rims do not
+# need it, because a wall byte is stored whether or not the cell under it has ground.
+echo --- a hill, ten hexes east of where the author is standing
+at 0 0 0
+verb raise
+
+echo --- two wall types, one round and one octagonal
+declare edge 5 curtain body=THICK_CURVED thick=0.5
+declare edge 6 octtower body=THICK_OCT thick=0.5
+
+echo --- the octagon
+select wall 6
+select shell 468
+at 0 0 0
+verb tower
+
+echo --- and the circle of the same shell beside it, from the same verb
+select wall 5
+at 40 0 0
+verb tower

@@ -38,6 +38,9 @@ use hex_shape;
 // `vec_n2_4` — the lattice's own squared distance, which `disc_holds` asks and
 // `hex_shape::arc_fill` is built from. Plan 26 `B4h`.
 use hex_form;
+// The octagonal tower's shape — plan 26 `B4l`. The SHAPE lives there and has no
+// world; the GESTURE lives here and has one.
+use self::octagon;
 
 // Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
 //
@@ -1190,6 +1193,41 @@ pub fn fit_shell(n24: integer) -> Fit {
         ft_offer: near, ft_residual: n24 - near, ft_ordinal: true }
 }
 
+// The same question for an OCTAGON, and it has one more answer — plan 26 `B4l`.
+//
+// ⛔ **AT SEVEN SHELLS BELOW 468 AN OCTAGON *IS* A DISK**, so a gesture that only
+// checked `fit_shell` would accept `body=THICK_OCT`, build the circle the author was
+// not asking for, and report success. That is `B4i`'s row 1 one shape over — there
+// the hazard was a default on the `12R²` family making the round tower rebuild the
+// hexagonal ring, and *every other claim in the file stayed true*. Here it is the
+// same sentence: it is still centred, still the shell the session holds, still an
+// octagon by construction, and identical to a disk in the store.
+//
+// ⚠ **THE OFFER GOES UP, NOT DOWN.** `fit_shell` offers the shell BELOW because the
+// library draws that one silently; this refusal is *this size is too coarse to hold
+// eight sides*, and the shell below is coarser still.
+pub fn fit_oct_shell(n24: integer) -> Fit {
+  base = fit_shell(n24);
+  if !base.ft_ok { return base; }
+  if !oct_is_disc(n24, tower_pad(n24)) { return fit_ok(); }
+  up = oct_shell_above(n24);
+  Fit { ft_ok: false,
+        ft_reason: "at shell {n24} the octagon quantises back onto the disk — it "
+                 + "would build exactly the world a round tower builds",
+        ft_offer: up, ft_residual: up - n24, ft_ordinal: true }
+}
+
+// The nearest shell above `n24` whose octagon is not a disk, or `0` when the grid
+// runs out. ⚠ **THE GRID IS THE LIBRARY'S** — `arc_shells_upto` ascending, asked in
+// order — for `shell_below`'s reason: a formula here would be a second definition of
+// what a shell is.
+pub fn oct_shell_above(n24: integer) -> integer {
+  for sh in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+    if sh > n24 && !oct_is_disc(sh, tower_pad(sh)) { return sh; }
+  }
+  0
+}
+
 // The window a disk of `shell` needs, plus a ring of room outside it.
 //
 // ⚠ **A WINDOW TOO SMALL CLIPS THE DISK IN SILENCE, AND BOTH INSTRUMENTS AGREE WITH
@@ -1216,6 +1254,20 @@ pub fn tower_pad(shell: integer) -> integer {
 pub fn tower_disc(wld: VoxelWorld, cq: integer, cr: integer, shell: integer,
                   mat: integer, ref: float, cells: HexSet) -> integer {
   hex_shape::arc_fill(cq, cr, shell, cells);
+  stamp_boundary(wld, cells, mat, ref)
+}
+
+// Stamp every edge between a member of `cells` and a non-member with `mat`, and
+// answer how many were written.
+//
+// ⚠ **THE SHAPE IS THE CALLER'S AND THE RULE IS THE SAME FOR ALL OF THEM** — plan
+// 26 `B4l`. It came out of `tower_disc`'s body unchanged when the octagon arrived,
+// because a second copy of *every edge between a member and a non-member* is exactly
+// the kind of duplicate that agrees for a year and then does not: `edge_owner` says a
+// hex owns three of its six edges, so half of any region's boundary is stored in cells
+// OUTSIDE it, and a walk that got that wrong would leave a rim with holes in it.
+pub fn stamp_boundary(wld: VoxelWorld, cells: HexSet, mat: integer,
+                      ref: float) -> integer {
   n = 0;
   for r in hexset_r0(cells)..hexset_r0(cells) + hexset_h(cells) {
     for q in hexset_q0(cells)..hexset_q0(cells) + hexset_w(cells) {
@@ -1224,7 +1276,7 @@ pub fn tower_disc(wld: VoxelWorld, cq: integer, cr: integer, shell: integer,
       for d in 0..6 {
         (nq, nr) = hex_grid::hex_neighbor(q, r, d);
         // ⚠ OUT OF THE WINDOW READS `false`, WHICH IS *OUTSIDE* — correct only
-        // because `tower_pad` guarantees the disk never reaches the border. That
+        // because `tower_pad` guarantees the shape never reaches the border. That
         // guarantee is asserted by `tower_ring` rather than assumed here.
         if !hexset_get(cells, nq, nr) {
           wall_set(wld, q, r, d, mat, h, ref);
@@ -1254,7 +1306,8 @@ pub fn tower_clipped(cells: HexSet) -> boolean {
   false
 }
 
-// Ring the author with a ROUND wall of `shell`, exactly.
+// Ring the author with a ROUND wall of `shell` — or with an OCTAGONAL one, when the
+// chosen wall type's body says so.
 //
 // ⚠ **IT REGISTERS NO RUN, AND THAT IS A FACT ABOUT `WallRun` RATHER THAN AN
 // OMISSION.** A run is two endpoints and a `d24` heading; a circle has neither, so
@@ -1262,16 +1315,38 @@ pub fn tower_clipped(cells: HexSet) -> boolean {
 // is worth stating out loud: this wall is drawn by the PER-EDGE emitter, which
 // `EDITOR_DEFECTS` 4 slates for deletion — so deleting it would take the only way a
 // curved wall can be drawn with it.
+//
+// ⚠ **AND THE OCTAGON DOES NOT RESCUE THAT** — plan 26 `B4l`. Its eight faces ARE
+// straight, so a run could describe each of them; but 45° is not a `D` heading, so
+// `wall_read_run` can only answer for a run it cannot represent. **What the store
+// holds is a material byte per edge and no surface id**, which is why §2.3's
+// *"`cut_arb` marks edges against it by nearest-surface"* has nowhere to land here:
+// the eight faces are recoverable from the PALETTE and from nothing else, which is
+// §2.5's answer — *an octagon tower is never deduced; it is stored.*
 pub fn tower_ring(w: VoxelWorld, a: Author, mat: integer, shell: integer,
                   ref: float) -> Ack {
   mfit = fit_edge_mat(mat);
   if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  // ⚠ **THE SHAPE IS THE PALETTE'S AND THE SIZE IS THE SESSION'S — plan 26 `B4l`.**
+  // `B4i` measured the body shut for `verb wall` because a body cannot say how big;
+  // this verb already HAS a size, so reading the body here adds no second answer to
+  // *how big is it*. The region is the cell the author stands in, which is the same
+  // one `wall_half` resolves a thickness against.
+  oct = oct_chosen(w, hex_voxel::world_region_at(w, cq, cr), mat);
   sfit = fit_shell(shell);
   if !sfit.ft_ok { return ack_no(fit_why(sfit)); }
-  (cq, cr) = px_to_hex(a.au_x, a.au_z);
   pad = tower_pad(shell);
   cells = hexset_chunk(cq - pad, cr - pad, 2 * pad + 1, 2 * pad + 1);
-  n = tower_disc(w, cq, cr, shell, mat, ref, cells);
+  n = 0;
+  if oct {
+    ofit = fit_oct_shell(shell);
+    if !ofit.ft_ok { return ack_no(fit_why(ofit)); }
+    oct_fill(cq, cr, shell, cells);
+    n = stamp_boundary(w, cells, mat, ref);
+  } else {
+    n = tower_disc(w, cq, cr, shell, mat, ref, cells);
+  }
   if tower_clipped(cells) {
     return ack_no("shell {shell} reached the edge of its own window — the disk is "
                 + "clipped, and a clipped disk reads back as a disk");

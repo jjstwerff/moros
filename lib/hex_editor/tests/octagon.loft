@@ -1,0 +1,378 @@
+// AN OCTAGONAL TOWER, AND THE PALETTE IS WHAT SAYS SO — plan 26 `B4l`,
+// BLUEPRINT §2.3 and §2.5.
+//
+// ⛔ **THE ROW THIS FILE RESTS ON IS `the_octagon_and_the_circle_are_different_worlds`,
+// AND ITS TWIN IS THE REFUSAL.** A regular octagon sits inside its own circumcircle by
+// `1 - cos 22.5° = 7.6%`; on a lattice of roughly unit cells a small enough octagon
+// cannot express that and quantises back onto the disk. At seven shells it does, and at
+// those shells `body=THICK_OCT` and `body=THICK_CURVED` build the SAME WORLD — with
+// every other claim here still true: still centred, still the shell the session holds,
+// still eight-sided by construction. That is `B4i`'s row 1 one shape over, and it is
+// why the gesture refuses rather than reporting success.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+use hex_form;
+
+const U = 0.25;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// A world with ground AND an edge palette — the two fixtures this step needs at once.
+fn typed_world(items: vector<hex_voxel::PalEntry>) -> VoxelWorld {
+  w = flat_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0, items);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  w
+}
+
+fn rim_bytes(w: VoxelWorld, mat: integer) -> integer {
+  n = 0;
+  for r in 0 - 20..21 {
+    for q in 0 - 20..21 {
+      // The three LATTICE DIRECTIONS a cell owns — `edge_owner`'s table: 4 is NW,
+      // 5 is NE, 0 is E. Counting all six would count every edge twice.
+      for d in [4, 5, 0] { if wall_of(w, q, r, d, 0.0) == mat { n = n + 1; } }
+    }
+  }
+  n
+}
+
+// How many owned edges the two worlds disagree about.
+//
+// ⛔ **THE COUNT CANNOT SEE THE SHAPE, AND THIS FILE MEASURED THAT BEFORE IT TRUSTED
+// IT.** At shell 156 the octagon is **51 cells with a 54-edge rim** and the disk is
+// **55 cells with a 54-edge rim** — the same number for two different shapes. A row
+// asserting the two counts differ went RED against a gesture that was working, which
+// is the good direction for that mistake; asserting they AGREE is how a body that
+// never reached the world would have passed. So every comparison here is byte for
+// byte over the field, and the count is only ever used to say *something was built*.
+fn rim_diff(a: VoxelWorld, b: VoxelWorld) -> integer {
+  n = 0;
+  for r in 0 - 20..21 {
+    for q in 0 - 20..21 {
+      for d in [4, 5, 0] {
+        if wall_of(a, q, r, d, 0.0) != wall_of(b, q, r, d, 0.0) { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn oct_set(shell: integer) -> HexSet {
+  pad = tower_pad(shell);
+  cells = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+  oct_fill(0, 0, shell, cells);
+  cells
+}
+
+fn set_count(s: HexSet) -> integer {
+  n = 0;
+  for r in hexset_r0(s)..hexset_r0(s) + hexset_h(s) {
+    for q in hexset_q0(s)..hexset_q0(s) + hexset_w(s) {
+      if hexset_get(s, q, r) { n = n + 1; }
+    }
+  }
+  n
+}
+
+// ── THE POLYGON ────────────────────────────────────────────────────────────
+
+fn test_the_polygon_is_eight_distinct_corners_and_strictly_convex() {
+  for sh in [156, 324, 468, 1008] {
+    vk = oct_poly_k(sh);
+    vm = oct_poly_m(sh);
+    assert(len(vk) == 8 && len(vm) == 8,
+           "shell {sh} gave {len(vk)}/{len(vm)} corners, not eight");
+    for i in 0..8 {
+      for j in i + 1..8 {
+        assert(!((vk[i] ?? 0) == (vk[j] ?? 0) && (vm[i] ?? 0) == (vm[j] ?? 0)),
+               "shell {sh} corners {i} and {j} are the same lattice point "
+             + "({vk[i] ?? 0},{vm[i] ?? 0}) — a side has vanished and this is a "
+             + "septagon wearing eight vertices");
+      }
+    }
+    // ⚠ **STRICT, SO A COLLINEAR TRIPLE IS A FAILURE.** Three corners on one line is
+    // a side that quantised away, and `poly_holds` would still answer confidently
+    // about the seven-sided shape that remains.
+    for c in 0..8 {
+      ak = vk[c] ?? 0;         am = vm[c] ?? 0;
+      bk = vk[(c + 1) % 8] ?? 0;  bm = vm[(c + 1) % 8] ?? 0;
+      ck = vk[(c + 2) % 8] ?? 0;  cm = vm[(c + 2) % 8] ?? 0;
+      crs = (bk - ak) * (cm - am) - (bm - am) * (ck - ak);
+      assert(crs > 0,
+             "shell {sh} turns the wrong way or not at all at corner {c} "
+           + "(cross {crs}) — the polygon is not a convex anticlockwise octagon");
+    }
+  }
+}
+
+// ⚠ **THE MIRRORS ARE THE LATTICE'S OWN, AND ROUNDING EIGHT CORNERS SEPARATELY WOULD
+// LEAVE THEM TO LUCK.** A tower lopsided by one lattice step in one quadrant is
+// exactly what a picture cannot show and what no other row here would name.
+fn test_the_corners_are_mirrored_in_both_axes() {
+  for sh in [156, 468, 876] {
+    vk = oct_poly_k(sh);
+    vm = oct_poly_m(sh);
+    for i in 0..4 {
+      assert((vk[7 - i] ?? 0) == (vk[i] ?? 0) && (vm[7 - i] ?? 0) == 0 - (vm[i] ?? 0),
+             "shell {sh} corner {i} has no mirror in the k axis");
+      assert((vk[3 - i] ?? 0) == 0 - (vk[i] ?? 0) && (vm[3 - i] ?? 0) == (vm[i] ?? 0),
+             "shell {sh} corner {i} has no mirror in the m axis");
+    }
+  }
+}
+
+// The octagon is SMALLER than the disk it is named after, at every shell.
+//
+// ⚠ Both halves matter: *fewer cells* alone is true of the empty set, so the rim has
+// to be inside the window `tower_pad` sized for the disk as well — which is the same
+// guarantee `tower_ring` leans on when it asks `tower_clipped`.
+fn test_the_octagon_is_smaller_than_its_own_shell_s_disc() {
+  for sh in [156, 324, 468, 876] {
+    o = oct_set(sh);
+    pad = tower_pad(sh);
+    d = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+    hex_shape::arc_fill(0, 0, sh, d);
+    assert(set_count(o) > 0, "shell {sh} built an empty octagon");
+    assert(set_count(o) < set_count(d),
+           "shell {sh}: the octagon has {set_count(o)} cells and the disk "
+         + "{set_count(d)} — an octagon that is not smaller is the disk");
+    assert(!tower_clipped(o),
+           "shell {sh}: the octagon reaches the border of the window `tower_pad` "
+         + "sized for the disk, so a clipped rim would read back as a whole one");
+  }
+}
+
+// ⚠ **"INSCRIBED" IS APPROXIMATE, AND THE APPROXIMATION ROUNDS OUTWARD.** A corner
+// goes to the NEAREST lattice point, which can be further from the centre than the
+// circumcircle it came from: measured over every shell to 1008, **324 and 576 each
+// put four cells outside the disk of their own shell**, and at both the octagon's
+// outermost shell is the next one up (336, 588). Everywhere else it is inside.
+//
+// ⚠ **THE ROW EXISTS BECAUSE THE OBVIOUS ASSERTION IS FALSE.** The first version of
+// this file claimed every octagon cell is one of the disk's, and shell 324 refuted
+// it — so the number that bounds the shape is the NEXT shell, never its own.
+fn test_a_rounded_corner_can_reach_past_the_circumcircle() {
+  outside = 0;
+  for sh in [324, 576] {
+    o = oct_set(sh);
+    for r in hexset_r0(o)..hexset_r0(o) + hexset_h(o) {
+      for q in hexset_q0(o)..hexset_q0(o) + hexset_w(o) {
+        if hexset_get(o, q, r)
+           && vec_n2_4(lattice_k(q, r), lattice_m(q, r)) > sh { outside = outside + 1; }
+      }
+    }
+  }
+  assert(outside == 8,
+         "{outside} cells lie outside the circumcircle at shells 324 and 576, not the "
+       + "eight measured — the corner quantisation has moved");
+
+  // …and the bound that is exact: the octagon never reaches past the NEXT shell up.
+  for sh in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+    if sh < 12 { continue; }
+    nxt = sh;
+    for c in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+      if c > sh && (nxt == sh || c < nxt) { nxt = c; }
+    }
+    reach = hex_shape::arc_shell_max(oct_set(sh), 0, 0);
+    assert(reach <= nxt,
+           "shell {sh}: the octagon reaches shell {reach}, past the next shell up "
+         + "({nxt}) — `tower_pad` is sized for the disk and would clip it");
+  }
+}
+
+// ⚠ **AN OCTAGON'S SIZE IS QUANTISED MORE COARSELY THAN THE SHELL GRID IT IS CHOSEN
+// FROM**, which is `@HB-X49`'s answer for a radius one shape over — *"161 radii
+// collapse to four fields, so only the SHELL comes back."* Measured here: 324 and 336
+// are ONE octagon, and so are 432/444, 576/588 and 768/804.
+fn test_two_shells_can_name_one_octagon() {
+  for pair in [[324, 336], [576, 588], [768, 804]] {
+    a = pair[0] ?? 0;
+    b = pair[1] ?? 0;
+    assert(a != b, "the fixture pairs a shell with itself");
+    assert(set_count(oct_set(a)) == set_count(oct_set(b)),
+           "shells {a} and {b} give {set_count(oct_set(a))} and "
+         + "{set_count(oct_set(b))} cells — this pair no longer collapses, so the "
+         + "corner quantisation has changed and the finding above is stale");
+  }
+  // …and the control: two shells far enough apart do NOT collapse, or the row above
+  // would pass for a construction that ignored its argument.
+  assert(set_count(oct_set(156)) != set_count(oct_set(468)),
+         "shells 156 and 468 give the same octagon — `oct_fill` is not reading the "
+       + "shell at all");
+}
+
+// ── THE REFUSAL ────────────────────────────────────────────────────────────
+
+// ⛔ **THE SEVEN, ENUMERATED.** Nothing in the construction predicts this list — it is
+// measured, and it is NOT MONOTONIC: 108 separates while 144 above it collapses, which
+// is `B0p`'s own finding about octagons at a different instrument. So a threshold would
+// be a guess where the library's own `arc_is_disk` is an answer.
+fn test_exactly_seven_shells_quantise_back_onto_the_disk() {
+  bad: vector<integer> = [];
+  for sh in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+    if sh >= 12 && oct_is_disc(sh, tower_pad(sh)) { bad += [sh]; }
+  }
+  want = [12, 48, 144, 192, 300, 432, 444];
+  assert(len(bad) == len(want),
+         "{len(bad)} shells collapse onto the disk, not {len(want)}: {bad}");
+  for i in 0..len(want) {
+    assert((bad[i] ?? 0) == (want[i] ?? 0),
+           "the collapsing shells are {bad} against the measured {want}");
+  }
+}
+
+fn test_a_collapsing_shell_is_refused_with_the_next_one_up() {
+  f = fit_oct_shell(192);
+  assert(!f.ft_ok, "shell 192's octagon was accepted — it IS the disk of some shell");
+  assert(f.ft_offer == 228,
+         "the offer is {f.ft_offer}, not the next shell up whose octagon separates");
+  assert(f.ft_reason.contains("192"),
+         "the refusal does not name the shell asked for: {f.ft_reason}");
+
+  g = fit_oct_shell(444);
+  assert(!g.ft_ok && g.ft_offer == 468,
+         "shell 444 offers {g.ft_offer}: {g.ft_reason}");
+}
+
+// The control the row above needs: a shell that separates is ACCEPTED, or the refusal
+// would be a function that says no to everything.
+fn test_a_separating_shell_is_accepted() {
+  for sh in [36, 156, 468, 876] {
+    assert(fit_oct_shell(sh).ft_ok, "shell {sh} was refused for an octagon");
+  }
+}
+
+// ⚠ **THE SHELL CHECK COMES FIRST**, because *this is no shell at all* and *this shell
+// cannot hold an octagon* are two different things to be told.
+fn test_a_number_naming_no_shell_is_refused_as_a_non_shell() {
+  f = fit_oct_shell(40);
+  assert(!f.ft_ok, "40 was accepted as an octagon's shell");
+  assert(f.ft_reason.contains("is not a shell"),
+         "40 was refused as an octagon rather than as a non-shell: {f.ft_reason}");
+}
+
+// ── THE GESTURE ────────────────────────────────────────────────────────────
+
+fn oct_world() -> VoxelWorld {
+  typed_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "octtower body={WALL_BODY_OCT}" }])
+}
+
+fn build_tower(w: VoxelWorld, slot: integer, shell: integer) -> Ack {
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, slot).ak_ok, "slot {slot} was refused");
+  assert(session_select_shell(s, shell).ak_ok, "shell {shell} was refused");
+  press_verb(s, w, s.es_author, VB_TOWER, "")
+}
+
+// ⛔ **THE ROW THE STEP RESTS ON.** If the octagon ever quantised onto the disk at this
+// shell, every other row in this file would still pass — it would still be centred,
+// still the chosen shell, still carrying the chosen type. Only a comparison of the two
+// worlds can see it.
+fn test_the_octagon_and_the_circle_are_different_worlds_at_one_shell() {
+  ow = oct_world();
+  assert(build_tower(ow, 5, TOWER_SHELL_DEFAULT).ak_ok, "the octagon was refused");
+
+  // The same slot, the same shell, in a world that declares the CURVED body instead.
+  cw = typed_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "roundtower body=THICK_CURVED" }]);
+  assert(build_tower(cw, 5, TOWER_SHELL_DEFAULT).ak_ok, "the circle was refused");
+
+  assert(rim_bytes(ow, 5) > 0 && rim_bytes(cw, 5) > 0,
+         "one of the two towers stamped nothing");
+  assert(rim_diff(ow, cw) > 0,
+         "the octagon and the circle key the same world at shell "
+       + "{TOWER_SHELL_DEFAULT} — the body reached the sentence and not the world, or "
+       + "this shell is one of the seven the fit is supposed to refuse");
+
+  // ⛔ **AND THE COUNT IS BLIND TO IT, WHICH IS WHY THIS ROW READS THE FIELD.** The
+  // two rims are **{rim_bytes(ow, 5)} and {rim_bytes(cw, 5)} edges** at this shell —
+  // equal, over 51 cells against 55. A row comparing counts would have called a
+  // working gesture broken here, and would have called a body that never reached the
+  // world correct at some other shell.
+  assert(rim_bytes(ow, 5) == rim_bytes(cw, 5),
+         "the two rims are {rim_bytes(ow, 5)} and {rim_bytes(cw, 5)} edges — they no "
+       + "longer coincide at shell {TOWER_SHELL_DEFAULT}, so the note above about a "
+       + "count being blind here is stale and should be re-measured, not deleted");
+}
+
+// ⚠ **AND IT IS NOT A DISK**, which is the half a count cannot show: two different
+// counts could still both be circles.
+fn test_what_the_octagon_verb_builds_is_refused_as_a_disc() {
+  w = oct_world();
+  assert(build_tower(w, 5, TOWER_SHELL_DEFAULT).ak_ok, "the octagon was refused");
+  d = disc_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(!d.dc_ok,
+         "the octagon reads back as the disc of shell {d.dc_shell} — the author asked "
+       + "for eight sides and the store holds a circle");
+}
+
+// ⚠ **THE OPEN VOCABULARY, TWICE.** `@HB-X69` calls the palette the designed extension
+// point and `walltype.loft` carries `wt_body` as text for exactly that reason, so a
+// body this tree does not know must be CARRIED and must not change the shape.
+fn test_a_body_this_tree_does_not_know_still_builds_the_circle() {
+  uw = typed_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "future body=THICK_MYSTERY" }]);
+  ak = build_tower(uw, 5, TOWER_SHELL_DEFAULT);
+  assert(ak.ak_ok, "an unknown body was refused outright: {ak.ak_why}");
+
+  // …and it is the same world an undeclared slot builds, which is what makes it the
+  // CIRCLE rather than merely *not the octagon*.
+  pw = flat_world();
+  assert(build_tower(pw, 5, TOWER_SHELL_DEFAULT).ak_ok, "the plain tower was refused");
+  assert(rim_diff(uw, pw) == 0,
+         "an unknown body keys a world {rim_diff(uw, pw)} edges away from the plain "
+       + "one — a body nobody declared changed the shape");
+}
+
+// ⚠ **A DAMAGED DECLARATION BUILDS THE CIRCLE RATHER THAN NOTHING**, which is
+// `wall_half`'s rule at a second geometry site: a gesture that refused would leave the
+// author with no tower and a palette to debug, and the loud instrument is the plan
+// view, which paints an unreadable type magenta and counts it.
+fn test_a_damaged_declaration_builds_the_circle() {
+  dw = typed_world([hex_voxel::PalEntry { pl_slot: 5,
+                                          pl_name: "broken body={WALL_BODY_OCT} thick=fat" }]);
+  assert(!wall_type(dw, 0, 5).wt_ok, "the fixture is not damaged after all");
+  assert(build_tower(dw, 5, TOWER_SHELL_DEFAULT).ak_ok, "a damaged type built nothing");
+
+  pw = flat_world();
+  assert(build_tower(pw, 5, TOWER_SHELL_DEFAULT).ak_ok, "the plain tower was refused");
+  assert(rim_diff(dw, pw) == 0,
+         "a damaged octagon declaration keys a world {rim_diff(dw, pw)} edges away "
+       + "from the circle's");
+}
+
+// ⚠ **REFUSED WITHOUT MOVING THE CHOICE**, and with nothing written — `B4i`'s rule for
+// a selection that cannot be honoured.
+fn test_a_collapsing_shell_refuses_the_gesture_and_writes_nothing() {
+  w = oct_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(session_select_shell(s, 192).ak_ok, "shell 192 refused as a shell");
+  ak = press_verb(s, w, s.es_author, VB_TOWER, "");
+  assert(!ak.ak_ok, "shell 192's octagon was built — it is the disk of some shell");
+  assert(ak.ak_why.contains("228"),
+         "the refusal carries no offer: {ak.ak_why}");
+  assert(rim_bytes(w, 5) == 0,
+         "a refused octagon still stamped {rim_bytes(w, 5)} edges");
+  assert(session_shell(s) == 192,
+         "the refusal moved the standing choice to {session_shell(s)}");
+}
+
+// ⚠ **AND THE ROUND TOWER IS UNMOVED BY ALL OF IT.** Both shapes now share one
+// boundary walk; a world with no palette at all must key exactly what it always did,
+// which is the upper bound of this step.
+fn test_a_world_with_no_palette_still_builds_the_round_tower() {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the tower was refused");
+  d = disc_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(d.dc_ok && d.dc_shell == TOWER_SHELL_DEFAULT,
+         "the default tower reads {d.dc_shell}: {d.dc_why}");
+}

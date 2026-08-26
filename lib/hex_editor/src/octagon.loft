@@ -1,0 +1,140 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// AN OCTAGONAL TOWER — plan 26 `B4l`, BLUEPRINT §2.3 and §2.5.
+//
+// > *"We allow octagon towers too."*
+//
+// ⛔ **45° IS NOT A LATTICE DIRECTION AT ALL, AND THAT IS ARITHMETIC RATHER THAN
+// TASTE.** A lattice direction has `tan θ = m/(k√3)`; for 45° that needs `m/k = √3`,
+// which is irrational. No integer `(k, m)` gives 45° at any run length, so an
+// octagonal face can never be a `D` wall — §2.3, and it is why an octagon is its own
+// BODY in the palette rather than another heading.
+//
+// ⚠ **AND A REGULAR OCTAGON IS NOT A `Form` EITHER.** `hex_form`'s law J closes a
+// turtle cycle when the turns sum to 12 twelfths; eight sides at 45° need 1.5
+// twelfths each, which is not an integer. So `form_fill` — the family's own polygon
+// fill — **cannot be handed this shape at all**, and `hex_recover::rebuild`, which
+// returns turtle forms, can never give it back.
+//
+// ✅ **THE ENTRY POINT IS ONE LAYER DOWN, AND IT IS EXACT.** `form_fill`'s body is
+// `hex_form::poly_holds` over the window, and `poly_holds` takes a bare integer
+// polygon in `(k, m)` — no `Form`, no law J, *"exact integer arithmetic throughout …
+// no division and no epsilon anywhere"*. **So the octagon is refused by the wrapper
+// and admitted by the primitive underneath it**, which is the whole of the gap:
+// what the library holds is a membership test, what we hold is a size.
+//
+// ⚠ **THE VERTICES ARE QUANTISED, AND THAT IS THE SAME ANSWER `@HB-X49` GAVE FOR A
+// RADIUS.** A regular octagon has no lattice vertices — see the irrationality above —
+// so its corners land on the nearest `(k, m)`, and the fields collapse: **27 shells
+// to 1008 give 23 distinct octagons** (336 and 324 are one shape, so are 444 and 432,
+// 588 and 576, 804 and 768). That is `arc_fill`'s own story one shape over — *"161
+// radii collapse to four fields, so only the SHELL comes back"* — and it means an
+// octagon's size is quantised MORE coarsely than the shell grid it is chosen from.
+use hex_form;
+use hex_field;
+use hex_shape;
+use hex_voxel;
+use self::walltype;
+
+// The two independent corners of the octagon inscribed in the disk of `shell`, as
+// lattice `(k, m)` offsets from the centre: the one at 22.5° and the one at 67.5°.
+// The other six are these mirrored, which is stated in `oct_poly_k`/`oct_poly_m`.
+//
+// ⚠ **THE FLOAT IS IN THE CONSTRUCTION AND NOWHERE ELSE.** A shell `N` stands for a
+// radius of `√N / 2` world units (`hexarc`: a cell centre is at `(k·√3/2, m/2)`, so
+// its 4·squared distance is `3k² + m²`), and a corner of a regular octagon is at
+// `22.5° + j·45°` on that circle — a definition, not a fit. What comes out is a pair
+// of INTEGERS, and every test downstream of here is `poly_holds`'s exact arithmetic.
+fn oct_corner(shell: integer, j: integer) -> (integer, integer) {
+  rad = (sqrt(shell as float) ?? 0.0) * 0.5;
+  ang = (22.5 + 45.0 * (j as float)) * PI / 180.0 ?? 0.0;
+  ck = (round(rad * cos(ang) * 2.0 / 1.7320508075688772 ?? 0.0)) as integer;
+  cm = (round(rad * sin(ang) * 2.0 ?? 0.0)) as integer;
+  (ck, cm)
+}
+
+// The eight corners' `k`, anticlockwise from 22.5°.
+//
+// ⚠ **MIRRORED RATHER THAN ROUNDED EIGHT TIMES**, so the shape is symmetric under
+// `k → -k` and `m → -m` — the two mirrors the lattice itself has. Rounding each
+// corner on its own would leave the symmetry to luck at every size, and an octagon
+// that is lopsided by one lattice step in one quadrant is exactly the defect a
+// picture cannot show and a test cannot name.
+pub fn oct_poly_k(shell: integer) -> vector<integer> {
+  (k0, _m0) = oct_corner(shell, 0);
+  (k1, _m1) = oct_corner(shell, 1);
+  [k0, k1, 0 - k1, 0 - k0, 0 - k0, 0 - k1, k1, k0]
+}
+
+// The eight corners' `m`, in the same order.
+pub fn oct_poly_m(shell: integer) -> vector<integer> {
+  (_k0, m0) = oct_corner(shell, 0);
+  (_k1, m1) = oct_corner(shell, 1);
+  [m0, m1, m1, m0, 0 - m0, 0 - m1, 0 - m1, 0 - m0]
+}
+
+// Fill the octagon of `shell` about `(cq, cr)` into `cells`, and answer how many.
+//
+// ⚠ **THIS IS `form_fill`'s BODY WITH THE `Form` TAKEN OUT**, which is the only part
+// of it law J refuses: the window walk, the anchor subtraction and the membership
+// test are all the library's, unchanged. The one thing that is ours is the polygon.
+pub fn oct_fill(cq: integer, cr: integer, shell: integer, cells: HexSet) -> integer {
+  vk = oct_poly_k(shell);
+  vm = oct_poly_m(shell);
+  bk = lattice_k(cq, cr);
+  bm = lattice_m(cq, cr);
+  n = 0;
+  for orr in hexset_r0(cells)..hexset_r0(cells) + hexset_h(cells) {
+    for oq in hexset_q0(cells)..hexset_q0(cells) + hexset_w(cells) {
+      if hex_form::poly_holds(vk, vm, lattice_k(oq, orr) - bk, lattice_m(oq, orr) - bm) {
+        hexset_set(cells, oq, orr, true);
+        n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+// Is the octagon of `shell` the same FIELD as a disk?
+//
+// ⛔ **AT SEVEN SHELLS IT IS, AND THAT IS THE ROW THIS STEP RESTS ON.** A regular
+// octagon sits inside its own circumcircle by `1 - cos 22.5° = 7.6%`; on a lattice
+// whose cells are about one world unit across, a small enough octagon cannot express
+// that difference and quantises back onto the disk. Measured over every shell to
+// 1008: **12, 48, 144, 192, 300, 432 and 444** give a field `arc_is_disk` accepts,
+// and every shell from 468 up does not. ⚠ **It is not monotonic** — 108 separates
+// while 144 above it collapses — which is `B0p`'s own finding about octagons one
+// instrument over, so a threshold would be a guess where a test is available.
+//
+// ⚠ **AND THE LIBRARY IS THE JUDGE, NOT A TABLE HERE.** `arc_is_disk` is what
+// `disc_recover` asks, so a shell this admits is a shell at which an octagon reads
+// back as an octagon rather than as the circle the author did not ask for.
+pub fn oct_is_disc(shell: integer, pad: integer) -> boolean {
+  cells = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+  oct_fill(0, 0, shell, cells);
+  hex_shape::arc_is_disk(cells, 0, 0)
+}
+
+// ── WHICH SHAPE A TOWER TAKES — the palette decides, because a tower has a SIZE ──
+//
+// ⛔ **`B4i` MEASURED THE BODY SHUT FOR `verb wall`, AND THIS IS WHY IT OPENS HERE.**
+// That step's finding was *"a body says a wall is ROUND; it cannot say how big, and
+// at the ring's own size that distinction does not exist"* — a disk IS the hexagon at
+// exactly the shells `12R²`, and `fence_ring`'s radius 3 is shell 108, one of them.
+// **`verb tower` is the one gesture that already has a size**: `session_shell`, its
+// own selection since `B4i`. So the body can decide the SHAPE here without becoming a
+// second answer to *how big is it*, which is what `X108` forbids.
+//
+// ⚠ **AND SO THE OCTAGON NEEDS NO VERB, NO KEY AND NO SELECTION OF ITS OWN.** Choose
+// a wall type whose declaration says `body=THICK_OCT` and press the tower key: the
+// vocabulary stays at 17 verbs and `@HB-X69`'s *"the palette is the designed
+// extension point"* is the mechanism rather than a sentence about one.
+pub fn oct_chosen(w: VoxelWorld, region: integer, mat: integer) -> boolean {
+  wt = wall_type(w, region, mat);
+  // ⚠ A DAMAGED DECLARATION BUILDS THE ROUND TOWER AND IS NOT REFUSED, which is
+  // `wall_half`'s rule at a second geometry site: a gesture that refused would leave
+  // the author with nothing built and a palette to debug, and the loud instrument is
+  // the plan view, which paints an unreadable type magenta and counts it.
+  wt.wt_ok && wt.wt_body == WALL_BODY_OCT
+}

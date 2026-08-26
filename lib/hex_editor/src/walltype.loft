@@ -24,6 +24,19 @@
 use hex_voxel;
 use self::palfield;
 
+// The BODY that makes `verb tower` build an octagon rather than a circle — plan 26
+// `B4l`, BLUEPRINT §2.3.
+//
+// ⚠ **IT IS OURS, PENDING UPSTREAM, AND THAT IS THE VOCABULARY WORKING AS DESIGNED.**
+// `@HB-X12`'s list is `SOLID · HALF_HEIGHT · FENCE · BATTLEMENT · THICK_FLAT ·
+// THICK_CURVED · ROAD_GUIDE`, and hexbody names an octagon as *"a new value in this
+// enumeration, exactly the extension shape"*. `@HB-X69` says why adding one costs
+// nothing: the list lives in a comment rather than in a type, *"an open vocabulary …
+// which is exactly why the palette is the designed extension point"*. A world that
+// declares a body this tree does not know still round-trips — `wt_body` is carried as
+// text and never checked against a list — so naming one here takes nothing away.
+pub const WALL_BODY_OCT = "THICK_OCT";
+
 pub struct WallType {
   wt_ok:    boolean,
   wt_name:  text,
