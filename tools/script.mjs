@@ -1271,8 +1271,14 @@ for (const raw of lines) {
       // the unknown subject somewhere to fall.
       ws.send(`58:${rest[1]}`);
       console.log('  ' + await ack(['wall ', 'selection refused'], 10000));
+    } else if (rest[0] === 'shell') {
+      // `select shell <n>` — how big the next round tower is, plan 26 `B4i`. ⚠ Added
+      // in the SAME step as `src/editor_run.loft`'s branch, which is `select reach`'s
+      // lesson taken as a rule.
+      ws.send(`60:${rest[1]}`);
+      console.log('  ' + await ack(['shell ', 'selection refused'], 10000));
     } else {
-      throw new Error(`select needs a subject: opening, reach, seat, annex or wall — got '${rest[0]}'`);
+      throw new Error(`select needs a subject: opening, reach, seat, annex, wall or shell — got '${rest[0]}'`);
     }
   } else if (cmd === 'hold') {
     const bit = HELD[rest[0]];
@@ -1518,7 +1524,8 @@ for (const raw of lines) {
     // ⚠ AND NO MATERIAL GOES ON THE WIRE. `B4e` measured what happens when it does —
     // the server selected correctly and stamped byte 1 anyway, because a payload
     // beats a session — so the type is `session_wall_mat`'s at the far end.
-    ws.send(`59:${rest[0]}`);
+    // ⚠ An EMPTY argument means *the shell I chose* — the far end resolves it.
+    ws.send(`59:${rest[0] ?? ''}`);
     console.log('  ' + await ack(['tower ', 'tower refused'], 10000));
   } else if (cmd === 'declare') {
     // `declare <axis> <slot> <name>` — how a house type or a material mapping gets

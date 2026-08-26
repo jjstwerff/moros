@@ -228,6 +228,14 @@ pub struct EditSession {
   // `es_open_kind`'s: no house type declares a wall type, so there is nothing for a
   // default to be overridden BY. When one does, this grows the pair `T1b` built.
   es_wall_mat: integer = WALL_MAT,
+  // ⚠ **THE SEVENTH SELECTION, AND IT EXISTS BECAUSE THE BODY CANNOT DECIDE IT** —
+  // plan 26 `B4i`. A wall type declaring `body=THICK_CURVED` says the wall is ROUND;
+  // it cannot say how big, and at the ring's own size that distinction vanishes:
+  // `B4g` measured a disc to BE the hexagon at exactly the shells `12R²`, and
+  // `fence_ring`'s radius 3 is shell 108 — one of them. So a `wall` verb that went
+  // round on the body alone would build the ring it already built. The size is a
+  // choice, and this is where it is remembered.
+  es_shell: integer = TOWER_SHELL_DEFAULT,
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -609,6 +617,24 @@ pub fn session_select_wall(s: EditSession, slot: integer) -> Ack {
 // come to disagree** — `open_kind_here`'s shape, one family over, minus the house
 // type's override because no house type declares a wall yet.
 pub fn session_wall_mat(s: EditSession) -> integer { s.es_wall_mat }
+
+// ── HOW BIG THE NEXT ROUND TOWER IS — plan 26 `B4i` ────────────────────────
+//
+// ⚠ **ORDINAL, AND THE GRID IS SPARSE**, which is why it does not use `fit_ordinal`.
+// A shell is not a range: `@HB-X49` measured 161 radii collapsing to four fields, so
+// only shells exist and 40 is not *nearly* 36 — it is no shell at all. `fit_shell`
+// carries the nearest one as the offer, and it is load-bearing rather than polite,
+// because `arc_fill` draws the shell BELOW a number naming none without a word.
+pub fn session_select_shell(s: EditSession, shell: integer) -> Ack {
+  sfit = fit_shell(shell);
+  if !sfit.ft_ok { return ack_no(fit_why(sfit)); }
+  s.es_shell = shell;
+  ack_ok(shell)
+}
+
+// How big the next round tower is. ⚠ **ONE READER**, for `session_wall_mat`'s reason:
+// the verb, the wire and the runner all ask here, so they cannot come to disagree.
+pub fn session_shell(s: EditSession) -> integer { s.es_shell }
 
 // ⚠ THE TWO COUNTS TRAVEL BECAUSE THE CUPBOARD'S SENTENCE SAYS THEM, and they are
 // counts of the SESSION after the append — a caller re-deriving them would be reading
@@ -1202,7 +1228,8 @@ pub fn session_digest(sess: EditSession) -> text {
   // ⚠ THE PART IS QUOTED because it may be empty, and *nothing chosen* has to look
   // different from a field that fell off the end of the line.
   d + "\nchosen: opening {sess.es_open_kind}{if sess.es_open_set { \"\" } else { \" (unchosen)\" }} "
-    + "wall {sess.es_wall_mat} seat {sess.es_seat_kind} annex {sess.es_annex_kind} "
+    + "wall {sess.es_wall_mat} shell {sess.es_shell} "
+    + "seat {sess.es_seat_kind} annex {sess.es_annex_kind} "
     + "reach {sess.es_aim_reach} part '{sess.es_part}'"
 }
 

@@ -364,6 +364,18 @@ const MSG_SELECT_WALL = 58;
 // other wall gesture since `B4e` — a seventh site deciding what a wall is made of is
 // the divergence that selection closed.
 const MSG_TOWER = 59;
+// ── `60:<shell>` — HOW BIG THE NEXT ROUND TOWER IS — plan 26 `B4i` ─────────
+//
+// The seventh selection, and the second ORDINAL one after `57:`. ⚠ **A SHELL IS NOT A
+// RANGE**, so its refusal cannot come from `fit_ordinal`: 40 is not *nearly* 36, it is
+// no shell at all, and `fit_shell` carries the nearest one because `arc_fill` draws the
+// shell below a number naming none *without a word*.
+//
+// ⚠ **AND IT EXISTS BECAUSE A BODY CANNOT SAY HOW BIG.** A wall type declaring
+// `body=THICK_CURVED` says the wall is round; `B4g` measured that a disc IS the hexagon
+// at the shells `12R²`, and `fence_ring`'s radius 3 is shell 108 — so a `wall` verb that
+// went round on the body alone would rebuild the ring it already had.
+const MSG_SELECT_SHELL = 60;
 const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
@@ -1360,7 +1372,11 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // extent that `tower_pad`'s comment exists to prevent.
 fn do_tower(srv: Server, cid: integer, payload: text, px: float, pz: float,
             py: float, wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
-  tshell = payload as integer ?? 0 - 1;
+  // ⚠ **AN EMPTY PAYLOAD IS *THE SHELL I CHOSE* — plan 26 `B4i`**, the contract `23:`,
+  // `25:` and `56:` took for their material at `B4e`, and for the same reason: a client
+  // that put its own answer here would need a copy of the session it is attached to.
+  tshell = hex_editor::session_shell(sess);
+  if payload != "" { tshell = payload as integer ?? 0 - 1; }
   tmat = hex_editor::session_wall_mat(sess);
   ta = hex_editor::author_at(px, pz, 0.0, py);
   tack = hex_editor::tower_ring(wld, ta, tmat, tshell, py);
@@ -5608,6 +5624,16 @@ fn main() {
           // ── A ROUND ENCLOSURE — plan 26 `B4g` ──────────────────────────────
           do_tower(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wk.wk_y,
                    wld, dirty, sess);
+        } else if ev.msg_id == MSG_SELECT_SHELL {
+          // ── HOW BIG THE NEXT ROUND TOWER IS — plan 26 `B4i` ────────────────
+          hsel = hex_editor::session_select_shell(sess, ev.payload as integer ?? 0 - 1);
+          if !hsel.ak_ok {
+            srv.send_to(ev.cid, "S:selection refused — {hsel.ak_why}");
+            println("editor: selection refused — {hsel.ak_why}");
+          } else {
+            srv.send_to(ev.cid, "S:shell {hsel.ak_n} selected");
+            println("editor: shell {hsel.ak_n} selected");
+          }
         } else if ev.msg_id == MSG_SELECT_WALL {
           // ── WHICH WALL TYPE THE NEXT WALL VERB STAMPS — plan 26 `B4e` ───────
           //

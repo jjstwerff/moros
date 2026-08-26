@@ -195,6 +195,12 @@ const KEY_LEVEL = 108;        // l — toggle levelling
 // resolving the key themselves is the four-site divergence rebuilt*.
 const FENCE_CMD = "23:3,3";
 const WALL_CMD = "23:,3";
+// ⚠ **NO SHELL IN IT, AND THAT IS THE SAME CONTRACT AS `WALL_CMD`'s EMPTY MATERIAL** —
+// plan 26 `B4i`. `59:` with an empty payload means *the shell I chose*, resolved at the
+// far end by `session_shell`. A client that sent a number here would need a copy of the
+// session it is attached to, which is `EDITING_MODES`'s four-site divergence in one line
+// — and `B4e` measured what happens when a payload outranks a session.
+const TOWER_CMD = "59:";
 const RUN_CMD = "25:";
 // ⚠ **`56:` MAY CARRY A MATERIAL, LIKE `25:`, AND STILL CARRIES NO LENGTH — BUT THE
 // REASON HAS CHANGED AND THE OLD ONE WAS ONLY HALF RIGHT.** It said the reach is a
@@ -725,6 +731,7 @@ struct Client {
   was_down: boolean,
   was_level: boolean,
   was_fence: boolean,
+  was_tower: boolean,
   was_wall: boolean,
   was_step_up: boolean,
   was_step_down: boolean,
@@ -2173,6 +2180,7 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // `23:,3` are what implements them now, and a world that declares its masonry at
   // slot 5 rings slot 5 without this file learning the number.
   if verb == hex_editor::VB_FENCE { web::send(h, FENCE_CMD); return; }
+  if verb == hex_editor::VB_TOWER { web::send(h, TOWER_CMD); return; }
   if verb == hex_editor::VB_WALL  { web::send(h, WALL_CMD);  return; }
   // ⚠ **`25:` AND NOT `25:1` SINCE plan 26 `B4e`** — this note said the opposite, and
   // the reason it gave was *a run's material is still part of the verb*. It is not:
@@ -2439,6 +2447,10 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   kfence = verb_down(st, hex_editor::VB_FENCE);
   if kfence && !st.was_fence { act(h, st, sess, a, hex_editor::VB_FENCE); }
   st.was_fence = kfence;
+  // ⚠ EDGE-TRIGGERED LIKE ITS NEIGHBOURS — a held key must ring once, not once a tick.
+  ktower = verb_down(st, hex_editor::VB_TOWER);
+  if ktower && !st.was_tower { act(h, st, sess, a, hex_editor::VB_TOWER); }
+  st.was_tower = ktower;
   kwall = verb_down(st, hex_editor::VB_WALL);
   if kwall && !st.was_wall { act(h, st, sess, a, hex_editor::VB_WALL); }
   st.was_wall = kwall;
@@ -3569,7 +3581,7 @@ fn main() {
     fog_from: 1000000000.0, fog_to: 1000000000.0,
     sky_r: 0.48, sky_g: 0.55, sky_b: 0.64,
     was_up: false, was_down: false, was_level: false,
-    was_fence: false, was_wall: false,
+    was_fence: false, was_tower: false, was_wall: false,
     was_step_up: false, was_step_down: false,
     was_storey_up: false, was_storey_down: false, was_wall_run: false, shoot: "",
     ptr: hex_editor::pointer_new(), last_x: 0.0, last_y: 0.0,

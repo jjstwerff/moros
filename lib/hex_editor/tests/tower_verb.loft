@@ -1,0 +1,142 @@
+// A ROUND TOWER A PERSON CAN BUILD — plan 26 `B4i`.
+//
+// ⛔ **`B4g` BUILT THE GESTURE AND LEFT IT REACHABLE ONLY BY SCRIPT.** `tower <shell>`
+// in the runner and `59:` on the wire, and no verb and no key — so a person sitting in
+// the editor could not build one. That is this tree's commonest defect at the level
+// that matters, and `STATE.md` keeps a standing list of it (`44:` part mode has no
+// client binding either).
+//
+// ⚠ **AND THE OBVIOUS DESIGN IS THE ONE `B4g` MEASURED SHUT.** A wall type declaring
+// `body=THICK_CURVED` could make `wall` ring round with no new verb — except a disc IS
+// the hexagon at exactly the shells `12R²`, and `fence_ring`'s radius 3 is shell 108,
+// one of them. At the ring's own size the two gestures build the identical world, so
+// roundness needs a SIZE and the size is a choice.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U = 0.25;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn ring_bytes(w: VoxelWorld, mat: integer) -> integer {
+  n = 0;
+  for r in 0 - 16..17 {
+    for q in 0 - 16..17 {
+      for d in [4, 5, 0] { if wall_of(w, q, r, d, 0.0) == mat { n = n + 1; } }
+    }
+  }
+  n
+}
+
+// ── THE VERB ───────────────────────────────────────────────────────────────
+
+fn test_the_verb_builds_a_disc_at_the_chosen_shell() {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_shell(s, 84).ak_ok, "shell 84 was refused");
+  ack = press_verb(s, w, s.es_author, VB_TOWER, "");
+  assert(ack.ak_ok, "the tower verb was refused: {ack.ak_why}");
+
+  d = disc_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(d.dc_ok, "what the verb built is not a disc: {d.dc_why}");
+  assert(d.dc_shell == 84,
+         "the verb built shell {d.dc_shell} against the 84 the session holds — the "
+       + "choice reached the sentence and not the world");
+}
+
+// ⚠ **THE ROW THE WHOLE DESIGN RESTS ON.** If the default shell were `12R²` the round
+// tower would build the hexagon `verb wall` already builds, and every row above would
+// still pass. This is the one that says the two verbs differ at their own defaults.
+fn test_the_tower_and_the_ring_are_different_worlds_at_their_defaults() {
+  tw = flat_world();
+  ts = EditSession {};
+  session_at(ts, tw, 0.0, 0.0, 0.0);
+  assert(press_verb(ts, tw, ts.es_author, VB_TOWER, "").ak_ok, "tower refused");
+
+  rw = flat_world();
+  rs = EditSession {};
+  session_at(rs, rw, 0.0, 0.0, 0.0);
+  assert(press_verb(rs, rw, rs.es_author, VB_WALL, "").ak_ok, "wall refused");
+
+  tn = ring_bytes(tw, WALL_MAT);
+  rn = ring_bytes(rw, WALL_MAT);
+  assert(tn > 0 && rn > 0, "one of the two verbs stamped nothing");
+  assert(tn != rn,
+         "the tower and the ring both stamped {tn} edges — the default shell is one of "
+       + "the `12R²` family, so `verb tower` is building the hexagon `verb wall` does");
+
+  // …and the tower's IS a disc while the ring's is not describable as one of that size.
+  td = disc_recover(tw, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(td.dc_ok && td.dc_shell == TOWER_SHELL_DEFAULT,
+         "the default tower reads {td.dc_shell}: {td.dc_why}");
+}
+
+// ⚠ **THE DEFAULT IS MEASURED, NOT PICKED**, and this pins the two facts `B4g` used to
+// choose it: it is not a hexagon shell, and it is big enough to read as round.
+fn test_the_default_shell_is_round_and_is_not_a_hexagon() {
+  assert(fit_shell(TOWER_SHELL_DEFAULT).ft_ok,
+         "the default is not a shell at all: {fit_why(fit_shell(TOWER_SHELL_DEFAULT))}");
+  for rad in 1..7 {
+    assert(TOWER_SHELL_DEFAULT != 12 * rad * rad,
+           "the default {TOWER_SHELL_DEFAULT} is `12·{rad}²` — a hexagon, so the round "
+         + "tower would build the ring the editor already had");
+  }
+  assert(disc_span(TOWER_SHELL_DEFAULT) >= 4,
+         "the default reaches only {disc_span(TOWER_SHELL_DEFAULT)} cells — `B4g` "
+       + "measured that a rim reads as a circle from shell 156, 55 cells");
+}
+
+// ── THE SELECTION ──────────────────────────────────────────────────────────
+
+fn test_a_number_that_names_no_shell_is_refused_and_leaves_the_choice_alone() {
+  s = EditSession {};
+  assert(session_select_shell(s, 84).ak_ok, "shell 84 refused");
+  bad = session_select_shell(s, 40);
+  assert(!bad.ak_ok, "40 was accepted, and no pair of cells is 40 apart");
+  assert(bad.ak_why.contains("36"), "the refusal does not offer the nearest: {bad.ak_why}");
+  assert(session_shell(s) == 84,
+         "a refused choice moved the session to {session_shell(s)} — every selection in "
+       + "this tree keeps that rule");
+}
+
+fn test_a_fresh_session_holds_the_default() {
+  assert(session_shell(EditSession {}) == TOWER_SHELL_DEFAULT,
+         "a fresh session holds {session_shell(EditSession {})}");
+}
+
+// ⛔ **THE DIGEST HAS TO REMEMBER IT, AND `B4e` IS WHY THIS ROW EXISTS.** That step
+// found `session_digest` reporting ONE selection of six — the seat, the annex, the
+// reach, the part and the wall type were invisible to `probe/s2c`, `probe/k3d` and the
+// page-versus-runner comparison alike. ⚠ **The blindness was measured on the step that
+// added the sixth**, so the step that adds the seventh checks it rather than repeating
+// it.
+fn test_the_digest_reports_the_shell() {
+  s = EditSession {};
+  assert(session_select_shell(s, 84).ak_ok, "shell 84 refused");
+  d = session_digest(s);
+  assert(d.contains("shell 84"),
+         "the digest does not carry the chosen shell: {d}");
+  // …and it moves, or the row above would pass on a constant.
+  assert(session_select_shell(s, 300).ak_ok, "shell 300 refused");
+  assert(session_digest(s).contains("shell 300"),
+         "the digest did not follow the choice: {session_digest(s)}");
+}
+
+// ⚠ **THE KEY IS DATA AND THE VERB IS NOT** — `keymap_default` binds one, and a person
+// remaps it from inside the editor. What must not move is the verb NAME, because that
+// is what travels on the wire.
+fn test_the_verb_has_a_key_and_the_key_is_rebindable() {
+  m = keymap_default();
+  assert(key_for(m, VB_TOWER) != "",
+         "no key builds a round tower, so nobody sitting in the editor can");
+  keymap_bind(m, "9", VB_TOWER);
+  assert(key_for(m, VB_TOWER) == "9",
+         "the binding did not move to 9 — it reads {key_for(m, VB_TOWER)}");
+  assert(verb_in(m, "9") == VB_TOWER, "9 does not resolve to the verb");
+}

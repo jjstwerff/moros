@@ -1150,6 +1150,20 @@ pub fn fence_outside(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: 
 // the same ground and only their SHAPE differs.
 pub const TOWER_SHELL_MAX = 1728;
 
+// What `verb tower` builds when nobody has chosen — plan 26 `B4i`.
+//
+// ⚠ **MEASURED, NOT PICKED.** `B4g` drew shells 36, 84, 156 and 300 in plan and the
+// progression is the reason for this number: at 36 (13 cells) a "round" tower is a
+// **six-pointed star**, at 84 (31 cells) a lumpy rosette, and **156 (55 cells) is the
+// first that reads as a circle**. A default below it would ship a gesture whose name
+// the picture contradicts.
+//
+// ⚠ **AND IT MUST NOT BE `12R²`.** Those shells ARE hexagons — 12, 48, 108, 192, 300 —
+// and `fence_ring`'s radius 3 is shell **108**, so defaulting anywhere on that family
+// would make the round tower build the ring the editor already had. 156 is between
+// two of them, which is the whole point.
+pub const TOWER_SHELL_DEFAULT = 156;
+
 // The nearest shell at or below `n24` that some `(k, m)` actually realises.
 //
 // ⚠ IT SEARCHES DOWNWARD BECAUSE THE GRID IS THE LIBRARY'S, NOT A FORMULA OF OURS.

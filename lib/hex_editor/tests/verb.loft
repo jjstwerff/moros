@@ -938,7 +938,7 @@ fn test_every_verb_the_definition_produces_is_bound() {
 fn the_vocabulary() -> vector<text> {
   [VB_RAISE, VB_LOWER, VB_PLACE, VB_OPENING, VB_FENCE, VB_WALL, VB_RUN, VB_AIM,
    VB_SEAT, VB_ANNEX, VB_STAIR_UP, VB_STAIR_DOWN, VB_HOLE, VB_SLAB, VB_STOREY,
-   VB_CELLAR]
+   VB_CELLAR, VB_TOWER]
 }
 
 fn test_the_vocabulary_the_definition_and_press_verb_are_one_set() {

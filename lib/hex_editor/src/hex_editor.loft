@@ -1647,6 +1647,15 @@ pub const VB_RUN     = "run";
 // touches `es_draft`, so an aim in the middle of an open trace leaves that trace
 // exactly where it was rather than closing it with a different geometry.
 pub const VB_AIM     = "aim";
+// ⚠ **A ROUND ENCLOSURE, AND IT IS A VERB OF ITS OWN RATHER THAN A `wall` THAT WENT
+// ROUND** — plan 26 `B4i`. The tempting design is that a chosen wall type declaring
+// `body=THICK_CURVED` makes `wall` ring round, with no new verb at all; `B4g` measured
+// why it cannot. A disc IS the hexagon at exactly the shells `12R²`, and `fence_ring`'s
+// radius 3 is shell **108** — one of them — so at the ring's own size the two gestures
+// build the identical world. Roundness needs a SIZE, the size is a choice, and a verb
+// whose result depended on a selection nobody had made would be `run` and `aim`'s
+// `X108` problem in a new costume.
+pub const VB_TOWER   = "tower";
 // ⚠ **THE SECOND FAMILY TO COLLAPSE, AND THE FIRST SINCE `opening`.** `Y` and `T` are
 // two keys on ONE message (`38:0` a bed, `38:1` a figure) differing by the thing
 // seated — so they are one verb and the kind comes from `es_seat_kind`, exactly as six
@@ -1736,6 +1745,15 @@ pub fn keymap_default() -> KeyMap {
     bind_of("ArrowUp",   VB_RAISE),
     bind_of("ArrowDown", VB_LOWER),
     bind_of("F", VB_FENCE),
+    // ⛔ **A DIGIT, BECAUSE THE EDITOR HAS RUN OUT OF LETTERS — plan 26 `B4i`.**
+    // Every one is spoken for: fourteen are primaries in this table, `WASD` move, `L`
+    // levels, and the remaining seven — `P I U N M K V` — are the aliases the verb
+    // collapse freed, which `keymap.loft` keeps free ON PURPOSE so the list cannot
+    // become an escape hatch. ⚠ *Unused* and *available* are not the same thing, and
+    // grepping this table for a gap says only the first. `1` is the first key nothing
+    // claims. Casual, as this file's own rule asks — the binding is data and a person
+    // remaps it from inside the editor.
+    bind_of("1", VB_TOWER),
     bind_of("G", VB_WALL),
     bind_of("R", VB_RUN),
     // ⚠ **`T` IS ONE OF THE EIGHT THE COLLAPSES FREED, AND SPENDING ONE IS THE POINT
@@ -1773,6 +1791,7 @@ pub fn verb_short(verb: text) -> text {
   if verb == VB_PLACE      { return "hous"; }
   if verb == VB_OPENING    { return "door"; }
   if verb == VB_FENCE      { return "fenc"; }
+  if verb == VB_TOWER      { return "towr"; }
   if verb == VB_WALL       { return "wall"; }
   if verb == VB_RUN        { return "run"; }
   if verb == VB_AIM        { return "aim"; }
@@ -1929,6 +1948,11 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
     return ack_ok(1);
   }
   if verb == VB_FENCE { return ring_set(sess, w, a, FENCE_MAT, FENCE_R, a.au_y); }
+  // ⚠ **THE SIZE IS THE SESSION'S AND THE MATERIAL IS TOO** — plan 26 `B4i`. Both read
+  // through their one reader, which is what keeps `verb tower`, `59:` on the wire and
+  // the runner's `tower <shell>` from becoming three answers to *how big is it*.
+  if verb == VB_TOWER { return tower_ring(w, a, session_wall_mat(sess),
+                                          session_shell(sess), a.au_y); }
   // ⚠ **THE WALL'S MATERIAL IS THE SELECTION'S NOW — plan 26 `B4e`.** `VB_FENCE`
   // above keeps `FENCE_MAT` because a fence is a KIND and not a type: the vocabulary
   // owns byte 3, and choosing a fence type is a different question nobody has asked.
