@@ -386,8 +386,12 @@ Three runs died on `unable to find library -lloft_graphics_native`. It is a **si
 loft CI** rebuilding the native cdylibs: `~/.loft/build-cache/graphics-0.8.0/release` is
 emptied and refilled, and every `--lib lib/` link here fails while it is empty. Nothing to
 fix and nothing to kill. `LOFT_NO_NATIVE_LIBS=1` is the way through, and it changes what is
-exercised — so the native backend is **unverified** for this step until the box is quiet.
-[`probe/plan/README.md`](../../probe/plan/README.md) carries the incantation.
+exercised. [`probe/plan/README.md`](../../probe/plan/README.md) carries the incantation.
+
+✅ **RE-RUN PLAINLY ONCE THE CACHE REFILLED AND THE CAVEAT IS DISCHARGED**: `make fast`
+exits 0 with `probe/plan` green on the native path inside it, and `hex_mesh` is **94 on
+both backends**. ⚠ The window it took was between two of the sibling's rebuilds, so the
+green is a fact about this run and not a promise about the next one.
 
 ## Open questions
 

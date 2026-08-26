@@ -46,4 +46,7 @@ LOFT_NO_NATIVE_LIBS=1 LOFT="loft --interpret" sh probe/plan/run.sh
 ```
 
 which builds every library interpreted. ⚠ **It changes what is exercised**, so a green run
-that way is not a claim about the native backend; re-run plainly when the box is quiet.
+that way is not a claim about the native backend.
+
+✅ Re-run plainly between two of the sibling's rebuilds: green on the native path, inside
+`make fast`. The green is a fact about that run, not a promise about the next one.
