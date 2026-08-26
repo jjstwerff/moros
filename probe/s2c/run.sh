@@ -43,13 +43,21 @@ GROUND=${GROUND:-0}
 # A driver resolving aliases in its own table instead of asking the gesture layer is
 # `S2c` rebuilt one word over, and this row is what would see it.
 #
+# ⚠ **AND `tower` IS THE FIFTH — plan 26 `B4g`.** It is the only script that builds a
+# ROUND rim, and it earns its seat for `walltype`'s reason one message along: `59:` is
+# a new gesture reaching `editor_run` as a line and the server as a message, and the
+# two sentences it prints are identical, so nothing but the saved world can say the
+# two drivers rimmed the same circle. ⚠ It also rings a HEXAGON beside the disk, so a
+# driver that quietly fell back to `fence_disc` would key a world with two identical
+# rings in it.
+#
 # ⚠ **AND `walltype` IS THE FOURTH — plan 26 `B4e`, and it went red on its first run.**
 # The selection reaches `editor_run` as a line and the server as `58:`; the server chose
 # correctly and then stamped byte 1 anyway, because `tools/script.mjs` sent `25:1` and a
 # material on the wire outranked the choice behind it. ⚠ **Both drivers printed the SAME
 # SENTENCE** — `wall laid 12 edges, heading 0 …` is identical for either type — so no
 # acknowledgement, no count and no log line could have found it. The saved world could.
-SCRIPTS=${*:-"house door opening niche embrasure profiles annex furnish htype htverb walltype"}
+SCRIPTS=${*:-"house door opening niche embrasure profiles annex furnish htype htverb walltype tower"}
 
 ran=0
 bad=0

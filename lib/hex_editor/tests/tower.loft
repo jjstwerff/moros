@@ -1,0 +1,286 @@
+// A ROUND ENCLOSURE — plan 26 `B4g`, BLUEPRINT §2.2.
+//
+// ⛔ **THE EDITOR'S ONLY ENCLOSURE WAS A HEXAGON WEARING THE NAME `fence_disc`.** It
+// asks `hex_distance <= rad`, which is six straight sides — which is exactly why
+// `ring_runs` can describe it as six runs. `@HB-X49`'s round tower rim, the producer
+// upstream names for the `THICK_CURVED` body, had no gesture at all and the whole
+// `hex_shape::arc_*` family had **zero production callers in this tree**.
+//
+// ⚠ **AND THE CONTROL THIS FILE IS BUILT AROUND IS NOT FREE — `probe/b0p` MEASURED
+// WHY.** A disk and the hex-distance hexagon are the SAME cell set at the shells
+// `12R²`. So *is it round* cannot be asked at a shell chosen for convenience: at 12,
+// 48, 108, 192 and 300 a gesture that never called `arc_fill` would pass every row.
+// Every fixture below therefore states which shell it uses and why.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+use hex_field;
+use hex_shape;
+
+const U = 0.25;
+// The smallest disk that is NOT any hexagon — 13 cells. Measured over every shell to
+// 300, the hexagonal shells are exactly 12, 48, 108, 192, 300 (`12R²`) and this is
+// the first one between them.
+const ROUND_SHELL = 36;
+// …and one that IS the hexagon of radius 2, kept as the instrument's own control.
+const HEX_SHELL = 48;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 20, 0 - 20, 41, 41, 8, SURFACE_MAT);
+  w
+}
+
+fn at_origin(w: VoxelWorld) -> Author {
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  s.es_author
+}
+
+// The cells of the disk of `shell`, straight from the library — the ORACLE, not a
+// second rasterisation of ours.
+fn disk_of(shell: integer) -> HexSet {
+  pad = tower_pad(shell);
+  c = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+  hex_shape::arc_fill(0, 0, shell, c);
+  c
+}
+
+// The hexagon `fence_disc` builds, as a set — for comparing the two SHAPES rather
+// than the two gestures.
+fn hexagon_of(rad: integer) -> HexSet {
+  c = hexset_chunk(0 - rad - 2, 0 - rad - 2, 2 * rad + 5, 2 * rad + 5);
+  for r in 0 - rad - 2..rad + 3 {
+    for q in 0 - rad - 2..rad + 3 {
+      if hex_grid::hex_distance(q, r, 0, 0) <= rad { hexset_set(c, q, r, true); }
+    }
+  }
+  c
+}
+
+fn same_cells(a: HexSet, b: HexSet) -> boolean {
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      if hexset_get(a, q, r) != hexset_get(b, q, r) { return false; }
+    }
+  }
+  true
+}
+
+// ⚠ **THE INSTRUMENT, CHECKED BEFORE IT IS TRUSTED.** If these two rows do not hold,
+// every claim below is about a comparison that cannot tell the shapes apart.
+fn test_a_disk_is_the_hexagon_at_12r_squared_and_nowhere_between() {
+  assert(same_cells(disk_of(HEX_SHELL), hexagon_of(2)),
+         "shell {HEX_SHELL} is not the hexagon of radius 2 — the `12R²` coincidence "
+       + "this file's controls rest on does not hold, so re-measure before reading on");
+  assert(!same_cells(disk_of(ROUND_SHELL), hexagon_of(1))
+         && !same_cells(disk_of(ROUND_SHELL), hexagon_of(2)),
+         "shell {ROUND_SHELL} IS a hexagon — the fixture cannot show roundness");
+  // …and the comparison discriminates at all, which is what says the two rows above
+  // are measurements rather than a function that answers the same thing twice.
+  assert(!same_cells(hexagon_of(1), hexagon_of(2)), "the comparison cannot tell 1 from 2");
+}
+
+// ── WHAT THE GESTURE BUILDS ────────────────────────────────────────────────
+
+fn test_the_ring_it_stamps_is_the_boundary_of_a_disk_and_of_nothing_else() {
+  w = flat_world();
+  ack = tower_ring(w, at_origin(w), WALL_MAT, ROUND_SHELL, 0.0);
+  assert(ack.ak_ok, "a round tower at shell {ROUND_SHELL} was refused: {ack.ak_why}");
+  assert(ack.ak_n > 0, "it stamped nothing");
+
+  // ⚠ **THREE CASES, NOT TWO, AND THE MIDDLE ONE IS WHERE THE FIRST DRAFT OF THIS
+  // TEST WAS WRONG.** `wall_of` resolves through `edge_owner`, so ONE stamped edge is
+  // visible from both of its cells — reading *this cell is outside and the edge is
+  // marked* as a fault counted every boundary edge a second time and reported 30
+  // spurious ones. An edge is classified by BOTH its cells:
+  //
+  //   both in the disk        interior — must NOT be marked, or the tower is solid
+  //   exactly one in the disk boundary — must be marked, or the rim has a gap
+  //   neither in the disk     outside  — must NOT be marked
+  d = disk_of(ROUND_SHELL);
+  want = 0;
+  gap = 0;
+  solid = 0;
+  stray = 0;
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      for dir in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, dir);
+        here = hexset_get(d, q, r);
+        there = hexset_get(d, nq, nr);
+        marked = wall_of(w, q, r, dir, 0.0) == WALL_MAT;
+        if here != there {
+          want = want + 1;
+          if !marked { gap = gap + 1; }
+        } else if here && there {
+          if marked { solid = solid + 1; }
+        } else if marked { stray = stray + 1; }
+      }
+    }
+  }
+  assert(want > 0, "the oracle says this disk has no boundary at all");
+  assert(gap == 0,
+         "{gap} of the disk's {want} boundary edges are not stamped — a rim with a gap "
+       + "in it is a tower you can walk out of");
+  assert(solid == 0,
+         "{solid} edges INSIDE the disk are stamped — the gesture is filling the tower "
+       + "rather than ringing it");
+  assert(stray == 0,
+         "{stray} edges are stamped that touch no cell of the disk at all");
+}
+
+// ⚠ **THE ROW THE STEP EXISTS FOR, AND IT IS THE ONE `12R²` COULD HAVE FAKED.** At
+// shell 48 this assertion would be TRUE of a gesture that had never left the
+// hexagon; at 36 only a real disk can satisfy it.
+fn test_what_it_builds_is_round_rather_than_the_ring_we_already_had() {
+  w = flat_world();
+  a = at_origin(w);
+  assert(tower_ring(w, a, WALL_MAT, ROUND_SHELL, 0.0).ak_ok, "the tower was refused");
+
+  hexw = flat_world();
+  fence_disc(hexw, 0, 0, 2, WALL_MAT, 0.0, WallRuns { items: [] });
+
+  round_n = 0;
+  hex_n = 0;
+  diff = 0;
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      for dir in [4, 5, 0] {
+        rb = wall_of(w, q, r, dir, 0.0) == WALL_MAT;
+        hb = wall_of(hexw, q, r, dir, 0.0) == WALL_MAT;
+        if rb { round_n = round_n + 1; }
+        if hb { hex_n = hex_n + 1; }
+        if rb != hb { diff = diff + 1; }
+      }
+    }
+  }
+  assert(round_n > 0 && hex_n > 0, "one of the two gestures stamped nothing");
+  assert(diff > 0,
+         "the round tower and the hexagonal ring stamped the SAME {round_n} edges — "
+       + "at shell {ROUND_SHELL} that can only mean `arc_fill` was never called, "
+       + "because a disk is a hexagon at `12R²` and at no shell between");
+}
+
+// ⛔ **THE ROW THE SABOTAGE SWEEP DEMANDED, AND EVERY OTHER ROW IN THIS FILE WAS
+// BLIND TO IT.** With `tower_ring` pinned to stamp `WALL_MAT` instead of the material
+// it was handed, the sweep found **nothing red at all**: the boundary rows all build
+// with `WALL_MAT` themselves, the refusal rows read an `Ack` and never the store, and
+// `probe/s2c` compares two drivers that would be broken identically and agree
+// perfectly. ⚠ **It is `B4e` row 1 one gesture along** — *"`probe/s2c` measures
+// DIVERGENCE, never correctness"* — and the only thing that can see it is reading the
+// BYTE back out of the world.
+fn test_the_rim_carries_the_material_it_was_handed() {
+  w = flat_world();
+  assert(tower_ring(w, at_origin(w), 7, ROUND_SHELL, 0.0).ak_ok, "slot 7 was refused");
+  chosen = 0;
+  plain = 0;
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      for dir in [4, 5, 0] {
+        b = wall_of(w, q, r, dir, 0.0);
+        if b == 7 { chosen = chosen + 1; }
+        if b == WALL_MAT { plain = plain + 1; }
+      }
+    }
+  }
+  assert(chosen > 0,
+         "the rim holds no byte 7 at all — the material reached the sentence and not "
+       + "the world, which is this tree's commonest defect");
+  assert(plain == 0,
+         "the rim holds {plain} plain walls beside the {chosen} chosen ones — the "
+       + "gesture is stamping a material of its own");
+}
+
+// ⚠ **THE RECOVERY, WHICH IS WHY A SHELL IS THE PARAMETER AT ALL.** `@HB-X49`: the
+// centre comes back EXACTLY and the radius only as a shell. A gesture whose disk did
+// not sit about the author's own cell would still ring the ground and would not be
+// recoverable, which is the half a picture cannot show.
+fn test_the_disk_reads_back_as_a_disk_about_the_author_own_cell() {
+  d = disk_of(ROUND_SHELL);
+  assert(hex_shape::arc_is_disk(d, 0, 0), "what the gesture fills is not a disk");
+  assert(hex_shape::arc_shell_max(d, 0, 0) == ROUND_SHELL,
+         "its outermost shell reads {hex_shape::arc_shell_max(d, 0, 0)}");
+  (rq, rr, ok) = hex_shape::arc_recover_centre(d);
+  assert(ok && rq == 0 && rr == 0,
+         "the centre recovers to {rq},{rr} (found {ok}) — the author stands at 0,0");
+}
+
+// ── WHAT IT REFUSES, AND WHY EACH ──────────────────────────────────────────
+
+// ⚠ **THE REFUSAL THE LIBRARY ASKS FOR IN ITS OWN COMMENT**: *"hand it a value no
+// `(k,m)` realises and it draws the shell below without a word."* Silence there is a
+// smaller tower than the one asked for, reported as success.
+fn test_a_number_that_names_no_shell_is_refused_with_the_nearest_one() {
+  w = flat_world();
+  ack = tower_ring(w, at_origin(w), WALL_MAT, 40, 0.0);
+  assert(!ack.ak_ok, "shell 40 was accepted, and no pair of cells is 40 apart");
+  assert(ack.ak_why.contains("36"),
+         "the refusal does not offer the nearest shell: {ack.ak_why}");
+  // …and it wrote nothing, which is what separates a refusal from a warning.
+  n = 0;
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      for dir in [4, 5, 0] { if wall_of(w, q, r, dir, 0.0) != 0 { n = n + 1; } }
+    }
+  }
+  assert(n == 0, "a refused tower stamped {n} edges anyway");
+}
+
+fn test_a_shell_that_is_one_answers_the_grid_rather_than_the_range() {
+  // 12 IS a shell and is admitted; 11 is neither a shell nor below the minimum by
+  // much, and the two must not give the same complaint.
+  assert(fit_shell(12).ft_ok, "shell 12 was refused: {fit_why(fit_shell(12))}");
+  assert(!fit_shell(11).ft_ok, "shell 11 was admitted");
+  assert(fit_shell(11).ft_reason.contains("minimum"),
+         "11 is below the floor and the refusal says: {fit_shell(11).ft_reason}");
+  assert(fit_shell(40).ft_reason.contains("not a shell"),
+         "40 is on no grid point and the refusal says: {fit_shell(40).ft_reason}");
+  assert(fit_shell(40).ft_offer == 36, "it offers {fit_shell(40).ft_offer}");
+  assert(!fit_shell(TOWER_SHELL_MAX + 1).ft_ok, "a shell past the reach was admitted");
+}
+
+// ⚠ **THE SILENT CLIP, AND BOTH INSTRUMENTS AGREE WITH IT.** `arc_fill` fills only
+// inside the set's own window and `arc_is_disk` reads back over that same window, so
+// a disk clipped by a small window is a disk to the checker too. This is the one row
+// that can see it, and it checks the PAD against the set rather than against itself.
+fn test_the_window_is_big_enough_that_the_disk_never_touches_its_border() {
+  for sh in [12, 36, 48, 84, 108, 300] {
+    assert(!tower_clipped(disk_of(sh)),
+           "the disk of shell {sh} reaches the border of the window `tower_pad` sized "
+         + "for it ({tower_pad(sh)}) — clipped, and it would read back as a disk");
+  }
+  // …and the guard fires when it should, or the six rows above say nothing.
+  tiny = hexset_chunk(0 - 1, 0 - 1, 3, 3);
+  hex_shape::arc_fill(0, 0, 36, tiny);
+  assert(tower_clipped(tiny),
+         "a disk of shell 36 forced into a 3x3 window was not reported as clipped");
+}
+
+// ⚠ **THE MATERIAL RULE IS `fence_ring`'s, UNCHANGED, AND THIS ROW EXISTS TO SAY SO
+// RATHER THAN TO IMPROVE IT.** `fit_edge_mat`'s own comment forbids narrowing here —
+// *"a step that also narrowed here would be two changes wearing one diff"* — so the
+// round gesture admits exactly what the hexagonal one admits.
+fn test_the_material_rule_is_the_rings_own_and_a_window_is_still_refused() {
+  w = flat_world();
+  ack = tower_ring(w, at_origin(w), WINDOW_MAT, ROUND_SHELL, 0.0);
+  assert(!ack.ak_ok, "a window was rung — a window is CUT into a wall, never rung");
+  assert(ack.ak_why.contains("nominal"),
+         "a material is nominal, so the refusal offers nothing: {ack.ak_why}");
+  // …and a declared wall type IS accepted, so the refusal above is a measurement
+  // rather than a gesture that says no to everything.
+  assert(tower_ring(flat_world(), at_origin(w), 7, ROUND_SHELL, 0.0).ak_ok,
+         "a declared wall type was refused as a tower's material");
+
+  // ⚠ **AND `0` IS ADMITTED, WHICH IS WORTH KNOWING RATHER THAN FIXING HERE.**
+  // `edge_stamp_ok(0)` is true for every ring gesture in this file's neighbourhood,
+  // and byte 0 means *no edge at all* — so ringing with it ERASES a rim rather than
+  // building one. ⚠ It is the one place `session_select_wall` and the gesture
+  // parameter disagree: the SELECTION refuses 0 by name (*"absence"*), because
+  // choosing a type and writing a byte are different questions.
+  assert(tower_ring(flat_world(), at_origin(w), 0, ROUND_SHELL, 0.0).ak_ok,
+         "byte 0 was refused here while `fence_ring` accepts it — the two ring "
+       + "gestures have come to disagree about what may be stamped");
+  assert(!session_select_wall(EditSession {}, 0).ak_ok,
+         "the SELECTION accepts 0 too, so the asymmetry this row records is gone");
+}

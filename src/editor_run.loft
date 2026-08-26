@@ -886,6 +886,28 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   // declaration that did not land leaves the script building the DEFAULT house while
   // reading as though it had asked for a castle — the silent-drop class `K3c` was
   // written for. `ground`'s own refusal predates that rule and is a separate row.
+  // ⚠ **A ROUND ENCLOSURE — plan 26 `B4g`.** `verb wall` rings the author with a
+  // HEXAGON: `fence_disc` asks `hex_distance <= rad`, which is six straight sides.
+  // This is `hex_shape::arc_fill`'s disk instead — `@HB-X49`'s round tower rim, the
+  // producer upstream names for the `THICK_CURVED` body.
+  //
+  // ⚠ **A SHELL, NOT A RADIUS**, and the refusal is why it is a line of its own: only
+  // the shell comes back from the field (`@HB-X49` measured 161 radii collapsing to
+  // four), and `arc_fill` draws the shell BELOW a number that names none *without a
+  // word*. So the offer in the refusal is the whole guard.
+  //
+  // ⚠ **THE MATERIAL IS THE CHOSEN TYPE**, read through `session_wall_mat` exactly as
+  // `wall`, `run` and `aim` read it — plan 26 `B4e`. A fourth site deciding what a
+  // wall is made of is the divergence that selection exists to close.
+  if cmd == "tower" {
+    tack = hex_editor::tower_ring(w, walk_author(wk),
+                                  hex_editor::session_wall_mat(sess),
+                                  rest.trim() as integer ?? 0 - 1, wk.wk_y);
+    said = tack.ak_why;
+    if tack.ak_ok { said = "tower rimmed {tack.ak_n} edges"; }
+    return tack.ak_ok;
+  }
+
   if cmd == "declare" {
     (dcq, dcr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
     dack = hex_editor::world_declare(w, hex_voxel::world_region_at(w, dcq, dcr), rest);

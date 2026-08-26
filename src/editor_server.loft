@@ -344,6 +344,26 @@ const MSG_SELECT_REACH = 57;   // how far an aim reaches, in whole world units
 // what `25:`, `56:` and `verb wall` all read, so a person chooses once and then
 // presses the key they always press. `49:`'s division, sixth family to take it.
 const MSG_SELECT_WALL = 58;
+// ── `59:<shell>` — A ROUND ENCLOSURE — plan 26 `B4g`, BLUEPRINT §2.2 ────────
+//
+// `23:` and the `wall` verb ring the author with a HEXAGON — `fence_disc` asks
+// `hex_grid::hex_distance <= rad`, which is six straight sides, which is exactly why
+// `ring_runs` can describe it as six runs. This is the disk instead: `hex_shape`'s
+// `arc_fill`, `@HB-X49`'s round tower rim, the producer upstream names for the
+// `THICK_CURVED` body.
+//
+// ⚠ **THE PAYLOAD IS A SHELL, NOT A RADIUS, AND THAT IS THE FIELD'S OWN ANSWER.**
+// `@HB-X49` measured 161 radii over `0.5 .. 4.5 wu` collapsing to FOUR distinct
+// fields — only the shell comes back — and `arc_fill` draws the shell BELOW a number
+// naming none *without a word*, so the refusal's offer is the guard rather than a
+// courtesy. ⚠ And a disk is the hexagon at exactly the shells `12R²`, so `59:48` and
+// `23:` build the same rim: the message is not a claim that the shape differs, the
+// SHELL is.
+//
+// ⚠ **NO MATERIAL FIELD, DELIBERATELY.** The type is `session_wall_mat`'s, like every
+// other wall gesture since `B4e` — a seventh site deciding what a wall is made of is
+// the divergence that selection closed.
+const MSG_TOWER = 59;
 const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
@@ -1328,6 +1348,31 @@ fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
   srv.send_to(cid, "S:{say_fenced(fack.ak_n, fout, frad, fmat)}");
   println("editor: fenced {fack.ak_n} edges ({fout} stored outside) "
         + "at ({fack.ak_q},{fack.ak_r}) radius {frad}");
+}
+
+// A ROUND rim — `hex_editor::tower_ring` — plan 26 `B4g`. `do_fence`'s shape with
+// one field instead of two, because the material is the chosen type and the size is
+// a shell.
+//
+// ⚠ **THE DIRTY RADIUS IS IN CELLS AND THE PAYLOAD IS A SHELL**, which are different
+// units — `tower_pad` is the library's own answer for how far the disk reaches, and
+// re-deriving it from the shell here would be the second definition of a disk's
+// extent that `tower_pad`'s comment exists to prevent.
+fn do_tower(srv: Server, cid: integer, payload: text, px: float, pz: float,
+            py: float, wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
+  tshell = payload as integer ?? 0 - 1;
+  tmat = hex_editor::session_wall_mat(sess);
+  ta = hex_editor::author_at(px, pz, 0.0, py);
+  tack = hex_editor::tower_ring(wld, ta, tmat, tshell, py);
+  if !tack.ak_ok {
+    srv.send_to(cid, "S:{say_refused(\"tower\", tack.ak_why)}");
+    println("editor: tower refused — {tack.ak_why}");
+    return;
+  }
+  mark_dirty(dirty, tack.ak_q, tack.ak_r, hex_editor::tower_pad(tshell) + 1);
+  srv.send_to(cid, "S:tower rimmed {tack.ak_n} edges");
+  println("editor: tower rimmed {tack.ak_n} edges at ({tack.ak_q},{tack.ak_r}) "
+        + "shell {tshell} material {tmat}");
 }
 
 // One edge — `hex_editor::edge_set`. The same division: the library decides and
@@ -5559,6 +5604,10 @@ fn main() {
             srv.send_to(ev.cid, "S:annex {sess.es_annex_kind} selected");
             println("editor: annex {sess.es_annex_kind} selected");
           }
+        } else if ev.msg_id == MSG_TOWER {
+          // ── A ROUND ENCLOSURE — plan 26 `B4g` ──────────────────────────────
+          do_tower(srv, ev.cid, ev.payload, wk.wk_x, wk.wk_z, wk.wk_y,
+                   wld, dirty, sess);
         } else if ev.msg_id == MSG_SELECT_WALL {
           // ── WHICH WALL TYPE THE NEXT WALL VERB STAMPS — plan 26 `B4e` ───────
           //

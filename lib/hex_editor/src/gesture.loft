@@ -890,6 +890,156 @@ pub fn fence_outside(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: 
   outside
 }
 
+// ── A ROUND ENCLOSURE — plan 26 `B4g`, BLUEPRINT §2.2 ──────────────────────
+//
+// > *"a different wall type that is rounded instead of straight for rounded
+// > structures like balconies/towers."*
+//
+// ⛔ **`fence_disc` ABOVE IS A HEXAGON, AND ITS NAME SAYS DISC.** It asks
+// `hex_grid::hex_distance(q, r, cq, cr) <= rad`, which is the lattice's own metric —
+// six straight sides, which is why `ring_runs` can describe it as six runs at all.
+// Nothing in this editor has ever built a round thing.
+//
+// ⚠ **AND THE ROUND ONE IS NOT OURS TO DERIVE.** `hex_shape::arc_fill` is the disk,
+// in exact integers: a cell centre sits at `(k·√3/2, m/2)`, so its 4·squared distance
+// is `3k² + m²` — `hex_form::vec_n2_4` — and *inside* is the integer test `N' <= N`.
+// No float, no rasterisation of ours, and `@HB-X49`'s round tower rim is the producer
+// upstream names for the `THICK_CURVED` body.
+//
+// ⚠ **A RADIUS IS NOT A PARAMETER OF A DISK HERE — A SHELL IS.** `@HB-X49` measured
+// it: 161 radii over `0.5 .. 4.5 wu` collapse to FOUR distinct fields, so only the
+// SHELL comes back. `arc_shells_upto` is the admissible grid, and `arc_fill`'s own
+// comment names the hazard this guard exists for — *"hand it a value no `(k,m)`
+// realises and it draws the shell below without a word."*
+//
+// ⚠ **AND A DISK IS THE HEXAGON AT EXACTLY THE SHELLS `12R²`** — measured over every
+// shell to 300: 12→rad 1, 48→rad 2, 108→rad 3, 192→rad 4, 300→rad 5, and no other
+// shell is any hexagon. So *round* and *the ring we already had* are the same set at
+// one shell in three, and a test that did not pick its shell deliberately would be
+// green on a gesture that had never called `arc_fill` at all. The first genuinely
+// round disk is **shell 36, 13 cells**.
+
+// The largest shell this gesture will build: the hexagonal ring's own reach of 12,
+// as a shell (`12 · 12²`). ⚠ Not a number chosen for roundness — it is the same
+// distance `fence_ring` already lets an author enclose, so the two gestures cover
+// the same ground and only their SHAPE differs.
+pub const TOWER_SHELL_MAX = 1728;
+
+// The nearest shell at or below `n24` that some `(k, m)` actually realises.
+//
+// ⚠ IT SEARCHES DOWNWARD BECAUSE THE GRID IS THE LIBRARY'S, NOT A FORMULA OF OURS.
+// `arc_shells_upto(n)` is the answer and its last entry is the nearest at-or-below;
+// deriving one arithmetically here would be a second definition of *what a shell is*,
+// which is the whole thing this file exists not to do.
+pub fn shell_below(n24: integer) -> integer {
+  best = 0;
+  for sh in hex_shape::arc_shells_upto(n24) { if sh > best { best = sh; } }
+  best
+}
+
+// Does this number name a shell?  ⚠ **ORDINAL, SO THE REFUSAL CARRIES AN OFFER** —
+// `K-FIT`'s doorstep, and here it is load-bearing rather than polite: the library
+// draws the shell below *without a word*, so a gesture that did not check would
+// build a smaller tower than it was asked for and report success.
+pub fn fit_shell(n24: integer) -> Fit {
+  rng = fit_ordinal(n24, 12, TOWER_SHELL_MAX, "shell");
+  if !rng.ft_ok { return rng; }
+  near = shell_below(n24);
+  if near == n24 { return fit_ok(); }
+  Fit { ft_ok: false,
+        ft_reason: "shell {n24} is not a shell — no pair of cells is that far apart",
+        ft_offer: near, ft_residual: n24 - near, ft_ordinal: true }
+}
+
+// The window a disk of `shell` needs, plus a ring of room outside it.
+//
+// ⚠ **A WINDOW TOO SMALL CLIPS THE DISK IN SILENCE, AND BOTH INSTRUMENTS AGREE WITH
+// IT.** `arc_fill` fills only within the set's own window, and `arc_is_disk` reads
+// back over that same window — so a clipped disk is a disk to the checker too. The
+// pad is `isqrt(shell) + 2`: `m = 3·dr` gives `|dr| <= √N / 3`, and `k = 2·dq + p`
+// gives `|dq| <= (√(N/3) + 1) / 2`, both inside `√N`, and the `+2` is the ring of
+// outside cells the boundary walk has to be able to ask about.
+pub fn tower_pad(shell: integer) -> integer {
+  p = 0;
+  for i in 0..64 { if i * i <= shell { p = i; } }
+  p + 2
+}
+
+// Stamp the boundary of the disk of `shell` about `(cq, cr)` with `mat`, and answer
+// how many edges were written. The disk itself is filled into `cells`, so a caller
+// that wants to ask `arc_is_disk` or `arc_recover_centre` about what was built has
+// the set in hand rather than having to recover it from the store.
+//
+// ⚠ **THE BOUNDARY IS EVERY EDGE BETWEEN A MEMBER AND A NON-MEMBER** — the same rule
+// `fence_disc` follows and for the same reason (`edge_owner`: a hex owns three of its
+// six edges, so half of any region's boundary is stored in cells outside it). Asking
+// the SET rather than a distance is the whole difference between this and the ring.
+pub fn tower_disc(wld: VoxelWorld, cq: integer, cr: integer, shell: integer,
+                  mat: integer, ref: float, cells: HexSet) -> integer {
+  hex_shape::arc_fill(cq, cr, shell, cells);
+  n = 0;
+  for r in hexset_r0(cells)..hexset_r0(cells) + hexset_h(cells) {
+    for q in hexset_q0(cells)..hexset_q0(cells) + hexset_w(cells) {
+      if !hexset_get(cells, q, r) { continue; }
+      h = terrain_h(q, r, wld);
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        // ⚠ OUT OF THE WINDOW READS `false`, WHICH IS *OUTSIDE* — correct only
+        // because `tower_pad` guarantees the disk never reaches the border. That
+        // guarantee is asserted by `tower_ring` rather than assumed here.
+        if !hexset_get(cells, nq, nr) {
+          wall_set(wld, q, r, d, mat, h, ref);
+          n = n + 1;
+        }
+      }
+    }
+  }
+  n
+}
+
+// Does the disk of `shell` touch the border of the window `tower_pad` sized for it?
+// ⚠ THE GUARD FOR THE SILENT CLIP ABOVE, and it reads the SET rather than trusting
+// the arithmetic that sized it — a pad formula checked against the pad formula could
+// not be surprised.
+pub fn tower_clipped(cells: HexSet) -> boolean {
+  q0 = hexset_q0(cells);
+  r0 = hexset_r0(cells);
+  q1 = q0 + hexset_w(cells) - 1;
+  r1 = r0 + hexset_h(cells) - 1;
+  for q in q0..q1 + 1 {
+    if hexset_get(cells, q, r0) || hexset_get(cells, q, r1) { return true; }
+  }
+  for r in r0..r1 + 1 {
+    if hexset_get(cells, q0, r) || hexset_get(cells, q1, r) { return true; }
+  }
+  false
+}
+
+// Ring the author with a ROUND wall of `shell`, exactly.
+//
+// ⚠ **IT REGISTERS NO RUN, AND THAT IS A FACT ABOUT `WallRun` RATHER THAN AN
+// OMISSION.** A run is two endpoints and a `d24` heading; a circle has neither, so
+// there is nothing here for `ring_runs`'s six straight sides to say. The consequence
+// is worth stating out loud: this wall is drawn by the PER-EDGE emitter, which
+// `EDITOR_DEFECTS` 4 slates for deletion — so deleting it would take the only way a
+// curved wall can be drawn with it.
+pub fn tower_ring(w: VoxelWorld, a: Author, mat: integer, shell: integer,
+                  ref: float) -> Ack {
+  mfit = fit_edge_mat(mat);
+  if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
+  sfit = fit_shell(shell);
+  if !sfit.ft_ok { return ack_no(fit_why(sfit)); }
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  pad = tower_pad(shell);
+  cells = hexset_chunk(cq - pad, cr - pad, 2 * pad + 1, 2 * pad + 1);
+  n = tower_disc(w, cq, cr, shell, mat, ref, cells);
+  if tower_clipped(cells) {
+    return ack_no("shell {shell} reached the edge of its own window — the disk is "
+                + "clipped, and a clipped disk reads back as a disk");
+  }
+  ack_at(ack_ok(n), cq, cr)
+}
+
 // Set ONE edge of the cell the author stands in — the atomic half of the ring.
 //
 // Both parameters are nominal: a direction is one of six and a material is one this

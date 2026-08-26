@@ -1510,6 +1510,16 @@ for (const raw of lines) {
     // landed — that difference is the whole point of stepping.
     ws.send(`35:${rest[0]}`);
     console.log('  ' + await ack('stepped', 60000));
+  } else if (cmd === 'tower') {
+    // `tower <shell>` — a ROUND enclosure, plan 26 `B4g`. ⚠ ADDED IN THE SAME STEP as
+    // `src/editor_run.loft`'s line, which is `select reach`'s lesson taken as a rule:
+    // a verb that reaches one reader and not the other is a divergence no
+    // acknowledgement can show, and `probe/s2c` is the only thing that could.
+    // ⚠ AND NO MATERIAL GOES ON THE WIRE. `B4e` measured what happens when it does —
+    // the server selected correctly and stamped byte 1 anyway, because a payload
+    // beats a session — so the type is `session_wall_mat`'s at the far end.
+    ws.send(`59:${rest[0]}`);
+    console.log('  ' + await ack(['tower ', 'tower refused'], 10000));
   } else if (cmd === 'declare') {
     // `declare <axis> <slot> <name>` — how a house type or a material mapping gets
     // into the world at all (plan 22 `T1c`). ⚠ THE REST OF THE LINE GOES OVER

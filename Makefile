@@ -525,6 +525,12 @@ fast:
 # of itself. ⚠ It starts FOUR servers, each stopped: one for the house sentence and one
 # per `probe-s2c` script. Measured — the sentence half alone was 11.8 s, and `make fast`
 # end to end is 5m04 with the pair in it.
+# ⚠ **`tower` IS THE FOURTH — plan 26 `B4g`.** `59:` is a brand-new wire message, and
+# the runner's line and the server's handler print sentences that differ by nothing a
+# gate reads; only the saved world can say the two rimmed the same circle. It is in the
+# fast loop for the reason the `probe-k1` note above gives — *a check nobody runs drifts
+# red in silence* — and a new message is exactly when that costs most.
+#
 # ⚠ **`walltype` IS THE THIRD SCRIPT AND IT EARNED ITS SEAT ON ITS FIRST RUN — plan 26
 # `B4e`.** The wall-type selection reaches `editor_run` as a line and the server as
 # `58:`; the server chose correctly and then stamped byte 1 anyway, because
@@ -688,7 +694,7 @@ headless-same:
 	  echo "  headless: $$(cat .headless.txt)"; \
 	  echo "  served:   $$(cat .served.txt)"; exit 1; fi
 	@rm -f .headless.txt .served.txt
-	@$(MAKE) -s probe-s2c S="niche embrasure walltype"
+	@$(MAKE) -s probe-s2c S="niche embrasure walltype tower"
 
 # S2c (plan 22) — THE SAME SCRIPT BUILDS THE SAME WORLD, WITH AND WITHOUT A SERVER,
 # **on the openings**. The target above compares one SENTENCE and that sentence is

@@ -1,0 +1,32 @@
+# B4g — A ROUND ENCLOSURE, AND BOTH DRIVERS MUST STAMP THE SAME RIM
+#
+# ⛔ **`verb wall` RINGS YOU WITH A HEXAGON.** `fence_disc` asks
+# `hex_grid::hex_distance <= rad`, which is six straight sides — which is exactly why
+# `ring_runs` can describe it as six runs. `@HB-X49`'s round tower rim, the producer
+# upstream names for the `THICK_CURVED` body, had no gesture at all: the whole
+# `hex_shape::arc_*` family had ZERO production callers in this tree.
+#
+# ⚠ **A SHELL, NOT A RADIUS.** `@HB-X49` measured 161 radii collapsing to four fields,
+# so only the shell comes back — and `arc_fill` draws the shell BELOW a number that
+# names none *without a word*, which is why 40 below must be refused rather than
+# rounded.
+#
+# ⚠ **AND SHELL 36 IS CHOSEN, NOT CONVENIENT.** A disk IS the hexagon at exactly the
+# shells `12R²` — 12, 48, 108, 192, 300 — so a script at shell 48 would build the ring
+# this tree already had and prove nothing. 36 is the first genuinely round one.
+
+echo --- flat ground to build on
+at 0 0 0
+verb raise
+
+echo --- a wall type whose BODY says what the field actually holds
+declare edge 5 curtain body=THICK_CURVED thick=0.5
+select wall 5
+
+echo --- the round rim, at the first shell that is not a hexagon
+at 0 0 0
+tower 36
+
+echo --- and the hexagonal ring beside it, from the verb that has always done it
+at 12 0 0
+verb wall

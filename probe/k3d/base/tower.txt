@@ -1,0 +1,18 @@
+rc: 0
+world: 33000:2608235816
+md5: 38edaf5c9e47315bd65723573f0a035e
+tau: 164
+chunks: 4
+code: 0
+session: runs 6 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk true/5.196152422706632
+chosen: opening 1 (unchosen) wall 5 seat 0 annex 0 reach 6 part ''
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  edge 5 = curtain body=THICK_CURVED thick=0.5 in region 0
+  wall 5 selected
+  placed 0,0
+  tower rimmed 30 edges
+  placed 12,0
+  wall: 42
+--- what the runner refused
