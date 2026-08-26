@@ -56,6 +56,7 @@ its axles and rolling wheels. A character is that, with different joints.
 | 3 | a house floor is not flat by default | ✅ **answered upstream** (`@HB-X67`) | `SEAT_MEAN` lands exactly half a height unit off; it must be refused with an offer, not truncated |
 | 4 | every wall is drawn **twice** — hex-edge and straight | ⚠ **verified** | two emitters, and the gesture writes **both** records |
 | 5 | after a reload the straight walls are gone | ⚠ **verified** | the save carries the **cells**; the run record is not saved |
+| 6 | a wall near a house **loses its description** | ⚠ **measured 2026-08-26**, [plan 26](../../plans/26-blueprint/README.md) `B0`/`B1` | `place` stamps one wall edge past each corner of its footprint; a stray that meets a wall's chain at a vertex makes three marked edges at one point, and `wall_read_run` refuses a marking that is not a path |
 
 ✅ **1, 4 and 5 are ONE defect, and it is decided — see [the decision](#-the-decision--2026-08-21-there-is-no-session-record-only-a-mesh-cache).**
 
@@ -390,10 +391,17 @@ a stale mesh keys a correct world. **The instrument is the mesh, not the world k
    plan rather than the cells*) is **now wrong** and should be corrected where it sits, not left
    to argue the opposite from inside the source.
    **Build it in this order, because each step can go red on its own:**
-   a. the **recovery pass** — edge chain → straight segment — as pure `hex_editor` functions
-      with tests, against fixtures whose answer is known by construction;
+   a. ✅ **BUILT — [plan 26](../../plans/26-blueprint/README.md) `B1`.** The recovery pass is
+      `hex_editor::edges_mat` (the store's wall bytes into `EdgeSet`'s **material** channel —
+      the gap `probe/l1` named) and `hex_editor::wall_recover` (`hex_shape::wall_read_run`
+      paired with world-unit endpoints), with tests on both. ⚠ **Its consumer today is the
+      PLAN VIEW, not the mesher** — which is `b`, and is what turns this from a step into a
+      switch that can be compared;
    b. the **mesher** switched to it, with `emit_wall_panel` still present, so the two can be
-      compared in one picture before either is deleted;
+      compared in one picture before either is deleted. ⚠ **And `B1` measured what that switch
+      walks into**: the recovery refuses a window whose marks are not one path, which every
+      house is and which one stray edge is enough to cause. A mesher that recovers per chunk
+      needs an answer for *refused* that is not *draw nothing*;
    c. `emit_wall_panel` **deleted**, and a gate that counts triangles rather than naming
       surfaces;
    d. the **per-chunk cache**, keyed on the chunk's version;

@@ -137,6 +137,15 @@ for pair in $AUTHORS; do
   rc=$(rc_of "k3c-$n")
   if [ "$rc" -eq 0 ]; then
     bad "$s exited 0 — its \`send $want:\` went on the floor"
+  elif [ ! -s "$OUT/k3c-$n.log" ]; then
+    # ⚠ AN EMPTY LOG IS ITS OWN VERDICT, AND IT USED TO BORROW THE ONE BELOW. This row
+    # launches fourteen runs at once; when one of them dies before printing anything —
+    # a build race under load is what did it on 2026-08-26 — the `grep` below finds
+    # nothing and the row reports *never named `send 47:`*, which reads as the runner
+    # having stopped refusing. It had not run at all. `CLAUDE.md`: a grep over a log is
+    # an instrument, and its default answer is *absent*.
+    bad "$s produced an EMPTY log at rc=$rc — it did not run, so this row says nothing \
+about \`send $want:\`. Re-run \`make probe-k3c\` alone before believing it."
   elif grep -q "send $want: is not something this runner can do" "$OUT/k3c-$n.log"; then
     ok "$(basename "$s"): rc=$rc, refused \`send $want:\`"
   else
