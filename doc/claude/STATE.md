@@ -67,6 +67,13 @@ EYES (first person). The mode decides; `shelter_at` only observes.
 | `src/editor_server.loft` | a socket. Multi-client, the authority remote |
 | `src/editor_client.loft` | the picture. `--html` in a browser, **or** the same client against a server — the authority is LOCAL or REMOTE, one program |
 | `src/editor_run.loft` | a script, headless. `verb`/`keys`/`step`, no clock but the script's |
+| `src/plan_view.loft` | a **plan of a saved world**, as SVG. No clock at all — plan 26 `B0`, `make plan-view` |
+
+⚠ **AND THE FOURTH IS WHY THE COUNT MATTERS.** `plan_view` draws the STORE — one polygon per
+cell, one line per stored wall byte, out of the `.hxw` — and the first picture it made found four
+wall edges in `house.keys`'s house that bound none of its 27 cells, one of them carrying an opening
+the script has cut for as long as it has existed. A fourth driver over one library costs 80 lines;
+what it buys is a question the other three cannot be asked. [plan 26](../../plans/26-blueprint/README.md).
 
 ⚠ **THE PAGE NEEDS NOTHING.** `_site/index.html` opens from `file://` with no server, no port
 and no toolchain, carries its own part library, and the world you build in it survives closing

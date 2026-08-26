@@ -50,6 +50,16 @@ by reading source or by writing a one-off probe, and every one is a *picture* in
 it reviews, not after — so the blueprint is not a reward for finishing plan 24, it is how plan 24
 gets checked. And it argues for building the **view** first and the **authoring** second.
 
+✅ **AND THE VIEW IS BUILT — [plan 26](../../plans/26-blueprint/README.md) `B0`,
+`make plan-view WORLD=<name>`.** The FIELD half only: `hex_mesh::plan_svg` draws one polygon per
+cell of a window and one line per stored wall byte, out of a saved world, with the coordinates in
+the file being `hex_corner_world`'s own floats. ⚠ **The first picture it drew paid for itself, and
+not on any row of the table above**: `house.keys`'s house is 27 cells with a closed wall round them
+and **four wall edges that bound none of them**, one at each corner — and **one of the script's two
+openings is on one of those four**, so a window nobody has ever questioned bounds nothing. Whether
+that is a defect or a wall the description genuinely authors is exactly `B1`, which is the argument
+for building it.
+
 ⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
 railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
 assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what

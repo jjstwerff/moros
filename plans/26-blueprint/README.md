@@ -73,7 +73,7 @@ two floats.
 
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
-| **`B0`** — the field, drawn: cells and stored edges from a saved world | M | `lib/hex_mesh/tests/planview.loft` — the emitted text parsed back and compared against a second, independent walk of the store; four seeded faults seen red | Open |
+| **`B0`** — the field, drawn: cells and stored edges from a saved world | M | `lib/hex_mesh/tests/planview.loft` — the emitted text parsed back and compared against a second, independent walk of the store; four seeded faults seen red | ✅ **SHIPPED** `6bc8144` |
 | **`B1`** — the description beside it: the recovered run over the same window | M | the 15° wall reads back at 30° **in the picture**, matching `probe/l1`; an exact `D` heading stays collinear | Blocked on `B0` |
 | **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | world key byte-identical across an emit; level 1's cells exactly `offset` from level 0's | Blocked on `B0` |
 | **`B3`** — the author on the plan: pose and facing, from the walker | S | the drawn pose equals `wk_x`/`wk_z` at three stations of a committed script | Blocked on `B0` |
@@ -92,6 +92,61 @@ two floats.
 ⚠ **And `B0` deliberately stops at the FIELD.** The description half needs the run record,
 which the save does not carry ([EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 5) —
 so `B1` is a different question with a different source, not the second half of one step.
+
+## What `B0` turned up
+
+**Shipped `6bc8144`.** `hex_mesh::plan_svg` + `src/plan_view.loft` + six tests;
+`make plan-view WORLD=<name>`. The four seeded faults were each seen red on their own
+row — the mirror dropped (2 failed), the slot table permuted (2), a zero byte drawn (3),
+the window bound made inclusive (1) — with the control green either side of the sweep.
+
+### ⚠ The first picture it drew found two things, and neither is what it was aimed at
+
+`house.keys` is the oldest script in the corpus and the one every acceptance shot is
+taken from. Drawn flat, its house is **27 floor cells with a closed wall around them —
+and four wall edges that bound none of them.**
+
+| | |
+|---|---|
+| stray edges | `(-2,-6)` slot E · `(2,-4)` slot NE · `(-5,-1)` slot NE · `(-1,2)` slot E |
+| what they touch | each shares **exactly one vertex** with the footprint, and no cell of it |
+| how many | **four** — and the house has four sides |
+
+⚠ **AND ONE OF THEM IS AN OPENING.** `house.keys` cuts two, and its own comment
+records the day they finally landed — *"`opened profile 1 at (-2,1)` and `opened
+profile 2 at (-1,2)` come back on the wire"*. Measured in the field: profile 1 bounds
+floor cell `(-2,1)`; **profile 2 bounds nothing at all.** It hangs off a corner by one
+vertex, which is why nobody saw it — a window at the corner of a house is exactly where
+a window looks right.
+
+⚠ **THIS IS NOT YET A DEFECT CLAIM, AND THE DIFFERENCE IS THE WHOLE PLAN.** A wall is a
+straight RUN and a footprint is that run rasterised, so a stamp that over-runs the fill
+at each corner may be drawing a wall that genuinely exists in the description and
+genuinely bounds nothing in the field. **Which of the two is right is `B1`'s question**,
+and it is the argument for `B1` rather than a bug report: the field half alone can say
+*this edge bounds no room* and cannot say *and no wall was authored there*.
+
+### ⚠ The gesture says 84 and the world holds 42
+
+`place` acknowledges *"house placed 27 cells, **84** wall edges"*. The saved world holds
+**42** non-zero wall bytes, counted over **every layer** rather than the drawn one — so
+this is not the plan view looking at the wrong height.
+
+They are different questions: `marked` counts what `wall_stamp` marked, and an edge is
+stored once and read from both its cells. ⚠ **But this exact pair is the one that hid a
+real defect** — `hex_editor.loft`'s own comment records `place_house` printing *84 wall
+edges* while the store held **23**, two of the four walls destroyed, every suite green.
+A number that cannot equal the store is a number no one can use as a health check, and
+the plan view is the first thing here that draws the other side of it.
+
+### What the instrument cannot see, said before it is trusted
+
+- **One reference height per picture.** `plan_svg` takes a `ref` and draws the layer
+  `edge_layer` selects for it — so a deck's fence and the yard below it are two
+  pictures, not one. The driver defaults to the world's own ground default, and to `0`
+  when it has none, which on a world with a cellar is **the cellar**.
+- **The field only.** No run, no `rebuild`, no palette — `B1`.
+- **It is not a gate.** The picture is for a person; the claims are the loft tests.
 
 ## Open questions
 

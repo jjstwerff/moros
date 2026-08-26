@@ -498,8 +498,11 @@ address (or the hostname `make browser` prints) cannot connect.
   **All built and gated**; the doc records which of its own design sentences the measurements
   refuted, which is most of its value
 - [Blueprint editor](doc/claude/BLUEPRINT.md) — **a plan you perfect, then EXTRUDE**, and the
-  formal definition of the three wall types. ⛔ **Proposed, not settled — §2 is a ticket for
-  hexbody**, which owns the formal core. Its load-bearing arithmetic: **45° is not a lattice
+  formal definition of the three wall types. ✅ **Its §0 — the view before the authoring — is
+  BUILT: [plan 26](plans/26-blueprint/README.md) `B0`, `make plan-view WORLD=<name>`**, and the
+  first picture it drew found four wall edges that bound no house cell, one of them carrying an
+  opening `house.keys` has cut for as long as the script has existed. ⛔ **The rest is proposed,
+  not settled — §2 is a ticket for hexbody**, which owns the formal core. Its load-bearing arithmetic: **45° is not a lattice
   direction at all** (`tan 45° = 1` ⇒ `m/k = √3`, irrational), so an octagonal face can never be
   a `D` wall — which is *why* it is its own material rather than another heading. ⚠ A **bay** is
   therefore a projecting **feature of its parent wall** (`X70`'s taxonomy extended from

@@ -171,13 +171,16 @@ fn test_the_segment_agrees_with_the_meshers_own_spelling() {
 
 fn test_the_picture_carries_the_librarys_own_coordinates() {
   w = flat_world();
-  hex_editor::wall_set(w, 2, 2, 0, hex_editor::WALL_MAT, 8, 2.0);
+  // ⚠ (3,0) SLOT E IS THE PLAN'S OWN PRE-REGISTERED CASE, not a cell chosen after
+  // the fact — `plans/26-blueprint/README.md` § Invariant gate names this exact
+  // `wall_set` and these exact two corners.
+  hex_editor::wall_set(w, 3, 0, 0, hex_editor::WALL_MAT, 8, 2.0);
   svg = plan_svg(w, 0, 0, 5, 5, 2.0, "one");
-  ln = edge_line(svg, 2, 2, hex_editor::SLOT_E);
-  assert(ln != "", "the wall on slot E of (2,2) is not in the picture at all");
+  ln = edge_line(svg, 3, 0, hex_editor::SLOT_E);
+  assert(ln != "", "the wall on slot E of (3,0) is not in the picture at all");
 
-  a = corner_a(2, 2, hex_editor::SLOT_E);
-  b = corner_b(2, 2, hex_editor::SLOT_E);
+  a = corner_a(3, 0, hex_editor::SLOT_E);
+  b = corner_b(3, 0, hex_editor::SLOT_E);
   x1 = attr(ln, "x1") as float ?? 0.0 - 999.0;
   y1 = attr(ln, "y1") as float ?? 0.0 - 999.0;
   x2 = attr(ln, "x2") as float ?? 0.0 - 999.0;
