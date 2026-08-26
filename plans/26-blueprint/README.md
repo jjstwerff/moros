@@ -161,6 +161,8 @@ as a byte.
 | **`B4g`** — a ROUND enclosure: the tower rim, from `hex_shape::arc_fill` | M | `tower.loft` — the boundary is the disk's and only the disk's, the centre and shell recover, a non-shell is refused with an offer, the rim carries its material, and the `12R²` coincidence is asserted before it is relied on; `probe/s2c/tower`; five faults seen red, **one of them only after the sweep demanded a sixth instrument** | ✅ **SHIPPED** `8e39a8a` |
 | **`B4h`** — a round wall's DESCRIPTION: centre and shell, drawn on the plan | M | `disc.loft` — the rim recovers to its own centre and shell at two sizes and off-origin, the circle lies inside its rim's own band, a run / a gapped rim / a disc with a wall through it are refused, membership pinned against `arc_fill`, and the shell walk's monotonicity measured; five faults seen red, **one green because the fault was not one** | ✅ **SHIPPED** `b01fbd0` |
 | **`B4i`** — the round tower gets a VERB, a key and a size to choose | M | `tower_verb.loft` — the verb builds at the chosen shell, tower and ring differ at their defaults, the default is a non-hexagon shell that reads round, a non-shell is refused without moving the choice, the digest carries and follows it, the key is bound and rebindable; `keymap.loft` + `verb.loft` vocabulary 16 → 17; five faults seen red | ✅ **SHIPPED** `46999f2` |
+| **`B4j`** — the refusal says only what a capped flood can know | S | `field.loft` — every code the fill can answer with the case that produces it, a gapped ring answering exactly what open ground does, and a CLOSED field past the cap refused with a control that fills under it; five faults seen red, row 1 re-run against the row written for it | ✅ **SHIPPED** `2035e1b` |
+| **`B4k`** — is a BAY a feature of its wall? (probe) | S | [`probe/b4k`](../../probe/b4k/README.md) — predictions pre-registered; an unbounded span on the parent reaches **0** edges of a projecting face, with the perforating control holding at 8 | ✅ **RUN** `735814c` |
 
 ### Why `B0` is one phase and not two
 
@@ -1265,6 +1267,59 @@ consequence of the geometry rather than a gap to close.
 ⚠ **AND THE TOWER REGISTERS NO `WallRun`, so it is still drawn by the per-edge emitter**
 — `B4g`'s finding, unchanged: [EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 4's
 deletion still has an arc-shaped prerequisite.
+
+## What `B4j` and `B4k` turned up
+
+**Shipped `2035e1b` and `735814c`.** Two steps that produced no feature, and the
+reason to keep them is that each stopped something from being built on a claim that
+does not hold.
+
+### `B4j` — a refusal that promised a diagnosis the code cannot make
+
+⛔ **The distinction is not decidable, not merely unimplemented.** `FIELD_CAP` of 4000
+is reached at about radius 36 (`3R²+3R+1`), so a bound BELOW it fires before the cap and
+reports a large **closed** field as open — a false diagnosis, worse than none — while a
+bound above it never fires. *Open* and *closed but bigger than this tool will claim* are
+**one observation** to any bounded search. Implementing the "fix" would have shipped a
+confident wrong answer.
+
+⛔ **And my own `EDITOR_DEFECTS` entry overstated it.** The author was never told the
+wrong thing — the server prints the honest disjunction and its comment records the same
+discovery from the consumer's side. It was a re-discovery filed as new, and it is
+corrected in place. ⚠ **A defect entry is a claim like any other**, and this one had not
+been checked against the consumer before it was written down.
+
+So the code and both comments now say what is true, the dead branch is gone, and
+`field.loft` pins every code the fill can answer with the case that produces it —
+including that **a gapped ring answers exactly what open ground does**.
+
+⚠ **The sweep found the blind spot the tests had**: raising the cap a hundredfold went
+red in nothing, because the magnitude is invisible through the return. A **closed** field
+larger than the cap is what makes it observable. ⚠ **And that new row caught me** — its
+message re-called `field_fill` to report the value, so it said *"it answered 0"* about a
+fill that answered **4921**: the second call stands on the `FIELD_MAT` the first painted.
+
+### `B4k` — a bay is a SURFACE, and what it lacks is association
+
+§2.4 proposed a bay as a span on its parent wall's surface, *"recovered from the parent's
+feature list"*. ⛔ **Measured, a parent's feature cannot reach a projecting face at any
+span** — an unbounded interval took all 99 of the parent's own edges and **0** on the
+face two units out, with the perforating control holding at 8.
+
+⚠ **A feature RE-MATERIALISES; it does not place geometry** — `apply_features` visits
+only edges whose surface already matches, and its *"the SURFACE is untouched"* is the
+reason. Perforating and projecting are two categories, and the table had them as one. A
+`Features` row also carries **no depth**, so §2.4's third number has nowhere to go.
+
+✅ **The useful half: the geometry IS expressible, as surfaces** — §2.3's argument
+unchanged. **What a bay lacks is the association**, which is exactly what made the
+feature-list framing attractive. That makes the ask on hexbody sharper than the design
+guessed: a projecting KIND, a DEPTH, and a placement path beside `apply_features`.
+
+⚠ **Neither step says its design was wrong.** §2.4's own table marks the bay row
+*(proposed)*, and `B0p` withdrew its premise the same way — that is a proposal doing its
+job.
+
 
 ## Open questions
 
