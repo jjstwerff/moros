@@ -62,6 +62,16 @@ for building it.
 
 ![the house of `house.keys`, drawn flat](img-house-plan-b0.png)
 
+✅ **AND `B1` PUT THE DESCRIPTION BESIDE THE FIELD**, which is the pairing this whole section
+is about: `hex_editor::wall_recover` reads the store's wall bytes back through
+`hex_shape::wall_read_run` and the plan draws its answer, dashed, over the marks it came from.
+⚠ **What that pairing found on its first window is the cost of the four stray edges above**: the
+same wall recovers as `d0 p5` alone and is **refused** when `wall.keys`'s house stands eight hexes
+away, because one of the house's stray edges meets the wall's chain at a vertex. A structure that
+does not touch a wall takes its description away.
+
+![a wall and the description recovered from it](img-wall-plan-b1.png)
+
 ⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
 railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
 assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what

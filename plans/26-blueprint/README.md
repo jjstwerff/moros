@@ -55,12 +55,20 @@ each phase states all three parts.
   corner mirror `(6 - c) % 6` dropped, the slot→direction table permuted, a zero byte
   drawn, and the window's upper bound made inclusive.
 
-**`B1`** — **expected result**: a wall authored at 15° emits a recovered line at **30°**,
-which is [`probe/l1`](../../probe/l1/README.md)'s measured divergence, reproduced in the
-instrument. **Invariant**: *the recovered line is drawn from `wall_read_run`'s answer,
-never from the edges it was recovered from*. **Negative control**: a wall on an exact `D`
-heading must emit field and description **collinear** — if that also diverges, the
-instrument is measuring itself.
+⛔ **`B1`'s gate is RESTATED, and the correction is the library's own.** It read *a wall
+authored at 15° emits a recovered line at 30°*, which compares HEADINGS — and
+`wall_read_run` says at its own signature that the field stores no orientation, so the
+answer comes back as `d24` **or** `d24 + 12` with the ends swapped: *"`read.d == d` is
+therefore the wrong round-trip assertion; compare the ENDPOINTS."* Written as measured:
+
+- **Expected result.** A run laid by the editor's own `run_between` from `(0,0)` towards
+  `(6,0)` recovers to **its own two endpoints**, in either order, and the description
+  drawn from it stays within **0.6 wu** of every mark it was recovered from.
+- **Invariant.** *The description is `wall_read_run`'s answer, drawn in the field's own
+  frame* — never a line fitted to the marks.
+- **Negative control.** A gesture-style chain — anchor where the author stood, 15° off
+  the lattice — must draw a description that **misses its own wall** by more than 0.6 wu.
+  If that stray is small too, the picture cannot show a difference it does not have.
 
 **`B2`** — **expected result**: the world key is byte-identical before and after emitting
 a two-level view. **Invariant**: *the page offset never reaches the field*. **Negative
@@ -74,7 +82,7 @@ two floats.
 | Phase | Effort | Verify | Status |
 |---|---|---|---|
 | **`B0`** — the field, drawn: cells and stored edges from a saved world | M | `lib/hex_mesh/tests/planview.loft` — the emitted text parsed back and compared against a second, independent walk of the store; four seeded faults seen red | ✅ **SHIPPED** `6bc8144` |
-| **`B1`** — the description beside it: the recovered run over the same window | M | the 15° wall reads back at 30° **in the picture**, matching `probe/l1`; an exact `D` heading stays collinear | Blocked on `B0` |
+| **`B1`** — the description beside it: the recovered run over the same window | M | `lib/hex_editor/tests/edges_mat.loft` + `lib/hex_mesh/tests/planview.loft` — the authored run's ENDPOINTS come back, the description stays within 0.6 wu of its own marks, a wandering chain's does not; four seeded faults seen red | ✅ **SHIPPED** `ba3af3c` |
 | **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | world key byte-identical across an emit; level 1's cells exactly `offset` from level 0's | Blocked on `B0` |
 | **`B3`** — the author on the plan: pose and facing, from the walker | S | the drawn pose equals `wk_x`/`wk_z` at three stations of a committed script | Blocked on `B0` |
 | **`B4`** — authoring at plan scale | — | not cut yet — a design may be rough until it becomes work | Deferred |
@@ -144,6 +152,12 @@ edges* while the store held **23**, two of the four walls destroyed, every suite
 A number that cannot equal the store is a number no one can use as a health check, and
 the plan view is the first thing here that draws the other side of it.
 
+✅ **ANSWERED BY `B1`, AND IT WAS ALREADY WRITTEN DOWN.** `probe/l1` measured it a plan
+earlier — *"`wall_stamp` writes every edge twice — 16 writes for 8 distinct edges …
+every `marked` count this tree prints is double"* — so the two are one doubling and not
+two questions. It is an assertion in the suite now rather than a sentence in a probe
+write-up: `planview.loft` checks the drawn mark count against `m / 2`.
+
 ### What the instrument cannot see, said before it is trusted
 
 - **One reference height per picture.** `plan_svg` takes a `ref` and draws the layer
@@ -152,6 +166,55 @@ the plan view is the first thing here that draws the other side of it.
   when it has none, which on a world with a cellar is **the cellar**.
 - **The field only.** No run, no `rebuild`, no palette — `B1`.
 - **It is not a gate.** The picture is for a person; the claims are the loft tests.
+
+## What `B1` turned up
+
+**Shipped `ba3af3c`.** `hex_editor::edges_mat` (the bridge `probe/l1` named and could not
+put anywhere), `hex_editor::wall_recover` + `RunRead`, the dashed description in
+`plan_svg`, and a caption that says which of three states the description is in. Four
+seeded faults each seen red: the bridge writing nothing, the far end collapsed onto the
+anchor, the triangle frame's axes swapped, and the caption's verdict hard-wired.
+
+### ⚠ A house eight hexes away makes an unrelated wall unreadable
+
+`tools/scripts/wall.keys` lays one wall west-to-east and then places a house at `(-8,-8)`.
+The same window over the same wall, with and without that house:
+
+| | marks | description |
+|---|---|---|
+| the wall alone | **10** | ✅ `run d0 p5` — the authored `(-4.3301, 0.5)`-`(4.3301, 0.5)` |
+| the wall, with the house in the world | **11** | ⛔ `refused (11 marks)` |
+
+![the wall, and the description recovered from it](../../doc/claude/img-wall-plan-b1.png)
+
+![the same wall with a house eight hexes away](../../doc/claude/img-wall-plan-b1-refused.png)
+
+**The eleventh mark is the short stub at the top left**, and it is one of the house's — the
+same corner over-run `B0` found. It meets the wall's chain at a vertex, which makes three
+marked edges at one point, and `wall_read_run` will not answer for a marking that is not a
+path. ⚠ **So `B0`'s four stray edges are not cosmetic.** A structure eight hexes away
+silently costs a wall its description, and nothing in this tree could see that before the
+two were drawn together.
+
+### Two things `probe/l1` wrote down, now pinned by tests rather than by prose
+
+- **Every `marked` count this tree prints is double.** `lib/hex_mesh/tests/planview.loft`
+  asserts the drawn mark count is exactly `m / 2` for the stamp's own return. That closes
+  `B0`'s open pair — *the gesture says 84 and the world holds 42* was never two questions,
+  it is one doubling, and the assertion is now in the suite.
+- **A wandering chain is answered confidently, not refused.** `probe/l1`'s `P4` predicted
+  `ok = false`; measured again at the new entry point, `wall_recover` returns `ok` with
+  ends that are not the authored ones. The test says so, and says in its own message what
+  it would mean if the library ever gained a path check.
+
+### What the instrument still cannot see
+
+- **One run per window.** `wall_read_run` asks *what run do these marks describe*, so a
+  window holding a closed loop or two walls is refused whole. A house therefore draws no
+  description at all — the caption says `refused (n marks)` rather than falling silent,
+  because *no marks* and *marks the reader refused* are different facts.
+- **No `rebuild`, no palette.** A wall type, a thickness, a bay — none of that is asked
+  for yet; `wall_read_run` answers about a straight run and nothing else.
 
 ## Open questions
 
