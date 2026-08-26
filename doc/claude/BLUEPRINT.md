@@ -261,6 +261,29 @@ reader would refuse it — or worse, return the nearest `D` heading with `ok = t
 wall must therefore be recoverable some other way**, and there are two, which is why the
 reporter's two cases are genuinely two cases.
 
+✅ **AND IT IS BUILT — [plan 26](../../plans/26-blueprint/README.md) `B4l`,
+`tools/scripts/octagon.keys`.** A world declares `body=THICK_OCT` on an edge slot, an author
+chooses that type and presses the tower key. ⚠ **No new verb, no new key and no new selection**,
+because `verb tower` is the one gesture that already carries a SIZE — which is exactly the
+missing half `B4i` refused `verb wall` for.
+
+![the octagon and the circle of one shell, in plan](img-octagon-plan-b4l.png)
+
+⛔ **AND THE `12R²` TRAP IS WAITING HERE TOO.** A regular octagon sits inside its own
+circumcircle by `1 - cos 22.5° = 7.6%`, which a small enough lattice cannot express: at **seven
+shells — 12, 48, 144, 192, 300, 432, 444** — the octagon's field IS a disk's, so the two bodies
+build one world. The gesture refuses those with the next shell up (**468** is the first above all
+of them), and the check is the library's own `arc_is_disk` per shell rather than a threshold,
+because the collapse is **not monotonic**.
+
+⚠ **THE MECHANISM IS NOT `surf_straight` — IT IS `hex_form::poly_holds`, AND THE REASON MATTERS.**
+Marking edges against eight surfaces by `cut_arb` needs somewhere to put a surface id, and **the
+store carries a material byte per edge and nothing else**; so the eight faces are recoverable from
+the palette and from nowhere else, which is §2.5's answer reached from the consumer's side. What
+builds the shape is the integer polygon test underneath `form_fill` — law J refuses the octagon a
+`Form`, and `poly_holds` never asked for one. ⚠ Its corners quantise, so an octagon's size is
+coarser than the shell grid it is chosen from: **27 shells to 1008 give 23 distinct octagons**.
+
 ### 2.4 The bay — a FEATURE of a wall, not a wall
 
 > *"It can create a bay window from a straight wall."*
@@ -349,6 +372,13 @@ a `Form` at all**. It is not a turtle polygon; it is a set of eight `surf_straig
 by `cut_arb`. ⚠ **That is a second, independent reason it is its own material**, and it means
 `hex_recover::rebuild` — which returns turtle forms — **cannot recover it**. `rebuild_construct`
 is the candidate, and whether it can is `B0p`'s second question.
+
+✅ **AND LAW J TURNED OUT TO BLOCK ONLY THE WRAPPER — plan 26 `B4l`.** `form_fill` refuses the
+shape outright, and its own body is `hex_form::poly_holds` over the window: a bare integer polygon
+with no `Form` and no law J behind it. **So the octagon is refused one layer up and admitted one
+layer down**, which is what made this buildable without a float fit anywhere. What law J does cost
+is the return trip — a shape `rebuild` cannot express is a shape `rebuild` cannot give back, which
+is why *stored, never deduced* is the whole answer rather than half of it.
 
 ## 3. The editor itself
 

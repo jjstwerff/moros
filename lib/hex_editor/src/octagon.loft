@@ -57,10 +57,14 @@ fn oct_corner(shell: integer, j: integer) -> (integer, integer) {
 // The eight corners' `k`, anticlockwise from 22.5°.
 //
 // ⚠ **MIRRORED RATHER THAN ROUNDED EIGHT TIMES**, so the shape is symmetric under
-// `k → -k` and `m → -m` — the two mirrors the lattice itself has. Rounding each
-// corner on its own would leave the symmetry to luck at every size, and an octagon
-// that is lopsided by one lattice step in one quadrant is exactly the defect a
-// picture cannot show and a test cannot name.
+// `k → -k` and `m → -m` — the two mirrors the lattice itself has, and the most an
+// eight-fold shape can keep on a six-fold lattice.
+//
+// ⚠ **AND ROUNDING ALL EIGHT SEPARATELY WOULD AGREE TODAY**, measured: at every shell
+// to 1008 the eight independent roundings give exactly these vertices. So this is not
+// a bug fix — it makes the symmetry a GUARANTEE instead of a coincidence of where the
+// halfway cases fall, and an octagon lopsided by one lattice step in one quadrant is
+// exactly the defect a picture cannot show and no row here would name.
 pub fn oct_poly_k(shell: integer) -> vector<integer> {
   (k0, _m0) = oct_corner(shell, 0);
   (k1, _m1) = oct_corner(shell, 1);

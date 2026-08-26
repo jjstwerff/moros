@@ -132,6 +132,20 @@ one world, which only a test comparing the two can see; a number naming no shell
 refused without moving the standing choice; and the digest must carry the seventh
 selection, because `B4e` measured it reporting one of six.
 
+**`B4l`** — **expected result**: a world declaring `body=THICK_OCT` and one
+declaring `body=THICK_CURVED` build **different fields** at one shell, from the same
+key and the same selection, and what the octagon leaves is **refused as a disc**.
+**Invariant**: *the palette decides the SHAPE wherever the gesture already has a size*
+— `@HB-X69`'s designed extension point, admitted here for exactly the reason `B4i`
+refused it for `verb wall`: a body cannot say how big, and `verb tower` already knows.
+**Negative controls**: at seven shells a regular octagon quantises back onto the disk
+and the two bodies key **one** world — those must be refused with the next shell up
+rather than built, and only a test comparing the two worlds can see it; a body this
+tree does not know and a **damaged** declaration must both still build the circle,
+because the vocabulary is open and a geometry site is not where a palette is debugged;
+and the round tower must be unmoved, which the shared boundary walk makes a real risk
+rather than a formality.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -163,6 +177,7 @@ as a byte.
 | **`B4i`** — the round tower gets a VERB, a key and a size to choose | M | `tower_verb.loft` — the verb builds at the chosen shell, tower and ring differ at their defaults, the default is a non-hexagon shell that reads round, a non-shell is refused without moving the choice, the digest carries and follows it, the key is bound and rebindable; `keymap.loft` + `verb.loft` vocabulary 16 → 17; five faults seen red | ✅ **SHIPPED** `46999f2` |
 | **`B4j`** — the refusal says only what a capped flood can know | S | `field.loft` — every code the fill can answer with the case that produces it, a gapped ring answering exactly what open ground does, and a CLOSED field past the cap refused with a control that fills under it; five faults seen red, row 1 re-run against the row written for it | ✅ **SHIPPED** `2035e1b` |
 | **`B4k`** — is a BAY a feature of its wall? (probe) | S | [`probe/b4k`](../../probe/b4k/README.md) — predictions pre-registered; an unbounded span on the parent reaches **0** edges of a projecting face, with the perforating control holding at 8 | ✅ **RUN** `735814c` |
+| **`B4l`** — an OCTAGONAL tower: the palette's BODY chooses the shape | M | `octagon.loft` — eight distinct corners, convex and mirrored in both lattice axes; two shells naming one octagon with a control that a far pair does not; the seven collapsing shells enumerated and each refused with the next up; the octagon and the circle keying different worlds at one shell **while their rim counts coincide**; an unknown body and a damaged one both building the circle; `probe/s2c/octagon` byte-identical; five faults seen red | ✅ **SHIPPED** `d0898cd` |
 
 ### Why `B0` is one phase and not two
 
@@ -178,8 +193,8 @@ as a byte.
 which the save does not carry ([EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 5) —
 so `B1` is a different question with a different source, not the second half of one step.
 
-⚠ **THIS FILE IS OVER `plans/README.md`'s 100–300 LINE BUDGET, AND IT IS THE FOUR STEP
-RECORDS BELOW THAT PUT IT THERE.** The convention says length means reference content is
+⚠ **THIS FILE IS OVER `plans/README.md`'s 100–300 LINE BUDGET — 1,500 LINES — AND IT IS
+THE STEP RECORDS BELOW THAT PUT IT THERE.** The convention says length means reference content is
 leaking in — and the fix is the one the closing checklist already names: each finding
 moves to the doc that owns it (`BLUEPRINT.md` §0 and §3.4 and `EDITOR_DEFECTS.md` entry 6
 already carry the load-bearing halves), and this keeps the closure record. ⚠ Thinning
@@ -1319,6 +1334,155 @@ guessed: a projecting KIND, a DEPTH, and a placement path beside `apply_features
 ⚠ **Neither step says its design was wrong.** §2.4's own table marks the bay row
 *(proposed)*, and `B0p` withdrew its premise the same way — that is a proposal doing its
 job.
+
+
+## What `B4l` turned up
+
+**Shipped `d0898cd`.** `lib/hex_editor/src/octagon.loft`, `WALL_BODY_OCT`,
+`fit_oct_shell` / `oct_shell_above`, `stamp_boundary` extracted out of `tower_disc` so
+both shapes share one boundary walk, `tools/scripts/octagon.keys`, and
+`lib/hex_editor/tests/octagon.loft` — 15 tests, green on both backends.
+
+![the octagon and the circle of one shell, in plan](../../doc/claude/img-octagon-plan-b4l.png)
+
+*`octagon.keys` at shell 468: `body=THICK_OCT` on the left, `body=THICK_CURVED` on the
+right, one verb and one selection. The flats and the four chamfers are the eight sides;
+the hill between them is `verb raise`, which puts its disc ten hexes ahead of the author
+and not underfoot — `raise_ahead`'s own rule, and the first thing the picture said.*
+
+### The body opens exactly where `B4i` measured it shut, and for that reason
+
+`B4i` refused the obvious design — a `THICK_CURVED` declaration making `verb wall` ring
+round — and the refusal was arithmetic: *"a body says a wall is ROUND; it cannot say how
+big, and at this size that distinction does not exist"*, because a disk **is** the
+hexagon at the shells `12R²` and `fence_ring`'s radius 3 is shell 108, one of them.
+
+⚠ **`verb tower` is the one gesture that already HAS a size.** `session_shell` has been
+its own selection since `B4i`, so reading `wt_body` here cannot become a second answer
+to *how big is it* — which is `X108`'s rule and the whole reason the body had nowhere to
+go before. ✅ **So the octagon needs no verb, no key and no selection**: choose a wall
+type whose declaration says `body=THICK_OCT`, press the tower key. The vocabulary stays
+at **17**, and `@HB-X69`'s *"the palette is the designed extension point"* is a mechanism
+rather than a sentence about one.
+
+### ⛔ The `12R²` trap is waiting one shape over, at seven shells
+
+A regular octagon sits inside its own circumcircle by `1 - cos 22.5° = 7.6%`. On a
+lattice whose cells are about one world unit across, a small enough octagon **cannot
+express that difference** and quantises back onto the disk. Measured over every shell to
+1008:
+
+| | |
+|---|---|
+| shells where the octagon **is** a disk | **12, 48, 144, 192, 300, 432, 444** |
+| the first shell above all of them | **468** |
+
+⚠ **At those seven, `body=THICK_OCT` and `body=THICK_CURVED` key ONE world** — and
+every other claim in the file stays true: still centred, still the shell the session
+holds, still eight-sided by construction. That is `B4i`'s row 1 exactly, one shape over,
+and it is why `fit_oct_shell` refuses them **with the next shell up** rather than
+building and reporting success.
+
+⚠ **AND IT IS NOT MONOTONIC** — 108 separates while 144 above it collapses, and 300
+collapses while 252 below it does not. `B0p` found the same non-monotonicity about
+octagons at a different instrument (*"4.5 separates, 5.5 collapses back onto a
+hexagon"*), which is why the check asks the library's own `arc_is_disk` per shell
+instead of picking a threshold.
+
+### ⛔ A rim COUNT cannot see a shape, and the row that rests on it went red first
+
+The load-bearing test compared the two towers' **edge counts**. It failed against a
+gesture that was working:
+
+| shell 156 | cells | rim edges |
+|---|---|---|
+| the octagon | **51** | **54** |
+| the disk | **55** | **54** |
+
+**Two different shapes, the same number.** A count would have called this step broken
+here — the good direction for that mistake — and would have called a body that never
+reached the world *correct* at some other shell. Every comparison in the file reads the
+field byte for byte now, and the coincidence is **asserted** rather than noted, so the
+sentence about it cannot go quietly stale.
+
+### ✅ The library's entry point was one layer down, and law J is what hides it
+
+`hex_form`'s law J closes a turtle cycle when the turns sum to 12 twelfths; eight sides
+at 45° need **1.5 twelfths each**, so a regular octagon **is not a `Form`** and
+`form_fill` cannot be handed it at all. ⚠ **But `form_fill`'s body is
+`hex_form::poly_holds` over the window**, and `poly_holds` takes a bare integer polygon
+— no `Form`, no law J, *"exact integer arithmetic throughout … no division and no
+epsilon anywhere"*. **The wrapper refuses the shape and the primitive underneath it
+admits it.**
+
+⚠ **So the gap was never a fill.** It is the eight corners, and a regular octagon has
+**no lattice vertices at all** — the same irrationality that keeps 45° out of `D`. They
+quantise, and the shape quantises with them: **27 shells to 1008 give 23 distinct
+octagons** (324 and 336 are one shape, so are 432/444, 576/588 and 768/804). That is
+`@HB-X49`'s answer for a radius one shape over — *"161 radii collapse to four fields, so
+only the SHELL comes back"* — and it means an octagon's size is quantised **more**
+coarsely than the grid it is chosen from.
+
+⚠ **AND "INSCRIBED" IS APPROXIMATE, ROUNDING OUTWARD.** The first assertion here said
+every octagon cell is one of the disk's; **shell 324 refuted it** — four cells lie past
+the circumcircle, and so do four at 576. The exact bound is the **next** shell up, never
+its own, which is what keeps `tower_pad`'s window honest.
+
+### The sabotage sweep
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with
+the body constant, the verb's read of it, the refusal, the shared walk and the fill each
+asserted **present** before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | `oct_chosen` always answers false — the body never reaches the world | `octagon` |
+| 2 | `fit_oct_shell` drops the disk check — the seven build a circle and say yes | `octagon` |
+| 3 | the corners ignore the shell asked for and always use 156 | `octagon` |
+| 4 | the octagon branch stamps `tower_disc` — built, chosen, and not used | `octagon` |
+| 5 | `stamp_boundary` walks three directions of six | `octagon` · `tower` · `tower_verb` · `disc` |
+
+⛔ **AND ROW 3 HAD TO BE CUT TWICE, WHICH IS A FINDING ABOUT SWEEPS RATHER THAN ABOUT
+THIS STEP.** The first version made the corners read `TOWER_SHELL_DEFAULT` — a constant
+`octagon.loft` cannot see, so the **package did not build** and all five files went red.
+Read as a row it looks like the strongest catch in the table; it is worth nothing, because
+*the tests cannot run* answers every question the same way. **A sabotage has to BE the
+defect** — `B2` learnt the other half of that sentence, where a change in the defect's
+neighbourhood went green. The re-cut asserts the sabotaged package **builds** before it
+reads a verdict, and then only `octagon` is red.
+
+⚠ **ROW 5 IS THE REFACTOR'S OWN ROW.** `tower_disc`'s body became `stamp_boundary` so
+both shapes share one walk, and the pre-existing tower files catching it is what says
+the extraction did not weaken them. `edge_owner` gives a hex three of its six edges, so
+half of any region's boundary is stored **outside** it — a three-direction walk leaves a
+rim with holes, and it is the kind of duplicate that agrees for a year and then does not.
+
+### ✅ The picture needed no change at all, and that is `B4d` paying off
+
+Every octagon edge in the plan carries `data-body='THICK_OCT'` — **86 of them**, beside the
+circle's 90 `THICK_CURVED` — with nothing added to `plan_svg`. `B4d` made `wt_body` opaque
+text *"and never checked against a list"* precisely so a body this tree did not yet know
+would round-trip; this is the first time a value it did not know actually existed, and the
+picture read it without being told.
+
+### What it deliberately does not do
+
+⚠ **THE PLAN DRAWS NO DESCRIPTION FOR AN OCTAGON, AND THAT IS THE STORE'S ANSWER RATHER
+THAN A GAP.** `B4h` gives a round wall a description because a disk is `(centre, shell)`
+and both recover; an octagon's eight faces **are** straight, but 45° is not a `D`
+heading, so `wall_read_run` can only ever answer for a run it cannot represent — the
+confident-wrong shape `probe/l1` caught. ⚠ **And `cut_arb` has nowhere to land**: §2.3
+proposes marking each edge against its nearest of eight `surf_straight` surfaces, and
+**the store carries a material byte per edge and no surface id**. So the eight faces are
+recoverable from the **palette** and from nothing else — which is §2.5's own answer,
+*an octagon tower is never deduced; it is stored*, reached here from the consumer's side.
+
+⚠ **AND A PERSON STILL CANNOT DECLARE A WALL TYPE FROM INSIDE THE EDITOR.** `declare
+edge <slot> …` is a runner line and `54:`/the palette on the wire; there is no panel for
+it. That is `B4d`'s and `B4e`'s standing gap rather than one this step adds, but it is
+what stands between *the octagon is reachable* and *the octagon is reachable without a
+script*.
 
 
 ## Open questions

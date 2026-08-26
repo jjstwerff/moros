@@ -38,6 +38,12 @@ reports **every row as a miss** — five clean catches read as *these tests cann
 code. Copy the files aside and restore from the copies, **and assert the subject is
 present before row 0** — a sweep over an absent feature answers *nothing went red* to
 every question, which is the same sentence a useless test suite produces.
+⚠ **AND ASSERT THE SABOTAGED PACKAGE STILL BUILDS BEFORE READING A ROW.** Plan 26 `B4l`
+cut a row that named a constant the edited module could not see: the package would not
+compile and **all five files went red**, which reads as the strongest catch in the table
+and is worth nothing — *the tests cannot run* answers every question the same way. A
+sabotage has to BE the defect, in both directions: a change in its neighbourhood goes
+green (plan 26 `B2`) and one that will not build goes red everywhere.
 
 **Other people's trees.** `../crawler` is **read-only** — another agent works there, and an
 edit it did not make destroys its ability to tell its own work from yours; raise findings
@@ -526,6 +532,15 @@ address (or the hostname `make browser` prints) cannot connect.
   stored**; a **tower** has no parent and must be deduced from the field, which is `§6`'s R1/R2
   boundary and the one number this design lacks. ⚠ And a regular octagon **is not a `Form`** —
   eight 45° turns need 1.5 twelfths each, so law J refuses it and `rebuild` cannot return it.
+  ✅ **THE OCTAGONAL TOWER IS BUILT ANYWAY — `B4l`**, because law J blocks only the WRAPPER:
+  `form_fill`'s own body is `hex_form::poly_holds`, a bare integer polygon with no `Form` behind
+  it. It needs **no verb, no key and no selection** — `body=THICK_OCT` on an edge slot plus the
+  tower key, `verb tower` being the one gesture that already has a SIZE and therefore the one
+  place `B4i`'s *a body cannot say how big* stops applying. ⛔ Its trap is `B4i`'s row 1 one shape
+  over: at **seven shells** an octagon quantises back onto the DISK and the two bodies key one
+  world, so those are refused with the next shell up. ⚠ And the first instrument was blind — at
+  shell 156 the octagon is 51 cells and the disk 55, **both with a 54-edge rim**, so a rim COUNT
+  cannot see a shape.
   ⚠ **AND MOST OF ITS §2 WAS ALREADY ANSWERED UPSTREAM, FOUND ONLY AFTER IT WAS WRITTEN**:
   `@HB-X12`'s `WallDef.wd_body` is a shape vocabulary that already carries `THICK_CURVED` — the
   rounded slot — and hexbody names an octagon as *"a new value in this enumeration, exactly the

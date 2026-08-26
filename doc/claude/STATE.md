@@ -38,15 +38,23 @@ grows back.
 there is an author standing in the world, gestures land where they are standing and facing,
 and the camera is derived from their pose.
 
-⚠ **THE VERBS ARE WHAT IT CAN DO, AND THE LIST IS THE WHOLE LIST.**
+⚠ **THE VERBS ARE WHAT IT CAN DO, AND THE LIST IS THE WHOLE LIST** — all **17** of
+`the_vocabulary()`, which is the number `keymap.loft` and `verb.loft` both refuse to let
+a verb arrive without.
 
 | | |
 |---|---|
 | the ground | `raise` · `lower` · `level` (freeze a grade and cut it as you walk) |
-| runs | `run` — open, walk, close; a road or a wall along the path taken |
-| enclosure | `fence` · `wall` |
+| runs | `run` — open, walk, close; a road or a wall along the path taken · `aim` — one press, from the facing |
+| enclosure | `fence` · `wall` (both hexagonal) · `tower` — ROUND at a chosen shell, or **OCTAGONAL** when the chosen wall type's body says `THICK_OCT` (plan 26 `B4l`) |
 | buildings | `place` (a procedural house, or the chosen PART instead) · `storey` above · `cellar` below · `opening` (door or window, profile from the selection) |
 | fittings | `seat` · `annex` · `slab` · `hole` · `stair_up` · `stair_down` |
+
+⚠ **AND WHAT A VERB MAKES IS NOT ALWAYS ITS OWN.** `tower` reads the SHAPE off the chosen
+wall type's palette body and the SIZE off `session_shell` — plan 26 `B4l`. That is the only
+place a body decides geometry, and it is allowed here for the reason `B4i` refused it for
+`wall`: a body says a wall is round and cannot say how big, and this is the one gesture that
+already knows.
 
 **A catalogue decides what a verb makes.** Eleven materials (`grass` `road` `field` `tree`
 `roof` `wall` `floor` `frame` `soffit` `rock` `water`) and 20 parts under `data/parts`, drawn
