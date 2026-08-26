@@ -84,7 +84,7 @@ two floats.
 | **`B0`** — the field, drawn: cells and stored edges from a saved world | M | `lib/hex_mesh/tests/planview.loft` — the emitted text parsed back and compared against a second, independent walk of the store; four seeded faults seen red | ✅ **SHIPPED** `6bc8144` |
 | **`B1`** — the description beside it: the recovered run over the same window | M | `lib/hex_editor/tests/edges_mat.loft` + `lib/hex_mesh/tests/planview.loft` — the authored run's ENDPOINTS come back, the description stays within 0.6 wu of its own marks, a wandering chain's does not; four seeded faults seen red | ✅ **SHIPPED** `ba3af3c` |
 | **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | `lib/hex_mesh/tests/planview.loft` — the world key is unmoved by an emit (checked against a mutation), the same cell has identical `points` in every panel, the panels do not overlap, and the two levels are not the same picture; four seeded faults seen red | ✅ **SHIPPED** `0c35614` |
-| **`B3`** — the author on the plan: pose and facing, from the walker | S | the drawn pose equals `wk_x`/`wk_z` at three stations of a committed script | Blocked on `B0` |
+| **`B3`** — the author on the plan: pose and facing, from the walker | S | `probe/plan` — three stations of a committed script, `feet` against the marker READ BACK out of the picture, with a control that the three differ; four suite faults and the probe's own seen red | ✅ **SHIPPED** `9d81b93` |
 | **`B4`** — authoring at plan scale | — | not cut yet — a design may be rough until it becomes work | Deferred |
 
 ### Why `B0` is one phase and not two
@@ -100,6 +100,14 @@ two floats.
 ⚠ **And `B0` deliberately stops at the FIELD.** The description half needs the run record,
 which the save does not carry ([EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 5) —
 so `B1` is a different question with a different source, not the second half of one step.
+
+⚠ **THIS FILE IS OVER `plans/README.md`'s 100–300 LINE BUDGET, AND IT IS THE FOUR STEP
+RECORDS BELOW THAT PUT IT THERE.** The convention says length means reference content is
+leaking in — and the fix is the one the closing checklist already names: each finding
+moves to the doc that owns it (`BLUEPRINT.md` §0 and §3.4 and `EDITOR_DEFECTS.md` entry 6
+already carry the load-bearing halves), and this keeps the closure record. ⚠ Thinning
+them **before** that move is how a finding that cost a day becomes a line nobody can
+check — `STATE.md`'s own lesson, in its own banner.
 
 ## What `B0` turned up
 
@@ -270,6 +278,51 @@ plan already carries the contour a reader needs.
   one. So `data-level` is the panel's index and `data-ref` the height it was read at, and
   **neither is the formal level**. Naming them apart is the most this step can honestly do.
 - **One run per window still**, per `B1`.
+
+## What `B3` turned up
+
+**Shipped `9d81b93`.** `plan_author` takes a `hex_editor::Author` — the same four
+numbers every gesture takes — and the plan draws a marker at the author's own two floats
+with a facing tick along `(cos yaw, sin yaw)`. `editor_run` gains `plan <tag>`: the view
+at the current tick, windowed on the author. `make probe-plan`, and it is in `make fast`.
+
+![the author standing at the wall of a house](../../doc/claude/img-author-plan-b3.png)
+
+*A house, and the person who built it standing against its south wall, facing north. The
+caption ends `you`; the same four stray edges `B0` found are on the corners of this
+placement too.*
+
+### The pose is read back OUT of the picture
+
+`editor_run`'s `plan` line prints the marker it parsed from the SVG it just wrote — not
+`wk_x`. ⚠ **A line that re-printed the walker would compare the walker against the walker
+and pass for any drawing at all**, including one that put the marker at the origin. That
+is exactly the row `probe/plan` catches: with the marker nailed to `(0,0)`, **station 1
+still passes** — the author really is at the origin there — and stations 2 and 3 fail.
+Three stations and the *are they even different points* control are what make the row an
+answer.
+
+### Which panel the author stands on is the store's answer
+
+They are drawn on the level whose reference selects the same LAYER under their own cell as
+their own feet do — `edge_layer` asked twice and compared. A rule of the shape *within half
+a storey of the reference* would be a number invented here, and `FORMAL_CORE` is explicit
+that a level is not a height. Tested both ways round on the two-storey fixture: standing on
+the ground they are on `L0` and **not** `L1`; standing on the deck, `L1` and not `L0`.
+
+### ⚠ A saved world has no author, and the picture says so
+
+`src/plan_view.loft` reads a `.hxw` and reports `who none`, because the walker lives in
+whichever driver is running the tick — the store carries the world and not the person.
+**That is the same boundary `B1` found from the other side** (the run record is not saved
+either), and it is why the author appears in `editor_run`'s `plan` rather than in the file
+reader: a program that invented a pose from an argument would be drawing a claim rather
+than a fact.
+
+⚠ **AND THE THREE STATES DO NOT READ ALIKE** — `who none`, `who (x,z)`, `who (x,z)
+OFF-PLAN`. An absent marker means *nobody was given* and *somebody is elsewhere* at once,
+which is the collapse `probe/l1` lost a run to and the third time this plan has had to
+separate one.
 
 ## Open questions
 

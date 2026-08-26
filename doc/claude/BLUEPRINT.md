@@ -277,6 +277,17 @@ The walk is already one implementation — `lib/hex_editor/src/tick.loft`, calle
 page and `editor_run` alike ([WALK_TICK.md](WALK_TICK.md)). Collision is **not** in the tick: it
 is an `EdgeSet` built by `hex_editor::edges_walk`, and `sweep_path` consults it.
 
+✅ **AND THE PERSON IS ON THE PLAN — [plan 26](../../plans/26-blueprint/README.md) `B3`.**
+`editor_run`'s `plan <tag>` draws the view at the current tick with the walker it holds: a
+marker at the author's own two floats and a facing along `(cos yaw, sin yaw)`. ⚠ The pose it
+reports is **read back out of the picture**, not off the walker — a line that re-printed
+`wk_x` would compare the walker against itself and pass for a marker nailed to the origin,
+which is the row `probe/plan` catches at two of its three stations. ⚠ And a SAVED world has
+no author at all, so the file reader says `who none`: the walker lives in whichever driver
+runs the tick, which is the same boundary `B1` met from the other side.
+
+![the author standing at the wall of a house](img-author-plan-b3.png)
+
 ⚠ **SO "DOES NOT RESTRICT" IS THE ABSENCE OF A CALL, NOT A FLAG.** The blueprint editor builds
 **no** collision `EdgeSet` — the walker moves over the plan freely, at plan scale, and the same
 tick body runs. Nothing forks. ⚠ **And it must stay the absence of a call**: a `no_collide`
