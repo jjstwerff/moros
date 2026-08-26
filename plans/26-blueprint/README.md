@@ -83,7 +83,7 @@ two floats.
 |---|---|---|---|
 | **`B0`** — the field, drawn: cells and stored edges from a saved world | M | `lib/hex_mesh/tests/planview.loft` — the emitted text parsed back and compared against a second, independent walk of the store; four seeded faults seen red | ✅ **SHIPPED** `6bc8144` |
 | **`B1`** — the description beside it: the recovered run over the same window | M | `lib/hex_editor/tests/edges_mat.loft` + `lib/hex_mesh/tests/planview.loft` — the authored run's ENDPOINTS come back, the description stays within 0.6 wu of its own marks, a wandering chain's does not; four seeded faults seen red | ✅ **SHIPPED** `ba3af3c` |
-| **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | world key byte-identical across an emit; level 1's cells exactly `offset` from level 0's | Blocked on `B0` |
+| **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | `lib/hex_mesh/tests/planview.loft` — the world key is unmoved by an emit (checked against a mutation), the same cell has identical `points` in every panel, the panels do not overlap, and the two levels are not the same picture; four seeded faults seen red | ✅ **SHIPPED** `0c35614` |
 | **`B3`** — the author on the plan: pose and facing, from the walker | S | the drawn pose equals `wk_x`/`wk_z` at three stations of a committed script | Blocked on `B0` |
 | **`B4`** — authoring at plan scale | — | not cut yet — a design may be rough until it becomes work | Deferred |
 
@@ -215,6 +215,61 @@ two were drawn together.
   because *no marks* and *marks the reader refused* are different facts.
 - **No `rebuild`, no palette.** A wall type, a thickness, a bay — none of that is asked
   for yet; `wall_read_run` answers about a straight run and nothing else.
+
+## What `B2` turned up
+
+**Shipped `0c35614`.** `plan_levels` takes a list of reference heights and draws one panel
+per level, each in its own `<g>` carrying `data-level`, `data-ref` and `data-dx`;
+`plan_svg` is the one-level wrapper. `make plan-view WORLD=b2deck REFS=0,3`.
+
+![the deck world at two levels](../../doc/claude/img-levels-plan-b2.png)
+
+*`deck.keys`'s world, ground and the storey above it. Same window, same coordinates,
+placed by one transform each.*
+
+### The offset is declared, and the geometry never learns it
+
+`plan_panel` draws in the world's own frame and does not take a `dx` at all; the group
+places it. So the same cell has **byte-identical `points` in every panel**, and `data-dx`
+and the `transform` are two statements of one number, checked against each other — a
+picture whose two statements of its own offset disagreed would be unmappable and would
+look perfectly right.
+
+⚠ **THE REFACTOR WAS PROVEN BEFORE THE FEATURE WAS ADDED.** `plan_svg`'s body became
+`plan_panel` + `plan_levels`, and the **282** emitted elements of one window were compared
+byte-for-byte against the pre-refactor output: identical. `data-h` went on the cell only
+after that, as a deliberate content change rather than a silent one.
+
+### ⛔ And the sabotage sweep caught ME first
+
+The first row-1 sabotage — *bake the offset into the geometry* — was spelled as a shift of
+`hex_corner_world(q + 1, …)`, and the suite stayed **green**. That is correct: the test
+asks whether the panels differ **from each other**, and a shift applied to all of them
+equally is not that defect. The faithful sabotage is the obvious wrong implementation —
+pass `dx` into `plan_panel` and add it to the coordinates — and it is caught, with the
+assertion's own words. ⚠ **A sabotage has to BE the defect, not a change in its
+neighbourhood**, and a green row is a claim about the sabotage before it is one about the
+test.
+
+### The upper panel draws the lawn, and that is the store's answer
+
+A panel at `ref 3` shows the deck **and** the ground around it, because `world_surface`
+answers *what would someone at this height be standing on* and outside the deck that is
+still the ground. The answer is right and it looks like grass on the first floor.
+`data-h` — the cell's own stored height — is what tells them apart, and it is the store's
+number rather than a rule invented here. ⚠ Whether an upper panel should BLANK what is
+not on its level is a decision for the authoring half, not a defect: on `b2deck` the
+heights emitted are `0 1 2 3 5 6` for the raised ground and `12` for the deck, so the
+plan already carries the contour a reader needs.
+
+### What it still cannot see
+
+- **A level here is a reference HEIGHT, not a sheet index.** `FORMAL_CORE` §2.4.3 says
+  *"the level is a discrete sheet index and nothing else"*, and this store has layers and
+  heights — `combine_cut_level`'s `at` is `hex_place`'s, and nothing in the editor writes
+  one. So `data-level` is the panel's index and `data-ref` the height it was read at, and
+  **neither is the formal level**. Naming them apart is the most this step can honestly do.
+- **One run per window still**, per `B1`.
 
 ## Open questions
 

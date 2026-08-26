@@ -358,6 +358,20 @@ So the blueprint shows level `n` at a **view offset**, and that offset is presen
 level's own frame. ⚠ **The offset must never reach the field.** If it does, two floors of one
 house become two buildings a hex-step apart, and the stair between them stops being a stair.
 
+✅ **BUILT — [plan 26](../../plans/26-blueprint/README.md) `B2`**, `make plan-view REFS=0,3`. The
+panel is drawn in the world's own frame and PLACED by a transform on its group, so the same cell
+has byte-identical coordinates in every panel and the offset lives in one declared `data-dx`. ⚠
+**And the weaker half of the invariant is the one a picture can break on its own**: an offset that
+reaches the GEOMETRY makes every number in the file a page position wearing a world position's
+clothes, and unmappable back — which is what `Pose` is for when the gestures arrive.
+
+⛔ **What is NOT built is the sheet index.** A panel here is a reference HEIGHT: this store has
+layers and heights, `combine_cut_level`'s `at` is `hex_place`'s, and nothing in the editor writes
+one. `data-level` is the panel's index and `data-ref` the height — **neither is the formal level**,
+and naming them apart is the most that step could honestly do.
+
+![the deck world at two levels](img-levels-plan-b2.png)
+
 ### 3.5 Rooms, stairs, doors, furniture
 
 All four already have their answer written down and none of them is new work here:
