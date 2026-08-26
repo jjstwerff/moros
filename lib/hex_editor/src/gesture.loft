@@ -2111,9 +2111,11 @@ pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
   seen_q += [sq];
   seen_r += [sr];
   seen.s_by += SeenAt { sa_key: age_like_key(sq, sr) };
-  escaped = false;
+  // ⚠ ONE FLAG, because there is one event. It was two, and the pair implied a
+  // distinction the flood cannot observe — see the refusal at the foot of this
+  // function.
   capped = false;
-  while len(fq) > 0 && !escaped {
+  while len(fq) > 0 && !capped {
     nq: vector<integer> = [];
     nr: vector<integer> = [];
     for i in 0..len(fq) {
@@ -2140,7 +2142,7 @@ pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
            && wall_of(wld, fq[i], fr[i], d,
                       (terrain_h(fq[i], fr[i], wld) as float) * wld.w_unit) == 0 {
           if seen.s_by[age_like_key(aq, ar)] == null {
-            if len(seen_q) >= FIELD_CAP { escaped = true; capped = true; }
+            if len(seen_q) >= FIELD_CAP { capped = true; }
             else {
               seen.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
               seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar];
@@ -2152,13 +2154,27 @@ pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
     fq = nq;
     fr = nr;
   }
-  // ⚠ TWO different refusals wore one message. "It never closed" and "it grew
-  // past the cap" are not the same fact: the first says the enclosure is open,
-  // the second says it may well be closed and simply larger than this tool will
-  // claim — and only the second has an offer to make (the cap itself). Telling
-  // an author the wrong one sends them looking for a gap that is not there.
+  // ⛔ **THE TWO REFUSALS THIS COMMENT USED TO SPLIT ARE NOT DECIDABLE HERE, AND
+  // SAYING THEY WERE IS WHAT MADE IT WRONG — plan 26 `B4j`.** It read *"'it never
+  // closed' and 'it grew past the cap' are not the same fact … telling an author the
+  // wrong one sends them looking for a gap that is not there"*, and then set
+  // `escaped` and `capped` at the same site, so the `escaped` branch below it could
+  // never run. A comment claiming a capability the code lacks is the *citation rots
+  // silently* class: it goes on reading correctly.
+  //
+  // ⚠ **AND THE DISTINCTION IS NOT MERELY UNIMPLEMENTED — A CAPPED FLOOD CANNOT MAKE
+  // IT.** Measured: `FIELD_CAP` of 4000 is reached at about radius 36 (3R²+3R+1), so
+  // a bound BELOW that fires before the cap and reports a large **closed** field as
+  // open — a false diagnosis, worse than none — while a bound above it never fires,
+  // because the cap gets there first. *Open* and *closed but bigger than this tool
+  // will claim* are the same observation to any bounded search.
+  //
+  // ✅ **SO THE HONEST ANSWER IS ONE REFUSAL THAT NAMES BOTH**, which is what
+  // `editor_server.loft`'s `MSG_FIELD` branch already tells the author — *"grew past
+  // the cap … the boundary is open, or the enclosure is larger than this tool will
+  // claim"*. That comment records the same discovery from the consumer's side; this
+  // one now agrees with it instead of contradicting it.
   if capped { return 0 - 2; }
-  if escaped { return 0; }          // it never closed — refuse, and change nothing
   for k in 0..len(seen_q) {
     h = world_ground_cell(wld, seen_q[k], seen_r[k]).h_height;
     hex_editor::ground_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);

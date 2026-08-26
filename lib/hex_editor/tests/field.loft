@@ -101,3 +101,105 @@ fn test_a_roof_rises_from_its_eave_to_its_ridge() {
   assert(ridge - eave == 3 * hex_editor::ROOF_PITCH,
          "by one pitch a hex: {ridge - eave}");
 }
+
+// ── WHAT A REFUSAL MEANS — plan 26 `B4j` ───────────────────────────────────
+//
+// ⛔ **`field_fill` HAD A BRANCH THAT COULD NEVER RUN, AND A COMMENT SAYING IT WAS THE
+// IMPORTANT ONE.** *"'It never closed' and 'it grew past the cap' are not the same
+// fact … telling an author the wrong one sends them looking for a gap that is not
+// there"* — and then `escaped` and `capped` were set at the same site, so the `escaped`
+// return was unreachable. ⚠ **The distinction is not merely unimplemented: a capped
+// flood cannot make it.** `FIELD_CAP` of 4000 is reached at about radius 36, so a bound
+// below that reports a large CLOSED field as open, and a bound above it never fires.
+// *Open* and *closed but bigger than this tool will claim* are one observation.
+//
+// ⚠ **THIS ROW EXISTS SO NOBODY RE-MEASURES IT.** Every code the fill can answer, with
+// the case that produces it — the pair `field.mjs` and the server's `MSG_FIELD` branch
+// both depend on.
+
+fn roaded() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  hex_editor::ground_fill(w, 0 - 50, 0 - 50, 101, 101, 8, hex_editor::ROAD_MAT);
+  w
+}
+
+fn test_every_refusal_the_fill_can_give_and_the_case_that_gives_it() {
+  // …a fill that worked, as the control: a file of refusals with no success in it
+  // would pass on a function that refused everything.
+  ok = ringed(2);
+  assert(hex_editor::field_fill(ok, 0, 0) == 19, "the closed ring did not fill");
+
+  // `0` — NOT STANDING ON OPEN GROUND. Reachable two ways, and the server says
+  // *nothing to fill here* for both.
+  assert(hex_editor::field_fill(ok, 0, 0) == 0,
+         "filling the same field twice answered {hex_editor::field_fill(ok, 0, 0)} — "
+       + "the second time the author is standing on `FIELD_MAT`");
+  assert(hex_editor::field_fill(roaded(), 0, 0) == 0,
+         "standing on a road answered {hex_editor::field_fill(roaded(), 0, 0)}");
+
+  // `-2` — THE CAP, which is the only refusal the flood can actually observe.
+  assert(hex_editor::field_fill(world(), 0, 0) == 0 - 2,
+         "open ground answered {hex_editor::field_fill(world(), 0, 0)}");
+}
+
+// ⚠ **AND THE ONE AN AUTHOR ACTUALLY HITS ANSWERS THE SAME AS OPEN GROUND**, which is
+// the fact the refusal has to state rather than hide: a ring with a gap in it is
+// indistinguishable from no ring at all, to a flood that can only give up.
+fn test_a_ring_with_a_gap_is_the_same_observation_as_open_ground() {
+  w = ringed(2);
+  // knock one edge out of the boundary
+  cut = false;
+  for r in 0 - 4..5 {
+    for q in 0 - 4..5 {
+      for d in [4, 5, 0] {
+        if cut { continue; }
+        if hex_editor::wall_of(w, q, r, d, 10.0) == hex_editor::FENCE_MAT {
+          hex_editor::wall_set(w, q, r, d, 0, 8, 10.0);
+          cut = true;
+        }
+      }
+    }
+  }
+  assert(cut, "no boundary edge was found to remove");
+  assert(hex_editor::field_fill(w, 0, 0) == hex_editor::field_fill(world(), 0, 0),
+         "a gapped ring and open ground gave different codes — if the fill has gained "
+       + "a way to tell them apart, this row is the news and the refusal's wording "
+       + "should follow it");
+}
+
+// ⚠ **THE CAP'S MAGNITUDE, AND THE SWEEP IS WHY THIS ROW EXISTS.** Raising `FIELD_CAP`
+// a hundredfold went red in NOTHING: an open fill still caps eventually, so the code it
+// answers is `-2` either way and the number was invisible through the return. ⚠ **A
+// CLOSED region larger than the cap is what makes it observable** — it must be REFUSED
+// rather than filled, and that is a fact about the cap's value rather than about the
+// boundary. The existing rows say the cap *fires*; this one says it fires *where it
+// says it does*.
+fn test_a_closed_field_larger_than_the_cap_is_refused_by_the_cap() {
+  // A hexagon of radius 40 holds 3·40² + 3·40 + 1 = 4921 cells, comfortably past the
+  // 4000 the tool will claim — and it is CLOSED, so nothing here is about openness.
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  hex_editor::ground_fill(w, 0 - 60, 0 - 60, 121, 121, 8, hex_editor::SURFACE_MAT);
+  hex_editor::fence_disc(w, 0, 0, 40, hex_editor::FENCE_MAT, 10.0,
+                         hex_editor::WallRuns { items: [] });
+  // ⚠ **THE ANSWER IS TAKEN ONCE.** Calling the fill again inside the message reports a
+  // DIFFERENT call: the first one paints `FIELD_MAT`, so the second stands on it and
+  // answers `0`. Measured — under a sabotaged cap this row said *"it answered 0"* about
+  // a fill that had answered **4921**, which is a misleading number in the one sentence
+  // a reader would act on.
+  big = hex_editor::field_fill(w, 0, 0);
+  assert(big == 0 - 2,
+         "a closed field of 4921 cells was not refused by the cap of "
+       + "{hex_editor::FIELD_CAP} — it answered {big}, so the cap is not where it "
+       + "says it is");
+
+  // …and the control, one radius band down: a closed field UNDER the cap fills, so the
+  // row above is about the cap rather than about radius-40 rings being special.
+  u = world_new(0.25, 0, 10, 4).wn_world;
+  hex_editor::ground_fill(u, 0 - 60, 0 - 60, 121, 121, 8, hex_editor::SURFACE_MAT);
+  hex_editor::fence_disc(u, 0, 0, 30, hex_editor::FENCE_MAT, 10.0,
+                         hex_editor::WallRuns { items: [] });
+  n = hex_editor::field_fill(u, 0, 0);
+  assert(n == 2791,
+         "a closed field of 2791 cells answered {n} — under the cap it must simply "
+       + "fill, or the row above proves nothing about the cap");
+}

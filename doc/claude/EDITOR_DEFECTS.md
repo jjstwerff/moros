@@ -284,11 +284,22 @@ a closed ring of radius 3        -> 37     ← control: the instrument discrimin
 the same ring with a gap in it   -> -2     ← the case an author actually hits
 ```
 
-⚠ **The distinction cannot be made as written**: on open ground the flood only ever stops at the
-cap, so telling *open* from *too big* needs a BOUND — the shape `tower_pad` / `tower_clipped`
-already have one plan step back. Recorded rather than fixed here: plan 26 `B4h` routed around it
-(a disc's description generates a candidate instead of flooding), and fixing it is `field_fill`'s
-own step.
+⛔ **AND THE ENTRY ABOVE OVERSTATED IT — CORRECTED BY plan 26 `B4j`, WHICH WENT TO FIX IT.** Two
+things it implied are false. **The author was never told the wrong thing**: the server's `MSG_FIELD`
+branch already says *"grew past the cap … the boundary is open, OR the enclosure is larger than
+this tool will claim"*, and its own comment records the same discovery from the consumer's side —
+*"the old message stated a diagnosis the fill could not make"*. This was a re-discovery filed as
+new. **And it is not fixable**: measured, `FIELD_CAP` of 4000 is reached at about radius 36
+(`3R²+3R+1`), so a bound below that reports a large **closed** field as open — a false diagnosis,
+worse than none — and a bound above it never fires, because the cap gets there first. ⚠ *Open* and
+*closed but bigger than this tool will claim* are **one observation** to any bounded search.
+
+✅ **What was real is now fixed**: the unreachable branch is gone, `field_fill`'s comment agrees
+with its consumer instead of contradicting it, and `field.loft` pins every code the fill can answer
+with the case that produces it — including that a **gapped ring answers exactly what open ground
+does**, so the wording can never quietly drift back. ⚠ A second stale comment went with it: the
+server called the `0` branch *"reachable only if `field_fill` gains another way to decline"*, and it
+is reachable two ordinary ways — standing on a road, or on a field you already filled.
 
 ---
 

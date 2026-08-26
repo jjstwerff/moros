@@ -6229,8 +6229,13 @@ fn main() {
               + "larger than this tool will claim)");
             println("editor: field refused at ({fhx_q},{fhx_r}) — over cap");
           } else if nfilled == 0 {
-            // Reachable only if `field_fill` gains another way to decline. Kept
-            // as a fallback rather than a claim about the boundary.
+            // ⚠ **REACHABLE, AND THIS COMMENT SAID IT WAS NOT — plan 26 `B4j`.** It
+            // read *"reachable only if `field_fill` gains another way to decline"*;
+            // measured, `0` is what the fill answers whenever the author is standing
+            // on something that is not open ground — a road, or a field they have
+            // already filled. Both are ordinary, and the sentence below is right for
+            // both. What was never reachable is the OTHER zero the fill used to have,
+            // and that branch is gone.
             srv.send_to(ev.cid, "S:field refused — nothing to fill here");
             println("editor: field refused at ({fhx_q},{fhx_r})");
           } else {
