@@ -257,6 +257,14 @@ the wall surface holds **one** band's worth of geometry. `probe/b2`'s `E2` alrea
 surfaces were drawn* (`grass,wall`) — it knows the wall is there, and cannot see that it is
 there twice. Names, not counts, is the blindness.
 
+⚠ **AND IT NOW BLOCKS A MEASUREMENT, WHICH IS THE FIRST CONCRETE COST BEYOND THE PICTURE** —
+[plan 26](../../plans/26-blueprint/README.md) `B4f`. A wall's thickness is the spread of its
+band, and the honest way to read one is off the emitted mesh; with both emitters writing into
+that mesh, the per-edge panels sit on the hex edges and **widen the spread of the very thing
+being measured**. `wall_thick.loft` gets round it by registering a run without stamping its
+edges — a fixture that has to avoid a defect in order to see past it, which is a fair
+description of what a second drawing of one wall costs.
+
 ---
 
 ## 5. After a reload the straight walls are gone

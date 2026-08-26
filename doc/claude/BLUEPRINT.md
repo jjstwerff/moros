@@ -410,6 +410,28 @@ oy, **half**, mat)` takes a half-width because that is what a *renderer* needs; 
 gives the exact band constants in `ℚ(√3)`. What the palette decides is which half-width a given
 wall id resolves to. Conflating the two is how a second constant gets introduced.
 
+⛔ **AND UNTIL `B4f` THE PALETTE DECIDED THE PICTURE AND NOTHING ELSE — the sentence above was
+a design, not a description.** `wt_thick` had exactly **one** consumer and it was that picture: `run_wall` gave
+every wall id `wall_band() * 0.5`, so a world could declare a curtain wall 0.7 across, watch the
+plan paint it 0.7, and have the mesher build it at √3/2 — with the store, the palette and the
+plan view all agreeing and nothing red anywhere. ✅ **`hex_editor::wall_half(w, region, mat)` is
+that resolver now**, read by `hex_mesh::emit_run_wall` and by `plan_svg` alike, and measured off
+the emitted mesh rather than off the function that decides it.
+
+⚠ **THE INSTRUMENT IS THE STEP HERE, NOT THE FIX.** The fix is four lines. What could see it is a
+test that measures the band as the **spread of the wall mesh's own vertices** — and the row that
+makes that trustworthy is the *plain* wall, which must read √3/2 both before and after: an
+instrument that could not find the number already there cannot be believed about the number that
+is missing. ⚠ **And a `wall_type.loft` row asking `wall_half` what `wall_half` says would have
+been green the whole time**, because the resolver was never the broken half.
+
+⚠ **WHAT IT DELIBERATELY DOES NOT REACH, AND WHY EACH.** `roof_plan_of`'s eave reach and the
+camera's `CAM_SKIN` are still the plain band — a `const`, in the camera's case, so it has no world
+to ask — and both are about the PROCEDURAL house, whose walls `place_house` stamps as `WALL_MAT`
+by the same decision `B4e` recorded. ⚠ The one to know about: **a declared wall thicker than the
+band can reach closer to the eye than the camera's skin expects.** Named rather than left to be
+found.
+
 ### 3.4 Floors side by side
 
 > *"Multiple floors have a layout beside each other."*

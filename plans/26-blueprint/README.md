@@ -100,6 +100,17 @@ script in the corpus keys the same world; a door cut into a chosen type must con
 exactly one of its edges; and a slot a world stamped but **declared nowhere** must still
 draw magenta, or the picture has simply stopped reading the palette.
 
+**`B4f`** — **expected result**: a run laid at a type its world declares **0.4 across is
+built 0.4 across**, measured off the emitted mesh rather than off the function that
+decides it, and the plan paints that same number. **Invariant**: *the palette decides
+which half-width a wall id resolves to* — BLUEPRINT §3.3's own sentence — so there is
+**one** resolver, `hex_editor::wall_half`, read by the mesher and by the picture, and no
+width chosen at a drawing site. **Negative controls**: a wall no world declared must
+still be built at the family band, which is what keeps every world the corpus keys
+unmoved; a type stating **no** thickness and one whose declaration is **damaged** must
+both take that same default rather than a wall of no width at all; and `run_wall` asked
+for a different half must give a different strip, or nothing here is reading the number.
+
 ## Phases
 
 | Phase | Effort | Verify | Status |
@@ -113,6 +124,7 @@ draw magenta, or the picture has simply stopped reading the palette.
 | **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | `planview.loft` — the highlight's outline is the cell's own **byte for byte**, the cross is the point asked for and not the snap, both marks survive an author on the same panel; `probe/plan` row G; four faults seen red | ✅ **SHIPPED** `e24a9b0` |
 | **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | `wall_type.loft` — a type round-trips through the encoder name/body/thickness identical; a damaged one is refused and an unknown BODY is carried; `planview.loft` — the wall is painted at the thickness its type declares; four faults seen red | ✅ **SHIPPED** `6e756c0` |
 | **`B4e`** — a gesture that stamps a CHOSEN wall type, so two can stand in one world | M | `wall_type.loft` — the chosen slot is the byte the verb writes, two declared types stand in one world, a chosen type stops a walker and takes a door, the vocabulary's own bytes refused by name; `planview.loft` — a declared type drawn as a wall at its own width and an undeclared one still loud; `probe/plan` row H and `probe/s2c/walltype`; five faults seen red | ✅ **SHIPPED** `10337dc` |
+| **`B4f`** — the declared thickness reaches the GEOMETRY, so the plan and the build are one number | S | `wall_type.loft` — the resolver's four answers (declared, undeclared, damaged, states-none); `hex_mesh/tests/wall_thick.loft` — the band measured off the EMITTED mesh, and the plan's stroke against it; `run.loft` — a different half gives a different strip; five faults seen red | ✅ **SHIPPED** `34cec07` |
 
 ### Why `B0` is one phase and not two
 
@@ -631,6 +643,153 @@ still impossible is what a BYTE cannot hold, and stating it found something the 
 ceiling hid**: `wall_set` widens with `mat as u8? ?? 0`, so a material of 256 does not
 fail — it stores **0**, the byte that means *no edge at all*. `fit_nominal(mat,
 FENCE_MAT, …)` never let one through; `edge_stamp_ok` has to say it.
+
+## What `B4f` turned up
+
+**Shipped `34cec07`.** `hex_editor::wall_half` — one resolver from a wall **id** to the
+half-width it is built at — `run_wall` taking that half instead of choosing it,
+`hex_mesh::emit_run_wall` and `planview::plan_svg` reading the one function, and
+`lib/hex_mesh/tests/wall_thick.loft`, which measures a wall's band as the spread of the
+wall mesh's own vertices.
+
+### `wt_thick` had exactly one consumer and it was a PICTURE
+
+`B4d` read a wall's thickness off the palette and `B4e` let a person choose the type
+that carries it, and between them they wired it to the plan view and to nothing else.
+`run_wall` resolved **every** wall id to `wall_band() * 0.5` — √3/2 — so:
+
+| | |
+|---|---|
+| the palette says | `declare edge 5 curtain body=SOLID thick=0.4` |
+| the plan paints | `stroke-width='0.4'` |
+| the mesher builds | **0.8660254037844386** |
+
+⚠ **AND EVERY SUITE WAS GREEN**, because the store, the palette and the picture all
+agreed — the disagreement was between the picture and the *world the picture is of*,
+and nothing in the tree compared those two. This is [CLAUDE.md](../../CLAUDE.md)'s named
+commonest defect landing on the step immediately after the one that built the thing:
+*check that what you built is called*, asked one rung too late.
+
+⚠ **AND IT IS WORSE THAN AN UNCALLED FUNCTION, BECAUSE THE PLAN VIEW IS THE REVIEW
+SURFACE.** BLUEPRINT §0's whole argument is that a plan is the cheapest place to see what
+the libraries do; a plan that paints 0.4 over a wall built at 0.866 is an instrument
+reporting its own input.
+
+### The instrument was the step; the change itself is a dozen lines
+
+The band is measured as the **z-spread of the wall mesh's vertices** — the run lies along
++x, so its two faces are the extreme z. Two things make that trustworthy rather than
+plausible:
+
+- ⚠ **The plain-wall row must be green BEFORE and AFTER.** An instrument that cannot find
+  the √3/2 that was already there cannot be believed about the 0.4 that was missing —
+  and it is also the step's **upper bound**, since every world the corpus keys is laid at
+  the band.
+- ⚠ **The run is registered WITHOUT stamping its edges.** `wall_stamp` does both, and the
+  per-edge panels the mesher then draws from the store ([EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 4 —
+  every wall drawn twice) sit on the hex edges and would widen the spread. The defect
+  that step 4 records is, concretely, a second wall in the way of measuring the first.
+
+⚠ **AND NO RESOLVER TEST COULD HAVE FOUND THIS.** `wall_type.loft` gains four rows here
+and not one of them could have gone red before the step: the resolver was never the
+broken half — the mesher's **call** was — so the only instrument that could fail is one
+that reads the emitted geometry.
+
+### Moving a constant into a parameter turned its own test into a tautology
+
+`run.loft`'s `test_the_strip_is_the_family_band_thick` pinned the wall's width since `S3`:
+*the thickness is `hex_draw`'s, not a number chosen here*. The moment `run_wall` took
+`half` from its caller, that test passed `BAND_SIDES * 0.5` in and asserted `BAND_SIDES`
+came out — **a table checked against the table**, and it went on passing without a word.
+
+⚠ **It is a shape worth watching for, because the refactor was right and the test's decay
+was invisible.** What restores it is a second row at a *different* half: without it every
+assertion in that file would pass on a `run_wall` that had gone back to choosing the band
+itself. The claim the old row really made — *an undeclared id is presented at the family
+band* — moved to `wall_half`, where it is now a fact about the resolver and, off the mesh,
+about the geometry.
+
+### The region is the run's own start cell, not the chunk
+
+`emit_run_wall` is handed `q0`/`r0` of the **mesh chunk** it is filling, and a wall is
+meshed once per chunk it crosses — so resolving the palette against those would give one
+wall two thicknesses at a regional boundary. It resolves against the cell the run
+**starts** in, which is the same choice `wr_mat` already makes about its material.
+
+### What it deliberately does not reach, and who owns each
+
+`roof_plan_of`'s eave reach and the camera's `CAM_SKIN` are still the plain band. Both are
+about the **procedural** house, whose walls `place_house` stamps as `WALL_MAT` — `B4e`'s
+decision, unchanged — and `CAM_SKIN` is a `const`, so it has no world to ask at all.
+⚠ **The consequence, said out loud rather than discovered: a declared wall thicker than
+the band can reach closer to the eye than the camera's skin expects.**
+
+### The sabotage sweep
+
+Five faults, each restored from a copy taken before the sweep — never `git checkout` —
+and the subject asserted **present** before row 0 (`wall_half` in the tree *and* called
+by both emitters), because a sweep over an absent feature answers *nothing went red* to
+every question.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+
+### Both backends, and three failures that were not this tree's
+
+`hex_editor` **669 passed** and `hex_mesh` **106 passed** on the interpreter; `make fast`
+green, with `probe/s2c` keying `walltype` IDENTICAL with and without a server. On
+`--native` `hex_editor` is 669 and `hex_mesh` came back **103 passed, 3 failed** — all
+three in `arch.loft`, a file this step does not touch, all three
+`native compile: error: linking with cc failed`. ⚠ **`pgrep -f cargo-nextest` was
+answering**, which is [CLAUDE.md](../../CLAUDE.md)'s documented condition: the sibling's
+`make rebuild-native-cdylibs` empties and refills the build cache, and any `--lib lib/`
+link here fails while it is empty. Re-run alone, `arch` is **3 passed** on native, and
+`wall_thick` is **3 passed** on native — so the two backends agree, which is the claim,
+and the interruption is a fact about the box.
+
+### A note on cost, and the instrument it is NOT measured with
+
+`emit_run_wall` now asks the palette once per run per mesh chunk — two section
+lookups, and for a world that declares nothing they return on the first line. A world
+that *does* declare wall types pays one text split per run per chunk, on a path that
+rebuilds the whole neighbourhood on every write ([EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 1).
+⚠ **It is written down rather than timed, because [CLAUDE.md](../../CLAUDE.md) measures
+cost in `w_tau` and a mesh build does no writes** — so the honest statement is *where*
+the work is, not how many milliseconds it took on this box.
+
+### The sabotage sweep, and the row only ONE instrument could catch
+
+Five faults, each restored from a copy taken before the sweep — never `git checkout` —
+and the subject asserted **present** before row 0: `wall_half` in the tree *and* both
+emitters calling it, because a sweep over an absent feature answers *nothing went red*
+to every question.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | `wall_half` pinned to the band — the declaration never reaches the geometry | `wall_type` · `wall_thick` · `planview` · `probe/plan` |
+| 2 | `run_wall` ignores its `half` and chooses the band again | **`run` · `wall_thick` alone** |
+| 3 | the plan forgets to double the half — the picture halves what is built | `wall_thick` · `planview` · `probe/plan` |
+| 4 | `wall_half` returns the full width instead of the half | `wall_type` · `wall_thick` · `planview` · `probe/plan` |
+| 5 | `thick=0` read as *zero wide* rather than *states none* | **`wall_type` alone** |
+
+⚠ **ROW 2 IS THE ONE TO READ, AND IT IS THE ROW THAT ALMOST HAD NO INSTRUMENT.** A
+`run_wall` that quietly re-chooses the band is invisible to the plan view — the picture
+resolves the palette itself and would go on painting 0.4 over a wall built at √3/2,
+which is the original defect wearing the fix's clothes. `wall_thick` sees it because it
+reads the MESH. ⚠ **And `run` sees it only because of the row this step added**:
+measured with the fault in place, the failure is
+
+```
+FAIL tests/run.loft::test_the_strip_is_as_thick_as_it_was_asked_for
+     a strip asked for 0.2 either side is 0.8660254037844386 across at half 0.4330127018922193
+     (1 failed, 5 passed)
+```
+
+**Five passed.** Every assertion that pre-dates this step hands `BAND_SIDES * 0.5` in and
+asserts `BAND_SIDES` comes out, so the fault is exactly what they cannot see.
+
 
 ## Open questions
 
