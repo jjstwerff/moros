@@ -1,0 +1,7 @@
+# A PICK THAT LANDS ON NO PANEL AUTHORS NOTHING — the negative control.
+#
+# ⚠ Without this row, a `pick` that silently fell back to the author's own cell would
+# pass every other row in this probe.
+at 0 0 0
+verb raise
+pick 200,0 fence

@@ -79,9 +79,57 @@ while [ "$i" -lt 3 ]; do
   fi
 done
 
+run_one () {   # <script> <world> -> prints the world key
+  SCRIPT="$1" WORLD="$2" ${LOFT:-loft} --lib lib/ src/editor_run.loft \
+    > "$OUT/$2.log" 2>&1
+  grep -oE "^editor_run: world [0-9]+:[0-9]+" "$OUT/$2.log" | sed 's/.* //'
+}
+
+echo ""
+echo "D  a gesture from a picked spot leaves the world standing there would"
+kp=$(run_one probe/plan/pick.keys   b4pick)
+ks=$(run_one probe/plan/stand.keys  b4stand)
+kg=$(run_one probe/plan/gutter.keys b4gutter)
+kb=$(run_one probe/plan/bare.keys   b4bare)
+if [ -z "$kp" ] || [ -z "$ks" ] || [ -z "$kb" ] || [ -z "$kg" ]; then
+  bad "one of the four runs printed no world key — nothing below is a comparison"
+elif [ "$kp" = "$ks" ]; then
+  ok "picked and stood-on both key $kp"
+else
+  bad "picked $kp against stood-on $ks — the plan authors something else than the editor"
+fi
+
+# ⚠ THE CONTROL THAT MAKES D MEAN SOMETHING: the fence has to CHANGE the world, or
+# two runs that authored nothing would agree perfectly.
+if [ "$kp" != "$kb" ]; then
+  ok "…and the fence moved the world off the bare key ($kb)"
+else
+  bad "the picked fence left the world identical to no fence at all — D compares two \
+worlds that were never authored in"
+fi
+
+echo ""
+echo "E  a pick is a TARGET, not a teleport"
+f1=$(grep -oE "^  feet [-0-9.]+ at [-0-9.]+,[-0-9.]+" "$OUT/b4pick.log" | head -1)
+f2=$(grep -oE "^  feet [-0-9.]+ at [-0-9.]+,[-0-9.]+" "$OUT/b4pick.log" | tail -1)
+if [ -n "$f1" ] && [ "$f1" = "$f2" ]; then
+  ok "the walker is where it was: $f1"
+else
+  bad "the walker moved across a pick: '$f1' then '$f2' — clicking a plan to hang a \
+door must not walk the person across the room"
+fi
+
+echo ""
+echo "F  a pick that lands on no panel authors nothing"
+if [ "$kg" = "$kb" ]; then
+  ok "a pick off the page left the bare world untouched ($kg)"
+else
+  bad "a refused pick still changed the world: $kg against $kb"
+fi
+
 echo ""
 if [ "$BAD" -eq 0 ]; then
-  echo "PLAN: green — the plan draws the person the tick moved"
+  echo "PLAN: green — the plan draws the person the tick moved, and authors where you point"
   exit 0
 fi
 echo "PLAN: $BAD FAILED"

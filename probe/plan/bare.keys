@@ -1,0 +1,3 @@
+# The same world with no pick at all — what `gutter.keys` must equal.
+at 0 0 0
+verb raise

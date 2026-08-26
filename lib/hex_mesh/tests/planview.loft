@@ -681,3 +681,93 @@ fn test_the_three_states_of_the_author_do_not_read_alike() {
   assert(foot(off).contains("OFF-PLAN"),
          "the author is outside the window and the picture does not say so: {foot(off)}");
 }
+
+// ── `B4a` — PAGE → CELL, AND THE THREE PLACES THAT ARE NO CELL ──────────────
+//
+// The inverse of the placement `B2` declared. ⚠ It is checked as a ROUND TRIP over
+// every cell of a two-level window, because a transform that is wrong by a margin
+// still picks the right cell in the middle of a panel and the wrong one at its edge —
+// and the middle is where every hand-written fixture would happen to click.
+
+fn test_every_cell_of_every_level_picks_itself() {
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  box = plan_bounds(0 - 6, 0 - 6, 7, 7);
+  pitch = plan_pitch(box);
+  n = 0;
+  for k in 0..2 {
+    for r in 0 - 6..7 {
+      for q in 0 - 6..7 {
+        c = hex_proj::hex_to_world(q, r, 0);
+        p = plan_pick(0 - 6, 0 - 6, 7, 7, refs,
+                      c.x + (k as float) * pitch, c.z);
+        assert(p.pk_ok, "({q},{r}) on L{k} was refused: {p.pk_why}");
+        assert(p.pk_level == k, "({q},{r}) picked L{p.pk_level}, not L{k}");
+        assert(p.pk_q == q && p.pk_r == r,
+               "the page point of ({q},{r}) on L{k} picked ({p.pk_q},{p.pk_r})");
+        n = n + 1;
+      }
+    }
+  }
+  assert(n == 338, "{n} cells round-tripped, not 338 — the loop, not the map");
+}
+
+fn test_the_level_a_pick_lands_on_carries_its_own_reference() {
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  box = plan_bounds(0 - 6, 0 - 6, 7, 7);
+  c = hex_proj::hex_to_world(0, 0, 0);
+  lo = plan_pick(0 - 6, 0 - 6, 7, 7, refs, c.x, c.z);
+  hi = plan_pick(0 - 6, 0 - 6, 7, 7, refs, c.x + plan_pitch(box), c.z);
+  assert(lo.pk_ok && hi.pk_ok, "one of the two panels refused its own centre");
+  assert(about(lo.pk_ref, ground_ref()) && about(hi.pk_ref, deck_ref()),
+         "the panels report references {lo.pk_ref} and {hi.pk_ref} for "
+         + "{ground_ref()} and {deck_ref()} — a pick that named the wrong level would "
+         + "author on the wrong floor");
+}
+
+fn test_three_places_that_are_no_cell_are_refused_and_say_why() {
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  box = plan_bounds(0 - 6, 0 - 6, 7, 7);
+  pitch = plan_pitch(box);
+  ox = box.pb_minx - PLAN_MARGIN;
+  mid = (box.pb_minz + box.pb_maxz) / 2.0 ?? 0.0;
+
+  // ⚠ THE INSTRUMENT FIRST: a point that SHOULD be accepted, so the refusals below
+  // are about the points and not about a map that refuses everything.
+  ctr = hex_proj::hex_to_world(0, 0, 0);
+  assert(plan_pick(0 - 6, 0 - 6, 7, 7, refs, ctr.x, ctr.z).pk_ok,
+         "the centre of the window was refused, so every refusal below is free");
+
+  gut = plan_pick(0 - 6, 0 - 6, 7, 7, refs, ox + plan_paper_w(box) + PLAN_GUTTER / 2.0 ?? 0.0, mid);
+  assert(!gut.pk_ok, "a point in the gutter between two panels picked a cell");
+  assert(gut.pk_why.contains("gutter"), "the gutter refusal says: {gut.pk_why}");
+
+  // The margin: inside the paper, outside the window's own hexes.
+  mar = plan_pick(0 - 6, 0 - 6, 7, 7, refs, ox + 0.05, mid);
+  assert(!mar.pk_ok, "a point in a panel's margin picked cell ({mar.pk_q},{mar.pk_r})");
+  assert(mar.pk_why.contains("margin"), "the margin refusal says: {mar.pk_why}");
+
+  // ⚠ AND THE ONE TRUNCATION WOULD GET WRONG: left of the page divides to panel 0.
+  off = plan_pick(0 - 6, 0 - 6, 7, 7, refs, ox - 1.0, mid);
+  assert(!off.pk_ok,
+         "a point a metre LEFT of the page picked L{off.pk_level} ({off.pk_q},{off.pk_r}) "
+         + "— `/` truncates toward zero, so a negative offset answers panel 0 unless the "
+         + "bound is tested first");
+  assert(off.pk_why.contains("left"), "the off-page refusal says: {off.pk_why}");
+
+  past = plan_pick(0 - 6, 0 - 6, 7, 7, refs, ox + pitch * 2.0 + 0.5, mid);
+  assert(!past.pk_ok, "a point past the last panel picked L{past.pk_level}");
+  assert(past.pk_why.contains("past"), "the past-the-end refusal says: {past.pk_why}");
+}
+
+// ⚠ THE PICK AND THE PICTURE SHARE ONE FRAME, and this is what says so: the pitch the
+// drawing declares on its own group is the pitch the map divides by. Two derivations
+// of it would be wrong by a margin and agree everywhere a hand-written fixture clicks.
+fn test_the_pick_divides_by_the_pitch_the_picture_declares() {
+  w = two_storey_world();
+  refs: vector<float> = [ground_ref(), deck_ref()];
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_nobody(), "frame");
+  drawn = attr(group_line(svg, 1), "data-dx") as float ?? 0.0;
+  mapped = plan_pitch(plan_bounds(0 - 6, 0 - 6, 7, 7));
+  assert(about(drawn, mapped),
+         "the picture places L1 at {drawn} and the pick divides by {mapped}");
+}

@@ -1,0 +1,8 @@
+# THE SAME FENCE, REACHED BY STANDING THERE — the control for `pick.keys`.
+#
+# ⚠ THE WORLD KEYS MUST MATCH BYTE FOR BYTE. Two ways to reach one gesture that left
+# different worlds would mean the plan authors something subtly other than the editor.
+at 0 0 0
+verb raise
+at 0.4 0.2
+verb fence

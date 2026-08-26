@@ -1,0 +1,9 @@
+# A GESTURE FROM A PICKED SPOT — plan 26 `B4b`.
+#
+# The point is on the plan `editor_run` would draw right now; the fence lands there
+# and the PERSON does not move. `stand.keys` is the same fence reached the other way.
+at 0 0 0
+verb raise
+feet
+pick 0.4,0.2 fence
+feet

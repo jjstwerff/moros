@@ -144,6 +144,47 @@ fn edge_width(mat: integer) -> float {
 // beside each other. BLUEPRINT §3.4: *"the offset must never reach the field"* — the
 // weaker half of that is that it must not reach the GEOMETRY either, or every
 // coordinate in the picture is a page position wearing a world position's clothes.
+// ── THE PANEL'S OWN FRAME, WITHOUT DRAWING IT — plan 26 `B4a` ───────────────
+//
+// The window's bounds in world units, swept from the same corners the cells are drawn
+// from. ⚠ **IT EXISTS SO THERE IS ONE DERIVATION OF THE FRAME AND NOT TWO.** The
+// inverse map — page position back to a cell — needs the pitch and the origin the
+// drawing used, and a second copy of that arithmetic would be wrong in exactly the way
+// nobody notices: the picture and the pick would disagree by a margin, and every
+// authored thing would land one cell out near an edge.
+pub struct PlanBox {
+  pb_minx: float,
+  pb_maxx: float,
+  pb_minz: float,
+  pb_maxz: float,
+}
+
+pub fn plan_bounds(q0: integer, r0: integer, q1: integer, r1: integer) -> PlanBox {
+  bminx = 0.0;
+  bmaxx = 1.0;
+  bminz = 0.0;
+  bmaxz = 1.0;
+  bhave = false;
+  for r in r0..r1 {
+    for q in q0..q1 {
+      for ci in 0..6 {
+        bp = hex_proj::hex_corner_world(q, r, 0, ci);
+        if !bhave { bminx = bp.x; bmaxx = bp.x; bminz = bp.z; bmaxz = bp.z; bhave = true; }
+        if bp.x < bminx { bminx = bp.x; }
+        if bp.x > bmaxx { bmaxx = bp.x; }
+        if bp.z < bminz { bminz = bp.z; }
+        if bp.z > bmaxz { bmaxz = bp.z; }
+      }
+    }
+  }
+  PlanBox { pb_minx: bminx, pb_maxx: bmaxx, pb_minz: bminz, pb_maxz: bmaxz }
+}
+
+// The width of one panel's paper, and the step from one panel to the next.
+pub fn plan_paper_w(b: PlanBox) -> float { b.pb_maxx - b.pb_minx + PLAN_MARGIN * 2.0 }
+pub fn plan_paper_h(b: PlanBox) -> float { b.pb_maxz - b.pb_minz + PLAN_MARGIN * 2.0 }
+pub fn plan_pitch(b: PlanBox) -> float { plan_paper_w(b) + PLAN_GUTTER }
+
 pub struct PlanPanel {
   pp_body:  text,        // the elements, unoffset
   pp_cells: integer,
@@ -159,11 +200,7 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
               ref: float) -> PlanPanel {
   cells = "";
   edges = "";
-  minx = 0.0;
-  maxx = 0.0;
-  minz = 0.0;
-  maxz = 0.0;
-  have = false;
+  box = plan_bounds(q0, r0, q1, r1);
   ncell = 0;
   nedge = 0;
   for r in r0..r1 {
@@ -177,11 +214,6 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
       pts = "";
       for ci in 0..6 {
         p = hex_proj::hex_corner_world(q, r, 0, ci);
-        if !have { minx = p.x; maxx = p.x; minz = p.z; maxz = p.z; have = true; }
-        if p.x < minx { minx = p.x; }
-        if p.x > maxx { maxx = p.x; }
-        if p.z < minz { minz = p.z; }
-        if p.z > maxz { maxz = p.z; }
         pts += "{fx(p.x)},{fx(p.z)} ";
       }
       mat = c.h_material as integer ?? 0;
@@ -232,11 +264,12 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
     // number, and it was read as the second.
     say = "refused ({nedge} marks)";
   }
-  // An empty window still has a frame, so a caller that asked for nothing gets a
-  // picture of nothing rather than a panel with a null size in it.
-  if !have { minx = 0.0; maxx = 1.0; minz = 0.0; maxz = 1.0; }
+  // ⚠ AN EMPTY WINDOW STILL HAS A FRAME — `plan_bounds` answers `0..1` for one, so a
+  // caller that asked for nothing gets a picture of nothing rather than a panel with a
+  // null size in it.
   PlanPanel { pp_body: cells + edges + runs, pp_cells: ncell, pp_marks: nedge,
-              pp_say: say, pp_minx: minx, pp_maxx: maxx, pp_minz: minz, pp_maxz: maxz }
+              pp_say: say, pp_minx: box.pb_minx, pp_maxx: box.pb_maxx,
+              pp_minz: box.pb_minz, pp_maxz: box.pb_maxz }
 }
 
 // ── THE AUTHOR ON THE PLAN — plan 26 `B3`, BLUEPRINT §3.1 ──────────────────
@@ -328,7 +361,8 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
     if k == 0 {
       minx = pan.pp_minx; maxx = pan.pp_maxx;
       minz = pan.pp_minz; maxz = pan.pp_maxz;
-      pitch = maxx - minx + PLAN_MARGIN * 2.0 + PLAN_GUTTER;
+      pitch = plan_pitch(PlanBox { pb_minx: minx, pb_maxx: maxx,
+                                   pb_minz: minz, pb_maxz: maxz });
     }
     dx = (k as float) * pitch;
     px = minx - PLAN_MARGIN;
@@ -396,6 +430,64 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
        + " pitch {fx(pitch)} cells {totcell} edges {totmark} run{verdicts}"
        + " who {whosay} -->\n</svg>\n";
   head + bodies + foot
+}
+
+// ── PAGE → CELL: THE INVERSE OF THE PLACEMENT — plan 26 `B4a` ──────────────
+//
+// BLUEPRINT §3.4 declares the offset *"presentation only"* and names `hex_place::Pose`
+// as the map between the page frame and each level's own. This is that map for the
+// only transform the plan actually applies: a translation of `k * pitch`, declared on
+// each group as `data-dx`.
+//
+// ⚠ **IT SHARES THE FRAME WITH THE DRAWING RATHER THAN RE-DERIVING IT.** `plan_bounds`
+// and `plan_pitch` answer for both, so the picture and the pick cannot disagree — a
+// second copy of that arithmetic would be wrong by a margin, and everything authored
+// near an edge would land one cell out.
+//
+// ⚠ **AND A REFUSAL NAMES ITS RESTRICTION.** A page point in the gutter, in a panel's
+// margin, or off the page is not *the nearest cell*: it is **no cell**, and answering
+// with the nearest one is how a click beside the picture authors inside it.
+pub struct PlanPick {
+  pk_ok:    boolean,
+  pk_level: integer,        // which panel, and −1 when none
+  pk_ref:   float,          // that panel's reference height
+  pk_q:     integer,
+  pk_r:     integer,
+  pk_x:     float,          // the WORLD point inside that panel — an `Author`'s x
+  pk_z:     float,
+  pk_why:   text,
+}
+
+fn pick_no(why: text) -> PlanPick {
+  PlanPick { pk_ok: false, pk_level: 0 - 1, pk_ref: 0.0, pk_q: 0, pk_r: 0,
+             pk_x: 0.0, pk_z: 0.0, pk_why: why }
+}
+
+pub fn plan_pick(q0: integer, r0: integer, q1: integer, r1: integer,
+             refs: vector<float>, px: float, py: float) -> PlanPick {
+  rs = refs;
+  if len(rs) < 1 { rs = [0.0]; }
+  box = plan_bounds(q0, r0, q1, r1);
+  pitch = plan_pitch(box);
+  ox = box.pb_minx - PLAN_MARGIN;
+  oz = box.pb_minz - PLAN_MARGIN;
+  // ⚠ **LEFT OF THE PAGE IS REFUSED BEFORE THE DIVISION, AND THAT ORDER IS THE BUG
+  // THIS AVOIDS.** loft's `/` truncates toward zero, so a negative offset divides to
+  // panel **0** — a click a metre left of the picture would author in its first panel.
+  // The same shape as `mesh_tile_of`, which this tree has already paid for once.
+  if px < ox { return pick_no("left of the page"); }
+  if py < oz { return pick_no("above the page"); }
+  if py > oz + plan_paper_h(box) { return pick_no("below the page"); }
+  k = ((px - ox) / pitch ?? 0.0) as integer;
+  if k >= len(rs) { return pick_no("past the last level"); }
+  lx = px - (k as float) * pitch;
+  if lx > ox + plan_paper_w(box) { return pick_no("in the gutter between levels"); }
+  (pq, pr) = px_to_hex(lx, py);
+  if pq < q0 || pq >= q1 || pr < r0 || pr >= r1 {
+    return pick_no("in the margin, outside the window");
+  }
+  PlanPick { pk_ok: true, pk_level: k, pk_ref: rs[k] ?? 0.0, pk_q: pq, pk_r: pr,
+             pk_x: lx, pk_z: py, pk_why: "" }
 }
 
 // One level, which is what most callers want and what `B0` shipped.

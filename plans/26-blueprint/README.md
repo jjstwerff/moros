@@ -77,6 +77,20 @@ control**: an offset applied to the store must be refused by the same check.
 **`B3`** has no exact-invariant surface beyond the pose it prints, which is `Walker`'s own
 two floats.
 
+**`B4a`** — **expected result**: for every cell of a two-level window, the page point at
+that cell's own centre picks **that cell**, on the panel it was drawn in. **Invariant**:
+*page → cell is the exact inverse of the placement `B2` declared* — one pitch, one origin,
+no second derivation of either. **Negative control**: three points must be **refused with a
+reason**, never snapped to the nearest cell — one in the gutter between panels, one in a
+panel's margin outside the window, and one left of the page entirely (where truncating
+division would otherwise answer *panel 0*).
+
+**`B4b`** — **expected result**: the world key after authoring at a picked spot equals the
+key after the same verb authored by standing there. **Invariant**: *a pick is a TARGET, not
+a teleport* — the `Author` is built at the picked spot and the walker does not move.
+**Negative control**: a pick that lands on no panel must author **nothing**, and the world
+key must be unchanged.
+
 ## Phases
 
 | Phase | Effort | Verify | Status |
@@ -85,7 +99,10 @@ two floats.
 | **`B1`** — the description beside it: the recovered run over the same window | M | `lib/hex_editor/tests/edges_mat.loft` + `lib/hex_mesh/tests/planview.loft` — the authored run's ENDPOINTS come back, the description stays within 0.6 wu of its own marks, a wandering chain's does not; four seeded faults seen red | ✅ **SHIPPED** `ba3af3c` |
 | **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | `lib/hex_mesh/tests/planview.loft` — the world key is unmoved by an emit (checked against a mutation), the same cell has identical `points` in every panel, the panels do not overlap, and the two levels are not the same picture; four seeded faults seen red | ✅ **SHIPPED** `0c35614` |
 | **`B3`** — the author on the plan: pose and facing, from the walker | S | `probe/plan` — three stations of a committed script, `feet` against the marker READ BACK out of the picture, with a control that the three differ; four suite faults and the probe's own seen red | ✅ **SHIPPED** `9d81b93` |
-| **`B4`** — authoring at plan scale | — | not cut yet — a design may be rough until it becomes work | Deferred |
+| **`B4a`** — page → cell: the inverse of the panel transform, refusing what is on no panel | S | round trip over every cell of a two-level window; the gutter, the margin and a point left of the page each **refused** rather than snapped | Open |
+| **`B4b`** — a gesture from a picked spot, with the walker left where it is | M | the world key after `pick <x>,<y> <verb>` equals the key after `at`+`verb` **byte for byte**, and `feet` is unchanged by the pick | Open |
+| **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | the marker's own coordinates equal `plan_pick`'s answer for the page point that produced it | Open |
+| **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | a wall authored as a second palette entry reads back with that entry's `wd_body`/`wd_thickness` | Blocked on `@HB-X63` |
 
 ### Why `B0` is one phase and not two
 

@@ -188,16 +188,29 @@ fn svg_attr(ln: text, name: text) -> text {
 // that wants a fixed frame across stations.
 const PLAN_R = 8;
 
+// ⚠ **ONE WINDOW, SHARED BY `plan` AND `pick`** — plan 26 `B4b`. A pick resolves
+// against *the plan I would draw right now*, so the two must derive the frame from one
+// place or a click will land on a picture that was never drawn. The walker does not
+// move during either, which is what makes "right now" a stable answer.
+fn plan_window(wk: hex_editor::Walker, q0: &integer, r0: &integer,
+               q1: &integer, r1: &integer) {
+  (pw_cq, pw_cr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+  q0 = env_int("Q0", pw_cq - PLAN_R);
+  r0 = env_int("R0", pw_cr - PLAN_R);
+  q1 = env_int("Q1", pw_cq + PLAN_R + 1);
+  r1 = env_int("R1", pw_cr + PLAN_R + 1);
+}
+
 fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> boolean {
   rp_name = env_variable("WORLD");
   if rp_name == "" { rp_name = "headless"; }
   rp_tag = rest.trim();
   if rp_tag != "" { rp_name = "{rp_name}-{rp_tag}"; }
-  (rp_cq, rp_cr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
-  rp_q0 = env_int("Q0", rp_cq - PLAN_R);
-  rp_r0 = env_int("R0", rp_cr - PLAN_R);
-  rp_q1 = env_int("Q1", rp_cq + PLAN_R + 1);
-  rp_r1 = env_int("R1", rp_cr + PLAN_R + 1);
+  rp_q0 = 0;
+  rp_r0 = 0;
+  rp_q1 = 0;
+  rp_r1 = 0;
+  plan_window(wk, rp_q0, rp_r0, rp_q1, rp_r1);
   // One panel, at the feet: a station shot is *the floor I am standing on*. A script
   // that wants the storeys beside each other says so through `plan_view`, which reads
   // the world this run saves.
@@ -220,6 +233,59 @@ fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
   }
   said = "plan {rp_name}.svg author {rp_x},{rp_z}";
   return true;
+}
+
+// ── `pick <x>,<y> <verb>` — AUTHOR AT A PAGE POSITION — plan 26 `B4b` ───────
+//
+// The plan's own gesture: a point on the picture, and a verb to apply there.
+//
+// ⚠ **A PICK IS A TARGET, NOT A TELEPORT, AND THAT IS WHY `Author` IS ITS OWN TYPE.**
+// Clicking a plan to hang a door does not walk the person across the room — BLUEPRINT
+// §3.1 keeps the character running its own way — so this builds an `Author` at the
+// picked spot and hands it to the same `press_verb` every other spelling uses. The
+// walker is not touched, and `probe/plan` checks that `feet` does not move.
+//
+// ⚠ **AND THE VERB IS THE VERB, NOT A SECOND TABLE.** `EDITING_MODES` counts four
+// places that already decide what a key means; a plan-scale gesture that resolved its
+// own would be the fifth. This spelling changes WHERE the gesture lands and nothing
+// else about it.
+fn run_pick(w: VoxelWorld, wk: hex_editor::Walker, sess: hex_editor::EditSession,
+            rest: text, said: &text) -> boolean {
+  rk_sp = rest.find(" ");
+  if rk_sp == null {
+    said = "pick needs a page point and a verb — `pick <x>,<y> <verb>`";
+    return false;
+  }
+  rk_pt = rest[..(rk_sp ?? 0)];
+  rk_verb = rest[((rk_sp ?? 0) + 1)..].trim();
+  rk_ci = rk_pt.find(",");
+  if rk_ci == null {
+    said = "pick needs `<x>,<y>` — a page point has two numbers";
+    return false;
+  }
+  rk_px = rk_pt[..(rk_ci ?? 0)] as float ?? 0.0;
+  rk_py = rk_pt[((rk_ci ?? 0) + 1)..] as float ?? 0.0;
+
+  rk_q0 = 0;
+  rk_r0 = 0;
+  rk_q1 = 0;
+  rk_r1 = 0;
+  plan_window(wk, rk_q0, rk_r0, rk_q1, rk_r1);
+  rk_pk = plan_pick(rk_q0, rk_r0, rk_q1, rk_r1, [wk.wk_y], rk_px, rk_py);
+  // ⚠ A REFUSAL IS AN ANSWER AND THE LINE STILL SUCCEEDS. The point was understood
+  // and named no cell; that is not a script error, and failing the run would make a
+  // deliberate probe of the gutter indistinguishable from a typo.
+  if !rk_pk.pk_ok {
+    said = "pick ({rk_px},{rk_py}) refused — {rk_pk.pk_why}";
+    return true;
+  }
+  rk_a = hex_editor::author_at(rk_pk.pk_x, rk_pk.pk_z, wk.wk_yaw, rk_pk.pk_ref);
+  rk_ok = said_ack(hex_editor::press_verb(sess, w, rk_a, rk_verb,
+                                          "{source_dir()}/../data/parts"),
+                   rk_verb, said);
+  said = "pick L{rk_pk.pk_level} ({rk_pk.pk_q},{rk_pk.pk_r}) at "
+       + "{round(rk_pk.pk_x * 100.0) / 100.0 ?? 0.0},{round(rk_pk.pk_z * 100.0) / 100.0 ?? 0.0} · {said}";
+  rk_ok
 }
 
 fn env_int(name: text, fallback: integer) -> integer {
@@ -767,6 +833,7 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   // Both are one line here and a function below, because the reasoning is long and
   // `run_line` is already at the complexity the compiler nudges at.
   if cmd == "plan"   { return run_plan(w, wk, rest, said); }
+  if cmd == "pick"   { return run_pick(w, wk, sess, rest, said); }
   if cmd == "ground" { return run_ground(w, rest, said); }
   if cmd == "send"   { return run_send(w, wk, rest, said); }
   // ⚠ **`declare` IS THE WAY A TYPE GETS INTO A WORLD AT ALL — plan 22 `T1c`.**
