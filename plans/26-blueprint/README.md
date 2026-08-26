@@ -99,8 +99,8 @@ key must be unchanged.
 | **`B1`** — the description beside it: the recovered run over the same window | M | `lib/hex_editor/tests/edges_mat.loft` + `lib/hex_mesh/tests/planview.loft` — the authored run's ENDPOINTS come back, the description stays within 0.6 wu of its own marks, a wandering chain's does not; four seeded faults seen red | ✅ **SHIPPED** `ba3af3c` |
 | **`B2`** — levels side by side, offset in the page frame only (§3.4) | S | `lib/hex_mesh/tests/planview.loft` — the world key is unmoved by an emit (checked against a mutation), the same cell has identical `points` in every panel, the panels do not overlap, and the two levels are not the same picture; four seeded faults seen red | ✅ **SHIPPED** `0c35614` |
 | **`B3`** — the author on the plan: pose and facing, from the walker | S | `probe/plan` — three stations of a committed script, `feet` against the marker READ BACK out of the picture, with a control that the three differ; four suite faults and the probe's own seen red | ✅ **SHIPPED** `9d81b93` |
-| **`B4a`** — page → cell: the inverse of the panel transform, refusing what is on no panel | S | round trip over every cell of a two-level window; the gutter, the margin and a point left of the page each **refused** rather than snapped | Open |
-| **`B4b`** — a gesture from a picked spot, with the walker left where it is | M | the world key after `pick <x>,<y> <verb>` equals the key after `at`+`verb` **byte for byte**, and `feet` is unchanged by the pick | Open |
+| **`B4a`** — page → cell: the inverse of the panel transform, refusing what is on no panel | S | `planview.loft` — round trip over all 338 cells of a two-level window; the gutter, the margin, past-the-end and a point left of the page each **refused** with a reason; four seeded faults seen red | ✅ **SHIPPED** `e70efbf` |
+| **`B4b`** — a gesture from a picked spot, with the walker left where it is | M | `probe/plan` rows D–F — picked and stood-on key one world, the walker does not move, a pick off the page authors nothing; the teleport seen red | ✅ **SHIPPED** `e70efbf` |
 | **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | the marker's own coordinates equal `plan_pick`'s answer for the page point that produced it | Open |
 | **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | a wall authored as a second palette entry reads back with that entry's `wd_body`/`wd_thickness` | Blocked on `@HB-X63` |
 
@@ -340,6 +340,54 @@ than a fact.
 OFF-PLAN`. An absent marker means *nobody was given* and *somebody is elsewhere* at once,
 which is the collapse `probe/l1` lost a run to and the third time this plan has had to
 separate one.
+
+## What `B4a`/`B4b` turned up
+
+**Shipped `e70efbf`.** `plan_pick` turns a page position back into a cell on a level;
+`editor_run` gains `pick <x>,<y> <verb>`. [`probe/plan`](../../probe/plan/README.md) grew
+rows D–F.
+
+### One frame, and the extraction proven before it was used
+
+`plan_bounds` and `plan_pitch` now answer for the drawing **and** the pick. A second
+derivation of that arithmetic would be wrong by a margin — right in the middle of every
+panel and wrong at its edges, which is where nothing is ever tested by hand. The
+extraction was proven first: **282 emitted elements byte-for-byte identical** to before it.
+
+### ⚠ `mesh_tile_of`'s bug, in a new place, caught before it shipped
+
+loft's `/` truncates toward zero, so a page point **left** of the picture divides to
+**panel 0** — a click a metre outside would author inside the first panel. The bound is
+tested before the division, and the sweep row that removes that test goes red. ⚠ This tree
+has already paid for this once, in `mesh_tile_of`, and its test file says why in its own
+banner: *every fixture in this tree stands at the origin, which is the one place the wrong
+spelling is right*. The refusals are checked as **four named reasons** — gutter, margin,
+past-the-end, off-page — because *the nearest cell* is not an answer to *no cell*.
+
+The accept side is a **round trip over all 338 cells** of a two-level window, for the same
+reason: a transform wrong by a margin still picks the right cell in the middle of a panel.
+
+### A pick is a TARGET, not a teleport
+
+Clicking a plan to hang a door does not walk the person across the room. The `Author` is
+built at the picked spot and handed to the same `press_verb` every other spelling uses —
+so the verb is the verb, and this is not the fifth place that decides what a key means
+([EDITING_MODES](../../doc/claude/EDITING_MODES.md) already counts four). ⚠ **That is what
+`Author` being a type of its own is FOR**, and until this step nothing in the tree had used
+the distinction.
+
+Measured, and it is the whole argument for the step: **picked and stood-on key the same
+world**, `32952:2278076870` — with the control that the fence moved the world off the bare
+key `32952:3318286153` at all, because two worlds nobody authored in agree perfectly.
+
+### ⚠ And a failure that was not this tree's
+
+Three runs died on `unable to find library -lloft_graphics_native`. It is a **sibling's
+loft CI** rebuilding the native cdylibs: `~/.loft/build-cache/graphics-0.8.0/release` is
+emptied and refilled, and every `--lib lib/` link here fails while it is empty. Nothing to
+fix and nothing to kill. `LOFT_NO_NATIVE_LIBS=1` is the way through, and it changes what is
+exercised — so the native backend is **unverified** for this step until the box is quiet.
+[`probe/plan/README.md`](../../probe/plan/README.md) carries the incantation.
 
 ## Open questions
 
