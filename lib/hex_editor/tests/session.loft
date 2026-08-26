@@ -113,11 +113,23 @@ fn test_a_refused_ring_is_refused_and_writes_nothing() {
   s = session_new();
   session_at(s, w, 0.0, 0.0, 0.0);
   before = w.w_tau;
-  ack = session_fence(s, w, 9, 2, 10.0);            // 9 is not a fence material
+  // ⚠ **THE REFUSED VALUE MOVED AT `B4e` AND THE CLAIM DID NOT.** This said `9`,
+  // which was *not a fence material* while a wall gesture could stamp only `0`…`3`.
+  // An edge byte is a palette slot now, so `9` is a wall type a world may declare —
+  // `edge_stamp_ok`. What is still refused is what cannot be an edge at all: `256` is
+  // past what a byte names, and `wall_set` would widen it to **0**, the byte that
+  // means *no edge*. Same claim, at a value that still has it.
+  ack = session_fence(s, w, hex_voxel::PAL_MAX, 2, 10.0);
   assert(!ack.ak_ok, "a nominal material was accepted");
   assert(w.w_tau == before,
          "the refusal moved the edit clock from {before} to {w.w_tau} — "
        + "it wrote something on the way to saying no");
+  // …and the control that keeps the row honest, AFTER the clock is read: the widening
+  // is real, so a ring at a wall type is not refused — and it writes, which is what
+  // says the silence above was the refusal and not a ring that does nothing.
+  yes = session_fence(s, w, 9, 2, 10.0);
+  assert(yes.ak_ok, "a wall type was refused as a ring material: {yes.ak_why}");
+  assert(w.w_tau > before, "the control ring wrote nothing — the clock cannot move");
 }
 
 // ── `ground.mjs` — the drawn ground is the GROUND, not layer 0 ───────────────
@@ -1140,7 +1152,10 @@ fn test_a_material_the_editor_does_not_have_never_opens_a_draft() {
   w = a_world();
   s = session_new();
   session_at(s, w, 0.0, 0.0, 0.0);
-  no = session_run(s, w, s.es_author, FENCE_MAT + 40);
+  // ⚠ **`FENCE_MAT + 40` STOPPED BEING IMPOSSIBLE AT `B4e`** — an edge byte is a
+  // palette slot, so 43 is a wall type a world may declare. `WINDOW_MAT` still is:
+  // a window is CUT into a wall that stands, never laid as a run.
+  no = session_run(s, w, s.es_author, WINDOW_MAT);
   assert(no.rl_code == RL_REFUSED, "an impossible material answered {no.rl_code}");
   assert(!s.es_draft.wd_open,
          "a refused material opened the draft — the next press would close a run "

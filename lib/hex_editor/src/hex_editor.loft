@@ -1892,7 +1892,10 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
     return ack_ok(1);
   }
   if verb == VB_FENCE { return ring_set(sess, w, a, FENCE_MAT, FENCE_R, a.au_y); }
-  if verb == VB_WALL  { return ring_set(sess, w, a, WALL_MAT,  FENCE_R, a.au_y); }
+  // ⚠ **THE WALL'S MATERIAL IS THE SELECTION'S NOW — plan 26 `B4e`.** `VB_FENCE`
+  // above keeps `FENCE_MAT` because a fence is a KIND and not a type: the vocabulary
+  // owns byte 3, and choosing a fence type is a different question nobody has asked.
+  if verb == VB_WALL  { return ring_set(sess, w, a, session_wall_mat(sess), FENCE_R, a.au_y); }
   // ⚠ **THE ONLY VERB WHOSE FIRST PRESS WRITES NOTHING**, and that is the gesture
   // rather than a failure: a run has two ends and the first press records the near
   // one. So it answers `ak_ok` with `ak_n: 0` and a sentence — *reason, offer,
@@ -1900,12 +1903,14 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // to press again in the same place, which is the one input that closes the draft
   // with nothing built.
   //
-  // ⚠ AND `WALL_MAT` IS HARDCODED FOR THE REASON DIRECTLY ABOVE. `run` is where the
-  // ring's two verbs will meet it once a material selection exists; until then it is
-  // the wall run `R` has always been, and `25:3` reaches `session_run` from the wire
-  // with no key of its own.
+  // ✅ **AND THE MATERIAL SELECTION THIS NOTE WAS WAITING FOR HAS LANDED — plan 26
+  // `B4e`.** It used to read *"`WALL_MAT` is hardcoded … `run` is where the ring's two
+  // verbs will meet it once a material selection exists"*; `session_wall_mat` is that
+  // selection, and the three wall verbs read it from one place so they cannot come to
+  // disagree. `25:3` still reaches `session_run` from the wire with no key of its own,
+  // and now carries whatever type is chosen.
   if verb == VB_RUN {
-    vr_laid = session_run(sess, w, a, WALL_MAT);
+    vr_laid = session_run(sess, w, a, session_wall_mat(sess));
     if vr_laid.rl_code == RL_REFUSED { return ack_no(vr_laid.rl_say); }
     return ack_at(ack_about(vr_laid.rl_n, vr_laid.rl_say, vr_laid.rl_resid as integer),
                   vr_laid.rl_q1, vr_laid.rl_r1);
@@ -1922,7 +1927,7 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // at all and the author is told which way to turn. `run`'s two refusals have never
   // fired in this corpus (`H1b`'s sabotage row 3); this one fires in its own test.
   if verb == VB_AIM {
-    va_laid = session_aim(sess, w, a, WALL_MAT);
+    va_laid = session_aim(sess, w, a, session_wall_mat(sess));
     if va_laid.rl_code == RL_REFUSED { return ack_no(va_laid.rl_say); }
     return ack_at(ack_about(va_laid.rl_n, va_laid.rl_say, va_laid.rl_resid as integer),
                   va_laid.rl_q1, va_laid.rl_r1);

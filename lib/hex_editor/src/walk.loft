@@ -60,8 +60,13 @@ use hex_voxel;
 //
 // The library owns the traversal and knows nothing about materials; the consumer
 // supplies the answer. Same seam as the opaque palette in the world contract.
-pub fn wall_stops_walk(mat: integer) -> boolean { mat == WALL_MAT || mat == FENCE_MAT }
-pub fn wall_stops_view(mat: integer) -> boolean { mat == WALL_MAT }
+// ⚠ **BOTH ASK `edge_is_wall` RATHER THAN `== WALL_MAT` — plan 26 `B4e`.** An edge
+// byte is a palette slot, so a world that declares its masonry at slot 5 stores 5 in
+// every one of those edges; a predicate that named byte 1 would let a person walk
+// straight through a stone wall and let a camera see through it, with the store
+// plainly holding a boundary and nothing red anywhere.
+pub fn wall_stops_walk(mat: integer) -> boolean { edge_is_wall(mat) || mat == FENCE_MAT }
+pub fn wall_stops_view(mat: integer) -> boolean { edge_is_wall(mat) }
 
 // ── WHAT A WALKER MEASURES ITS STEP AGAINST ─────────────────────────────────
 //

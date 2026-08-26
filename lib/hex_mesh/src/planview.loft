@@ -114,14 +114,22 @@ fn cell_fill(mat: integer) -> text {
   rgb_of(cf_s.sf_r, cf_s.sf_g, cf_s.sf_b)
 }
 
-// ⚠ AN UNKNOWN EDGE MATERIAL IS LOUD ON PURPOSE. The three the editor writes have
+// ⚠ AN UNEXPLAINED EDGE MATERIAL IS LOUD ON PURPOSE. The three the editor writes have
 // colours; anything else is magenta, because the whole point of an instrument is
 // that what it cannot explain looks different from what it can. A fallback to
 // `wall` here would be the confident hexagon in another costume.
-fn edge_colour(mat: integer) -> text {
+//
+// ⚠ **AND `declared` IS WHAT MOVED AT PLAN 26 `B4e`, WHICH IS NOT A LOOSENING.** An
+// edge byte is a palette slot, so a world may declare slot 5 to be masonry and stamp
+// it — `edge_is_wall` says so everywhere the store is *acted* on, and a picture that
+// went on shouting at it would be shouting at the feature. What still gets the magenta
+// is a byte **nothing explains**: stamped, and declared nowhere. The rule the § opened
+// with is unchanged and its subject is sharper — *undeclared*, not *unnamed*.
+fn edge_colour(mat: integer, declared: boolean) -> text {
   if mat == hex_editor::WALL_MAT  { return "rgb(20,22,30)"; }
   if mat == hex_editor::DOOR_MAT  { return "rgb(214,124,30)"; }
   if mat == hex_editor::FENCE_MAT { return "rgb(60,140,70)"; }
+  if declared && hex_editor::edge_is_wall(mat) { return "rgb(20,22,30)"; }
   "rgb(230,0,190)"
 }
 
@@ -257,7 +265,7 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
         // claims to be of.
         wt = hex_editor::wall_type(w, hex_voxel::world_region_at(w, q, r), emat);
         ewid = edge_width(emat);
-        ecol = edge_colour(emat);
+        ecol = edge_colour(emat, wt.wt_ok);
         ebody = "";
         ethick = 0.0;
         if wt.wt_ok {

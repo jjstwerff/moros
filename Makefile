@@ -522,9 +522,15 @@ fast:
 # two-line diagnostic sitting in `.editor.log`, and nothing in this tier noticed
 # because nothing in this tier builds it. It also carries `probe-s2c`, so the fast loop
 # now sees a divergence between the two drivers instead of only the library's own view
-# of itself. ⚠ It starts THREE servers, each stopped: one for the house sentence and one
+# of itself. ⚠ It starts FOUR servers, each stopped: one for the house sentence and one
 # per `probe-s2c` script. Measured — the sentence half alone was 11.8 s, and `make fast`
 # end to end is 5m04 with the pair in it.
+# ⚠ **`walltype` IS THE THIRD SCRIPT AND IT EARNED ITS SEAT ON ITS FIRST RUN — plan 26
+# `B4e`.** The wall-type selection reaches `editor_run` as a line and the server as
+# `58:`; the server chose correctly and then stamped byte 1 anyway, because
+# `tools/script.mjs` sent `25:1` and a material on the wire outranked the choice behind
+# it. Runner 0 wall bytes against served 12 — and **both drivers printed the identical
+# sentence**, so nothing but the saved world could have said so.
 	@$(MAKE) -s headless-same
 	@echo "fast: ⚠ NOT run here — the browser. Nothing above builds or drives the"
 	@echo "      --html page; \`make page-check\` is the tier that does. A green fast"
@@ -682,7 +688,7 @@ headless-same:
 	  echo "  headless: $$(cat .headless.txt)"; \
 	  echo "  served:   $$(cat .served.txt)"; exit 1; fi
 	@rm -f .headless.txt .served.txt
-	@$(MAKE) -s probe-s2c S="niche embrasure"
+	@$(MAKE) -s probe-s2c S="niche embrasure walltype"
 
 # S2c (plan 22) — THE SAME SCRIPT BUILDS THE SAME WORLD, WITH AND WITHOUT A SERVER,
 # **on the openings**. The target above compares one SENTENCE and that sentence is

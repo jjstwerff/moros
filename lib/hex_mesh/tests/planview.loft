@@ -22,7 +22,11 @@ use hex_proj;
 use hex_way;
 
 const U = 0.25;
-const UNKNOWN_MAT = 7;      // a wall byte the editor has no name for
+// ⚠ **A WALL BYTE NOTHING EXPLAINS — and at plan 26 `B4e` the reason changed.** It
+// used to be *a byte the editor has no name for*; an edge byte is a palette slot now,
+// so `7` is a perfectly good wall type — what makes it loud is that **no world here
+// declares it**. The distinction is the whole of `edge_colour`'s second argument.
+const UNKNOWN_MAT = 7;
 
 fn about(a: float, b: float) -> boolean { a - b < 0.0001 && b - a < 0.0001 }
 
@@ -241,8 +245,8 @@ fn test_a_cell_draws_its_material_and_an_unknown_edge_is_loud() {
   odd   = attr(edge_line(svg, 3, 3, hex_editor::SLOT_E), "stroke");
   assert(known != "" && odd != "", "one of the two edges is missing from the picture");
   assert(known != odd,
-         "a byte this editor has no name for drew exactly like a wall ({odd}) — an "
-         + "instrument that explains what it cannot explain is the confident hexagon again");
+         "a byte NOTHING DECLARES drew exactly like a wall ({odd}) — an instrument that "
+         + "explains what it cannot explain is the confident hexagon again");
 }
 
 // ── `B1` — THE DESCRIPTION, DRAWN OVER THE FIELD IT CAME FROM ────────────────
@@ -995,4 +999,61 @@ fn test_a_wall_whose_type_is_damaged_is_drawn_loudly_and_counted() {
   hex_editor::wall_set(good, 1, 1, 0, 1, 8, 2.0);
   gsvg = plan_levels(good, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "good");
   assert(!gsvg.contains("BAD TYPE"), "a sound palette is reported as damaged");
+}
+
+// ── `B4e` — A DECLARED TYPE IS DRAWN AS THE WALL IT IS ──────────────────────
+//
+// `B4d` resolved a wall's thickness through the palette and left its COLOUR at the
+// numeric vocabulary, so a world that declared its masonry at slot 5 and stamped it
+// drew a magenta *I cannot explain this* over a wall the palette explains in full.
+// ⚠ **THE FIX IS NOT A FALLBACK TO `wall`** — that is the confident hexagon this file
+// was written against. What moved is the SUBJECT of the loudness: *undeclared*, not
+// *unnamed*, and the pair below is what says the two are still told apart.
+
+fn test_a_declared_wall_type_is_drawn_as_a_wall_at_its_own_width() {
+  w = typed_world([hex_voxel::PalEntry { pl_slot: 5, pl_name: "brick body=SOLID thick=0.2" },
+                   hex_voxel::PalEntry { pl_slot: 6, pl_name: "curtain body=THICK_CURVED thick=0.7" }]);
+  hex_editor::wall_set(w, 1, 1, 0, 5, 8, 2.0);
+  hex_editor::wall_set(w, 3, 1, 0, 6, 8, 2.0);
+  hex_editor::wall_set(w, 5, 1, 0, hex_editor::WALL_MAT, 8, 2.0);
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "b4e");
+
+  thin  = edge_line(svg, 1, 1, hex_editor::SLOT_E);
+  fat   = edge_line(svg, 3, 1, hex_editor::SLOT_E);
+  plain = edge_line(svg, 5, 1, hex_editor::SLOT_E);
+  assert(thin != "" && fat != "" && plain != "", "one of the three walls is missing");
+
+  tw = attr(thin, "stroke-width") as float ?? 0.0;
+  fw = attr(fat,  "stroke-width") as float ?? 0.0;
+  assert(about(tw, 0.2) && about(fw, 0.7),
+         "the two declared types are painted {tw} and {fw} against the 0.2 and 0.7 "
+       + "they declare");
+
+  // ⚠ **AND BOTH ARE THE WALL'S OWN COLOUR**, which is what `B4d` could not do for a
+  // slot outside the vocabulary: the palette explains these bytes in full, so a
+  // picture that went on shouting at them would be shouting at the feature.
+  wallc = attr(plain, "stroke");
+  assert(attr(thin, "stroke") == wallc && attr(fat, "stroke") == wallc,
+         "the declared types drew {attr(thin, "stroke")} and {attr(fat, "stroke")} "
+       + "against the plain wall's {wallc}");
+  assert(!svg.contains("BAD TYPE"), "a sound palette is reported as damaged");
+}
+
+// …and the half that keeps the instrument honest. ⚠ THE SAME BYTE, THE SAME GESTURE,
+// ONE DECLARATION APART: if this drew as a wall too, the row above would be true of a
+// picture that had simply stopped looking at the palette.
+fn test_a_stamped_slot_nobody_declared_is_still_loud() {
+  w = flat_world();
+  hex_editor::wall_set(w, 1, 1, 0, 5, 8, 2.0);
+  hex_editor::wall_set(w, 5, 1, 0, hex_editor::WALL_MAT, 8, 2.0);
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [2.0], plan_bare(), "undeclared");
+  odd   = edge_line(svg, 1, 1, hex_editor::SLOT_E);
+  plain = edge_line(svg, 5, 1, hex_editor::SLOT_E);
+  assert(odd != "" && plain != "", "one of the two walls is missing");
+  assert(attr(odd, "stroke") == "rgb(230,0,190)",
+         "an undeclared byte drew {attr(odd, "stroke")} — a slot a world stamped and "
+       + "declared nowhere is exactly what this picture exists to show");
+  assert(attr(odd, "stroke") != attr(plain, "stroke"), "it drew like a plain wall");
+  assert(attr(odd, "data-thick") == "0",
+         "an undeclared byte reports thickness {attr(odd, "data-thick")}");
 }

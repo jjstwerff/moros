@@ -428,8 +428,11 @@ fn test_a_refused_ring_records_no_trunk() {
   w = upstairs();
   sess = EditSession {};
   session_at(sess, w, 0.0, 0.0, 0.0);
-  ack = session_fence(sess, w, 9, 2, 0.0);          // 9 is not a wall material
-  assert(!ack.ak_ok, "material 9 was accepted");
+  // ⚠ `9` USED TO BE THE IMPOSSIBLE MATERIAL AND IS A WALL TYPE NOW — plan 26 `B4e`.
+  // `256` is past the last slot a byte names, which is the one thing an edge still
+  // cannot hold.
+  ack = session_fence(sess, w, hex_voxel::PAL_MAX, 2, 0.0);
+  assert(!ack.ak_ok, "material {hex_voxel::PAL_MAX} was accepted");
   assert(!sess.es_trunk.tk_live,
          "a refused ring left a trunk of radius {sess.es_trunk.tk_r} standing at "
          + "({sess.es_trunk.tk_x},{sess.es_trunk.tk_z})");

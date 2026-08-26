@@ -5,7 +5,7 @@ tau: 143
 chunks: 3
 code: 0
 session: runs 7 roofs 0 leaves 0 openings 4 annex 3 props 2 slabs 0 holes 0 trunk true/5.196152422706632
-chosen: opening 11
+chosen: opening 11 wall 1 seat 1 annex 1 reach 6 part ''
 --- what the gestures reported
   placed 0,0
   raise: 1

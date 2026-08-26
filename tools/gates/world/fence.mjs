@@ -46,7 +46,11 @@ const saysCounts = laid.includes(`fenced ${6 * (2 * R + 1)} edges`)
 // an offer and an ordinal one WITH it; the library decides that, and this is the only
 // place that checks it survives being said.
 await send(g, '7:20,20,0', ['placed']);
-const badMat = await ask(g, '23:9,2', 'fence refused');
+// ⚠ **`256` AND NOT `9` SINCE plan 26 `B4e`.** An edge byte is a palette SLOT now, so
+// `9` is a wall type a world may declare — this line used to mean *impossible* and
+// would have been asserting the opposite of the truth. `256` is past the last slot a
+// byte names, which is the one thing an edge still cannot hold.
+const badMat = await ask(g, '23:256,2', 'fence refused');
 const badRad = await ask(g, '23:3,40', 'fence refused');
 const nominalHasNoOffer = badMat.includes('no nearest one') && !badMat.includes('offer');
 const ordinalOffers = badRad.includes('offer 12') && badRad.includes('residual 28');

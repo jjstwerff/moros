@@ -166,12 +166,18 @@ const VERBMAP = {
   place: '32:',           // a house where you are looking
   opening: '36:',         // …with the profile from the SELECTION, not from here
   fence: '23:3,3',        // ring the disc you stand in, in fence material
-  wall: '23:1,3',         // …the same ring in wall material
+  // ⚠ **`23:,3` AND NOT `23:1,3` SINCE plan 26 `B4e`.** The material field is EMPTY,
+  // which the far end reads as *the wall type I chose* — the contract `36:`, `37:`
+  // and `38:` already share. A row that kept byte 1 would build a different wall from
+  // the same word headless and attached, which is `probe/s2c`'s whole subject. ⚠ The
+  // FENCE row keeps its byte: a fence is a KIND the vocabulary owns, not a type a
+  // world declares.
+  wall: '23:,3',          // …the same ring in whatever wall type is chosen
   // ⚠ `run` IS NOT `wall`, and the two rows above are the reason the distinction had
   // to be made in `hex_editor` before it could be made here: `wall` closes a ring
   // around the author and `run` walks the line between two presses. They share a
   // material and nothing else. Plan 22 `K3`.
-  run: '25:1',            // …and it takes TWO of these, near end then far
+  run: '25:',             // …and it takes TWO of these, near end then far
   // ⚠ BARE, LIKE `opening` AND FOR ITS REASON — plan 22 `K3`. `38:<kind>` says which
   // to seat THIS TIME without moving the selection; `38:` seats what was chosen, and
   // a converted script says `select seat <kind>` first so it names its own choice.
@@ -1257,8 +1263,16 @@ for (const raw of lines) {
     } else if (rest[0] === 'annex') {
       ws.send(`53:${rest[1]}`);
       console.log('  ' + await ack(['annex ', 'selection refused'], 10000));
+    } else if (rest[0] === 'wall') {
+      // `select wall <slot>` — which EDGE PALETTE SLOT the next wall verb stamps,
+      // plan 26 `B4e`. ⚠ It is added HERE in the same step it was added to
+      // `src/editor_run.loft`, which is the whole lesson of the note above: `select
+      // reach 18` was added to one reader and not the other, and a bare form gave
+      // the unknown subject somewhere to fall.
+      ws.send(`58:${rest[1]}`);
+      console.log('  ' + await ack(['wall ', 'selection refused'], 10000));
     } else {
-      throw new Error(`select needs a subject: opening, reach, seat or annex — got '${rest[0]}'`);
+      throw new Error(`select needs a subject: opening, reach, seat, annex or wall — got '${rest[0]}'`);
     }
   } else if (cmd === 'hold') {
     const bit = HELD[rest[0]];

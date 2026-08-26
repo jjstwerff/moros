@@ -175,8 +175,66 @@ else
 fi
 
 echo ""
+echo "H  two DECLARED wall types stand in one world, at their own two widths"
+# ⚠ **THE ACCEPTANCE `B4e` NAMES, AND IT IS READ OUT OF THE PICTURE.** Not the runner's
+# sentence — `wall laid 12 edges` says the same thing for either type — and not the
+# store, which `lib/hex_editor/tests/wall_type.loft` already reads. What only the file
+# can say is that the two walls were PAINTED differently, which is the whole point of a
+# plan view: `declare edge <slot> …` says what an id means, `select wall <slot>` says
+# which id the verb stamps, and the widths are what says the pair reached the world.
+run_one probe/plan/walltype.keys b4etype >/dev/null
+TWOSVG=worlds/b4etype-two.svg
+
+# `mat=<byte> width=<stroke>` for every drawn edge, deduplicated — an edge is stored
+# once and drawn once per owning cell, so the counts are not the subject here.
+if [ -f "$TWOSVG" ]; then
+  grep -oE "<line class='edge'[^/]*" "$TWOSVG" \
+    | sed -E "s/.*data-mat='([0-9]+)'.*stroke='([^']*)' stroke-width='([^']*)'.*/\1 \2 \3/" \
+    | sort -u > "$OUT/walltype.txt"
+else
+  : > "$OUT/walltype.txt"
+fi
+
+w5=$(awk '$1 == 5 { print $3 }' "$OUT/walltype.txt" | head -1)
+w6=$(awk '$1 == 6 { print $3 }' "$OUT/walltype.txt" | head -1)
+c5=$(awk '$1 == 5 { print $2 }' "$OUT/walltype.txt" | head -1)
+c6=$(awk '$1 == 6 { print $2 }' "$OUT/walltype.txt" | head -1)
+
+if [ -n "$w5" ] && [ -n "$w6" ]; then
+  ok "both types are in the picture: slot 5 and slot 6"
+else
+  bad "the picture holds slot 5 '$w5' and slot 6 '$w6' — a selection that reached the \
+sentence and not the world draws ONE type twice, and the runner's own line cannot see it"
+fi
+
+if [ "$w5" = "0.2" ] && [ "$w6" = "0.7" ]; then
+  ok "painted 0.2 and 0.7 — each at the thickness its own declaration states"
+else
+  bad "painted '$w5' and '$w6' against the declared 0.2 and 0.7 — the picture is not \
+resolving the id through the edge palette"
+fi
+
+# ⚠ AND NEITHER IS MAGENTA. A slot outside the numeric vocabulary used to draw as *I
+# cannot explain this* however fully the palette explained it; `B4e` moved the
+# loudness onto UNDECLARED, and this is the half of that pair the file can show.
+if [ "$c5" = "rgb(230,0,190)" ] || [ "$c6" = "rgb(230,0,190)" ]; then
+  bad "a DECLARED wall type drew in the unexplained-material magenta ($c5 / $c6)"
+else
+  ok "…and both drew as the walls they are, not as unexplained bytes"
+fi
+
+# The control: the SAME verb with nothing chosen must draw at the drawing's own width,
+# or the two numbers above would be true of a picture that ignored the selection.
+if [ "$w5" = "0.13" ] || [ "$w6" = "0.13" ]; then
+  bad "one of the two is the drawing's own default width — the palette decided nothing"
+else
+  ok "neither is the drawing's own 0.13 default"
+fi
+
+echo ""
 if [ "$BAD" -eq 0 ]; then
-  echo "PLAN: green — the plan draws the person, shows what you aim at, and authors it"
+  echo "PLAN: green — the plan draws the person, shows what you aim at, authors it, and"
+  echo "      stands two declared wall types side by side at their own two widths"
   exit 0
 fi
 echo "PLAN: $BAD FAILED"

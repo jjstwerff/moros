@@ -552,6 +552,62 @@ pub const DOOR_MAT  = 2;    // an opening: passable, and still a boundary
 pub const FENCE_MAT = 3;    // a fence: blocks a walker, and you see over it
 pub const FENCE_R   = 3;    // hexes — the paddock one press rings
 
+// ── AND WHICH BYTES ARE A WALL — plan 26 `B4e` ─────────────────────────────
+//
+// ⚠ **AN EDGE BYTE IS A PALETTE SLOT, SO A WALL TYPE IS A BYTE THIS VOCABULARY DOES
+// NOT NAME.** `@HB-X69`: *"a uniform wall's 38 edges carry ONE distinct id and nothing
+// else, so a per-edge thickness would be an eighth slot, which `L13` forbids."* The id
+// is all an edge has, and `wall_type` resolves it through the EDGE palette — so two
+// walls of different thickness are two SLOTS, and the four above are the slots this
+// editor's own structure has already spoken for. Everything past them is free for a
+// world to declare a wall type in, which is what `B4e`'s selection stamps.
+//
+// ⚠ **THE STRUCTURAL KIND STAYS NUMERIC AND IS DELIBERATELY NOT READ OFF THE
+// PALETTE.** Every caller holds a byte and no world — the walk asks this per edge per
+// step — and `@HB-X12`'s body vocabulary is upstream's and open, so deriving
+// fence-ness from `body=FENCE` would be a signature change at six sites for a
+// capability nothing has asked for. **The cost, said out loud rather than discovered:
+// a world cannot declare slot 7 to be a FENCE.** It declares slot 7 to be a wall type;
+// a fence is `FENCE_MAT` and stays there.
+pub const EDGE_MAT_LAST = WINDOW_MAT;   // the last byte this vocabulary names
+
+// Is this stored edge byte a WALL — the plain one, or a type a world declared?
+//
+// ⚠ **IT ANSWERS YES FOR A SLOT NOBODY DECLARED, and that is the same answer
+// `edge_kind_of` and `hex_mesh::wall_up` have always given.** An undeclared high byte
+// is a wall whose type is missing, not a different kind of boundary: refusing it here
+// would make a wall the store plainly holds stop a walker on one code path and not on
+// another. Where the difference DOES matter is the picture — an undeclared byte is
+// drawn loudly, because a plan view exists to show what it cannot explain.
+pub fn edge_is_wall(mat: integer) -> boolean { mat == WALL_MAT || mat > EDGE_MAT_LAST }
+
+// A material a wall-or-fence gesture may stamp.
+//
+// ⚠ **IT IS A WIDENING OF `fit_nominal(mat, FENCE_MAT, …)` AND NOTHING ELSE**, which
+// is what keeps every script in the corpus byte-identical across `B4e`: `0`…`3` are
+// accepted exactly as they were, `WINDOW_MAT` stays refused (a window is cut, never
+// rung), and the slots a wall type may occupy are added. A step that also narrowed
+// here would be two changes wearing one diff.
+//
+// ⚠ **AND THE CEILING IS REAL RATHER THAN DEFENSIVE.** An edge is ONE BYTE, and
+// `wall_set` widens with `mat as u8? ?? 0` — so a material of 300 does not fail, it
+// stores **0**, which is the byte that means *no edge at all*. The old ceiling of 3
+// hid that; a gesture whose upper bound is now 255 has to state it.
+pub fn edge_stamp_ok(mat: integer) -> boolean {
+  mat >= 0 && mat < hex_voxel::PAL_MAX && (mat <= FENCE_MAT || mat > EDGE_MAT_LAST)
+}
+
+// …and the refusal, in `K-FIT`'s own words. ⚠ THE SENTENCE IS `fit_nominal`'s to the
+// letter, because three call sites and their tests already assert it: a wall material
+// is NOMINAL — `9` is not *nearly* a fence — so there is nothing to offer.
+pub fn fit_edge_mat(mat: integer) -> Fit {
+  if edge_stamp_ok(mat) { return fit_ok(); }
+  Fit { ft_ok: false,
+        ft_reason: "wall material {mat} is not a wall material; nominal, so there is "
+                 + "no nearest one",
+        ft_offer: 0, ft_residual: 0, ft_ordinal: false }
+}
+
 // ⚠ IT TAKES THE SAME REFERENCE THE WRITE DID. A read-back that names a different
 // layer from the write reports a number about somewhere else — `23:` FENCE would
 // have answered "fenced 0 edges" for a fence it had just laid correctly on a deck,
@@ -813,7 +869,7 @@ pub fn fence_count(wld: VoxelWorld, cq: integer, cr: integer, rad: integer, mat:
 // register nothing, so the registry is only reached after both fits pass.
 pub fn fence_ring(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: float,
                   runs: WallRuns) -> Ack {
-  mfit = fit_nominal(mat, FENCE_MAT, "wall material");
+  mfit = fit_edge_mat(mat);
   if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
   rfit = fit_ordinal(rad, 1, 12, "radius");
   if !rfit.ft_ok { return ack_no(fit_why(rfit)); }
@@ -836,13 +892,14 @@ pub fn fence_outside(w: VoxelWorld, a: Author, mat: integer, rad: integer, ref: 
 
 // Set ONE edge of the cell the author stands in — the atomic half of the ring.
 //
-// Both parameters are nominal: a direction is one of six and a material is one of
-// three, and neither has a "nearest" worth offering.
+// Both parameters are nominal: a direction is one of six and a material is one this
+// vocabulary names or a wall type a world declared (`edge_stamp_ok`), and neither has
+// a "nearest" worth offering.
 pub fn edge_set(w: VoxelWorld, a: Author, dir: integer, mat: integer, ref: float,
                 h: integer) -> Ack {
   dfit = fit_nominal(dir, 5, "direction");
   if !dfit.ft_ok { return ack_no(fit_why(dfit)); }
-  mfit = fit_nominal(mat, FENCE_MAT, "wall material");
+  mfit = fit_edge_mat(mat);
   if !mfit.ft_ok { return ack_no(fit_why(mfit)); }
   (cq, cr) = px_to_hex(a.au_x, a.au_z);
   code = wall_set(w, cq, cr, dir, mat, h, ref);
@@ -2702,7 +2759,10 @@ fn span_mark(w: VoxelWorld, cq: integer, cr: integer, kind: integer,
         // `sqrt(…) ?? 0.0 <= half` discharges the null with the COMPARISON's result
         // and loft refuses it — *a `boolean` default is not assignable to `float`*.
         if (sqrt(mx * mx + mz * mz) ?? 0.0) <= half {
-          if m == WALL_MAT || m == FENCE_MAT {
+          // ⚠ `edge_is_wall`, NOT `== WALL_MAT` — plan 26 `B4e`. A door cut in a
+          // world whose walls are a DECLARED type must land in them; a site that
+          // asked for byte 1 would find nothing to cut and report the count.
+          if edge_is_wall(m) || m == FENCE_MAT {
             wall_set(w, q, r, d, kind, ground_h(w, q, r), ref);
             n = n + 1;
           } else {
@@ -2732,7 +2792,8 @@ pub fn open_ahead(w: VoxelWorld, a: Author, kind: integer, nedges: integer) -> A
       if found < nedges {
         (nq, nr) = hex_neighbor(cq, cr, d);
         m = wall_of(w, cq, cr, d, ref);
-        if m == WALL_MAT || m == FENCE_MAT {
+        // ⚠ `edge_is_wall` for `open_span`'s reason, one gesture over — `B4e`.
+        if edge_is_wall(m) || m == FENCE_MAT {
           wall_set(w, cq, cr, d, kind, ground_h(w, cq, cr), ref);
           found = found + 1;
         }

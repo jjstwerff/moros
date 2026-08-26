@@ -1283,7 +1283,11 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
   nrm = nrm3(0.0 - tz, 0.0, tx);
   bck = vec3(0.0 - nrm.x, 0.0, 0.0 - nrm.z);
   half = 0.0;
-  if run.wr_mat == hex_editor::WALL_MAT {
+  // ⚠ `edge_is_wall`, NOT `== WALL_MAT` — plan 26 `B4e`. A run laid at a DECLARED
+  // wall type carries that slot in `wr_mat`, and a site that named byte 1 would drop
+  // the half-width off every wall in such a world while the store, the palette and
+  // the plan all went on calling it a wall.
+  if hex_editor::edge_is_wall(run.wr_mat) {
     rw = hex_editor::run_wall(run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
     if rw.rw_ok { half = rw.rw_half; }
   }

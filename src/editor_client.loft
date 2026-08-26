@@ -180,10 +180,23 @@ const KEY_LEVEL = 108;        // l — toggle levelling
 
 // `23:<material>,<radius>`. A fence you see over, a wall you do not, and the camera
 // treats them differently for exactly that reason — same tool, different material.
+//
+// ✅ **AND THE MATERIAL SELECTION THESE WERE WAITING FOR HAS LANDED — plan 26 `B4e`.**
+// `act`'s note below said *"`fence`/`wall` are one `ring` verb waiting for a material
+// selection, exactly as the opening family waited for `es_open_kind` — so until that
+// selection exists they are two verbs, each implying its own material"*. The wall half
+// stops implying one: an EMPTY material field is *the wall type I chose*, resolved by
+// the far end exactly as a bare `36:` resolves a door profile. ⚠ **The FENCE keeps its
+// byte**, because a fence is a KIND the vocabulary owns and not a type a world declares.
+//
+// ⚠ **AND THE SELECTION IS NOT RESOLVED HERE, DELIBERATELY.** A client that put its own
+// answer on the wire would need a copy of the session it is attached to — which is the
+// second authority `EDITING_MODES` names in one line: *a remapped client and a server
+// resolving the key themselves is the four-site divergence rebuilt*.
 const FENCE_CMD = "23:3,3";
-const WALL_CMD = "23:1,3";
-const RUN_CMD = "25:1";
-// ⚠ **`56:` CARRIES THE MATERIAL, LIKE `25:`, AND STILL CARRIES NO LENGTH — BUT THE
+const WALL_CMD = "23:,3";
+const RUN_CMD = "25:";
+// ⚠ **`56:` MAY CARRY A MATERIAL, LIKE `25:`, AND STILL CARRIES NO LENGTH — BUT THE
 // REASON HAS CHANGED AND THE OLD ONE WAS ONLY HALF RIGHT.** It said the reach is a
 // constant because a key press has no magnitude. The first half still holds; the
 // second is now wrong: the reach is a SELECTION (`57:`), chosen once and standing,
@@ -193,7 +206,7 @@ const RUN_CMD = "25:1";
 // push feeds `57:` — the field — rather than growing `56:` a second argument, or the
 // editor would have two authorities on how far an aim reaches and a script that chose
 // a reach would be overruled by whatever the last frame's stick happened to read.
-const AIM_CMD = "56:1";
+const AIM_CMD = "56:";
 // `30:<±1>` — one tread into the cell ahead. ⚠ TWO CONSTANTS AND NOT ONE WITH A
 // SIGN, because the two are two VERBS: what separates `E` from `Q` is a direction,
 // which `hex_editor`'s `stair_ahead` says is part of the action rather than a
@@ -2153,20 +2166,20 @@ fn act(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   if verb == hex_editor::VB_RAISE { web::send(h, "5:1");     return; }
   if verb == hex_editor::VB_LOWER { web::send(h, "5:-1");    return; }
   if verb == hex_editor::VB_PLACE { web::send(h, "32:");     return; }
-  // ⚠ THE MATERIAL IS PART OF THE VERB TODAY AND THE PROFILE IS NOT, which looks
-  // inconsistent and is measured. `V1`: *"`fence`/`wall` are one `ring` verb
-  // waiting for a material selection, exactly as the opening family waited for
-  // `es_open_kind`"* — so until that selection exists they are two verbs, each
-  // implying its own material, and `23:3,3` / `23:1,3` are what implements them.
-  // The opening family already HAS its selection, which is why it is the one pair
-  // this step cannot convert. See below.
+  // ✅ **THE SELECTION `V1` WAS WAITING FOR EXISTS — plan 26 `B4e` — AND THE PAIR IS
+  // STILL TWO VERBS.** What changed is which half is data: `fence` keeps byte 3,
+  // because a fence is a KIND the vocabulary owns, and `wall` sends an EMPTY material
+  // field, which the far end reads as *the wall type I chose*. So `23:3,3` /
+  // `23:,3` are what implements them now, and a world that declares its masonry at
+  // slot 5 rings slot 5 without this file learning the number.
   if verb == hex_editor::VB_FENCE { web::send(h, FENCE_CMD); return; }
   if verb == hex_editor::VB_WALL  { web::send(h, WALL_CMD);  return; }
-  // ⚠ `25:1` AND NOT `25:`, for the note above one verb over: a run's material is
-  // still part of the verb, so `run` implies wall here exactly as `press_verb` does.
-  // The wire keeps carrying the RESOLVED material rather than a key the far end
-  // would have to resolve again — `25:3` is the road, and it reaches the same
-  // gesture with no key of its own.
+  // ⚠ **`25:` AND NOT `25:1` SINCE plan 26 `B4e`** — this note said the opposite, and
+  // the reason it gave was *a run's material is still part of the verb*. It is not:
+  // `press_verb` reads `session_wall_mat`, so a client that kept sending byte 1 would
+  // build a different wall from the same key headless and attached. ⚠ **`25:3` IS
+  // STILL THE ROAD** and reaches the same gesture with no key of its own — an explicit
+  // material is a one-shot, exactly as `36:<kind>` is.
   if verb == hex_editor::VB_RUN   { web::send(h, RUN_CMD);   return; }
   if verb == hex_editor::VB_AIM   { web::send(h, AIM_CMD);   return; }
   // ⚠ THE PAIR THAT DID NOT COLLAPSE — plan 22 `K3`. `raise`/`lower` two rows up are

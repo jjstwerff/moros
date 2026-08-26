@@ -20,6 +20,14 @@ fn world() -> VoxelWorld {
 
 fn centre(w: VoxelWorld) -> Author { hex_editor::author_on(w, 0.0, 0.0, 0.0) }
 
+// ⚠ **A MATERIAL THAT CANNOT BE ONE, AND `9` STOPPED BEING IT AT PLAN 26 `B4e`.**
+// An edge byte is a palette SLOT, so `9` is now a wall type a world may declare —
+// three rows below used it to mean *impossible* and would have been asserting the
+// opposite of the truth. What is still impossible is what a byte cannot hold: `256`
+// is past the last slot, and `wall_set` would widen it to **0**, the byte that means
+// *no edge at all*.
+const NOT_A_MAT = hex_voxel::PAL_MAX;
+
 fn test_a_ring_has_the_exact_number_of_edges_the_geometry_says() {
   // `6(2R+1)` — not "about", not "at least". A ring that counts differently is
   // either double-counting shared edges or missing the ones its neighbours own.
@@ -45,11 +53,12 @@ fn test_half_the_ring_is_stored_outside_it() {
 }
 
 fn test_a_material_that_is_not_one_is_refused_without_an_offer() {
-  // `K-FIT`, the nominal half: 9 is not "nearly" a fence. Offering the nearest
-  // material would change what the wall is made of and call it a correction.
+  // `K-FIT`, the nominal half: an impossible material is not "nearly" a fence.
+  // Offering the nearest one would change what the wall is made of and call it a
+  // correction.
   w = world();
-  ack = hex_editor::fence_ring(w, centre(w), 9, 2, 1.0, WallRuns { items: [] });
-  assert(!ack.ak_ok, "material 9 is refused");
+  ack = hex_editor::fence_ring(w, centre(w), NOT_A_MAT, 2, 1.0, WallRuns { items: [] });
+  assert(!ack.ak_ok, "material {NOT_A_MAT} is refused");
   assert(ack.ak_why != "", "with a reason");
   assert(!ack.ak_why.contains("offer"), "and NO offer: {ack.ak_why}");
   assert(ack.ak_n == 0, "and it wrote nothing");
@@ -70,7 +79,7 @@ fn test_a_refused_ring_writes_nothing() {
   // clock is what tells them apart from outside.
   w = world();
   before = w.w_tau;
-  hex_editor::fence_ring(w, centre(w), 9, 2, 1.0, WallRuns { items: [] });
+  hex_editor::fence_ring(w, centre(w), NOT_A_MAT, 2, 1.0, WallRuns { items: [] });
   assert(w.w_tau == before, "a refused ring left the world alone: τ {before} -> {w.w_tau}");
 }
 
@@ -248,7 +257,7 @@ fn test_and_the_runs_of_a_smaller_ring_fit_none_of_them() {
 fn test_a_refused_ring_registers_no_run() {
   w = world();
   runs = WallRuns { items: [] };
-  ack = hex_editor::fence_ring(w, centre(w), 9, 2, 1.0, runs);
+  ack = hex_editor::fence_ring(w, centre(w), NOT_A_MAT, 2, 1.0, runs);
   assert(!ack.ak_ok, "the fixture's material was accepted: {ack.ak_why}");
   assert(len(runs.items) == 0, "a refused ring left {len(runs.items)} runs behind");
 }

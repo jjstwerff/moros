@@ -209,6 +209,25 @@ pub struct EditSession {
   // situation, same answer. ⚠ It defaults to `AN_BOX`, which is `0` — a session that
   // never chose hangs the bedstee `J` always hung.
   es_annex_kind: integer = AN_BOX,
+  // ── WHICH WALL TYPE IS CHOSEN — plan 26 `B4e`, BLUEPRINT §3.3 ──────────────
+  //
+  // ⚠ **A SIXTH SELECTION AND NOT A SIXTH MECHANISM.** `@HB-X69` puts a wall's
+  // thickness in the PALETTE — *"a uniform wall's 38 edges carry ONE distinct id"* —
+  // so the only thing a wall gesture can choose is which id to stamp, and `B4d` built
+  // the reader that says what an id IS. This is what the gesture writes, and it is
+  // `es_open_kind`'s category exactly: what THIS AUTHOR has chosen, held beside the
+  // author rather than in the world's bytes.
+  //
+  // ⚠ **IT DEFAULTS TO `WALL_MAT`, WHICH IS A REAL WALL TYPE AND NOT A SENTINEL** —
+  // `B4d`'s picture was made by `declare edge 1 brick …`, typing every wall already
+  // standing. So a session that never chooses stamps exactly the byte the editor has
+  // always stamped, and every script in the corpus keys the same world across this
+  // step. That is the upper bound of the step in one line.
+  //
+  // ⚠ **AND IT NEEDS NO WHETHER-FIELD**, for `es_aim_reach`'s reason rather than
+  // `es_open_kind`'s: no house type declares a wall type, so there is nothing for a
+  // default to be overridden BY. When one does, this grows the pair `T1b` built.
+  es_wall_mat: integer = WALL_MAT,
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -546,6 +565,50 @@ pub fn session_select_annex(s: EditSession, kind: integer) -> Ack {
   s.es_annex_kind = kind;
   ack_ok(kind)
 }
+
+// ── CHOOSING A WALL TYPE — plan 26 `B4e`, BLUEPRINT §3.3 ────────────────────
+//
+// > *"…and allow for a different wall type that is rounded instead of straight."*
+//
+// The slot the next `wall`, `run` or `aim` stamps. ⚠ **IT IS A SLOT AND NOT A
+// THICKNESS**, which is the design rather than an interface choice: `@HB-X69` says a
+// per-edge width would be an eighth slot and `L13` forbids it, so *two walls of
+// different thickness are two palette entries* — and the only gesture the store can
+// carry is *choose a type*, never *drag a handle*.
+//
+// ⚠ **IT DOES NOT ASK WHETHER THE WORLD HAS DECLARED THE SLOT, DELIBERATELY** —
+// `session_select_part`'s rule, and it holds here for the same two reasons. Whether a
+// slot is a legal wall type is a fact about the NUMBER, which this can answer; whether
+// anything is declared in it is a fact about a WORLD, and a selection is the author's
+// and outlives the world they load next. An author may equally choose slot 5 and then
+// declare it — and the picture is what says the difference, loudly.
+//
+// ⚠ **AND THE VOCABULARY'S OWN BYTES ARE REFUSED BY NAME.** `2` is a door, `3` is a
+// fence and `4` is a window: each is a real edge material and none of them is a wall
+// TYPE, so choosing one would quietly turn the wall verb into a different gesture.
+// Nominal, so nothing is offered — `session_select_open`'s wording, sixth family to
+// take it.
+pub fn session_select_wall(s: EditSession, slot: integer) -> Ack {
+  if slot == DOOR_MAT || slot == WINDOW_MAT {
+    return ack_no("edge slot {slot} is an opening, not a wall type; "
+                + "nominal, so there is no nearest one");
+  }
+  if slot == FENCE_MAT {
+    return ack_no("edge slot {slot} is the fence material, not a wall type; "
+                + "the fence verb lays those");
+  }
+  if slot < 1 || slot >= hex_voxel::PAL_MAX {
+    return ack_no("edge slot {slot} is not writable — 0 is absence and 255 is the "
+                + "last a byte names");
+  }
+  s.es_wall_mat = slot;
+  ack_ok(slot)
+}
+
+// What the next wall gesture will stamp. ⚠ **ONE READER, so the three verbs cannot
+// come to disagree** — `open_kind_here`'s shape, one family over, minus the house
+// type's override because no house type declares a wall yet.
+pub fn session_wall_mat(s: EditSession) -> integer { s.es_wall_mat }
 
 // ⚠ THE TWO COUNTS TRAVEL BECAUSE THE CUPBOARD'S SENTENCE SAYS THEM, and they are
 // counts of the SESSION after the append — a caller re-deriving them would be reading
@@ -906,7 +969,7 @@ pub struct RunLaid {
 // shape rather than a shortcut: `25:1` is a wall and `25:3` a road, both reach this
 // from the wire today, and only one of them has a key. See `VB_RUN`.
 pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> RunLaid {
-  sr_fit = fit_nominal(mat, FENCE_MAT, "wall material");
+  sr_fit = fit_edge_mat(mat);
   if !sr_fit.ft_ok {
     return RunLaid { rl_code: RL_REFUSED, rl_say: "road refused — {fit_why(sr_fit)}" };
   }
@@ -930,7 +993,12 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
   // ⚠ THE MATERIAL DECIDES, and until `S3` it did not. A wall is the line the author
   // walked; a fence keeps the road-and-two-offsets shape, which is what it is and what
   // `straight.mjs` measures.
-  if mat == WALL_MAT {
+  //
+  // ⚠ **AND IT ASKS THE KIND, NOT THE BYTE — plan 26 `B4e`.** A world whose masonry is
+  // declared at slot 5 lays walls of 5, and `== WALL_MAT` here would have given every
+  // one of them the FENCE's shape while the picture, the palette and the sentence all
+  // went on saying wall.
+  if edge_is_wall(mat) {
     sr_marked = 0;
     wall_stamp(w, sr_run, mat, sr_grade, s.es_runs, sr_marked);
     return RunLaid { rl_code: RL_LAID, rl_wall: true, rl_n: sr_marked,
@@ -998,7 +1066,7 @@ pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> Ru
 
 // `56:` — a press of the aim key, at wherever this driver stands, along its facing.
 pub fn session_aim(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> RunLaid {
-  sa_fit = fit_nominal(mat, FENCE_MAT, "wall material");
+  sa_fit = fit_edge_mat(mat);
   if !sa_fit.ft_ok {
     return RunLaid { rl_code: RL_REFUSED, rl_say: "aim refused — {fit_why(sa_fit)}" };
   }
@@ -1115,7 +1183,27 @@ pub fn session_digest(sess: EditSession) -> text {
        + "band {op.op_lo}..{op.op_hi} spring {op.op_spring} "
        + "depth {op.op_near}..{op.op_depth}";
   }
-  d + "\nchosen: opening {sess.es_open_kind}"
+  // ── ⛔ AND IT REPORTED ONE SELECTION OF SIX — plan 26 `B4e` ────────────────
+  //
+  // The line said `chosen: opening <k>` and nothing else, so five standing choices —
+  // the seat, the annex, the aim's reach, the part, and `B4e`'s wall type — were
+  // invisible to every instrument that reads this digest. ⚠ **THAT BLINDNESS WAS
+  // MEASURED ON THE STEP THAT ADDED THE SIXTH.** `probe/s2c` caught the server
+  // stamping the wrong wall byte, and it caught it in the SAVED WORLD, because both
+  // drivers printed the identical sentence and this digest could not see the choice
+  // behind it. A digest whose whole purpose is *what the editor remembers* has to
+  // remember all of it.
+  //
+  // ⚠ **`es_open_set` IS HERE TOO, AND IT IS NOT A DUPLICATE OF THE KIND.** `T1b`
+  // built it because `OP_ROUND` is a legal choice AND the default: what a session
+  // holds and whether anybody chose it are two facts, and only the pair can say
+  // whether a house type's own opening is still in force.
+  //
+  // ⚠ THE PART IS QUOTED because it may be empty, and *nothing chosen* has to look
+  // different from a field that fell off the end of the line.
+  d + "\nchosen: opening {sess.es_open_kind}{if sess.es_open_set { \"\" } else { \" (unchosen)\" }} "
+    + "wall {sess.es_wall_mat} seat {sess.es_seat_kind} annex {sess.es_annex_kind} "
+    + "reach {sess.es_aim_reach} part '{sess.es_part}'"
 }
 
 // ── the read-backs a gate asks for over the wire ─────────────────────────────

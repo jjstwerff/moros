@@ -100,3 +100,233 @@ fn test_a_wall_type_survives_the_round_trip() {
   bare = world_new(0.25, 0, 10, 4).wn_world;
   assert(!wall_type(bare, 0, 2).wt_ok, "a world with no palette declared a wall type");
 }
+
+// ── `B4e` — THE GESTURE THAT STAMPS A CHOSEN TYPE ───────────────────────────
+//
+// `B4d` could read a wall type and paint it, and `WALL_MAT` is 1 — so `declare edge 1
+// …` typed every wall already standing and there was no way to stand a SECOND type
+// beside it. This is that gesture, and it is a SLOT that is chosen rather than a
+// thickness that is dragged: `@HB-X69` forbids a per-edge width, so two walls of
+// different thickness are two palette entries and nothing else.
+//
+// ⚠ **THE CLAIM IS NOT *THE PICTURE IS PRETTY* BUT *THE STORE HOLDS TWO BYTES*.**
+// Every row below reads the store back, because a selection that reached the sentence
+// and not the world is exactly this tree's commonest defect.
+
+fn ground_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 20, 0 - 20, 21, 21, 8, SURFACE_MAT);
+  w
+}
+
+// How many stored edges over a window hold `mat`.
+//
+// ⚠ **THE THREE OWNED SLOTS, NOT ALL SIX.** A hex owns three of its edges and reads
+// the other three off its neighbours, so a walk over `0..6` counts every edge TWICE —
+// which is the doubling `probe/l1` measured and `B0` wrote into the plan. A count that
+// is off by a factor of two would still pass *is it more than zero* and would silently
+// break the door row below, whose whole claim is *exactly one*.
+fn ring_bytes(w: VoxelWorld, cq: integer, cr: integer, rad: integer, mat: integer,
+              ref: float) -> integer {
+  n = 0;
+  for q in cq - rad - 2..cq + rad + 3 {
+    for r in cr - rad - 2..cr + rad + 3 {
+      // The three LATTICE DIRECTIONS a cell owns — `edge_owner`'s own table: dir 4
+      // is `SLOT_NW`, dir 5 is `SLOT_NE`, dir 0 is `SLOT_E`. ⚠ `SLOT_*` are slot
+      // INDICES and `wall_of` takes a direction; passing the indices reads dirs
+      // 0/1/2, which is one owned edge and two of a neighbour's.
+      for d in [4, 5, 0] {
+        if wall_of(w, q, r, d, ref) == mat { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// ⚠ THE UPPER BOUND OF THE STEP, AS A TEST. A session that never chooses stamps the
+// byte the editor has always stamped — which is what makes every script in the corpus
+// key the same world across `B4e`.
+fn test_a_session_that_never_chose_stamps_the_wall_it_always_did() {
+  s = EditSession {};
+  assert(session_wall_mat(s) == WALL_MAT,
+         "a fresh session stamps {session_wall_mat(s)} — every world the corpus builds "
+       + "moves if this is not WALL_MAT");
+}
+
+fn test_the_chosen_slot_is_the_byte_the_wall_verb_writes() {
+  w = ground_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  sel = session_select_wall(s, 5);
+  assert(sel.ak_ok, "slot 5 was refused: {sel.ak_why}");
+  assert(session_wall_mat(s) == 5, "the session stamps {session_wall_mat(s)}");
+
+  ack = press_verb(s, w, s.es_author, "wall", "");
+  assert(ack.ak_ok, "the wall verb was refused: {ack.ak_why}");
+  n5 = ring_bytes(w, 0, 0, FENCE_R, 5, 0.0);
+  n1 = ring_bytes(w, 0, 0, FENCE_R, WALL_MAT, 0.0);
+  assert(n5 > 0, "the ring wrote no byte 5 at all — the selection reached the sentence "
+               + "and not the world, which is this tree's commonest defect");
+  assert(n1 == 0, "the ring wrote {n1} plain walls beside the {n5} chosen ones");
+}
+
+// ⚠ **THE ROW `B4e` EXISTS FOR**: two declared types, two gestures, one world.
+fn test_two_declared_types_stand_in_one_world() {
+  w = ground_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+    [hex_voxel::PalEntry { pl_slot: 5, pl_name: "brick body=SOLID thick=0.2" },
+     hex_voxel::PalEntry { pl_slot: 6, pl_name: "curtain body=THICK_CURVED thick=0.7" }]);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(press_verb(s, w, s.es_author, "wall", "").ak_ok, "the first ring was refused");
+
+  session_at(s, w, 14.0, 0.0, 0.0);
+  assert(session_select_wall(s, 6).ak_ok, "slot 6 refused");
+  assert(press_verb(s, w, s.es_author, "wall", "").ak_ok, "the second ring was refused");
+
+  brick = ring_bytes(w, 0, 0, FENCE_R + 2, 5, 0.0);
+  (cq2, cr2) = hex_grid::px_to_hex(14.0, 0.0);
+  curtain = ring_bytes(w, cq2, cr2, FENCE_R + 2, 6, 0.0);
+  assert(brick > 0 && curtain > 0,
+         "the world holds {brick} bytes of 5 and {curtain} of 6 — two types cannot "
+       + "stand in it");
+
+  // …and each resolves to its OWN declaration, which is the half a byte count cannot
+  // see: two distinct bytes that both read back as one type would pass the row above.
+  a = wall_type(w, 0, 5);
+  b = wall_type(w, 0, 6);
+  assert(a.wt_ok && b.wt_ok, "a type did not read back: {a.wt_why} / {b.wt_why}");
+  assert(a.wt_thick != b.wt_thick,
+         "both types declare thickness {a.wt_thick} — the fixture cannot show that the "
+       + "two walls differ");
+}
+
+// ⚠ **A CHOSEN TYPE IS A WALL EVERYWHERE, NOT ONLY WHERE IT IS PAINTED.** This is the
+// claim `edge_is_wall` exists for: a predicate that named byte 1 would let a person
+// walk through stone and a camera see through it, with the store plainly holding a
+// boundary and nothing red anywhere.
+fn test_a_chosen_type_stops_a_walker_and_a_view() {
+  assert(wall_stops_walk(5) && wall_stops_view(5),
+         "a declared wall type stops walk {wall_stops_walk(5)} / view {wall_stops_view(5)}");
+  // …and the control, because a predicate that answered `true` to everything would
+  // pass the line above: a DOOR is a boundary you walk through and see through.
+  assert(!wall_stops_walk(DOOR_MAT) && !wall_stops_view(DOOR_MAT),
+         "a door stops walk {wall_stops_walk(DOOR_MAT)} / view {wall_stops_view(DOOR_MAT)}");
+  assert(wall_stops_walk(FENCE_MAT) && !wall_stops_view(FENCE_MAT),
+         "a fence must stop a walker and not a view");
+  assert(!wall_stops_walk(0), "an absent edge stops a walker");
+}
+
+// …and a door can be cut through one. ⚠ THE OPENING GESTURE ASKS THE SAME PREDICATE,
+// and a site that had asked for byte 1 would find nothing to cut and report the count.
+fn test_a_door_cuts_through_a_chosen_type() {
+  w = ground_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(press_verb(s, w, s.es_author, "wall", "").ak_ok, "the ring was refused");
+  before = ring_bytes(w, 0, 0, FENCE_R + 1, 5, 0.0);
+  assert(before > 0, "the fixture rang no stone at all");
+
+  // ⚠ THE AUTHOR HAS TO BE AGAINST THE WALL. `open_ahead` reads the edges of the cell
+  // they stand in and the one they face — a door is cut where somebody is standing,
+  // never at a coordinate — so a test that cut from the middle of the paddock would
+  // read *no wall here* whatever this predicate said.
+  (rx, rz) = hex_grid::hex_to_px(FENCE_R, 0);
+  session_at(s, w, rx, rz, 0.0);
+  cut = open_ahead(w, s.es_author, DOOR_MAT, 1);
+  assert(cut.ak_ok && cut.ak_n == 1, "the door was refused: {cut.ak_why} (n {cut.ak_n})");
+  after = ring_bytes(w, 0, 0, FENCE_R + 1, 5, 0.0);
+  assert(after == before - 1,
+         "{before} stone edges became {after} — a door cut into a chosen wall type "
+       + "must consume exactly one of them");
+  assert(ring_bytes(w, 0, 0, FENCE_R + 1, DOOR_MAT, 0.0) == 1,
+         "the door byte is not in the store");
+}
+
+// ── WHAT THE SELECTION REFUSES, AND WHY EACH ───────────────────────────────
+
+fn test_the_vocabularys_own_bytes_are_refused_by_name() {
+  s = EditSession {};
+  d = session_select_wall(s, DOOR_MAT);
+  assert(!d.ak_ok && d.ak_why.contains("opening"), "a door was chosen as a wall: {d.ak_why}");
+  n = session_select_wall(s, WINDOW_MAT);
+  assert(!n.ak_ok && n.ak_why.contains("opening"), "a window was chosen as a wall: {n.ak_why}");
+  f = session_select_wall(s, FENCE_MAT);
+  assert(!f.ak_ok && f.ak_why.contains("fence"), "a fence was chosen as a wall: {f.ak_why}");
+  z = session_select_wall(s, 0);
+  assert(!z.ak_ok && z.ak_why.contains("absence"), "absence was chosen as a wall: {z.ak_why}");
+  p = session_select_wall(s, hex_voxel::PAL_MAX);
+  assert(!p.ak_ok, "{hex_voxel::PAL_MAX} was chosen, and no byte can hold it");
+
+  // ⚠ AND THE INSTRUMENT: the two that ARE wall types are accepted, so the five
+  // refusals above are a measurement rather than a setter that always says no.
+  assert(session_select_wall(s, WALL_MAT).ak_ok, "the plain wall was refused");
+  assert(session_select_wall(s, hex_voxel::PAL_MAX - 1).ak_ok,
+         "the last byte a palette names was refused");
+}
+
+// ⚠ **A REFUSED SELECTION DOES NOT MOVE THE STANDING CHOICE** — every selection in
+// this tree keeps that rule, and it is the one a typo would otherwise silently break.
+fn test_a_refused_choice_leaves_the_standing_one_alone() {
+  s = EditSession {};
+  assert(session_select_wall(s, 7).ak_ok, "slot 7 refused");
+  assert(!session_select_wall(s, FENCE_MAT).ak_ok, "a fence was accepted");
+  assert(session_wall_mat(s) == 7,
+         "a refused choice moved the session to {session_wall_mat(s)}");
+}
+
+// ⚠ **AND IT DOES NOT ASK WHETHER THE WORLD DECLARED THE SLOT.** `session_select_part`'s
+// rule: whether a slot is a legal wall type is a fact about the NUMBER, whether anything
+// is declared in it is a fact about a WORLD — and this setter has no world at all, so a
+// check here would be a check somebody would have to keep in step with the load.
+fn test_an_undeclared_slot_is_chosen_and_stamped() {
+  w = ground_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 9).ak_ok, "an undeclared slot was refused");
+  assert(press_verb(s, w, s.es_author, "wall", "").ak_ok, "the ring was refused");
+  assert(ring_bytes(w, 0, 0, FENCE_R + 1, 9, 0.0) > 0, "nothing was stamped");
+  assert(!wall_type(w, 0, 9).wt_ok, "the fixture declared slot 9 after all");
+}
+
+// ── THE TRACE AND THE AIM READ THE SAME SELECTION ───────────────────────────
+//
+// ⚠ **THREE VERBS, ONE READER.** `session_wall_mat` exists so `wall`, `run` and `aim`
+// cannot come to disagree — and a step that wired one of the three would be the
+// divergence this tree has already paid for four times.
+fn test_a_traced_run_carries_the_chosen_type() {
+  w = ground_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  a0 = press_verb(s, w, author_at(0.0, 0.0, 0.0, 0.0), "run", "");
+  assert(a0.ak_ok && a0.ak_n == 0, "the near end of the run was refused: {a0.ak_why}");
+  a1 = press_verb(s, w, author_at(6.0, 0.0, 0.0, 0.0), "run", "");
+  assert(a1.ak_ok && a1.ak_n > 0, "the run laid nothing: {a1.ak_why}");
+  assert(ring_bytes(w, 0 - 2, 0 - 2, 12, 5, 0.0) > 0,
+         "a traced run wrote no byte 5 — `run` is reading a material of its own");
+  assert(ring_bytes(w, 0 - 2, 0 - 2, 12, WALL_MAT, 0.0) == 0,
+         "a traced run wrote plain walls beside the chosen type");
+
+  // …and the RUN RECORD carries it too, which is what the mesher's half-width reads.
+  assert(len(s.es_runs.items) > 0, "the run registered nothing");
+  assert(s.es_runs.items[0].wr_mat == 5,
+         "the registered run says material {s.es_runs.items[0].wr_mat}");
+}
+
+fn test_an_aim_carries_the_chosen_type() {
+  w = ground_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 6).ak_ok, "slot 6 refused");
+  ak = press_verb(s, w, author_at(0.0, 0.0, 0.0, 0.0), "aim", "");
+  assert(ak.ak_ok && ak.ak_n > 0, "the aim laid nothing: {ak.ak_why}");
+  assert(ring_bytes(w, 0 - 2, 0 - 2, 30, 6, 0.0) > 0,
+         "an aim wrote no byte 6 — `aim` is reading a material of its own");
+  assert(ring_bytes(w, 0 - 2, 0 - 2, 30, WALL_MAT, 0.0) == 0,
+         "an aim wrote plain walls beside the chosen type");
+}

@@ -1,0 +1,37 @@
+# B4e — TWO WALL TYPES IN ONE WORLD, AND BOTH DRIVERS MUST STAMP THE SAME BYTES
+#
+# ⚠ **`@HB-X69` PUTS A WALL'S THICKNESS IN THE PALETTE** — *"a uniform wall's 38 edges
+# carry ONE distinct id and nothing else, so a per-edge thickness would be an eighth
+# slot, which `L13` forbids"* — so two walls of different thickness are two palette
+# ENTRIES, and the only gesture the store can carry is *choose a type*. That is the
+# pair below: `declare edge <slot> …` says what an id means, `select wall <slot>` says
+# which id the next wall verb stamps.
+#
+# ⚠ **AND IT IS `htype.keys`'s REASON ONE AXIS OVER.** The declaration reaches
+# `editor_run` as a line and the server as `54:`; the selection reaches them as a line
+# and as `58:`. `probe/s2c` runs this through both drivers and compares the saved
+# worlds byte for byte — which is the only check that can see a socket that dropped
+# the selection, because the acknowledgement says `wall laid 12 edges` for either type
+# and the runner's own sentence is identical.
+
+echo --- flat ground to build on
+at 0 0 0
+verb raise
+
+echo --- two wall types, as data: nothing under lib/ or src/ names 5, 6 or 0.7
+declare edge 5 brick body=SOLID thick=0.2
+declare edge 6 curtain body=THICK_CURVED thick=0.7
+
+echo --- the thin one, traced south of the origin
+select wall 5
+at 0 -2 0
+verb run
+at 5 -2 0
+verb run
+
+echo --- and the thick one, from the same verb with a different choice
+select wall 6
+at 0 2 0
+verb run
+at 5 2 0
+verb run

@@ -5,7 +5,7 @@ tau: 1275
 chunks: 2
 code: 0
 session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
-chosen: opening 1
+chosen: opening 1 (unchosen) wall 1 seat 0 annex 0 reach 6 part ''
 --- what the gestures reported
   placed 0,-30
   send 10: is not something this runner can do — `10:` ROAD stamps its grade from the SERVER's place handler rather than from the shared tick, so this runner walks and lays nothing. Run this script through a server, or take the line out.

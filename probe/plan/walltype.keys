@@ -1,0 +1,32 @@
+# TWO WALL TYPES IN ONE WORLD, FROM A SCRIPT — plan 26 `B4e`.
+#
+# `B4d` could READ a wall type and paint it, and `WALL_MAT` is 1 — so `declare edge 1
+# …` typed every wall already standing and a second type had nowhere to stand. The
+# pair of lines that makes this possible is `declare edge <slot> …` (what an id MEANS)
+# and `select wall <slot>` (which id the next wall verb STAMPS).
+#
+# ⚠ **THE TWO WALLS ARE TRACED, NOT RUNG.** A ring is 7 hexes across and two of them
+# do not fit one plan window — and the point of the picture is that the two widths are
+# side by side in it, close enough that a person can see one is thicker.
+
+at 0 0 0
+declare edge 5 brick body=SOLID thick=0.2
+declare edge 6 curtain body=THICK_CURVED thick=0.7
+
+# The thin one, south of the walker. `run` takes two presses: the first records the
+# near end and writes nothing, which is the gesture rather than a failure.
+select wall 5
+at 0 -2 0
+verb run
+at 5 -2 0
+verb run
+
+# …and the thick one, north of it, from the same verb with a different choice.
+select wall 6
+at 0 2 0
+verb run
+at 5 2 0
+verb run
+
+at 2 0 0
+plan two

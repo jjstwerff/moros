@@ -1,0 +1,24 @@
+rc: 0
+world: 16581:1375635054
+md5: 655a1c2d844c3022b14fbad8ef05477d
+tau: 104
+chunks: 2
+code: 0
+session: runs 2 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1 (unchosen) wall 6 seat 0 annex 0 reach 6 part ''
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  edge 5 = brick body=SOLID thick=0.2 in region 0
+  edge 6 = curtain body=THICK_CURVED thick=0.7 in region 0
+  wall 5 selected
+  placed 0,-2
+  road started at 0,-2
+  placed 5,-2
+  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 5.196152422706632, from 0,-2 to 5.196152422706632,-2
+  wall 6 selected
+  placed 0,2
+  road started at 0,2
+  placed 5,2
+  wall laid 12 edges, heading 0 of 24 (snapped, residual 0°), length 5.196152422706632, from 0,2 to 5.196152422706632,2
+--- what the runner refused

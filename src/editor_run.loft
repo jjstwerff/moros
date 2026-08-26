@@ -707,7 +707,18 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
       said = "annex {asel.ak_n} selected";
       return true;
     }
-    said = "select needs a subject: opening, reach, seat or annex";
+    // ⚠ **A WALL TYPE IS AN EDGE PALETTE SLOT — plan 26 `B4e`** — so this is the
+    // subject that pairs with `declare edge <slot> …` two branches down, and the pair
+    // is what lets one script stand two kinds of wall in one world. It does NOT check
+    // that the slot is declared: `session_select_wall`'s own note says why, and the
+    // picture is what shows the difference.
+    if rest.starts_with("wall ") {
+      wsel = hex_editor::session_select_wall(sess, rest[5..].trim() as integer ?? 0 - 1);
+      if !wsel.ak_ok { said = "selection refused — {wsel.ak_why}"; return true; }
+      said = "wall {wsel.ak_n} selected";
+      return true;
+    }
+    said = "select needs a subject: opening, reach, seat, annex or wall";
     return false;
   }
 

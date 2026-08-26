@@ -331,6 +331,19 @@ const MSG_AIM = 56;       // aim: one press, a run along the author's own facing
 // all nominal — a bad value has no nearest — so they refuse with nothing to offer.
 // A reach past the maximum HAS a nearest, and `K-FIT` says the refusal names it.
 const MSG_SELECT_REACH = 57;   // how far an aim reaches, in whole world units
+// ── `58:<slot>` — WHICH WALL TYPE THE NEXT WALL VERB STAMPS — plan 26 `B4e` ──
+//
+// The sixth selection, and it is a SLOT rather than a kind. `@HB-X69` puts a wall's
+// thickness in the EDGE palette — *"a uniform wall's 38 edges carry ONE distinct
+// id"* — so what a wall gesture can choose is which id to stamp, and `54:` is what
+// declares what that id means. The pair is the whole of `B4e`: two declarations and
+// two selections stand two kinds of wall in one world.
+//
+// ⚠ IT IS NOT `24:<dir>,<mat>` WITH A MEMORY. That message writes ONE edge at a
+// coordinate, which is the atomic half a script uses to build a fixture; this is
+// what `25:`, `56:` and `verb wall` all read, so a person chooses once and then
+// presses the key they always press. `49:`'s division, sixth family to take it.
+const MSG_SELECT_WALL = 58;
 const MSG_CELL = 26;      // read one cell's surface material and height back
 // S4 — a house placed where the author is looking. 32 was the first free id;
 // 28..31 and 33..35 are the camera, labels, the stair, the snapshot and the clock.
@@ -1284,13 +1297,24 @@ fn constants_fit(why: &text) -> boolean {
 fn do_fence(srv: Server, cid: integer, payload: text, px: float, pz: float,
             py: float, wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
   fci = payload.find(",");
-  fmat = FENCE_MAT;
+  // ⚠ **AN EMPTY MATERIAL FIELD IS *THE WALL TYPE I CHOSE* — plan 26 `B4e`**, which is
+  // the contract `36:`, `37:` and `38:` already share and which this message could not
+  // take until a wall selection existed. The client's own note said so and named the
+  // day: *"`fence`/`wall` are one `ring` verb waiting for a material selection, exactly
+  // as the opening family waited for `es_open_kind`"*. So `23:3,3` is a FENCE (the
+  // vocabulary owns byte 3, and a fence is a kind rather than a type) and `23:,3` is
+  // the ring in whatever wall type is chosen — with `WALL_MAT` the default, so every
+  // script in the corpus keys the same world.
+  //
+  // ⚠ **AND AN EXPLICIT MATERIAL DOES NOT MOVE THE SELECTION**, exactly as `36:<kind>`
+  // does not: a one-shot is a one-shot on every family here.
+  fmat = hex_editor::session_wall_mat(sess);
   frad = hex_editor::FENCE_R;
   if fci != null {
-    fmat = payload[..fci] as integer ?? FENCE_MAT;
+    fmat = payload[..fci] as integer ?? hex_editor::session_wall_mat(sess);
     frad = payload[fci + 1..] as integer ?? hex_editor::FENCE_R;
   } else {
-    fmat = payload as integer ?? FENCE_MAT;
+    fmat = payload as integer ?? hex_editor::session_wall_mat(sess);
   }
   fa = hex_editor::author_at(px, pz, 0.0, py);
   fack = hex_editor::ring_set(sess, wld, fa, fmat, frad, py);
@@ -1352,7 +1376,11 @@ fn do_edge(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // driver's own log, not a claim about the gesture.
 fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
            wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
-  wmat = payload as integer ?? FENCE_MAT;
+  // ⚠ **BARE IS *THE WALL TYPE I CHOSE* — plan 26 `B4e`**, `do_fence`'s note one
+  // gesture over. ⛔ It used to be `?? FENCE_MAT`, so a bare `25:` laid a ROAD — and
+  // nothing sent one, which is how a default nobody meant survives. `25:3` is still
+  // the road and `tools/plan.mjs` still sends it.
+  wmat = payload as integer ?? hex_editor::session_wall_mat(sess);
   // ⚠ AN AUTHOR BUILT HERE RATHER THAN `sess.es_author`, and that is the session's
   // own recorded rule: this server HAS a walker, `px`/`pz` are written by the tick,
   // and a session pose kept in step beside them would be a second authority on where
@@ -1395,7 +1423,9 @@ fn do_wall(srv: Server, cid: integer, payload: text, px: float, pz: float,
 // gesture to the next person to open this file.
 fn do_aim(srv: Server, cid: integer, payload: text, px: float, pz: float, pyaw: float,
           wld: &VoxelWorld, dirty: DirtySet, sess: hex_editor::EditSession) {
-  amat = payload as integer ?? hex_editor::WALL_MAT;
+  // ⚠ BARE IS THE CHOSEN WALL TYPE — `do_wall`'s note, and the default is the same
+  // `WALL_MAT` this line named, so a client that sends `56:` builds what `56:1` did.
+  amat = payload as integer ?? hex_editor::session_wall_mat(sess);
   alaid = hex_editor::session_aim(sess, wld,
                                   hex_editor::author_at(px, pz, pyaw, 0.0), amat);
   if alaid.rl_code == hex_editor::RL_REFUSED {
@@ -5528,6 +5558,21 @@ fn main() {
           } else {
             srv.send_to(ev.cid, "S:annex {sess.es_annex_kind} selected");
             println("editor: annex {sess.es_annex_kind} selected");
+          }
+        } else if ev.msg_id == MSG_SELECT_WALL {
+          // ── WHICH WALL TYPE THE NEXT WALL VERB STAMPS — plan 26 `B4e` ───────
+          //
+          // ⚠ THE FIFTH OF FIVE NOMINAL ONES, AND THE SHAPE STILL HAS NOT MOVED:
+          // the choosing and the refusal are the library's, the sentence is this
+          // server's. A slot the world has not declared is accepted here on purpose
+          // — `session_select_wall` says why, and the plan view is what shows it.
+          wsel = hex_editor::session_select_wall(sess, ev.payload as integer ?? 0 - 1);
+          if !wsel.ak_ok {
+            srv.send_to(ev.cid, "S:selection refused — {wsel.ak_why}");
+            println("editor: selection refused — {wsel.ak_why}");
+          } else {
+            srv.send_to(ev.cid, "S:wall {wsel.ak_n} selected");
+            println("editor: wall {wsel.ak_n} selected");
           }
         } else if ev.msg_id == MSG_EYE {
           // ── STAND THE EYE THERE AND LOOK BACK — plan 22, `48:` ──────────────
