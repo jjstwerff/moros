@@ -65,13 +65,25 @@ fn main() {
   // ⚠ COUNTED OUT OF THE TEXT THAT WAS WRITTEN, not out of a variable the emitter
   // filled in — the same rule the test obeys. A report that trusted the producer
   // would say `5 edges` for a picture holding none.
+  // ⚠ **THE TWO KINDS OF LINE ARE COUNTED APART, AND THIS LINE ONCE DID NOT.** When
+  // `B1` added the description, a count of `<line` read **11 edges** for a world
+  // holding **10** marks and one recovered run — a number that was true about the
+  // file and false about the world, which is the shape this tree keeps finding.
   ncell = 0;
   nedge = 0;
+  nrun = 0;
   for ln in svg.split('\n') {
-    if ln.size() < 9 { continue; }
-    if ln[0..6] == "<line " { nedge = nedge + 1; }
+    if ln.size() < 18 { continue; }
+    if ln[0..18] == "<line class='edge'" { nedge = nedge + 1; }
+    if ln[0..17] == "<line class='run'" { nrun = nrun + 1; }
     if ln[0..9] == "<polygon " { ncell = ncell + 1; }
   }
+  // The caption in the picture says the same thing, so the two cannot drift into
+  // disagreeing about the same file.
+  said = "refused";
+  if nrun > 0 { said = "recovered"; }
+  if nedge == 0 { said = "no marks"; }
   println("plan_view: {name} q {q0}..{q1} r {r0}..{r1} ref {rf} "
-        + "-> {ncell} cells, {nedge} edges, {svg.size()} bytes in worlds/{name}.svg");
+        + "-> {ncell} cells, {nedge} marks, description {said}, "
+        + "{svg.size()} bytes in worlds/{name}.svg");
 }

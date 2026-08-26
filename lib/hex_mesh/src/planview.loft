@@ -11,12 +11,18 @@
 // outline over an eight-sided one, a recovered line that misses the drawn one by
 // 15°, a wall that does not meet its neighbour.
 //
-// ⚠ IT DRAWS THE FIELD AND NOTHING ELSE, and the boundary is not tidiness. A
-// blueprint's other half is the DESCRIPTION — the authored run, what `rebuild`
-// says the cells mean — and that half is not in a saved world at all
-// (EDITOR_DEFECTS 5: the save carries the cells; the run record is not saved). So
-// `B1` is a different question with a different source, and a view that quietly
-// mixed the two would be answering neither.
+// ⚠ IT DRAWS TWO THINGS AND SAYS WHICH IS WHICH — plan 26 `B1`. The FIELD is the
+// cells and the wall bytes; the DESCRIPTION is what `hex_shape::wall_read_run`
+// says those bytes mean, recovered through `hex_editor::wall_recover`. They are
+// drawn in one frame and never merged, because the whole value of the picture is
+// the gap between them: a chain that wanders reads back as whatever straight run
+// its two ends describe, with `ok = true`, and the only way to SEE that is to put
+// the answer on top of the marks it came from.
+//
+// ⚠ AND THE DESCRIPTION IS RECOVERED, NEVER READ FROM A SESSION. The authored run
+// is not in a saved world at all (EDITOR_DEFECTS 5: the save carries the cells;
+// the run record is not saved), which is what `FORMAL_CORE` §2.4.3 requires anyway
+// — the field is the authority and a description is recovered from it for editing.
 //
 // ⚠ NO GEOMETRY IS DERIVED HERE. The corners are `hex_grid`'s pairs through
 // `hex_proj`'s projection, the layer is `hex_editor::edge_layer`, the byte is
@@ -182,6 +188,30 @@ pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: intege
       }
     }
   }
+  // ── THE DESCRIPTION — plan 26 `B1` ────────────────────────────────────────
+  //
+  // ⚠ ONE RUN PER WINDOW, BECAUSE THAT IS WHAT THE READER ANSWERS. `wall_read_run`
+  // takes a rectangle and asks *what run do these marks describe*; a window holding
+  // a closed loop or two separate walls is not a run and it refuses. So a house
+  // draws NO description, and that is a fact about the reader worth seeing rather
+  // than a gap to paper over — the caption says which of the two silences it is.
+  rr = hex_editor::wall_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
+  runs = "";
+  say = "none";
+  if rr.rr_ok {
+    say = "d{rr.rr_d} p{rr.rr_p}";
+    runs = "<line class='run' data-d='{rr.rr_d}' data-p='{rr.rr_p}'"
+         + " x1='{fx(rr.rr_x0)}' y1='{fx(rr.rr_z0)}'"
+         + " x2='{fx(rr.rr_x1)}' y2='{fx(rr.rr_z1)}'"
+         + " stroke='rgb(30,90,220)' stroke-width='0.05' stroke-dasharray='0.32 0.18'"
+         + " stroke-linecap='round'/>\n";
+  } else if nedge > 0 {
+    // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
+    // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
+    // number, and it was read as the second.
+    say = "refused ({nedge} marks)";
+  }
+
   // An empty window still has a frame, so a caller that asked for nothing gets a
   // picture of nothing rather than an SVG with a null viewBox in it.
   if !have { minx = 0.0; maxx = 1.0; minz = 0.0; maxz = 1.0; }
@@ -194,10 +224,23 @@ pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: intege
        + " width='{round(vw * PLAN_PX) ?? 0.0}' height='{round(vh * PLAN_PX) ?? 0.0}'>\n"
        + "<rect x='{fx(vx)}' y='{fx(vz)}' width='{fx(vw)}' height='{fx(vh)}'"
        + " fill='rgb(250,250,248)'/>\n";
+  // ⚠ THE PICTURE SAYS WHAT IT IS, IN THE PICTURE. A plan that needs its caller's
+  // console line to be read is a plan nobody can pass on — and *which* silence the
+  // description is in is the one thing a reader cannot infer from an absent line.
+  captext = "{title}  q {q0}..{q1}  r {r0}..{r1}  ref {ref}  cells {ncell}"
+          + "  marks {nedge}  run {say}";
+  // ⚠ SIZED TO FIT, because a caption that runs off the viewBox is a caption whose
+  // LAST field is the one you cannot read — and the last field is the run verdict,
+  // the one thing a reader cannot infer from the drawing.
+  capfs = vw / ((captext.size() as float) * 0.62) ?? 0.45;
+  if capfs > 0.45 { capfs = 0.45; }
+  cap = "<text x='{fx(vx + 0.3)}' y='{fx(vz + vh - 0.3)}' font-size='{fx(capfs)}'"
+      + " font-family='monospace' fill='rgb(70,74,82)'>"
+      + "{captext}</text>\n";
   // ⚠ THE COUNTS ARE IN A COMMENT, NOT IN AN ELEMENT, and they are for a person
   // reading the file. A gate must count the elements it can see — `CLAUDE.md`:
   // measure what was emitted, never a number the producer re-derives.
   foot = "<!-- plan: {title} q {q0}..{q1} r {r0}..{r1} ref {ref}"
-       + " cells {ncell} edges {nedge} -->\n</svg>\n";
-  head + cells + edges + foot
+       + " cells {ncell} edges {nedge} run {say} -->\n</svg>\n";
+  head + cells + edges + runs + cap + foot
 }

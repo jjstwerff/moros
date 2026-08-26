@@ -564,6 +564,105 @@ pub fn wall_of(wld: VoxelWorld, q: integer, r: integer, dir: integer, ref: float
   c.h_wall_e as integer ?? 0
 }
 
+// ── THE STORE'S WALL BYTES, AS AN `EdgeSet` THE LINEWORK CAN READ ───────────
+//
+// Plan 26 `B1`, and the gap was named by [`probe/l1`](../../../probe/l1/README.md)
+// in its own words: *"there is no world→`EdgeSet` bridge for the material channel …
+// that is a genuine missing piece and it belongs somewhere shared, not re-written
+// per probe."* This is that piece.
+//
+// ⚠ **`edges_around` IS NOT THIS, AND MISTAKING THEM PRODUCED A COMMITTED FALSE
+// FINDING.** That one is the COLLISION bridge: `edge_block_surf`/`edge_block`, which
+// fill `EdgeSet`'s **surface** channel. `hex_shape::wall_read_run` and
+// `wall_chain_ends` read **`edge_mat`** — the **material** channel. `probe/l1`'s first
+// run reported *our stamp cannot be read* with `eg_count` at a correct 8 and
+// `edge_mat` answering 0 everywhere: the reader had never been asked. ⚠ A control
+// that passes tells you the instrument works **for the control's input** — §1 there
+// ran on an `EdgeSet` built by `wall_write`, which fills the material channel, so it
+// could never have caught the bridge that fills the other one.
+//
+// ⚠ **AND THE TWO ARE DIFFERENT QUESTIONS, NOT TWO SPELLINGS.** `edges_around`
+// filters by `wall_stops_walk` — a physics predicate — and folds in the ground's
+// cliffs. Recovery does not care whether a thing stops a person: a doorway is a
+// material on a wall that continues (`@HB-X70`), and a bridge that dropped it would
+// break the chain the reader walks.
+//
+// The window is `[q0, q0 + wq) x [r0, r0 + hr)` — the same shape `wall_read_run`
+// takes, so the two are handed the identical rectangle rather than two spellings of
+// one. ⚠ An edge whose NEIGHBOUR lies outside that rectangle is still offered to
+// `edge_set_mat`, which is `hex_field`'s decision to make and not this function's.
+pub fn edges_mat(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+             ref: float) -> EdgeSet {
+  em_e = edgeset_new(q0, r0, wq, hr);
+  em_dirs: vector<integer> = [4, 5, 0];        // SLOT_NW, SLOT_NE, SLOT_E
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for si in 0..3 {
+        em_d = em_dirs[si] ?? 0;
+        em_m = wall_of(wld, q, r, em_d, ref);
+        if em_m == 0 { continue; }
+        (em_nq, em_nr) = hex_grid::hex_neighbor(q, r, em_d);
+        edge_set_mat(em_e, q, r, em_nq, em_nr, em_m);
+      }
+    }
+  }
+  em_e
+}
+
+// ── THE DESCRIPTION, RECOVERED FROM THE FIELD ───────────────────────────────
+//
+// Plan 26 `B1`. The field is the authority (`FORMAL_CORE` §2.4.3) and a description
+// is *"recovered from the world, for editing"* — `hex_shape::wall_read_run` is that
+// call, and this is the world-coordinate pairing of it, so a consumer that wants to
+// DRAW the answer does not have to hold the triangle lattice to do it.
+//
+// ⚠ **THE ORIENTATION IS NOT RECOVERABLE AND `rr_d` IS THEREFORE NOT THE AUTHORED
+// HEADING.** The library says so at its own signature: A-to-B and B-to-A mark the
+// identical edges, so the answer is canonicalised to `p > 0` and comes back as `d24`
+// **or** `d24 + 12` with the other endpoint as the anchor. *"`read.d == d` is the
+// wrong round-trip assertion; compare the ENDPOINTS."* That is why this returns the
+// two ends rather than only a heading.
+//
+// ⛔ **AND IT ANSWERS CONFIDENTLY ABOUT A SHAPE THAT IS NOT A WALL.** `wall_read_run`
+// finds the chain's two ENDS and asks which `d24` step is parallel to the vector
+// between them — it does not check the path in between. So a chain that wanders reads
+// back as whatever straight run its endpoints describe, with `ok = true`.
+// [`probe/l1`](../../../probe/l1/README.md) measured a 15-degree gesture wall reading
+// back as 30, and its `P4` — *failures are `ok = false`, never a wrong direction* — is
+// REFUTED. ⚠ **A caller must therefore not treat `rr_ok` as *this is a wall*.** It
+// means *these ends describe this run*. Drawing it over the field is how the
+// difference becomes visible, which is the whole of plan 26.
+pub struct RunRead {
+  rr_ok: boolean,
+  rr_d:  integer,        // d24 — canonical to `p > 0`, NOT the authored heading
+  rr_p:  integer,        // periods; one period is three primitive steps
+  rr_x0: float,
+  rr_z0: float,
+  rr_x1: float,
+  rr_z1: float,
+}
+
+pub fn wall_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                ref: float) -> RunRead {
+  wc_e = edges_mat(wld, q0, r0, wq, hr, ref);
+  (wc_d, wc_a, wc_b, wc_p, wc_ok) = hex_shape::wall_read_run(wc_e, q0, r0, wq, hr);
+  // ⚠ THE REFUSAL CARRIES NO COORDINATES, deliberately. A zeroed pair of ends reads
+  // exactly like a run from the origin to the origin, and `probe/l1` lost a run to
+  // precisely that shape of ambiguity — `ends = 0` is *a closed loop* and *nothing
+  // there* in one number.
+  if !wc_ok {
+    return RunRead { rr_ok: false, rr_d: 0 - 1, rr_p: 0,
+                     rr_x0: 0.0, rr_z0: 0.0, rr_x1: 0.0, rr_z1: 0.0 };
+  }
+  wc_ea = hex_shape::wall_end_a(wc_d, wc_a, wc_p);
+  wc_eb = hex_shape::wall_end_b(wc_d, wc_b, wc_p);
+  RunRead { rr_ok: true, rr_d: wc_d, rr_p: wc_p,
+            rr_x0: hex_shape::tri_x(wc_a, wc_b),
+            rr_z0: hex_shape::tri_y(wc_a, wc_b),
+            rr_x1: hex_shape::tri_x(wc_ea, wc_eb),
+            rr_z1: hex_shape::tri_y(wc_ea, wc_eb) }
+}
+
 // ── The exact perimeter ─────────────────────────────────────────────────────
 //
 // ⚠ THIS IS A REGION'S BOUNDARY, NOT A WALL. The two were conflated in this rung's

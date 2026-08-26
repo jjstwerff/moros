@@ -19,6 +19,7 @@ use hex_voxel;
 use hex_editor;
 use hex_grid;
 use hex_proj;
+use hex_way;
 
 const U = 0.25;
 const UNKNOWN_MAT = 7;      // a wall byte the editor has no name for
@@ -27,8 +28,8 @@ fn about(a: float, b: float) -> boolean { a - b < 0.0001 && b - a < 0.0001 }
 
 fn flat_world() -> VoxelWorld {
   w = world_new(U, 0, 10, 4).wn_world;
-  for q in 0 - 4..10 {
-    for r in 0 - 4..10 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
   }
   w
 }
@@ -44,6 +45,14 @@ fn attr(ln: text, name: text) -> text {
   rest[0..(cut ?? 0)]
 }
 
+// ⚠ THE PICTURE NOW HOLDS TWO KINDS OF LINE — plan 26 `B1` — so every count has to
+// name which. `<line class='edge'>` is a stored wall byte (the FIELD) and
+// `<line class='run'>` is what the reader made of them (the DESCRIPTION). A count of
+// `<line` alone read 2 for one wall the moment the description arrived, which is what
+// these tests caught on the step that added it.
+const FIELD = "<line class='edge'";
+const DESCR = "<line class='run'";
+
 fn tag_count(svg: text, head: text) -> integer {
   n = 0;
   for ln in svg.split('\n') {
@@ -58,8 +67,8 @@ fn tag_count(svg: text, head: text) -> integer {
 // count above is checked first.
 fn edge_line(svg: text, q: integer, r: integer, slot: integer) -> text {
   for ln in svg.split('\n') {
-    if ln.size() < 6 { continue; }
-    if ln[0..6] != "<line " { continue; }
+    if ln.size() < (FIELD.size() as i32) { continue; }
+    if ln[0..(FIELD.size() as i32)] != FIELD { continue; }
     if attr(ln, "data-q") == "{q}" && attr(ln, "data-r") == "{r}"
        && attr(ln, "data-slot") == "{slot}" { return ln; }
   }
@@ -99,13 +108,13 @@ fn test_the_reader_counts_a_wall_before_it_is_trusted_to_count_none() {
   w = flat_world();
   hex_editor::wall_set(w, 2, 1, 0, hex_editor::WALL_MAT, 8, 2.0);
   with_wall = plan_svg(w, 0, 0, 5, 5, 2.0, "one");
-  assert(tag_count(with_wall, "<line ") == 1,
-         "the reader found {tag_count(with_wall, \"<line \")} edges where one wall "
+  assert(tag_count(with_wall, FIELD) == 1,
+         "the reader found {tag_count(with_wall, FIELD)} edges where one wall "
          + "was written — if this is 0 every absence below is the reader's, not the picture's");
 
   bare = plan_svg(flat_world(), 0, 0, 5, 5, 2.0, "none");
-  assert(tag_count(bare, "<line ") == 0,
-         "a world with no wall drew {tag_count(bare, \"<line \")} edges");
+  assert(tag_count(bare, FIELD) == 0,
+         "a world with no wall drew {tag_count(bare, FIELD)} edges");
   assert(tag_count(bare, "<polygon ") == 25,
          "a 5x5 window drew {tag_count(bare, \"<polygon \")} cells, not 25 — every "
          + "cell of the window is drawn, so an empty one reads as empty and not as absent");
@@ -139,8 +148,8 @@ fn test_the_marks_are_the_stores_own_bytes_counted_a_second_way() {
     }
   }
   assert(held == 5, "the fixture wrote {held} bytes, not the 5 it asked for");
-  assert(tag_count(svg, "<line ") == held,
-         "the picture drew {tag_count(svg, \"<line \")} edges and the store holds {held}");
+  assert(tag_count(svg, FIELD) == held,
+         "the picture drew {tag_count(svg, FIELD)} edges and the store holds {held}");
 
   // …and each one is the material it was written with, not a default.
   assert(attr(edge_line(svg, 1, 1, hex_editor::SLOT_NE), "data-mat") == "{hex_editor::DOOR_MAT}",
@@ -209,7 +218,7 @@ fn test_a_cell_outside_the_window_is_not_in_the_picture() {
          "the wall at q=5 is outside a window of [0,5) and was drawn anyway — "
          + "the bound is inclusive, so every window overreaches by one row and one column");
   assert(cell_poly(svg, 5, 1) == "", "cell (5,1) is outside the window and was drawn");
-  assert(tag_count(svg, "<line ") == 1, "{tag_count(svg, \"<line \")} edges drawn, not 1");
+  assert(tag_count(svg, FIELD) == 1, "{tag_count(svg, FIELD)} edges drawn, not 1");
 }
 
 // ── 6. A cell carries its own material, and an unknown edge is not a wall ────
@@ -234,4 +243,160 @@ fn test_a_cell_draws_its_material_and_an_unknown_edge_is_loud() {
   assert(known != odd,
          "a byte this editor has no name for drew exactly like a wall ({odd}) — an "
          + "instrument that explains what it cannot explain is the confident hexagon again");
+}
+
+// ── `B1` — THE DESCRIPTION, DRAWN OVER THE FIELD IT CAME FROM ────────────────
+//
+// ⚠ THE TWO TESTS BELOW ARE A PAIR AND NEITHER IS WORTH ANYTHING ALONE. The first
+// says the instrument draws a true description when there is one; the second says it
+// draws a FALSE one when the library returns a false one — which is the whole reason
+// the picture exists, because `wall_read_run` reads a chain's two ends and is blind
+// to the path between them (`probe/l1` `P4`, refuted).
+
+fn desc_line(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < (DESCR.size() as i32) { continue; }
+    if ln[0..(DESCR.size() as i32)] == DESCR { return ln; }
+  }
+  ""
+}
+
+fn fnum(ln: text, name: text) -> float {
+  attr(ln, name) as float ?? 0.0 - 999.0
+}
+
+// How far the FIELD's marks stray from the DESCRIPTION's line — the picture's own
+// question, measured off the emitted text with the family's own distance primitive.
+// −1.0 when no description was drawn, which is not a small stray and must not read
+// as one.
+fn max_stray(svg: text) -> float {
+  dl = desc_line(svg);
+  if dl == "" { return 0.0 - 1.0; }
+  t = hex_way::track_new();
+  hex_way::track_straight(t, fnum(dl, "x1"), fnum(dl, "y1"),
+                             fnum(dl, "x2"), fnum(dl, "y2"));
+  worst = 0.0;
+  for ln in svg.split('\n') {
+    if ln.size() < (FIELD.size() as i32) { continue; }
+    if ln[0..(FIELD.size() as i32)] != FIELD { continue; }
+    mx = (fnum(ln, "x1") + fnum(ln, "x2")) / 2.0 ?? 0.0;
+    my = (fnum(ln, "y1") + fnum(ln, "y2")) / 2.0 ?? 0.0;
+    d = hex_way::seg_distance(t, 0, mx, my);
+    if d > worst { worst = d; }
+  }
+  worst
+}
+
+fn ends_match(ln: text, ax: float, az: float, bx: float, bz: float) -> boolean {
+  fwd = about(fnum(ln, "x1"), ax) && about(fnum(ln, "y1"), az)
+     && about(fnum(ln, "x2"), bx) && about(fnum(ln, "y2"), bz);
+  rev = about(fnum(ln, "x1"), bx) && about(fnum(ln, "y1"), bz)
+     && about(fnum(ln, "x2"), ax) && about(fnum(ln, "y2"), az);
+  fwd || rev
+}
+
+fn test_the_description_is_the_run_the_editor_authored() {
+  w = flat_world();
+  d = hex_editor::run_between(0.0, 0.0, 6.0, 0.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the editor's own `H1a` path refused to draft a run: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  svg = plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run");
+
+  assert(tag_count(svg, FIELD) == m / 2,
+         "{tag_count(svg, FIELD)} marks drawn against {m} the stamp counted — "
+         + "`wall_stamp` writes every edge from both of its cells, so `marked` is "
+         + "double what the store holds (`probe/l1`)");
+  ln = desc_line(svg);
+  assert(ln != "", "no description was drawn for a run the editor itself laid");
+  assert(ends_match(ln, d.rd_run.wr_x0, d.rd_run.wr_z0,
+                        d.rd_run.wr_x1, d.rd_run.wr_z1),
+         "the drawn description ({fnum(ln, \"x1\")},{fnum(ln, \"y1\")})-"
+         + "({fnum(ln, \"x2\")},{fnum(ln, \"y2\")}) is not the authored run "
+         + "({d.rd_run.wr_x0},{d.rd_run.wr_z0})-({d.rd_run.wr_x1},{d.rd_run.wr_z1}) "
+         + "— compared in either order, because the field stores no orientation");
+
+  // ⚠ AND THE TWO ARE IN ONE FRAME, WHICH THIS IS THE ONLY CHECK OF. The marks come
+  // from `hex_proj::hex_corner_world`; the line comes from `hex_shape::tri_x/tri_y`
+  // through `wall_recover`. Nothing else in this tree compares those two frames, and
+  // a mirror or a swapped axis between them would draw a plausible picture in which
+  // the description simply misses its own wall.
+  st = max_stray(svg);
+  assert(st >= 0.0, "no description to measure against");
+  assert(st < 0.6,
+         "the description strays {st} world units from the marks it was recovered "
+         + "FROM — a hex is 1.0 across, so anything near that means the field and "
+         + "the description are not being drawn in one frame");
+}
+
+fn test_a_wandering_chain_draws_a_description_that_misses_its_own_wall() {
+  w = flat_world();
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  // The gesture's own geometry before `H1a`: an anchor wherever the author stood, a
+  // length wherever they stopped, an angle off the lattice. 15 degrees — the case
+  // `probe/l1` measured reading back as 30.
+  ang = 15.0 / 57.29577951308232;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                              wr_x0: 0.0, wr_z0: 0.0,
+                              wr_x1: cos(ang) * 6.0, wr_z1: sin(ang) * 6.0,
+                              wr_mat: hex_editor::WALL_MAT, wr_step: 1 },
+                         hex_editor::WALL_MAT, 8, rs, m);
+  svg = plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "wander");
+
+  assert(tag_count(svg, FIELD) > 0, "the wandering stamp marked nothing to draw");
+  ln = desc_line(svg);
+  assert(ln != "",
+         "the reader REFUSED this chain. That would be better behaviour and it is not "
+         + "what `probe/l1` measured — if the library has gained a path check, this "
+         + "test is the news");
+  assert(!ends_match(ln, 0.0, 0.0, cos(ang) * 6.0, sin(ang) * 6.0),
+         "the description is the authored line after all, so this fixture is not "
+         + "wandering and the pair above proves nothing");
+
+  st = max_stray(svg);
+  assert(st > 0.6,
+         "the false description strays only {st} from its marks, where the true one "
+         + "stays under 0.6 — the picture cannot show a difference it does not have");
+}
+
+// ⚠ THE CAPTION IS A CLAIM THE PICTURE MAKES ABOUT ITSELF, so it is checked like
+// one. `B0`'s lesson was that two silences must not read alike — *no marks at all*
+// and *marks the reader refused* are different facts — and the caption is the only
+// place a reader can tell them apart.
+fn caption(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 6 { continue; }
+    if ln[0..6] == "<text " { return ln; }
+  }
+  ""
+}
+
+fn test_the_caption_says_what_the_picture_shows() {
+  w = flat_world();
+  d = hex_editor::run_between(0.0, 0.0, 6.0, 0.0, hex_editor::WALL_MAT);
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  drawn = plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run");
+  cap = caption(drawn);
+  assert(cap != "", "the picture carries no caption at all");
+  assert(cap.contains("run d"),
+         "a run WAS drawn and the caption does not say so: {cap}");
+
+  // …and a window with marks the reader refuses must say `refused`, not `none`.
+  w2 = flat_world();
+  hex_editor::wall_set(w2, 0, 0, 0, hex_editor::WALL_MAT, 8, 2.0);
+  hex_editor::wall_set(w2, 5, 5, 0, hex_editor::WALL_MAT, 8, 2.0);
+  two = plan_svg(w2, 0 - 8, 0 - 8, 9, 9, 2.0, "two");
+  assert(desc_line(two) == "", "two unconnected edges read back as one run");
+  assert(caption(two).contains("refused"),
+         "two marks the reader refused are reported as {caption(two)} — an empty "
+         + "window says `none` and this is not one, which is exactly the pair "
+         + "`probe/l1` collapsed into a single number");
+
+  bare = plan_svg(flat_world(), 0 - 8, 0 - 8, 9, 9, 2.0, "bare");
+  assert(caption(bare).contains("run none"),
+         "a window with no marks at all says {caption(bare)}");
 }

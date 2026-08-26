@@ -1,0 +1,168 @@
+// THE STORE'S WALL BYTES, IN THE CHANNEL THE LINEWORK READS — plan 26 `B1`.
+//
+// ⚠ **THIS FILE IS A COMMITTED FALSE FINDING, TURNED INTO A TEST.**
+// [`probe/l1`](../../../probe/l1/README.md) reported *our stamp is what the library
+// cannot read* — `0 of 24`, a phase re-planned on it — and the cause was that its
+// bridge filled `EdgeSet`'s **surface** channel while `wall_read_run` reads the
+// **material** one. `eg_count` was a correct 8 the whole time. The reader had never
+// been asked.
+//
+// So the two assertions that matter here are a PAIR: the collision bridge leaves
+// `edge_mat` empty, and this one does not, on the same world and the same edge. An
+// absence on its own is what produced the wrong answer the first time.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_grid;
+use hex_edge;
+use hex_shape;
+
+const U = 0.25;
+const REACH = 10;
+const N = 2 * REACH + 1;
+const REF = 2.0;              // world units — the ground of `flat()` is 8 * 0.25
+
+fn flat() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - REACH, 0 - REACH, N, N, 8, SURFACE_MAT);
+  w
+}
+
+fn test_a_stored_wall_reaches_the_material_channel() {
+  w = flat();
+  wall_set(w, 1, 1, 0, WALL_MAT, 8, REF);
+  e = edges_mat(w, 0 - REACH, 0 - REACH, N, N, REF);
+  (nq, nr) = hex_grid::hex_neighbor(1, 1, 0);
+  assert(edge_mat(e, 1, 1, nq, nr) == WALL_MAT,
+         "the edge the store holds reads {edge_mat(e, 1, 1, nq, nr)} in the material "
+         + "channel, not {WALL_MAT}");
+  // …and an edge nobody wrote is empty, which is only worth asserting after the line
+  // above has shown this reader can see a byte at all.
+  (mq, mr) = hex_grid::hex_neighbor(1, 1, 4);
+  assert(edge_mat(e, 1, 1, mq, mr) == 0,
+         "an unwritten edge reads {edge_mat(e, 1, 1, mq, mr)}");
+}
+
+fn test_the_collision_bridge_leaves_this_channel_empty() {
+  w = flat();
+  wall_set(w, 1, 1, 0, WALL_MAT, 8, REF);
+  (nq, nr) = hex_grid::hex_neighbor(1, 1, 0);
+
+  coll = edges_around(w, 0, 0, REACH, false, WallRuns { items: [] },
+                      hex_edge::surfaces_new(), REF);
+  mine = edges_mat(w, 0 - REACH, 0 - REACH, N, N, REF);
+
+  assert(edge_mat(mine, 1, 1, nq, nr) == WALL_MAT,
+         "this bridge did not carry the byte, so the line below would pass for the "
+         + "wrong reason");
+  assert(edge_mat(coll, 1, 1, nq, nr) == 0,
+         "`edges_around` now fills the MATERIAL channel too ({edge_mat(coll, 1, 1, nq, nr)}) "
+         + "— if that is deliberate this function is redundant, and if it is not, a "
+         + "recovery is reading a physics predicate");
+}
+
+fn test_a_doorway_is_carried_and_not_filtered() {
+  w = flat();
+  wall_set(w, 1, 1, 0, DOOR_MAT, 8, REF);
+  e = edges_mat(w, 0 - REACH, 0 - REACH, N, N, REF);
+  (nq, nr) = hex_grid::hex_neighbor(1, 1, 0);
+  assert(edge_mat(e, 1, 1, nq, nr) == DOOR_MAT,
+         "the doorway reads {edge_mat(e, 1, 1, nq, nr)} — an opening is a material on "
+         + "a wall that CONTINUES (`@HB-X70`), so dropping it breaks the chain the "
+         + "reader walks and the wall recovers as two");
+}
+
+fn test_every_admissible_run_reads_back_through_this_bridge() {
+  ta = hex_corner_tri_a(0, 0, 0);
+  tb = hex_corner_tri_b(0, 0, 0);
+  got = 0;
+  tried = 0;
+  for d in 0..24 {
+    p = wall_min_p(d, ta, tb);
+    if p <= 0 { continue; }
+    ea = wall_end_a(d, ta, p);
+    eb = wall_end_b(d, tb, p);
+    w = flat();
+    runs = WallRuns { items: [] };
+    m = 0;
+    wall_stamp(w, WallRun { wr_base: 0, wr_up: 0,
+                            wr_x0: tri_x(ta, tb), wr_z0: tri_y(ta, tb),
+                            wr_x1: tri_x(ea, eb), wr_z1: tri_y(ea, eb),
+                            wr_mat: WALL_MAT, wr_step: d },
+               WALL_MAT, 8, runs, m);
+    e = edges_mat(w, 0 - REACH, 0 - REACH, N, N, REF);
+    (rd, ra, rb, rp, ok) = wall_read_run(e, 0 - REACH, 0 - REACH, N, N);
+    tried = tried + 1;
+    if ok { got = got + 1; }
+  }
+  assert(tried == 24, "{tried} of 24 directions gave an admissible run from this "
+                    + "anchor — the fixture is wrong, not the bridge");
+  assert(got == tried,
+         "{got} of {tried} runs read back. `probe/l1` §3 measured 24 of 24 through a "
+         + "bridge written by hand; this is that bridge in the library");
+}
+
+fn near(a: float, b: float) -> boolean { a - b < 0.0005 && b - a < 0.0005 }
+
+// The two ends, in either order — the library's own instruction. `wall_read_run`
+// canonicalises to `p > 0`, so the answer comes back as `d24` or as `d24 + 12` with
+// the other endpoint as the anchor, and both name the same wall.
+fn same_ends(r: RunRead, run: WallRun) -> boolean {
+  fwd = near(r.rr_x0, run.wr_x0) && near(r.rr_z0, run.wr_z0)
+     && near(r.rr_x1, run.wr_x1) && near(r.rr_z1, run.wr_z1);
+  rev = near(r.rr_x0, run.wr_x1) && near(r.rr_z0, run.wr_z1)
+     && near(r.rr_x1, run.wr_x0) && near(r.rr_z1, run.wr_z0);
+  fwd || rev
+}
+
+fn test_a_run_the_editor_laid_recovers_to_its_own_ends() {
+  w = flat();
+  d = run_between(0.0, 0.0, 6.0, 0.0, WALL_MAT);
+  assert(d.rd_ok, "the editor's own `H1a` path refused to draft a run: {d.rd_why}");
+  runs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, runs, m);
+  assert(m > 0, "the stamp marked nothing, so the recovery below is about an empty field");
+
+  r = wall_recover(w, 0 - REACH, 0 - REACH, N, N, REF);
+  assert(r.rr_ok, "the run the editor itself laid did not read back — `run_between` "
+                + "snaps the anchor to a vertex and the length to a legal period, "
+                + "which is exactly what `probe/l1` measured as the difference "
+                + "between 12 of 24 and 24 of 24");
+  assert(same_ends(r, d.rd_run),
+         "recovered ({r.rr_x0},{r.rr_z0})-({r.rr_x1},{r.rr_z1}) against the authored "
+         + "({d.rd_run.wr_x0},{d.rd_run.wr_z0})-({d.rd_run.wr_x1},{d.rd_run.wr_z1}) "
+         + "— compared as ENDPOINTS in either order, because the field stores no "
+         + "orientation and `rr_d` may be d or d+12");
+}
+
+// ⛔ AND THE ONE THAT MATTERS FOR THE PICTURE: a chain that WANDERS is not refused.
+//
+// `probe/l1`'s `P4` predicted failures would be `ok = false` and never a wrong
+// direction. It is refuted: `wall_read_run` reads the two ENDS and is blind to the
+// path between them. This pins that as a property rather than a surprise — and it is
+// the reason plan 26 draws the description over the field instead of trusting it.
+fn test_a_wandering_chain_is_answered_confidently_rather_than_refused() {
+  w = flat();
+  runs = WallRuns { items: [] };
+  m = 0;
+  // A gesture-style run: an anchor wherever the author stood, a length wherever they
+  // stopped, an angle off the lattice — 15 degrees, which `probe/l1` measured reading
+  // back as 30.
+  ang = 15.0 / 57.29577951308232;
+  wall_stamp(w, WallRun { wr_base: 0, wr_up: 0, wr_x0: 0.0, wr_z0: 0.0,
+                          wr_x1: cos(ang) * 6.0, wr_z1: sin(ang) * 6.0,
+                          wr_mat: WALL_MAT, wr_step: 1 },
+             WALL_MAT, 8, runs, m);
+  assert(m > 0, "the wandering stamp marked nothing");
+  r = wall_recover(w, 0 - REACH, 0 - REACH, N, N, REF);
+  assert(r.rr_ok,
+         "the wandering chain was REFUSED. That would be the better behaviour and it "
+         + "is not what `probe/l1` measured — if the library has since gained a path "
+         + "check, this test is the news and `RunRead`'s warning can be softened");
+  assert(!same_ends(r, WallRun { wr_base: 0, wr_up: 0, wr_x0: 0.0, wr_z0: 0.0,
+                                 wr_x1: cos(ang) * 6.0, wr_z1: sin(ang) * 6.0,
+                                 wr_mat: WALL_MAT, wr_step: 1 }),
+         "the recovered ends are the authored ones after all — then the gesture's "
+         + "geometry was admissible and this fixture is not testing what it claims");
+}
