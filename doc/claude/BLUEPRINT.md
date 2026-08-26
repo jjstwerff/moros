@@ -209,6 +209,22 @@ that already had an answer pays nothing, measured.
 shell 156, `6.062 .. 7.089` — and `√N / 2`, the shell's own exact distance, is inside it at every
 shell. That is what makes the library's number honest to draw rather than an offset invented here.
 
+✅ **AND A PERSON CAN BUILD ONE — `B4i`.** `verb tower`, on `1`, at the shell the session holds
+(`select shell <n>`, `60:` on the wire). ⛔ **The design that needs no new verb is the one this
+section would have reached for and it cannot work**: a wall type declaring `body=THICK_CURVED`
+says a wall is round, and **cannot say how big** — and a disc IS the hexagon at exactly the shells
+`12R²`, with `fence_ring`'s radius 3 being shell **108**, one of them. At the ring's own size the
+two gestures build the identical world. **So the body buys the picture and the thickness; the
+SHAPE needs a size, and a size is a choice.**
+
+⚠ **THE DEFAULT IS READ OFF THE PICTURE ABOVE**: shell 156, the first that reads as a circle, and
+deliberately *between* two hexagon shells — a default on that family would ship a round tower that
+silently rebuilt the ring.
+
+⚠ **AND THE KEY IS A DIGIT BECAUSE THE EDITOR HAS RUN OUT OF LETTERS** — fourteen primaries,
+`WASD`, `L`, and the seven the verb collapse freed and `keymap.loft` keeps free on purpose.
+*Unused* and *available* are not the same thing.
+
 ### 2.3 Octagonal — 45°, and therefore NOT a wall at all
 
 ⚠ **THE EXACT REASON, AND IT IS ARITHMETIC RATHER THAN TASTE.** A lattice direction has

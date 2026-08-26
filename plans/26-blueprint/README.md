@@ -122,6 +122,16 @@ across it must be refused too, which is the half a one-directional check cannot 
 the drawn radius must lie inside the band its own rim's edge midpoints span, or the
 description misses the wall it came from.
 
+**`B4i`** — **expected result**: a key builds a round tower at the shell the session
+holds, and that world differs from the one `verb wall` builds. **Invariant**: *the body
+says a wall is ROUND and cannot say how big* — a disc IS the hexagon at `12R²` and
+`fence_ring`'s radius 3 is shell 108, so the size is a selection and the tower is a verb
+of its own, reading `session_shell` and `session_wall_mat` each through one reader.
+**Negative controls**: a default on the `12R²` family must make the tower and the ring
+one world, which only a test comparing the two can see; a number naming no shell must be
+refused without moving the standing choice; and the digest must carry the seventh
+selection, because `B4e` measured it reporting one of six.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -150,6 +160,7 @@ as a byte.
 | **`B4f`** — the declared thickness reaches the GEOMETRY, so the plan and the build are one number | S | `wall_type.loft` — the resolver's four answers (declared, undeclared, damaged, states-none); `hex_mesh/tests/wall_thick.loft` — the band measured off the EMITTED mesh, and the plan's stroke against it; `run.loft` — a different half gives a different strip; five faults seen red | ✅ **SHIPPED** `34cec07` |
 | **`B4g`** — a ROUND enclosure: the tower rim, from `hex_shape::arc_fill` | M | `tower.loft` — the boundary is the disk's and only the disk's, the centre and shell recover, a non-shell is refused with an offer, the rim carries its material, and the `12R²` coincidence is asserted before it is relied on; `probe/s2c/tower`; five faults seen red, **one of them only after the sweep demanded a sixth instrument** | ✅ **SHIPPED** `8e39a8a` |
 | **`B4h`** — a round wall's DESCRIPTION: centre and shell, drawn on the plan | M | `disc.loft` — the rim recovers to its own centre and shell at two sizes and off-origin, the circle lies inside its rim's own band, a run / a gapped rim / a disc with a wall through it are refused, membership pinned against `arc_fill`, and the shell walk's monotonicity measured; five faults seen red, **one green because the fault was not one** | ✅ **SHIPPED** `b01fbd0` |
+| **`B4i`** — the round tower gets a VERB, a key and a size to choose | M | `tower_verb.loft` — the verb builds at the chosen shell, tower and ring differ at their defaults, the default is a non-hexagon shell that reads round, a non-shell is refused without moving the choice, the digest carries and follows it, the key is bound and rebindable; `keymap.loft` + `verb.loft` vocabulary 16 → 17; five faults seen red | ✅ **SHIPPED** `46999f2` |
 
 ### Why `B0` is one phase and not two
 
@@ -1143,6 +1154,117 @@ genuinely excludes the answer — four rows go red with the same *"no disc of an
 reproduces them"* the `tower_pad` mistake produced. ⚠ **So a green sweep row is a claim
 to check, not a verdict**: it means *this fault*, not *this class*, and telling the two
 apart took one measurement of the geometry the filter is about.
+
+## What `B4i` turned up
+
+**Shipped `46999f2`.** `VB_TOWER` with a key, `session_select_shell` / `session_shell`
+as the seventh selection, `TOWER_SHELL_DEFAULT`, `select shell <n>` in the runner and
+`script.mjs` and `60:` on the wire, `59:` taking an empty payload, the shell in
+`session_digest`, and `lib/hex_editor/tests/tower_verb.loft`.
+
+### A gesture only a script can reach is not reachable
+
+`B4g` built the round tower and wired it to a runner line and a wire message — and gave
+it **no verb and no key**, so a person sitting in the editor could not build one. That is
+[CLAUDE.md](../../CLAUDE.md)'s *check that what you built is called* at the level that
+matters, and [STATE.md](../../doc/claude/STATE.md) keeps a standing list of the same
+shape (`44:` part mode has no client binding; all eight of `hex_editor::names` have no
+production caller). ⚠ **Adding to that list rather than closing it is the failure mode**,
+and `B4g` closed the mechanical half — two drivers — while leaving the human half open.
+
+### ⛔ The palette body CANNOT decide roundness, and `B4g` measured why
+
+The design that needs no new verb is obvious and wrong: a wall type declaring
+`body=THICK_CURVED` makes the `wall` verb ring round, and the palette decides — exactly
+`@HB-X69`'s *"the palette is the designed extension point"*.
+
+**It cannot work, and the reason is `B4g`'s own table.** A disc **is** the hexagon at
+exactly the shells `12R²`, and `fence_ring`'s radius 3 is shell **108** — one of them. At
+the ring's own size the round gesture and the hexagonal one build the identical world,
+byte for byte. ⚠ **A body says a wall is round; it cannot say how big, and at this size
+that distinction does not exist.** So roundness needs a SIZE, a size is a choice, and the
+choice is a selection with a verb of its own.
+
+⚠ **AND A VERB WHOSE RESULT DEPENDED ON A SELECTION NOBODY HAD MADE would be `X108` in a
+new costume** — `run` and `aim` are two different maps and a key meaning "either" means
+neither. `verb tower` reads `session_shell` and `session_wall_mat`, each through its one
+reader, so the verb, `59:` and the runner's `tower <shell>` cannot become three answers
+to *how big is it*.
+
+### The default is read off a picture, not chosen
+
+`TOWER_SHELL_DEFAULT = 156` because `B4g` drew shells 36, 84, 156 and 300 in plan: at 36
+a "round" tower is a **six-pointed star**, at 84 a lumpy rosette, and **156 is the first
+that reads as a circle**. ⚠ **And 156 is deliberately BETWEEN two hexagon shells.** A
+default anywhere on the `12R²` family would ship a round tower that silently rebuilt the
+ring — and every other row in the file would still pass, which is why
+`test_the_tower_and_the_ring_are_different_worlds_at_their_defaults` exists.
+
+### ⛔ The suite caught a key that is free ON PURPOSE
+
+`U` has no row in `keymap_default`, so a grep of the table says *unused*. It is one of
+seven — `P I U N M K V` — that the verb collapse released, and `keymap.loft` asserts they
+stay free so the list *"cannot become an escape hatch"*. ⚠ **UNUSED AND AVAILABLE ARE NOT
+THE SAME THING**, and grepping the table answers only the first.
+
+**Following it up is the finding: the editor has run out of letters.** Fourteen are
+primaries, `WASD` move, `L` levels, and those seven are spoken for — every letter of the
+alphabet is claimed. `tower` takes **`1`**, the first key nothing claims, and the
+exhaustion is written at the binding so the next verb does not repeat the grep.
+
+⚠ **The other six keymap failures were the vocabulary moving 16 → 17**, and they are the
+rows doing their job: a verb cannot arrive without `the_vocabulary()`, the code table and
+the rebind machinery all agreeing that it did.
+
+### `B4e`'s finding, honoured rather than repeated
+
+That step measured `session_digest` reporting **one selection of six** — the seat, the
+annex, the reach, the part and the wall type invisible to `probe/s2c`, `probe/k3d` and the
+page-versus-runner comparison alike, *"and the blindness was measured on the step that
+added the sixth"*. The step that adds the seventh prints it and tests that it **moves**,
+rather than discovering the same hole one selection later.
+
+That moved **36 `probe/k3d` baselines**. ⚠ **Verified before blessing**: all 36 changed
+lines are the `chosen:` line, and no world key, md5 or `τ` moved — `git diff` reports 36
+files, 36 insertions, 36 deletions. A bless that had swallowed a moved world key would
+have laundered a regression, which is why that target prints what it is about to
+overwrite.
+
+### The sabotage sweep
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with
+the verb, **its key** and the selection each asserted present before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the default moved onto the `12R²` family (156 → 108) | `tower_verb` |
+| 2 | the verb ignores the session and uses the default | `tower_verb` |
+| 3 | the selection stops refusing a number that names no shell | `tower_verb` |
+| 4 | the digest forgets the seventh selection — `B4e`'s blindness restored | `tower_verb` |
+| 5 | no key binds the verb | `tower_verb` · `keymap` · `verb` |
+
+⚠ **ROW 1 IS THE ONE THE STEP RESTS ON.** With the default at 108 the round tower builds
+the hexagonal ring exactly, and *every other claim in the file stays true*: it is still a
+disc, still centred, still the shell the session holds. Only the row comparing the two
+verbs' worlds can see it — which is why that row exists and why the default is measured
+rather than picked.
+
+⚠ **AND ROW 5 IS CAUGHT BY THREE FILES**, which is the vocabulary invariant doing its
+work: a verb without a key is not merely unreachable, it is a hole in the definition that
+`keymap.loft` and `verb.loft` both refuse independently.
+
+### What it deliberately does not do
+
+⚠ **`verb wall` STILL RINGS A HEXAGON, AND THE BODY IS STILL UNREAD BY ANY GESTURE.** A
+world may declare `body=THICK_CURVED` and the plan paints it, but nothing turns that into
+a round gesture — because, per above, it cannot without a size. **What a `THICK_CURVED`
+declaration buys today is the picture and the thickness, not the shape**, and that is a
+consequence of the geometry rather than a gap to close.
+
+⚠ **AND THE TOWER REGISTERS NO `WallRun`, so it is still drawn by the per-edge emitter**
+— `B4g`'s finding, unchanged: [EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 4's
+deletion still has an arc-shaped prerequisite.
 
 ## Open questions
 
