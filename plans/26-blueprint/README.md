@@ -102,7 +102,8 @@ key must be unchanged.
 | **`B4a`** — page → cell: the inverse of the panel transform, refusing what is on no panel | S | `planview.loft` — round trip over all 338 cells of a two-level window; the gutter, the margin, past-the-end and a point left of the page each **refused** with a reason; four seeded faults seen red | ✅ **SHIPPED** `e70efbf` |
 | **`B4b`** — a gesture from a picked spot, with the walker left where it is | M | `probe/plan` rows D–F — picked and stood-on key one world, the walker does not move, a pick off the page authors nothing; the teleport seen red | ✅ **SHIPPED** `e70efbf` |
 | **`B4c`** — the picked spot drawn back, so you can see what you are about to author | S | `planview.loft` — the highlight's outline is the cell's own **byte for byte**, the cross is the point asked for and not the snap, both marks survive an author on the same panel; `probe/plan` row G; four faults seen red | ✅ **SHIPPED** `e24a9b0` |
-| **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | a wall authored as a second palette entry reads back with that entry's `wd_body`/`wd_thickness` | Blocked on `@HB-X63` |
+| **`B4d`** — wall TYPE and thickness, from the palette (§3.3) | M | `wall_type.loft` — a type round-trips through the encoder name/body/thickness identical; a damaged one is refused and an unknown BODY is carried; `planview.loft` — the wall is painted at the thickness its type declares; four faults seen red | ✅ **SHIPPED** `6e756c0` |
+| **`B4e`** — a gesture that stamps a CHOSEN wall type, so two can stand in one world | M | two walls of different declared types in one world, painted at their own two widths from a script | Open |
 
 ### Why `B0` is one phase and not two
 
@@ -438,6 +439,58 @@ emitted elements byte-for-byte identical across both.**
 a hand-counted prefix length and silently matched nothing — the failure read as *the pick
 was not drawn*. It counts with `.size()` now. A reader that measures its own needle by hand
 is a reader whose default answer is *absent*.
+
+## What `B4d` turned up
+
+**Shipped `6e756c0`.** `hex_editor::wall_type` reads a wall TYPE off the edge palette and
+the plan paints the wall at the thickness it declares.
+
+![a house whose walls carry a declared type](../../doc/claude/img-walltype-plan-b4d.png)
+
+*The same house as `B3`, after `declare edge 1 brick body=SOLID thick=0.35` and
+`declare edge 2 doorway body=OPEN_DOOR thick=0.1`: 41 marks painted at 0.35 and the
+doorway at 0.1, visibly narrower than the wall it perforates.*
+
+### ⚠ The block was a claim, and re-measuring it dissolved it
+
+The row said **Blocked on `@HB-X63`**, which gates the FOXEL's round trip upstream and
+leaves the palette at **T4** in hexbody's own model. That is upstream's gap. What this row
+needs is that a wall type survives **this tree's** encoder — and it does: a type written
+into `PALW` comes back through `world_to_bytes`/`world_from_bytes` with its name, body and
+thickness identical, with a control that a world holding no palette declares none.
+[NOTATION](../../doc/claude/NOTATION.md)'s doctrine, applied to our own table: **`Blocked`
+is a claim to re-measure, not a fact.**
+
+### The declaration half already existed, and nobody had noticed
+
+`declare <axis> <slot> <name> <fields…>` was built for house types (plan 22 `T1a.1`) and
+`pal_kind_of` has always accepted **`edge`**. So a person could already declare a wall type
+and nothing could read it. `B4d` is the reading and the painting; the writing was there.
+
+⚠ **And `WALL_MAT` is 1**, so `declare edge 1 …` types every wall already standing — which
+is how the picture above was made from a script with no new gesture at all. What is
+missing is a gesture that stamps a **chosen** slot, so two types can stand in one world;
+that is `B4e`.
+
+### ⛔ The body vocabulary is not closed here, deliberately
+
+`@HB-X12` names the bodies and `@HB-X69` says why the list lives in a comment rather than
+in a type: *"an open vocabulary … which is exactly why the palette is the designed
+extension point."* So `body=OCTAGON` is carried through and a test pins it. **A reader that
+checked the body against a list would refuse the design's own next value, politely** — and
+§2.3 of the design is that an octagon body is *"exactly the extension shape"*.
+
+What IS refused is what is structurally wrong: `thick=fat` and `thick=-0.5`, each naming
+what it saw. ⚠ **And a type with no `thick=` at all is a type that STATES NONE**, which is
+a third answer — the same distinction `house_type` refuses a malformed type on, and the
+reason `palfield.loft` deliberately has **no `pal_float`**: a float reader with a fallback
+would have to answer the same for *absent* and *unparseable*.
+
+### What it costs, said rather than discovered later
+
+The picture resolves the palette **per edge** — a text parse for each mark. At 42 marks
+that is nothing; at ten thousand it would be the slowest thing in the emitter. It is a
+file writer and not a frame loop, so this is a note rather than a defect.
 
 ## Open questions
 

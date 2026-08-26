@@ -361,6 +361,22 @@ So the blueprint gesture is *choose or define a wall TYPE*, not *drag a thicknes
 wall*. Two walls of different thickness are two palette entries, and that is the model working as
 designed — `@HB-X69` again: *"the palette is the designed extension point."*
 
+✅ **BUILT — [plan 26](../../plans/26-blueprint/README.md) `B4d`.** `hex_editor::wall_type` reads
+the type off the EDGE palette and the plan paints the wall at the thickness it declares.
+⚠ **The row said *blocked on `@HB-X63`* and re-measuring dissolved it**: that gate is upstream's
+foxel round trip, and what this needs is that a type survives THIS tree's encoder — measured,
+name/body/thickness identical, with a control. ⚠ **And the declaration half already existed**:
+`declare edge <slot> <name> body=… thick=…` was built for house types (plan 22 `T1a.1`) and
+`pal_kind_of` has always taken `edge`, so a person could declare a wall type and nothing could
+read it.
+
+⛔ **The BODY vocabulary is not closed by the reader, deliberately** — `body=OCTAGON` is carried
+through, because `@HB-X12` names exactly that as *"a new value in this enumeration"* and a reader
+that checked against a list would refuse §2.3's own extension shape. What is refused is what is
+structurally wrong: a thickness that is not a number, or one below zero.
+
+![a house whose walls carry a declared type](img-walltype-plan-b4d.png)
+
 ⚠ **THE DRAWING CONSTANTS ARE A SEPARATE LAYER AND BOTH ARE TRUE.** `hex_shape::wall_new(d24, ox,
 oy, **half**, mat)` takes a half-width because that is what a *renderer* needs; `FORMAL_CORE` §6.2
 gives the exact band constants in `ℚ(√3)`. What the palette decides is which half-width a given
