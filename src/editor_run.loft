@@ -163,6 +163,71 @@ fn walk_author(wk: hex_editor::Walker) -> Author {
   hex_editor::author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y)
 }
 
+// ── `plan <tag>` — THE PLAN VIEW, AT THIS TICK, WITH THE PERSON ON IT ───────
+//
+// Plan 26 `B3`. `src/plan_view.loft` draws a SAVED world and therefore has nobody to
+// draw: the walker lives in whichever driver is running the tick. This is that
+// driver, so this is where the author appears.
+//
+// ⚠ **THE POSE IT PRINTS IS READ BACK OUT OF THE PICTURE, NOT OFF THE WALKER.** A
+// line that re-printed `wk_x` would compare the walker against the walker and pass
+// for any drawing at all, including one that put the marker at the origin — the
+// `CLAUDE.md` rule about measuring what was emitted, at the one place it is cheap to
+// get wrong. `probe/plan` compares this line against `feet`, which IS the walker.
+fn svg_attr(ln: text, name: text) -> text {
+  sa_at = ln.find("{name}='");
+  if sa_at == null { return ""; }
+  sa_rest = ln[(((sa_at ?? 0) + name.size() + 2) as i32)..];
+  sa_cut = sa_rest.find("'");
+  if sa_cut == null { return ""; }
+  sa_rest[0..(sa_cut ?? 0)]
+}
+
+// The window follows the AUTHOR rather than the origin, because a station shot is
+// taken where the person is standing. `Q0`/`R0`/`Q1`/`R1` override it for a script
+// that wants a fixed frame across stations.
+const PLAN_R = 8;
+
+fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> boolean {
+  rp_name = env_variable("WORLD");
+  if rp_name == "" { rp_name = "headless"; }
+  rp_tag = rest.trim();
+  if rp_tag != "" { rp_name = "{rp_name}-{rp_tag}"; }
+  (rp_cq, rp_cr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
+  rp_q0 = env_int("Q0", rp_cq - PLAN_R);
+  rp_r0 = env_int("R0", rp_cr - PLAN_R);
+  rp_q1 = env_int("Q1", rp_cq + PLAN_R + 1);
+  rp_r1 = env_int("R1", rp_cr + PLAN_R + 1);
+  // One panel, at the feet: a station shot is *the floor I am standing on*. A script
+  // that wants the storeys beside each other says so through `plan_view`, which reads
+  // the world this run saves.
+  rp_svg = plan_levels(w, rp_q0, rp_r0, rp_q1, rp_r1, [wk.wk_y],
+                       plan_author(walk_author(wk)), rp_name);
+  rp_out = file("{source_dir()}/../worlds/{rp_name}.svg");
+  rp_out.write(rp_svg);
+
+  rp_x = "";
+  rp_z = "";
+  for rp_ln in rp_svg.split('\n') {
+    if rp_ln.size() < 8 { continue; }
+    if rp_ln[0..8] != "<circle " { continue; }
+    rp_x = svg_attr(rp_ln, "cx");
+    rp_z = svg_attr(rp_ln, "cy");
+  }
+  if rp_x == "" {
+    said = "plan {rp_name}.svg drew no author — off-plan at {round(wk.wk_x * 100.0) / 100.0 ?? 0.0},{round(wk.wk_z * 100.0) / 100.0 ?? 0.0}";
+    return true;
+  }
+  said = "plan {rp_name}.svg author {rp_x},{rp_z}";
+  return true;
+}
+
+fn env_int(name: text, fallback: integer) -> integer {
+  ei_v = env_variable(name);
+  if ei_v == "" { return fallback; }
+  ei_v as integer ?? fallback
+}
+
 // What a gesture did, in a driver's words — shared by `key` and `verb` so the two
 // spellings cannot come to report differently — plan 22 `K1`.
 //
@@ -701,6 +766,7 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   // ── `send` AND `ground` ARE CLASSIFIED — plan 22 `K3c` ──────────────────────
   // Both are one line here and a function below, because the reasoning is long and
   // `run_line` is already at the complexity the compiler nudges at.
+  if cmd == "plan"   { return run_plan(w, wk, rest, said); }
   if cmd == "ground" { return run_ground(w, rest, said); }
   if cmd == "send"   { return run_send(w, wk, rest, said); }
   // ⚠ **`declare` IS THE WAY A TYPE GETS INTO A WORLD AT ALL — plan 22 `T1c`.**

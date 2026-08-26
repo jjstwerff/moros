@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -512,6 +512,10 @@ fast:
 	@$(MAKE) -s probe-k1
 	@$(MAKE) -s probe-k3d
 	@$(MAKE) -s probe-headless
+# ⚠ THE AUTHOR ON THE PLAN — plan 26 `B3`. It runs one script and compares the picture
+# against the walker at three stations, which is the only check in the tree that the
+# plan view draws the person the TICK moved rather than a pose it made up.
+	@$(MAKE) -s probe-plan
 # ⚠ **AND THIS IS THE ONLY THING IN `fast` THAT COMPILES EITHER PROGRAM UNDER `src/`.**
 # The comment over `headless-same` records what that cost once: a name collision in
 # `editor_server.loft` presented as a thirty-minute HANG, with the compiler's own
@@ -747,6 +751,14 @@ plan-check:
 # ⚠ NOT IN `make fast`, and not because it is slow. What it produces is a PICTURE,
 # and a picture is not a gate — the claims about it are `lib/hex_mesh/tests/planview.loft`,
 # which compares the emitted text against the store. This target is for a person.
+# B3 (plan 26) — DOES THE PLAN DRAW THE PERSON THE TICK MOVED? `editor_run`'s `plan`
+# command emits the view at the current tick and prints the marker READ BACK OUT of the
+# SVG; `feet` prints the walker. Three stations, compared — with a control that the
+# three are not the same point, because a marker nailed to one place would otherwise
+# pass every row.
+probe-plan:
+	@sh probe/plan/run.sh
+
 plan-view:
 	@WORLD=$(if $(WORLD),$(WORLD),headless) \
 	 $(if $(Q0),Q0=$(Q0),) $(if $(Q1),Q1=$(Q1),) \

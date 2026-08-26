@@ -466,7 +466,7 @@ fn deck_ref() -> float { (8.0 + (hex_editor::STOREY_H as float)) * 0.25 }
 fn test_drawing_levels_does_not_touch_the_world() {
   w = two_storey_world();
   before = hex_voxel::world_key(w);
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
   assert(svg.contains("data-level='1'"),
          "the second level was not drawn at all, so the comparison below is about a "
          + "world nothing was asked of");
@@ -484,7 +484,7 @@ fn test_drawing_levels_does_not_touch_the_world() {
 
 fn test_the_page_offset_is_declared_once_and_never_in_the_coordinates() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
 
   a = cell_in(svg, 0, 3, 1);
   b = cell_in(svg, 1, 3, 1);
@@ -512,7 +512,7 @@ fn test_the_page_offset_is_declared_once_and_never_in_the_coordinates() {
 
 fn test_the_panels_do_not_overlap() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
   dx = attr(group_line(svg, 1), "data-dx") as float ?? 0.0;
   wide = attr(panel_rect(svg, 0), "width") as float ?? 0.0;
   assert(wide > 0.0, "the first panel has no paper under it to measure");
@@ -524,7 +524,7 @@ fn test_the_panels_do_not_overlap() {
 
 fn test_the_two_levels_are_not_the_same_picture() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
   low  = attr(cell_in(svg, 0, 0, 0), "data-mat");
   high = attr(cell_in(svg, 1, 0, 0), "data-mat");
   assert(low != "" && high != "", "cell (0,0) is missing from one of the panels");
@@ -543,7 +543,7 @@ fn test_the_two_levels_are_not_the_same_picture() {
 // by a colour a reader has to know is a picture that will be read wrong.
 fn test_a_cell_carries_the_height_the_level_read_it_at() {
   w = two_storey_world();
-  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], "levels");
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref(), deck_ref()], plan_nobody(), "levels");
   deck = cell_in(svg, 1, 0, 0);
   lawn = cell_in(svg, 1, 6, 6);
   ground = cell_in(svg, 0, 0, 0);
@@ -562,4 +562,122 @@ fn test_a_cell_carries_the_height_the_level_read_it_at() {
   assert(dh != lh,
          "the deck and the lawn beside it report the same height, so nothing in this "
          + "picture says which of them is on the level it is drawn under");
+}
+
+// ── `B3` — THE AUTHOR ON THE PLAN ────────────────────────────────────────────
+//
+// BLUEPRINT §3.1: *"a character location on the map is still the running way"*. The
+// pose is `hex_editor::Author` — the same four numbers every gesture takes — and the
+// only arithmetic here is `cos`/`sin` of a yaw the library documents as radians, 0 = +x.
+
+fn author_mark(svg: text, level: integer) -> text {
+  at = 0 - 1;
+  for ln in svg.split('\n') {
+    if ln.size() > 17 {
+      if ln[0..17] == "<g class='level' " { at = attr(ln, "data-level") as integer ?? 0 - 1; }
+    }
+    if ln.size() < 8 { continue; }
+    if ln[0..8] != "<circle " { continue; }
+    if at == level { return ln; }
+  }
+  ""
+}
+
+fn facing_mark(svg: text, level: integer) -> text {
+  at = 0 - 1;
+  for ln in svg.split('\n') {
+    if ln.size() > 17 {
+      if ln[0..17] == "<g class='level' " { at = attr(ln, "data-level") as integer ?? 0 - 1; }
+    }
+    if ln.size() < 20 { continue; }
+    if ln[0..20] != "<line class='facing'" { continue; }
+    if at == level { return ln; }
+  }
+  ""
+}
+
+fn foot(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 11 { continue; }
+    if ln[0..11] == "<!-- plan: " { return ln; }
+  }
+  ""
+}
+
+fn test_the_marker_is_the_authors_own_two_floats() {
+  w = two_storey_world();
+  a = hex_editor::author_at(1.234, 2.5, 0.0, ground_ref());
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(a), "who");
+  m = author_mark(svg, 0);
+  assert(m != "", "the author was not drawn on the only panel there is");
+  assert(about(attr(m, "cx") as float ?? 0.0 - 99.0, a.au_x)
+         && about(attr(m, "cy") as float ?? 0.0 - 99.0, a.au_z),
+         "the marker is at ({attr(m, \"cx\")},{attr(m, \"cy\")}) and the author is at "
+         + "({a.au_x},{a.au_z}) — the pose is the walker's own number or it is a "
+         + "picture of somewhere else");
+}
+
+fn test_the_facing_points_where_the_walk_would_go() {
+  w = two_storey_world();
+  // yaw 0 is +x, which `gesture.loft` states and the tick confirms by stepping
+  // `(cos yaw, sin yaw)`. A page that flipped z would draw this arrow backwards and
+  // look entirely deliberate.
+  east = hex_editor::author_at(0.0, 0.0, 0.0, ground_ref());
+  svg = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(east), "east");
+  f = facing_mark(svg, 0);
+  assert(f != "", "no facing was drawn");
+  x1 = attr(f, "x1") as float ?? 0.0 - 99.0;
+  x2 = attr(f, "x2") as float ?? 0.0 - 99.0;
+  y1 = attr(f, "y1") as float ?? 0.0 - 99.0;
+  y2 = attr(f, "y2") as float ?? 0.0 - 99.0;
+  assert(x2 > x1 && about(y2, y1),
+         "facing 0 radians draws ({x1},{y1})->({x2},{y2}); 0 is +x and the page's y "
+         + "IS world z, so this arrow should run east and level");
+
+  // …and a quarter turn puts it on the other axis, in the direction the tick walks.
+  south = hex_editor::author_at(0.0, 0.0, PI / 2.0 ?? 0.0, ground_ref());
+  sv = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(south), "south");
+  g = facing_mark(sv, 0);
+  assert((attr(g, "y2") as float ?? 0.0) > (attr(g, "y1") as float ?? 0.0)
+         && about(attr(g, "x2") as float ?? 0.0, attr(g, "x1") as float ?? 0.0),
+         "a quarter turn from +x draws {g} — `sin` of it is positive, and so is the "
+         + "step the tick takes in z");
+}
+
+fn test_the_author_stands_on_one_level_and_it_is_the_one_they_are_on() {
+  w = two_storey_world();
+  onground = hex_editor::author_at(0.0, 0.0, 0.0, ground_ref());
+  ondeck   = hex_editor::author_at(0.0, 0.0, 0.0, deck_ref());
+  refs: vector<float> = [ground_ref(), deck_ref()];
+
+  lo = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_author(onground), "lo");
+  assert(author_mark(lo, 0) != "", "standing on the ground, the author is not on L0");
+  assert(author_mark(lo, 1) == "",
+         "the author is drawn on BOTH levels — a plan that puts one person on every "
+         + "floor is telling you nothing about which floor they are on");
+
+  hi = plan_levels(w, 0 - 6, 0 - 6, 7, 7, refs, plan_author(ondeck), "hi");
+  assert(author_mark(hi, 1) != "", "standing on the deck, the author is not on L1");
+  assert(author_mark(hi, 0) == "", "standing on the deck, the author is also on L0");
+}
+
+fn test_the_three_states_of_the_author_do_not_read_alike() {
+  w = two_storey_world();
+  none = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_nobody(), "none");
+  assert(author_mark(none, 0) == "", "nobody was given and somebody was drawn");
+  assert(foot(none).contains("who none"), "the footer says {foot(none)}");
+
+  here = hex_editor::author_at(1.0, 1.0, 0.0, ground_ref());
+  on = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(here), "on");
+  assert(foot(on).contains("who (1,1)"), "the footer says {foot(on)}");
+  assert(!foot(on).contains("OFF-PLAN"), "an author on the plan is reported off it");
+
+  // ⚠ THE ONE THAT MATTERS: a pose that lands on no panel must SAY so. An absent
+  // marker means *nobody was given* and *somebody is elsewhere* at once, which is
+  // the collapse `probe/l1` lost a run to.
+  far = hex_editor::author_at(60.0, 60.0, 0.0, ground_ref());
+  off = plan_levels(w, 0 - 6, 0 - 6, 7, 7, [ground_ref()], plan_author(far), "off");
+  assert(author_mark(off, 0) == "", "an author 60 units away was drawn on the plan");
+  assert(foot(off).contains("OFF-PLAN"),
+         "the author is outside the window and the picture does not say so: {foot(off)}");
 }

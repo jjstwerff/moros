@@ -239,6 +239,43 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
               pp_say: say, pp_minx: minx, pp_maxx: maxx, pp_minz: minz, pp_maxz: maxz }
 }
 
+// ── THE AUTHOR ON THE PLAN — plan 26 `B3`, BLUEPRINT §3.1 ──────────────────
+//
+// *"A character location on the map is still the running way … but this editor
+// doesn't restrict the character anywhere."* A plan with nobody on it is a map; the
+// pose is what makes it the editor's own view of where you are standing.
+//
+// ⚠ **IT TAKES AN `Author`, WHICH IS THE LIBRARY'S OWN ANSWER TO *WHERE IS THE
+// PERSON*.** Not a `Walker` — that is walk STATE, and a plan does not care how fast
+// anybody is going — and not four loose floats, which would be a second spelling of
+// a struct every gesture already takes. `plan_author` is the one place this package
+// reads `au_*`, so the pose has one shape here and one conversion.
+//
+// ⚠ AND `au_yaw` IS RADIANS, 0 = +x, which `gesture.loft` says at its own
+// declaration and the tick confirms by walking `(cos yaw, sin yaw)`. The page frame
+// IS the world's x/z plane, so the facing needs no sign flip and must not be given
+// one — a facing drawn backwards is the one error in this picture that looks
+// deliberate.
+pub struct PlanWho {
+  pw_show: boolean,
+  pw_x:    float,
+  pw_z:    float,
+  pw_y:    float,
+  pw_yaw:  float,
+}
+
+pub fn plan_nobody() -> PlanWho {
+  PlanWho { pw_show: false, pw_x: 0.0, pw_z: 0.0, pw_y: 0.0, pw_yaw: 0.0 }
+}
+
+pub fn plan_author(a: hex_editor::Author) -> PlanWho {
+  PlanWho { pw_show: true, pw_x: a.au_x, pw_z: a.au_z, pw_y: a.au_y, pw_yaw: a.au_yaw }
+}
+
+// How long the facing tick is, in world units — just past the marker, so the two
+// read as one arrow rather than as a dot and a line.
+pub const PLAN_FACING = 0.85;
+
 // ── LEVELS, SIDE BY SIDE — plan 26 `B2`, BLUEPRINT §3.4 ─────────────────────
 //
 // *"Multiple floors have a layout beside each other."* One panel per reference
@@ -260,12 +297,22 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
 pub const PLAN_GUTTER = 1.2;
 
 pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
-               refs: vector<float>, title: text) -> text {
+               refs: vector<float>, who: PlanWho, title: text) -> text {
   // ⚠ AN EMPTY LIST IS ONE LEVEL AT ZERO, NOT AN EMPTY PICTURE. A caller that asked
   // for no levels has made a mistake, and a blank frame hides it; the caption says
   // which reference every panel was read at, so the wrong one is visible.
   rs = refs;
   if len(rs) < 1 { rs = [0.0]; }
+  // ⚠ **WHICH PANEL THE AUTHOR IS ON IS THE STORE'S ANSWER, NOT A THRESHOLD.** They
+  // belong on the level whose reference selects the same LAYER under their own cell
+  // as their own feet do — `edge_layer` asked twice and compared. A rule of the shape
+  // *within half a storey of the reference* would be a number invented here, and
+  // `FORMAL_CORE` is explicit that a level is not a height.
+  (aq, ar) = px_to_hex(who.pw_x, who.pw_z);
+  alayer = 0 - 2;
+  if who.pw_show { alayer = hex_editor::edge_layer(w, aq, ar, who.pw_y); }
+  inwin = who.pw_show && aq >= q0 && aq < q1 && ar >= r0 && ar < r1;
+  seen = false;
   bodies = "";
   minx = 0.0;
   maxx = 1.0;
@@ -288,8 +335,24 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
     pz = minz - PLAN_MARGIN;
     pw = maxx - minx + PLAN_MARGIN * 2.0;
     ph = maxz - minz + PLAN_MARGIN * 2.0;
+    // ⚠ THE MARKER IS IN THE PANEL'S OWN FRAME, so it is placed by the same group
+    // transform as everything else and its `cx`/`cy` stay the author's own floats.
+    mine = "";
+    onme = "";
+    if inwin && hex_editor::edge_layer(w, aq, ar, kref) == alayer && !seen {
+      seen = true;
+      onme = "  you";
+      mine = "<circle class='author' data-x='{fx(who.pw_x)}' data-z='{fx(who.pw_z)}'"
+           + " data-yaw='{fx(who.pw_yaw)}' cx='{fx(who.pw_x)}' cy='{fx(who.pw_z)}'"
+           + " r='0.3' fill='rgb(220,40,40)' stroke='rgb(250,250,248)'"
+           + " stroke-width='0.06'/>\n"
+           + "<line class='facing' x1='{fx(who.pw_x)}' y1='{fx(who.pw_z)}'"
+           + " x2='{fx(who.pw_x + cos(who.pw_yaw) * PLAN_FACING)}'"
+           + " y2='{fx(who.pw_z + sin(who.pw_yaw) * PLAN_FACING)}'"
+           + " stroke='rgb(220,40,40)' stroke-width='0.1' stroke-linecap='round'/>\n";
+    }
     captext = "L{k}  ref {kref}  q {q0}..{q1}  r {r0}..{r1}  cells {pan.pp_cells}"
-            + "  marks {pan.pp_marks}  run {pan.pp_say}";
+            + "  marks {pan.pp_marks}  run {pan.pp_say}{onme}";
     // ⚠ SIZED TO FIT, because a caption that runs off its panel is a caption whose
     // LAST field is the one you cannot read — and the last field is the run verdict,
     // the one thing a reader cannot infer from the drawing.
@@ -300,6 +363,7 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
             + "<rect x='{fx(px)}' y='{fx(pz)}' width='{fx(pw)}' height='{fx(ph)}'"
             + " fill='rgb(250,250,248)'/>\n"
             + pan.pp_body
+            + mine
             + "<text x='{fx(px + 0.3)}' y='{fx(pz + ph - 0.3)}' font-size='{fx(capfs)}'"
             + " font-family='monospace' fill='rgb(70,74,82)'>{captext}</text>\n"
             + "</g>\n";
@@ -319,13 +383,23 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
   // ⚠ THE COUNTS ARE IN A COMMENT, NOT IN AN ELEMENT, and they are for a person
   // reading the file. A gate must count the elements it can see — `CLAUDE.md`:
   // measure what was emitted, never a number the producer re-derives.
+  // ⚠ THREE STATES, AND THEY MUST NOT READ ALIKE — the same rule the run verdict
+  // obeys. *Nobody was given*, *somebody was given and is on this plan*, and
+  // *somebody was given and is on none of these levels* are three different facts,
+  // and an absent marker says all three at once.
+  whosay = "none";
+  if who.pw_show {
+    whosay = "({fx(who.pw_x)},{fx(who.pw_z)}) y {fx(who.pw_y)}";
+    if !seen { whosay += " OFF-PLAN"; }
+  }
   foot = "<!-- plan: {title} q {q0}..{q1} r {r0}..{r1} levels {len(rs)}"
-       + " pitch {fx(pitch)} cells {totcell} edges {totmark} run{verdicts} -->\n</svg>\n";
+       + " pitch {fx(pitch)} cells {totcell} edges {totmark} run{verdicts}"
+       + " who {whosay} -->\n</svg>\n";
   head + bodies + foot
 }
 
 // One level, which is what most callers want and what `B0` shipped.
 pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
                 ref: float, title: text) -> text {
-  plan_levels(w, q0, r0, q1, r1, [ref], title)
+  plan_levels(w, q0, r0, q1, r1, [ref], plan_nobody(), title)
 }

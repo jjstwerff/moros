@@ -1,0 +1,26 @@
+# THREE STATIONS, EACH SAYING WHERE THE PERSON IS TWICE — plan 26 `B3`.
+#
+# `feet` reads the WALKER. `plan` writes the picture and then reads the marker back
+# OUT of it. The two lines are the same fact from opposite ends, and `run.sh`
+# compares them — which is the only way to see that the plan draws the author the
+# tick moved rather than a pose of its own.
+#
+# ⚠ THE STATIONS MUST DIFFER, and the probe checks that they do: a walker that never
+# moved would let a marker hard-wired to the origin pass every row.
+
+at 0 0 0
+verb raise
+feet
+plan s1
+
+# …and now the tick moves the person, which is the half a teleport cannot test.
+keys 1
+step 40
+keys 0
+feet
+plan s2
+
+# A yaw as well, so the facing has somewhere to point.
+at 6 -3 90
+feet
+plan s3
