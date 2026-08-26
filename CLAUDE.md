@@ -50,6 +50,17 @@ unmerged, and the maintainer landed it their own way, which is how it should go.
 `loft-libs-*` is shared and consumed from the **working tree**, so a new public name can turn
 a sibling's build red with no local edit — grep the sibling before adding one. Kill only processes you can identify as yours; this box runs other agents' work.
 
+⚠ **AND THEIR CI TAKES THE NATIVE LIBRARIES OUT FROM UNDER YOURS.** loft's own
+`make rebuild-native-cdylibs` empties `~/.loft/build-cache/<lib>-<ver>/release` and
+refills it, so any `--lib lib/` link here fails while it is empty —
+`rust-lld: error: unable to find library -lloft_graphics_native` (or `-lloft_server`,
+or `-lloft_web`), often with an EMPTY probe log, which reads as *the server never
+listened* rather than as *it never built*. Measured five times on 2026-08-26 across
+`probe/plan`, `probe/k1` and two direct runs. **Nothing to fix and nothing to kill**:
+re-run when `pgrep -f cargo-nextest` is quiet, or force interpreted libraries with
+`LOFT_NO_NATIVE_LIBS=1` — which changes what is exercised, so a green that way is not
+a claim about the native backend.
+
 ⚠ **And that rule is not only about siblings.** A loft struct name is global across a
 *consumer's* whole dependency graph, so two packages in `lib/` may each define `Fit` and the
 pair silently merges into one struct with whichever field types were declared last. **A package
