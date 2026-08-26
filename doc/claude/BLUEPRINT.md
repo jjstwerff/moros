@@ -425,6 +425,12 @@ instrument that could not find the number already there cannot be believed about
 is missing. ⚠ **And a `wall_type.loft` row asking `wall_half` what `wall_half` says would have
 been green the whole time**, because the resolver was never the broken half.
 
+![two declared wall types, built at their own two widths](img-walltype-3d-both-b4f.png)
+
+*The same two declarations `B4e` drew in plan, standing in the world. ⚠ Which wall is
+which is **measured, not read off the picture** — the 0.2 brick is laid alone first, so
+screen-left is known before the 0.7 curtain arrives beside it.*
+
 ⚠ **WHAT IT DELIBERATELY DOES NOT REACH, AND WHY EACH.** `roof_plan_of`'s eave reach and the
 camera's `CAM_SKIN` are still the plain band — a `const`, in the camera's case, so it has no world
 to ask — and both are about the PROCEDURAL house, whose walls `place_house` stamps as `WALL_MAT`

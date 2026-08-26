@@ -652,6 +652,16 @@ half-width it is built at — `run_wall` taking that half instead of choosing it
 `lib/hex_mesh/tests/wall_thick.loft`, which measures a wall's band as the spread of the
 wall mesh's own vertices.
 
+![the thin wall alone](../../doc/claude/img-walltype-3d-thin-b4f.png)
+![and the thick one beside it](../../doc/claude/img-walltype-3d-both-b4f.png)
+
+*`declare edge 5 brick thick=0.2` and `declare edge 6 curtain thick=0.7`, in the WORLD
+this time rather than in the plan. ⚠ **Two pictures because one cannot say which wall is
+which**: the thin one is laid alone first, so screen-left is measured to be slot 5 rather
+than argued from a handedness convention — and the wall that arrives in the second is the
+one carrying a top face you can see. Before this step both were √3/2 and the pair would
+have been one picture twice.*
+
 ### `wt_thick` had exactly one consumer and it was a PICTURE
 
 `B4d` read a wall's thickness off the palette and `B4e` let a person choose the type
