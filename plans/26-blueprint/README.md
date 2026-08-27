@@ -263,7 +263,7 @@ as a byte.
 | **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
 | **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
 | **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
-| **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red | ✅ **SHIPPED** |
+| **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red, **two of them green** | ✅ **SHIPPED** `4d47020` |
 
 ### Why `B0` is one phase and not two
 
@@ -2199,6 +2199,138 @@ pick a side, and what is wrong is only that the pick depends on the direction of
 `run_edges`' answer — but the loop that would describe every structure in a window is a
 further step, and it wants the stamper settled first: a peel that subtracted a wall's own
 marks would subtract the wrong ones on five headings in ten.
+
+## What `B4r` turned up
+
+**Shipped `4d47020`.** `hex_editor::run_normal` — the LINE's own normal, canonical in sign
+and anchored at the midpoint — read by `run_edges` and by `wall_stamp`; the 24-heading gate
+in `run_fit.loft`; two fixtures moved off a cell centre. 7 rows in `run_fit.loft` and 50 in
+`planview.loft`.
+
+![the same wall, walked north](../../doc/claude/img-wall-north-b4r.png)
+![…and walked south](../../doc/claude/img-wall-south-b4r.png)
+
+*After. Both zigzag to the same side of their description and neither caption carries a
+residual. `B4q`'s pair, one section up, is the same two windows before.*
+
+### ✅ The defect is ours and the library's tie-break is not it
+
+`edges_halfplane_surf` marks on `sa < 0.0 && sb >= 0.0` — a half-open test, so a cell centre
+exactly **on** the line always joins the `>= 0` side and never the other. That is correct
+and necessary: a zero-width line through a cell centre has to pick a side. ⚠ **What was
+wrong is that we picked it with the run's TANGENT**, which negates when the walk reverses.
+
+⚠ **AND IT IS A NO-OP WHEREVER NO CELL LIES ON THE LINE**, which is why so little moves:
+the library visits every cell against all six neighbours, so an edge with its two cells
+strictly either side is marked under **both** signs — from `(a, b)` under one and `(b, a)`
+under the other. Only `s == 0` breaks that symmetry.
+
+### ⛔ Fixing the sign fixed three headings of eight and REGRESSED a fourth
+
+Measured against `HEAD`, not reasoned — `both / forward-only / reverse-only`:
+
+| heading | before | sign only | and the midpoint |
+|---|---|---|---|
+| east | 10 / 0 / 0 | 10 / 0 / 0 | 10 / 0 / 0 |
+| **north** | 2 / 9 / 9 | ✅ 11 / 0 / 0 | 11 / 0 / 0 |
+| NE | 8 / 0 / 0 | 8 / 0 / 0 | 8 / 0 / 0 |
+| **shallow NE** | 3 / 9 / 9 | ✅ 12 / 0 / 0 | 12 / 0 / 0 |
+| steep NE | 10 / 0 / 0 | 10 / 0 / 0 | 10 / 0 / 0 |
+| **shallow NW** | 10 / 3 / 3 | ⛔ 10 / 3 / 3 | ✅ 13 / 0 / 0 |
+| **SW** | 3 / 9 / 9 | ✅ 12 / 0 / 0 | 12 / 0 / 0 |
+| **shallow SE** | 12 / 0 / 0 | ⛔ **6 / 6 / 6** | ✅ 12 / 0 / 0 |
+
+The offset `c` was still taken from an **endpoint**. Both endpoints lie on the line, so
+`n·p0` and `n·p1` are the same number in arithmetic and differ in the last bits — against a
+tie-break that compares with exactly `0.0`. The midpoint is bit-identical either way,
+because IEEE addition is commutative.
+
+⚠ **A HALF FIX HERE READS EXACTLY LIKE A FIX**: three headings repaired is a table that
+looks like progress, and only measuring the ones that were already green found the
+regression. **`shallow SE` was never in `B4q`'s test set** — that file sampled four
+headings, all of them clean — so nothing would have gone red.
+
+### ⚠ The corpus does not move, and the control is what makes that worth saying
+
+`house`, `door`, `wall`, `b4o`, `b4p` and `probe/t4`'s `deck.keys` / `cellar.keys` digests
+are byte-identical. ⚠ **On its own that is the sentence a blind instrument gives** —
+`probe/t4`'s own lesson, *a sabotage that leaves the world identical can mean the fixture
+cannot see it*. So the claim rests on a script that DOES move: `b4q.keys` lays a due-north
+wall and keys `897448168` before, `2064361579` after. The corpus is still because the
+corpus walks east.
+
+### ⛔ `road_stamp` looks like the same defect and could not be shown to be
+
+Its fences carry the identical marking — tangent normal, endpoint anchor, the same
+tie-break — and a fence is a `WallRun` like any other. The fix was written there too. Then
+it was measured: a road driven both ways is **identical** at twelve authored headings and
+at four hand-built centrelines, including one tuned so a fence lands exactly on a
+cell-centre column — with `run_normal` in and with it out.
+
+⛔ **So the change was REVERTED and its test row DELETED.** The row passed before the fence
+fix and after it: a green row that could never have been red is not a test, and a behaviour
+change no row can see red is not a fix. The reading is recorded at the code for whoever
+meets it next. ⚠ **This is the second unverified cause this plan has caught in two steps** —
+`B4q`'s `WallRun is private` story was refuted by its own repro — and both were caught by
+building the control rather than by re-reading the code.
+
+### The three rows that went red were written to say so
+
+Two wandering-chain fixtures anchored at `(0, 0)` — which **is** cell `(0,0)`'s centre, so
+the line ran exactly through it. With the tie-break settled that chain leaves 7 marks that
+are not a path and is **refused**. Both moved off the centre: `B1`'s claim is about the
+ANGLE, and `run_between` snaps to `D` and anchors on a corner, so nothing authors one. And
+`B4q`'s *does not reproduce its field* picture row is this step's acceptance inverted.
+
+### The sabotage sweep, and two rows that were GREEN
+
+Five faults, restored from copies, with the canonical normal, its midpoint anchor and
+**both callers asking for it** asserted present before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the normal's sign is the tangent's again — `B4q`'s behaviour restored | `run_fit` · `planview` |
+| 2 | the offset is anchored at an ENDPOINT again | `run_fit` |
+| 3 | the sign rule drops its vertical case | ⚠ **nothing** |
+| 4 | `wall_stamp` keeps its own normal for the offset spread | ⚠ **nothing** |
+| 5 | the picture stops saying the residual | `planview` |
+
+⚠ **ROWS 1 AND 2 ARE THE TWO HALVES, AND ONLY ROW 1 REACHES THE PICTURE.** The endpoint
+anchor breaks headings the plan view's own fixtures do not draw, which is the same shape as
+the regression the before/after table caught: **the sample decides what a suite can see.**
+
+⛔ **ROW 4 REFUTES A COMMENT THIS STEP WROTE.** It claimed a second sign convention at
+`wall_stamp`'s offset would leave `eoff` remembering the walk. It would not: flipping the
+sign negates `olo` and `ohi` and swaps them, so the spread and the shift are both unchanged.
+One normal per function is still worth having, and it is **not** what makes the field
+stable. The comment says that now.
+
+⚠ **ROW 3 FOUND A BRANCH NOTHING CAN REACH.** A due-east wall's normal is vertical and no
+cell centre lies on a horizontal line at the offsets `run_between` anchors, so the clause
+that settles that tie-break is never exercised. It stays for the reason `oct_recover` keeps
+its own two-cell margin — the failure mode is a silent wrong answer rather than a red row —
+and the note is at the code rather than only here.
+
+### And six files "failed" at exactly 300.1 s, which was the box rather than the step
+
+The interpreted sweep came back with `cave`, `aim`, `disc`, `field`, `house_box` and `mode`
+all at **300.1 s** — loft's per-file deadline, to the tenth, on six files at once. ⚠ **A
+deadline reports as a FAILED row and reads exactly like a broken change**, and five of the
+six are files this step never touched. Load average was **11.5**; the same 93 files went
+green on `--native` in **57 s** minutes later and interpreted in **133 s** on an idle box.
+⚠ The tell is the *identical* time on every row: a real regression does not stop six
+unrelated files at the same tenth of a second.
+
+### What it deliberately does not do
+
+⛔ **IT DOES NOT PEEL, AND THAT IS NOW THE ONLY THING IN THE WAY.** `B4p` named *what does a
+run own*; `B4q` answered it with `run_edges`; this step makes that answer **stable**, which
+is what a peel needs before it can subtract a wall's own marks. The loop that describes every
+structure in a window is the next step and nothing else blocks it.
+⛔ **AND IT DOES NOT TOUCH THE THIRD COPY OF THE MARKING RULE.** `road_stamp`'s fence loop is
+`run_edges`' body again; folding it in wants the `cut` tally reconciled with what `run_edges`
+returns, which is a second change wearing one diff.
 
 ## Open questions
 

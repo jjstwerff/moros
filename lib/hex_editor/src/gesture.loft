@@ -3567,6 +3567,14 @@ pub fn wall_step(draft: WallDraft, x: float, z: float, mat: integer) -> DraftSte
 //
 // The rule is lexicographic on the normal and exact: reversing a run negates
 // `seg_tangent`'s components bit for bit, so both walks land on the same branch.
+//
+// ⚠ **THE `rn_nx == 0.0` CLAUSE IS DEFENSIVE, AND THE SWEEP SAYS SO RATHER THAN THE
+// COMMENT.** A row cutting it went **green**: a due-east wall's normal is vertical, and
+// no cell centre lies on a horizontal line at the offsets `run_between` anchors, so the
+// tie-break it settles is never reached by anything this suite can build. It stays for
+// `oct_recover`'s reason at its own two-cell margin — the failure mode is a silent wrong
+// answer, not a red row — and a total rule with an unreachable branch is cheaper to keep
+// than a partial one to re-derive.
 pub fn run_normal(run: WallRun) -> (float, float, float) {
   rn_t = hex_way::track_new();
   hex_way::track_straight(rn_t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
@@ -3640,11 +3648,13 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
   // callers.** The write below is what this function still owns; which edges to write
   // is a question the recovery has to be able to ask too, and a second copy of the
   // answer is how a wall's description comes to describe a different wall.
-  // ⚠ **THE SAME NORMAL THE MARKING USED — plan 26 `B4r`.** `eoff` below measures where
-  // each edge sits relative to the line, and a second sign convention here would make the
-  // offset the one quantity in this function that still remembered the walk. With the
-  // canonical normal it does not: both endpoints lie on the line, so `n·(m - p0)` is the
-  // same number whichever of them is `p0`.
+  // ⚠ **THE SAME NORMAL THE MARKING USED — plan 26 `B4r` — AND IT IS A CONSISTENCY
+  // CHOICE, NOT A CORRECTNESS ONE.** The first version of this comment claimed a second
+  // sign convention here would leave `eoff` remembering the walk; **the sweep refuted
+  // it** — a row restoring the tangent's normal at this site went **green**. Flipping the
+  // sign negates `olo` and `ohi` and swaps them, so the spread `ohi - olo` is unchanged,
+  // and the shift `nx * olo` is unchanged with it. One normal per function is still worth
+  // having; it is not what makes the field stable.
   (nx, nz, _c) = run_normal(run);
   eg = run_edges(run, q0, r0, w, h, mat);
   n = 0;
