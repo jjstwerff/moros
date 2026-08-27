@@ -222,6 +222,119 @@ fn cell_points(q: integer, r: integer) -> text {
   cp_s
 }
 
+// ── THE DESCRIPTION, AND WHICH READER GIVES IT — plan 26 `B1` … `B4p` ──────
+//
+// ⚠ **ONE RUN PER WINDOW, BECAUSE THAT IS WHAT THE READER ANSWERS.**
+// `wall_read_run` takes a rectangle and asks *what run do these marks describe*; a
+// window holding a closed loop or two separate walls is not a run and it refuses.
+// So a house draws no run, and that is a fact about the reader worth seeing rather
+// than a gap to paper over — the caption says which of the silences it is.
+//
+// ⚠ **THE ORDER IS NOT A PREFERENCE, IT IS WHAT KEEPS THE READERS APART** — plan 26
+// `B4h`. `wall_read_run` refuses a closed loop by construction (*"`ends = 0` is a
+// closed loop"*), so a rim can never be a run and a run can never be a disc. Asking
+// a round reader only where the run reader gave up means no two of them can answer
+// for one window, and it costs nothing on a window that already had an answer.
+//
+// ⚠ **AND WHICH ROUND READER? THE PALETTE SAYS** — plan 26 `B4m`, BLUEPRINT §2.5:
+// *an octagon tower is never deduced; it is stored*. A shape read out of GEOMETRY
+// gets `rebuild_construct`'s confident hexagon — `sides = 6`, nothing unexplained,
+// no warning — so *which* reader is asked is a palette question and only *which
+// centre and which shell* is a field question. A body this tree does not know, and a
+// window whose marks disagree about the body, both fall through to the round reader,
+// because the vocabulary is open and a picture is not where a palette is debugged.
+//
+// ⚠ **`skip` DECIDES WHOSE MARKS AND NOTHING ELSE — plan 26 `B4p`.** The same chain
+// is asked of a whole window and of what one rectangle does not own, so `B4o`'s
+// second asking stops being a hand-written excerpt of the first. That excerpt was
+// the run reader alone, and it is why a tower standing beside a house was reported
+// as `+ 54 unexplained`.
+pub struct PlanDesc {
+  pd_ok:   boolean,
+  pd_kind: text,        // `run` · `disc` · `octagon`
+  pd_args: text,        // …and its parameters, in the caption's own words
+  pd_svg:  text,
+  pd_stop: boolean,     // the palette NAMED the octagon reader, and it refused
+}
+
+// ⚠ **A REFUSAL CARRIES WHETHER THE PALETTE HAD ALREADY CHOSEN.** The readers below
+// are ordered so that no two answer for one window; `pd_stop` is that same rule where
+// the choosing was a DECLARATION rather than a shape. A world whose marks all say
+// `THICK_OCT` has named its reader, so an octagon that refuses is the answer — asking
+// the house reader afterwards would let a declaration be overruled by a search.
+fn desc_no(stop: boolean) -> PlanDesc {
+  PlanDesc { pd_ok: false, pd_kind: "", pd_args: "", pd_svg: "", pd_stop: stop }
+}
+
+// The caption's words for one description.
+//
+// ⚠ **THE WINDOW'S OWN DESCRIPTION HAS SAID `d0 p5` FOR A RUN SINCE `B1`**, so the
+// run is the one kind whose noun `desc ` already implies. A leftover has to spell it
+// — `+ run d0 p5` — because a `+` with no noun after it reads as more of the phrase
+// before. One function decides both, so the two spellings cannot drift apart.
+fn desc_phrase(kind: text, args: text, lead: boolean) -> text {
+  if lead && kind == "run" { return args; }
+  "{kind} {args}"
+}
+
+// ⚠ **THE THREE DESCRIPTIONS SHARE ONE STROKE, AND DELIBERATELY SO.** All of them
+// are the DESCRIPTION drawn over the field it was recovered from; a second colour
+// would say *this is a different kind of thing* when the only difference is which
+// reader could explain the marks.
+const DESC_INK = "rgb(30,90,220)";
+
+fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+                 ref: float, skip: boolean, b: Box) -> PlanDesc {
+  dwq = q1 - q0;
+  dhr = r1 - r0;
+  rr = if skip { hex_editor::wall_recover_outside(w, q0, r0, dwq, dhr, ref, b) }
+       else { hex_editor::wall_recover(w, q0, r0, dwq, dhr, ref) };
+  if rr.rr_ok {
+    return PlanDesc { pd_ok: true, pd_kind: "run",
+      pd_args: "d{rr.rr_d} p{rr.rr_p}",
+      pd_svg: "<line class='run' data-d='{rr.rr_d}' data-p='{rr.rr_p}'"
+            + " x1='{fx(rr.rr_x0)}' y1='{fx(rr.rr_z0)}'"
+            + " x2='{fx(rr.rr_x1)}' y2='{fx(rr.rr_z1)}'"
+            + " stroke='{DESC_INK}' stroke-width='0.05'"
+            + " stroke-dasharray='0.32 0.18' stroke-linecap='round'/>\n",
+      pd_stop: false };
+  }
+  body = if skip { hex_editor::marks_body_outside(w, q0, r0, dwq, dhr, ref, b) }
+         else { hex_editor::marks_body(w, q0, r0, dwq, dhr, ref) };
+  if body == hex_editor::WALL_BODY_OCT {
+    ot = if skip { hex_editor::oct_recover_outside(w, q0, r0, dwq, dhr, ref, b) }
+         else { hex_editor::oct_recover(w, q0, r0, dwq, dhr, ref) };
+    if !ot.ot_ok { return desc_no(true); }
+    // ⚠ **THE CORNERS ARE `hex_editor`'s** — `oct_px_x`/`oct_px_z` — because a
+    // picture placing eight of its own would be a second definition of the shape,
+    // agreeing with the gesture only by having no reason to differ.
+    ox = hex_editor::oct_px_x(ot.ot_cq, ot.ot_cr, ot.ot_shell);
+    oz = hex_editor::oct_px_z(ot.ot_cq, ot.ot_cr, ot.ot_shell);
+    opts = "";
+    for oi in 0..len(ox) { opts = opts + "{fx(ox[oi] ?? 0.0)},{fx(oz[oi] ?? 0.0)} "; }
+    return PlanDesc { pd_ok: true, pd_kind: "octagon",
+      pd_args: "{ot.ot_cq},{ot.ot_cr} shell {ot.ot_shell}",
+      pd_svg: "<polygon class='oct' data-cq='{ot.ot_cq}' data-cr='{ot.ot_cr}'"
+            + " data-shell='{ot.ot_shell}' data-marks='{ot.ot_marks}'"
+            + " points='{opts}' fill='none' stroke='{DESC_INK}'"
+            + " stroke-width='0.05' stroke-dasharray='0.32 0.18'/>\n",
+      pd_stop: false };
+  }
+  dc = if skip { hex_editor::disc_recover_outside(w, q0, r0, dwq, dhr, ref, b) }
+       else { hex_editor::disc_recover(w, q0, r0, dwq, dhr, ref) };
+  if !dc.dc_ok { return desc_no(false); }
+  // ⚠ AND `r` IS `√N / 2` — the field's own distance, measured against `hex_to_px`'s
+  // furthest cell centre at six shells, never a fitted radius.
+  PlanDesc { pd_ok: true, pd_kind: "disc",
+    pd_args: "{dc.dc_cq},{dc.dc_cr} shell {dc.dc_shell}",
+    pd_svg: "<circle class='disc' data-cq='{dc.dc_cq}' data-cr='{dc.dc_cr}'"
+          + " data-shell='{dc.dc_shell}' data-marks='{dc.dc_marks}'"
+          + " cx='{fx(dc.dc_x)}' cy='{fx(dc.dc_z)}' r='{fx(dc.dc_rad)}'"
+          + " fill='none' stroke='{DESC_INK}' stroke-width='0.05'"
+          + " stroke-dasharray='0.32 0.18'/>\n",
+    pd_stop: false }
+}
+
 pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
               ref: float) -> PlanPanel {
   cells = "";
@@ -302,96 +415,39 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
       }
     }
   }
-  // ── THE DESCRIPTION — plan 26 `B1` ────────────────────────────────────────
+  // ── THE DESCRIPTION — plan 26 `B1`, AND EVERY READER SINCE ────────────────
   //
-  // ⚠ ONE RUN PER WINDOW, BECAUSE THAT IS WHAT THE READER ANSWERS. `wall_read_run`
-  // takes a rectangle and asks *what run do these marks describe*; a window holding
-  // a closed loop or two separate walls is not a run and it refuses. So a house
-  // draws NO description, and that is a fact about the reader worth seeing rather
-  // than a gap to paper over — the caption says which of the two silences it is.
-  rr = hex_editor::wall_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
+  // ⚠ **ONE CHAIN, ASKED OF THE WINDOW AND THEN OF WHAT IS LEFT OF IT.** Which
+  // readers exist and in what order is `plan_describe`'s to say, once; this panel
+  // decides only *whose marks* each asking is about. `B4o` wrote the leftover's
+  // asking out by hand here and could therefore afford only the run reader — a
+  // second copy of an ordering is how two askings of one chain come to differ.
   runs = "";
   say = "none";
-  if rr.rr_ok {
-    say = "d{rr.rr_d} p{rr.rr_p}";
-    runs = "<line class='run' data-d='{rr.rr_d}' data-p='{rr.rr_p}'"
-         + " x1='{fx(rr.rr_x0)}' y1='{fx(rr.rr_z0)}'"
-         + " x2='{fx(rr.rr_x1)}' y2='{fx(rr.rr_z1)}'"
-         + " stroke='rgb(30,90,220)' stroke-width='0.05' stroke-dasharray='0.32 0.18'"
-         + " stroke-linecap='round'/>\n";
+  dsc = plan_describe(w, q0, r0, q1, r1, ref, false, hex_editor::box_none());
+  if dsc.pd_ok {
+    say = desc_phrase(dsc.pd_kind, dsc.pd_args, true);
+    runs = dsc.pd_svg;
   } else if nedge > 0 {
-    // ── AND IF IT IS NOT A RUN, IS IT A DISC? — plan 26 `B4h` ────────────────
+    // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
+    // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
+    // number, and it was read as the second. A window with no marks at all keeps
+    // `none` and never reaches here.
+    say = "refused ({nedge} marks)";
+    // ── AND IF IT IS NOT ANY OF THOSE, IS IT A HOUSE? — plan 26 `B4n` ────────
     //
-    // ⚠ **THE ORDER IS NOT A PREFERENCE, IT IS WHAT KEEPS THE TWO READERS APART.**
-    // `wall_read_run` refuses a closed loop by construction — *"`ends = 0` is a
-    // closed loop"* — so a rim can never be a run, and a run can never be a disc.
-    // Asking the disc reader only where the run reader gave up means the two can
-    // never disagree about one window, and it costs nothing on every window that
-    // already had an answer.
+    // ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS WHAT A BLUEPRINT
+    // IS FOR.** Its marks are four runs plus a loop, which no reader above can
+    // answer for — so this one does not read the marks at all. `place_house` fills
+    // its footprint with `box_fill`, so the FLOOR cells are the rectangle, and the
+    // marks become what the recovered rectangle is measured against.
     //
-    // ⚠ **AND IT IS THE `refused` BRANCH THAT GAINS THIS, NOT THE `none` ONE.** A
-    // window with no marks at all has nothing to describe; a window with marks the
-    // run reader could not explain is exactly where a second description belongs.
-    // The two silences stay different, which is what this branch was written for.
-    // ── AND WHICH ROUND READER? THE PALETTE SAYS — plan 26 `B4m` ────────────
-    //
-    // ⛔ **§2.5: *an octagon tower is never deduced; it is stored*.** A shape read out
-    // of GEOMETRY gets `rebuild_construct`'s confident hexagon — `sides = 6`, nothing
-    // unexplained, no warning — so *which* reader is asked is a palette question and
-    // only *which centre and which shell* is a field question. `marks_body` answers
-    // `""` for a window whose marks disagree, which falls through here exactly as an
-    // undeclared world does.
-    if hex_editor::marks_body(w, q0, r0, q1 - q0, r1 - r0, ref)
-       == hex_editor::WALL_BODY_OCT {
-      ot = hex_editor::oct_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
-      if ot.ot_ok {
-        say = "octagon {ot.ot_cq},{ot.ot_cr} shell {ot.ot_shell}";
-        // ⚠ **THE CORNERS ARE `hex_editor`'s** — `oct_px_x`/`oct_px_z` — because a
-        // picture placing eight of its own would be a second definition of the shape,
-        // agreeing with the gesture only by having no reason to differ.
-        ox = hex_editor::oct_px_x(ot.ot_cq, ot.ot_cr, ot.ot_shell);
-        oz = hex_editor::oct_px_z(ot.ot_cq, ot.ot_cr, ot.ot_shell);
-        pts = "";
-        for oi in 0..len(ox) { pts = pts + "{fx(ox[oi] ?? 0.0)},{fx(oz[oi] ?? 0.0)} "; }
-        // ⚠ THE SAME DASHED BLUE THE RUN AND THE DISC USE, for their reason: all
-        // three are the DESCRIPTION drawn over the field it came from.
-        runs = "<polygon class='oct' data-cq='{ot.ot_cq}' data-cr='{ot.ot_cr}'"
-             + " data-shell='{ot.ot_shell}' data-marks='{ot.ot_marks}'"
-             + " points='{pts}' fill='none' stroke='rgb(30,90,220)'"
-             + " stroke-width='0.05' stroke-dasharray='0.32 0.18'/>\n";
-      } else {
-        say = "refused ({nedge} marks)";
-      }
-      return PlanPanel { pp_body: cells + edges + runs, pp_cells: ncell,
-                         pp_marks: nedge, pp_say: say, pp_bad: nbad,
-                         pp_minx: box.pb_minx, pp_maxx: box.pb_maxx,
-                         pp_minz: box.pb_minz, pp_maxz: box.pb_maxz };
-    }
-    dc = hex_editor::disc_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
-    if dc.dc_ok {
-      say = "disc {dc.dc_cq},{dc.dc_cr} shell {dc.dc_shell}";
-      // ⚠ **THE SAME DASHED BLUE THE RUN USES, AND DELIBERATELY SO.** Both are the
-      // DESCRIPTION drawn over the field it was recovered from; a second colour
-      // would say *this is a different kind of thing* when the only difference is
-      // which reader could explain the marks.
-      // ⚠ AND `r` IS `√N / 2` — the field's own distance, measured against
-      // `hex_to_px`'s furthest cell centre at six shells, never a fitted radius.
-      runs = "<circle class='disc' data-cq='{dc.dc_cq}' data-cr='{dc.dc_cr}'"
-           + " data-shell='{dc.dc_shell}' data-marks='{dc.dc_marks}'"
-           + " cx='{fx(dc.dc_x)}' cy='{fx(dc.dc_z)}' r='{fx(dc.dc_rad)}'"
-           + " fill='none' stroke='rgb(30,90,220)' stroke-width='0.05'"
-           + " stroke-dasharray='0.32 0.18'/>\n";
-    } else {
-      // ── AND IF IT IS NOT ROUND EITHER, IS IT A HOUSE? — plan 26 `B4n` ──────
-      //
-      // ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS WHAT A BLUEPRINT
-      // IS FOR.** Its marks are four runs plus a loop, which no reader above can
-      // answer for — so this one does not read the marks at all. `place_house` fills
-      // its footprint with `box_fill`, so the FLOOR cells are the rectangle, and the
-      // marks become what the recovered rectangle is measured against.
-      //
-      // ⚠ **THE ORDER IS THE SAME ARGUMENT THE DISC BRANCH MAKES**: asked only where
-      // the readers above gave up, so no two of them can answer for one window.
+    // ⚠ **IT IS LAST FOR THE REASON THE ROUND READERS ARE ORDERED AT ALL**: asked
+    // only where every reader above gave up, so no two of them answer for one
+    // window. ⚠ And `pd_stop` is what keeps that true through the palette — a world
+    // whose marks all declare `THICK_OCT` has NAMED its reader, so an octagon that
+    // refuses is the answer rather than a reason to ask a different question.
+    if !dsc.pd_stop {
       hh = hex_editor::house_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
       if hh.hs_ok {
         say = "house {hh.hs_cq},{hh.hs_cr} {hh.hs_wid}x{hh.hs_dep} rot {hh.hs_rot}";
@@ -418,38 +474,30 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
              + " points='{hpts}' fill='none'"
              + " stroke='rgb(30,90,220)' stroke-width='0.05'"
              + " stroke-dasharray='0.32 0.18'/>\n";
-        // ── AND WHAT THE HOUSE DOES NOT ACCOUNT FOR — plan 26 `B4o` ─────────
+        // ── AND WHAT THE HOUSE DOES NOT ACCOUNT FOR — plan 26 `B4o`, `B4p` ────
         //
-        // ⛔ **A WINDOW HAS HELD ONE DESCRIPTION SINCE `B1`, AND EVERY REAL SCENE HOLDS
+        // ⛔ **A WINDOW HELD ONE DESCRIPTION UNTIL `B4o`, AND EVERY REAL SCENE HOLDS
         // MORE THAN ONE THING.** `B1` measured the cost from the other side: a house
         // eight hexes away cost an unrelated wall its description, because one mitre
         // stub met the wall's chain at a vertex. Saying which structure each mark
         // belongs to first is what lets both be described.
         //
-        // ⚠ **THE LEFTOVER READER IS THE RUN READER ALONE**, deliberately. A leftover
-        // disc or octagon is a further step; claiming the chain here would be claiming
-        // a capability nothing has measured.
+        // ⚠ **AND THE LEFTOVER GETS THE WHOLE CHAIN — plan 26 `B4p`.** `B4o` gave it
+        // the run reader alone and said so; a house with a TOWER beside it therefore
+        // reported `+ 54 unexplained` about a rim this editor had stamped itself.
+        // The call below is the identical one three lines above it, with the house's
+        // own marks taken out — which is the whole of the difference between the two.
         if hh.hs_other > 0 {
-          ro = hex_editor::wall_recover_outside(w, q0, r0, q1 - q0, r1 - r0, ref,
+          lo = plan_describe(w, q0, r0, q1, r1, ref, true,
                  hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep,
                                     hh.hs_rot, false));
-          if ro.rr_ok {
-            say = say + " + run d{ro.rr_d} p{ro.rr_p}";
-            runs = runs
-                 + "<line class='run' data-d='{ro.rr_d}' data-p='{ro.rr_p}'"
-                 + " x1='{fx(ro.rr_x0)}' y1='{fx(ro.rr_z0)}'"
-                 + " x2='{fx(ro.rr_x1)}' y2='{fx(ro.rr_z1)}'"
-                 + " stroke='rgb(30,90,220)' stroke-width='0.05'"
-                 + " stroke-dasharray='0.32 0.18' stroke-linecap='round'/>\n";
+          if lo.pd_ok {
+            say = say + " + " + desc_phrase(lo.pd_kind, lo.pd_args, false);
+            runs = runs + lo.pd_svg;
           } else {
             say = say + " + {hh.hs_other} unexplained";
           }
         }
-      } else {
-        // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
-        // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
-        // number, and it was read as the second.
-        say = "refused ({nedge} marks)";
       }
     }
   }

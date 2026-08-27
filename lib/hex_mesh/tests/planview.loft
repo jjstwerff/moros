@@ -1356,3 +1356,107 @@ fn test_a_house_alone_is_unmoved_by_any_of_it() {
   assert(plan_tally(svg).pt_descs == 1,
          "a house alone tallied {plan_tally(svg).pt_descs} descriptions");
 }
+
+
+// ── `B4p` — THE LEFTOVER RUNS THE WHOLE CHAIN ──────────────────────────────
+//
+// ⛔ **`B4o` DREW ONE DESCRIPTION BESIDE A HOUSE AND IT WAS ALWAYS A RUN.** Its own note
+// said so — *"the leftover reader is the run reader alone"* — so a house with a TOWER
+// beside it captioned `+ 54 unexplained` about a rim this editor had stamped itself. The
+// chain is one function now, asked of the window and then of what one rectangle does not
+// own, so the second asking cannot be a smaller version of the first.
+
+// ⚠ **A WIDER GROUND, BECAUSE THE TOWER STANDS OFF THE END OF `flat_world`'s.** That
+// fixture reaches `r = -10` and a shell-156 rim about `(0, -8)` marks down to `r = -13`;
+// a gesture with no ground under it writes nothing, and the picture of it is a picture
+// of an empty window rather than a failing row.
+fn wide_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 20..21 {
+    for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// A house at the origin and a tower six clear cells south of it — the distance
+// `house_box.loft` measures rather than assumes.
+fn housed_and_towered_world(body: text) -> VoxelWorld {
+  w = wide_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, HOUSE_YAW);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "").ak_ok,
+         "the fixture's house was refused");
+  if body != "" {
+    code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+             [hex_voxel::PalEntry { pl_slot: 5, pl_name: "tower body={body}" }]);
+    assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  }
+  hex_editor::session_at(s, w, 0.0, 0.0 - 12.0, 0.0);
+  if body != "" {
+    assert(hex_editor::session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  }
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the fixture's tower was refused");
+  w
+}
+
+// ⛔ **THE PICTURE `B4o` COULD NOT DRAW.** Two descriptions, and the second is round.
+fn test_a_house_and_a_tower_are_both_described() {
+  svg = plan_svg(housed_and_towered_world(""), 0 - 7, 0 - 15, 8, 9, 2.0, "tower");
+  cap = caption(svg);
+  assert(cap.contains("desc house"), "the house lost its description: {cap}");
+  assert(cap.contains("+ disc 0,-8 shell 156"),
+         "the tower beside the house is still undescribed: {cap}");
+  // …and it is the OUTLINE that arrived, not only the sentence.
+  assert(tag_count(svg, "<polygon class='house'") == 1
+         && tag_count(svg, "<circle class='disc'") == 1,
+         "the picture draws {tag_count(svg, \"<polygon class='house'\")} rectangles and "
+       + "{tag_count(svg, \"<circle class='disc'\")} circles, not one of each");
+  // ⛔ **AND THE HOUSE MUST NOT CLAIM THE RIM** — `B4n`'s defect, at a round neighbour.
+  assert(cap.contains("4 stray"),
+         "with a tower in the window the mitre count is not 4: {cap}");
+  assert(plan_tally(svg).pt_descs == 2,
+         "two descriptions tallied as {plan_tally(svg).pt_descs}");
+}
+
+// ⛔ **AND WHICH ROUND READER THE LEFTOVER GETS IS THE LEFTOVER'S OWN PALETTE.** The
+// WINDOW's marks disagree about the body here — a house of `WALL_MAT` and a tower of
+// slot 5 — so a chain asking `marks_body` of the window would reach the disc reader,
+// which refuses an octagon correctly, having been asked the wrong question.
+fn test_an_octagonal_tower_beside_a_house_is_drawn_as_an_octagon() {
+  svg = plan_svg(housed_and_towered_world(hex_editor::WALL_BODY_OCT),
+                 0 - 7, 0 - 15, 8, 9, 2.0, "oct");
+  cap = caption(svg);
+  assert(cap.contains("desc house"), "the house lost its description: {cap}");
+  assert(cap.contains("+ octagon 0,-8 shell 156"),
+         "the octagonal tower beside the house is not named as one: {cap}");
+  assert(tag_count(svg, "<polygon class='oct'") == 1
+         && tag_count(svg, "<circle class='disc'") == 0,
+         "the picture drew {tag_count(svg, \"<polygon class='oct'\")} octagons and "
+       + "{tag_count(svg, \"<circle class='disc'\")} circles");
+  assert(plan_tally(svg).pt_descs == 2,
+         "two descriptions tallied as {plan_tally(svg).pt_descs}");
+}
+
+// ⚠ **AND A LEFTOVER THE CHAIN CANNOT EXPLAIN IS STILL COUNTED, NOT DRAWN.** Two towers
+// beside one house: the split is one level deep — `B4o`'s limitation, unchanged — so the
+// picture says how many marks it could not account for and draws nothing over them.
+// ⚠ Without this row the step could ship a chain that answered for anything.
+fn test_a_leftover_of_two_towers_is_counted_and_not_drawn() {
+  w = housed_and_towered_world("");
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0 - 14.0, 0.0, 0.0);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the second tower was refused");
+  svg = plan_svg(w, 0 - 15, 0 - 15, 8, 9, 2.0, "two");
+  cap = caption(svg);
+  assert(cap.contains("desc house"), "the house lost its description: {cap}");
+  assert(cap.contains("unexplained"),
+         "a leftover holding two rims was given a description: {cap}");
+  assert(tag_count(svg, "<circle class='disc'") == 0
+         && tag_count(svg, "<line class='run'") == 0
+         && tag_count(svg, "<polygon class='oct'") == 0,
+         "the picture drew a description over marks belonging to two structures");
+  assert(plan_tally(svg).pt_descs == 1,
+         "one description tallied as {plan_tally(svg).pt_descs}");
+}

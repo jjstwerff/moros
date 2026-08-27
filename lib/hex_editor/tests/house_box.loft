@@ -345,3 +345,194 @@ fn test_a_wall_alone_reads_the_same_through_both_doors() {
          "the two doors describe the same wall differently: d{a.rr_d} p{a.rr_p} "
        + "against d{b.rr_d} p{b.rr_p}");
 }
+
+
+// ── `B4p` — THE LEFTOVER RUNS THE WHOLE CHAIN ──────────────────────────────
+//
+// ⛔ **`B4o` GAVE THE LEFTOVER THE RUN READER ALONE AND SAID SO** — *"a leftover disc
+// or octagon is a further step; running the whole chain on the remainder would be
+// claiming a capability nothing here has measured"*. So a house with a TOWER beside it
+// reported **`+ 54 unexplained`** about a rim this editor had stamped itself, one
+// gesture earlier, and could describe round things perfectly well as long as nothing
+// else stood near them.
+//
+// ⚠ **THE EXCLUSION IS ONE PREDICATE AND THE SEARCH IS ONE BODY.** `house_owns` is what
+// `edges_mat_outside` already asked; `mark_left` is where the round readers ask it, and
+// `disc_recover_outside` / `oct_recover_outside` are `disc_recover` / `oct_recover` with
+// that flag rather than second copies of two searches whose every constant was measured.
+
+// The tower stands at cell `(0, -8)`, which is **six clear cells** from the house's own
+// neighbourhood.
+//
+// ⚠ **"CLEAR" IS A MEASURED DISTANCE HERE TOO — `B4o`'s fixture had to move nine rows
+// out.** The house recovers to `q -3..2, r 2..6` and `house_owns` reaches one cell past
+// that; a disk of shell 156 spans four cells and its rim marks a fifth, so a centre at
+// `r = -8` puts the nearest rim mark at `r = -3` against an owned `r = 1`. A tower any
+// closer is genuinely ambiguous, and a rule that answered anyway would be inventing.
+fn housed_and_towered() -> VoxelWorld {
+  w = house_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0 - 12.0, 0.0);
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the fixture's tower was refused");
+  w
+}
+
+const TOWER_CQ = 0;
+const TOWER_CR = 0 - 8;
+
+// ⛔ **THE ROW `B4o` COULD NOT HAVE PASSED.** Its leftover reader was `wall_read_run`,
+// and a rim is not a run by construction — *"`ends = 0` is a closed loop"* — so this
+// window's 54 leftover marks had no reader at all.
+fn test_a_tower_beside_a_house_is_described_through_the_leftover_door() {
+  w = housed_and_towered();
+  h = house_recover(w, 0 - 7, 0 - 15, 15, 24, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  assert(h.hs_stray == STRAY_EXPECT,
+         "with a tower in the window the mitre explains {h.hs_stray} marks, not "
+       + "{STRAY_EXPECT} — the tower is being counted as the house's");
+  bx = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+
+  // asked of the WHOLE window the disc reader refuses, as it must: a disc and a house
+  // together are not a disc, and a reader that answered would be describing one shape
+  // over another's marks.
+  whole = disc_recover(w, 0 - 7, 0 - 15, 15, 24, 0.0);
+  assert(!whole.dc_ok,
+         "the disc reader described a window holding a house and a tower as shell "
+       + "{whole.dc_shell} — it has stopped comparing every edge, and this pair proves "
+       + "nothing");
+  // …and with the house's marks attributed, the rim is its own disc again.
+  left = disc_recover_outside(w, 0 - 7, 0 - 15, 15, 24, 0.0, bx);
+  assert(left.dc_ok, "the tower is still undescribed with the house taken out: {left.dc_why}");
+  assert(left.dc_cq == TOWER_CQ && left.dc_cr == TOWER_CR,
+         "the rim recovers about ({left.dc_cq},{left.dc_cr}), not the cell the tower "
+       + "was rung at ({TOWER_CQ},{TOWER_CR})");
+  assert(left.dc_shell == TOWER_SHELL_DEFAULT,
+         "the rim recovers as shell {left.dc_shell}, not the {TOWER_SHELL_DEFAULT} the "
+       + "gesture rang");
+  // ⚠ **AND IT ACCOUNTS FOR EVERY MARK THE HOUSE DISOWNED, WITH NONE LEFT OVER.** The
+  // two counts come from opposite sides — `hs_other` from the rectangle's ownership walk
+  // and `dc_marks` from the disc's own scan — so a rule that dropped a mark on one side
+  // and not the other could not make them agree.
+  assert(left.dc_marks == h.hs_other,
+         "the disc explains {left.dc_marks} marks and the house disowned {h.hs_other} — "
+       + "one of the two is not seeing every mark the other is");
+}
+
+// ⚠ **AND THE CONTROL: A TOWER ALONE IS UNMOVED BY ANY OF THIS** — `B4o`'s rule for the
+// run reader, at the round one. A box far away owns nothing, so the two doors must agree
+// to the digit or the split has changed what a disc is.
+fn test_a_tower_alone_reads_the_same_through_both_doors() {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0 - 12.0, 0.0);
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the tower was refused");
+  a = disc_recover(w, 0 - 7, 0 - 15, 15, 24, 0.0);
+  far = hex_shape::box_new(20, 20, 4, 5, 0, false);
+  b = disc_recover_outside(w, 0 - 7, 0 - 15, 15, 24, 0.0, far);
+  assert(a.dc_ok && b.dc_ok, "the tower alone was refused by one of the two doors");
+  assert(a.dc_cq == b.dc_cq && a.dc_cr == b.dc_cr && a.dc_shell == b.dc_shell
+         && a.dc_marks == b.dc_marks && a.dc_rad == b.dc_rad,
+         "the two doors describe the same rim differently: {a.dc_cq},{a.dc_cr} shell "
+       + "{a.dc_shell} against {b.dc_cq},{b.dc_cr} shell {b.dc_shell}");
+}
+
+// ⛔ **THE PALETTE MUST BE ASKED OF THE LEFTOVER, AND ASKING IT OF THE WINDOW GIVES THE
+// WRONG READER.** §2.5: *an octagon tower is never deduced; it is stored*. A house of
+// `WALL_MAT` beside an octagonal tower makes the WINDOW's marks disagree about the body,
+// so `marks_body` answers `""` — the honest report that this window is not one structure
+// — and a chain reading that would ask the DISC reader, which refuses an octagon
+// correctly, having been asked the wrong question. The leftover is one structure.
+fn test_the_leftover_declares_the_body_that_picks_its_reader() {
+  w = house_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+           [hex_voxel::PalEntry { pl_slot: 5, pl_name: "tower body={WALL_BODY_OCT}" }]);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0 - 12.0, 0.0);
+  assert(session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the octagonal tower was refused");
+
+  h = house_recover(w, 0 - 7, 0 - 15, 15, 24, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  bx = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+
+  assert(marks_body(w, 0 - 7, 0 - 15, 15, 24, 0.0) != WALL_BODY_OCT,
+         "the whole window agrees on a body — the house and the tower are stamping one "
+       + "slot, and this row cannot tell the two questions apart");
+  assert(marks_body_outside(w, 0 - 7, 0 - 15, 15, 24, 0.0, bx) == WALL_BODY_OCT,
+         "the leftover declares "
+       + "'{marks_body_outside(w, 0 - 7, 0 - 15, 15, 24, 0.0, bx)}', not "
+       + "'{WALL_BODY_OCT}'");
+  o = oct_recover_outside(w, 0 - 7, 0 - 15, 15, 24, 0.0, bx);
+  assert(o.ot_ok, "the octagon beside a house is undescribed: {o.ot_why}");
+  assert(o.ot_cq == TOWER_CQ && o.ot_cr == TOWER_CR
+         && o.ot_shell == TOWER_SHELL_DEFAULT,
+         "the octagon recovers as {o.ot_cq},{o.ot_cr} shell {o.ot_shell}");
+  // ⚠ **AND THE READER THE WINDOW'S OWN BODY WOULD HAVE PICKED REFUSES IT**, which is
+  // what makes the declaration load-bearing rather than a preference.
+  assert(!disc_recover_outside(w, 0 - 7, 0 - 15, 15, 24, 0.0, bx).dc_ok,
+         "the disc reader described an octagon's field — the two shapes coincide at "
+       + "this shell, so `marks_body` is no longer deciding anything here");
+}
+
+// ── WHAT THE CHAIN STILL REFUSES, AND WHAT IT SILENTLY DROPS ───────────────
+//
+// ⚠ **A LEFTOVER OF TWO STRUCTURES IS NOT ONE STRUCTURE, AND THE CHAIN SAYS SO.** The
+// split is one level deep — `B4o`'s own limitation, unchanged by this step — so a window
+// holding a house and two towers describes the house and reports the rest as marks it
+// cannot explain. That is the honest answer and it is worth pinning: a chain that began
+// answering here would be inventing a shape over 108 marks belonging to two.
+fn test_a_leftover_of_two_structures_is_refused_rather_than_described() {
+  w = housed_and_towered();
+  s = EditSession {};
+  session_at(s, w, 0.0 - 14.0, 0.0, 0.0);
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the second tower was refused");
+  h = house_recover(w, 0 - 15, 0 - 15, 23, 24, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  bx = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+  assert(h.hs_other > 0, "neither tower is reported as somebody else's marks");
+  assert(!wall_recover_outside(w, 0 - 15, 0 - 15, 23, 24, 0.0, bx).rr_ok,
+         "two rims were described as one run");
+  assert(!disc_recover_outside(w, 0 - 15, 0 - 15, 23, 24, 0.0, bx).dc_ok,
+         "two rims were described as one disc");
+}
+
+// ⛔ **AND WHERE IT DOES NOT REFUSE, IT KEEPS ONE STRUCTURE AND DROPS THE OTHER IN
+// SILENCE.** A house, a tower and a wall: the rim is a closed loop and contributes no
+// ends, so `wall_read_run` sees exactly the wall's two and answers for the wall —
+// confidently, correctly about the wall, and with 54 of the tower's marks unmentioned.
+//
+// ⚠ **THAT IS `wall_recover`'s DOCUMENTED ANSWER, NOT A DEFECT THIS STEP ADDS** —
+// *"it does not check the path in between … a caller must not treat `rr_ok` as this is
+// a wall"*. It is pinned here because `B4o`'s *"the split is one level deep"* reads like
+// a gap and is in fact two different behaviours: **refused** when the leftover has no
+// ends to offer, and **one of them described** when it has exactly two.
+fn test_a_third_structure_is_dropped_rather_than_reported() {
+  w = housed_and_towered();
+  d = run_between(0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+  h = house_recover(w, 0 - 9, 0 - 15, 17, 24, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  bx = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+  r = wall_recover_outside(w, 0 - 9, 0 - 15, 17, 24, 0.0, bx);
+  assert(r.rr_ok,
+         "the leftover of a tower and a wall was refused — the rim has started "
+       + "offering ends, and the sentence above wants re-measuring rather than "
+       + "deleting");
+  // …and what it describes is the WALL, to within a cell of both ends.
+  lo = r.rr_z0; hi = r.rr_z1;
+  if hi < lo { lo = r.rr_z1; hi = r.rr_z0; }
+  assert(lo < 0.0 - 2.0 && hi > 5.0,
+         "the recovered run spans {lo}..{hi} in z, which is not the wall laid from "
+       + "-3 to 6 — it is describing something else");
+  // ⚠ **AND THE TOWER'S MARKS ARE NEITHER IN IT NOR REPORTED.** A run of this length
+  // cannot account for 54 rim edges, so the count the caption carries is the only place
+  // their absence can be seen at all.
+  assert(h.hs_other > 54,
+         "the leftover holds {h.hs_other} marks, which is fewer than the tower's rim "
+       + "alone — the wall or the rim is being attributed to the house");
+}

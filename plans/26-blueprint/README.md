@@ -182,6 +182,21 @@ whole window must still **refuse**, because those marks genuinely are not one pa
 wall alone must read identically through both doors, or the split has changed what a run
 is.
 
+**`B4p`** — **expected result**: a window holding a house **and** a round tower draws
+**two** descriptions — `house 0,4 4x5 rot 3 (8 fit) · 4 stray + disc 0,-8 shell 156` —
+where `B4o` draws `+ 54 unexplained`. **Invariant**: *the leftover is asked the same
+chain the window is* — one ordering, one palette question and one search per shape, with
+a single flag deciding only WHOSE marks; `B4o`'s second asking was a hand-written excerpt
+of the first and the excerpt was the run reader alone. **Negative controls**: the same
+field under a `THICK_OCT` declaration must draw an **octagon**, which only a chain asking
+the palette of the LEFTOVER can do — the window's own marks disagree about the body and
+would reach the disc reader, which refuses an octagon correctly, having been asked the
+wrong question; a tower **alone** must read identically through both doors, or the split
+has changed what a disc is; the whole window must still be **refused**, because a house
+and a rim genuinely are not one disc; and a leftover holding **two** structures must be
+counted rather than drawn, since the split is one level deep and a chain that answered
+there would be inventing a shape over marks belonging to two.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -217,6 +232,7 @@ as a byte.
 | **`B4m`** — the octagon's DESCRIPTION, and which reader the palette asks | M | `octagon.loft` — the centre and shell recover at two sizes and off the origin, a gapped rim and an over-large candidate are refused, **a disk and an octagon are measured to be one field at four sizes** and the admitted set is what separates them; `planview.loft` — the outline is eight points read out of the picture, the palette decides which description is drawn, an unknown body falls through, and `plan_tally` gets the five rows the driver's counter never had; five faults seen red | ✅ **SHIPPED** `552343b` |
 | **`B4n`** — a HOUSE's description: the rectangle its floor determines | M | `house_box.loft` — the membership pinned against `box_fill` at twelve rotations, the drawn corners round-tripped through `box_to_local`, the anchor the house's own cell and not the origin, a bitten floor refused with its count, the class reported, and **`B0`'s four stray edges measured at last**; `planview.loft` — the rectangle drawn as four points read out of the picture and the caption carrying both residuals; five faults seen red | ✅ **SHIPPED** `0efad03` |
 | **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
+| **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 

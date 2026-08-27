@@ -769,6 +769,43 @@ fn disc_no(why: text, marks: integer) -> DiscRead {
              dc_x: 0.0, dc_z: 0.0, dc_rad: 0.0, dc_marks: marks }
 }
 
+// ── WHOSE MARK IS THIS? — plan 26 `B4o`, ASKED OF THE ROUND READERS AT `B4p` ─
+//
+// ⛔ **A WINDOW HAS DESCRIBED AT MOST ONE ROUND THING, AND A HOUSE BESIDE IT MADE
+// THAT NONE.** `B4o` split the marks so a house and a WALL could both be described
+// and stopped there on purpose — *"the leftover reader is the run reader alone; a
+// leftover disc or octagon is a further step"* — so a house with a tower beside it
+// drew `+ 54 unexplained` about a rim this editor had stamped itself.
+//
+// ⚠ **THE EXCLUSION IS ONE PREDICATE, NOT ONE PER READER.** `house_owns` is what
+// `edges_mat_outside` already asks, and the round readers ask that same function
+// through here — so *what is left over* has one definition and two shapes rather
+// than two definitions. A second copy of the rule is how the run reader and the
+// disc reader come to disagree about which marks each was handed, which is the
+// failure `edges_mat_outside`'s own comment is written against.
+//
+// ⚠ **AND THE TWO MARK SETS STILL DIFFER, WHICH IS `edges_mat`'s DECISION AND NOT
+// THIS ONE.** The run reader takes every non-zero byte — *"a doorway is a material
+// on a wall that continues"* — and the round readers take `edge_is_wall` only. That
+// is a fact about what each reader describes; ownership is a separate question and
+// this function answers only the second half of it.
+fn mark_left(wld: VoxelWorld, q: integer, r: integer, d: integer, ref: float,
+             skip: boolean, b: Box) -> boolean {
+  if !edge_is_wall(wall_of(wld, q, r, d, ref)) { return false; }
+  if !skip { return true; }
+  (ml_nq, ml_nr) = hex_grid::hex_neighbor(q, r, d);
+  !house_owns(b, q, r, ml_nq, ml_nr)
+}
+
+// The rectangle a `skip = false` caller passes and nothing reads.
+//
+// ⚠ **A SENTINEL RATHER THAN A SECOND COPY OF EACH SEARCH.** `disc_recover` and
+// `disc_recover_outside` are one body — a pair differing only in one `continue` is
+// exactly the duplication `edges_mat_outside` refused to make — and loft has no
+// optional parameter, so the unused half of the pair has to be spelled. It is
+// public because the PICTURE has the same two calls to make.
+pub fn box_none() -> Box { hex_shape::box_new(0, 0, 1, 1, 0, false) }
+
 // Is `(q, r)` inside the disc of `shell` about `(cq, cr)`?
 //
 // ⚠ **THIS IS `arc_fill`'s OWN MEMBERSHIP TEST, CALLED RATHER THAN COPIED** — the
@@ -831,11 +868,11 @@ fn disc_fits(marks: vector<boolean>, cq: integer, cr: integer, shell: integer,
 // correct rather than a trade: the store does not change while a window is being
 // described, so `candidates × window × 6` reads collapse to `window × 6`.
 fn disc_marks(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
-              ref: float) -> vector<boolean> {
+              ref: float, skip: boolean, b: Box) -> vector<boolean> {
   out: vector<boolean> = [];
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
-      for d in 0..6 { out += [edge_is_wall(wall_of(wld, q, r, d, ref))]; }
+      for d in 0..6 { out += [mark_left(wld, q, r, d, ref, skip, b)]; }
     }
   }
   out
@@ -880,6 +917,22 @@ pub fn disc_span(shell: integer) -> integer {
 // candidates, and the centre of a disc is always inside the cells its rim touches.
 pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                     ref: float) -> DiscRead {
+  disc_recover_at(wld, q0, r0, wq, hr, ref, false, box_none())
+}
+
+// …and the same search over what one rectangle does NOT own — plan 26 `B4p`.
+//
+// ⚠ **THE SAME BODY, NOT A SECOND SEARCH.** Everything `B4h` measured about this
+// reader — the candidate centres from the marks' own extent, the ascending shells
+// with a `break`, the store read once into a flat table — holds for a leftover
+// unchanged, and a copy would be free to drift from every one of them.
+pub fn disc_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                            hr: integer, ref: float, b: Box) -> DiscRead {
+  disc_recover_at(wld, q0, r0, wq, hr, ref, true, b)
+}
+
+fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   ref: float, skip: boolean, b: Box) -> DiscRead {
   lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
   marks = 0;
   for r in r0..r0 + hr {
@@ -890,7 +943,7 @@ pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: 
       // 0/1/2 instead. Measured, both tile the plane and both count the same; it is
       // written the documented way so the next reader is not left to find that out.
       for d in [4, 5, 0] {
-        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }
+        if !mark_left(wld, q, r, d, ref, skip, b) { continue; }
         if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
         if q < lo_q { lo_q = q; }
         if q > hi_q { hi_q = q; }
@@ -903,7 +956,7 @@ pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: 
   // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE — `B0`'s rule, and
   // `probe/l1` lost a run to exactly this shape of ambiguity.
   if marks == 0 { return disc_no("no wall marks in this window", 0); }
-  table = disc_marks(wld, q0, r0, wq, hr, ref);
+  table = disc_marks(wld, q0, r0, wq, hr, ref, skip, b);
   // ⚠ **THE SHELLS ARE BOUNDED BY THE MARKS' OWN EXTENT, WHICH IS A CORRECTNESS
   // STATEMENT BEFORE IT IS A SPEED ONE.** A disc whose own window is wider than the
   // marks that are supposed to bound it cannot reproduce them, so trying it is not
@@ -1067,6 +1120,18 @@ pub fn oct_span(shell: integer) -> integer {
 // how two readers of one field come to disagree.
 pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                    ref: float) -> OctRead {
+  oct_recover_at(wld, q0, r0, wq, hr, ref, false, box_none())
+}
+
+// …and the same search over what one rectangle does NOT own — plan 26 `B4p`,
+// `disc_recover_outside`'s rule at the second round shape.
+pub fn oct_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                           hr: integer, ref: float, b: Box) -> OctRead {
+  oct_recover_at(wld, q0, r0, wq, hr, ref, true, b)
+}
+
+fn oct_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                  ref: float, skip: boolean, b: Box) -> OctRead {
   lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
   marks = 0;
   for r in r0..r0 + hr {
@@ -1074,7 +1139,7 @@ pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
       // ⚠ THE THREE LATTICE DIRECTIONS A CELL OWNS — `edge_owner`'s table, as
       // `disc_recover` reads them and for the same reason.
       for d in [4, 5, 0] {
-        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }
+        if !mark_left(wld, q, r, d, ref, skip, b) { continue; }
         if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
         if q < lo_q { lo_q = q; }
         if q > hi_q { hi_q = q; }
@@ -1103,7 +1168,7 @@ pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   br0 = lo_r - 2;
   bwq = hi_q - lo_q + 5;
   bhr = hi_r - lo_r + 5;
-  table = disc_marks(wld, bq0, br0, bwq, bhr, ref);
+  table = disc_marks(wld, bq0, br0, bwq, bhr, ref, skip, b);
   span = hi_q - lo_q;
   if hi_r - lo_r > span { span = hi_r - lo_r; }
   for shell in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
@@ -1177,7 +1242,7 @@ pub fn oct_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   fa_r0 = fa_lo_r - 2;
   fa_w = fa_hi_q - fa_lo_q + 5;
   fa_h = fa_hi_r - fa_lo_r + 5;
-  oct_fits(disc_marks(wld, fa_q0, fa_r0, fa_w, fa_h, ref),
+  oct_fits(disc_marks(wld, fa_q0, fa_r0, fa_w, fa_h, ref, false, box_none()),
            oct_poly_k(shell), oct_poly_m(shell), cq, cr, fa_q0, fa_r0, fa_w, fa_h)
 }
 
@@ -1513,13 +1578,31 @@ pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr:
 // window holding two walls.
 pub fn marks_body(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                   ref: float) -> text {
+  marks_body_at(wld, q0, r0, wq, hr, ref, false, box_none())
+}
+
+// …and the body the marks one rectangle does NOT own declare — plan 26 `B4p`.
+//
+// ⛔ **THE PALETTE MUST BE ASKED OF THE LEFTOVER, NOT OF THE WINDOW.** A house of
+// `WALL_MAT` standing beside an octagonal tower makes the WINDOW's marks disagree,
+// so `marks_body` answers `""` and the round reader that gets asked is the disc's —
+// which refuses an octagon, correctly, having been asked the wrong question. The
+// leftover is one structure and it declares one body; that is the answer that picks
+// the reader for it.
+pub fn marks_body_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                          hr: integer, ref: float, b: Box) -> text {
+  marks_body_at(wld, q0, r0, wq, hr, ref, true, b)
+}
+
+fn marks_body_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                 ref: float, skip: boolean, b: Box) -> text {
   seen = "";
   first = true;
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       for d in [4, 5, 0] {
         mb_m = wall_of(wld, q, r, d, ref);
-        if !edge_is_wall(mb_m) { continue; }
+        if !mark_left(wld, q, r, d, ref, skip, b) { continue; }
         mb_b = wall_type(wld, hex_voxel::world_region_at(wld, q, r), mb_m).wt_body;
         if first { seen = mb_b; first = false; }
         else if mb_b != seen { return ""; }

@@ -1,0 +1,29 @@
+# B4p — THE LEFTOVER RUNS THE WHOLE CHAIN
+#
+# ⛔ **`B4o` GAVE THE LEFTOVER THE RUN READER ALONE AND SAID SO** — *"a leftover disc or
+# octagon is a further step; running the whole chain on the remainder would be claiming a
+# capability nothing here has measured"*. So this scene captioned `+ 54 unexplained`
+# about a rim the editor had stamped itself, one gesture earlier.
+#
+# ⚠ **THE CHAIN IS ONE FUNCTION NOW**, asked of the window and then of what the house's
+# rectangle does not own — so the second asking cannot be a smaller version of the first.
+#
+# ⚠ **SIX CLEAR CELLS, AND THE NUMBER IS MEASURED.** The house recovers to `q -3..2,
+# r 2..6` and its ownership rule reaches one cell past that; a disk of shell 156 spans
+# four cells and its rim marks a fifth, so a centre at `r = -8` — world `z = -12` — puts
+# the nearest rim mark three cells clear. A tower closer than that is genuinely
+# ambiguous, and `B4o`'s fixture had to move nine rows out for the same reason.
+#
+#   make plan-view WORLD=b4p Q0=-7 Q1=8 R0=-15 R1=9 REF=2.0
+
+echo --- a house
+at 0 0 90
+verb place
+
+echo --- a wall type whose BODY says what the field actually holds
+declare edge 5 curtain body=THICK_CURVED thick=0.5
+select wall 5
+
+echo --- and a round tower, six clear cells south of it
+at 0 -12 0
+verb tower
