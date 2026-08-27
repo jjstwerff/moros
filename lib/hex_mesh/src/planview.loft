@@ -290,9 +290,27 @@ fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integ
   rr = if skip { hex_editor::wall_recover_outside(w, q0, r0, dwq, dhr, ref, b) }
        else { hex_editor::wall_recover(w, q0, r0, dwq, dhr, ref) };
   if rr.rr_ok {
+    // ── AND DOES IT REPRODUCE THE MARKS? — plan 26 `B4q` ────────────────────
+    //
+    // ⛔ **`rr_ok` HAS NEVER MEANT *THIS IS THE WALL*, AND THIS PICTURE IS WHERE THAT
+    // STOPPED BEING INVISIBLE.** The reader finds the chain's two ENDS and asks which
+    // `d24` step is parallel to the vector between them; it does not check the path in
+    // between. `disc` and `octagon` above answer a stronger question — the shape is
+    // GENERATED and compared edge for edge — and the run was the one description drawn
+    // on a weaker one.
+    //
+    // ⚠ **THE COUNTS ARE THE HOUSE'S GRAMMAR, DELIBERATELY.** `· N stray · N missing`
+    // means the same thing at both shapes — marks the description does not want, and
+    // edges it wants that the store does not hold — so a reader of the caption does not
+    // have to learn two vocabularies for one idea.
+    rsay = "d{rr.rr_d} p{rr.rr_p}";
+    if rr.rr_stray > 0 { rsay = rsay + " · {rr.rr_stray} stray"; }
+    if rr.rr_missing > 0 { rsay = rsay + " · {rr.rr_missing} missing"; }
     return PlanDesc { pd_ok: true, pd_kind: "run",
-      pd_args: "d{rr.rr_d} p{rr.rr_p}",
+      pd_args: rsay,
       pd_svg: "<line class='run' data-d='{rr.rr_d}' data-p='{rr.rr_p}'"
+            + " data-marks='{rr.rr_marks}' data-stray='{rr.rr_stray}'"
+            + " data-missing='{rr.rr_missing}'"
             + " x1='{fx(rr.rr_x0)}' y1='{fx(rr.rr_z0)}'"
             + " x2='{fx(rr.rr_x1)}' y2='{fx(rr.rr_z1)}'"
             + " stroke='{DESC_INK}' stroke-width='0.05'"

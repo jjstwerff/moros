@@ -355,6 +355,13 @@ fn test_a_wandering_chain_draws_a_description_that_misses_its_own_wall() {
          "the reader REFUSED this chain. That would be better behaviour and it is not "
          + "what `probe/l1` measured — if the library has gained a path check, this "
          + "test is the news");
+  // ⚠ **AND `B4q` MAKES THAT AN INTEGER RATHER THAN A DISTANCE.** The row below reads
+  // the miss off the picture in world units; the residual counts the edges exactly, and
+  // a description that reproduced its own field would report zero of both.
+  assert((attr(ln, "data-stray") as integer ?? 0) > 0
+         || (attr(ln, "data-missing") as integer ?? 0) > 0,
+         "a chain 15 degrees off the lattice reproduces its own field exactly — "
+       + "stray {attr(ln, "data-stray")}, missing {attr(ln, "data-missing")}");
   assert(!ends_match(ln, 0.0, 0.0, cos(ang) * 6.0, sin(ang) * 6.0),
          "the description is the authored line after all, so this fixture is not "
          + "wandering and the pair above proves nothing");
@@ -1459,4 +1466,75 @@ fn test_a_leftover_of_two_towers_is_counted_and_not_drawn() {
          "the picture drew a description over marks belonging to two structures");
   assert(plan_tally(svg).pt_descs == 1,
          "one description tallied as {plan_tally(svg).pt_descs}");
+}
+
+
+// ── `B4q` — DOES THE DESCRIPTION REPRODUCE THE FIELD IT WAS DRAWN FROM? ────
+//
+// ⛔ **THE PICTURE HAS DRAWN A RUN ON A WEAKER CLAIM THAN THE OTHER THREE SINCE `B1`.**
+// `disc`, `octagon` and `house` are each GENERATED and compared to the field edge for
+// edge; `rr_ok` means only *these ends describe this run*, because the marking rule
+// lived inside `wall_stamp` and nothing else could ask it. The caption carries the
+// residual now, in the same `· N stray · N missing` grammar the house already uses.
+
+fn walled_world(x0: float, z0: float, x1: float, z1: float) -> VoxelWorld {
+  w = flat_world();
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, hex_editor::wall_run_new(x0, z0, x1, z1,
+                              hex_editor::WALL_MAT),
+                         hex_editor::WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture stamped nothing");
+  w
+}
+
+// ⚠ **THE CLEAN CASE FIRST, SO THE LOUD ONE MEANS SOMETHING.** A caption that said
+// `stray` about every wall would be as useless as one that never did.
+fn test_a_wall_that_reproduces_its_field_says_nothing_extra() {
+  d = hex_editor::run_between(0.0, 0.0, 9.0, 0.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's run was refused");
+  svg = plan_svg(walled_world(d.rd_run.wr_x0, d.rd_run.wr_z0,
+                              d.rd_run.wr_x1, d.rd_run.wr_z1),
+                 0 - 10, 0 - 10, 11, 11, 2.0, "clean");
+  cap = caption(svg);
+  assert(cap.contains("desc d0 p"), "the wall lost its description: {cap}");
+  assert(!cap.contains("stray") && !cap.contains("missing"),
+         "a wall that reproduces its own field is reported as broken: {cap}");
+  ln = desc_line(svg);
+  assert(attr(ln, "data-stray") == "0" && attr(ln, "data-missing") == "0",
+         "the picture carries stray {attr(ln, "data-stray")} missing "
+       + "{attr(ln, "data-missing")} for a clean wall");
+  assert(attr(ln, "data-marks") != "" && attr(ln, "data-marks") != "0",
+         "the description carries no mark count at all");
+}
+
+// ⛔ **AND THE SAME RUN WALKED THE OTHER WAY IS A DIFFERENT FIELD** — `run_fit.loft`
+// measures it; this is what a person SEES. Both fields recover to the same `d6 p8`, and
+// only one of them is the field that description makes.
+fn test_a_wall_that_does_not_reproduce_its_field_says_so() {
+  d = hex_editor::run_between(0.0, 0.0, 0.0, 9.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's run was refused");
+  f = d.rd_run;
+  fwd = plan_svg(walled_world(f.wr_x0, f.wr_z0, f.wr_x1, f.wr_z1),
+                 0 - 10, 0 - 10, 11, 11, 2.0, "fwd");
+  back = plan_svg(walled_world(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0),
+                  0 - 10, 0 - 10, 11, 11, 2.0, "back");
+  fcap = caption(fwd);
+  bcap = caption(back);
+  assert(fcap.contains("desc d6 p") && bcap.contains("desc d6 p"),
+         "the two directions do not recover one description: {fcap} / {bcap}");
+  assert(!fcap.contains("stray"), "the forward wall is reported as broken: {fcap}");
+  assert(bcap.contains("stray") && bcap.contains("missing"),
+         "a wall the stamper cannot reproduce from its own description is drawn as if "
+       + "it were clean: {bcap}");
+  // …and the counts reach the picture, not only the sentence.
+  bl = desc_line(back);
+  assert((attr(bl, "data-stray") as integer ?? 0) > 0
+         && (attr(bl, "data-missing") as integer ?? 0) > 0,
+         "the element carries stray {attr(bl, "data-stray")} missing "
+       + "{attr(bl, "data-missing")}");
+  // ⚠ AND IT IS STILL DRAWN. A description that vanished would take `B1`'s picture
+  // with it — the whole point is the answer ON TOP of the marks it does not explain.
+  assert(tag_count(back, DESCR) == 1,
+         "the description was withdrawn rather than reported");
 }

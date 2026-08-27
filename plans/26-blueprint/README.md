@@ -197,6 +197,22 @@ and a rim genuinely are not one disc; and a leftover holding **two** structures 
 counted rather than drawn, since the split is one level deep and a chain that answered
 there would be inventing a shape over marks belonging to two.
 
+**`B4q`** — **expected result**: the plan draws `run d6 p9 · 9 stray · 9 missing` for a
+wall whose own description does not reproduce it, and nothing extra for one that does.
+**Invariant**: *a run's description is GENERATED and compared to the field edge for edge*
+— `FORMAL_CORE` §6's R1, which `disc_recover` and `oct_recover` have used since `B4h` and
+the run reader could not, because the marking rule lived inside `wall_stamp` where nothing
+else could ask it. So `hex_editor::run_edges` is that rule extracted, with **one** copy and
+two callers. **Negative controls**: the generator must reproduce `wall_stamp`'s own world
+edge for edge over six headings, or the comparison is against a wall nothing here builds —
+and `hex_shape::wall_write` must NOT be used for it, because it agrees with ours on five of
+ten headings **at identical counts**; a wall the editor authored must report **zero** of
+both, or the caption is loud about everything; the same run record walked backwards must
+report a residual, which is the defect this measures; and `stray` and `missing` must be
+pinned where the answer is **one-sided** — a description covering half the wall, and one
+running past it — because every description the reader itself produces is wrong in both
+directions at once and a swapped pair would pass every other row.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -233,6 +249,7 @@ as a byte.
 | **`B4n`** — a HOUSE's description: the rectangle its floor determines | M | `house_box.loft` — the membership pinned against `box_fill` at twelve rotations, the drawn corners round-tripped through `box_to_local`, the anchor the house's own cell and not the origin, a bitten floor refused with its count, the class reported, and **`B0`'s four stray edges measured at last**; `planview.loft` — the rectangle drawn as four points read out of the picture and the caption carrying both residuals; five faults seen red | ✅ **SHIPPED** `0efad03` |
 | **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
 | **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
+| **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 

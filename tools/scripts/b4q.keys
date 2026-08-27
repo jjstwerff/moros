@@ -1,0 +1,27 @@
+# B4q — DOES A WALL'S DESCRIPTION REPRODUCE THE WALL?
+#
+# ⛔ **`hex_shape::wall_read_run` STATES IT AS A FACT ABOUT THE FIELD** — *"A-to-B and
+# B-to-A mark the identical edges"* — and it is FALSE for this tree's stamper.
+# `wall_stamp` takes its halfplane normal from the run's TANGENT, so reversing the walk
+# flips which side a cell whose centre lies exactly ON the line falls on. A due-north
+# wall in odd-r passes through alternate rows' centres, and exactly those flip.
+#
+# ⚠ **BOTH WALLS BELOW RECOVER TO THE SAME DESCRIPTION, `d6 p8`.** Only one of them is
+# the field that description makes; the other reports `9 stray · 9 missing` of 11 marks.
+# ⚠ **AND DUE EAST IS UNMOVED**, which is why the defect has survived: the corpus walks
+# east.
+#
+#   make plan-view WORLD=b4q Q0=-4 Q1=5  R0=-3 R1=11 REF=2.0   # walked NORTH — clean
+#   make plan-view WORLD=b4q Q0=5  Q1=14 R0=-3 R1=11 REF=2.0   # walked SOUTH — loud
+
+echo --- a wall walked NORTH
+at 0 0 0
+verb run
+at 0 9 0
+verb run
+
+echo --- and the same wall, nine hexes east, walked SOUTH
+at 15 9 0
+verb run
+at 15 0 0
+verb run

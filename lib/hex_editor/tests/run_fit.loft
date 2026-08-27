@@ -1,0 +1,265 @@
+// DOES A RUN'S DESCRIPTION REPRODUCE ITS OWN FIELD? — plan 26 `B4q`.
+//
+// ⛔ **`rr_ok` HAS NEVER MEANT *THIS IS THE WALL*, AND `wall_recover` SAYS SO AT ITS OWN
+// DECLARATION.** It means *these ends describe this run*: the reader finds the chain's
+// two ENDS and asks which `d24` step is parallel to the vector between them, and does
+// not check the path in between. `disc_recover` and `oct_recover` answer a stronger
+// question — the shape is GENERATED and compared to the field edge for edge,
+// `FORMAL_CORE` §6's R1 — and the run was the one reader in the chain that could not,
+// because the marking rule lived inside `wall_stamp` where nothing else could ask it.
+//
+// ⚠ **THE ANSWER IS NOT NARROWED, AND THAT IS A DECISION.** `B1`'s whole picture is a
+// description drawn over marks it MISSES — *"the only way to SEE that is to put the
+// answer on top of the marks it came from"* — so a reader that refused would delete the
+// thing the plan view exists to show. The residual is reported beside the answer.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+use hex_grid;
+use hex_field;
+
+const U = 0.25;
+const Q0 = 0 - 16;
+const R0 = 0 - 16;
+const WQ = 33;
+const HR = 33;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn stamp(w: VoxelWorld, r: WallRun) -> integer {
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, r, WALL_MAT, 8, rs, m);
+  m
+}
+
+fn read_it(w: VoxelWorld) -> RunRead { wall_recover(w, Q0, R0, WQ, HR, 0.0) }
+
+// ── THE EXTRACTION IS ONE RULE, NOT TWO ────────────────────────────────────
+//
+// ⛔ **`run_edges` WAS `wall_stamp`'s INNER LOOP, AND A SECOND COPY OF IT WOULD BE THE
+// DEFECT THIS STEP EXISTS TO MEASURE.** A description compared against a field by a
+// rule the stamper does not use answers a question about neither. ⚠ **And the obvious
+// library call is NOT that rule**: `hex_shape::wall_write` marks where the centreline
+// separates two cell CENTRES, and over ten headings it agrees with ours on five —
+// **at identical edge counts** (`probe/b4q`), so a count-only check reads as a match.
+fn test_the_generator_is_the_stampers_own_rule() {
+  for spec in [[9.0, 0.0], [0.0, 9.0], [6.0, 6.0], [9.0, 4.5], [4.5, 9.0],
+               [0.0 - 9.0, 4.5]] {
+    x = spec[0] ?? 0.0;
+    z = spec[1] ?? 0.0;
+    w = flat_world();
+    d = run_between(0.0, 0.0, x, z, WALL_MAT);
+    assert(d.rd_ok, "the fixture's run to {x},{z} was refused");
+    n = stamp(w, d.rd_run);
+    assert(n > 0, "the run to {x},{z} stamped nothing");
+    gen = run_edges(d.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+    // …and the two agree EDGE FOR EDGE, in both directions.
+    only_world = 0;
+    only_gen = 0;
+    both = 0;
+    for r in R0..R0 + HR {
+      for q in Q0..Q0 + WQ {
+        for dd in [4, 5, 0] {
+          (nq, nr) = hex_grid::hex_neighbor(q, r, dd);
+          s = edge_is_wall(wall_of(w, q, r, dd, 0.0));
+          g = hex_field::edge_mat(gen, q, r, nq, nr) != 0;
+          if s && g { both = both + 1; }
+          if s && !g { only_world = only_world + 1; }
+          if g && !s { only_gen = only_gen + 1; }
+        }
+      }
+    }
+    assert(both > 0, "the run to {x},{z} generated nothing to compare");
+    assert(only_world == 0 && only_gen == 0,
+           "the generator and the stamper disagree about the run to {x},{z}: "
+         + "{both} shared, {only_world} only stamped, {only_gen} only generated — "
+         + "`run_edges` is no longer `wall_stamp`'s rule");
+  }
+}
+
+// ── A WALL REPRODUCES ITS OWN FIELD ────────────────────────────────────────
+fn test_an_authored_wall_reproduces_the_field_it_wrote() {
+  for spec in [[9.0, 0.0], [0.0, 9.0], [6.0, 6.0], [9.0, 4.5]] {
+    x = spec[0] ?? 0.0;
+    z = spec[1] ?? 0.0;
+    w = flat_world();
+    d = run_between(0.0, 0.0, x, z, WALL_MAT);
+    n = stamp(w, d.rd_run);
+    r = read_it(w);
+    assert(r.rr_ok, "the wall to {x},{z} was refused");
+    // ⚠ THE MARK COUNT IS THE STORE'S OWN, HALVED — `wall_stamp` writes every edge
+    // from both of its cells, which `probe/l1` measured and `planview.loft` pins.
+    assert(r.rr_marks == n / 2,
+           "the reader was handed {r.rr_marks} marks for {n} writes to {x},{z}");
+    assert(r.rr_stray == 0 && r.rr_missing == 0,
+           "a wall the editor authored to {x},{z} does not reproduce its own field: "
+         + "{r.rr_stray} stray, {r.rr_missing} missing of {r.rr_marks}");
+  }
+}
+
+// ── ⛔ AND THE SAME RUN WALKED THE OTHER WAY DOES NOT ──────────────────────
+//
+// ⛔ **`hex_shape::wall_read_run` STATES THE OPPOSITE AS A FACT ABOUT THE FIELD** —
+// *"A-to-B and B-to-A mark the identical edges"* — and it is FALSE for this tree's
+// stamper. `wall_stamp` takes the halfplane normal from the run's tangent, so reversing
+// the record flips which side a cell whose centre lies exactly ON the line falls on; a
+// due-north wall in odd-r passes through alternate rows' centres, and exactly those
+// flip.
+//
+// ⚠ **THE DESCRIPTION IS THE SAME ONE**, which is what makes it a round-trip failure
+// rather than a reading failure: both fields recover to `d6 p8`, and only one of them
+// is the field that description makes.
+fn test_the_same_run_walked_backwards_leaves_a_field_it_cannot_reproduce() {
+  d = run_between(0.0, 0.0, 0.0, 9.0, WALL_MAT);
+  assert(d.rd_ok, "the fixture's run was refused");
+  f = d.rd_run;
+
+  fw = flat_world();
+  stamp(fw, f);
+  fr = read_it(fw);
+
+  bw = flat_world();
+  stamp(bw, wall_run_new(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0, WALL_MAT));
+  br = read_it(bw);
+
+  assert(fr.rr_ok && br.rr_ok, "one of the two directions was refused");
+  // the same description, from both fields
+  assert(fr.rr_d == br.rr_d && fr.rr_p == br.rr_p,
+         "the two directions recover different runs — d{fr.rr_d} p{fr.rr_p} against "
+       + "d{br.rr_d} p{br.rr_p} — so this row is measuring the reader, not the stamper");
+  assert(fr.rr_marks == br.rr_marks,
+         "the two fields hold {fr.rr_marks} and {br.rr_marks} marks");
+  // …and only one of them is the field that description makes
+  assert(fr.rr_stray == 0 && fr.rr_missing == 0,
+         "the forward wall no longer reproduces its own field");
+  assert(br.rr_stray > 0 && br.rr_missing > 0,
+         "the reversed wall reproduces its own field after all — `wall_stamp` has "
+       + "become orientation-independent, and this row is the news rather than a "
+       + "failure");
+}
+
+// ⚠ **AND THE CONTROL: DUE EAST IS THE ONE HEADING THAT SURVIVES IT.** Without this the
+// row above could be passing on a stamper that is simply non-deterministic.
+fn test_due_east_is_unmoved_by_the_direction_of_travel() {
+  d = run_between(0.0, 0.0, 9.0, 0.0, WALL_MAT);
+  f = d.rd_run;
+  fw = flat_world();
+  stamp(fw, f);
+  bw = flat_world();
+  stamp(bw, wall_run_new(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0, WALL_MAT));
+  fr = read_it(fw);
+  br = read_it(bw);
+  assert(fr.rr_stray == 0 && fr.rr_missing == 0 && br.rr_stray == 0
+         && br.rr_missing == 0,
+         "a due-east wall depends on the direction of travel too: forward "
+       + "{fr.rr_stray}/{fr.rr_missing}, back {br.rr_stray}/{br.rr_missing}");
+}
+
+// ── `B1`'s WANDERING CHAIN, IN A NUMBER RATHER THAN A PICTURE ──────────────
+//
+// `B1`'s negative control is a DISTANCE a person reads off the picture — *"a gesture
+// chain must draw a description that misses its own wall by more than 0.6 wu"*. The
+// residual says the same thing as an exact integer, and it is still ANSWERED, because
+// that picture is what plan 26 exists to draw.
+fn test_a_wandering_chain_is_answered_and_its_residual_says_so() {
+  w = flat_world();
+  ang = 15.0 / 57.29577951308232;
+  stamp(w, wall_run_new(0.0, 0.0, cos(ang) * 6.0, sin(ang) * 6.0, WALL_MAT));
+  r = wall_recover(w, 0 - 8, 0 - 8, 17, 17, 0.0);
+  assert(r.rr_ok,
+         "the reader REFUSED the gesture chain. That would be better behaviour and it "
+       + "is not what `probe/l1` measured — if the library has gained a path check, "
+       + "this row is the news");
+  assert(r.rr_stray > 0 || r.rr_missing > 0,
+         "a chain 15 degrees off the lattice reproduces its own field exactly — the "
+       + "residual cannot see the case `B1` built the picture for");
+}
+
+// ── THE TWO SILENCES STILL DIFFER ──────────────────────────────────────────
+//
+// `B0`'s rule, and `probe/l1` lost a run to exactly this: *nothing there* and *marks I
+// could not explain* are different facts, and a refusal that answered `0` to both could
+// not tell an empty window from a shape it gave up on.
+fn test_a_refusal_carries_the_marks_it_could_not_explain() {
+  empty = read_it(flat_world());
+  assert(!empty.rr_ok && empty.rr_marks == 0,
+         "an empty window refused with {empty.rr_marks} marks");
+
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 1.5707963267948966);
+  assert(press_verb(s, w, s.es_author, VB_PLACE, "").ak_ok, "the house was refused");
+  h = read_it(w);
+  assert(!h.rr_ok, "a house was described as a run");
+  assert(h.rr_marks > 0,
+         "a window holding a house refused with {h.rr_marks} marks — it reads exactly "
+       + "like an empty one");
+}
+
+// ── WHICH COUNT IS WHICH ───────────────────────────────────────────────────
+//
+// ⛔ **A SWAPPED PAIR PASSES EVERY ROW ABOVE.** Every description the reader itself
+// produces is wrong in both directions at once — the reversed wall is 9 and 9 of 11,
+// the wandering chain 3 and 3 of 8 — so the counts have to be pinned somewhere the
+// answer is one-sided, and only a description handed in by hand can be.
+fn test_the_residual_names_which_side_it_is_missing_from() {
+  w = flat_world();
+  d = run_between(0.0, 0.0, 9.0, 0.0, WALL_MAT);
+  stamp(w, d.rd_run);
+  f = d.rd_run;
+  whole = read_it(w);
+  assert(whole.rr_stray == 0 && whole.rr_missing == 0, "the fixture is not clean");
+
+  // HALF the wall: the store holds marks this description does not want.
+  hx = (f.wr_x0 + f.wr_x1) * 0.5;
+  hz = (f.wr_z0 + f.wr_z1) * 0.5;
+  short = run_fits_at(w, Q0, R0, WQ, HR, 0.0, f.wr_x0, f.wr_z0, hx, hz);
+  assert(short.rr_stray > 0,
+         "a description covering half the wall leaves {short.rr_stray} marks over");
+  assert(short.rr_missing == 0,
+         "a description covering half the wall wants {short.rr_missing} edges the "
+       + "store does not hold — `stray` and `missing` are the wrong way round");
+
+  // …and PAST the wall: it wants edges the store does not hold.
+  ex = f.wr_x1 + (f.wr_x1 - f.wr_x0);
+  ez = f.wr_z1 + (f.wr_z1 - f.wr_z0);
+  long = run_fits_at(w, Q0, R0, WQ, HR, 0.0, f.wr_x0, f.wr_z0, ex, ez);
+  assert(long.rr_missing > 0,
+         "a description running past the wall wants {long.rr_missing} edges the store "
+       + "does not hold");
+  assert(long.rr_stray == 0,
+         "a description running past the wall leaves {long.rr_stray} marks over — "
+       + "`stray` and `missing` are the wrong way round");
+}
+
+// ⚠ **AND THE LEFTOVER DOOR MEASURES AGAINST ITS OWN MARKS** — `B4o`'s defect in a
+// second reader: a wall beside a house would otherwise report the HOUSE's marks as its
+// own stray, and the caption would call a clean wall a broken one.
+fn test_the_leftover_door_is_measured_against_what_it_was_handed() {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 1.5707963267948966);
+  assert(press_verb(s, w, s.es_author, VB_PLACE, "").ak_ok, "the house was refused");
+  d = run_between(0.0 - 12.0, 0.0 - 12.0, 0.0 - 2.0, 0.0 - 12.0, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused");
+  stamp(w, d.rd_run);
+
+  h = house_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  bx = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+  ro = wall_recover_outside(w, Q0, R0, WQ, HR, 0.0, bx);
+  assert(ro.rr_ok, "the wall beside the house was refused");
+  assert(ro.rr_stray == 0 && ro.rr_missing == 0,
+         "the wall beside a house reports {ro.rr_stray} stray and {ro.rr_missing} "
+       + "missing — the fit is being measured against the whole window rather than "
+       + "against the marks this door was handed");
+  // …and the whole window's own reader still refuses, which is what says the two
+  // doors are being handed different sets.
+  assert(!wall_recover(w, Q0, R0, WQ, HR, 0.0).rr_ok,
+         "the whole window was described as a run, so this pair proves nothing");
+}

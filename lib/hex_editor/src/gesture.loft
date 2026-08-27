@@ -702,27 +702,116 @@ pub struct RunRead {
   rr_z0: float,
   rr_x1: float,
   rr_z1: float,
+  // ── DOES THE DESCRIPTION REPRODUCE THE FIELD? — plan 26 `B4q` ────────────
+  //
+  // ⛔ **`rr_ok` HAS NEVER MEANT THAT, AND THE COMMENT ABOVE SAYS SO.** It means
+  // *these ends describe this run*. `disc_recover` and `oct_recover` answer a
+  // stronger question — the shape is GENERATED and compared to the field edge for
+  // edge, `FORMAL_CORE` §6's R1 — and the run reader was the one link in the chain
+  // that could not, because the marking rule lived inside `wall_stamp`.
+  //
+  // ⚠ **IT DOES NOT NARROW `rr_ok`, DELIBERATELY.** `B1`'s whole picture is a
+  // description drawn over marks it MISSES — *"the only way to SEE that is to put
+  // the answer on top of the marks it came from"* — and a reader that refused would
+  // delete the one thing that view exists to show. The residual is reported beside
+  // the answer instead, so the caption can say what the outline cannot.
+  rr_marks:   integer,   // the marks this reader was handed, refusal included
+  rr_stray:   integer,   // …that the description does not want
+  rr_missing: integer,   // …and edges it wants that the field does not hold
+}
+
+// The marks in a set, counted the way `edges_mat` fills it.
+//
+// ⚠ **NOT `hex_field::edgeset_count`, AND THE REASON IS THE LIBRARY'S OWN WARNING.**
+// That one walks slots `0/2/3` through `nb_q`/`nb_r`, and `hex_shape` says in as many
+// words that `nb_*` and `hex_neighbor` *"enumerate the same six neighbours but in a
+// DIFFERENT ORDER"* — three reader instruments were wrong for exactly that. Every
+// count in this file is `[4, 5, 0]` through `hex_neighbor`, which is how the set was
+// filled, so they cannot disagree.
+fn edges_count(e: EdgeSet, q0: integer, r0: integer, wq: integer, hr: integer) -> integer {
+  ec_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for ec_d in [4, 5, 0] {
+        (ec_nq, ec_nr) = hex_grid::hex_neighbor(q, r, ec_d);
+        if edge_mat(e, q, r, ec_nq, ec_nr) != 0 { ec_n = ec_n + 1; }
+      }
+    }
+  }
+  ec_n
+}
+
+// A refusal, carrying the marks it could not explain — plan 26 `B4q`.
+//
+// ⚠ **THE REFUSAL CARRIES NO COORDINATES, deliberately.** A zeroed pair of ends reads
+// exactly like a run from the origin to the origin, and `probe/l1` lost a run to
+// precisely that shape of ambiguity — `ends = 0` is *a closed loop* and *nothing there*
+// in one number. ⚠ **It does carry the COUNT**, which is `B0`'s rule and `disc_no`'s:
+// *no marks at all* and *marks I could not explain* are different facts.
+fn run_no(marks: integer) -> RunRead {
+  RunRead { rr_ok: false, rr_d: 0 - 1, rr_p: 0,
+            rr_x0: 0.0, rr_z0: 0.0, rr_x1: 0.0, rr_z1: 0.0,
+            rr_marks: marks, rr_stray: 0, rr_missing: 0 }
+}
+
+// The answer, with the field it came from measured against it — plan 26 `B4q`.
+//
+// ⚠ **THE GENERATOR IS `run_edges`, WHICH IS THE STAMPER'S OWN RULE.** Anything else
+// would compare the field against a wall nothing here builds: `hex_shape::wall_write`
+// is a different rule and agrees with ours on only five of ten headings, at identical
+// counts ([`probe/b4q`](../../../probe/b4q/README.md)).
+//
+// ⚠ **AND THE WINDOW IS THE READER'S OWN.** `wall_read_run` saw only marks inside it,
+// so its ends are inside it; generating over the same rectangle is what keeps a wall
+// that runs off the edge from reporting the outside world as `missing`.
+fn run_fit(e: EdgeSet, d: integer, p: integer, x0: float, z0: float, x1: float,
+           z1: float, q0: integer, r0: integer, wq: integer, hr: integer) -> RunRead {
+  rf_g = run_edges(wall_run_new(x0, z0, x1, z1, WALL_MAT), q0, r0, wq, hr, WALL_MAT);
+  rf_marks = 0;
+  rf_stray = 0;
+  rf_missing = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for rf_d in [4, 5, 0] {
+        (rf_nq, rf_nr) = hex_grid::hex_neighbor(q, r, rf_d);
+        rf_has = edge_mat(e, q, r, rf_nq, rf_nr) != 0;
+        rf_want = edge_mat(rf_g, q, r, rf_nq, rf_nr) != 0;
+        if rf_has { rf_marks = rf_marks + 1; }
+        if rf_has && !rf_want { rf_stray = rf_stray + 1; }
+        if rf_want && !rf_has { rf_missing = rf_missing + 1; }
+      }
+    }
+  }
+  RunRead { rr_ok: true, rr_d: d, rr_p: p, rr_x0: x0, rr_z0: z0, rr_x1: x1, rr_z1: z1,
+            rr_marks: rf_marks, rr_stray: rf_stray, rr_missing: rf_missing }
 }
 
 pub fn wall_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                 ref: float) -> RunRead {
   wc_e = edges_mat(wld, q0, r0, wq, hr, ref);
   (wc_d, wc_a, wc_b, wc_p, wc_ok) = hex_shape::wall_read_run(wc_e, q0, r0, wq, hr);
-  // ⚠ THE REFUSAL CARRIES NO COORDINATES, deliberately. A zeroed pair of ends reads
-  // exactly like a run from the origin to the origin, and `probe/l1` lost a run to
-  // precisely that shape of ambiguity — `ends = 0` is *a closed loop* and *nothing
-  // there* in one number.
-  if !wc_ok {
-    return RunRead { rr_ok: false, rr_d: 0 - 1, rr_p: 0,
-                     rr_x0: 0.0, rr_z0: 0.0, rr_x1: 0.0, rr_z1: 0.0 };
-  }
+  if !wc_ok { return run_no(edges_count(wc_e, q0, r0, wq, hr)); }
   wc_ea = hex_shape::wall_end_a(wc_d, wc_a, wc_p);
   wc_eb = hex_shape::wall_end_b(wc_d, wc_b, wc_p);
-  RunRead { rr_ok: true, rr_d: wc_d, rr_p: wc_p,
-            rr_x0: hex_shape::tri_x(wc_a, wc_b),
-            rr_z0: hex_shape::tri_y(wc_a, wc_b),
-            rr_x1: hex_shape::tri_x(wc_ea, wc_eb),
-            rr_z1: hex_shape::tri_y(wc_ea, wc_eb) }
+  run_fit(wc_e, wc_d, wc_p,
+          hex_shape::tri_x(wc_a, wc_b), hex_shape::tri_y(wc_a, wc_b),
+          hex_shape::tri_x(wc_ea, wc_eb), hex_shape::tri_y(wc_ea, wc_eb),
+          q0, r0, wq, hr)
+}
+
+// Is THIS line's wall the field? — the comparison with the reader taken out.
+//
+// ⚠ **`oct_fits_at`'s REASON, AT THE RUN READER.** *"A row asking is THIS one accepted
+// has to reach the comparison directly, or a candidate the search never tried reads as
+// one it rejected"* — and here it buys something the search cannot: a description that
+// is deliberately SHORT or deliberately LONG, which is the only way to tell `rr_stray`
+// from `rr_missing`. Every description the reader itself produces is wrong in both
+// directions at once — the reversed wall is 9 and 9 of 11 — so a swapped pair would
+// pass every other row in this file.
+pub fn run_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   ref: float, x0: float, z0: float, x1: float, z1: float) -> RunRead {
+  run_fit(edges_mat(wld, q0, r0, wq, hr, ref), 0 - 1, 0, x0, z0, x1, z1,
+          q0, r0, wq, hr)
 }
 
 // ── A ROUND WALL'S DESCRIPTION — plan 26 `B4h`, BLUEPRINT §2.2 ─────────────
@@ -1454,17 +1543,16 @@ pub fn wall_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integ
                             hr: integer, ref: float, b: Box) -> RunRead {
   wo_e = edges_mat_outside(wld, q0, r0, wq, hr, ref, b);
   (wo_d, wo_a, wo_b, wo_p, wo_ok) = hex_shape::wall_read_run(wo_e, q0, r0, wq, hr);
-  if !wo_ok {
-    return RunRead { rr_ok: false, rr_d: 0 - 1, rr_p: 0,
-                     rr_x0: 0.0, rr_z0: 0.0, rr_x1: 0.0, rr_z1: 0.0 };
-  }
+  if !wo_ok { return run_no(edges_count(wo_e, q0, r0, wq, hr)); }
   wo_ea = hex_shape::wall_end_a(wo_d, wo_a, wo_p);
   wo_eb = hex_shape::wall_end_b(wo_d, wo_b, wo_p);
-  RunRead { rr_ok: true, rr_d: wo_d, rr_p: wo_p,
-            rr_x0: hex_shape::tri_x(wo_a, wo_b),
-            rr_z0: hex_shape::tri_y(wo_a, wo_b),
-            rr_x1: hex_shape::tri_x(wo_ea, wo_eb),
-            rr_z1: hex_shape::tri_y(wo_ea, wo_eb) }
+  // ⚠ **THE FIT IS MEASURED AGAINST THE MARKS THIS DOOR WAS HANDED**, not the window's
+  // — a leftover run that reproduced its own marks would otherwise report the house's
+  // as `stray`, which is `B4o`'s defect in a second reader.
+  run_fit(wo_e, wo_d, wo_p,
+          hex_shape::tri_x(wo_a, wo_b), hex_shape::tri_y(wo_a, wo_b),
+          hex_shape::tri_x(wo_ea, wo_eb), hex_shape::tri_y(wo_ea, wo_eb),
+          q0, r0, wq, hr)
 }
 
 // The rectangle these FLOOR cells describe, and what its boundary makes of the marks.
@@ -3204,6 +3292,25 @@ pub struct WallRun {
 
 pub struct WallRuns { items: vector<WallRun> }
 
+// A bare run between two points — no step, no base, no rise.
+//
+// ⚠ **NOT `run_line`, WHICH `src/editor_run.loft` HAS TAKEN** — `error: Cannot redefine
+// 'run_line'`, reported against a line of the RUNNER thirty lines from its own
+// definition. `CLAUDE.md`'s rule earns itself again: grep the whole graph for a public
+// name before adding one, the consumers included, not only the siblings.
+//
+// ⚠ **IT LIVES HERE RATHER THAN AT ITS CALLER, AND THE COMPILER DECIDED THAT.**
+// Constructing `WallRun` in a function written ABOVE its declaration made loft report
+// the type as *private* at **every other construction site in the package** — six in
+// `src/`, four in the tests — and `Undefined type WallRun — did you mean 'WallRuns'?`
+// at the one that named it in a signature. ⚠ **None of those messages names the site
+// that caused it**, which is the same shape as loft#912: the diagnostic is excellent
+// about the symptom and silent about the cause.
+pub fn wall_run_new(x0: float, z0: float, x1: float, z1: float, mat: integer) -> WallRun {
+  WallRun { wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1,
+            wr_mat: mat, wr_step: 0, wr_base: 0, wr_up: 0 }
+}
+
 // The nearest of the 24 headings to (dx, dz), and how far off the author was.
 // ── A RUN FROM TWO ENDS — `25:`, the headless thread ────────────────────────
 //
@@ -3418,10 +3525,58 @@ pub fn wall_step(draft: WallDraft, x: float, z: float, mat: integer) -> DraftSte
 // surface, the same segment-versus-line interior test — because a wall's edges are
 // its fence's edges with the offset taken out, and deriving that twice is how the
 // two drifted apart in the first place.
+// ── WHICH EDGES DOES A RUN MARK? — plan 26 `B4q` ───────────────────────────
+//
+// ⛔ **THIS WAS `wall_stamp`'s INNER LOOP AND NOTHING ELSE COULD ASK IT.** The rule —
+// the halfplane about the run's line, kept where the edge midpoint's distance to the
+// SEGMENT equals its distance to the LINE — decides what a wall IS in the store, and
+// it was reachable only by writing a world. So *what does this run own* could not be
+// asked at all, which is what `B4p` ran into: `disc_recover` and `oct_recover` are
+// generate-and-compare (`FORMAL_CORE` §6's R1) and the RUN reader was the one link in
+// the chain that could not generate.
+//
+// ⚠ **AND `hex_shape::wall_write` IS NOT THIS RULE.** The library has its own — the
+// centreline separating two cell CENTRES — and measured over ten headings the two agree
+// on five and disagree on five, **with identical edge counts** ([`probe/b4q`](../../../probe/b4q/README.md)).
+// A check on the count alone reads as a match, which is `B4l`'s *a rim COUNT cannot see
+// a shape* one shape over. So the generator here has to be the stamper's own rule,
+// called rather than re-derived — and the divergence is a finding of its own rather
+// than something to route around.
+pub fn run_edges(run: WallRun, q0: integer, r0: integer, wq: integer, hr: integer,
+                 mat: integer) -> EdgeSet {
+  re_t = hex_way::track_new();
+  hex_way::track_straight(re_t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+  (re_tx, re_ty) = hex_way::seg_tangent(re_t, 0, 0.0);
+  re_nx = 0.0 - re_ty;
+  re_nz = re_tx;
+  re_half = edgeset_new(q0, r0, wq, hr);
+  re_sfo = surfaces_new();
+  re_sid = surf_straight(re_sfo, re_nx, re_nz,
+                         re_nx * run.wr_x0 + re_nz * run.wr_z0);
+  edges_halfplane_surf(re_half, q0, r0, wq, hr, re_nx, re_nz,
+                       re_nx * run.wr_x0 + re_nz * run.wr_z0, re_sid);
+  re_out = edgeset_new(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for re_d in 0..6 {
+        (re_nq, re_nr) = hex_grid::hex_neighbor(q, r, re_d);
+        if !edge_blocked(re_half, q, r, re_nq, re_nr) { continue; }
+        (re_cx, re_cz) = hex_to_px(q, r);
+        (re_wx, re_wz) = hex_to_px(re_nq, re_nr);
+        re_mx = (re_cx + re_wx) * 0.5;
+        re_mz = (re_cz + re_wz) * 0.5;
+        re_over = hex_way::seg_distance(re_t, 0, re_mx, re_mz)
+                - surf_distance(re_sfo, re_sid, re_mx, re_mz);
+        if re_over < 0.0 { re_over = 0.0 - re_over; }
+        if re_over < 0.000001 { edge_set_mat(re_out, q, r, re_nq, re_nr, mat); }
+      }
+    }
+  }
+  re_out
+}
+
 pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
               runs: WallRuns, marked: &integer) {
-  t = hex_way::track_new();
-  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
   (a0q, a0r) = px_to_hex(run.wr_x0, run.wr_z0);
   (a1q, a1r) = px_to_hex(run.wr_x1, run.wr_z1);
   q0 = a0q; if a1q < q0 { q0 = a1q; }
@@ -3437,14 +3592,17 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
   // what everything downstream believes the wall IS: `emit_run_wall` draws from its
   // line, `run_point_near` centres an opening on it, `annex_host` hangs a balcony off
   // it. So it may not be filed until the edges it describes are known.
+  //
+  // ⚠ **AND THE MARKING IS `run_edges`'s NOW — plan 26 `B4q`, one rule with two
+  // callers.** The write below is what this function still owns; which edges to write
+  // is a question the recovery has to be able to ask too, and a second copy of the
+  // answer is how a wall's description comes to describe a different wall.
+  t = hex_way::track_new();
+  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
   (tx, ty) = hex_way::seg_tangent(t, 0, 0.0);
   nx = 0.0 - ty;
   nz = tx;
-  eg = edgeset_new(q0, r0, w, h);
-  sfo = surfaces_new();
-  sid = surf_straight(sfo, nx, nz, nx * run.wr_x0 + nz * run.wr_z0);
-  edges_halfplane_surf(eg, q0, r0, w, h, nx, nz,
-                       nx * run.wr_x0 + nz * run.wr_z0, sid);
+  eg = run_edges(run, q0, r0, w, h, mat);
   n = 0;
   olo = 0.0;
   ohi = 0.0;
@@ -3452,26 +3610,20 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
     for q in q0..q0 + w {
       for dd in 0..6 {
         (nq, nr) = hex_grid::hex_neighbor(q, r, dd);
-        if edge_blocked(eg, q, r, nq, nr) {
+        if edge_mat(eg, q, r, nq, nr) != 0 {
           (cwx, cwz) = hex_to_px(q, r);
           (nwx, nwz) = hex_to_px(nq, nr);
           mx = (cwx + nwx) * 0.5;
           mz = (cwz + nwz) * 0.5;
-          dseg = hex_way::seg_distance(t, 0, mx, mz);
-          dline = surf_distance(sfo, sid, mx, mz);
-          over = dseg - dline;
-          if over < 0.0 { over = 0.0 - over; }
-          if over < 0.000001 {
-            wall_set(wld, q, r, dd, mat, grade, (grade as float) * wld.w_unit);
-            n = n + 1;
-            // ⚠ WHERE THIS EDGE SITS RELATIVE TO THE LINE IT WAS STAMPED FROM.
-            // Measured per edge rather than assumed: for most headings the wall
-            // ZIGZAGS about its run and there is no single offset.
-            eoff = nx * (mx - run.wr_x0) + nz * (mz - run.wr_z0);
-            if n == 1 { olo = eoff; ohi = eoff; }
-            if eoff < olo { olo = eoff; }
-            if eoff > ohi { ohi = eoff; }
-          }
+          wall_set(wld, q, r, dd, mat, grade, (grade as float) * wld.w_unit);
+          n = n + 1;
+          // ⚠ WHERE THIS EDGE SITS RELATIVE TO THE LINE IT WAS STAMPED FROM.
+          // Measured per edge rather than assumed: for most headings the wall
+          // ZIGZAGS about its run and there is no single offset.
+          eoff = nx * (mx - run.wr_x0) + nz * (mz - run.wr_z0);
+          if n == 1 { olo = eoff; ohi = eoff; }
+          if eoff < olo { olo = eoff; }
+          if eoff > ohi { ohi = eoff; }
         }
       }
     }

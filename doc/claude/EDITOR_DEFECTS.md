@@ -56,7 +56,8 @@ its axles and rolling wheels. A character is that, with different joints.
 | 3 | a house floor is not flat by default | ✅ **answered upstream** (`@HB-X67`) | `SEAT_MEAN` lands exactly half a height unit off; it must be refused with an offer, not truncated |
 | 4 | every wall is drawn **twice** — hex-edge and straight | ⚠ **verified** | two emitters, and the gesture writes **both** records |
 | 5 | after a reload the straight walls are gone | ⚠ **verified** | the save carries the **cells**; the run record is not saved |
-| 6 | a wall near a house **loses its description** | ⚠ **measured 2026-08-26**, [plan 26](../../plans/26-blueprint/README.md) `B0`/`B1` | `place` stamps one wall edge past each corner of its footprint; a stray that meets a wall's chain at a vertex makes three marked edges at one point, and `wall_read_run` refuses a marking that is not a path |
+| 6 | a wall near a house **loses its description** | ✅ **FIXED 2026-08-27**, [plan 26](../../plans/26-blueprint/README.md) `B4o` | `place` stamps one wall edge past each corner of its footprint; a stray that meets a wall's chain at a vertex makes three marked edges at one point, and `wall_read_run` refuses a marking that is not a path. ⚠ **The reader was right and the QUESTION was wrong** — `house_owns` attributes each mark to a structure before anything is asked what it describes |
+| 7 | **the same wall walked the other way is a different field** | ⛔ **measured 2026-08-27**, [`probe/b4q`](../../probe/b4q/README.md) | `wall_stamp` takes its halfplane normal from the run's TANGENT, so reversing the walk flips which side a cell whose centre lies exactly ON the line falls on. `hex_shape::wall_read_run` documents the opposite as a fact about the field, so a wall cannot be round-tripped |
 
 ✅ **1, 4 and 5 are ONE defect, and it is decided — see [the decision](#-the-decision--2026-08-21-there-is-no-session-record-only-a-mesh-cache).**
 
@@ -424,6 +425,42 @@ that changed something; a per-chunk equivalent is the key.
 asked whether the collision proxy was a cache, `deck.keys` gave *the same world* for the cache,
 for rebuilding every tick, and for never rebuilding at all. A mesh cache has the same property:
 a stale mesh keys a correct world. **The instrument is the mesh, not the world key.**
+
+---
+
+## 7. The same wall walked the other way is a different field
+
+⛔ **`hex_shape::wall_read_run` STATES IT AS A FACT ABOUT THE FIELD** — *"what it cannot
+recover is the ORIENTATION, because the field does not store one: A-to-B and B-to-A mark the
+identical edges"*. In this tree the field **does** store it. One run record, stamped forward and
+reversed, with `run_between` out of the picture: a due-north wall shares **2 of 11** edges with
+itself.
+
+![a wall walked north](img-wall-north-b4q.png)
+![the same wall walked south](img-wall-south-b4q.png)
+
+*The marks zigzag to opposite sides of one description. `desc d6 p8` against `desc d6 p9 · 9
+stray · 9 missing` — plan 26 `B4q`, [`probe/b4q`](../../probe/b4q/README.md).*
+
+**The mechanism.** `wall_stamp` builds its halfplane normal from the run's tangent —
+`nx = -ty, nz = tx` — so reversing the record flips the normal, and a cell whose centre lies
+exactly **on** the line falls on the other side of it. A due-north wall in odd-r passes through
+alternate rows' cell centres, so exactly those flip.
+
+⚠ **WHY IT HAS SURVIVED: DUE EAST IS UNMOVED**, and that is how every wall in the corpus is
+walked. `east`, `NE` and `steep NE` are identical in both directions; `north` and `shallow NW`
+are not.
+
+⚠ **IT IS VISIBLE NOW RATHER THAN FIXED** — plan 26 `B4q`. `hex_editor::run_edges` is
+`wall_stamp`'s own marking rule extracted so the recovery can GENERATE the wall its description
+names and compare it to the field edge for edge (`FORMAL_CORE` §6's R1, which the disc and the
+octagon readers already used and the run reader could not). `RunRead` carries `rr_stray` and
+`rr_missing`, and the plan view's caption says them.
+
+⚠ **THE FIX MOVES THE FIELD UNDER THE WHOLE CORPUS** — `deck.keys`'s `cea971a0…`, `house.keys`,
+every acceptance shot — so it is a step with its own gate work rather than a line to change. ⚠
+**And the tie-break is a decision, not a bug to patch**: a zero-width line through a cell centre
+has to pick a side, and what is wrong is only that the pick depends on the direction of travel.
 
 ---
 
