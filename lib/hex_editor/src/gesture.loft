@@ -1039,10 +1039,16 @@ pub fn claim_run(cl: Claims, x0: float, z0: float, x1: float, z1: float, q0: int
 // The cells a structure stands on or touches: unclaimed floor, and both cells of every
 // unclaimed mark.
 //
-// ⚠ **BOTH CELLS OF AN EDGE, WHICH IS WHAT MAKES A COMPONENT WELL DEFINED.** An edge's
-// two cells are adjacent and both land in this set, so the flood below always puts them
-// in the same component — an edge therefore belongs to exactly one, and no mark has to be
-// arbitrated between two.
+// ⚠ **BOTH CELLS OF AN EDGE — AND THE SWEEP SAYS THAT IS DEFENSIVE.** The intent is that
+// an edge's two cells land in one component, so an edge belongs to exactly one and no mark
+// has to be arbitrated between two. ⛔ **A row dropping the far cell went GREEN**: a
+// structure's near cells are already connected to each other — a wall's are a strip, a
+// rim's a ring — so nothing this suite can build splits without it. And `claims_only`
+// labels an edge by its NEAR cell alone, so the *belongs to exactly one* property holds
+// either way. It stays because the invariant is then true by construction rather than by
+// the shapes we happen to draw, which is `oct_recover`'s reason at its own two-cell
+// margin. ⚠ Dropping it would make components strictly FINER, which would separate close
+// structures better and could split one; neither was reachable, so neither is measured.
 //
 // ⚠ **AND THE FLOOR IS IN IT BECAUSE A HOUSE IS ONE STRUCTURE.** Its marks touch its own
 // floor cells, so footprint and walls come out as one component rather than a rectangle

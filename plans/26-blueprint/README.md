@@ -292,7 +292,7 @@ as a byte.
 | **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
 | **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red, **two of them green** | ✅ **SHIPPED** `4d47020` |
 | **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** `7842187` |
-| **`B4t`** — two of a kind: the field split before any reader is asked | M | `peel.loft` — two houses answering `house;house;` and two walls `run;run;` with nothing left over, the village's order now the scan's, and **a component no reader explains still refused**; `planview.loft` — a house and two towers drawn as three with two circles, one structure still one description, and the `refused` caption state kept on a fixture that refuses structurally; `tools/scripts/b4t.keys` — five structures, five descriptions; five faults seen red | ✅ **SHIPPED** |
+| **`B4t`** — two of a kind: the field split before any reader is asked | M | `peel.loft` — two houses answering `house;house;` and two walls `run;run;` with nothing left over, the village's order now the scan's, and **a component no reader explains still refused**; `planview.loft` — a house and two towers drawn as three with two circles, one structure still one description, and the `refused` caption state kept on a fixture that refuses structurally; `tools/scripts/b4t.keys` — five structures, five descriptions; five faults seen red, **one of them green** | ✅ **SHIPPED** `f982255` |
 
 ### Why `B0` is one phase and not two
 
@@ -2477,6 +2477,117 @@ interpreted and 78 s `--native`.
 gap in this one. ⛔ **AND THE HOUSE IS STILL THE ONLY READER WITH A CELL CHANNEL** — a part
 placed with `verb place` writes floor too, so a window holding a house and a PART is
 untested ground.
+
+## What `B4t` turned up
+
+**Shipped `f982255`.** `hex_editor::touched_cells`, `cells_label`, `claims_only` and the
+`Segments` seam; the component loop in `plan_panel`; a tighter comparison box in
+`disc_recover`; `tools/scripts/b4t.keys`. 6 rows in `peel.loft` and 52 in `planview.loft`.
+
+![five structures, five descriptions](../../doc/claude/img-village-b4t.png)
+
+*`b4t.keys` — `desc disc 0,-8 shell 156 + disc -13,0 shell 156 + run d6 p8 + run d6 p8 +
+house 0,4 4x5 rot 3 (8 fit) · 4 stray`, and **nothing unexplained**. Two towers, two walls
+and a house: `B4s` described one of each kind and left the rest.
+`make plan-view WORLD=b4t Q0=-28 Q1=16 R0=-16 R1=10 REF=2.0`.*
+
+### ✅ R1 is not softened — the field is split instead
+
+`B4s` measured its own limitation and named the reason: the peel subtracts what has been
+DESCRIBED, and neither of a pair had been.
+
+| the window holds | `B4s` | `B4t` |
+|---|---|---|
+| two houses | *nothing*, 84 left | `house;house;` **0** |
+| two walls | *nothing*, 23 left | `run;run;` **0** |
+| a house and two towers | `house;`, 108 left | `disc;house;disc;` **0** |
+
+⚠ **THE OBVIOUS FIX WOULD HAVE BEEN TO WEAKEN THE COMPARISON, AND IT IS THE ONE THING NOT
+TO TOUCH.** `disc_fits` and `box_fits` ask both directions — *every boundary edge is marked
+AND every mark is a boundary edge* — which is exactly what stops a disc being accepted with
+a wall drawn across it (`B4h`'s own control). Splitting the field first leaves that check
+alone and hands each reader a field that is entirely one structure's. **The readers do not
+change at all.**
+
+⚠ **AND IT COMPOSES WITH `B4s`'s CLAIM SET RATHER THAN ADDING A SECOND MECHANISM**: a
+component is asked about by CLAIMING everything else, so `plan_describe` and every
+`_claimed` door work unchanged.
+
+### The library has this walk and throws the answer away
+
+`hex_shape::set_connected` floods from the first member and returns a **boolean** — so the
+reachable set it built, which is exactly one component, is discarded. `cells_label` is that
+flood keeping what it found. ⚠ **As a stack rather than `set_connected`'s
+repeat-until-stable**, because that shape is `O(window²)` on a long thin structure and a
+wall is exactly that. If this ever moves upstream, that is the function to extend.
+
+### ⚠ Two consequences worth the name
+
+⛔ **A LONE MARKED EDGE IS NOW ITS OWN COMPONENT WITH TWO CHAIN ENDS, SO IT IS A RUN.**
+`B0`'s `refused` caption fixture was two unconnected edges — refused for having four ends
+between them — and both are now described honestly as one-edge runs. That is not the state
+that row is about, so the fixture is a **closed loop** now: the boundary of a two-cell
+domino has no chain ends, no disc reproduces it and no floor under it. It refuses for a
+structural reason rather than for want of a split.
+
+⛔ **AND A RUN SPELLS ITS NOUN WHEREVER IT STANDS.** From `B1` to `B4s` the FIRST
+description dropped it — `desc d0 p5` — because `desc ` implied the noun and a window held
+one run or none. Components are visited in the window's scan order, so which kind comes
+first is a fact about **where things stand**, and a caption whose grammar depends on that
+cannot be read or asserted without knowing the layout.
+
+### ⚠ Asked once per COMPONENT, the disc reader's per-call cost is what decides the budget
+
+`planview` went **113 s → 206 s** on the window count alone. `oct_recover` has compared
+over the marks' extent rather than the window since `B4m`, and its comment already argued
+it: *every mark is inside `lo..hi` by construction, so a scan of the whole window spends
+its first rows agreeing about empty ground before it can reach a disagreement* — the worst
+case for a check whose job is to fail fast, which is every candidate that does not fit.
+`disc_recover` does the same now: **66 s**, below where it started, with `disc.loft`
+34 s → 27 s.
+
+### The sabotage sweep, and a row that was green
+
+Five faults, restored from copies, with the split, both of its channels and the picture
+asking per component asserted present before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the field is never split — `B4s`'s behaviour restored | `peel` · `planview` |
+| 2 | the flood never crosses a neighbour, so every cell is its own component | `peel` · `planview` |
+| 3 | a mark's FAR cell is not touched | ⚠ **nothing** |
+| 4 | the floor is not touched, so a house is two structures | `peel` · `planview` |
+| 5 | the picture asks about the whole field rather than one component | `planview` |
+
+⚠ **ROWS 1 AND 2 ARE THE SPLIT FROM BOTH SIDES**, which is what a partition needs: too
+coarse and two of a kind are one field again, too fine and a wall is fifty one-edge runs. A
+single row could have passed for either.
+
+⛔ **ROW 3 REFUTES A COMMENT THIS STEP WROTE.** It claimed both cells of an edge are what
+makes a component well defined. They are not: a structure's near cells are already
+connected to each other, and `claims_only` labels an edge by its near cell alone, so the
+*belongs to exactly one component* property holds without it. It stays because the
+invariant is then true by construction rather than by the shapes we happen to draw — and
+the comment says that now. ⚠ **Third justification this plan has written and had refuted by
+its own control in four steps** (`B4q`'s `WallRun is private` story, `B4r`'s offset claim,
+this) — every one caught by building the check rather than by re-reading the code.
+
+### And the store is untouched
+
+Segmentation reads and writes nothing, but it moved the exclusion, the chain's caller and
+`disc_recover`'s comparison box at once — so the corpus is the control: `house`, `door`,
+`wall`, `b4o`, `b4p` and `b4s` key exactly what they keyed at `B4s`, and `probe/t4` holds
+`deck.keys` at `cea971a07899e420b344c0054567f4e1`. **94 files green on both backends** —
+122 s interpreted and 61 s `--native`, against 190 s / 78 s before the tighter disc box.
+
+### What it deliberately does not do
+
+⛔ **A COMPONENT IS SPATIAL, SO STRUCTURES THAT TOUCH ARE STILL ONE FIELD.** Two walls a
+cell apart, or a tower whose rim meets a house's mitre, merge — and are then refused, which
+is the honest answer and the same one `B1` got. ⚠ **The fixtures here are all comfortably
+clear**, and `B4o`'s nine rows and this step's own second wall (moved from `x = 8` to
+`x = 16` when the house claimed one of its marks) are what that distance costs.
 
 ## Open questions
 
