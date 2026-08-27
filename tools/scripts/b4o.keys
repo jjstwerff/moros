@@ -1,0 +1,23 @@
+# B4o — TWO DESCRIPTIONS IN ONE WINDOW
+#
+# ⛔ **A WINDOW HAS HELD ONE DESCRIPTION SINCE `B1`.** That step measured the cost: the
+# same wall reads `run d0 p5` alone and is **refused** when a house stands eight hexes
+# away, because one of the house's mitre stubs meets the wall's chain at a vertex and
+# `wall_read_run` will not answer for a marking that is not a path.
+#
+# ⚠ **THE READER WAS RIGHT AND THE QUESTION WAS WRONG.** Those marks are not one path,
+# because they are not one structure. Saying which structure each mark belongs to is
+# what lets both be described.
+#
+# ⚠ **`verb place` REFUSES SIX OF THE TWELVE FACINGS** — only the six whose rectangle
+# axis lies on an edge heading have a `Plan`, and only a `Plan` can be mitred. 30° is one.
+
+echo --- a house
+at 0 0 30
+verb place
+
+echo --- and a wall well clear of it, laid west to east
+at -12 -12 0
+verb run
+at -2 -12 0
+verb run

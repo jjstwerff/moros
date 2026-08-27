@@ -414,9 +414,37 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
         runs = "<polygon class='house' data-cq='{hh.hs_cq}' data-cr='{hh.hs_cr}'"
              + " data-wid='{hh.hs_wid}' data-dep='{hh.hs_dep}' data-rot='{hh.hs_rot}'"
              + " data-class='{hh.hs_class}' data-stray='{hh.hs_stray}'"
-             + " data-missing='{hh.hs_missing}' points='{hpts}' fill='none'"
+             + " data-missing='{hh.hs_missing}' data-other='{hh.hs_other}'"
+             + " points='{hpts}' fill='none'"
              + " stroke='rgb(30,90,220)' stroke-width='0.05'"
              + " stroke-dasharray='0.32 0.18'/>\n";
+        // ── AND WHAT THE HOUSE DOES NOT ACCOUNT FOR — plan 26 `B4o` ─────────
+        //
+        // ⛔ **A WINDOW HAS HELD ONE DESCRIPTION SINCE `B1`, AND EVERY REAL SCENE HOLDS
+        // MORE THAN ONE THING.** `B1` measured the cost from the other side: a house
+        // eight hexes away cost an unrelated wall its description, because one mitre
+        // stub met the wall's chain at a vertex. Saying which structure each mark
+        // belongs to first is what lets both be described.
+        //
+        // ⚠ **THE LEFTOVER READER IS THE RUN READER ALONE**, deliberately. A leftover
+        // disc or octagon is a further step; claiming the chain here would be claiming
+        // a capability nothing has measured.
+        if hh.hs_other > 0 {
+          ro = hex_editor::wall_recover_outside(w, q0, r0, q1 - q0, r1 - r0, ref,
+                 hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep,
+                                    hh.hs_rot, false));
+          if ro.rr_ok {
+            say = say + " + run d{ro.rr_d} p{ro.rr_p}";
+            runs = runs
+                 + "<line class='run' data-d='{ro.rr_d}' data-p='{ro.rr_p}'"
+                 + " x1='{fx(ro.rr_x0)}' y1='{fx(ro.rr_z0)}'"
+                 + " x2='{fx(ro.rr_x1)}' y2='{fx(ro.rr_z1)}'"
+                 + " stroke='rgb(30,90,220)' stroke-width='0.05'"
+                 + " stroke-dasharray='0.32 0.18' stroke-linecap='round'/>\n";
+          } else {
+            say = say + " + {hh.hs_other} unexplained";
+          }
+        }
       } else {
         // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
         // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one

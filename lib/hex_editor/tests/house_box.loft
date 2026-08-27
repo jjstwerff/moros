@@ -244,3 +244,104 @@ fn test_the_rectangle_names_the_marks_it_does_not_explain() {
          "the rectangle wants {h.hs_missing} edges the store does not hold, not "
        + "{MISSING_EXPECT}");
 }
+
+
+// ── `B4o` — WHICH STRUCTURE DOES A MARK BELONG TO? ─────────────────────────
+//
+// ⛔ **`B4n` COUNTED EVERY MARK IN THE WINDOW THE RECTANGLE DID NOT WANT.** In a window
+// holding only a house that is its mitre, which is what it was measured on. In a window
+// holding a house AND anything else it is the other thing — a caption confidently naming
+// the wrong structure. ⚠ **And it is `B1`'s finding pointing the other way**: there a
+// house cost an unrelated wall its description; here the house claims it.
+
+// One house, and a straight wall well clear of it.
+//
+// ⚠ **"CLEAR" IS NINE ROWS, AND THE FIRST FIXTURE WAS NOT.** A wall laid beside the
+// house had three of its own marks inside the house's neighbourhood, so the mitre count
+// read 7 and the recovered run came back TRUNCATED — `-13.86..-6.93` for a wall laid
+// from -14 to -4. Both are the ownership rule working: a mark that close genuinely is
+// ambiguous. `B1`'s own case put the house eight hexes away, and so does this.
+fn housed_and_walled() -> VoxelWorld {
+  w = house_world();
+  d = run_between(0.0 - 12.0, 0.0 - 12.0, 0.0 - 2.0, 0.0 - 12.0, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+  w
+}
+
+// ⚠ **THE HOUSE ACCOUNTS FOR EVERY ONE OF ITS OWN MARKS AND NOTHING ELSE**, which is
+// what makes the split a statement rather than a guess: on a house alone there is
+// nothing left over at all.
+fn test_a_house_accounts_for_its_own_marks_and_no_others() {
+  h = house_recover(house_world(), 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  assert(h.hs_stray == STRAY_EXPECT,
+         "the mitre explains {h.hs_stray} marks, not {STRAY_EXPECT}");
+  assert(h.hs_other == 0,
+         "a house standing alone leaves {h.hs_other} marks unaccounted for — the "
+       + "ownership rule does not reach its own mitre");
+}
+
+// ⛔ **THE ROW `B4n` COULD NOT HAVE PASSED.** With a wall in the window its `hs_stray`
+// counted the wall's marks as the house's over-run; the count is the mitre's alone now,
+// and the wall's marks are reported as somebody else's.
+fn test_a_wall_in_the_window_is_not_the_house_s_over_run() {
+  h = house_recover(housed_and_walled(), 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  assert(h.hs_stray == STRAY_EXPECT,
+         "with a wall in the window the mitre explains {h.hs_stray} marks, not "
+       + "{STRAY_EXPECT} — the wall is being counted as the house's");
+  assert(h.hs_other > 0,
+         "the wall's marks are not reported as anybody else's");
+}
+
+// ⛔ **`B1`'s CASE, THE OTHER WAY UP.** *"The same wall reads `run d0 p5` alone and is
+// refused when a house stands eight hexes away"* — one mitre stub meets the wall's chain
+// at a vertex and `wall_read_run` will not answer for a marking that is not a path.
+// ⚠ **The reader was right and the QUESTION was wrong**: those marks are not one path,
+// because they are not one structure.
+fn test_the_wall_recovers_once_the_house_s_marks_are_taken_out() {
+  w = housed_and_walled();
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  bx = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+
+  // asked of the whole window, the run reader refuses — as it should
+  assert(!wall_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0).rr_ok,
+         "the run reader described a window holding a house and a wall — it has "
+       + "stopped refusing a marking that is not a path, and this pair proves nothing");
+  // …and with the house's marks attributed, the wall is a run again
+  ro = wall_recover_outside(w, 0 - 16, 0 - 16, 33, 33, 0.0, bx);
+  assert(ro.rr_ok,
+         "the wall is still unreadable with the house taken out — the ownership rule "
+       + "is not reaching every mark the house stamped");
+  // …and it is the wall that was laid, not some other run: both ends within a cell.
+  lo = ro.rr_x0; hi = ro.rr_x1;
+  if hi < lo { lo = ro.rr_x1; hi = ro.rr_x0; }
+  assert(lo < 0.0 - 10.0 && hi > 0.0 - 4.0,
+         "the recovered run spans {lo}..{hi} in x, which is not the wall laid from "
+       + "-12 to -2");
+}
+
+// ⚠ **AND THE CONTROL: A WALL ALONE IS UNMOVED BY ANY OF THIS.** A window with no house
+// in it must read exactly as it did before, or the split has changed what a run is.
+fn test_a_wall_alone_reads_the_same_through_both_doors() {
+  w = flat_world();
+  d = run_between(0.0 - 12.0, 0.0 - 12.0, 0.0 - 2.0, 0.0 - 12.0, WALL_MAT);
+  assert(d.rd_ok, "the wall was refused");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  a = wall_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  // a box far away owns none of it, so the two doors must agree exactly
+  far = hex_shape::box_new(20, 20, 4, 5, 0, false);
+  b = wall_recover_outside(w, 0 - 20, 0 - 20, 41, 41, 0.0, far);
+  assert(a.rr_ok && b.rr_ok, "the wall alone was refused by one of the two doors");
+  assert(a.rr_d == b.rr_d && a.rr_p == b.rr_p && a.rr_x0 == b.rr_x0
+         && a.rr_z0 == b.rr_z0 && a.rr_x1 == b.rr_x1 && a.rr_z1 == b.rr_z1,
+         "the two doors describe the same wall differently: d{a.rr_d} p{a.rr_p} "
+       + "against d{b.rr_d} p{b.rr_p}");
+}

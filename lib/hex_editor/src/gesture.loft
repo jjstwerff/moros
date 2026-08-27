@@ -1215,13 +1215,15 @@ pub struct HouseRead {
   hs_rot:     integer,      // …at the lowest rotation that draws it
   hs_class:   integer,      // how many `(wid, dep, rot)` reproduce the same cells
   hs_cells:   integer,
-  hs_stray:   integer,      // wall marks the rectangle's own boundary does not want
+  hs_stray:   integer,      // marks the rectangle does not want but the MITRE explains
   hs_missing: integer,      // …and boundary edges the store does not hold
+  hs_other:   integer,      // …and marks in this window that are somebody else's
 }
 
 fn house_no(why: text, cells: integer) -> HouseRead {
   HouseRead { hs_ok: false, hs_why: why, hs_cq: 0, hs_cr: 0, hs_wid: 0, hs_dep: 0,
-              hs_rot: 0, hs_class: 0, hs_cells: cells, hs_stray: 0, hs_missing: 0 }
+              hs_rot: 0, hs_class: 0, hs_cells: cells, hs_stray: 0, hs_missing: 0,
+              hs_other: 0 }
 }
 
 const BOX_HOLD_EPS = 0.000000001;
@@ -1323,6 +1325,83 @@ pub fn house_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr:
   box_fits(fl, hex_shape::box_new(cq, cr, wid, dep, rot, false), q0, r0, wq, hr)
 }
 
+// Does this edge belong to the rectangle `b` — its boundary, or the mitre past it?
+//
+// ⛔ **THE MITRE IS AUTHORED, AND `B4n`'s RECORD SAID OTHERWISE.** `place_house` stamps
+// each side as a run from one MITRED corner to the next, and a mitre is where two
+// centrelines meet — past the last floor cell. `wall_stamp` then marks every edge whose
+// midpoint projects onto that segment, so the four corner stubs are the run faithfully
+// rasterised. `B4n` wrote *"nothing authored them as walls"*; what it had actually
+// measured is that **the RECTANGLE's cell boundary does not contain them**, which is a
+// fact about the rectangle. ⚠ The real finding is one layer over:
+// [EDITOR_DEFECTS](../../../doc/claude/EDITOR_DEFECTS.md) 4's *every wall is drawn
+// twice* — the mitre is what makes the straight BAND meet at a corner, and the per-edge
+// copy carries it into a representation where it bounds nothing.
+//
+// ⚠ **ONE CELL, AND THE BOUND IS THE MITRE'S OWN REACH.** Two perpendicular centrelines
+// meet less than a hex beyond the corner, so an edge the mitre can mark always has a
+// cell touching the footprint. `test_a_house_accounts_for_its_own_marks_and_no_others`
+// measures that: on a fresh house it accounts for every mark and leaves none over.
+pub fn house_owns(b: Box, q: integer, r: integer, nq: integer, nr: integer) -> boolean {
+  if box_holds(b, q, r) || box_holds(b, nq, nr) { return true; }
+  for d in 0..6 {
+    (aq, ar) = hex_grid::hex_neighbor(q, r, d);
+    if box_holds(b, aq, ar) { return true; }
+    (bq2, br2) = hex_grid::hex_neighbor(nq, nr, d);
+    if box_holds(b, bq2, br2) { return true; }
+  }
+  false
+}
+
+// The window's wall bytes with one rectangle's own marks taken out.
+//
+// ⚠ **`edges_mat`'s BODY WITH A PREDICATE, NOT A COPY OF IT.** The reading half — which
+// three directions a cell owns, and that a zero byte is no edge — is the part that must
+// not be written twice, and it is six lines; a second copy of it is how two readers of
+// one field come to disagree about which edges exist.
+pub fn edges_mat_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                         hr: integer, ref: float, b: Box) -> EdgeSet {
+  eo_e = edgeset_new(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for eo_d in [4, 5, 0] {
+        eo_m = wall_of(wld, q, r, eo_d, ref);
+        if eo_m == 0 { continue; }
+        (eo_nq, eo_nr) = hex_grid::hex_neighbor(q, r, eo_d);
+        if house_owns(b, q, r, eo_nq, eo_nr) { continue; }
+        edge_set_mat(eo_e, q, r, eo_nq, eo_nr, eo_m);
+      }
+    }
+  }
+  eo_e
+}
+
+// The run described by what a house does NOT account for — plan 26 `B4o`.
+//
+// ⛔ **A WINDOW HAS HELD ONE DESCRIPTION SINCE `B1`, AND THAT IS WHY A HOUSE COST AN
+// UNRELATED WALL ITS OWN.** `B1` measured it: the same wall reads `run d0 p5` alone and
+// is **refused** when a house stands eight hexes away, because one of the house's mitre
+// stubs meets the wall's chain at a vertex and `wall_read_run` will not answer for a
+// marking that is not a path. ⚠ **Taking the house's marks out is not a repair of the
+// reader** — the reader is right that those marks are not one path. It is saying which
+// structure each mark belongs to before asking what it describes.
+pub fn wall_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                            hr: integer, ref: float, b: Box) -> RunRead {
+  wo_e = edges_mat_outside(wld, q0, r0, wq, hr, ref, b);
+  (wo_d, wo_a, wo_b, wo_p, wo_ok) = hex_shape::wall_read_run(wo_e, q0, r0, wq, hr);
+  if !wo_ok {
+    return RunRead { rr_ok: false, rr_d: 0 - 1, rr_p: 0,
+                     rr_x0: 0.0, rr_z0: 0.0, rr_x1: 0.0, rr_z1: 0.0 };
+  }
+  wo_ea = hex_shape::wall_end_a(wo_d, wo_a, wo_p);
+  wo_eb = hex_shape::wall_end_b(wo_d, wo_b, wo_p);
+  RunRead { rr_ok: true, rr_d: wo_d, rr_p: wo_p,
+            rr_x0: hex_shape::tri_x(wo_a, wo_b),
+            rr_z0: hex_shape::tri_y(wo_a, wo_b),
+            rr_x1: hex_shape::tri_x(wo_ea, wo_eb),
+            rr_z1: hex_shape::tri_y(wo_ea, wo_eb) }
+}
+
 // The rectangle these FLOOR cells describe, and what its boundary makes of the marks.
 pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                      ref: float) -> HouseRead {
@@ -1394,9 +1473,17 @@ pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr:
   }
 
   // …and now what the rectangle's own boundary makes of the wall marks.
+  //
+  // ⛔ **A MARK IS THE HOUSE'S ONLY IF IT IS NEAR THE HOUSE — plan 26 `B4o`, AND `B4n`
+  // SHIPPED WITHOUT THAT.** It counted every mark in the WINDOW that the rectangle's
+  // boundary did not want, so a window holding a house and a wall eight hexes away
+  // reported the wall as the house's corner over-run: a caption confidently naming the
+  // wrong structure. ⚠ **Which is `B1`'s finding pointing the other way** — there a
+  // house cost an unrelated wall its description, here the house claimed it.
   best = hex_shape::box_new(bcq, bcr, bwid, bdep, brot, false);
   stray = 0;
   missing = 0;
+  other = 0;
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       // The three lattice directions a cell owns — `edge_owner`'s table.
@@ -1404,14 +1491,16 @@ pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr:
         (nq, nr) = hex_grid::hex_neighbor(q, r, d);
         want = box_holds(best, q, r) != box_holds(best, nq, nr);
         got = edge_is_wall(wall_of(wld, q, r, d, ref));
-        if got && !want { stray = stray + 1; }
         if want && !got { missing = missing + 1; }
+        if !got { continue; }
+        if want { continue; }
+        if house_owns(best, q, r, nq, nr) { stray = stray + 1; } else { other = other + 1; }
       }
     }
   }
   HouseRead { hs_ok: true, hs_why: "", hs_cq: bcq, hs_cr: bcr, hs_wid: bwid,
               hs_dep: bdep, hs_rot: brot, hs_class: klass, hs_cells: ncell,
-              hs_stray: stray, hs_missing: missing }
+              hs_stray: stray, hs_missing: missing, hs_other: other }
 }
 
 // The one BODY every mark in this window declares, or `""` when they do not agree.

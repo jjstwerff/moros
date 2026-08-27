@@ -1298,3 +1298,57 @@ fn test_a_house_is_one_description_in_the_tally() {
          "a window with a house tallies {t.pt_cells} cells against {bare.pt_cells}");
 }
 
+// ── `B4o` — TWO DESCRIPTIONS IN ONE WINDOW ─────────────────────────────────
+//
+// ⛔ **A WINDOW HAS HELD ONE DESCRIPTION SINCE `B1`, AND EVERY REAL SCENE HOLDS MORE
+// THAN ONE THING.** `B1` measured the cost from the other side: a house eight hexes away
+// cost an unrelated wall its description, because one of the house's mitre stubs met the
+// wall's chain at a vertex. Saying which structure each mark belongs to is what lets both
+// be described.
+
+fn housed_and_walled_world() -> VoxelWorld {
+  w = housed_world();
+  d = hex_editor::run_between(0.0 - 12.0, 0.0 - 12.0, 0.0 - 2.0, 0.0 - 12.0,
+                              hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+  w
+}
+
+fn test_a_house_and_a_wall_are_both_described() {
+  svg = plan_svg(housed_and_walled_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "both");
+  cap = caption(svg);
+  assert(cap.contains("desc house"), "the house lost its description: {cap}");
+  assert(cap.contains("+ run d"),
+         "the wall beside the house is still undescribed: {cap}");
+  assert(tag_count(svg, "<polygon class='house'") == 1
+         && tag_count(svg, "<line class='run'") == 1,
+         "the picture draws {tag_count(svg, \"<polygon class='house'\")} rectangles and "
+       + "{tag_count(svg, \"<line class='run'\")} runs, not one of each");
+}
+
+// ⚠ **AND THE TALLY COUNTS TWO**, or a picture with two descriptions would report one
+// and the driver's line would understate what it drew — which is the defect `B4m`
+// recorded, one shape further on.
+fn test_two_descriptions_tally_as_two() {
+  t = plan_tally(plan_svg(housed_and_walled_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "both"));
+  assert(t.pt_descs == 2, "two descriptions tallied as {t.pt_descs}");
+  // …and the control: the house alone still tallies one.
+  o = plan_tally(plan_svg(housed_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "one"));
+  assert(o.pt_descs == 1, "a house alone tallied {o.pt_descs} descriptions");
+}
+
+// ⛔ **THE CAPTION MUST NOT CALL THE WALL THE HOUSE'S OVER-RUN.** `B4n` counted every
+// mark the rectangle did not want, anywhere in the window; with a wall present that is
+// the wall. The mitre count is the mitre's alone now.
+fn test_the_wall_is_not_reported_as_the_house_s_mitre() {
+  one  = caption(plan_svg(housed_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "one"));
+  both = caption(plan_svg(housed_and_walled_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "both"));
+  assert(one.contains("4 stray") && both.contains("4 stray"),
+         "the mitre count moves when a wall enters the window: '{one}' against "
+       + "'{both}' — the house is claiming somebody else's marks");
+}
+
