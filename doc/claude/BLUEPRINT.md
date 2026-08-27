@@ -72,6 +72,21 @@ does not touch a wall takes its description away.
 
 ![a wall and the description recovered from it](img-wall-plan-b1.png)
 
+✅ **AND `B4n` GAVE A HOUSE ITS DESCRIPTION — the thing this § is about, and the answer to the
+question `B0` opened.** `place_house` fills its footprint with `hex_shape::box_fill`, so a house's
+FLOOR is a `Box`'s rasterisation and the rectangle recovers exactly; the wall marks never enter
+the recovery and become what it is measured against.
+
+![a house, and the rectangle recovered from it](img-house-plan-b4n.png)
+
+⛔ **The four stray edges are not authored.** On a house with no openings at all the rectangle's
+own boundary is **complete** — 38 edges, nothing missing — and **four marks lie outside it, one
+per corner**: the four mitred runs over-running. `house.keys` reads `3 stray · 1 missing`, which
+is the same house plus its openings — one opening sits on a stray and clears it, the other sits
+**on** the boundary and clears an edge the description wants, which is `@HB-X70`'s *an opening is
+never "no wall"* from a third direction. ⚠ And the SIZE is quantised: `2x3` and `2x2` fill
+identical cells, so the caption reports how many rectangles fit rather than claiming one.
+
 ⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
 railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
 assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what

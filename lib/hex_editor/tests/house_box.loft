@@ -163,18 +163,26 @@ fn test_two_rectangles_can_fill_one_field() {
   assert(diff, "2x2 and 4x2 fill the same cells — `box_fill` is reading no argument");
 }
 
-fn test_the_class_is_reported_rather_than_hidden() {
+// ⛔ **THE ROW A SABOTAGE SWEEP HAD TO WRITE.** Its first version asked only whether a
+// rectangle one step narrower AT THE SAME ROTATION fits — which is true of the largest
+// member of the class as well as the smallest, so the row went **green** against a
+// reader answering the LARGEST. The claim is *the smallest*, and the only thing that
+// tests it is naming both ends of the class.
+fn test_the_reader_answers_the_smallest_of_the_class_it_reports() {
   w = house_world();
   h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
   assert(h.hs_ok, "no rectangle: {h.hs_why}");
-  assert(h.hs_class > 1,
-         "the house's field admits {h.hs_class} rectangle — if that is now one, the "
-       + "reader has stopped needing to report an ambiguity and the caption is stale");
-  // …and the one it returns is the smallest of them.
-  assert(!house_fits_at(w, 0 - 16, 0 - 16, 33, 33, h.hs_cq, h.hs_cr,
-                        h.hs_wid - 1, h.hs_dep, h.hs_rot, 0.0)
-         || h.hs_wid == 1,
-         "a narrower rectangle fits too — the answer is not the smallest in its class");
+  assert(h.hs_class == 8,
+         "the house's field admits {h.hs_class} rectangles, not the 8 measured — two "
+       + "shapes, 4x5 and 5x5, each described four ways by the rectangle's own symmetry");
+  assert(h.hs_wid + h.hs_dep == 9,
+         "the reader answers {h.hs_wid}x{h.hs_dep} — a perimeter of {h.hs_wid + h.hs_dep} "
+       + "against the 9 of the smallest rectangle in the class");
+  // ⚠ **AND A LARGER ONE REALLY IS IN THE CLASS**, or the row above would pass for a
+  // field that admits exactly one rectangle and no choice is being made at all.
+  assert(house_fits_at(w, 0 - 16, 0 - 16, 33, 33, h.hs_cq, h.hs_cr, 5, 5, h.hs_rot, 0.0),
+         "5x5 does not fit this floor — the class has no larger member and this row "
+       + "cannot see which end of it the reader picked");
 }
 
 // ── THE REFUSALS ───────────────────────────────────────────────────────────

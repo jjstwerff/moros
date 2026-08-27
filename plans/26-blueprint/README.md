@@ -159,6 +159,18 @@ hypothetical, because **a disk and an octagon are the same field at four sizes**
 reader admitting the whole grid describes every round tower of shell 156 as the octagon
 of 192.
 
+**`B4n`** — **expected result**: a placed house draws a **rectangle** on the plan —
+`house -1,-2 4x5 rot 1 (8 fit) · 3 stray · 1 missing` — where it has drawn nothing since
+`B1`. **Invariant**: *the description is recovered from the FLOOR, and the marks are what
+it is then measured against* — `place_house` fills its footprint with
+`hex_shape::box_fill`, so the cells ARE a `Box`'s rasterisation and §6's R1 applies;
+the wall marks never enter the recovery. **Negative controls**: a floor with one cell
+taken out must be **refused**, carrying its own cell count, or the reader is a fit; a
+window with no floor must say so differently; the rectangle the search returns must
+reproduce the floor through a door the search does not use; and the ambiguity must be
+**reported** — the size is quantised, so several rectangles fill one field and a single
+number would claim more than the field supports.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -192,6 +204,7 @@ as a byte.
 | **`B4k`** — is a BAY a feature of its wall? (probe) | S | [`probe/b4k`](../../probe/b4k/README.md) — predictions pre-registered; an unbounded span on the parent reaches **0** edges of a projecting face, with the perforating control holding at 8 | ✅ **RUN** `735814c` |
 | **`B4l`** — an OCTAGONAL tower: the palette's BODY chooses the shape | M | `octagon.loft` — eight distinct corners, convex and mirrored in both lattice axes; two shells naming one octagon with a control that a far pair does not; the seven collapsing shells enumerated and each refused with the next up; the octagon and the circle keying different worlds at one shell **while their rim counts coincide**; an unknown body and a damaged one both building the circle; `probe/s2c/octagon` byte-identical; five faults seen red | ✅ **SHIPPED** `d0898cd` |
 | **`B4m`** — the octagon's DESCRIPTION, and which reader the palette asks | M | `octagon.loft` — the centre and shell recover at two sizes and off the origin, a gapped rim and an over-large candidate are refused, **a disk and an octagon are measured to be one field at four sizes** and the admitted set is what separates them; `planview.loft` — the outline is eight points read out of the picture, the palette decides which description is drawn, an unknown body falls through, and `plan_tally` gets the five rows the driver's counter never had; five faults seen red | ✅ **SHIPPED** `552343b` |
+| **`B4n`** — a HOUSE's description: the rectangle its floor determines | M | `house_box.loft` — the membership pinned against `box_fill` at twelve rotations, the drawn corners round-tripped through `box_to_local`, the anchor the house's own cell and not the origin, a bitten floor refused with its count, the class reported, and **`B0`'s four stray edges measured at last**; `planview.loft` — the rectangle drawn as four points read out of the picture and the caption carrying both residuals; five faults seen red | ✅ **SHIPPED** `0efad03` |
 
 ### Why `B0` is one phase and not two
 
@@ -1634,6 +1647,135 @@ vertex-connected component, because the four stray corner edges `B0` found each 
 vertex with the loop. So the component split that looks like the obvious next move buys
 only genuinely disjoint shapes, and the house — the thing a blueprint is for — is
 untouched by it.
+
+
+## What `B4n` turned up
+
+**Shipped `0efad03`.** `hex_editor::house_recover` + `HouseRead`, `box_holds`,
+`box_fits_at`… — `house_fits_at`, `box_px_x`/`box_px_z`, `oct_span`'s sibling
+`box_fits`; the house branch in `plan_svg`; `tools/run-tests.sh TEST_NATIVE=1`.
+9 rows in `house_box.loft` and 46 in `planview.loft`.
+
+![a house, and the rectangle recovered from it](../../doc/claude/img-house-plan-b4n.png)
+
+*`house.keys`'s house drawn flat. The dashed blue rectangle is the description; the three
+black stubs outside it are the corner over-run, and the two orange edges are its
+openings. `make plan-view WORLD=headless Q0=-7 Q1=5 R0=-8 R1=5`.*
+
+### ⛔ `B0`'s four stray edges, answered
+
+`B0` drew this house on its first picture and found *"27 floor cells with a closed wall
+around them — and four wall edges that bound none of them"*, one per corner, with one of
+`house.keys`'s two openings sitting on one of them. It could not say what they were:
+*"a stamp that over-runs the fill at each corner may be drawing a wall that genuinely
+exists in the description"*, and **the field half alone can say *this edge bounds no
+room* and not *and no wall was authored there*.** `B1` inherited the question and did not
+answer it either.
+
+**With the rectangle recovered it is arithmetic.** On a house with no openings at all:
+
+| | |
+|---|---|
+| the rectangle's own boundary | **38 edges, complete** — `missing 0` |
+| marks lying outside it | **4** — one per corner |
+
+**They are the four mitred runs over-running their corners.** They are not in the
+description, and nothing authored them as walls.
+
+⚠ **AND `house.keys` READS `3 stray · 1 missing`, WHICH IS THE SAME HOUSE PLUS ITS
+OPENINGS.** Its profile 2 sits on one of those four strays and clears it to material 0,
+so that stray stops being a wall and the count drops to three; profile 1 sits **on** the
+rectangle's boundary and clears an edge the description wants — the `1 missing`. ⚠ That
+is `@HB-X70`'s *an opening is never "no wall"* reached from a third direction, and plan
+24 `A8` already records `builtin_house_door` leaving the edge at 0.
+
+### The anchor is exact and the size is not — 432 rectangles
+
+Every one of them has **exactly one** anchor cell that reproduces its field: the
+translation is recoverable, which is `@HB-X49`'s answer for an arc's centre one shape
+over. ⚠ **144 of them cannot report the size that was authored** — `2x3` and `2x2` fill
+identical cells, and so do `2x5` and `2x4`, because raising one extent by a hex step
+raises the half-extent by half a step and admits no new row of centres.
+
+⛔ **THAT IS `@HB-X49`'s SENTENCE A THIRD TIME** — *a continuous parameter must be
+quantised to what the field distinguishes, or it is silently snapped rather than
+refused.* The reader answers the **smallest** rectangle in the class and the caption says
+how many fit; `house.keys`'s field admits **8**, which are two rectangles (4x5 and 5x5)
+each described four ways by the rectangle's own symmetry.
+
+### ⛔ The `hex_editor` suite has outgrown loft's 300-second budget
+
+`make lib-test` is the pre-push proof and **the only thing in this tree that runs
+`--native`**. It calls `loft test` once per PACKAGE: one process, one deadline. At 59
+files and 733 tests `hex_editor` reaches it, reproducibly, on an idle box —
+`[timeout] deadline reached after 300s (graceful)`.
+
+⚠ **AND A BARE `loft test` REPORTS THAT BY PRINTING NO RESULT LINE AND EXITING 0**, which
+is indistinguishable from a quiet pass under any grep. `make` catches it because
+`run-tests.sh`'s rule — *a file that reports no result at all is a failure* — is written
+into the Makefile too; a person running `loft test` by hand would not.
+
+✅ **`tools/run-tests.sh` takes `TEST_NATIVE=1` now**: per file, in parallel, where the
+budget is per file and the wall clock is the slowest single file rather than the sum.
+`hex_editor` + `hex_mesh`, 72 files, green on both — **202 s interpreted, 65 s native**.
+⚠ `make lib-test` is left alone deliberately: changing what the pre-push gate MEANS is a
+decision, not a fix, and this makes the proof available either way.
+
+### Four guesses about that cost, all wrong
+
+⚠ **`disc_recover`'s own lesson, collected four more times in one step.**
+
+| the guess | measured |
+|---|---|
+| `B4n`'s new reader is the cost | **12 s** of the whole thing |
+| the test windows are too big (41x41) | 117 s → 109 s, and 33x33 is plenty |
+| try the likely centre before the sweep | 117 s → **178 s** — every shell that fits nothing pays an extra comparison. **Reverted** |
+| one duplicated mechanism is 40 s of it | bought nothing. **Reverted** |
+
+**Per-test timing is what settled it** — `loft --tests file.loft::name` — and the answer
+was that `octagon.loft`'s two exhaustive *refusals* dominate, which is intrinsic to what
+they claim. ⚠ Both reverts are the right outcome: an unmeasured optimisation that makes
+it slower, and a coverage cut that buys nothing, are worse than the cost they were aimed
+at.
+
+### The sabotage sweep, and the row that was green
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with
+the reader, the membership, the corners, the anchor-uniqueness refusal and both halves of
+the picture's use of it asserted **present** before row 0, and every row asserting both
+packages **build** before a verdict is read.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the membership drifts from `box_fill` by half a step | `house_box` |
+| 2 | the reader answers the LARGEST rectangle in the class | ⚠ **nothing**, until the row named both ends |
+| 3 | the stray marks are never counted — `B0`'s four go unreported | `house_box` · `planview` |
+| 4 | the drawn corners rotate the wrong way | `house_box` |
+| 5 | the picture never asks for a house — built and not called | `planview` |
+
+⛔ **ROW 2 IS THE THIRD SWEEP RUNNING TO FIND A ROW THAT COULD NOT SEE ITS OWN CLAIM.**
+The test asked whether a rectangle one step narrower **at the same rotation** fits —
+which is true of the largest member of the class as well as the smallest, so a reader
+picking the wrong end passed. The claim is *the smallest*, and the only thing that tests
+it is naming **both ends**: the perimeter of the answer, and that `5x5` really is in the
+class. ⚠ `B4l` row 1, `B4m` row 4, and now this — **a row that asserts a choice must
+name the alternative**, or it is asserting that a choice was made.
+
+### Two fixtures that were wrong before the code was
+
+⚠ **`place_house` REFUSES SIX OF THE TWELVE FACINGS BY DESIGN** and the first fixture
+walked into it: *a footprint at this facing has no mitred corners; turn one step*. Only
+the six facings whose rectangle axis lies on an edge heading have a `Plan`, and only a
+`Plan` can be mitred. The fixture faces 90° now, which is the pose `house_walls.loft` and
+`probe/d2` both use.
+
+⛔ **AND THE EDIT THAT FIXED IT DID NOT APPLY, AND SAID IT HAD.** A `str.replace` whose
+anchor no longer matched returned the string unchanged and the script printed `ok`
+anyway — so three runs in a row reported the same refusal against a file that had never
+been edited. ⚠ **A replace is a grep, and its default answer is *absent*** — the same
+sentence `CLAUDE.md` writes about logs, met in the tooling used to write the code. Every
+edit here asserts its anchor and re-reads the result.
 
 
 ## Open questions

@@ -75,7 +75,7 @@ EYES (first person). The mode decides; `shelter_at` only observes.
 | `src/editor_server.loft` | a socket. Multi-client, the authority remote |
 | `src/editor_client.loft` | the picture. `--html` in a browser, **or** the same client against a server — the authority is LOCAL or REMOTE, one program |
 | `src/editor_run.loft` | a script, headless. `verb`/`keys`/`step`, no clock but the script's |
-| `src/plan_view.loft` | a **plan of a saved world**, as SVG. No clock at all — plan 26 `B0`, `make plan-view`. It draws the field and the DESCRIPTION recovered from it: a straight run, a disc, or an octagon — and which of the two round readers is asked is the **palette's** decision, not the field's (`B4m`) |
+| `src/plan_view.loft` | a **plan of a saved world**, as SVG. No clock at all — plan 26 `B0`, `make plan-view`. It draws the field and the DESCRIPTION recovered from it: a straight run, a disc, an octagon, or a HOUSE's rectangle — and which of the two round readers is asked is the **palette's** decision, not the field's (`B4m`). ⚠ The house's rectangle comes from its FLOOR, not its marks, and the caption names the marks it does not explain: **4 per house, one per corner** — `B0`'s oldest open question, answered at `B4n` |
 
 ⚠ **AND THE FOURTH IS WHY THE COUNT MATTERS.** `plan_view` draws the STORE — one polygon per
 cell, one line per stored wall byte, out of the `.hxw` — and the first picture it made found four
