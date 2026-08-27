@@ -45,36 +45,49 @@ fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
   assert(m > 0, "the fixture's wall stamped nothing");
 }
 
-// The chain, peeled — the same order and the same readers `plan_panel` asks, written
-// out here so the LIBRARY's half can be tested without a picture.
+// The chain, peeled over COMPONENTS — the same order and the same readers `plan_panel`
+// asks, written out here so the LIBRARY's half can be tested without a picture.
+//
+// ⚠ **THE FIELD IS SPLIT FIRST — plan 26 `B4t`.** A component is asked about by CLAIMING
+// everything else, so every reader keeps the signature it had and `FORMAL_CORE` §6's R1
+// keeps comparing over a field that is entirely one structure's.
 fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         cl: Claims) -> text {
   out = "";
   for i in 0..8 {
-    rr = wall_recover_claimed(w, q0, r0, wq, hr, 0.0, cl);
-    if rr.rr_ok {
-      out = out + "run;";
-      if claim_run(cl, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, q0, r0, wq, hr) == 0 {
-        return out + "STUCK;";
+    sg = segments_of(w, q0, r0, wq, hr, 0.0, cl);
+    if segment_count(sg) == 0 { return out; }
+    told = out;
+    for id in 0..segment_count(sg) {
+      only = segment_claims(cl, w, q0, r0, wq, hr, 0.0, sg, id);
+      rr = wall_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+      if rr.rr_ok {
+        out = out + "run;";
+        if claim_run(cl, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, q0, r0, wq, hr) == 0 {
+          return out + "STUCK;";
+        }
+        continue;
       }
-      continue;
-    }
-    dc = disc_recover_claimed(w, q0, r0, wq, hr, 0.0, cl);
-    if dc.dc_ok {
-      out = out + "disc;";
-      if claim_disc(cl, dc.dc_cq, dc.dc_cr, dc.dc_shell, q0, r0, wq, hr) == 0 {
-        return out + "STUCK;";
+      dc = disc_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+      if dc.dc_ok {
+        out = out + "disc;";
+        if claim_disc(cl, dc.dc_cq, dc.dc_cr, dc.dc_shell, q0, r0, wq, hr) == 0 {
+          return out + "STUCK;";
+        }
+        continue;
       }
-      continue;
+      hh = house_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+      if hh.hs_ok {
+        out = out + "house;";
+        hb = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
+        if claim_house(cl, hb, q0, r0, wq, hr) == 0 { return out + "STUCK;"; }
+        continue;
+      }
     }
-    hh = house_recover_claimed(w, q0, r0, wq, hr, 0.0, cl);
-    if hh.hs_ok {
-      out = out + "house;";
-      hb = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
-      if claim_house(cl, hb, q0, r0, wq, hr) == 0 { return out + "STUCK;"; }
-      continue;
-    }
-    return out;
+    // ⚠ A ROUND THAT DESCRIBED NOTHING ENDS IT, whatever is left: peeling one structure
+    // can SPLIT what remains, which is why the labels are rebuilt each round — but a
+    // round with no answer will not produce one next time either.
+    if out == told { return out; }
   }
   out + "CAPPED;"
 }
@@ -92,8 +105,12 @@ fn test_a_house_a_tower_and_a_wall_are_all_three_described() {
   wall_at(w, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
   cl = claims_new(0 - 12, 0 - 16, 25, 26);
   got = peel(w, 0 - 12, 0 - 16, 25, 26, cl);
-  assert(got == "house;run;disc;",
-         "the peel described `{got}`, not a house, a run and a disc");
+  // ⚠ **THE ORDER IS THE LABEL SCAN'S, NOT THE CHAIN'S — plan 26 `B4t`.** Components are
+  // visited as the window is read, row by row, so the tower at `r = -8` comes before the
+  // house at `r = 4`. Deterministic either way, and a row asserting the chain's order
+  // would be asserting where the fixture happens to stand.
+  assert(got == "disc;run;house;",
+         "the peel described `{got}`, not a disc, a run and a house");
   // ⚠ **AND NOTHING IS LEFT OVER**, which is the claim that says the three descriptions
   // account for the field rather than merely being three answers.
   left = marks_unclaimed(w, 0 - 12, 0 - 16, 25, 26, 0.0, cl);
@@ -190,34 +207,63 @@ fn test_each_shape_accounts_for_the_marks_it_was_recovered_from() {
        + "unaccounted for — including its mitre, which `B4o` measured it owns");
 }
 
-// ── ⛔ AND WHAT THE PEEL STILL CANNOT DO, MEASURED RATHER THAN ASSUMED ─────
+// ── ✅ AND TWO OF A KIND, WHICH THE PEEL ALONE COULD NOT — plan 26 `B4t` ──
 //
-// ⛔ **TWO OF A KIND ARE ONE FIELD NO READER CAN EXPLAIN, AND THAT IS R1 REFUSING
-// CORRECTLY.** `disc_fits` and `box_fits` compare over the WHOLE field they are given,
-// in both directions — *every boundary edge is marked AND every mark is a boundary
-// edge* — which is what stops a disc being accepted with a wall drawn across it. The
-// price is that a field holding two discs is a field no single disc reproduces.
+// ⛔ **`B4s` MEASURED THESE AS THE LIMITATION**: two houses described nothing with 84
+// marks left, two walls nothing with 23, a house and two towers only the house with 108.
+// The peel subtracts what has been DESCRIBED and nothing had been, because `disc_fits`
+// and `box_fits` compare over the whole field in BOTH directions — *every boundary edge
+// is marked AND every mark is a boundary edge* — which is exactly what stops a disc being
+// accepted with a wall drawn across it.
 //
-// ⚠ **THE PEEL DOES NOT HELP HERE AND CANNOT**: it subtracts what has been described,
-// and nothing has been. What this wants is SEGMENTATION — the marks split into
-// components before any reader is asked — which is a different mechanism and a
-// different step. These numbers are its baseline.
-fn test_two_of_a_kind_are_refused_and_the_count_says_how_many() {
+// ✅ **SPLITTING THE FIELD FIRST LEAVES THAT CHECK UNTOUCHED**, because each reader is
+// then handed a field that is entirely one structure's.
+fn test_two_of_a_kind_are_each_described() {
   hw = flat_world();
   house_at(hw, 0.0, 0.0);
   house_at(hw, 0.0 - 16.0, 0.0);
   hcl = claims_new(0 - 18, 0 - 8, 26, 20);
-  assert(peel(hw, 0 - 18, 0 - 8, 26, 20, hcl) == "",
-         "two houses in one window are described now — the reader has gained a way to "
-       + "isolate one floor from another, and this row is the news");
-  assert(marks_unclaimed(hw, 0 - 18, 0 - 8, 26, 20, 0.0, hcl) > 0,
-         "two houses left nothing unexplained while describing nothing");
+  assert(peel(hw, 0 - 18, 0 - 8, 26, 20, hcl) == "house;house;",
+         "two houses describe `{peel(hw, 0 - 18, 0 - 8, 26, 20, claims_new(0 - 18, 0 - 8, 26, 20))}`");
+  assert(marks_unclaimed(hw, 0 - 18, 0 - 8, 26, 20, 0.0, hcl) == 0,
+         "two described houses leave "
+       + "{marks_unclaimed(hw, 0 - 18, 0 - 8, 26, 20, 0.0, hcl)} marks over");
 
   ww = flat_world();
   wall_at(ww, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
   wall_at(ww, 6.0, 0.0 - 3.0, 6.0, 6.0);
   wcl = claims_new(0 - 14, 0 - 8, 26, 18);
-  assert(peel(ww, 0 - 14, 0 - 8, 26, 18, wcl) == "",
-         "two walls in one window are described now — `wall_read_run` refuses a marking "
-       + "with four ends, so this row is the news");
+  assert(peel(ww, 0 - 14, 0 - 8, 26, 18, wcl) == "run;run;",
+         "two walls describe `{peel(ww, 0 - 14, 0 - 8, 26, 18, claims_new(0 - 14, 0 - 8, 26, 18))}`");
+  assert(marks_unclaimed(ww, 0 - 14, 0 - 8, 26, 18, 0.0, wcl) == 0,
+         "two described walls leave marks over");
+}
+
+// ── ⛔ AND WHAT STILL REFUSES, WHICH IS THE POINT OF NOT SOFTENING R1 ──────
+//
+// ⚠ **A SPLIT IS NOT A LICENCE TO ANSWER.** The boundary of a two-cell domino is one
+// component and every reader gives up on it: no chain ends for the run reader, no disc
+// reproduces it, no floor for the house reader. ⚠ **Without this row the step could have
+// shipped a chain that answered for anything** — which is what softening the both-ways
+// comparison would have bought, and the reason it was not touched.
+fn test_a_component_no_reader_explains_is_still_refused() {
+  w = flat_world();
+  for d0 in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(0, 0, d0);
+    if !(nq == 1 && nr == 0) { wall_set(w, 0, 0, d0, WALL_MAT, 8, 2.0); }
+  }
+  for d1 in 0..6 {
+    (mq, mr) = hex_grid::hex_neighbor(1, 0, d1);
+    if !(mq == 0 && mr == 0) { wall_set(w, 1, 0, d1, WALL_MAT, 8, 2.0); }
+  }
+  cl = claims_new(0 - 8, 0 - 8, 17, 17);
+  sg = segments_of(w, 0 - 8, 0 - 8, 17, 17, 0.0, cl);
+  assert(segment_count(sg) == 1,
+         "the domino's boundary is {segment_count(sg)} components, not one — the fixture "
+       + "is not what this row is about");
+  assert(peel(w, 0 - 8, 0 - 8, 17, 17, cl) == "",
+         "a closed loop no disc reproduces was described as "
+       + "`{peel(w, 0 - 8, 0 - 8, 17, 17, claims_new(0 - 8, 0 - 8, 17, 17))}`");
+  assert(marks_unclaimed(w, 0 - 8, 0 - 8, 17, 17, 0.0, cl) > 0,
+         "it left nothing unexplained while explaining nothing");
 }

@@ -1018,6 +1018,151 @@ pub fn claim_run(cl: Claims, x0: float, z0: float, x1: float, z1: float, q0: int
   cr_n
 }
 
+// ── ONE STRUCTURE AT A TIME — plan 26 `B4s` COULD NOT, AND THIS IS WHY ─────
+//
+// ⛔ **THE PEEL SUBTRACTS WHAT HAS BEEN DESCRIBED, AND TWO OF A KIND DESCRIBE NOTHING.**
+// `B4s` measured it: two houses answer nothing with 84 marks left, two walls nothing with
+// 23, a house and two towers only the house with 108. ⚠ **That is `FORMAL_CORE` §6's R1
+// refusing correctly, not a defect** — `disc_fits` and `box_fits` compare over the whole
+// field in BOTH directions, *every boundary edge is marked AND every mark is a boundary
+// edge*, which is exactly what stops a disc being accepted with a wall drawn across it.
+// The price is that a field holding two rims is a field no single disc reproduces.
+//
+// ✅ **SO THE FIELD IS SPLIT BEFORE ANY READER IS ASKED.** Each reader then gets a field
+// it can explain exactly and R1 is untouched — the readers do not change at all, which is
+// what makes this a step rather than a rewrite.
+//
+// ⚠ **AND IT COMPOSES WITH THE CLAIM SET RATHER THAN ADDING A SECOND MECHANISM**: a
+// component is asked about by CLAIMING everything else, so `plan_describe` and every
+// `_claimed` door work unchanged.
+
+// The cells a structure stands on or touches: unclaimed floor, and both cells of every
+// unclaimed mark.
+//
+// ⚠ **BOTH CELLS OF AN EDGE, WHICH IS WHAT MAKES A COMPONENT WELL DEFINED.** An edge's
+// two cells are adjacent and both land in this set, so the flood below always puts them
+// in the same component — an edge therefore belongs to exactly one, and no mark has to be
+// arbitrated between two.
+//
+// ⚠ **AND THE FLOOR IS IN IT BECAUSE A HOUSE IS ONE STRUCTURE.** Its marks touch its own
+// floor cells, so footprint and walls come out as one component rather than a rectangle
+// beside a loop.
+pub fn touched_cells(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                     ref: float, cl: Claims) -> HexSet {
+  tc = hexset_chunk(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if !hexset_get(cl.cl_cells, q, r) {
+        tc_li = edge_layer(wld, q, r, ref);
+        if tc_li >= 0
+           && (hex_voxel::world_cell(wld, q, r, tc_li).h_material as integer ?? 0)
+              == FLOOR_MAT {
+          hexset_set(tc, q, r, true);
+        }
+      }
+      for tc_d in [4, 5, 0] {
+        if !mark_left(wld, q, r, tc_d, ref, cl) { continue; }
+        (tc_nq, tc_nr) = hex_grid::hex_neighbor(q, r, tc_d);
+        hexset_set(tc, q, r, true);
+        hexset_set(tc, tc_nq, tc_nr, true);
+      }
+    }
+  }
+  tc
+}
+
+// Label the connected components of a cell set, `0`…`n-1`; returns how many.
+//
+// ⚠ **THE LIBRARY HAS THIS WALK AND THROWS THE ANSWER AWAY.**
+// `hex_shape::set_connected` floods from the first member and reports a BOOLEAN, so the
+// reachable set it built — which is exactly one component — is discarded. If this ever
+// moves upstream that is the function to extend rather than a new one to add.
+//
+// ⚠ **AND IT IS A STACK RATHER THAN `set_connected`'s REPEAT-UNTIL-STABLE**, because this
+// runs once per peel ROUND and once more per component. That shape is `O(window²)` on a
+// long thin structure, and a wall is exactly that.
+pub fn cells_label(cells: HexSet, lb: Labels) -> integer {
+  cl_n = 0;
+  for r in hexset_r0(cells)..hexset_r0(cells) + hexset_h(cells) {
+    for q in hexset_q0(cells)..hexset_q0(cells) + hexset_w(cells) {
+      if !hexset_get(cells, q, r) { continue; }
+      if label_get(lb, q, r) >= 0 { continue; }
+      sq: vector<integer> = [q];
+      sr: vector<integer> = [r];
+      label_set(lb, q, r, cl_n);
+      cl_at = 0;
+      while cl_at < len(sq) {
+        cq = sq[cl_at] ?? 0;
+        cr = sr[cl_at] ?? 0;
+        cl_at = cl_at + 1;
+        for cl_d in 0..6 {
+          (nq, nr) = hex_grid::hex_neighbor(cq, cr, cl_d);
+          if !hexset_get(cells, nq, nr) { continue; }
+          if label_get(lb, nq, nr) >= 0 { continue; }
+          label_set(lb, nq, nr, cl_n);
+          sq += [nq];
+          sr += [nr];
+        }
+      }
+      cl_n = cl_n + 1;
+    }
+  }
+  cl_n
+}
+
+// The claims that hide every component but one — plan 26 `B4t`.
+//
+// ⚠ **IT CLAIMS THE REST RATHER THAN MASKING THIS ONE**, so every reader keeps the
+// signature it already had and R1 keeps comparing over a field that is entirely one
+// structure's. The base's own claims are carried through, because a component is asked
+// about only after everything described so far has been taken out.
+pub fn claims_only(base: Claims, wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                   hr: integer, ref: float, lb: Labels, id: integer) -> Claims {
+  co = claims_new(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if hexset_get(base.cl_cells, q, r) || label_get(lb, q, r) != id {
+        hexset_set(co.cl_cells, q, r, true);
+      }
+      for co_d in [4, 5, 0] {
+        (co_nq, co_nr) = hex_grid::hex_neighbor(q, r, co_d);
+        if !mark_left(wld, q, r, co_d, ref, base) {
+          claim_edge(co, q, r, co_nq, co_nr);
+        } else if label_get(lb, q, r) != id {
+          claim_edge(co, q, r, co_nq, co_nr);
+        }
+      }
+    }
+  }
+  co
+}
+
+// ── THE SEAM: one call, so a consumer never holds a `Labels` ──────────────
+//
+// ⚠ **THE PICTURE ASKS *HOW MANY STRUCTURES ARE LEFT* AND *SHOW ME THE nTH*, AND NOTHING
+// ELSE.** Splitting `touched_cells` from `cells_label` at the boundary would put the
+// labelling grid, and the two-step order, into `hex_mesh` — where a second consumer would
+// have to get both right again, and where `Labels` is not even a declared dependency.
+pub struct Segments {
+  sg_lb: Labels,
+  sg_n:  integer,          // how many structures the unclaimed field falls into
+}
+
+pub fn segments_of(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   ref: float, cl: Claims) -> Segments {
+  so_lb = labels_new(q0, r0, wq, hr);
+  so_n = cells_label(touched_cells(wld, q0, r0, wq, hr, ref, cl), so_lb);
+  Segments { sg_lb: so_lb, sg_n: so_n }
+}
+
+pub fn segment_count(sg: Segments) -> integer { sg.sg_n }
+
+pub fn segment_claims(base: Claims, wld: VoxelWorld, q0: integer, r0: integer,
+                      wq: integer, hr: integer, ref: float, sg: Segments,
+                      id: integer) -> Claims {
+  claims_only(base, wld, q0, r0, wq, hr, ref, sg.sg_lb, id)
+}
+
 // The claim set `B4o`'s and `B4p`'s Box-shaped doors describe, so those keep asking
 // their own question through the one mechanism underneath.
 pub fn claims_of_house(b: Box, q0: integer, r0: integer, wq: integer,
@@ -1183,7 +1328,19 @@ fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE — `B0`'s rule, and
   // `probe/l1` lost a run to exactly this shape of ambiguity.
   if marks == 0 { return disc_no("no wall marks in this window", 0); }
-  table = disc_marks(wld, q0, r0, wq, hr, ref, cl);
+  // ⚠ **THE COMPARISON BOX IS THE MARKS' OWN EXTENT PLUS TWO, NOT THE WINDOW — plan 26
+  // `B4t`, AND `oct_recover` HAS DONE IT SINCE `B4m`.** Its comment says why: every mark
+  // is inside `lo..hi` by construction, so a scan of the whole window spends its first
+  // rows agreeing about empty ground before it can reach a disagreement — the worst case
+  // for a check whose whole job is to fail fast, which is every candidate that does not
+  // fit. ⚠ **`B4t` is what makes it matter here**: the reader is asked once per COMPONENT
+  // now rather than once per window, and `planview` went from 113 s to 206 s on the
+  // window count alone.
+  bq0 = lo_q - 2;
+  br0 = lo_r - 2;
+  bwq = hi_q - lo_q + 5;
+  bhr = hi_r - lo_r + 5;
+  table = disc_marks(wld, bq0, br0, bwq, bhr, ref, cl);
   // ⚠ **THE SHELLS ARE BOUNDED BY THE MARKS' OWN EXTENT, WHICH IS A CORRECTNESS
   // STATEMENT BEFORE IT IS A SPEED ONE.** A disc whose own window is wider than the
   // marks that are supposed to bound it cannot reproduce them, so trying it is not
@@ -1211,7 +1368,7 @@ fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
     if 2 * disc_span(shell) > span + 3 { break; }
     for cr in lo_r..hi_r + 1 {
       for cq in lo_q..hi_q + 1 {
-        if !disc_fits(table, cq, cr, shell, q0, r0, wq, hr) { continue; }
+        if !disc_fits(table, cq, cr, shell, bq0, br0, bwq, bhr) { continue; }
         (dx, dz) = hex_to_px(cq, cr);
         return DiscRead { dc_ok: true, dc_why: "", dc_cq: cq, dc_cr: cr,
                           dc_shell: shell, dc_x: dx, dc_z: dz,

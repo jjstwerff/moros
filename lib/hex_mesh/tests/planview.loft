@@ -397,13 +397,31 @@ fn test_the_caption_says_what_the_picture_shows() {
   drawn = plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run");
   cap = caption(drawn);
   assert(cap != "", "the picture carries no caption at all");
-  assert(cap.contains("desc d"),
+  assert(cap.contains("run d"),
          "a run WAS drawn and the caption does not say so: {cap}");
 
   // …and a window with marks the reader refuses must say `refused`, not `none`.
+  //
+  // ⚠ **THE FIXTURE IS A CLOSED LOOP NOW, AND `B4t` IS WHY.** It used to be two
+  // unconnected edges, which the whole-window reader refused for having four chain ends.
+  // Segmentation puts each in its own component, and a lone edge genuinely IS a one-edge
+  // run — both are described. ⚠ **That is not the state this row is about**: it wants a
+  // field where every reader gives up, and the boundary of a two-cell domino is one — no
+  // chain ends for the run reader, no disc reproduces it, and no floor for the house
+  // reader. It refuses for a structural reason rather than for want of a split.
   w2 = flat_world();
-  hex_editor::wall_set(w2, 0, 0, 0, hex_editor::WALL_MAT, 8, 2.0);
-  hex_editor::wall_set(w2, 5, 5, 0, hex_editor::WALL_MAT, 8, 2.0);
+  for w2d in 0..6 {
+    (w2q, w2r) = hex_grid::hex_neighbor(0, 0, w2d);
+    if !(w2q == 1 && w2r == 0) {
+      hex_editor::wall_set(w2, 0, 0, w2d, hex_editor::WALL_MAT, 8, 2.0);
+    }
+  }
+  for w2e in 0..6 {
+    (w2nq, w2nr) = hex_grid::hex_neighbor(1, 0, w2e);
+    if !(w2nq == 0 && w2nr == 0) {
+      hex_editor::wall_set(w2, 1, 0, w2e, hex_editor::WALL_MAT, 8, 2.0);
+    }
+  }
   two = plan_svg(w2, 0 - 8, 0 - 8, 9, 9, 2.0, "two");
   assert(desc_line(two) == "", "two unconnected edges read back as one run");
   assert(caption(two).contains("refused"),
@@ -1260,7 +1278,7 @@ fn housed_world() -> VoxelWorld {
 fn test_a_house_is_drawn_as_a_rectangle() {
   svg = plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house");
   cap = caption(svg);
-  assert(cap.contains("desc house"),
+  assert(cap.contains("house "),
          "a placed house still draws no description: {cap}");
   assert(tag_count(svg, "<polygon class='house'") == 1,
          "{tag_count(svg, \"<polygon class='house'\")} rectangles drawn, not one");
@@ -1295,7 +1313,7 @@ fn test_the_caption_reports_the_marks_the_rectangle_does_not_explain() {
 // straight run still reads as a run even though its window holds no floor at all.
 fn test_a_run_is_still_a_run() {
   cap = caption(plan_svg(tally_world_run(), 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
-  assert(cap.contains("desc d"),
+  assert(cap.contains("run d"),
          "the house reader took a window the run reader had answered: {cap}");
 }
 
@@ -1337,8 +1355,8 @@ fn housed_and_walled_world() -> VoxelWorld {
 fn test_a_house_and_a_wall_are_both_described() {
   svg = plan_svg(housed_and_walled_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "both");
   cap = caption(svg);
-  assert(cap.contains("desc house"), "the house lost its description: {cap}");
-  assert(cap.contains("+ run d"),
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("run d"),
          "the wall beside the house is still undescribed: {cap}");
   assert(tag_count(svg, "<polygon class='house'") == 1
          && tag_count(svg, "<line class='run'") == 1,
@@ -1415,8 +1433,8 @@ fn housed_and_towered_world(body: text) -> VoxelWorld {
 fn test_a_house_and_a_tower_are_both_described() {
   svg = plan_svg(housed_and_towered_world(""), 0 - 7, 0 - 15, 8, 9, 2.0, "tower");
   cap = caption(svg);
-  assert(cap.contains("desc house"), "the house lost its description: {cap}");
-  assert(cap.contains("+ disc 0,-8 shell 156"),
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("disc 0,-8 shell 156"),
          "the tower beside the house is still undescribed: {cap}");
   // …and it is the OUTLINE that arrived, not only the sentence.
   assert(tag_count(svg, "<polygon class='house'") == 1
@@ -1438,8 +1456,8 @@ fn test_an_octagonal_tower_beside_a_house_is_drawn_as_an_octagon() {
   svg = plan_svg(housed_and_towered_world(hex_editor::WALL_BODY_OCT),
                  0 - 7, 0 - 15, 8, 9, 2.0, "oct");
   cap = caption(svg);
-  assert(cap.contains("desc house"), "the house lost its description: {cap}");
-  assert(cap.contains("+ octagon 0,-8 shell 156"),
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("octagon 0,-8 shell 156"),
          "the octagonal tower beside the house is not named as one: {cap}");
   assert(tag_count(svg, "<polygon class='oct'") == 1
          && tag_count(svg, "<circle class='disc'") == 0,
@@ -1449,15 +1467,17 @@ fn test_an_octagonal_tower_beside_a_house_is_drawn_as_an_octagon() {
          "two descriptions tallied as {plan_tally(svg).pt_descs}");
 }
 
-// ⛔ **AND TWO OF A KIND ARE STILL ONE FIELD NO READER CAN EXPLAIN — plan 26 `B4s`.**
-// The peel takes out what it has DESCRIBED, and here nothing has been: `disc_fits`
-// compares over the whole field in both directions — *every boundary edge is marked AND
-// every mark is a boundary edge* — which is exactly what stops a disc being accepted with
-// a wall drawn across it, and the price is that a field holding two rims is a field no
-// single disc reproduces. ⚠ **That is R1 refusing correctly, not the peel failing**; what
-// it wants is SEGMENTATION, which is a different mechanism and a different step. The
-// picture says how many marks it could not account for and draws nothing over them.
-fn test_a_leftover_of_two_towers_is_counted_and_not_drawn() {
+// ── ✅ AND TWO OF A KIND ARE DESCRIBED NOW — plan 26 `B4t` ────────────────
+//
+// ⛔ **`B4s` PINNED THIS SCENE AS THE LIMITATION**: a house and two towers described the
+// house and left 108 marks over. The peel subtracts what has been DESCRIBED, and neither
+// rim had been — `disc_fits` compares over the whole field in both directions, which is
+// what stops a disc being accepted with a wall across it, so a field holding two rims is
+// a field no single disc reproduces.
+//
+// ✅ **THE FIELD IS SPLIT BEFORE ANY READER IS ASKED NOW**, so each rim is a field of its
+// own and R1 is untouched. ⚠ The readers did not change at all.
+fn test_a_house_and_two_towers_are_all_three_described() {
   w = housed_and_towered_world("");
   s = hex_editor::EditSession {};
   hex_editor::session_at(s, w, 0.0 - 14.0, 0.0, 0.0);
@@ -1465,25 +1485,14 @@ fn test_a_leftover_of_two_towers_is_counted_and_not_drawn() {
          "the second tower was refused");
   svg = plan_svg(w, 0 - 15, 0 - 15, 8, 9, 2.0, "two");
   cap = caption(svg);
-  assert(cap.contains("desc house"), "the house lost its description: {cap}");
-  assert(cap.contains("unexplained"),
-         "a leftover holding two rims was given a description: {cap}");
-  assert(tag_count(svg, "<circle class='disc'") == 0
-         && tag_count(svg, "<line class='run'") == 0
-         && tag_count(svg, "<polygon class='oct'") == 0,
-         "the picture drew a description over marks belonging to two structures");
-  assert(plan_tally(svg).pt_descs == 1,
-         "one description tallied as {plan_tally(svg).pt_descs}");
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(tag_count(svg, "<circle class='disc'") == 2,
+         "{tag_count(svg, \"<circle class='disc'\")} circles drawn, not two");
+  assert(plan_tally(svg).pt_descs == 3,
+         "three descriptions tallied as {plan_tally(svg).pt_descs}");
+  assert(!cap.contains("unexplained"),
+         "two towers and a house leave marks nothing explains: {cap}");
 }
-
-
-// ── `B4q` — DOES THE DESCRIPTION REPRODUCE THE FIELD IT WAS DRAWN FROM? ────
-//
-// ⛔ **THE PICTURE HAS DRAWN A RUN ON A WEAKER CLAIM THAN THE OTHER THREE SINCE `B1`.**
-// `disc`, `octagon` and `house` are each GENERATED and compared to the field edge for
-// edge; `rr_ok` means only *these ends describe this run*, because the marking rule
-// lived inside `wall_stamp` and nothing else could ask it. The caption carries the
-// residual now, in the same `· N stray · N missing` grammar the house already uses.
 
 // The `n`th element of a class, read out of the picture — so two pictures can be
 // compared as TEXT rather than by a count.
@@ -1518,7 +1527,7 @@ fn test_a_wall_that_reproduces_its_field_says_nothing_extra() {
                               d.rd_run.wr_x1, d.rd_run.wr_z1),
                  0 - 10, 0 - 10, 11, 11, 2.0, "clean");
   cap = caption(svg);
-  assert(cap.contains("desc d0 p"), "the wall lost its description: {cap}");
+  assert(cap.contains("run d0 p"), "the wall lost its description: {cap}");
   assert(!cap.contains("stray") && !cap.contains("missing"),
          "a wall that reproduces its own field is reported as broken: {cap}");
   ln = desc_line(svg);
@@ -1546,7 +1555,7 @@ fn test_a_wall_walked_either_way_draws_one_clean_description() {
                   0 - 10, 0 - 10, 11, 11, 2.0, "back");
   fcap = caption(fwd);
   bcap = caption(back);
-  assert(fcap.contains("desc d6 p") && bcap.contains("desc d6 p"),
+  assert(fcap.contains("run d6 p") && bcap.contains("run d6 p"),
          "the two directions do not recover one description: {fcap} / {bcap}");
   assert(!fcap.contains("stray") && !bcap.contains("stray")
          && !fcap.contains("missing") && !bcap.contains("missing"),
@@ -1587,7 +1596,6 @@ fn test_a_description_that_does_not_reproduce_its_field_still_says_so() {
        + "names: {cap}");
 }
 
-
 // ── `B4s` — EVERY STRUCTURE IN THE WINDOW ─────────────────────────────────
 //
 // ⛔ **`B4o` ASKED FOR THIS PICTURE AND SAID THE CORPUS DID NOT HAVE IT** — *"a window
@@ -1619,9 +1627,9 @@ fn village_world() -> VoxelWorld {
 fn test_a_house_a_tower_and_a_wall_are_all_three_drawn() {
   svg = plan_svg(village_world(), 0 - 12, 0 - 16, 13, 10, 2.0, "village");
   cap = caption(svg);
-  assert(cap.contains("desc house"), "the house lost its description: {cap}");
-  assert(cap.contains("+ run d"), "the wall is undescribed: {cap}");
-  assert(cap.contains("+ disc "), "the tower is undescribed: {cap}");
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("run d"), "the wall is undescribed: {cap}");
+  assert(cap.contains("disc "), "the tower is undescribed: {cap}");
   // …and each is its own element, not three mentions of one
   assert(tag_count(svg, "<polygon class='house'") == 1
          && tag_count(svg, "<line class='run'") == 1

@@ -241,6 +241,18 @@ argument and a cap is not one; and two of a kind — two houses, two walls, two 
 still be **refused with the marks counted**, because the peel subtracts what has been
 described and nothing has been.
 
+**`B4t`** — **expected result**: a window holding a house, **two** towers and **two**
+walls draws **five** descriptions with nothing unexplained, where `B4s` described one of
+each kind and left the rest. **Invariant**: *the field is split into components before any
+reader is asked, and a component is asked about by CLAIMING everything else* — so
+`FORMAL_CORE` §6's R1 keeps comparing over a field that is entirely one structure's and no
+reader changes at all. **Negative controls**: a component **no reader explains** must still
+be refused — the boundary of a two-cell domino has no chain ends, no disc reproduces it and
+no floor under it — because softening the both-ways comparison is exactly what this avoids
+and would buy a chain that answered for anything; a window holding ONE structure must still
+draw one description; and the corpus must be **unmoved**, since a step that only reads must
+be shown to have written nothing.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -280,6 +292,7 @@ as a byte.
 | **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
 | **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red, **two of them green** | ✅ **SHIPPED** `4d47020` |
 | **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** `7842187` |
+| **`B4t`** — two of a kind: the field split before any reader is asked | M | `peel.loft` — two houses answering `house;house;` and two walls `run;run;` with nothing left over, the village's order now the scan's, and **a component no reader explains still refused**; `planview.loft` — a house and two towers drawn as three with two circles, one structure still one description, and the `refused` caption state kept on a fixture that refuses structurally; `tools/scripts/b4t.keys` — five structures, five descriptions; five faults seen red | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 
@@ -2359,7 +2372,10 @@ the chain is one call; `tools/scripts/b4s.keys`. 5 rows in `peel.loft` and 52 in
 ![a house, a tower and a wall, all three described](../../doc/claude/img-village-b4s.png)
 
 *`b4s.keys` — `desc house 0,4 4x5 rot 3 (8 fit) · 4 stray + run d6 p8 + disc 0,-8 shell
-156`, and **nothing unexplained**. `B4p` drew two of these three and reported the tower as
+156`, and **nothing unexplained**. ⚠ **`B4t` changed both the order and the grammar** — it
+reads `desc disc … + run d6 p8 + house …` now, because components are visited in the
+window's scan order and a run spells its noun wherever it stands. The picture above is what
+`B4s` produced. `B4p` drew two of these three and reported the tower as
 `+ 54 unexplained`. `make plan-view WORLD=b4s Q0=-12 Q1=13 R0=-16 R1=10 REF=2.0`.*
 
 ### ✅ The village `B4o` asked for

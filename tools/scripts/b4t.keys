@@ -1,0 +1,38 @@
+# B4t — TWO OF A KIND: THE FIELD IS SPLIT BEFORE ANY READER IS ASKED
+#
+# ⛔ **`B4s` MEASURED THIS SCENE AS THE LIMITATION.** Its peel subtracts what has been
+# DESCRIBED, and two of a kind describe nothing: two houses answered nothing with 84 marks
+# left, two walls nothing with 23, a house and two towers only the house with 108.
+#
+# ⚠ **AND THAT WAS `FORMAL_CORE` §6's R1 REFUSING CORRECTLY.** `disc_fits` and `box_fits`
+# compare over the whole field in BOTH directions — *every boundary edge is marked AND
+# every mark is a boundary edge* — which is exactly what stops a disc being accepted with
+# a wall drawn across it. A field holding two rims is a field no single disc reproduces.
+#
+# ✅ **SO THE FIELD IS SPLIT INTO COMPONENTS FIRST**, and each reader is handed a field
+# that is entirely one structure's. The readers did not change at all.
+#
+# ⚠ **THE CAPTION'S ORDER IS THE LABEL SCAN'S** — the window read row by row — so it reads
+# down the picture rather than in the chain's order.
+#
+#   make plan-view WORLD=b4t Q0=-28 Q1=16 R0=-16 R1=10 REF=2.0
+
+echo --- a house
+at 0 0 90
+verb place
+
+echo --- two round towers, one south of it and one west
+at 0 -12 0
+verb tower
+at -22 0 0
+verb tower
+
+echo --- and two walls
+at -9 -3 0
+verb run
+at -9 6 0
+verb run
+at 16 -3 0
+verb run
+at 16 6 0
+verb run

@@ -286,14 +286,14 @@ fn desc_no(stop: boolean) -> PlanDesc {
 
 // The caption's words for one description.
 //
-// ⚠ **THE WINDOW'S OWN DESCRIPTION HAS SAID `d0 p5` FOR A RUN SINCE `B1`**, so the
-// run is the one kind whose noun `desc ` already implies. A leftover has to spell it
-// — `+ run d0 p5` — because a `+` with no noun after it reads as more of the phrase
-// before. One function decides both, so the two spellings cannot drift apart.
-fn desc_phrase(kind: text, args: text, lead: boolean) -> text {
-  if lead && kind == "run" { return args; }
-  "{kind} {args}"
-}
+// ⛔ **A RUN SPELLS ITS NOUN WHEREVER IT STANDS — plan 26 `B4t`, AND IT DID NOT.** From
+// `B1` to `B4s` the FIRST description dropped it, because `desc ` already implied the
+// noun and a window held one run or none. Segmentation visits the components in the
+// window's own scan order, so which kind comes first is now a fact about where things
+// STAND — and a caption whose grammar depends on that cannot be read, or asserted,
+// without knowing the layout. ⚠ The old form is what every `desc d0 p5` in this tree's
+// tests was written against; they say `desc run d0 p5` now.
+fn desc_phrase(kind: text, args: text) -> text { "{kind} {args}" }
 
 // ⚠ **THE FOUR DESCRIPTIONS SHARE ONE STROKE, AND DELIBERATELY SO.** All of them
 // are the DESCRIPTION drawn over the field it was recovered from; a second colour
@@ -545,23 +545,49 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
   // `B4q` extracted the stamper's rule, and its answer was not stable until `B4r` gave
   // the halfplane a tie-break that belongs to the line. A peel built before either would
   // have subtracted the wrong edges on five headings in ten.
+  //
+  // ⛔ **AND THE FIELD IS SPLIT BEFORE ANY READER IS ASKED — plan 26 `B4t`.** `B4s`
+  // measured what the peel alone could not do: two houses describe **nothing**, because
+  // the peel subtracts what has been DESCRIBED and neither had been. `box_fits` and
+  // `disc_fits` compare over the whole field in both directions, which is what stops a
+  // disc being accepted with a wall across it — so a field holding two of a kind is a
+  // field no single candidate reproduces, and that is `FORMAL_CORE` §6's R1 refusing
+  // correctly rather than a defect to soften.
+  //
+  // ⚠ **THE READERS DO NOT CHANGE AT ALL.** A component is asked about by CLAIMING
+  // everything else, so R1 keeps comparing over a field that is entirely one structure's
+  // and every `_claimed` door works unchanged. ⚠ **And the order is the label scan's**,
+  // which is the window read row by row — so the caption reads down the picture rather
+  // than in the chain's order. Deterministic either way; a reader comparing two captions
+  // needs it to be.
   runs = "";
   say = "none";
   nd = 0;
   capped = false;
   cl = hex_editor::claims_new(q0, r0, q1 - q0, r1 - r0);
-  for _di in 0..PLAN_DESC_MAX {
-    dsc = plan_describe(w, q0, r0, q1, r1, ref, cl);
-    if !dsc.pd_ok { break; }
-    if nd == 0 { say = desc_phrase(dsc.pd_kind, dsc.pd_args, true); }
-    else { say = say + " + " + desc_phrase(dsc.pd_kind, dsc.pd_args, false); }
-    runs = runs + dsc.pd_svg;
-    nd = nd + 1;
-    // ⚠ **AND IF IT ACCOUNTED FOR NOTHING, STOP.** Every shape's membership must overlap
-    // the marks it was recovered from, so a zero here means the chain has answered about
-    // a field it does not explain — and asking again would give the same answer for ever.
-    if plan_claim(dsc, cl, q0, r0, q1, r1) == 0 { break; }
-    if nd == PLAN_DESC_MAX { capped = true; }
+  for _round in 0..PLAN_DESC_MAX {
+    sg = hex_editor::segments_of(w, q0, r0, q1 - q0, r1 - r0, ref, cl);
+    if hex_editor::segment_count(sg) == 0 { break; }
+    told = nd;
+    for cid in 0..hex_editor::segment_count(sg) {
+      if nd >= PLAN_DESC_MAX { capped = true; break; }
+      dsc = plan_describe(w, q0, r0, q1, r1, ref,
+              hex_editor::segment_claims(cl, w, q0, r0, q1 - q0, r1 - r0, ref, sg, cid));
+      if !dsc.pd_ok { continue; }
+      if nd == 0 { say = desc_phrase(dsc.pd_kind, dsc.pd_args); }
+      else { say = say + " + " + desc_phrase(dsc.pd_kind, dsc.pd_args); }
+      runs = runs + dsc.pd_svg;
+      nd = nd + 1;
+      // ⚠ **AND IF IT ACCOUNTED FOR NOTHING, STOP.** Every shape's membership must
+      // overlap the marks it was recovered from, so a zero here means the chain has
+      // answered about a field it does not explain — and asking again would give the
+      // same answer for ever.
+      if plan_claim(dsc, cl, q0, r0, q1, r1) == 0 { break; }
+    }
+    // ⚠ **A ROUND THAT DESCRIBED NOTHING ENDS IT**, whatever is left: peeling one
+    // structure can SPLIT what remains, which is why the labels are rebuilt each round —
+    // but a round with no answer will not produce one next time either.
+    if nd == told { break; }
   }
   // ⚠ **WHAT IS LEFT IS COUNTED FROM THE CLAIMS, NOT FROM A READER'S OWN TALLY.**
   // `CLAUDE.md`: measure what was actually emitted. A count each description reported
