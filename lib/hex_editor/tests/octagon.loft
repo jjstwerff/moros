@@ -16,6 +16,14 @@ use hex_form;
 
 const U = 0.25;
 
+// ⚠ **THE WINDOWS ARE 33x33 AND THAT IS A COST DECISION, MEASURED.** The readers work
+// off the MARKS' own box, so a bigger window buys nothing but the initial scan — and
+// this file was **109 s**, three times the next slowest, which took the whole
+// `hex_editor` suite past `loft test`'s 300-second budget the day `B4n` added twelve
+// more. Shell 468's octagon reaches seven cells and shell 432's disk ten, so 33x33 is
+// room to spare. ⚠ **The profile is what said so**: the guess about to be acted on was
+// that `B4n`'s own reader was the cost, and it is 12 s of the whole thing.
+
 fn flat_world() -> VoxelWorld {
   w = world_new(U, 0, 10, 4).wn_world;
   ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
@@ -392,7 +400,7 @@ fn oct_only_world(shell: integer) -> VoxelWorld {
 fn test_the_octagon_recovers_to_its_own_centre_and_shell() {
   for sh in [156, 468] {
     w = oct_only_world(sh);
-    o = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+    o = oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
     assert(o.ot_ok, "the octagon at shell {sh} was not recovered: {o.ot_why}");
     assert(o.ot_cq == 0 && o.ot_cr == 0,
            "shell {sh} recovered its centre as {o.ot_cq},{o.ot_cr}");
@@ -417,7 +425,7 @@ fn test_the_centre_is_recovered_and_not_assumed() {
   (ax, az) = hex_to_px(3, 2);
   session_at(s, w, ax, az, 0.0);
   assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the octagon was refused");
-  o = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  o = oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
   assert(o.ot_ok && o.ot_cq == 3 && o.ot_cr == 2,
          "an octagon centred at 3,2 recovered as {o.ot_cq},{o.ot_cr}: {o.ot_why}");
 }
@@ -428,7 +436,7 @@ fn test_the_centre_is_recovered_and_not_assumed() {
 // a confident wrong shape, and that is measured here rather than relied on.
 fn test_each_reader_refuses_the_other_shape() {
   ow = oct_only_world(156);
-  assert(!disc_recover(ow, 0 - 20, 0 - 20, 41, 41, 0.0).dc_ok,
+  assert(!disc_recover(ow, 0 - 16, 0 - 16, 33, 33, 0.0).dc_ok,
          "the disc reader described an octagon — this is `rebuild_construct`'s "
        + "confident hexagon at our own instrument");
 
@@ -437,9 +445,9 @@ fn test_each_reader_refuses_the_other_shape() {
   session_at(cs, cw, 0.0, 0.0, 0.0);
   assert(session_select_shell(cs, 156).ak_ok, "shell 156 refused");
   assert(press_verb(cs, cw, cs.es_author, VB_TOWER, "").ak_ok, "the circle was refused");
-  assert(disc_recover(cw, 0 - 20, 0 - 20, 41, 41, 0.0).dc_ok,
+  assert(disc_recover(cw, 0 - 16, 0 - 16, 33, 33, 0.0).dc_ok,
          "the fixture's circle is not a disc — nothing below can be trusted");
-  assert(!oct_recover(cw, 0 - 20, 0 - 20, 41, 41, 0.0).ot_ok,
+  assert(!oct_recover(cw, 0 - 16, 0 - 16, 33, 33, 0.0).ot_ok,
          "the octagon reader described a circle");
 }
 
@@ -448,7 +456,7 @@ fn test_each_reader_refuses_the_other_shape() {
 // fit wearing an exact answer's clothes.
 fn test_a_rim_with_one_edge_missing_is_refused() {
   w = oct_only_world(156);
-  o = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  o = oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
   assert(o.ot_ok, "the fixture's octagon was not recovered to begin with");
   // rub out exactly one marked edge
   rubbed = false;
@@ -464,7 +472,7 @@ fn test_a_rim_with_one_edge_missing_is_refused() {
     }
   }
   assert(rubbed, "the fixture had no edge to rub out");
-  g = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  g = oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
   assert(!g.ot_ok, "an octagon with one edge missing was described anyway");
   assert(g.ot_marks > 0,
          "the refusal reports {g.ot_marks} marks — *nothing here* and *marks I could "
@@ -475,15 +483,15 @@ fn test_a_rim_with_one_edge_missing_is_refused() {
 
 fn test_the_body_of_the_marks_is_what_the_picture_reads() {
   ow = oct_only_world(156);
-  assert(marks_body(ow, 0 - 20, 0 - 20, 41, 41, 0.0) == WALL_BODY_OCT,
+  assert(marks_body(ow, 0 - 16, 0 - 16, 33, 33, 0.0) == WALL_BODY_OCT,
          "an octagon world's marks read body "
-       + "'{marks_body(ow, 0 - 20, 0 - 20, 41, 41, 0.0)}'");
+       + "'{marks_body(ow, 0 - 16, 0 - 16, 33, 33, 0.0)}'");
 
   pw = flat_world();
   ps = EditSession {};
   session_at(ps, pw, 0.0, 0.0, 0.0);
   assert(press_verb(ps, pw, ps.es_author, VB_TOWER, "").ak_ok, "the circle was refused");
-  assert(marks_body(pw, 0 - 20, 0 - 20, 41, 41, 0.0) == "",
+  assert(marks_body(pw, 0 - 16, 0 - 16, 33, 33, 0.0) == "",
          "an undeclared world's marks claim a body");
 }
 
@@ -503,9 +511,9 @@ fn test_two_bodies_in_one_window_answer_neither() {
   assert(session_select_wall(s, 6).ak_ok, "slot 6 refused");
   assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the circle was refused");
 
-  assert(marks_body(w, 0 - 20, 0 - 20, 41, 41, 0.0) == "",
+  assert(marks_body(w, 0 - 16, 0 - 16, 33, 33, 0.0) == "",
          "two bodies in one window answered "
-       + "'{marks_body(w, 0 - 20, 0 - 20, 41, 41, 0.0)}'");
+       + "'{marks_body(w, 0 - 16, 0 - 16, 33, 33, 0.0)}'");
   // …and the control: either one ALONE still names its own body, so the row above is
   // about disagreement and not about the reader having stopped working.
   assert(marks_body(w, 0 - 20, 0 - 20, 21, 41, 0.0) == WALL_BODY_OCT,
@@ -533,7 +541,7 @@ fn test_the_drawn_corners_sit_within_the_rim_they_describe() {
   session_at(s, w, cx, cz, 0.0);
   assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the octagon was refused");
 
-  o = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  o = oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
   assert(o.ot_cq != 0 || o.ot_cr != 0,
          "the fixture built its octagon at the origin after all, where this row is "
        + "blind to an outline that drops its centre");
@@ -574,12 +582,12 @@ fn test_the_drawn_corners_sit_within_the_rim_they_describe() {
 // rest on the window happening to be generous.
 fn test_an_octagon_larger_than_its_marks_is_refused() {
   w = oct_only_world(156);
-  o = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  o = oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
   assert(o.ot_ok && o.ot_shell == 156, "the fixture was not recovered: {o.ot_why}");
-  assert(!oct_fits_at(w, 0 - 20, 0 - 20, 41, 41, 0, 0, 468, 0.0),
+  assert(!oct_fits_at(w, 0 - 16, 0 - 16, 33, 33, 0, 0, 468, 0.0),
          "shell 468's octagon was accepted for shell 156's marks");
   // …and the control: the shell that DID answer still does through the same door.
-  assert(oct_fits_at(w, 0 - 20, 0 - 20, 41, 41, 0, 0, 156, 0.0),
+  assert(oct_fits_at(w, 0 - 16, 0 - 16, 33, 33, 0, 0, 156, 0.0),
          "shell 156's own octagon is refused by the direct check — the instrument is "
        + "broken and the row above says nothing");
 }
@@ -605,14 +613,14 @@ fn test_a_disc_and_an_octagon_are_one_field_at_four_sizes() {
     assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the circle was refused");
 
     // the GEOMETRY agrees, exactly…
-    assert(oct_fits_at(w, 0 - 24, 0 - 24, 49, 49, 0, 0, on, 0.0),
+    assert(oct_fits_at(w, 0 - 16, 0 - 16, 33, 33, 0, 0, on, 0.0),
            "the octagon of shell {on} does not reproduce the disk of {dn} — the "
          + "coincidence this step is built around no longer holds");
     // …and the ADMITTED SET is what separates them: `on` is a shell the gesture
     // refuses, so no octagon was ever authored there and the reader will not offer it.
     assert(!fit_oct_shell(on).ft_ok,
            "shell {on} is admissible for an octagon after all");
-    assert(!oct_recover(w, 0 - 24, 0 - 24, 49, 49, 0.0).ot_ok,
+    assert(!oct_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0).ot_ok,
            "the octagon reader described the disk of shell {dn} as the octagon of "
          + "{on} — a shape no gesture in this editor can build");
   }

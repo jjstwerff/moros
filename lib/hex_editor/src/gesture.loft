@@ -1129,6 +1129,14 @@ pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
     // alone; the centre only moves the anchor `oct_fits` subtracts.
     vk = oct_poly_k(shell);
     vm = oct_poly_m(shell);
+    // ⛔ **AND TRYING THE LIKELY CENTRE FIRST MADE IT SLOWER — measured, plan 26
+    // `B4n`.** An octagon is symmetric, so the centre is the midpoint of the marks'
+    // lattice extent, and testing that cell before the sweep looks free. It is not:
+    // every shell that fits NOTHING pays one extra full comparison, and the refusal
+    // path is what dominates. `octagon.loft` went **117 s → 178 s**. The sweep below
+    // is what ships. ⚠ Three guesses about this file's cost were wrong in a row —
+    // `B4n`'s new reader (12 s of the whole thing), the window size (8 s), and this —
+    // and per-test timing is what settled it each time.
     for cr in lo_r..hi_r + 1 {
       for cq in lo_q..hi_q + 1 {
         if !oct_fits(table, vk, vm, cq, cr, bq0, br0, bwq, bhr) { continue; }
@@ -1171,6 +1179,239 @@ pub fn oct_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   fa_h = fa_hi_r - fa_lo_r + 5;
   oct_fits(disc_marks(wld, fa_q0, fa_r0, fa_w, fa_h, ref),
            oct_poly_k(shell), oct_poly_m(shell), cq, cr, fa_q0, fa_r0, fa_w, fa_h)
+}
+
+// ── A HOUSE'S DESCRIPTION — plan 26 `B4n`, BLUEPRINT §0 ────────────────────
+//
+// ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS THE THING A BLUEPRINT IS
+// FOR.** `wall_read_run` asks *what RUN do these marks describe* and a house is four of
+// them plus a closed loop, so it refuses the window whole; `disc_recover` and
+// `oct_recover` ask about round things. ⚠ **And splitting the marks by structure does
+// not help** — measured before this step was chosen: `house.keys`'s 42 marks are ONE
+// vertex-connected component, because each of `B0`'s four stray corner edges shares a
+// vertex with the loop.
+//
+// ✅ **THE FLOOR IS WHERE THE ANSWER IS.** `place_house` fills its footprint with
+// `hex_shape::box_fill`, so the cells carrying `FLOOR_MAT` ARE a `Box`'s rasterisation
+// and the rectangle is recoverable by generating candidates and comparing — §6's R1,
+// the same regime as the disc and the octagon, one shape over. The marks never enter
+// the recovery; they are what it is then measured AGAINST.
+//
+// ⚠ **THE ANCHOR IS EXACT AND THE SIZE IS NOT — measured over 432 rectangles.** Every
+// one of them has exactly ONE anchor cell that works, and 144 of them cannot report the
+// size that was authored: `2x3` and `2x2` fill identical cells, and so do `2x5` and
+// `2x4`, because raising `dep` by one raises the half-extent by half a hex step and
+// admits no new row of centres. **That is `@HB-X49`'s sentence a third time** — *a
+// continuous parameter must be quantised to what the field distinguishes, or it is
+// silently snapped rather than refused* — so this answers the SMALLEST rectangle in the
+// class and reports how many are in it.
+pub struct HouseRead {
+  hs_ok:      boolean,
+  hs_why:     text,
+  hs_cq:      integer,      // the anchor CELL — exact, measured unique in all 432
+  hs_cr:      integer,
+  hs_wid:     integer,      // the SMALLEST rectangle the field admits, in hex steps
+  hs_dep:     integer,
+  hs_rot:     integer,      // …at the lowest rotation that draws it
+  hs_class:   integer,      // how many `(wid, dep, rot)` reproduce the same cells
+  hs_cells:   integer,
+  hs_stray:   integer,      // wall marks the rectangle's own boundary does not want
+  hs_missing: integer,      // …and boundary edges the store does not hold
+}
+
+fn house_no(why: text, cells: integer) -> HouseRead {
+  HouseRead { hs_ok: false, hs_why: why, hs_cq: 0, hs_cr: 0, hs_wid: 0, hs_dep: 0,
+              hs_rot: 0, hs_class: 0, hs_cells: cells, hs_stray: 0, hs_missing: 0 }
+}
+
+const BOX_HOLD_EPS = 0.000000001;
+
+fn habs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
+
+// Is `(q, r)`'s centre inside the box?
+//
+// ⚠ **THIS IS `box_fill`'s OWN TEST, CALLED RATHER THAN COPIED** — `box_to_local`,
+// `box_hw` and `box_hd` are the library's, and the epsilon is there for the reason
+// `hexbox` documents at its own: along an edge heading every cell-to-side distance is an
+// exact multiple of `√3/2`, so a strict comparison sits on the last bit of a float for a
+// whole column. `test_box_membership_agrees_with_the_library` pins it against `box_fill`
+// cell for cell, which is `disc_holds`'s rule at a third shape.
+//
+// ⛔ **AND IT EXISTS BECAUSE FILLING A `HexSet` PER CANDIDATE IS UNAFFORDABLE** — the
+// search tries every floor cell as an anchor against every size and rotation, and
+// `oct_recover` already measured what an allocation in that loop costs: `loft test`'s
+// own 300-second deadline, reached inside the reader rather than as a failing row.
+pub fn box_holds(b: Box, q: integer, r: integer) -> boolean {
+  (lu, lv) = hex_shape::box_to_local(b, hex_form::cell_x(q, r), hex_form::cell_y(q, r));
+  habs(lu) <= hex_shape::box_hw(b) + BOX_HOLD_EPS
+    && habs(lv) <= hex_shape::box_hd(b) + BOX_HOLD_EPS
+}
+
+// Does this box reproduce `floor` exactly, over the box `[bq0..] x [br0..]`?
+//
+// ⚠ **BOTH DIRECTIONS** — *every cell of the rectangle is floor* and *every floor cell
+// is in the rectangle* are two claims, and `disc_fits`'s comment says what asking only
+// the first accepts.
+fn box_fits(floor: HexSet, b: Box, bq0: integer, br0: integer,
+            bwq: integer, bhr: integer) -> boolean {
+  for r in br0..br0 + bhr {
+    for q in bq0..bq0 + bwq {
+      if box_holds(b, q, r) != hexset_get(floor, q, r) { return false; }
+    }
+  }
+  true
+}
+
+// The four corners of `b` in the drawing's own frame — `x`, anticlockwise.
+//
+// ⚠ **THE INVERSE OF `box_to_local`, WITH THE LIBRARY'S OWN COSINE TABLE** —
+// `box_cos`/`box_sin` are exact in `Q(√3)` and never a trig call. It is pinned the only
+// way an inverse can be: `test_the_drawn_corners_round_trip_through_the_library` sends
+// each corner back through `box_to_local` and requires `(±hw, ±hd)`.
+pub fn box_px_x(b: Box, w: VoxelWorld) -> vector<float> {
+  co = hex_shape::box_cos(b.bx_rot);
+  si = hex_shape::box_sin(b.bx_rot);
+  hw = hex_shape::box_hw(b);
+  hd = hex_shape::box_hd(b);
+  cx = hex_form::cell_x(b.bx_cq, b.bx_cr);
+  out: vector<float> = [];
+  for i in 0..4 {
+    lu = if i == 0 || i == 3 { hw } else { 0.0 - hw };
+    lv = if i < 2 { hd } else { 0.0 - hd };
+    out += [cx + lu * co - lv * si];
+  }
+  out
+}
+
+// …and `z`, in the same order.
+pub fn box_px_z(b: Box, w: VoxelWorld) -> vector<float> {
+  co = hex_shape::box_cos(b.bx_rot);
+  si = hex_shape::box_sin(b.bx_rot);
+  hw = hex_shape::box_hw(b);
+  hd = hex_shape::box_hd(b);
+  cy = hex_form::cell_y(b.bx_cq, b.bx_cr);
+  out: vector<float> = [];
+  for i in 0..4 {
+    lu = if i == 0 || i == 3 { hw } else { 0.0 - hw };
+    lv = if i < 2 { hd } else { 0.0 - hd };
+    out += [cy + lu * si + lv * co];
+  }
+  out
+}
+
+// Does the rectangle `(cq, cr, wid, dep, rot)` reproduce this window's FLOOR exactly?
+//
+// ⚠ **THE SEARCH'S OWN TEST WITH THE SEARCH TAKEN OUT** — `oct_fits_at`'s reason: a row
+// asking *is THIS rectangle admitted* must reach the comparison directly, or a candidate
+// the search never tried reads as one it rejected.
+pub fn house_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                     cq: integer, cr: integer, wid: integer, dep: integer, rot: integer,
+                     ref: float) -> boolean {
+  fl = hexset_chunk(q0, r0, wq, hr);
+  fn2 = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      li = edge_layer(wld, q, r, ref);
+      if li < 0 { continue; }
+      if (hex_voxel::world_cell(wld, q, r, li).h_material as integer ?? 0) == FLOOR_MAT {
+        hexset_set(fl, q, r, true);
+        fn2 = fn2 + 1;
+      }
+    }
+  }
+  if fn2 == 0 { return false; }
+  box_fits(fl, hex_shape::box_new(cq, cr, wid, dep, rot, false), q0, r0, wq, hr)
+}
+
+// The rectangle these FLOOR cells describe, and what its boundary makes of the marks.
+pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                     ref: float) -> HouseRead {
+  floor = hexset_chunk(q0, r0, wq, hr);
+  lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
+  ncell = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      li = edge_layer(wld, q, r, ref);
+      if li < 0 { continue; }
+      if (hex_voxel::world_cell(wld, q, r, li).h_material as integer ?? 0) != FLOOR_MAT {
+        continue;
+      }
+      hexset_set(floor, q, r, true);
+      if ncell == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
+      if q < lo_q { lo_q = q; }
+      if q > hi_q { hi_q = q; }
+      if r < lo_r { lo_r = r; }
+      if r > hi_r { hi_r = r; }
+      ncell = ncell + 1;
+    }
+  }
+  // ⚠ THE TWO SILENCES ARE DIFFERENT — `B0`'s rule, third reader to take it.
+  if ncell == 0 { return house_no("no floor cells in this window", 0); }
+  bq0 = lo_q - 1;
+  br0 = lo_r - 1;
+  bwq = hi_q - lo_q + 3;
+  bhr = hi_r - lo_r + 3;
+  span = hi_q - lo_q;
+  if hi_r - lo_r > span { span = hi_r - lo_r; }
+
+  // ⚠ **THE ANCHOR IS ONE OF THE RECTANGLE'S OWN CELLS**, because its centre is inside
+  // it — which is what makes the search affordable at all. Measured: exactly one cell
+  // works, in every one of 432 rectangles.
+  bcq = 0; bcr = 0; bwid = 0; bdep = 0; brot = 0;
+  klass = 0;
+  anchors = 0;
+  for cr in lo_r..hi_r + 1 {
+    for cq in lo_q..hi_q + 1 {
+      if !hexset_get(floor, cq, cr) { continue; }
+      here = false;
+      for wid in 1..span + 4 {
+        for dep in 1..span + 4 {
+          for rot in 0..hex_shape::BOX_ROT {
+            cand = hex_shape::box_new(cq, cr, wid, dep, rot, false);
+            if !box_fits(floor, cand, bq0, br0, bwq, bhr) { continue; }
+            klass = klass + 1;
+            here = true;
+            // ⚠ SMALLEST FIRST, THEN LOWEST ROTATION — a deterministic pick, so two
+            // runs over one world cannot answer differently.
+            if bwid == 0 || wid + dep < bwid + bdep {
+              bcq = cq; bcr = cr; bwid = wid; bdep = dep; brot = rot;
+            }
+          }
+        }
+      }
+      if here { anchors = anchors + 1; }
+    }
+  }
+  if klass == 0 {
+    return house_no("{ncell} floor cells, and no rectangle reproduces them", ncell);
+  }
+  // ⚠ **THE ANCHOR'S UNIQUENESS IS ASSERTED RATHER THAN ASSUMED.** It held in all 432
+  // rectangles measured; a window where it does not is a fact worth reporting, not one
+  // to answer over.
+  if anchors != 1 {
+    return house_no("{ncell} floor cells fit rectangles about {anchors} different "
+                  + "cells — the anchor is not determined", ncell);
+  }
+
+  // …and now what the rectangle's own boundary makes of the wall marks.
+  best = hex_shape::box_new(bcq, bcr, bwid, bdep, brot, false);
+  stray = 0;
+  missing = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      // The three lattice directions a cell owns — `edge_owner`'s table.
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        want = box_holds(best, q, r) != box_holds(best, nq, nr);
+        got = edge_is_wall(wall_of(wld, q, r, d, ref));
+        if got && !want { stray = stray + 1; }
+        if want && !got { missing = missing + 1; }
+      }
+    }
+  }
+  HouseRead { hs_ok: true, hs_why: "", hs_cq: bcq, hs_cr: bcr, hs_wid: bwid,
+              hs_dep: bdep, hs_rot: brot, hs_class: klass, hs_cells: ncell,
+              hs_stray: stray, hs_missing: missing }
 }
 
 // The one BODY every mark in this window declares, or `""` when they do not agree.

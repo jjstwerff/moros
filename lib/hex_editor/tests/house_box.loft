@@ -1,0 +1,238 @@
+// A HOUSE'S DESCRIPTION — plan 26 `B4n`, BLUEPRINT §0.
+//
+// ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS THE THING A BLUEPRINT IS
+// FOR.** Its marks are four runs plus a closed loop, which `wall_read_run` refuses
+// whole; the round readers ask about round things. ⚠ **And splitting the marks by
+// structure does not help** — `house.keys`'s 42 marks are ONE vertex-connected
+// component, because each of `B0`'s four stray corner edges shares a vertex with the
+// loop.
+//
+// ✅ **THE FLOOR IS WHERE THE ANSWER IS.** `place_house` fills its footprint with
+// `hex_shape::box_fill`, so the cells carrying `FLOOR_MAT` are a `Box`'s rasterisation
+// and the rectangle recovers by generate-and-compare. The MARKS never enter the
+// recovery — they are what the recovered rectangle is then measured against, which is
+// what lets this file answer `B0`'s question about the four stray edges.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+use hex_form;
+use hex_grid;
+
+// 90°, facing +z — the pose `house_walls.loft` and `probe/d2` both use.
+const YAW = 1.5707963267948966;
+
+// ⛔ **`B0`'s FOUR STRAY EDGES, MEASURED AND NAMED — one per corner, on a house nobody
+// cut an opening into.** `B0` found four wall edges bounding none of `house.keys`'s 27
+// cells and could not say whether they were authored: *"a stamp that over-runs the fill
+// at each corner may be drawing a wall that genuinely exists in the description"*. The
+// rectangle settles it — its boundary is COMPLETE (`missing 0`) and four marks lie
+// outside it. They are the four mitred runs over-running their corners.
+//
+// ⚠ **AND `house.keys` READS 3 AND 1, WHICH IS THE SAME HOUSE PLUS ITS OPENINGS.** Its
+// profile 2 sits on one of these four strays and clears it to material 0, so that stray
+// stops being a wall and the count drops to three; profile 1 sits ON the rectangle's
+// boundary and clears an edge the description wants, which is the `1 missing`. That is
+// `@HB-X70`'s defect from a third direction — *an opening is never "no wall"* — and
+// plan 24 `A8` already records `builtin_house_door` leaving the edge at 0.
+const STRAY_EXPECT = 4;
+const MISSING_EXPECT = 0;
+
+const U = 0.25;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// ── THE MEMBERSHIP, PINNED AGAINST THE LIBRARY ─────────────────────────────
+//
+// ⚠ `box_holds` is `box_fill`'s own test with the allocation taken out, so it has to
+// agree with it cell for cell — `disc_holds`'s rule at a third shape. A second
+// membership that drifted would make every row below a claim about the wrong rectangle.
+fn test_box_membership_agrees_with_the_library() {
+  for rot in 0..12 {
+    for wid in [2, 4, 5] {
+      b = hex_shape::box_new(1, 0 - 2, wid, 5, rot, false);
+      cells = hexset_chunk(0 - 14, 0 - 14, 29, 29);
+      hex_shape::box_fill(b, cells);
+      seen = 0;
+      for r in 0 - 14..15 {
+        for q in 0 - 14..15 {
+          assert(box_holds(b, q, r) == hexset_get(cells, q, r),
+                 "rot {rot} wid {wid}: `box_holds` and `box_fill` disagree at {q},{r}");
+          if hexset_get(cells, q, r) { seen = seen + 1; }
+        }
+      }
+      assert(seen > 0,
+             "rot {rot} wid {wid} filled nothing — the agreement above is vacuous");
+    }
+  }
+}
+
+// ⚠ **AN INVERSE IS PINNED BY SENDING ITS ANSWER BACK.** `box_px_x`/`box_px_z` undo
+// `box_to_local`, and the only honest check is the round trip: every corner must come
+// back as `(±hw, ±hd)`.
+fn test_the_drawn_corners_round_trip_through_the_library() {
+  w = flat_world();
+  for rot in 0..12 {
+    b = hex_shape::box_new(2, 1, 4, 6, rot, false);
+    xs = box_px_x(b, w);
+    zs = box_px_z(b, w);
+    assert(len(xs) == 4 && len(zs) == 4,
+           "rot {rot} gave {len(xs)}/{len(zs)} corners, not four");
+    hw = hex_shape::box_hw(b);
+    hd = hex_shape::box_hd(b);
+    for i in 0..4 {
+      (lu, lv) = hex_shape::box_to_local(b, xs[i] ?? 0.0, zs[i] ?? 0.0);
+      du = lu - hw; if du < 0.0 { du = 0.0 - du; }
+      dv = lv - hd; if dv < 0.0 { dv = 0.0 - dv; }
+      if du > 0.000001 { du = lu + hw; if du < 0.0 { du = 0.0 - du; } }
+      if dv > 0.000001 { dv = lv + hd; if dv < 0.0 { dv = 0.0 - dv; } }
+      assert(du < 0.000001 && dv < 0.000001,
+             "rot {rot} corner {i} maps to ({lu},{lv}), not to (±{hw}, ±{hd})");
+    }
+  }
+}
+
+// ── THE RECOVERY ───────────────────────────────────────────────────────────
+
+fn house_world() -> VoxelWorld {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  ack = press_verb(s, w, s.es_author, VB_PLACE, "");
+  assert(ack.ak_ok, "the house was refused: {ack.ak_why}");
+  w
+}
+
+fn test_a_placed_house_recovers_to_a_rectangle() {
+  w = house_world();
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "a placed house recovered no rectangle: {h.hs_why}");
+  assert(h.hs_cells > 0, "the recovery accounts for no floor cells");
+  assert(h.hs_wid > 0 && h.hs_dep > 0, "the rectangle has no extent");
+  // …and the rectangle it names really does reproduce the floor, through the door the
+  // search does not use.
+  assert(house_fits_at(w, 0 - 16, 0 - 16, 33, 33, h.hs_cq, h.hs_cr,
+                       h.hs_wid, h.hs_dep, h.hs_rot, 0.0),
+         "the rectangle the search returned does not reproduce the floor it came from");
+}
+
+// ⛔ **THE ANCHOR IS EXACT, AND THAT IS THE HALF THAT IS NOT QUANTISED** — measured
+// over 432 rectangles, every one has exactly one anchor cell that works. A recovery
+// answering the wrong cell would draw the description beside its house.
+fn test_the_anchor_is_the_house_s_own_cell() {
+  w = house_world();
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  li = edge_layer(w, h.hs_cq, h.hs_cr, 0.0);
+  assert(li >= 0, "the anchor cell holds nothing at all");
+  assert((hex_voxel::world_cell(w, h.hs_cq, h.hs_cr, li).h_material as integer ?? 0)
+         == FLOOR_MAT,
+         "the anchor {h.hs_cq},{h.hs_cr} is not one of the house's own floor cells");
+  // ⚠ AND IT IS NOT THE ORIGIN, where a reader that answered a constant would pass.
+  assert(h.hs_cq != 0 || h.hs_cr != 0,
+         "the house sits on the origin, where this row cannot see a constant answer");
+}
+
+// ⛔ **THE SIZE IS QUANTISED AND THE ANSWER SAYS SO.** Raising one extent by a hex step
+// can admit no new row of cell centres, so several rectangles fill identical fields —
+// `@HB-X49`'s sentence a third time. The reader answers the SMALLEST and reports how
+// many were in the class.
+fn test_two_rectangles_can_fill_one_field() {
+  a = hexset_chunk(0 - 14, 0 - 14, 29, 29);
+  b = hexset_chunk(0 - 14, 0 - 14, 29, 29);
+  hex_shape::box_fill(hex_shape::box_new(0, 0, 2, 2, 0, false), a);
+  hex_shape::box_fill(hex_shape::box_new(0, 0, 2, 3, 0, false), b);
+  same = true;
+  for r in 0 - 14..15 {
+    for q in 0 - 14..15 { if hexset_get(a, q, r) != hexset_get(b, q, r) { same = false; } }
+  }
+  assert(same,
+         "2x2 and 2x3 no longer fill the same cells — the quantisation this reader "
+       + "reports has changed, and the class count means something else now");
+  // …and the control: two rectangles a step apart in the OTHER axis do differ, or the
+  // row above would pass for a `box_fill` that ignored its arguments.
+  c = hexset_chunk(0 - 14, 0 - 14, 29, 29);
+  hex_shape::box_fill(hex_shape::box_new(0, 0, 4, 2, 0, false), c);
+  diff = false;
+  for r in 0 - 14..15 {
+    for q in 0 - 14..15 { if hexset_get(a, q, r) != hexset_get(c, q, r) { diff = true; } }
+  }
+  assert(diff, "2x2 and 4x2 fill the same cells — `box_fill` is reading no argument");
+}
+
+fn test_the_class_is_reported_rather_than_hidden() {
+  w = house_world();
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  assert(h.hs_class > 1,
+         "the house's field admits {h.hs_class} rectangle — if that is now one, the "
+       + "reader has stopped needing to report an ambiguity and the caption is stale");
+  // …and the one it returns is the smallest of them.
+  assert(!house_fits_at(w, 0 - 16, 0 - 16, 33, 33, h.hs_cq, h.hs_cr,
+                        h.hs_wid - 1, h.hs_dep, h.hs_rot, 0.0)
+         || h.hs_wid == 1,
+         "a narrower rectangle fits too — the answer is not the smallest in its class");
+}
+
+// ── THE REFUSALS ───────────────────────────────────────────────────────────
+
+fn test_a_window_with_no_floor_says_so_differently() {
+  h = house_recover(flat_world(), 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(!h.hs_ok, "bare ground recovered a house");
+  assert(h.hs_cells == 0, "bare ground reports {h.hs_cells} floor cells");
+  assert(h.hs_why.contains("no floor"),
+         "an empty window and a refused one read alike: {h.hs_why}");
+}
+
+// ⚠ **A FLOOR THAT IS NOT A RECTANGLE IS REFUSED**, which is what keeps this a
+// description and not a fit: a generate-and-compare reader must answer *no* to a field
+// that is nearly its shape.
+fn test_a_floor_with_a_bite_out_of_it_is_refused() {
+  w = house_world();
+  assert(house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0).hs_ok,
+         "the fixture's house did not recover to begin with");
+  h0 = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  // take one floor cell away
+  bit = false;
+  for r in 0 - 16..17 {
+    for q in 0 - 16..17 {
+      if bit { continue; }
+      li = edge_layer(w, q, r, 0.0);
+      if li < 0 { continue; }
+      if (hex_voxel::world_cell(w, q, r, li).h_material as integer ?? 0) == FLOOR_MAT {
+        ground_set(w, q, r, terrain_h(q, r, w), SURFACE_MAT);
+        bit = true;
+      }
+    }
+  }
+  assert(bit, "the fixture had no floor cell to remove");
+  g = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(!g.hs_ok,
+         "a floor with a cell missing still described the rectangle {g.hs_wid}x{g.hs_dep}");
+  assert(g.hs_cells == h0.hs_cells - 1,
+         "the refusal reports {g.hs_cells} cells against the {h0.hs_cells - 1} that "
+       + "are left — *nothing here* and *a shape I could not explain* are different");
+}
+
+// ── `B0`'s QUESTION, ANSWERED ──────────────────────────────────────────────
+//
+// ⛔ **`B0` FOUND FOUR WALL EDGES BOUNDING NONE OF THE HOUSE'S CELLS AND COULD NOT SAY
+// WHETHER THEY WERE AUTHORED.** *"A stamp that over-runs the fill at each corner may be
+// drawing a wall that genuinely exists in the description"* — the field half alone can
+// say *this edge bounds no room* and not *and no wall was authored there*. With the
+// rectangle recovered, it can: the description is a rectangle, and its boundary is a
+// definite set of edges.
+fn test_the_rectangle_names_the_marks_it_does_not_explain() {
+  w = house_world();
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  assert(h.hs_stray == STRAY_EXPECT,
+         "the rectangle leaves {h.hs_stray} marks unexplained, not {STRAY_EXPECT} — "
+       + "`place_house`'s corner over-run has changed");
+  assert(h.hs_missing == MISSING_EXPECT,
+         "the rectangle wants {h.hs_missing} edges the store does not hold, not "
+       + "{MISSING_EXPECT}");
+}

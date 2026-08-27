@@ -35,6 +35,10 @@ use hex_grid;
 use hex_proj;
 use hex_voxel;
 use hex_editor;
+// `Box` — plan 26 `B4n`. The rectangle a house's floor recovers to is the shape
+// family's own, and the picture places its corners through `hex_editor::box_px_*`
+// rather than deriving any of them here.
+use hex_shape;
 use self::surfaces;
 
 // A hex edge in the page frame. The page frame IS the world's x/z plane — see
@@ -378,10 +382,47 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
            + " fill='none' stroke='rgb(30,90,220)' stroke-width='0.05'"
            + " stroke-dasharray='0.32 0.18'/>\n";
     } else {
-      // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
-      // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
-      // number, and it was read as the second.
-      say = "refused ({nedge} marks)";
+      // ── AND IF IT IS NOT ROUND EITHER, IS IT A HOUSE? — plan 26 `B4n` ──────
+      //
+      // ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS WHAT A BLUEPRINT
+      // IS FOR.** Its marks are four runs plus a loop, which no reader above can
+      // answer for — so this one does not read the marks at all. `place_house` fills
+      // its footprint with `box_fill`, so the FLOOR cells are the rectangle, and the
+      // marks become what the recovered rectangle is measured against.
+      //
+      // ⚠ **THE ORDER IS THE SAME ARGUMENT THE DISC BRANCH MAKES**: asked only where
+      // the readers above gave up, so no two of them can answer for one window.
+      hh = hex_editor::house_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
+      if hh.hs_ok {
+        say = "house {hh.hs_cq},{hh.hs_cr} {hh.hs_wid}x{hh.hs_dep} rot {hh.hs_rot}";
+        // ⚠ **THE AMBIGUITY IS REPORTED, NOT HIDDEN** — §6's R2 rule, and here the
+        // ambiguity is the SIZE: raising one extent by a hex step can admit no new
+        // row of cell centres, so several rectangles fill the same field. The answer
+        // is the smallest, and the count says how many there were.
+        if hh.hs_class > 1 { say = say + " ({hh.hs_class} fit)"; }
+        // ⚠ **AND THE MARKS THE RECTANGLE DOES NOT EXPLAIN ARE THE POINT OF THE
+        // PAIRING** — `B0` found four wall edges bounding none of the house's cells
+        // and could not say whether they were authored. The rectangle can.
+        if hh.hs_stray > 0 { say = say + " · {hh.hs_stray} stray"; }
+        if hh.hs_missing > 0 { say = say + " · {hh.hs_missing} missing"; }
+        bx = hex_editor::box_px_x(hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid,
+                                                    hh.hs_dep, hh.hs_rot, false), w);
+        bz = hex_editor::box_px_z(hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid,
+                                                    hh.hs_dep, hh.hs_rot, false), w);
+        hpts = "";
+        for hi in 0..len(bx) { hpts = hpts + "{fx(bx[hi] ?? 0.0)},{fx(bz[hi] ?? 0.0)} "; }
+        runs = "<polygon class='house' data-cq='{hh.hs_cq}' data-cr='{hh.hs_cr}'"
+             + " data-wid='{hh.hs_wid}' data-dep='{hh.hs_dep}' data-rot='{hh.hs_rot}'"
+             + " data-class='{hh.hs_class}' data-stray='{hh.hs_stray}'"
+             + " data-missing='{hh.hs_missing}' points='{hpts}' fill='none'"
+             + " stroke='rgb(30,90,220)' stroke-width='0.05'"
+             + " stroke-dasharray='0.32 0.18'/>\n";
+      } else {
+        // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE. `probe/l1` lost a
+        // run to exactly this: `ends = 0` is *a closed loop* and *nothing there* in one
+        // number, and it was read as the second.
+        say = "refused ({nedge} marks)";
+      }
     }
   }
   // ⚠ AN EMPTY WINDOW STILL HAS A FRAME — `plan_bounds` answers `0..1` for one, so a
@@ -729,6 +770,7 @@ pub fn plan_tally(svg: text) -> PlanTally {
     if starts(ln, "<line class='run'") { descs = descs + 1; }
     if starts(ln, "<circle class='disc'") { descs = descs + 1; }
     if starts(ln, "<polygon class='oct'") { descs = descs + 1; }
+    if starts(ln, "<polygon class='house'") { descs = descs + 1; }
     if starts(ln, "<g class='level' ") { levels = levels + 1; }
   }
   PlanTally { pt_cells: cells, pt_marks: marks, pt_descs: descs, pt_levels: levels }

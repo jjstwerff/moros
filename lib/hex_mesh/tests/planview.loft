@@ -1228,3 +1228,73 @@ fn test_the_level_count_is_what_reached_the_file() {
          "the tally reports {one.pt_levels} and {two.pt_levels} levels, not 1 and 2");
 }
 
+// ── `B4n` — A HOUSE, AT LAST ───────────────────────────────────────────────
+//
+// ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS WHAT A BLUEPRINT IS
+// FOR.** The reader does not look at the marks at all: `place_house` fills its
+// footprint with `box_fill`, so the FLOOR is the rectangle, and the marks are what the
+// recovered rectangle is then measured against.
+
+const HOUSE_YAW = 1.5707963267948966;   // 90° — the only orbit `place_house` accepts
+
+fn housed_world() -> VoxelWorld {
+  w = flat_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, HOUSE_YAW);
+  ak = hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "");
+  assert(ak.ak_ok, "the house was refused: {ak.ak_why}");
+  w
+}
+
+fn test_a_house_is_drawn_as_a_rectangle() {
+  svg = plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house");
+  cap = caption(svg);
+  assert(cap.contains("desc house"),
+         "a placed house still draws no description: {cap}");
+  assert(tag_count(svg, "<polygon class='house'") == 1,
+         "{tag_count(svg, \"<polygon class='house'\")} rectangles drawn, not one");
+  // ⚠ **FOUR POINTS, READ OUT OF THE PICTURE** — a rectangle with three would draw a
+  // triangle that measures as a description all the same.
+  ln = "";
+  for l in svg.split('\n') { if l.contains("<polygon class='house'") { ln = l; } }
+  assert(ln != "", "the rectangle did not come back out of the picture");
+  pa = ln.find("points='");
+  assert(pa != null, "the rectangle carries no points: {ln}");
+  rest = ln[(((pa ?? 0) + 8) as i32)..];
+  pe = rest.find("'");
+  assert(pe != null, "the points attribute is not closed");
+  npt = 0;
+  for pc in rest[0..(pe ?? 0)].split(',') { npt = npt + 1; }
+  assert(npt == 5, "the rectangle carries {npt - 1} points, not four");
+}
+
+// ⛔ **THE CAPTION CARRIES `B0`'s ANSWER.** Four wall marks lie outside the rectangle —
+// one per corner — and the picture says so rather than leaving a reader to count black
+// stubs. ⚠ It also says how many rectangles fit, because the SIZE is quantised and a
+// single number would be a claim the field does not support.
+fn test_the_caption_reports_the_marks_the_rectangle_does_not_explain() {
+  cap = caption(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house"));
+  assert(cap.contains("stray"),
+         "the caption hides the marks the rectangle leaves over: {cap}");
+  assert(cap.contains("fit"),
+         "the caption hides how many rectangles the field admits: {cap}");
+}
+
+// ⚠ **THE READER IS ASKED LAST**, so no two descriptions can answer for one window: a
+// straight run still reads as a run even though its window holds no floor at all.
+fn test_a_run_is_still_a_run() {
+  cap = caption(plan_svg(tally_world_run(), 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
+  assert(cap.contains("desc d"),
+         "the house reader took a window the run reader had answered: {cap}");
+}
+
+fn test_a_house_is_one_description_in_the_tally() {
+  t = plan_tally(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house"));
+  assert(t.pt_descs == 1, "a house tallied {t.pt_descs} descriptions");
+  // …and the rectangle does not land in the cell count, which is the defect `B4m`
+  // recorded and this is the third element to test it against.
+  bare = plan_tally(plan_svg(flat_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "bare"));
+  assert(t.pt_cells == bare.pt_cells,
+         "a window with a house tallies {t.pt_cells} cells against {bare.pt_cells}");
+}
+

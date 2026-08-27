@@ -15,9 +15,10 @@
 #   tools/run-tests.sh hex_part hex_voxel     only these
 #   TEST_JOBS=8 tools/run-tests.sh      fewer jobs, for a loaded box
 #   TEST_VERBOSE=1 tools/run-tests.sh   per-file seconds, for profiling
+#   TEST_NATIVE=1 tools/run-tests.sh    the OTHER backend, per file
 #
-# ⚠ THE INTERPRETER ONLY, DELIBERATELY. `make lib-test` is what runs both backends,
-# and it stays the pre-commit gate — the two are two implementations of one language
+# ⚠ THE INTERPRETER BY DEFAULT, DELIBERATELY. `make lib-test` is what runs both backends
+# in one command, and it stays the pre-commit gate — the two are two implementations of one language
 # and a per-backend green says nothing about the other (loft#760 took `hex_voxel` from
 # 114 green to 96 failed while `--native` passed all 114 on the same source). This is
 # the fast loop, not the proof.
@@ -39,7 +40,19 @@ if [ "${1:-}" = "--one" ]; then
   # relative path from the TEST FILE's directory, but a fixture written by a test goes
   # to the process's cwd — so a file that passes under `loft test` and fails here would
   # be a difference in the harness rather than in the code.
-  out=$(cd "lib/$pkg" && loft --lib ../ --tests "$rel" 2>&1)
+  # ⚠ **`TEST_NATIVE=1` RUNS THE OTHER BACKEND, PER FILE — plan 26 `B4n`.** `make
+  # lib-test` is the pre-push proof and the only thing that runs `--native`, and it
+  # calls `loft test` once per PACKAGE: one process, one 300-second deadline. On
+  # 2026-08-27 `hex_editor` outgrew it — 59 files, 733 tests, `octagon.loft` alone 117 s
+  # — and the run answers `[timeout] deadline reached after 300s (graceful)`, which
+  # `make` catches but which a bare `loft test` reports by **printing no result line and
+  # exiting 0**. Per file the budget is per file, and the wall clock is the slowest
+  # single file rather than the sum.
+  if [ -n "${TEST_NATIVE:-}" ]; then
+    out=$(cd "lib/$pkg" && loft --lib ../ --tests "$rel" --native 2>&1)
+  else
+    out=$(cd "lib/$pkg" && loft --lib ../ --tests "$rel" 2>&1)
+  fi
   rc=$?
   end=$(date +%s%N)
   secs=$(( (end - start) / 100000000 ))
