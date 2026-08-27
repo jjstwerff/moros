@@ -87,6 +87,15 @@ is the same house plus its openings — one opening sits on a stray and clears i
 never "no wall"* from a third direction. ⚠ And the SIZE is quantised: `2x3` and `2x2` fill
 identical cells, so the caption reports how many rectangles fit rather than claiming one.
 
+✅ **AND `B4o` PUT TWO STRUCTURES IN ONE PICTURE**, which is what a plan of anything real needs.
+A mark is attributed to a structure — the rectangle owns its boundary and the mitre one cell past
+it — **before** anything is asked what it describes. ⛔ That closes `B1`'s standing limitation:
+the same wall read `run d0 p5` alone and was **refused** with a house eight hexes away, because
+one mitre stub met its chain at a vertex. ⚠ The reader was right and the QUESTION was wrong —
+those marks are not one path, because they are not one structure.
+
+![a house and a wall, both described](img-two-desc-b4o.png)
+
 ⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
 railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
 assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what

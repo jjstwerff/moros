@@ -171,6 +171,17 @@ reproduce the floor through a door the search does not use; and the ambiguity mu
 **reported** — the size is quantised, so several rectangles fill one field and a single
 number would claim more than the field supports.
 
+**`B4o`** — **expected result**: a window holding a house **and** a wall draws **two**
+descriptions — `house 3,2 4x5 rot 1 (8 fit) · 4 stray + run d0 p5` — where it has drawn
+one since `B1`. **Invariant**: *a mark belongs to one structure, and which one is decided
+before anything is asked what it describes* — the rectangle owns its boundary and the
+mitre one cell past it, and nothing further. **Negative controls**: the mitre count must
+be the **same** with and without the wall in the window, or the house is claiming
+somebody else's marks — which is exactly what `B4n` shipped; the run reader asked of the
+whole window must still **refuse**, because those marks genuinely are not one path; and a
+wall alone must read identically through both doors, or the split has changed what a run
+is.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -205,6 +216,7 @@ as a byte.
 | **`B4l`** — an OCTAGONAL tower: the palette's BODY chooses the shape | M | `octagon.loft` — eight distinct corners, convex and mirrored in both lattice axes; two shells naming one octagon with a control that a far pair does not; the seven collapsing shells enumerated and each refused with the next up; the octagon and the circle keying different worlds at one shell **while their rim counts coincide**; an unknown body and a damaged one both building the circle; `probe/s2c/octagon` byte-identical; five faults seen red | ✅ **SHIPPED** `d0898cd` |
 | **`B4m`** — the octagon's DESCRIPTION, and which reader the palette asks | M | `octagon.loft` — the centre and shell recover at two sizes and off the origin, a gapped rim and an over-large candidate are refused, **a disk and an octagon are measured to be one field at four sizes** and the admitted set is what separates them; `planview.loft` — the outline is eight points read out of the picture, the palette decides which description is drawn, an unknown body falls through, and `plan_tally` gets the five rows the driver's counter never had; five faults seen red | ✅ **SHIPPED** `552343b` |
 | **`B4n`** — a HOUSE's description: the rectangle its floor determines | M | `house_box.loft` — the membership pinned against `box_fill` at twelve rotations, the drawn corners round-tripped through `box_to_local`, the anchor the house's own cell and not the origin, a bitten floor refused with its count, the class reported, and **`B0`'s four stray edges measured at last**; `planview.loft` — the rectangle drawn as four points read out of the picture and the caption carrying both residuals; five faults seen red | ✅ **SHIPPED** `0efad03` |
+| **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
 
 ### Why `B0` is one phase and not two
 
@@ -1679,8 +1691,15 @@ answer it either.
 | the rectangle's own boundary | **38 edges, complete** — `missing 0` |
 | marks lying outside it | **4** — one per corner |
 
-**They are the four mitred runs over-running their corners.** They are not in the
-description, and nothing authored them as walls.
+**They are the four mitred runs over-running their corners.** ⛔ **AND THE SENTENCE THAT
+STOOD HERE — *"nothing authored them as walls"* — WAS WRONG; `B4o` corrected it.**
+`place_house` stamps each side from one MITRED corner to the next, and a mitre is where
+two centrelines meet, past the last floor cell; `wall_stamp` marks them faithfully. **The
+runs did author them.** What is measured above is that the RECTANGLE's boundary does not
+contain them, which is a fact about the rectangle. ⚠ The real finding is
+[EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 4 one layer over: the mitre is what
+makes the straight BAND meet at a corner, and the per-edge copy carries it into a
+representation where it bounds nothing.
 
 ⚠ **AND `house.keys` READS `3 stray · 1 missing`, WHICH IS THE SAME HOUSE PLUS ITS
 OPENINGS.** Its profile 2 sits on one of those four strays and clears it to material 0,
@@ -1776,6 +1795,113 @@ anyway — so three runs in a row reported the same refusal against a file that 
 been edited. ⚠ **A replace is a grep, and its default answer is *absent*** — the same
 sentence `CLAUDE.md` writes about logs, met in the tooling used to write the code. Every
 edit here asserts its anchor and re-reads the result.
+
+
+## What `B4o` turned up
+
+**Shipped `8e97ae0`.** `hex_editor::house_owns`, `edges_mat_outside`,
+`wall_recover_outside` and `HouseRead.hs_other`; the leftover branch in `plan_svg`;
+`tools/scripts/b4o.keys`. 13 rows in `house_box.loft` and 45 in `planview.loft`.
+
+![a house and a wall, both described](../../doc/claude/img-two-desc-b4o.png)
+
+*`b4o.keys` — a house and a wall nine rows clear of it, in one window. Both dashed blue
+outlines are descriptions; the four stubs at the house's corners are its mitre, counted
+and named. `make plan-view WORLD=b4o Q0=-12 Q1=8 R0=-14 R1=10`.*
+
+### ⛔ `B4n` was counting somebody else's marks
+
+`hs_stray` counted every mark in the **window** that the rectangle's boundary did not
+want. On a house standing alone that is its mitre, which is what `B4n` measured it on. In
+a window holding a house **and** a wall it is the wall — a caption confidently naming the
+wrong structure, in the reader that had just shipped.
+
+⚠ **AND IT IS `B1`'s FINDING POINTING THE OTHER WAY.** There a house cost an unrelated
+wall its description; here the house claims it. The two are one omission: **nothing was
+deciding which structure a mark belongs to.**
+
+✅ `house_owns` decides it — the rectangle owns its boundary and the mitre **one cell**
+past it, and nothing further. The bound is the mitre's own reach: two perpendicular
+centrelines meet less than a hex beyond the corner, so an edge the mitre can mark always
+has a cell touching the footprint. Measured: on a fresh house it accounts for **every**
+mark and leaves **none** over.
+
+### ✅ `B1`'s standing limitation, closed
+
+`B1` measured it exactly: the same wall reads `run d0 p5` alone and is **refused** when a
+house stands eight hexes away, because one mitre stub meets the wall's chain at a vertex
+and `wall_read_run` will not answer for a marking that is not a path.
+
+⚠ **THE READER WAS RIGHT AND THE QUESTION WAS WRONG.** Those marks are not one path,
+because they are not one structure. Taking the house's marks out is not a repair of the
+reader — it is asking a well-formed question. The row that says so asserts **both** ends:
+the whole window is still refused, and the remainder is a run.
+
+### ⛔ And the mitre is AUTHORED — `B4n`'s record said otherwise
+
+`B4n` wrote *"nothing authored them as walls"* about the four strays. `place_house` stamps
+each side from one **mitred** corner to the next; `wall_stamp` keeps every edge whose
+midpoint projects onto that segment. **The runs authored them, faithfully.** What `B4n`
+measured is that the rectangle's cell boundary does not contain them — a fact about the
+rectangle, not about what was authored. The claim is corrected in its own section above
+and at the code.
+
+⚠ **The real finding is [EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 4 one layer
+over.** The mitre exists so the straight **band** meets at a corner; the per-edge copy
+carries it into a representation where it bounds nothing, and there it costs a
+neighbouring wall its description. *Every wall is drawn twice* — and the second drawing
+carries four edges the first does not need.
+
+### The fixture had to move nine rows out, and the failure said why
+
+A wall laid beside the house had **three of its own marks inside the house's
+neighbourhood**: the mitre count read **7** instead of 4, and the recovered run came back
+**truncated** — `-13.86..-6.93` for a wall laid from `-14` to `-4`. ⚠ **Both are the
+ownership rule working.** A mark that close genuinely is ambiguous, and a rule that
+claimed otherwise would be inventing an answer. `B1`'s own case put the house eight hexes
+away; the fixture does the same.
+
+### The sabotage sweep
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with
+the ownership rule, the filtered edge set, the leftover reader and the picture's use of
+it asserted **present** before row 0, and every row asserting both packages **build**
+before a verdict is read.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the house owns every mark in the window — `B4n`'s behaviour restored | `house_box` · `planview` |
+| 2 | the rule stops one cell short, so the mitre is somebody else's | `house_box` · `planview` |
+| 3 | the leftover reader is handed the house's marks too | `house_box` · `planview` |
+| 4 | the picture never asks about the leftover — built and not called | `planview` |
+| 5 | somebody else's marks are never counted, so nothing is ever left over | `house_box` · `planview` |
+
+⚠ **ROWS 1 AND 2 ARE THE RULE FROM BOTH SIDES**, which is what a bound needs: too wide
+and the house claims a wall, too narrow and it disowns its own mitre. A single row could
+have passed for either. ⚠ **And `edges_mat` is green in every row** — the shared reader is
+untouched, which is the control that `edges_mat_outside` is that body with a predicate
+rather than a second copy of it.
+
+### And the picture's own tests went past the budget before the sweep did
+
+Three new rows built **five** worlds and rendered **five** pictures between them, each
+running the whole reader chain — and `planview.loft` hit `loft test`'s 300-second deadline
+under parallel load, on a file that passed standalone. ⚠ **Consolidated to one world and
+one picture per row with no claim lost**: the mitre count is *pinned to 4* on both the
+house-alone and the house-and-wall picture, which is **stronger** than asserting the two
+are equal — if both moved together, an equality check would still pass.
+
+`hex_editor` + `hex_mesh`, 72 files, green on both backends per file: **115 s** interpreted
+and **42 s** native, against the 233 s / 91 s before the consolidation.
+
+### What it deliberately does not do
+
+⚠ **THE LEFTOVER READER IS THE RUN READER ALONE.** A leftover disc or octagon is a
+further step; running the whole chain on the remainder would be claiming a capability
+nothing here has measured. ⚠ **And the split is one level deep** — a window with three
+structures describes the house and one of the other two. What decides whether that
+matters is a picture of a village, which nothing in the corpus has yet.
 
 
 ## Open questions
