@@ -1652,9 +1652,9 @@ untouched by it.
 ## What `B4n` turned up
 
 **Shipped `0efad03`.** `hex_editor::house_recover` + `HouseRead`, `box_holds`,
-`box_fits_at`… — `house_fits_at`, `box_px_x`/`box_px_z`, `oct_span`'s sibling
-`box_fits`; the house branch in `plan_svg`; `tools/run-tests.sh TEST_NATIVE=1`.
-9 rows in `house_box.loft` and 46 in `planview.loft`.
+`box_fits`, `house_fits_at` and `box_px_x`/`box_px_z`; the house branch in `plan_svg`;
+`tools/run-tests.sh TEST_NATIVE=1`. 9 rows in `house_box.loft` and 46 in
+`planview.loft`.
 
 ![a house, and the rectangle recovered from it](../../doc/claude/img-house-plan-b4n.png)
 
