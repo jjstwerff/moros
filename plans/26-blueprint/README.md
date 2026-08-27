@@ -249,7 +249,7 @@ as a byte.
 | **`B4n`** — a HOUSE's description: the rectangle its floor determines | M | `house_box.loft` — the membership pinned against `box_fill` at twelve rotations, the drawn corners round-tripped through `box_to_local`, the anchor the house's own cell and not the origin, a bitten floor refused with its count, the class reported, and **`B0`'s four stray edges measured at last**; `planview.loft` — the rectangle drawn as four points read out of the picture and the caption carrying both residuals; five faults seen red | ✅ **SHIPPED** `0efad03` |
 | **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
 | **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
-| **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** |
+| **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
 
 ### Why `B0` is one phase and not two
 
@@ -2056,6 +2056,135 @@ holding two houses describes one of them, because `house_recover` reads the wind
 FLOOR and the exclusion is over marks. ⚠ **And a window whose marks all declare `THICK_OCT`
 is still an octagon or nothing** — `pd_stop`, `B4m`'s behaviour unchanged: the palette named
 the reader, so a refusal there is the answer rather than a reason to ask the house.
+
+## What `B4q` turned up
+
+**Shipped `a305679`.** `hex_editor::run_edges` (`wall_stamp`'s marking rule, extracted),
+`wall_run_new`, `run_fits_at`, and `RunRead.rr_marks` / `rr_stray` / `rr_missing`; the
+residual in `plan_svg`'s caption; `tools/scripts/b4q.keys`,
+[`probe/b4q`](../../probe/b4q/README.md). 8 rows in `run_fit.loft` and 49 in
+`planview.loft`.
+
+### ⛔ The same wall walked the other way is a different field
+
+`B4p` left *what does a run own* open. Looking for the answer measured something else.
+`hex_shape::wall_read_run` states it as a fact about the field — *"what it cannot recover
+is the ORIENTATION, because the field does not store one: A-to-B and B-to-A mark the
+identical edges"*. **It is false for this tree's stamper.** One run record, stamped forward
+and reversed, `run_between` out of the picture:
+
+| heading | both | only forward | only reversed |
+|---|---|---|---|
+| east | 10 | 0 | 0 |
+| **north** | **2** | **9** | **9** |
+| NE | 8 | 0 | 0 |
+| steep NE | 10 | 0 | 0 |
+| **shallow NW** | **10** | **3** | **3** |
+
+![a wall walked north](../../doc/claude/img-wall-north-b4q.png)
+![the same wall walked south](../../doc/claude/img-wall-south-b4q.png)
+
+*Both recover a `d6` description. The marks zigzag to opposite sides of it —
+`desc d6 p8` against `desc d6 p9 · 9 stray · 9 missing`.*
+
+`wall_stamp` takes its halfplane normal from the run's **tangent**, so reversing the record
+flips which side a cell whose centre lies exactly **on** the line falls on; a due-north wall
+in odd-r passes through alternate rows' centres, and exactly those flip. ⚠ **Due east is
+unmoved, and that is how every wall in the corpus is walked** — which is why it has
+survived. [EDITOR_DEFECTS](../../doc/claude/EDITOR_DEFECTS.md) 7.
+
+### ⛔ And the library's own generator is a THIRD rule, agreeing at identical counts
+
+`hex_shape::wall_write` marks where the centreline separates two cell **centres**;
+`wall_stamp` marks where the edge midpoint's distance to the **segment** equals its
+distance to the **line**. Over ten headings they agree on five. ⚠ **And the five that
+differ have identical edge counts** — `south` is 12 and 12 with **3** in common, one hex
+column apart. **A check on the count alone reads as a match**, which is `B4l`'s *a rim
+COUNT cannot see a shape* one shape over, and it is why this step's generator is
+`wall_stamp`'s own loop extracted rather than the library call that looks like it.
+`deck.keys` still keys `cea971a0…` across the extraction.
+
+### ✅ The run reader joins the other two, and `rr_ok` is deliberately NOT narrowed
+
+`disc_recover` and `oct_recover` have been generate-and-compare since `B4h` — `FORMAL_CORE`
+§6's R1. The run reader could not be, because the marking rule lived inside `wall_stamp`
+where nothing else could ask it, so `rr_ok` has meant only *these ends describe this run*
+since `B1` and the picture drew it on that.
+
+⚠ **Refusing would have been the wrong fix.** `B1`'s whole picture is a description drawn
+over marks it MISSES — *"the only way to SEE that is to put the answer on top of the marks
+it came from"* — and a reader that refused would delete what the plan view exists to show.
+The residual is reported beside the answer, in the `· N stray · N missing` grammar `B4n`'s
+house already used, so a reader of the caption learns one vocabulary rather than two.
+
+⚠ **AND IT MAKES `B1`'s OWN NEGATIVE CONTROL EXACT.** That row asserted a *distance* a
+person reads off the picture — *the description misses its own wall by more than 0.6 wu*.
+The wandering chain now reports **3 stray · 3 missing of 8**, and the row asserts both.
+
+### ⛔ A swapped pair would have passed every row but one
+
+Every description the reader itself produces is wrong in **both** directions at once — the
+reversed wall is 9 and 9 of 11, the wandering chain 3 and 3 of 8 — so `stray` and `missing`
+are indistinguishable on any of them. They are pinned on a **one-sided** fit instead:
+`run_fits_at` is the comparison with the search taken out (`oct_fits_at`'s own reason), and
+a description covering **half** the wall leaves marks over with nothing missing, while one
+running **past** it wants edges with nothing left over.
+
+### ⚠ A cause asserted, then refuted by its own control
+
+`run_fit` built its `WallRun` inline first, and the package reported `type 'WallRun' is
+private` at **every other construction site** — six in `src/`, four in the tests — naming
+none of them. Moving the literal beside the declaration cleared it, and the obvious story
+went into the comment as fact: *a struct constructed above its own declaration*.
+
+⛔ **A two-shape minimal repro refutes it** — one file and two, with a forward parameter
+type and a second module, both compile and pass. So there is **no ticket**, and the comment
+now records the symptom without the mechanism. ⚠ `CLAUDE.md`'s *repro WITH a control first,
+since some turn out to be your own mistake* is exactly the rule that caught it, one step
+after being followed for the sabotage sweep and forgotten for the prose.
+
+### The sabotage sweep
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with the
+generator, the fit, the direct comparison **and the caption saying it** asserted present
+before row 0, and every row separating *the suite went red* from *the package would not
+build*.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the description is never compared to the field — `B1`'s behaviour restored | `run_fit` · `planview` |
+| 2 | the generator is the LIBRARY's rule instead of the stamper's | `run_fit` · `planview` |
+| 3 | `stray` and `missing` swapped | `run_fit` |
+| 4 | the leftover door is measured against the whole window — `B4o`'s defect, one reader over | `run_fit` |
+| 5 | the picture never says the residual — built and not called | `planview` |
+
+⚠ **ROW 3 IS RED IN ONE FILE AND THAT IS THE WHOLE ARGUMENT FOR `run_fits_at`.** Every
+description the reader produces is wrong symmetrically, so the swap is invisible to the
+picture and to every other row; only the one-sided fit sees it. ⚠ **And row 2 went red
+rather than green**, which is the finding stated as a test: the library's generator is a
+different wall, and a step that had reached for it would have shipped a residual measured
+against something nothing here builds.
+
+### What the extraction was gated on
+
+`run_edges` is `wall_stamp`'s inner loop moved out, and the only proof that matters for
+that is the corpus: `deck.keys` keys **`cea971a07899e420b344c0054567f4e1`** across it, the
+byte-identical world `T4` pinned. Both backends per file: **93 files, 128 s interpreted and
+119 s `--native`** — `make lib-test` is still past loft's per-package 300-second deadline
+for `hex_editor`, which is `B4n`'s standing condition and not this step's.
+
+### What it deliberately does not do
+
+⛔ **IT DOES NOT FIX THE STAMPER.** Making `wall_stamp` orientation-independent moves the
+field under every non-east wall in the corpus — `deck.keys`'s `cea971a0…`, `house.keys`,
+every acceptance shot — so it is a step with its own gate work, and the tie-break is a
+**decision** rather than a line to patch: a zero-width line through a cell centre has to
+pick a side, and what is wrong is only that the pick depends on the direction of travel.
+⚠ **AND IT DOES NOT PEEL.** `B4p`'s blocker is what closes here — *what a run owns* is
+`run_edges`' answer — but the loop that would describe every structure in a window is a
+further step, and it wants the stamper settled first: a peel that subtracted a wall's own
+marks would subtract the wrong ones on five headings in ten.
 
 ## Open questions
 

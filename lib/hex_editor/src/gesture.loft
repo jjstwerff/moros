@@ -3299,13 +3299,15 @@ pub struct WallRuns { items: vector<WallRun> }
 // definition. `CLAUDE.md`'s rule earns itself again: grep the whole graph for a public
 // name before adding one, the consumers included, not only the siblings.
 //
-// ⚠ **IT LIVES HERE RATHER THAN AT ITS CALLER, AND THE COMPILER DECIDED THAT.**
-// Constructing `WallRun` in a function written ABOVE its declaration made loft report
-// the type as *private* at **every other construction site in the package** — six in
-// `src/`, four in the tests — and `Undefined type WallRun — did you mean 'WallRuns'?`
-// at the one that named it in a signature. ⚠ **None of those messages names the site
-// that caused it**, which is the same shape as loft#912: the diagnostic is excellent
-// about the symptom and silent about the cause.
+// ⚠ **AND ONE OBSERVATION WITH NO EXPLANATION, RECORDED RATHER THAN THEORISED.**
+// `run_fit` built this literal inline first, and the package then reported `type
+// 'WallRun' is private` at **every other construction site** — six in `src/`, four in
+// the tests — plus `Undefined type WallRun — did you mean 'WallRuns'?` where one named
+// it in a signature, and **named none of them as the cause**. Moving the literal here
+// cleared it. ⛔ **The obvious story — *a struct constructed above its own declaration*
+// — is REFUTED**: a two-file package doing exactly that, with a forward parameter type
+// and a second module, compiles and passes. So there is no ticket and no rule here,
+// only a symptom to recognise if it returns.
 pub fn wall_run_new(x0: float, z0: float, x1: float, z1: float, mat: integer) -> WallRun {
   WallRun { wr_x0: x0, wr_z0: z0, wr_x1: x1, wr_z1: z1,
             wr_mat: mat, wr_step: 0, wr_base: 0, wr_up: 0 }
