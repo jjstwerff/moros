@@ -146,6 +146,19 @@ because the vocabulary is open and a geometry site is not where a palette is deb
 and the round tower must be unmoved, which the shared boundary walk makes a real risk
 rather than a formality.
 
+**`B4m`** — **expected result**: the plan draws the octagon it was given **as an
+octagon** — `octagon 0,0 shell 468`, an eight-point outline over the rim it was
+recovered from — and the same field under a `THICK_CURVED` declaration draws a disc.
+**Invariant**: *the palette picks the MODEL and the field fixes its parameters* —
+§2.5's *an octagon tower is never deduced; it is stored*, with the recovery itself
+`FORMAL_CORE` §6's R1, generate-and-compare and never a fit. **Negative controls**: a
+gapped rim and an octagon larger than its own marks must both be **refused**; a body
+this tree does not know must fall through to the round reader, because the vocabulary
+is open; and the reader must not offer a shell the gesture refuses — which is not
+hypothetical, because **a disk and an octagon are the same field at four sizes**, so a
+reader admitting the whole grid describes every round tower of shell 156 as the octagon
+of 192.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -178,6 +191,7 @@ as a byte.
 | **`B4j`** — the refusal says only what a capped flood can know | S | `field.loft` — every code the fill can answer with the case that produces it, a gapped ring answering exactly what open ground does, and a CLOSED field past the cap refused with a control that fills under it; five faults seen red, row 1 re-run against the row written for it | ✅ **SHIPPED** `2035e1b` |
 | **`B4k`** — is a BAY a feature of its wall? (probe) | S | [`probe/b4k`](../../probe/b4k/README.md) — predictions pre-registered; an unbounded span on the parent reaches **0** edges of a projecting face, with the perforating control holding at 8 | ✅ **RUN** `735814c` |
 | **`B4l`** — an OCTAGONAL tower: the palette's BODY chooses the shape | M | `octagon.loft` — eight distinct corners, convex and mirrored in both lattice axes; two shells naming one octagon with a control that a far pair does not; the seven collapsing shells enumerated and each refused with the next up; the octagon and the circle keying different worlds at one shell **while their rim counts coincide**; an unknown body and a damaged one both building the circle; `probe/s2c/octagon` byte-identical; five faults seen red | ✅ **SHIPPED** `d0898cd` |
+| **`B4m`** — the octagon's DESCRIPTION, and which reader the palette asks | M | `octagon.loft` — the centre and shell recover at two sizes and off the origin, a gapped rim and an over-large candidate are refused, **a disk and an octagon are measured to be one field at four sizes** and the admitted set is what separates them; `planview.loft` — the outline is eight points read out of the picture, the palette decides which description is drawn, an unknown body falls through, and `plan_tally` gets the five rows the driver's counter never had; five faults seen red | ✅ **SHIPPED** `552343b` |
 
 ### Why `B0` is one phase and not two
 
@@ -1483,6 +1497,143 @@ edge <slot> …` is a runner line and `54:`/the palette on the wire; there is no
 it. That is `B4d`'s and `B4e`'s standing gap rather than one this step adds, but it is
 what stands between *the octagon is reachable* and *the octagon is reachable without a
 script*.
+
+
+## What `B4m` turned up
+
+**Shipped `552343b`.** `hex_editor::oct_recover` + `OctRead`, `marks_body`,
+`oct_fits_at`, `oct_span`, `oct_px_x`/`oct_px_z`; the octagon branch in `plan_svg`;
+`hex_mesh::plan_tally` with the driver moved onto it. 24 rows in `octagon.loft` and 38
+in `planview.loft`.
+
+![the octagon and the description recovered from it](../../doc/claude/img-octagon-desc-b4m.png)
+
+*`octagon.keys` at shell 468, drawn alone. The dashed blue outline is eight straight
+sides lying on a rim the lattice can only step; the caption is the picture's own.*
+
+### ⛔ A disk and an octagon are the SAME FIELD at four sizes
+
+This is what makes §2.5's *an octagon tower is never deduced; it is stored* a
+requirement rather than a preference. Measured over every shell to 1008:
+
+| the disk of… | is exactly the octagon of… |
+|---|---|
+| 108 | **144** |
+| 156 | **192** |
+| 252 | **300** |
+| 372 | **432** |
+
+…plus 12 and 48, where the two coincide outright. ⚠ **The right-hand column is six of
+the seven shells `fit_oct_shell` refuses** — the same fact from the other side, because
+a shell is refused for an octagon precisely when its octagon is a disk.
+
+⚠ **SO NO READER LOOKING AT CELLS CAN TELL THEM APART THERE.** `marks_body` is what
+picks the model, and a world declaring `THICK_CURVED` over that field draws a disc while
+the identical field under `THICK_OCT` draws an octagon — which is the row
+`test_the_palette_decides_which_description_is_drawn` exists for.
+
+### ✅ The reader's admitted set is the GESTURE's, and that IS R1
+
+`FORMAL_CORE` §6's R1 is *"the shape is in the **admitted set** and the field determines
+it uniquely"*, and the admitted set for an octagon is what `fit_oct_shell` accepts.
+Without that one line the reader answered shells no gesture can build: **every round
+tower of shell 156 came back as *the octagon of 192*** — confidently, with nothing
+unexplained, which is `probe/l1`'s plausible-wrong-answer and `B0p`'s confident hexagon
+in a third costume. The row that says so went red before the line existed.
+
+⚠ **The geometry and the verdict are separated on purpose.** `oct_fits_at` still answers
+**true** for shell 192 over that field — the fields really are identical — and
+`oct_recover` still refuses. A reader that conflated the two would have no way to say
+which of the two facts it was reporting.
+
+### ⛔ The driver's tally has now been wrong three times at one site
+
+| step | what it printed | why |
+|---|---|---|
+| `B1` | **11 edges** for a world holding 10 marks | a run is a `<line>` too |
+| `B4h` | `description refused` for a disc | it matched `<line class='run'` alone |
+| `B4m` | **325 cells** and `refused` for a picture captioned *cells 324 … desc octagon 0,0 shell 468* | an octagon is a `<polygon>`, and the CELL counter had claimed that element by name |
+
+**Three landings at one site is a class, and a driver is where a class hides** — the
+suite never built `src/plan_view.loft`, so no row could see any of them. It is
+`hex_mesh::plan_tally` now, matched on the **class** rather than the element, with five
+rows of its own including the one that would have caught `B4m`'s: *a description never
+lands in the cell count*. ⚠ **A tag name is not an identity**, and the next description
+to arrive will reuse some element too.
+
+### Two instruments were blind on the way, and one of them read as a pass
+
+⚠ **`poly_holds` CANNOT BE CALLED PER EDGE.** The first reader asked it for the cell and
+each of its six neighbours — **seven per cell, per candidate** — and `loft test` hit its
+own **300-second deadline inside `oct_recover`** rather than failing a row. `disc_fits`
+can afford that shape because `vec_n2_4` is four integer operations; `poly_holds` walks
+eight edges twice. The fix is a membership table per candidate and a comparison box that
+is **the marks' own extent plus two**, not the window — a scan starting in the window's
+empty corner agrees for thousands of cells before it can disagree, which is the worst
+case for a check whose whole job is to fail fast.
+
+⛔ **AND THE RUN BEFORE THAT PRINTED NO RESULT LINE AND EXITED 0.** Piped through a grep
+for `FAIL|test result`, it produced **nothing at all** — which reads exactly like a suite
+that passed quietly. `CLAUDE.md`'s *a grep over a log defaults to absent*, met head on,
+inside the tooling this tree uses every hour.
+
+⚠ **And `B4l`'s rim-count blindness bit again, in a second package, a day later.** The
+control *"and the two FIELDS differ, so this is not one field described two ways"* was
+written as a mark count in `planview.loft` and went red: at shell 156 the octagon is 51
+cells with a **54**-edge rim and the disk is 55 cells with a **54**-edge rim. The claim
+belongs in `octagon.loft`, where it is made byte for byte over the field; the picture's
+test now asserts the coincidence instead, so the note cannot rot.
+
+### `session_at` is `(x, z, yaw)`, and the reader was right
+
+A row placing a tower off the origin passed `(x, y, z)` — three floats, the wrong three.
+The tower landed at `3,0` with a yaw of 3.0 radians and `oct_recover` reported `3,0`,
+which was **the truth about a fixture that had moved the wrong axis**. ⚠ The failure
+looked like a recovery assuming its centre and was the opposite: an instrument correct
+about a world the test had built by mistake.
+
+### The sabotage sweep, and two rows that were green first
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with
+the reader, the admitted-set skip, the body reader, the palette's choice in the picture,
+the tally and the driver's call to it each asserted **present** before row 0. ⚠ And
+every row asserts **both packages build** before a verdict is read, which is `B4l` row
+3's lesson applied rather than restated.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the reader admits shells the gesture refuses | `octagon` |
+| 2 | `marks_body` never reads the palette | `octagon` · `planview` |
+| 3 | the comparison box loses its two-cell margin | ⚠ **nothing** |
+| 4 | the drawn outline forgets its centre | ⚠ **nothing**, until the fixture moved off the origin |
+| 5 | the tally matches the ELEMENT again — this step's own defect | `planview` |
+
+⛔ **ROW 4 IS `B4l` ROW 1's SHAPE AND I HAD JUST WRITTEN THAT LESSON DOWN.** The corner
+test built its octagon at `0,0`, where `x - centre_x` is `x - 0` either way — so an
+outline drawn at the origin instead of at the shape is **invisible to the row asserting
+the outline sits on its rim**, and every other claim in the file stays true. The fixture
+is at `4,2` now and the row asserts the corners straddle the recovered centre; it goes
+red against the same fault.
+
+⚠ **ROW 3 IS A FINDING ABOUT THE CODE, NOT ABOUT THE TEST.** The margin is there for a
+candidate whose boundary agrees with every mark inside the box and continues outside it.
+Cutting it to zero broke nothing, because a candidate too big for its marks is already
+refused **inside** the box — its `want` is false where a mark is true. So the margin is
+defensive rather than load-bearing, and the comment says that now instead of naming a
+test that does not exercise it. ⚠ *A green row is a claim about the sabotage before it
+is one about the test*, and here it was a claim about the comment.
+
+### What it deliberately does not do
+
+⚠ **STILL ONE DESCRIPTION PER WINDOW**, which is `B1`'s standing limitation and not this
+step's: `octagon.keys`'s two towers in one window draw nothing, because the readers each
+ask *what shape do THESE marks describe*. ⚠ **And splitting by structure would not fix a
+house** — measured before this step was chosen: `house.keys`'s 42 marks are **one**
+vertex-connected component, because the four stray corner edges `B0` found each share a
+vertex with the loop. So the component split that looks like the obvious next move buys
+only genuinely disjoint shapes, and the house — the thing a blueprint is for — is
+untouched by it.
 
 
 ## Open questions

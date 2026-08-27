@@ -1088,12 +1088,17 @@ pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   // ⚠ **THE COMPARISON BOX IS THE MARKS' OWN EXTENT PLUS TWO, NOT THE WINDOW.**
   // Every mark is inside `lo..hi` by construction, so a scan of the whole window spends
   // its first rows agreeing about empty ground before it can reach a disagreement —
-  // which is the worst case for a check that exists to fail fast, and it is every
-  // candidate that does not fit. ⚠ **The margin is what catches a candidate too BIG
-  // for its marks**: such a shape has no boundary inside the box at all, so `want` is
-  // false where a mark is true and it is refused there — the ring makes that a
-  // statement rather than a hope, and `test_an_octagon_larger_than_its_marks_is_refused`
-  // is where it is measured.
+  // which is the worst case for a check whose whole job is to fail fast, and it is
+  // every candidate that does not fit. That is what the tight box is for, and it is
+  // measured: without it the reader hit `loft test`'s own 300-second deadline.
+  //
+  // ⚠ **THE TWO-CELL MARGIN IS DEFENSIVE, AND THE SWEEP SAYS SO RATHER THAN THE
+  // COMMENT.** It is there for a candidate whose boundary agrees with every mark inside
+  // the box and continues outside it; a row cutting the margin to zero went **green**,
+  // so nothing this suite can build needs it — a candidate too big for its marks is
+  // already refused inside the box, where its `want` is false and a mark is true. It
+  // stays because a silent wrong answer is the failure mode, not because a test would
+  // notice it going.
   bq0 = lo_q - 2;
   br0 = lo_r - 2;
   bwq = hi_q - lo_q + 5;

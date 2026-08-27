@@ -519,11 +519,38 @@ fn test_two_bodies_in_one_window_answer_neither() {
 // shape over: a description drawn beside its marks rather than over them is the failure
 // this pairing exists to show, and no count would name it.
 fn test_the_drawn_corners_sit_within_the_rim_they_describe() {
-  w = oct_only_world(468);
+  // ⛔ **OFF THE ORIGIN, AND A SABOTAGE SWEEP IS WHY.** Centred at 0,0 this row cannot
+  // see an outline that forgets its centre — `x - centre_x` is `x - 0` either way — so
+  // the row that would have caught it went GREEN against exactly that fault. A fixture
+  // at the origin is `B4l` row 1's shape: every claim still true, and the one thing
+  // being asserted invisible.
+  w = oct_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(session_select_shell(s, 468).ak_ok, "shell 468 refused");
+  (cx, cz) = hex_to_px(4, 2);
+  session_at(s, w, cx, cz, 0.0);
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the octagon was refused");
+
   o = oct_recover(w, 0 - 20, 0 - 20, 41, 41, 0.0);
+  assert(o.ot_cq != 0 || o.ot_cr != 0,
+         "the fixture built its octagon at the origin after all, where this row is "
+       + "blind to an outline that drops its centre");
   assert(o.ot_ok, "the fixture was not recovered: {o.ot_why}");
   xs = oct_px_x(o.ot_cq, o.ot_cr, o.ot_shell);
   zs = oct_px_z(o.ot_cq, o.ot_cr, o.ot_shell);
+  // …and the outline is placed AT the octagon, not at the origin: the corners must
+  // straddle the recovered centre in both axes.
+  (wx, wz) = hex_to_px(o.ot_cq, o.ot_cr);
+  assert(o.ot_x == wx && o.ot_z == wz,
+         "the recovery's own frame disagrees with `hex_to_px`");
+  lox = xs[0] ?? 0.0;
+  hix = xs[0] ?? 0.0;
+  for xv in xs { if xv < lox { lox = xv; } if xv > hix { hix = xv; } }
+  assert(lox < wx && hix > wx,
+         "the outline spans {lox}..{hix} and its centre is {wx} — it is drawn "
+       + "somewhere other than at the shape it describes");
   assert(len(xs) == 8 && len(zs) == 8,
          "the picture is handed {len(xs)}/{len(zs)} corners, not eight");
   // the octagon's circumradius is `√N / 2`; every corner must sit within one lattice

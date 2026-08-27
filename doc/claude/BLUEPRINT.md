@@ -373,6 +373,20 @@ by `cut_arb`. ⚠ **That is a second, independent reason it is its own material*
 `hex_recover::rebuild` — which returns turtle forms — **cannot recover it**. `rebuild_construct`
 is the candidate, and whether it can is `B0p`'s second question.
 
+✅ **AND THE PLAN DRAWS IT — plan 26 `B4m`**: `octagon 0,0 shell 468`, an eight-point outline
+over the rim it was recovered from, beside the field it came from.
+
+![the octagon and the description recovered from it](img-octagon-desc-b4m.png)
+
+⛔ **AND THIS § IS NOW A REQUIREMENT RATHER THAN A PREFERENCE, MEASURED.** *Never deduced; it
+is stored* reads like caution until you measure the overlap: **a disk and an octagon are the
+same field at four sizes** — `disc 108 == oct 144`, `disc 156 == oct 192`, `disc 252 == oct 300`,
+`disc 372 == oct 432`, plus 12 and 48 where they coincide outright. At those sizes **no reader
+looking at cells can tell the two apart**, so the palette is the only thing that can. ⚠ The
+right-hand column is six of the seven shells the gesture refuses — the same fact from the other
+side — and the fix is `FORMAL_CORE` §6's own words: **the reader's admitted set is the
+gesture's.** Without it every round tower of shell 156 came back as *the octagon of 192*.
+
 ✅ **AND LAW J TURNED OUT TO BLOCK ONLY THE WRAPPER — plan 26 `B4l`.** `form_fill` refuses the
 shape outright, and its own body is `hex_form::poly_holds` over the window: a bare integer polygon
 with no `Form` and no law J behind it. **So the octagon is refused one layer up and admitted one
