@@ -341,10 +341,14 @@ fn test_a_wandering_chain_draws_a_description_that_misses_its_own_wall() {
   // The gesture's own geometry before `H1a`: an anchor wherever the author stood, a
   // length wherever they stopped, an angle off the lattice. 15 degrees — the case
   // `probe/l1` measured reading back as 30.
+  // ⚠ **THE ANCHOR IS OFF A CELL CENTRE ON PURPOSE — plan 26 `B4r`.** It used to be
+  // `(0, 0)`, which IS a cell centre, so the line ran exactly through one; with the
+  // halfplane's tie-break settled that chain leaves 7 marks that are not a path and is
+  // refused. `B1`'s claim is about the ANGLE, and nothing authors an anchor like it.
   ang = 15.0 / 57.29577951308232;
   hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
-                              wr_x0: 0.0, wr_z0: 0.0,
-                              wr_x1: cos(ang) * 6.0, wr_z1: sin(ang) * 6.0,
+                              wr_x0: 0.4, wr_z0: 0.3,
+                              wr_x1: 0.4 + cos(ang) * 6.0, wr_z1: 0.3 + sin(ang) * 6.0,
                               wr_mat: hex_editor::WALL_MAT, wr_step: 1 },
                          hex_editor::WALL_MAT, 8, rs, m);
   svg = plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "wander");
@@ -362,7 +366,7 @@ fn test_a_wandering_chain_draws_a_description_that_misses_its_own_wall() {
          || (attr(ln, "data-missing") as integer ?? 0) > 0,
          "a chain 15 degrees off the lattice reproduces its own field exactly — "
        + "stray {attr(ln, "data-stray")}, missing {attr(ln, "data-missing")}");
-  assert(!ends_match(ln, 0.0, 0.0, cos(ang) * 6.0, sin(ang) * 6.0),
+  assert(!ends_match(ln, 0.4, 0.3, 0.4 + cos(ang) * 6.0, 0.3 + sin(ang) * 6.0),
          "the description is the authored line after all, so this fixture is not "
          + "wandering and the pair above proves nothing");
 
@@ -1477,6 +1481,19 @@ fn test_a_leftover_of_two_towers_is_counted_and_not_drawn() {
 // lived inside `wall_stamp` and nothing else could ask it. The caption carries the
 // residual now, in the same `· N stray · N missing` grammar the house already uses.
 
+// The `n`th element of a class, read out of the picture — so two pictures can be
+// compared as TEXT rather than by a count.
+fn nth_tag(svg: text, head: text, n: integer) -> text {
+  i = 0;
+  for ln in svg.split('\n') {
+    if ln.size() < head.size() { continue; }
+    if ln[0..(head.size() as i32)] != head { continue; }
+    if i == n { return ln; }
+    i = i + 1;
+  }
+  ""
+}
+
 fn walled_world(x0: float, z0: float, x1: float, z1: float) -> VoxelWorld {
   w = flat_world();
   rs = hex_editor::WallRuns { items: [] };
@@ -1508,10 +1525,14 @@ fn test_a_wall_that_reproduces_its_field_says_nothing_extra() {
          "the description carries no mark count at all");
 }
 
-// ⛔ **AND THE SAME RUN WALKED THE OTHER WAY IS A DIFFERENT FIELD** — `run_fit.loft`
-// measures it; this is what a person SEES. Both fields recover to the same `d6 p8`, and
-// only one of them is the field that description makes.
-fn test_a_wall_that_does_not_reproduce_its_field_says_so() {
+// ── ✅ AND THE SAME RUN WALKED THE OTHER WAY IS ONE PICTURE — plan 26 `B4r` ─
+//
+// ⛔ **IT WAS TWO.** `B4q` drew this pair as the defect: both walls recovered a `d6`
+// description, the marks zigzagged to opposite sides of it, and the captions read
+// `desc d6 p8` against `desc d6 p9 · 9 stray · 9 missing`. `run_normal` settles the
+// halfplane's tie-break on the LINE rather than on the direction of travel — a canonical
+// normal and an offset anchored at the midpoint — and the two pictures are now one.
+fn test_a_wall_walked_either_way_draws_one_clean_description() {
   d = hex_editor::run_between(0.0, 0.0, 0.0, 9.0, hex_editor::WALL_MAT);
   assert(d.rd_ok, "the fixture's run was refused");
   f = d.rd_run;
@@ -1523,18 +1544,38 @@ fn test_a_wall_that_does_not_reproduce_its_field_says_so() {
   bcap = caption(back);
   assert(fcap.contains("desc d6 p") && bcap.contains("desc d6 p"),
          "the two directions do not recover one description: {fcap} / {bcap}");
-  assert(!fcap.contains("stray"), "the forward wall is reported as broken: {fcap}");
-  assert(bcap.contains("stray") && bcap.contains("missing"),
-         "a wall the stamper cannot reproduce from its own description is drawn as if "
-       + "it were clean: {bcap}");
-  // …and the counts reach the picture, not only the sentence.
-  bl = desc_line(back);
-  assert((attr(bl, "data-stray") as integer ?? 0) > 0
-         && (attr(bl, "data-missing") as integer ?? 0) > 0,
-         "the element carries stray {attr(bl, "data-stray")} missing "
-       + "{attr(bl, "data-missing")}");
-  // ⚠ AND IT IS STILL DRAWN. A description that vanished would take `B1`'s picture
-  // with it — the whole point is the answer ON TOP of the marks it does not explain.
-  assert(tag_count(back, DESCR) == 1,
-         "the description was withdrawn rather than reported");
+  assert(!fcap.contains("stray") && !bcap.contains("stray")
+         && !fcap.contains("missing") && !bcap.contains("missing"),
+         "a wall still fails to reproduce its own field from one of the two "
+       + "directions: {fcap} / {bcap}");
+  // ⚠ **AND THE FIELDS ARE THE SAME FIELD, NOT TWO THAT DESCRIBE ALIKE.** The mark
+  // COUNT is not enough — `B4q` measured two fields of 12 sharing 3 — so the whole
+  // picture is compared, which for one wall in one window is the field itself.
+  assert(tag_count(fwd, FIELD) == tag_count(back, FIELD),
+         "the two walls hold {tag_count(fwd, FIELD)} and {tag_count(back, FIELD)} marks");
+  for i in 0..tag_count(fwd, FIELD) {
+    assert(nth_tag(fwd, FIELD, i) == nth_tag(back, FIELD, i),
+           "mark {i} differs between the two directions:\n  {nth_tag(fwd, FIELD, i)}\n"
+         + "  {nth_tag(back, FIELD, i)}");
+  }
+}
+
+// ⚠ **AND THE CAPTION IS STILL ABLE TO BE LOUD**, which is what keeps the row above
+// from passing on a residual that has stopped being computed at all. The wandering
+// chain is the case that is genuinely not the wall its description names — its own
+// row asserts the counts; this one asserts a person can SEE it.
+fn test_a_description_that_does_not_reproduce_its_field_still_says_so() {
+  w = flat_world();
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  ang = 15.0 / 57.29577951308232;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                              wr_x0: 0.4, wr_z0: 0.3,
+                              wr_x1: 0.4 + cos(ang) * 6.0, wr_z1: 0.3 + sin(ang) * 6.0,
+                              wr_mat: hex_editor::WALL_MAT, wr_step: 1 },
+                         hex_editor::WALL_MAT, 8, rs, m);
+  cap = caption(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "wander"));
+  assert(cap.contains("stray") && cap.contains("missing"),
+         "a chain 15 degrees off the lattice is drawn as if it were the wall it "
+       + "names: {cap}");
 }

@@ -149,9 +149,15 @@ fn test_a_wandering_chain_is_answered_confidently_rather_than_refused() {
   // A gesture-style run: an anchor wherever the author stood, a length wherever they
   // stopped, an angle off the lattice — 15 degrees, which `probe/l1` measured reading
   // back as 30.
+  //
+  // ⚠ **AND THE ANCHOR IS OFF A CELL CENTRE ON PURPOSE — plan 26 `B4r`.** It used to be
+  // `(0, 0)`, which IS cell `(0,0)`'s centre, so the line passed exactly through it. With
+  // the halfplane's tie-break settled that chain marks 7 edges that are not a path and is
+  // **refused** — a fact about a fixture nothing authors, since `run_between` snaps to `D`
+  // and anchors on a corner. The claim here is about the ANGLE.
   ang = 15.0 / 57.29577951308232;
-  wall_stamp(w, WallRun { wr_base: 0, wr_up: 0, wr_x0: 0.0, wr_z0: 0.0,
-                          wr_x1: cos(ang) * 6.0, wr_z1: sin(ang) * 6.0,
+  wall_stamp(w, WallRun { wr_base: 0, wr_up: 0, wr_x0: 0.4, wr_z0: 0.3,
+                          wr_x1: 0.4 + cos(ang) * 6.0, wr_z1: 0.3 + sin(ang) * 6.0,
                           wr_mat: WALL_MAT, wr_step: 1 },
              WALL_MAT, 8, runs, m);
   assert(m > 0, "the wandering stamp marked nothing");
@@ -160,8 +166,8 @@ fn test_a_wandering_chain_is_answered_confidently_rather_than_refused() {
          "the wandering chain was REFUSED. That would be the better behaviour and it "
          + "is not what `probe/l1` measured — if the library has since gained a path "
          + "check, this test is the news and `RunRead`'s warning can be softened");
-  assert(!same_ends(r, WallRun { wr_base: 0, wr_up: 0, wr_x0: 0.0, wr_z0: 0.0,
-                                 wr_x1: cos(ang) * 6.0, wr_z1: sin(ang) * 6.0,
+  assert(!same_ends(r, WallRun { wr_base: 0, wr_up: 0, wr_x0: 0.4, wr_z0: 0.3,
+                                 wr_x1: 0.4 + cos(ang) * 6.0, wr_z1: 0.3 + sin(ang) * 6.0,
                                  wr_mat: WALL_MAT, wr_step: 1 }),
          "the recovered ends are the authored ones after all — then the gesture's "
          + "geometry was admissible and this fixture is not testing what it claims");

@@ -57,7 +57,7 @@ its axles and rolling wheels. A character is that, with different joints.
 | 4 | every wall is drawn **twice** — hex-edge and straight | ⚠ **verified** | two emitters, and the gesture writes **both** records |
 | 5 | after a reload the straight walls are gone | ⚠ **verified** | the save carries the **cells**; the run record is not saved |
 | 6 | a wall near a house **loses its description** | ✅ **FIXED 2026-08-27**, [plan 26](../../plans/26-blueprint/README.md) `B4o` | `place` stamps one wall edge past each corner of its footprint; a stray that meets a wall's chain at a vertex makes three marked edges at one point, and `wall_read_run` refuses a marking that is not a path. ⚠ **The reader was right and the QUESTION was wrong** — `house_owns` attributes each mark to a structure before anything is asked what it describes |
-| 7 | **the same wall walked the other way is a different field** | ⛔ **measured 2026-08-27**, [`probe/b4q`](../../probe/b4q/README.md) | `wall_stamp` takes its halfplane normal from the run's TANGENT, so reversing the walk flips which side a cell whose centre lies exactly ON the line falls on. `hex_shape::wall_read_run` documents the opposite as a fact about the field, so a wall cannot be round-tripped |
+| 7 | **the same wall walked the other way is a different field** | ✅ **FIXED 2026-08-27**, [plan 26](../../plans/26-blueprint/README.md) `B4r` — measured at [`probe/b4q`](../../probe/b4q/README.md) | `wall_stamp` takes its halfplane normal from the run's TANGENT, so reversing the walk flips which side a cell whose centre lies exactly ON the line falls on. `hex_shape::wall_read_run` documents the opposite as a fact about the field, so a wall cannot be round-tripped |
 
 ✅ **1, 4 and 5 are ONE defect, and it is decided — see [the decision](#-the-decision--2026-08-21-there-is-no-session-record-only-a-mesh-cache).**
 
@@ -451,16 +451,33 @@ alternate rows' cell centres, so exactly those flip.
 walked. `east`, `NE` and `steep NE` are identical in both directions; `north` and `shallow NW`
 are not.
 
-⚠ **IT IS VISIBLE NOW RATHER THAN FIXED** — plan 26 `B4q`. `hex_editor::run_edges` is
-`wall_stamp`'s own marking rule extracted so the recovery can GENERATE the wall its description
-names and compare it to the field edge for edge (`FORMAL_CORE` §6's R1, which the disc and the
-octagon readers already used and the run reader could not). `RunRead` carries `rr_stray` and
-`rr_missing`, and the plan view's caption says them.
+⚠ **`B4q` MADE IT VISIBLE**: `hex_editor::run_edges` is `wall_stamp`'s marking rule extracted so
+the recovery can GENERATE the wall its description names and compare it edge for edge, and
+`RunRead` carries `rr_stray`/`rr_missing` for the caption to say.
 
-⚠ **THE FIX MOVES THE FIELD UNDER THE WHOLE CORPUS** — `deck.keys`'s `cea971a0…`, `house.keys`,
-every acceptance shot — so it is a step with its own gate work rather than a line to change. ⚠
-**And the tie-break is a decision, not a bug to patch**: a zero-width line through a cell centre
-has to pick a side, and what is wrong is only that the pick depends on the direction of travel.
+✅ **FIXED AT `B4r`, AND IT IS TWO HALVES.** `hex_editor::run_normal` answers *the LINE's own
+normal* — canonical in sign, and anchored at the **midpoint** rather than at an endpoint. ⚠ The
+second half is not decoration: fixing only the sign fixed three headings of eight and
+**regressed a fourth**, because `n·p0` and `n·p1` are equal in arithmetic and differ in the last
+bits, and the tie-break compares against exactly `0.0`. The midpoint is bit-identical either way.
+
+![the same wall, walked north](img-wall-north-b4r.png)
+![…and walked south](img-wall-south-b4r.png)
+
+*After. Both zigzag to the same side of their description and neither caption carries a
+residual; compare the pair above.*
+
+**Gated** on all 24 headings, both directions, asserting the two fields are identical **edge for
+edge** and that each reproduces its own description. ⚠ **The corpus does not move** — `house`,
+`door`, `wall`, `b4o`, `b4p` and `deck.keys`'s `cea971a0…` are byte-identical — and the control
+that says so is not a hope: `b4q.keys`, which lays a due-north wall, moves from `897448168` to
+`2064361579`. The stillness is a fact about the corpus, not a blind instrument.
+
+⛔ **AND `road_stamp` LOOKS LIKE THE SAME DEFECT AND COULD NOT BE SHOWN TO BE.** Its fences carry
+the identical marking — tangent normal, endpoint anchor, same tie-break — but a road driven both
+ways is identical at twelve authored headings and at four hand-built centrelines, including one
+tuned to put a fence exactly on a cell-centre column. The change was written and **reverted**:
+a behaviour change no row can see red is not a fix. The reading is recorded at the code.
 
 ---
 

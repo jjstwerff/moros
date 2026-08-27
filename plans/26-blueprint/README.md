@@ -213,6 +213,19 @@ pinned where the answer is **one-sided** — a description covering half the wal
 running past it — because every description the reader itself produces is wrong in both
 directions at once and a swapped pair would pass every other row.
 
+**`B4r`** — **expected result**: a wall walked A-to-B and B-to-A leaves **one** field,
+and each direction reproduces the single description both recover. **Invariant**: *the
+halfplane's tie-break belongs to the LINE, not to the walk* — `edges_halfplane_surf` marks
+on `sa < 0.0 && sb >= 0.0`, so a cell centre exactly ON the line always joins the `>= 0`
+side, which is correct and necessary; what was wrong is that we chose that side with the
+run's TANGENT and anchored the offset at an ENDPOINT. **Negative controls**: the two fields
+must be compared **edge for edge**, because `B4q` measured two fields of 12 sharing 3 and a
+count reads as a match; all 24 headings must be walked, since due east — the corpus's own
+heading — was never affected and four of eight sampled headings were; the corpus must be
+**unmoved** with a script that DOES move as the control, or the stillness is a blind
+instrument rather than a fact; and a description that genuinely is not its wall must still
+report a residual, or the fix has been made by switching the measurement off.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -250,6 +263,7 @@ as a byte.
 | **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
 | **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
 | **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
+| **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 

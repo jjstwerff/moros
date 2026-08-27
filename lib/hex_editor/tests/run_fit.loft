@@ -102,62 +102,68 @@ fn test_an_authored_wall_reproduces_the_field_it_wrote() {
   }
 }
 
-// ── ⛔ AND THE SAME RUN WALKED THE OTHER WAY DOES NOT ──────────────────────
+// ── ✅ AND THE SAME RUN WALKED THE OTHER WAY IS ONE FIELD — plan 26 `B4r` ──
 //
-// ⛔ **`hex_shape::wall_read_run` STATES THE OPPOSITE AS A FACT ABOUT THE FIELD** —
-// *"A-to-B and B-to-A mark the identical edges"* — and it is FALSE for this tree's
-// stamper. `wall_stamp` takes the halfplane normal from the run's tangent, so reversing
-// the record flips which side a cell whose centre lies exactly ON the line falls on; a
-// due-north wall in odd-r passes through alternate rows' centres, and exactly those
-// flip.
+// ⛔ **IT WAS NOT, AND `hex_shape::wall_read_run` STATES THE OPPOSITE AS A FACT ABOUT THE
+// FIELD** — *"A-to-B and B-to-A mark the identical edges"*. `B4q` measured a due-north
+// wall sharing **2 of 11** edges with itself walked the other way, and `SW` reproducing
+// **9 of 12** from its own description in the FORWARD direction.
 //
-// ⚠ **THE DESCRIPTION IS THE SAME ONE**, which is what makes it a round-trip failure
-// rather than a reading failure: both fields recover to `d6 p8`, and only one of them
-// is the field that description makes.
-fn test_the_same_run_walked_backwards_leaves_a_field_it_cannot_reproduce() {
-  d = run_between(0.0, 0.0, 0.0, 9.0, WALL_MAT);
-  assert(d.rd_ok, "the fixture's run was refused");
-  f = d.rd_run;
+// ✅ **`run_normal` is the fix, and it is two halves.** The library's tie-break —
+// `edges_halfplane_surf` marks on `sa < 0.0 && sb >= 0.0`, so a cell centre exactly ON
+// the line always joins the `>= 0` side — is correct and necessary. What was wrong is
+// that we handed it a normal whose SIGN came from the run's tangent, and an offset `c`
+// taken from one ENDPOINT. ⚠ Fixing only the normal fixed three headings of eight and
+// **regressed a fourth**, because `n·p0` and `n·p1` are equal in arithmetic and differ
+// in the last bits — measured, not reasoned. The midpoint is bit-identical either way.
+fn test_every_heading_is_one_field_whichever_way_it_is_walked() {
+  moved = 0;
+  for step in 0..24 {
+    ang = (step as float) * 6.283185307179586 / 24.0;
+    d = run_between(0.0, 0.0, cos(ang) * 9.0, sin(ang) * 9.0, WALL_MAT);
+    if !d.rd_ok { continue; }
+    f = d.rd_run;
+    fw = flat_world();
+    stamp(fw, f);
+    bw = flat_world();
+    stamp(bw, wall_run_new(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0, WALL_MAT));
 
-  fw = flat_world();
-  stamp(fw, f);
-  fr = read_it(fw);
+    // ⚠ EDGE FOR EDGE, NOT BY COUNT. `B4q` measured two fields of 12 sharing 3, one hex
+    // column apart — `B4l`'s *a rim COUNT cannot see a shape*, at a wall.
+    diff = 0;
+    seen = 0;
+    for r in R0..R0 + HR {
+      for q in Q0..Q0 + WQ {
+        for dd in [4, 5, 0] {
+          a = edge_is_wall(wall_of(fw, q, r, dd, 0.0));
+          b = edge_is_wall(wall_of(bw, q, r, dd, 0.0));
+          if a { seen = seen + 1; }
+          if a != b { diff = diff + 1; }
+        }
+      }
+    }
+    assert(seen > 0, "the run at step {step} stamped nothing");
+    assert(diff == 0,
+           "walking the run at step {step} the other way moves {diff} of {seen} edges — "
+         + "the field still records the direction of travel");
+    moved = moved + 1;
 
-  bw = flat_world();
-  stamp(bw, wall_run_new(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0, WALL_MAT));
-  br = read_it(bw);
-
-  assert(fr.rr_ok && br.rr_ok, "one of the two directions was refused");
-  // the same description, from both fields
-  assert(fr.rr_d == br.rr_d && fr.rr_p == br.rr_p,
-         "the two directions recover different runs — d{fr.rr_d} p{fr.rr_p} against "
-       + "d{br.rr_d} p{br.rr_p} — so this row is measuring the reader, not the stamper");
-  assert(fr.rr_marks == br.rr_marks,
-         "the two fields hold {fr.rr_marks} and {br.rr_marks} marks");
-  // …and only one of them is the field that description makes
-  assert(fr.rr_stray == 0 && fr.rr_missing == 0,
-         "the forward wall no longer reproduces its own field");
-  assert(br.rr_stray > 0 && br.rr_missing > 0,
-         "the reversed wall reproduces its own field after all — `wall_stamp` has "
-       + "become orientation-independent, and this row is the news rather than a "
-       + "failure");
-}
-
-// ⚠ **AND THE CONTROL: DUE EAST IS THE ONE HEADING THAT SURVIVES IT.** Without this the
-// row above could be passing on a stamper that is simply non-deterministic.
-fn test_due_east_is_unmoved_by_the_direction_of_travel() {
-  d = run_between(0.0, 0.0, 9.0, 0.0, WALL_MAT);
-  f = d.rd_run;
-  fw = flat_world();
-  stamp(fw, f);
-  bw = flat_world();
-  stamp(bw, wall_run_new(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0, WALL_MAT));
-  fr = read_it(fw);
-  br = read_it(bw);
-  assert(fr.rr_stray == 0 && fr.rr_missing == 0 && br.rr_stray == 0
-         && br.rr_missing == 0,
-         "a due-east wall depends on the direction of travel too: forward "
-       + "{fr.rr_stray}/{fr.rr_missing}, back {br.rr_stray}/{br.rr_missing}");
+    // …and BOTH of them reproduce that one description, which is the round trip a
+    // blueprint needs and not merely a symmetry.
+    rf = read_it(fw);
+    rb = read_it(bw);
+    assert(rf.rr_ok && rb.rr_ok, "step {step} was refused by the reader");
+    assert(rf.rr_stray == 0 && rf.rr_missing == 0 && rb.rr_stray == 0
+           && rb.rr_missing == 0,
+           "step {step} does not reproduce its own description: forward "
+         + "{rf.rr_stray}/{rf.rr_missing}, back {rb.rr_stray}/{rb.rr_missing}");
+  }
+  // ⚠ **THE INSTRUMENT IS CHECKED AGAINST A COUNT IT SHOULD FIND.** A loop whose body
+  // never ran would report nothing wrong, which is the same sentence a passing suite
+  // gives — `CLAUDE.md`'s *a grep over a log defaults to absent*, in a `for`.
+  assert(moved >= 12,
+         "only {moved} of 24 headings were authored at all, so this row is measuring "
+       + "almost nothing");
 }
 
 // ── `B1`'s WANDERING CHAIN, IN A NUMBER RATHER THAN A PICTURE ──────────────
@@ -166,10 +172,15 @@ fn test_due_east_is_unmoved_by_the_direction_of_travel() {
 // chain must draw a description that misses its own wall by more than 0.6 wu"*. The
 // residual says the same thing as an exact integer, and it is still ANSWERED, because
 // that picture is what plan 26 exists to draw.
+// ⚠ **AND ITS ANCHOR IS OFF A CELL CENTRE ON PURPOSE — plan 26 `B4r`.** Anchored AT one,
+// this chain is now **refused**: the cell it starts on lies exactly on the line, and with
+// the tie-break settled the marking it leaves is 7 edges that are not a path. That is a
+// fact about a fixture nothing authors — `run_between` snaps to `D` and anchors on a
+// corner — and `B1`'s claim is about the ANGLE, not about where the chain begins.
 fn test_a_wandering_chain_is_answered_and_its_residual_says_so() {
   w = flat_world();
   ang = 15.0 / 57.29577951308232;
-  stamp(w, wall_run_new(0.0, 0.0, cos(ang) * 6.0, sin(ang) * 6.0, WALL_MAT));
+  stamp(w, wall_run_new(0.4, 0.3, 0.4 + cos(ang) * 6.0, 0.3 + sin(ang) * 6.0, WALL_MAT));
   r = wall_recover(w, 0 - 8, 0 - 8, 17, 17, 0.0);
   assert(r.rr_ok,
          "the reader REFUSED the gesture chain. That would be better behaviour and it "

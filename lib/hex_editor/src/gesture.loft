@@ -3544,19 +3544,60 @@ pub fn wall_step(draft: WallDraft, x: float, z: float, mat: integer) -> DraftSte
 // a shape* one shape over. So the generator here has to be the stamper's own rule,
 // called rather than re-derived — and the divergence is a finding of its own rather
 // than something to route around.
+// The LINE's own normal, canonical — plan 26 `B4r`, [EDITOR_DEFECTS](../../../doc/claude/EDITOR_DEFECTS.md) 7.
+//
+// ⛔ **A WALL'S FIELD USED TO RECORD WHICH WAY YOU WALKED IT, AND `hex_shape` DOCUMENTS
+// THE OPPOSITE AS A FACT ABOUT THE FIELD** — `wall_read_run`: *"what it cannot recover is
+// the ORIENTATION, because the field does not store one: A-to-B and B-to-A mark the
+// identical edges"*. Measured at `B4q`: a due-north wall shared **2 of 11** edges with
+// itself walked the other way, and a `d6` description reproduced only one of the two.
+//
+// ⚠ **THE LIBRARY'S CONVENTION IS NOT THE DEFECT — THE SIGN WE HAND IT IS.**
+// `edges_halfplane_surf` marks on `sa < 0.0 && sb >= 0.0`, a half-open test, so a cell
+// whose centre lies exactly ON the line (`s == 0`) always joins the `>= 0` side and never
+// the other. That is a correct and necessary tie-break: a zero-width line through a cell
+// centre has to pick a side. What was wrong is that the side was chosen by the run's
+// TANGENT, which negates when the walk reverses.
+//
+// ⚠ **AND IT IS A NO-OP WHEREVER NO CELL LIES ON THE LINE**, which is why the corpus
+// barely moves. `edges_halfplane_surf` visits every cell against all six neighbours, so
+// an edge with its two cells strictly either side is marked under **both** signs — from
+// `(a, b)` under one and from `(b, a)` under the other. Only `s == 0` breaks that
+// symmetry, and only there does this function change an answer.
+//
+// The rule is lexicographic on the normal and exact: reversing a run negates
+// `seg_tangent`'s components bit for bit, so both walks land on the same branch.
+pub fn run_normal(run: WallRun) -> (float, float, float) {
+  rn_t = hex_way::track_new();
+  hex_way::track_straight(rn_t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
+  (rn_tx, rn_ty) = hex_way::seg_tangent(rn_t, 0, 0.0);
+  rn_nx = 0.0 - rn_ty;
+  rn_nz = rn_tx;
+  if rn_nx < 0.0 || (rn_nx == 0.0 && rn_nz < 0.0) {
+    rn_nx = 0.0 - rn_nx;
+    rn_nz = 0.0 - rn_nz;
+  }
+  // ⚠ **AND THE OFFSET FROM THE MIDPOINT, NOT FROM AN ENDPOINT — MEASURED.** Both
+  // endpoints lie on the line, so `n·p0` and `n·p1` are the same number in arithmetic
+  // and **not** in floating point: they differ in the last bits, and the tie-break above
+  // compares against exactly `0.0`. Canonicalising the normal alone fixed three headings
+  // of eight and **regressed a fourth**, because `c` still remembered which end was
+  // handed in first. The midpoint is bit-identical either way — IEEE addition is
+  // commutative — so it is the one anchor that cannot.
+  rn_cx = (run.wr_x0 + run.wr_x1) * 0.5;
+  rn_cz = (run.wr_z0 + run.wr_z1) * 0.5;
+  (rn_nx, rn_nz, rn_nx * rn_cx + rn_nz * rn_cz)
+}
+
 pub fn run_edges(run: WallRun, q0: integer, r0: integer, wq: integer, hr: integer,
                  mat: integer) -> EdgeSet {
   re_t = hex_way::track_new();
   hex_way::track_straight(re_t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
-  (re_tx, re_ty) = hex_way::seg_tangent(re_t, 0, 0.0);
-  re_nx = 0.0 - re_ty;
-  re_nz = re_tx;
+  (re_nx, re_nz, re_c) = run_normal(run);
   re_half = edgeset_new(q0, r0, wq, hr);
   re_sfo = surfaces_new();
-  re_sid = surf_straight(re_sfo, re_nx, re_nz,
-                         re_nx * run.wr_x0 + re_nz * run.wr_z0);
-  edges_halfplane_surf(re_half, q0, r0, wq, hr, re_nx, re_nz,
-                       re_nx * run.wr_x0 + re_nz * run.wr_z0, re_sid);
+  re_sid = surf_straight(re_sfo, re_nx, re_nz, re_c);
+  edges_halfplane_surf(re_half, q0, r0, wq, hr, re_nx, re_nz, re_c, re_sid);
   re_out = edgeset_new(q0, r0, wq, hr);
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
@@ -3599,11 +3640,12 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
   // callers.** The write below is what this function still owns; which edges to write
   // is a question the recovery has to be able to ask too, and a second copy of the
   // answer is how a wall's description comes to describe a different wall.
-  t = hex_way::track_new();
-  hex_way::track_straight(t, run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1);
-  (tx, ty) = hex_way::seg_tangent(t, 0, 0.0);
-  nx = 0.0 - ty;
-  nz = tx;
+  // ⚠ **THE SAME NORMAL THE MARKING USED — plan 26 `B4r`.** `eoff` below measures where
+  // each edge sits relative to the line, and a second sign convention here would make the
+  // offset the one quantity in this function that still remembered the walk. With the
+  // canonical normal it does not: both endpoints lie on the line, so `n·(m - p0)` is the
+  // same number whichever of them is `p0`.
+  (nx, nz, _c) = run_normal(run);
   eg = run_edges(run, q0, r0, w, h, mat);
   n = 0;
   olo = 0.0;
@@ -3756,6 +3798,15 @@ pub fn road_stamp(wld: VoxelWorld, run: WallRun, half: float, fence_mat: integer
         (rbx, rbz) = hex_way::seg_point(o, 0, hex_way::seg_len(o, 0));
         runs.items += [WallRun { wr_base: 0, wr_up: 0, wr_x0: rax, wr_z0: raz, wr_x1: rbx, wr_z1: rbz,
                                  wr_mat: fence_mat, wr_step: run.wr_step }];
+        // ⚠ **THIS MARKING IS `run_edges`' BODY A THIRD TIME OVER, AND IT IS LEFT
+        // ALONE — plan 26 `B4r`.** It looks like `wall_stamp`'s defect one gesture over:
+        // the tangent's normal, an ENDPOINT anchor, the same half-open tie-break. ⛔ **It
+        // could not be demonstrated.** A road driven both ways was measured at twelve
+        // authored headings and at four hand-built centrelines — including one tuned so
+        // a fence lands exactly on a cell-centre column — and the fence edges are
+        // identical every time, with `run_normal` in and with it out. So the reading is
+        // unconfirmed and the change was reverted rather than shipped untested: a
+        // behaviour change no row can see red is not a fix.
         (tx, ty) = hex_way::seg_tangent(o, 0, 0.0);
         (ox, oy) = hex_way::seg_point(o, 0, 0.0);
         nx = 0.0 - ty;
