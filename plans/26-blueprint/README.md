@@ -253,6 +253,24 @@ and would buy a chain that answered for anything; a window holding ONE structure
 draw one description; and the corpus must be **unmoved**, since a step that only reads must
 be shown to have written nothing.
 
+**`B4u`** — **expected result**: a window holding two walls **two cells apart**, an L of
+two walls, a house with a wall running off it, a house **a cell** from a tower, and two
+towers a cell apart each draw **two** descriptions with nothing unexplained — where `B4t`
+draws none, one, or a `run` over a tower's rim. **Invariant**: *a mark belongs to the chain
+it is part of, so the marks are flooded through the VERTICES they share* — the same
+relation `hex_shape::wall_chain_ends` counts degrees over, exact integers with no distance
+and no threshold — while the FLOOR keeps the cell flood, because `B4n`'s rectangle is
+recovered from cells and never from a mark. **Negative controls**: every fixture must
+first be measured as **one** cell component, or a pair that drifted apart would pass the
+whole step while testing nothing; a lone house must stay **one** piece, because `B0`'s four
+mitre stubs are four one-edge runs the moment the flood does not reach them, and `B4t`
+measured that a lone mark IS a run; the flood's rotation must be pinned against the corner
+IDENTITY — `hex_corner_tri_a`/`hex_corner_tri_b` — partition for partition, since the step
+rests on *from `A` the third cells lie at `d±1` and from `B` the same two lie at `d∓2`*;
+every `B4t` and `B4s` case must be **unmoved**, the domino included; and a wall that MEETS
+a rim shares corners with it, so the peel must draw **one** run and count the rest rather
+than describing the arcs its own claim broke the rim into.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -293,6 +311,7 @@ as a byte.
 | **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red, **two of them green** | ✅ **SHIPPED** `4d47020` |
 | **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** `7842187` |
 | **`B4t`** — two of a kind: the field split before any reader is asked | M | `peel.loft` — two houses answering `house;house;` and two walls `run;run;` with nothing left over, the village's order now the scan's, and **a component no reader explains still refused**; `planview.loft` — a house and two towers drawn as three with two circles, one structure still one description, and the `refused` caption state kept on a fixture that refuses structurally; `tools/scripts/b4t.keys` — five structures, five descriptions; five faults seen red, **one of them green** | ✅ **SHIPPED** `f982255` |
+| **`B4u`** — structures that TOUCH: the field split at the vertices its marks share | M | `peel.loft` — five touching pairs each drawn apart with nothing left over and each first measured to be ONE cell component; the flood pinned against the corner identity partition for partition; a lone house still one piece; a piece never crossing a cell component; and a wall MEETING a rim answering one run and a count, with the pair a cell further out as the control, and the house's residual unmoved by a tower ONE cell away where `B4o` measured that control at eight; `planview.loft` — two runs, a house and a disc with **no run over the rim**, and the interlocked pair's single description beside its own control; `tools/scripts/b4u.keys`; six faults seen red, **one of them green** | ✅ **SHIPPED** `e888590` |
 
 ### Why `B0` is one phase and not two
 
@@ -2588,6 +2607,175 @@ cell apart, or a tower whose rim meets a house's mitre, merge — and are then r
 is the honest answer and the same one `B1` got. ⚠ **The fixtures here are all comfortably
 clear**, and `B4o`'s nine rows and this step's own second wall (moved from `x = 8` to
 `x = 16` when the house claimed one of its marks) are what that distance costs.
+
+## What `B4u` turned up
+
+**Shipped `e888590`.** `hex_editor::marks_label` + `mark_piece_grow`, the edge channel in
+`Segments`, `segment_claims` rewritten over both channels, `segment_marks_left`; the
+partial guard in `plan_panel`; `house_recover_claimed`'s residual confined to the claim
+set; `tools/scripts/b4u.keys`. 10 rows in `peel.loft` and 3 in `planview.loft`.
+
+![five structures that touch, five descriptions](../../doc/claude/img-touching-b4u.png)
+
+*`b4u.keys` — `desc disc 0,-4 shell 156 + run d6 p8 + run d6 p8 + run d0 p4 + house 0,4
+4x5 rot 3 (8 fit) · 4 stray`, and **nothing unexplained**. Every pair in it is ONE cell
+component: two walls two cells apart, a wall running off the house, and a tower a cell
+north of it. `make plan-view WORLD=b4u Q0=-14 Q1=14 R0=-12 R1=10 REF=2.0`.*
+
+### The gap was in the CHANNEL, not in any reader
+
+`B4t` split the field by the cells its marks touch and named the residue itself: *"a
+component is SPATIAL, so structures that touch are still one field."* Measured, that costs
+more than the refusal it sounds like.
+
+| the window holds | `B4t` | `B4u` |
+|---|---|---|
+| two walls two cells apart | *refused*, 22 marks counted | `run;run;` **0** |
+| an L of two walls | *refused*, 13 | `run;run;` **0** |
+| a house with a wall running off it | `house;`, **7 left** | `run;house;` **0** |
+| a house a cell from a tower | `house;` then a **`run` over the rim**, 48 left | `disc;house;` **0** |
+| two towers a cell apart | *refused*, 108 | `disc;disc;` **0** |
+
+⚠ **THE FOURTH ROW IS THE ONE THAT MATTERS, AND IT IS NOT A REFUSAL.** The house was
+described first, `claim_house`'s mitre reach took the rim edges nearest it, and the
+**opened rim read back as a run** — a wall drawn over a circle nobody built, and then two
+more of them as the peel re-split the fragments. A silence is a gap; this is a picture
+that lies.
+
+### A mark belongs to the chain it is part of
+
+Two marked edges are one structure's when they meet at a VERTEX. That is exact integer
+arithmetic with no distance, no gap and no threshold in it — and it is the same relation
+`hex_shape::wall_chain_ends` already counts degrees over, one layer up.
+
+⚠ **AND IT IS THE MARK CHANNEL ONLY: THE FLOOR KEEPS THE CELL FLOOD.** `B4n`'s finding is
+what forces that — a house's rectangle is recovered from its FLOOR and never from a mark —
+so a cell has no vertex to be flooded through and a piece has no floor of its own. The two
+channels are the two `Claims` already has, one each: a component is a mark PIECE plus the
+cell component it stands in. ⚠ Pieces **refine** the cell flood rather than cutting across
+it (two edges meeting at a vertex have cells that touch, and `touched_cells` takes both
+cells of every mark), which is what makes that pair well defined —
+`test_a_piece_never_crosses_a_cell_component` measures it rather than arguing it.
+
+### ⚠ The library has the degree counter and throws the components away — again
+
+`wall_chain_ends` and `wall_chain_branches` build the vertex incidence of a whole `EdgeSet`
+and return **a count of degree-1 vertices**. That is the second time this plan has found
+the walk it needs inside a function that discards it: `B4t` said the same of
+`hex_shape::set_connected`, which floods from the first member and returns a boolean. If
+either ever moves upstream, those are the two functions to extend.
+
+⚠ **AND THE FLOOD IS FOUR NEIGHBOURS BY ROTATION, NOT A SEARCH.** At each of a mark's two
+corners exactly three edges meet — itself and the two to the third cell `C` there — so
+from `A` the two thirds lie at `d±1` and from `B` the same two lie at `d∓2`, because
+`dir(d−1) − dir(d) = dir(d+2)`. That is an assertion about the lattice, so
+`test_the_vertex_flood_is_the_corner_identity` compares the whole partition against
+`hex_corner_tri_a`/`hex_corner_tri_b` — the exact triangle-lattice integers — over four
+fixtures, pair for pair.
+
+### ⛔ `B4o`'s bound was the whole answer at eight hexes and not at one
+
+The picture found this on its first run and nothing else could have: the house captioned
+**`11 stray`** where its mitre is four marks. `B4o` bounded a house's residual to
+`house_owns` — the mitre's own one-cell reach — and asked for its control with the other
+structure **eight hexes away**, where that bound is exact. At ONE cell a tower's rim
+reaches inside it, and its edges were counted as the house's corner over-run — seven of
+them, measured against the four the same house reports standing alone.
+
+⚠ **THE FIX IS NOT A NARROWER REACH, IT IS THE CLAIM SET** — which the neighbouring
+`other` counter has consulted since `B4s` and `stray` did not. Split first, and the marks
+of anything else are claimed by the time the house is asked: `4 stray` beside a tower and
+`4` alone, measured against each other rather than against a constant.
+
+### ⛔ And what sharing a VERTEX still costs
+
+A wall that **meets** a rim shares corners with it, so no flood separates the two — the
+honest residual, the same shape as `B4t`'s own and one step narrower. ⚠ **What the picture
+must not do there is describe the fragments**: the wall is described, its claim breaks the
+rim into two arcs, and each arc reads back as a further run — `run;run;run;` where the
+truth is a wall and a tower interlocked.
+
+✅ **So a description that explained only PART of its component ends the rounds.** That is
+the existing *claimed nothing → stop* guard one notch weaker, and its comment already said
+why: *the chain has answered about a field it does not explain*. The description stands —
+`B1`'s whole picture is a description drawn over marks it MISSES — and what it could not
+explain is COUNTED. Measured: one `run` and a leftover, with the same pair one cell further
+out drawing `disc;run;` and nothing over, as the control.
+
+### The sabotage sweep, and the row that was green
+
+Six faults, restored from copies, with the vertex flood, its seam, the partial guard and
+the picture's use of it asserted present before row 0 — and every row's package proved to
+still BUILD by a green neighbourhood row before its verdict was read.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the flood never grows, so every mark is its own piece | `peel` · `planview` |
+| 2 | the claims ignore the piece — `B4t`'s split restored | `peel` · `planview` |
+| 3 | the far cell's two edges are never joined (the second rotation) | `peel` · `planview` |
+| 4 | a piece is not tied to the cell component it stands in | ⚠ **nothing** |
+| 5 | the partial guard is blind — a component always reads as fully explained | `peel` · `planview` |
+| 6 | a house's residual counts a neighbour's marks again | `peel` |
+
+⚠ **ROWS 1 AND 3 ARE THE SPLIT FROM BOTH SIDES OF ITS ARITHMETIC**, which is what a
+partition needs: row 1 never joins anything and row 2 joins everything the old rule did,
+while row 3 joins only *half* of each corner — the one shape a wrong rotation actually
+produces, and the one a coarse-vs-fine pair would miss.
+
+⛔ **ROW 4 WAS GREEN, AND WHAT IT EXPOSED IS A GAP IN THE ROWS RATHER THAN IN THE CODE.**
+Giving every piece cell component `0` changed nothing anywhere, because in every fixture
+either everything stands in one cell component or a round reader answers before the house
+reader is reached. ⚠ **What it would break is `B4o`'s rule one layer down**: a piece
+nothing explains would reach the house reader, be answered with somebody else's rectangle,
+and carry a residual measured over marks that are not the house's.
+`test_a_component_is_handed_only_its_own_floor` — a house and a domino in two cell
+components, with **exactly one** of them allowed to answer — is that row, and it goes red
+on the fault the sweep found green.
+
+⚠ **AND ROW 6 REDDENED ONE FILE OF TWO, WHICH IS ALSO A MISSING ROW.** No picture in the
+corpus stood a house within one cell of anything, so the caption could not see its own
+residual move. It compares against the same house standing **alone** now, never against a
+constant — and reads `10 stray` under the fault where it reads `4`.
+
+### And the store is untouched — which is how a check nobody could read got read
+
+Segmentation reads and writes nothing, and the only production caller of any of it is the
+picture. Proving that meant running `probe/k3d`, which keys **every** script in
+`tools/scripts/` against a baseline — and it was already red.
+
+⛔ **SEVEN SCRIPTS HAD NO BASELINE: `octagon`, `b4o`, `b4p`, `b4q`, `b4s`, `b4t`.** Its own
+row B exists to catch exactly that — *a new script with no baseline is a script that looks
+covered because it sits in a covered directory*, which is `tools/layering.sh`'s exemption
+defect named in advance. Each step from `B4l` on added a corpus script and none recorded
+one, so the probe has exited non-zero since — and with its red pre-explained, its **row A**
+was being read past.
+
+⛔ **ROW A WAS ALSO RED, FOR `aim` AND `hut`.** Bisected rather than guessed: `B4o`, `B4p`
+and `B4q` key both at their old baselines, `B4r` keys both at exactly what HEAD keys, and
+this branch with its two source files stashed keys them the same — so it is not this step.
+`B4r` corrected `wall_stamp`'s halfplane tie-break and offset anchor, so a wall-laying
+script keying differently is that fix **working**. ⚠ `B4r`'s own record says *"the corpus
+byte-identical with `b4q.keys` moving as the control"*; what it measured was the scripts it
+named. All nine baselines are recorded here.
+
+⚠ **AND THE FIRST BLESS PRODUCED A BASELINE THAT HAD TO BE THROWN AWAY** — `b4p` came back
+`rc: 1` with an empty record, which would have been recorded as *this script builds
+nothing*. The cause is `CLAUDE.md`'s own standing hazard, measured a fourth time:
+`rust-lld: error: unable to find library -lloft_graphics_native`, because the sibling's
+`make rebuild-native-cdylibs` was refilling `~/.loft/build-cache/graphics-0.8.0/release`.
+**A bless is a write, so a run that can fail transiently must be read before it is
+blessed** — the diff `K3D_BLESS` prints first is what that is for.
+
+### What it deliberately does not do
+
+⛔ **A PIECE IS A CHAIN, SO STRUCTURES THAT SHARE A VERTEX ARE STILL ONE FIELD.** A wall
+that meets a rim, an annexe whose corner touches a tower — the flood cannot cut those, and
+the picture draws one description and counts the rest. ⚠ **That is one step narrower than
+`B4t`'s residue, not a different kind of thing**, and the next narrowing is not another
+flood: it is deciding whether a component that no single reader explains may be
+**partitioned by what a candidate accounts for**, which is a search with a both-ways
+acceptance test rather than a connectivity rule.
 
 ## Open questions
 

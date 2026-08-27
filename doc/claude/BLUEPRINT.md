@@ -109,6 +109,26 @@ deduced; it is stored* reaching a scene with more than one thing in it.
 
 ![a house and a round tower, both described](img-house-tower-b4p.png)
 
+✅ **AND `B4t` AND `B4u` MADE IT A VILLAGE.** `B4t` splits the field into components before
+any reader is asked, so two of a kind are two descriptions and `FORMAL_CORE` §6's R1 — the
+both-ways comparison that stops a disc being accepted with a wall across it — is left alone.
+`B4u` splits the MARKS by the VERTICES they share, which is what separates structures that
+*touch*: a wall running off a house, a tower a cell from one, two walls two cells apart.
+
+![five structures that touch, five descriptions](img-touching-b4u.png)
+
+⛔ **WHAT THAT SECOND STEP FOUND IS THE ARGUMENT FOR THE WHOLE SECTION.** With a house and a
+tower in one field the house was described first, its own claim opened the tower's rim, and
+the opened rim read back as a **`run`** — a wall drawn over a circle nobody built, with two
+more of them behind it as the peel re-split the fragments. Nothing in the tree could have
+said so except a picture; every suite was green. ⚠ And the caption carried a second one: a
+house reported `11 stray` where its mitre is four marks, because `B4o` bounded a house's
+residual to one cell and measured that bound with the next structure **eight hexes away**.
+
+⚠ **THE RESIDUAL IS NOW ONE STEP NARROWER AND STILL REAL**: a wall that MEETS a rim shares
+corners with it, and no flood separates those. The picture draws the wall and COUNTS what it
+cannot explain.
+
 ⚠ **THE SPLIT IS STILL ONE LEVEL DEEP, AND THAT IS TWO BEHAVIOURS RATHER THAN ONE GAP** —
 measured, not assumed. Two towers beside a house offer no ends at all, so the leftover is
 **refused** and the caption counts the 108 marks it cannot explain. A tower **and** a wall: the
