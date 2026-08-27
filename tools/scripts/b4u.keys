@@ -1,0 +1,39 @@
+# B4u — STRUCTURES THAT TOUCH: THE FIELD IS SPLIT AT THE VERTICES ITS MARKS SHARE
+#
+# ⛔ **`B4t` SPLIT THE FIELD BY THE CELLS ITS MARKS TOUCH**, and named what that left
+# undone in its own record: *"a component is SPATIAL, so structures that touch are still
+# one field."* Measured, that costs more than a refusal — a house with a wall running off
+# it described the house and left seven marks over, and a house beside a tower drew a
+# **run over the tower's rim**, which is a wall nobody built.
+#
+# ✅ **A MARK BELONGS TO THE CHAIN IT IS PART OF.** Two marked edges are one structure's
+# when they meet at a VERTEX — the relation `wall_chain_ends` counts degrees over — so the
+# flood is exact integers with no distance and no gap in it. The FLOOR keeps the cell
+# flood, because `B4n`'s rectangle is recovered from cells and never from a mark.
+#
+# ⚠ **EVERY PAIR HERE IS ONE CELL COMPONENT**, which is what makes the picture about the
+# split rather than about the fixtures standing clear of each other.
+#
+#   make plan-view WORLD=b4u Q0=-24 Q1=20 R0=-16 R1=10 REF=2.0
+
+echo --- a house, with a wall running off its east side
+at 0 0 90
+verb place
+at 4 0 0
+verb run
+at 12 0 0
+verb run
+
+echo --- a round tower one cell south of it, where `B4t` drew a wall over the rim
+at 0 -7 0
+verb tower
+
+echo --- and two walls two cells apart, which `B4t` refused with every mark counted
+at -10 -3 0
+verb run
+at -10 6 0
+verb run
+at -12 -3 0
+verb run
+at -12 6 0
+verb run

@@ -1,0 +1,18 @@
+rc: 0
+world: 16502:3263758344
+md5: cdff46ca456c629a7dcf88a5a6d742d6
+tau: 24
+chunks: 2
+code: 0
+session: runs 2 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1 (unchosen) wall 1 shell 156 seat 0 annex 0 reach 6 part ''
+--- what the gestures reported
+  placed 0,0
+  road started at 0,0
+  placed 0,9
+  wall laid 22 edges, heading 6 of 24 (snapped, residual 0°), length 8, from 0.8660254037844386,0.5 to 0.8660254037844386,8.5
+  placed 15,9
+  road started at 15,9
+  placed 15,0
+  wall laid 24 edges, heading 18 of 24 (snapped, residual 0°), length 9, from 14.722431864335457,9.5 to 14.722431864335457,0.5
+--- what the runner refused

@@ -565,6 +565,7 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
   nd = 0;
   capped = false;
   cl = hex_editor::claims_new(q0, r0, q1 - q0, r1 - r0);
+  part = false;
   for _round in 0..PLAN_DESC_MAX {
     sg = hex_editor::segments_of(w, q0, r0, q1 - q0, r1 - r0, ref, cl);
     if hex_editor::segment_count(sg) == 0 { break; }
@@ -583,11 +584,21 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
       // answered about a field it does not explain — and asking again would give the
       // same answer for ever.
       if plan_claim(dsc, cl, q0, r0, q1, r1) == 0 { break; }
+      // ⛔ **AND IF IT ACCOUNTED FOR ONLY PART OF ITS COMPONENT, DO NOT RE-SPLIT — plan
+      // 26 `B4u`.** The rounds exist because peeling a structure can split what remains,
+      // which is right when a whole structure came out and wrong when half of one did:
+      // measured, a wall meeting a tower's rim at a vertex is described, breaks the rim
+      // into two arcs, and each arc is then described as a further run. The description
+      // stands — `B1`'s picture is a description drawn over marks it MISSES — and what
+      // it could not explain is counted rather than re-read.
+      if hex_editor::segment_marks_left(w, q0, r0, q1 - q0, r1 - r0, ref, cl, sg, cid) > 0 {
+        part = true;
+      }
     }
     // ⚠ **A ROUND THAT DESCRIBED NOTHING ENDS IT**, whatever is left: peeling one
     // structure can SPLIT what remains, which is why the labels are rebuilt each round —
     // but a round with no answer will not produce one next time either.
-    if nd == told { break; }
+    if nd == told || part { break; }
   }
   // ⚠ **WHAT IS LEFT IS COUNTED FROM THE CLAIMS, NOT FROM A READER'S OWN TALLY.**
   // `CLAUDE.md`: measure what was actually emitted. A count each description reported

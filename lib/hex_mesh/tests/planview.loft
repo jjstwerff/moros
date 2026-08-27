@@ -1662,3 +1662,116 @@ fn test_one_structure_is_still_one_description() {
   assert(!caption(hs).contains(" + "),
          "a lone house was given a second description: {caption(hs)}");
 }
+
+// ── ✅ AND STRUCTURES THAT TOUCH ARE DRAWN APART — plan 26 `B4u` ──────────
+//
+// ⛔ **`B4t` SPLIT THE FIELD BY THE CELLS ITS MARKS TOUCH, SO ANYTHING A CELL APART WAS
+// ONE STRUCTURE.** Its own record named that as what it deliberately did not do; the
+// pictures are what it cost. ⚠ **Every fixture here stands at the coordinates
+// `hex_editor/tests/peel.loft` uses, and THAT file asserts the cell flood makes each of
+// them ONE** — a pair that drifted apart would draw two descriptions here while testing
+// nothing at all.
+
+fn two_wall_world(ax: float, bx: float) -> VoxelWorld {
+  w = wide_world();
+  for i in 0..2 {
+    x = if i == 0 { ax } else { bx };
+    d = hex_editor::run_between(x, 0.0 - 3.0, x, 6.0, hex_editor::WALL_MAT);
+    assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+    rs = hex_editor::WallRuns { items: [] };
+    m = 0;
+    hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+    assert(m > 0, "the fixture's wall stamped nothing");
+  }
+  w
+}
+
+fn test_two_walls_two_cells_apart_are_drawn_as_two_runs() {
+  svg = plan_svg(two_wall_world(0.0 - 2.0, 0.0), 0 - 14, 0 - 8, 12, 10, 2.0, "pair");
+  cap = caption(svg);
+  assert(tag_count(svg, "<line class='run'") == 2,
+         "{tag_count(svg, \"<line class='run'\")} runs drawn for two walls two cells "
+       + "apart, not two: {cap}");
+  assert(plan_tally(svg).pt_descs == 2,
+         "two walls tallied as {plan_tally(svg).pt_descs} descriptions");
+  assert(!cap.contains("unexplained"),
+         "two walls a cell apart leave marks nothing explains: {cap}");
+  assert(!cap.contains("refused"), "the pair was refused outright: {cap}");
+}
+
+// ⛔ **AND THIS PAIR DREW A WALL THAT IS NOT THERE.** With the two in one field the house
+// was described first, its own claim opened the tower's rim, and the opened rim read back
+// as a `run` — so the picture carried a line over a circle nobody built. The row asserts
+// the ABSENCE of that line, which is the half a description count cannot see.
+fn house_and_tower_world(gap: float) -> VoxelWorld {
+  w = wide_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, HOUSE_YAW);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "").ak_ok,
+         "the fixture's house was refused");
+  hex_editor::session_at(s, w, 0.0, 0.0 - gap, 0.0);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the fixture's tower was refused");
+  w
+}
+
+fn test_a_house_a_cell_from_a_tower_draws_no_wall() {
+  svg = plan_svg(house_and_tower_world(7.0), 0 - 14, 0 - 16, 16, 14, 2.0, "close");
+  cap = caption(svg);
+  assert(cap.contains("house ") && cap.contains("disc "),
+         "the close pair is not drawn as a house and a disc: {cap}");
+  assert(tag_count(svg, "<line class='run'") == 0,
+         "the picture drew {tag_count(svg, \"<line class='run'\")} runs over a rim "
+       + "nobody built: {cap}");
+  assert(plan_tally(svg).pt_descs == 2,
+         "the close pair tallied {plan_tally(svg).pt_descs} descriptions");
+  assert(!cap.contains("unexplained"),
+         "the close pair leaves marks nothing explains: {cap}");
+  // ⛔ **AND THE HOUSE'S RESIDUAL IS ITS OWN.** `house_owns` reaches one cell past the
+  // box — `B4o`'s bound, measured with the other structure EIGHT hexes away — so at one
+  // cell the rim is inside it and the caption read `11 stray` about a mitre of four.
+  // Compared against the same house standing alone, never against a constant.
+  lone = caption(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "lone"));
+  assert(lone.contains(" stray"), "the lone house reports no residual at all: {lone}");
+  at = lone.find(" stray") ?? 0;
+  n = lone[(at - 1) as i32..at as i32];
+  assert(cap.contains("{n} stray"),
+         "beside a tower the house reports a different residual from the {n} it reports "
+       + "alone — the rim is being counted as its corner over-run: {cap}");
+}
+
+// ⛔ **AND WHAT SHARING A VERTEX STILL COSTS, IN THE PICTURE.** A wall that MEETS a rim
+// shares corners with it, so no flood separates the two — the honest residual. What the
+// picture must not do is describe the ARCS the wall's claim broke the rim into: the run
+// stands, and what it could not explain is COUNTED.
+fn tower_and_wall_world(x: float) -> VoxelWorld {
+  w = wide_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, 0.0);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the fixture's tower was refused");
+  d = hex_editor::run_between(x, 0.0 - 6.0, x, 6.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+  w
+}
+
+fn test_a_wall_meeting_a_rim_draws_one_run_and_counts_the_rest() {
+  svg = plan_svg(tower_and_wall_world(8.0), 0 - 14, 0 - 14, 20, 16, 2.0, "met");
+  cap = caption(svg);
+  assert(plan_tally(svg).pt_descs == 1,
+         "an interlocked pair drew {plan_tally(svg).pt_descs} descriptions, not one: {cap}");
+  assert(cap.contains("unexplained"),
+         "it explained the whole field while drawing one description: {cap}");
+
+  // …and the control, one cell further out: no shared corner, both described, nothing left
+  cl = plan_svg(tower_and_wall_world(10.0), 0 - 14, 0 - 14, 20, 16, 2.0, "clear");
+  ccap = caption(cl);
+  assert(plan_tally(cl).pt_descs == 2,
+         "the same pair clear of each other drew {plan_tally(cl).pt_descs}: {ccap}");
+  assert(!ccap.contains("unexplained"),
+         "the clear pair leaves marks nothing explains: {ccap}");
+}

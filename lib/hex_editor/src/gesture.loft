@@ -1043,9 +1043,9 @@ pub fn claim_run(cl: Claims, x0: float, z0: float, x1: float, z1: float, q0: int
 // an edge's two cells land in one component, so an edge belongs to exactly one and no mark
 // has to be arbitrated between two. ⛔ **A row dropping the far cell went GREEN**: a
 // structure's near cells are already connected to each other — a wall's are a strip, a
-// rim's a ring — so nothing this suite can build splits without it. And `claims_only`
-// labels an edge by its NEAR cell alone, so the *belongs to exactly one* property holds
-// either way. It stays because the invariant is then true by construction rather than by
+// rim's a ring — so nothing this suite can build splits without it. And `segment_claims`
+// labels an edge by its NEAR cell alone when it is in no piece, so the *belongs to exactly
+// one* property holds either way. It stays because the invariant is then true by construction rather than by
 // the shapes we happen to draw, which is `oct_recover`'s reason at its own two-cell
 // margin. ⚠ Dropping it would make components strictly FINER, which would separate close
 // structures better and could split one; neither was reachable, so neither is measured.
@@ -1116,31 +1116,84 @@ pub fn cells_label(cells: HexSet, lb: Labels) -> integer {
   cl_n
 }
 
-// The claims that hide every component but one — plan 26 `B4t`.
+// ── AND THE MARKS ARE FLOODED THROUGH THEIR VERTICES — plan 26 `B4u` ──────
 //
-// ⚠ **IT CLAIMS THE REST RATHER THAN MASKING THIS ONE**, so every reader keeps the
-// signature it already had and R1 keeps comparing over a field that is entirely one
-// structure's. The base's own claims are carried through, because a component is asked
-// about only after everything described so far has been taken out.
-pub fn claims_only(base: Claims, wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
-                   hr: integer, ref: float, lb: Labels, id: integer) -> Claims {
-  co = claims_new(q0, r0, wq, hr);
-  for r in r0..r0 + hr {
-    for q in q0..q0 + wq {
-      if hexset_get(base.cl_cells, q, r) || label_get(lb, q, r) != id {
-        hexset_set(co.cl_cells, q, r, true);
-      }
-      for co_d in [4, 5, 0] {
-        (co_nq, co_nr) = hex_grid::hex_neighbor(q, r, co_d);
-        if !mark_left(wld, q, r, co_d, ref, base) {
-          claim_edge(co, q, r, co_nq, co_nr);
-        } else if label_get(lb, q, r) != id {
-          claim_edge(co, q, r, co_nq, co_nr);
-        }
+// ⛔ **A COMPONENT WAS SPATIAL, SO TWO STRUCTURES A CELL APART WERE ONE FIELD.** `B4t`
+// named it as what it deliberately did not do, and the measurements are what it costs:
+// two walls two cells apart, an L of two walls and two towers a cell apart were each
+// **refused** with every mark counted; a house with a wall running off it described the
+// house and left seven marks over; and a house beside a tower drew a **run over the
+// tower's rim** — a description of a wall that is not there.
+//
+// ✅ **A MARK BELONGS TO THE CHAIN IT IS PART OF.** Two marked edges are one structure's
+// when they meet at a VERTEX, which is the same relation `wall_chain_ends` counts degrees
+// over — so the flood is exact integers and no distance, no gap and no threshold enters.
+//
+// ⚠ **AND IT IS THE MARK CHANNEL ONLY: THE FLOOR KEEPS THE CELL FLOOD.** `B4n`'s finding
+// is what forces that — a house's rectangle is recovered from its FLOOR and never from a
+// mark — so a cell has no vertex to be flooded through and a piece has no floor of its
+// own. The two channels are what `Claims` already has, one each.
+//
+// The four edges sharing a corner with the mark between `A` and `B`: at each of its two
+// corners exactly three edges meet — this one, and the two to the third cell `C` there.
+// ⚠ **`C` IS FOUND BY ROTATION, NOT BY SEARCH**, and the second direction is the one
+// worth writing down: from `A` the two thirds lie at `d±1`, and from `B` the SAME two
+// lie at `d∓2` — `dir(d−1) − dir(d) = dir(d+2)` on any lattice whose six directions are
+// a 60° rotation. `test_the_vertex_flood_is_the_corner_identity` pins the whole partition
+// against `hex_corner_tri_a`/`hex_corner_tri_b`, which is what makes that an assertion
+// rather than a hope.
+fn mark_piece_grow(wld: VoxelWorld, ref: float, cl: Claims, out: EdgeSet, id: integer,
+                   q: integer, r: integer, d: integer) {
+  sq: vector<integer> = [q];
+  sr: vector<integer> = [r];
+  sd: vector<integer> = [d];
+  (mg_nq, mg_nr) = hex_grid::hex_neighbor(q, r, d);
+  edge_set_mat(out, q, r, mg_nq, mg_nr, id + 1);
+  mg_at = 0;
+  while mg_at < len(sq) {
+    aq = sq[mg_at] ?? 0;
+    ar = sr[mg_at] ?? 0;
+    ad = sd[mg_at] ?? 0;
+    mg_at = mg_at + 1;
+    (bq, br) = hex_grid::hex_neighbor(aq, ar, ad);
+    for mg_side in [0, 1] {
+      // the third cell at this corner, and the two directions that reach it
+      ac = if mg_side == 0 { (ad + 5) % 6 } else { (ad + 1) % 6 };
+      bc = if mg_side == 0 { (ad + 4) % 6 } else { (ad + 2) % 6 };
+      for mg_which in [0, 1] {
+        xq = if mg_which == 0 { aq } else { bq };
+        xr = if mg_which == 0 { ar } else { br };
+        xd = if mg_which == 0 { ac } else { bc };
+        if !mark_left(wld, xq, xr, xd, ref, cl) { continue; }
+        (xnq, xnr) = hex_grid::hex_neighbor(xq, xr, xd);
+        if edge_mat(out, xq, xr, xnq, xnr) != 0 { continue; }
+        edge_set_mat(out, xq, xr, xnq, xnr, id + 1);
+        sq += [xq];
+        sr += [xr];
+        sd += [xd];
       }
     }
   }
-  co
+}
+
+// Label the vertex-connected pieces of the unclaimed marks, `0`…`n-1`; returns how many.
+// `out` carries piece + 1, so a zero there means *no piece* — which is the honest answer
+// for a claimed mark and for a byte `edge_is_wall` does not call a wall.
+pub fn marks_label(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   ref: float, cl: Claims, out: EdgeSet) -> integer {
+  ml_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for ml_d in [4, 5, 0] {
+        if !mark_left(wld, q, r, ml_d, ref, cl) { continue; }
+        (ml_nq, ml_nr) = hex_grid::hex_neighbor(q, r, ml_d);
+        if edge_mat(out, q, r, ml_nq, ml_nr) != 0 { continue; }
+        mark_piece_grow(wld, ref, cl, out, ml_n, q, r, ml_d);
+        ml_n = ml_n + 1;
+      }
+    }
+  }
+  ml_n
 }
 
 // ── THE SEAM: one call, so a consumer never holds a `Labels` ──────────────
@@ -1149,24 +1202,114 @@ pub fn claims_only(base: Claims, wld: VoxelWorld, q0: integer, r0: integer, wq: 
 // ELSE.** Splitting `touched_cells` from `cells_label` at the boundary would put the
 // labelling grid, and the two-step order, into `hex_mesh` — where a second consumer would
 // have to get both right again, and where `Labels` is not even a declared dependency.
+//
+// ⚠ **A COMPONENT IS A MARK PIECE, PLUS THE CELL COMPONENT IT STANDS IN — plan 26 `B4u`.**
+// A piece never crosses a cell component (two edges meeting at a vertex have cells that
+// touch, and `touched_cells` takes both cells of every mark), so the pieces REFINE the
+// cell flood rather than cutting across it — `test_a_piece_never_crosses_a_cell_component`
+// is what makes that a measured fact. A cell component holding no unclaimed mark is a
+// component of its own, because a house whose marks are all somebody else's still has a
+// floor to be described from.
 pub struct Segments {
-  sg_lb: Labels,
-  sg_n:  integer,          // how many structures the unclaimed field falls into
+  sg_lb:   Labels,             // the FLOOR channel — cells, flooded by adjacency
+  sg_ed:   EdgeSet,            // the MARK channel — pieces, flooded through vertices
+  sg_cell: vector<integer>,    // piece -> the cell component it stands in
+  sg_free: vector<integer>,    // …and the cell components no unclaimed mark stands in
+  sg_n:    integer,            // how many structures the unclaimed field falls into
 }
 
 pub fn segments_of(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                    ref: float, cl: Claims) -> Segments {
   so_lb = labels_new(q0, r0, wq, hr);
-  so_n = cells_label(touched_cells(wld, q0, r0, wq, hr, ref, cl), so_lb);
-  Segments { sg_lb: so_lb, sg_n: so_n }
+  so_c = cells_label(touched_cells(wld, q0, r0, wq, hr, ref, cl), so_lb);
+  so_ed = edgeset_new(q0, r0, wq, hr);
+  so_p = marks_label(wld, q0, r0, wq, hr, ref, cl, so_ed);
+  so_cell: vector<integer> = [];
+  for so_i in 0..so_p { so_cell += [0 - 1]; }
+  so_used: vector<boolean> = [];
+  for so_j in 0..so_c { so_used += [false]; }
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for so_d in [4, 5, 0] {
+        (so_nq, so_nr) = hex_grid::hex_neighbor(q, r, so_d);
+        so_pv = edge_mat(so_ed, q, r, so_nq, so_nr);
+        if so_pv == 0 { continue; }
+        so_lab = label_get(so_lb, q, r);
+        so_cell[so_pv - 1] = so_lab;
+        if so_lab >= 0 { so_used[so_lab] = true; }
+      }
+    }
+  }
+  so_free: vector<integer> = [];
+  for so_k in 0..so_c { if !(so_used[so_k] ?? false) { so_free += [so_k]; } }
+  Segments { sg_lb: so_lb, sg_ed: so_ed, sg_cell: so_cell, sg_free: so_free,
+             sg_n: so_p + len(so_free) }
 }
 
 pub fn segment_count(sg: Segments) -> integer { sg.sg_n }
 
+// The claims that hide every component but one — plan 26 `B4t`, split at the vertices
+// at `B4u`.
+//
+// ⚠ **IT CLAIMS THE REST RATHER THAN MASKING THIS ONE**, so every reader keeps the
+// signature it already had and R1 keeps comparing over a field that is entirely one
+// structure's. The base's own claims are carried through, because a component is asked
+// about only after everything described so far has been taken out.
+//
+// ⚠ **AND A BYTE THAT IS NOT A WALL IS ATTRIBUTED BY ITS CELL, NOT BY A PIECE.** A
+// doorway is a material on a wall that continues (`@HB-X70`) and `edge_is_wall` does not
+// call it one, so it is in no piece at all — and claiming it for every component would
+// take the door out of the run that owns it. The cell component it stands in is what
+// says whose it is, which is exactly the rule the whole field used before `B4u`.
 pub fn segment_claims(base: Claims, wld: VoxelWorld, q0: integer, r0: integer,
                       wq: integer, hr: integer, ref: float, sg: Segments,
                       id: integer) -> Claims {
-  claims_only(base, wld, q0, r0, wq, hr, ref, sg.sg_lb, id)
+  sc_p = if id < len(sg.sg_cell) { id } else { 0 - 1 };
+  sc_c = if sc_p >= 0 { sg.sg_cell[sc_p] ?? 0 - 1 }
+         else { sg.sg_free[id - len(sg.sg_cell)] ?? 0 - 1 };
+  sc = claims_new(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if hexset_get(base.cl_cells, q, r) || label_get(sg.sg_lb, q, r) != sc_c {
+        hexset_set(sc.cl_cells, q, r, true);
+      }
+      for sc_d in [4, 5, 0] {
+        (sc_nq, sc_nr) = hex_grid::hex_neighbor(q, r, sc_d);
+        sc_pv = edge_mat(sg.sg_ed, q, r, sc_nq, sc_nr);
+        sc_mine = if sc_pv != 0 { sc_pv - 1 == sc_p }
+                  else { label_get(sg.sg_lb, q, r) == sc_c };
+        if !sc_mine || edge_mat(base.cl_edges, q, r, sc_nq, sc_nr) != 0 {
+          claim_edge(sc, q, r, sc_nq, sc_nr);
+        }
+      }
+    }
+  }
+  sc
+}
+
+// How many of this component's own marks nothing has accounted for — plan 26 `B4u`.
+//
+// ⛔ **A DESCRIPTION THAT EXPLAINS PART OF ITS COMPONENT IS WHERE THE FALSE ONES COME
+// FROM.** The peel re-splits what a claim removed, which is right when the claim took a
+// whole structure and wrong when it took half of one: measured, a wall meeting a tower's
+// rim at a vertex draws the wall, breaks the rim into two arcs, and describes each of
+// them as a further run. So the loop asks this after every claim, and a partial answer
+// ends the rounds rather than being asked again with the fragments.
+pub fn segment_marks_left(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                          hr: integer, ref: float, cl: Claims, sg: Segments,
+                          id: integer) -> integer {
+  if id >= len(sg.sg_cell) { return 0; }
+  sm_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for sm_d in [4, 5, 0] {
+        (sm_nq, sm_nr) = hex_grid::hex_neighbor(q, r, sm_d);
+        if edge_mat(sg.sg_ed, q, r, sm_nq, sm_nr) != id + 1 { continue; }
+        if mark_left(wld, q, r, sm_d, ref, cl) { sm_n = sm_n + 1; }
+      }
+    }
+  }
+  sm_n
 }
 
 // The claim set `B4o`'s and `B4p`'s Box-shaped doors describe, so those keep asking
@@ -1986,8 +2129,15 @@ pub fn house_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: inte
         if want && !got { missing = missing + 1; }
         if !got { continue; }
         if want { continue; }
+        // ⛔ **AND ONLY IF NOTHING ELSE HAS CLAIMED IT — plan 26 `B4u`.** `B4o` bounded
+        // this to the mitre's own reach, which was the whole answer while the nearest
+        // other structure was eight hexes away. At ONE cell it is not: a tower's rim
+        // reaches inside `house_owns` and was counted as the house's corner over-run —
+        // `11 stray` on a house whose mitre is 4. The claim set already says whose those
+        // marks are, and `other` below has consulted it since `B4s`.
+        if edge_mat(cl.cl_edges, q, r, nq, nr) != 0 { continue; }
         if house_owns(best, q, r, nq, nr) { stray = stray + 1; }
-        else if edge_mat(cl.cl_edges, q, r, nq, nr) == 0 { other = other + 1; }
+        else { other = other + 1; }
       }
     }
   }

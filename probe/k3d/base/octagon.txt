@@ -1,0 +1,21 @@
+rc: 0
+world: 33038:1003722295
+md5: 4917a6c25a0ab28697e0a888a4d29755
+tau: 268
+chunks: 4
+code: 0
+session: runs 0 roofs 0 leaves 0 openings 0 annex 0 props 0 slabs 0 holes 0 trunk false/0
+chosen: opening 1 (unchosen) wall 5 shell 468 seat 0 annex 0 reach 6 part ''
+--- what the gestures reported
+  placed 0,0
+  raise: 1
+  edge 5 = curtain body=THICK_CURVED thick=0.5 in region 0
+  edge 6 = octtower body=THICK_OCT thick=0.5 in region 0
+  wall 6 selected
+  shell 468 selected
+  placed 0,0
+  tower: 86
+  wall 5 selected
+  placed 40,0
+  tower: 90
+--- what the runner refused

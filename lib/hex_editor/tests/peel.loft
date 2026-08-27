@@ -54,6 +54,7 @@ fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
 fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         cl: Claims) -> text {
   out = "";
+  part = false;
   for i in 0..8 {
     sg = segments_of(w, q0, r0, wq, hr, 0.0, cl);
     if segment_count(sg) == 0 { return out; }
@@ -66,6 +67,7 @@ fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         if claim_run(cl, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, q0, r0, wq, hr) == 0 {
           return out + "STUCK;";
         }
+        if segment_marks_left(w, q0, r0, wq, hr, 0.0, cl, sg, id) > 0 { part = true; }
         continue;
       }
       dc = disc_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
@@ -74,6 +76,7 @@ fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         if claim_disc(cl, dc.dc_cq, dc.dc_cr, dc.dc_shell, q0, r0, wq, hr) == 0 {
           return out + "STUCK;";
         }
+        if segment_marks_left(w, q0, r0, wq, hr, 0.0, cl, sg, id) > 0 { part = true; }
         continue;
       }
       hh = house_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
@@ -81,13 +84,17 @@ fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         out = out + "house;";
         hb = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
         if claim_house(cl, hb, q0, r0, wq, hr) == 0 { return out + "STUCK;"; }
+        if segment_marks_left(w, q0, r0, wq, hr, 0.0, cl, sg, id) > 0 { part = true; }
         continue;
       }
     }
     // ⚠ A ROUND THAT DESCRIBED NOTHING ENDS IT, whatever is left: peeling one structure
     // can SPLIT what remains, which is why the labels are rebuilt each round — but a
     // round with no answer will not produce one next time either.
-    if out == told { return out; }
+    // ⛔ AND SO DOES A DESCRIPTION THAT EXPLAINED ONLY PART OF ITS OWN COMPONENT — plan
+    // 26 `B4u`. Re-splitting a structure somebody else's claim broke in half is where
+    // the false runs come from; the fragments are counted, not described.
+    if out == told || part { return out; }
   }
   out + "CAPPED;"
 }
@@ -266,4 +273,354 @@ fn test_a_component_no_reader_explains_is_still_refused() {
        + "`{peel(w, 0 - 8, 0 - 8, 17, 17, claims_new(0 - 8, 0 - 8, 17, 17))}`");
   assert(marks_unclaimed(w, 0 - 8, 0 - 8, 17, 17, 0.0, cl) > 0,
          "it left nothing unexplained while explaining nothing");
+}
+
+// ── ✅ AND STRUCTURES THAT TOUCH, WHICH THE CELL FLOOD COULD NOT — `B4u` ──
+//
+// ⛔ **`B4t` NAMED THIS AS WHAT IT DELIBERATELY DID NOT DO**: *"a component is SPATIAL,
+// so structures that touch are still one field"*. Measured, that costs more than a
+// refusal — a house with a wall running off it described the house and left seven marks,
+// and a house beside a tower drew a **run over the tower's rim**, which is a wall that is
+// not there.
+//
+// ✅ **A MARK BELONGS TO THE CHAIN IT IS PART OF**, so the marks are flooded through the
+// VERTICES they share while the floor keeps the cell flood. ⚠ **EVERY ROW HERE FIRST
+// ASSERTS THE CELL FLOOD MAKES THEM ONE**, because a fixture that drifted apart would
+// pass all of this while testing nothing.
+fn touching(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer) -> integer {
+  lb = labels_new(q0, r0, wq, hr);
+  cells_label(touched_cells(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr)), lb)
+}
+
+fn test_two_walls_two_cells_apart_are_two_runs() {
+  w = flat_world();
+  wall_at(w, 0.0 - 2.0, 0.0 - 3.0, 0.0 - 2.0, 6.0);
+  wall_at(w, 0.0, 0.0 - 3.0, 0.0, 6.0);
+  assert(touching(w, 0 - 14, 0 - 8, 26, 18) == 1,
+         "the two walls are {touching(w, 0 - 14, 0 - 8, 26, 18)} cell components, so they "
+       + "do not touch and this row is about nothing");
+  cl = claims_new(0 - 14, 0 - 8, 26, 18);
+  assert(peel(w, 0 - 14, 0 - 8, 26, 18, cl) == "run;run;",
+         "two walls two cells apart describe "
+       + "`{peel(w, 0 - 14, 0 - 8, 26, 18, claims_new(0 - 14, 0 - 8, 26, 18))}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 8, 26, 18, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 14, 0 - 8, 26, 18, 0.0, cl)} marks over");
+}
+
+fn test_two_walls_meeting_at_a_corner_are_two_runs() {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0, 0.0, 0.0);
+  wall_at(w, 0.0, 0.0, 0.0, 6.0);
+  assert(touching(w, 0 - 14, 0 - 8, 26, 18) == 1, "the L is not one cell component");
+  cl = claims_new(0 - 14, 0 - 8, 26, 18);
+  assert(peel(w, 0 - 14, 0 - 8, 26, 18, cl) == "run;run;",
+         "an L of two walls describes "
+       + "`{peel(w, 0 - 14, 0 - 8, 26, 18, claims_new(0 - 14, 0 - 8, 26, 18))}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 8, 26, 18, 0.0, cl) == 0, "marks over");
+}
+
+// ⛔ **THE HOUSE ATE PART OF THE WALL.** `claim_house` owns the mitre one cell past the
+// box — `B4o`'s own rule, and right — so a wall that STARTS there had marks taken from
+// it and the seven that were left described nothing. The wall's own piece is claimed
+// before the house is asked, so the rule is unchanged and the order is what fixes it.
+fn test_a_house_with_a_wall_running_off_it_is_both() {
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  wall_at(w, 4.0, 0.0, 12.0, 0.0);
+  assert(touching(w, 0 - 12, 0 - 12, 30, 26) == 1,
+         "the house and its wall are {touching(w, 0 - 12, 0 - 12, 30, 26)} cell "
+       + "components, so they do not touch");
+  cl = claims_new(0 - 12, 0 - 12, 30, 26);
+  assert(peel(w, 0 - 12, 0 - 12, 30, 26, cl) == "run;house;",
+         "a house with a wall running off it describes "
+       + "`{peel(w, 0 - 12, 0 - 12, 30, 26, claims_new(0 - 12, 0 - 12, 30, 26))}`");
+  assert(marks_unclaimed(w, 0 - 12, 0 - 12, 30, 26, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 12, 0 - 12, 30, 26, 0.0, cl)} marks over — `B4t` left 7");
+}
+
+// ⛔ **AND THIS ONE DREW A WALL THAT IS NOT THERE.** With the two in one field the house
+// was described first, its claim opened the rim, and the opened rim read back as a RUN —
+// a false description, which is worse than the refusal the other rows got.
+fn test_a_house_beside_a_tower_is_a_disc_and_a_house() {
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  tower_at(w, 0.0, 0.0 - 7.0);
+  assert(touching(w, 0 - 14, 0 - 16, 30, 30) == 1,
+         "the house and the tower are {touching(w, 0 - 14, 0 - 16, 30, 30)} cell "
+       + "components, so they do not touch");
+  cl = claims_new(0 - 14, 0 - 16, 30, 30);
+  got = peel(w, 0 - 14, 0 - 16, 30, 30, cl);
+  assert(got == "disc;house;", "a house beside a tower describes `{got}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, cl)} marks over");
+}
+
+fn test_two_towers_a_cell_apart_are_two_discs() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  tower_at(w, 15.0, 0.0);
+  assert(touching(w, 0 - 14, 0 - 14, 44, 30) == 1,
+         "the two towers are {touching(w, 0 - 14, 0 - 14, 44, 30)} cell components, so "
+       + "they do not touch");
+  cl = claims_new(0 - 14, 0 - 14, 44, 30);
+  assert(peel(w, 0 - 14, 0 - 14, 44, 30, cl) == "disc;disc;",
+         "two towers a cell apart describe "
+       + "`{peel(w, 0 - 14, 0 - 14, 44, 30, claims_new(0 - 14, 0 - 14, 44, 30))}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl) == 0, "marks over");
+}
+
+// ── ⚠ THE INSTRUMENT, CHECKED BEFORE IT IS BELIEVED ───────────────────────
+//
+// The flood walks to the four edges sharing a corner by ROTATION — from `A` the two
+// third cells lie at `d±1` and from `B` the same two lie at `d∓2`. That is an assertion
+// about the lattice, so it is compared here against the corner IDENTITY: `hex_corner_tri_a`
+// and `hex_corner_tri_b`, the exact triangle-lattice integers `wall_chain_ends` counts
+// degrees over. Two edges are in one piece iff they are joined by a path of shared
+// corners; the two answers must partition the marks identically.
+fn same_corner(aq: integer, ar: integer, ad: integer,
+               bq: integer, br: integer, bd: integer) -> boolean {
+  (a1, a2) = hex_grid::hex_edge_corners(ad);
+  (b1, b2) = hex_grid::hex_edge_corners(bd);
+  for i in 0..2 {
+    ac = if i == 0 { a1 } else { a2 };
+    for j in 0..2 {
+      bc = if j == 0 { b1 } else { b2 };
+      if hex_shape::hex_corner_tri_a(aq, ar, ac) == hex_shape::hex_corner_tri_a(bq, br, bc)
+         && hex_shape::hex_corner_tri_b(aq, ar, ac) == hex_shape::hex_corner_tri_b(bq, br, bc) {
+        return true;
+      }
+    }
+  }
+  false
+}
+
+fn corner_partition_agrees(w: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                           hr: integer) -> text {
+  cl = claims_new(q0, r0, wq, hr);
+  ed = edgeset_new(q0, r0, wq, hr);
+  np = marks_label(w, q0, r0, wq, hr, 0.0, cl, ed);
+  eq: vector<integer> = [];
+  er: vector<integer> = [];
+  edir: vector<integer> = [];
+  lab: vector<integer> = [];
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        // ⚠ THE FIXTURES HAVE NOTHING CLAIMED, so *is this a mark* is the whole test.
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        eq += [q]; er += [r]; edir += [d]; lab += [len(lab)];
+      }
+    }
+  }
+  if len(eq) == 0 { return "no marks"; }
+  moved = true;
+  while moved {
+    moved = false;
+    for i in 0..len(lab) {
+      for j in 0..len(lab) {
+        if i == j { continue; }
+        if !same_corner(eq[i] ?? 0, er[i] ?? 0, edir[i] ?? 0,
+                        eq[j] ?? 0, er[j] ?? 0, edir[j] ?? 0) { continue; }
+        if (lab[j] ?? 0) < (lab[i] ?? 0) { lab[i] = lab[j] ?? 0; moved = true; }
+      }
+    }
+  }
+  seen: vector<integer> = [];
+  for i in 0..len(lab) {
+    got = false;
+    for k in 0..len(seen) { if (seen[k] ?? 0) == (lab[i] ?? 0) { got = true; } }
+    if !got { seen += [lab[i] ?? 0]; }
+  }
+  if len(seen) != np { return "{len(seen)} pieces by corner, {np} by the flood"; }
+  for i in 0..len(lab) {
+    for j in 0..len(lab) {
+      (inq, inr) = hex_grid::hex_neighbor(eq[i] ?? 0, er[i] ?? 0, edir[i] ?? 0);
+      (jnq, jnr) = hex_grid::hex_neighbor(eq[j] ?? 0, er[j] ?? 0, edir[j] ?? 0);
+      byc = (lab[i] ?? 0) == (lab[j] ?? 0);
+      byf = edge_mat(ed, eq[i] ?? 0, er[i] ?? 0, inq, inr)
+            == edge_mat(ed, eq[j] ?? 0, er[j] ?? 0, jnq, jnr);
+      if byc != byf { return "the two disagree about a pair of marks"; }
+    }
+  }
+  ""
+}
+
+fn test_the_vertex_flood_is_the_corner_identity() {
+  h = flat_world();
+  house_at(h, 0.0, 0.0);
+  assert(corner_partition_agrees(h, 0 - 10, 0 - 10, 21, 21) == "",
+         "a house: {corner_partition_agrees(h, 0 - 10, 0 - 10, 21, 21)}");
+  t = flat_world();
+  tower_at(t, 0.0, 0.0);
+  assert(corner_partition_agrees(t, 0 - 10, 0 - 10, 21, 21) == "",
+         "a tower: {corner_partition_agrees(t, 0 - 10, 0 - 10, 21, 21)}");
+  v = flat_world();
+  house_at(v, 0.0, 0.0);
+  tower_at(v, 0.0, 0.0 - 12.0);
+  wall_at(v, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
+  assert(corner_partition_agrees(v, 0 - 12, 0 - 16, 25, 26) == "",
+         "the village: {corner_partition_agrees(v, 0 - 12, 0 - 16, 25, 26)}");
+  l = flat_world();
+  wall_at(l, 0.0 - 6.0, 0.0, 0.0, 0.0);
+  wall_at(l, 0.0, 0.0, 0.0, 6.0);
+  assert(corner_partition_agrees(l, 0 - 14, 0 - 8, 26, 18) == "",
+         "an L: {corner_partition_agrees(l, 0 - 14, 0 - 8, 26, 18)}");
+}
+
+// ⛔ **A HOUSE'S FOUR CORNER STUBS MUST NOT BECOME FOUR ONE-EDGE RUNS.** `B4t` measured
+// that a lone marked edge is its own component with two chain ends, so it IS a run — and
+// `B0`'s four stray edges are exactly four lone marks if the flood does not reach them.
+// It does: each shares a vertex with the boundary it over-runs, which is what makes them
+// the house's own mitre rather than four walls nobody built.
+fn test_a_lone_house_is_one_piece() {
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  ed = edgeset_new(0 - 10, 0 - 10, 21, 21);
+  np = marks_label(w, 0 - 10, 0 - 10, 21, 21, 0.0, claims_new(0 - 10, 0 - 10, 21, 21), ed);
+  assert(np == 1, "a house's marks are {np} pieces, so its mitre stubs are their own runs");
+}
+
+// ⚠ **A PIECE NEVER CROSSES A CELL COMPONENT**, which is what lets a component be a piece
+// plus the cell component it stands in. Two marks meeting at a vertex have cells that
+// touch, and `touched_cells` takes BOTH cells of every mark — so the pieces refine the
+// cell flood rather than cutting across it. Measured on the fixture that has three
+// structures and one that has two in one field.
+fn crosses(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer) -> boolean {
+  cl = claims_new(q0, r0, wq, hr);
+  lb = labels_new(q0, r0, wq, hr);
+  cells_label(touched_cells(w, q0, r0, wq, hr, 0.0, cl), lb);
+  ed = edgeset_new(q0, r0, wq, hr);
+  np = marks_label(w, q0, r0, wq, hr, 0.0, cl, ed);
+  home: vector<integer> = [];
+  for i in 0..np { home += [0 - 2]; }
+  bad = false;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        pv = edge_mat(ed, q, r, nq, nr);
+        if pv == 0 { continue; }
+        c = label_get(lb, q, r);
+        if (home[pv - 1] ?? 0 - 2) == 0 - 2 { home[pv - 1] = c; }
+        else if (home[pv - 1] ?? 0 - 2) != c { bad = true; }
+      }
+    }
+  }
+  bad
+}
+
+fn test_a_piece_never_crosses_a_cell_component() {
+  v = flat_world();
+  house_at(v, 0.0, 0.0);
+  tower_at(v, 0.0, 0.0 - 12.0);
+  wall_at(v, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
+  assert(!crosses(v, 0 - 12, 0 - 16, 25, 26), "a piece of the village crosses two cell components");
+  d = flat_world();
+  house_at(d, 0.0, 0.0);
+  wall_at(d, 4.0, 0.0, 12.0, 0.0);
+  assert(!crosses(d, 0 - 12, 0 - 12, 30, 26), "a piece of the attached pair crosses two");
+}
+
+// ── ⛔ AND WHAT SHARING A VERTEX STILL COSTS ──────────────────────────────
+//
+// A wall that MEETS a tower's rim shares vertices with it, so no flood separates them —
+// the honest residual of this step, the same shape as `B4t`'s own. What must not happen
+// is the peel making it worse: the wall is described, its claim breaks the rim into two
+// arcs, and each arc reads back as a further run. A description that explained only part
+// of its component ends the rounds instead, so the fragments are COUNTED.
+fn test_a_wall_meeting_a_rim_is_one_run_and_a_count() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
+  ed = edgeset_new(0 - 14, 0 - 14, 34, 30);
+  np = marks_label(w, 0 - 14, 0 - 14, 34, 30, 0.0, claims_new(0 - 14, 0 - 14, 34, 30), ed);
+  assert(np == 1,
+         "the wall and the rim are {np} pieces, so they do not share a vertex and this "
+       + "row is about nothing");
+  cl = claims_new(0 - 14, 0 - 14, 34, 30);
+  got = peel(w, 0 - 14, 0 - 14, 34, 30, cl);
+  assert(got == "run;", "a wall meeting a rim describes `{got}`, not one run");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 34, 30, 0.0, cl) > 0,
+         "it explained everything, so the fixture is not the interlocked one");
+
+  // …and the control, one cell further out: no shared vertex, both described
+  c = flat_world();
+  tower_at(c, 0.0, 0.0);
+  wall_at(c, 10.0, 0.0 - 6.0, 10.0, 6.0);
+  ccl = claims_new(0 - 14, 0 - 14, 34, 30);
+  assert(peel(c, 0 - 14, 0 - 14, 34, 30, ccl) == "disc;run;",
+         "the same pair clear of each other describes "
+       + "`{peel(c, 0 - 14, 0 - 14, 34, 30, claims_new(0 - 14, 0 - 14, 34, 30))}`");
+  assert(marks_unclaimed(c, 0 - 14, 0 - 14, 34, 30, 0.0, ccl) == 0, "marks over");
+}
+
+// ⛔ **AND THE HOUSE'S OWN RESIDUAL STOPS COUNTING ITS NEIGHBOUR'S MARKS — plan 26
+// `B4u`.** `B4o` bounded `stray` to `house_owns` — the mitre's own one-cell reach — and
+// asked for exactly this control with the other structure **eight** hexes away. At ONE
+// cell the bound is not enough: a tower's rim reaches inside it, and the caption read
+// `11 stray` about a house whose mitre is four marks. The claim set already says whose
+// those marks are, which is what the split made true.
+fn test_the_mitre_count_is_unmoved_by_a_tower_one_cell_away() {
+  lone = flat_world();
+  house_at(lone, 0.0, 0.0);
+  alone = house_recover(lone, 0 - 14, 0 - 16, 30, 30, 0.0);
+  assert(alone.hs_ok, "the lone house did not recover: {alone.hs_why}");
+
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  tower_at(w, 0.0, 0.0 - 7.0);
+  assert(touching(w, 0 - 14, 0 - 16, 30, 30) == 1,
+         "the pair is not one cell component, so this row is about nothing");
+  sg = segments_of(w, 0 - 14, 0 - 16, 30, 30, 0.0, claims_new(0 - 14, 0 - 16, 30, 30));
+  // ⚠ **EVERY COMPONENT THE HOUSE READER ANSWERS FOR, NOT ONE THAT MATCHES.** An
+  // existence check would pass on a chain that got it right somewhere and wrong here.
+  asked = 0;
+  for id in 0..segment_count(sg) {
+    only = segment_claims(claims_new(0 - 14, 0 - 16, 30, 30), w, 0 - 14, 0 - 16, 30, 30,
+                          0.0, sg, id);
+    if disc_recover_claimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, only).dc_ok { continue; }
+    h = house_recover_claimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, only);
+    if !h.hs_ok { continue; }
+    asked = asked + 1;
+    assert(h.hs_stray == alone.hs_stray,
+           "the house reports {h.hs_stray} stray marks beside a tower and "
+         + "{alone.hs_stray} alone — the rim is being counted as its corner over-run");
+  }
+  assert(asked > 0, "the house reader answered for no component at all");
+}
+
+// ⛔ **AND A COMPONENT IS HANDED ITS OWN CELL COMPONENT'S FLOOR, NOTHING ELSE.** The
+// sweep asked for this the hard way: a row that gave every piece cell component 0 went
+// **GREEN** across both suites, because in every fixture above either everything stands
+// in one cell component or the round readers answer before the house reader is reached.
+// ⚠ **What that row would break is `B4o`'s rule, one layer down** — a piece nothing
+// explains would reach the house reader, be answered with somebody else's rectangle, and
+// carry a residual measured over marks that are not the house's. So the property is
+// asserted directly rather than through a caption that cannot see it.
+fn test_a_component_is_handed_only_its_own_floor() {
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  // …and a two-cell domino's boundary, far enough to be its own cell component
+  for d0 in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(0 - 14, 0 - 10, d0);
+    if !(nq == 0 - 13 && nr == 0 - 10) { wall_set(w, 0 - 14, 0 - 10, d0, WALL_MAT, 8, 2.0); }
+  }
+  for d1 in 0..6 {
+    (mq, mr) = hex_grid::hex_neighbor(0 - 13, 0 - 10, d1);
+    if !(mq == 0 - 14 && mr == 0 - 10) { wall_set(w, 0 - 13, 0 - 10, d1, WALL_MAT, 8, 2.0); }
+  }
+  q0 = 0 - 20; r0 = 0 - 16; wq = 34; hr = 30;
+  assert(touching(w, q0, r0, wq, hr) == 2,
+         "the house and the domino are {touching(w, q0, r0, wq, hr)} cell components, "
+       + "not two — this row needs them apart");
+  cl = claims_new(q0, r0, wq, hr);
+  sg = segments_of(w, q0, r0, wq, hr, 0.0, cl);
+  answered = 0;
+  for id in 0..segment_count(sg) {
+    only = segment_claims(cl, w, q0, r0, wq, hr, 0.0, sg, id);
+    if house_recover_claimed(w, q0, r0, wq, hr, 0.0, only).hs_ok { answered = answered + 1; }
+  }
+  assert(answered == 1,
+         "the house reader answers for {answered} of the {segment_count(sg)} components — "
+       + "a piece is being handed a floor that stands in another component");
 }
