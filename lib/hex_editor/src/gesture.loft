@@ -878,22 +878,154 @@ fn disc_no(why: text, marks: integer) -> DiscRead {
 // on a wall that continues"* — and the round readers take `edge_is_wall` only. That
 // is a fact about what each reader describes; ownership is a separate question and
 // this function answers only the second half of it.
-fn mark_left(wld: VoxelWorld, q: integer, r: integer, d: integer, ref: float,
-             skip: boolean, b: Box) -> boolean {
-  if !edge_is_wall(wall_of(wld, q, r, d, ref)) { return false; }
-  if !skip { return true; }
-  (ml_nq, ml_nr) = hex_grid::hex_neighbor(q, r, d);
-  !house_owns(b, q, r, ml_nq, ml_nr)
+// ── WHAT HAS ALREADY BEEN ATTRIBUTED — plan 26 `B4s` ───────────────────────
+//
+// ⛔ **THE EXCLUSION WAS A RECTANGLE, AND A WINDOW HOLDS MORE THAN ONE THING.** `B4o`
+// split a house's marks from a wall's and `B4p` gave the leftover the whole chain, but
+// both asked *is this mark inside THAT box* — so exactly one structure could ever be
+// taken out, and a window with three described two of them. A peel needs to subtract
+// whatever it has just described, whatever shape that was.
+//
+// ⚠ **TWO CHANNELS, BECAUSE THE READERS READ TWO THINGS.** The run, disc and octagon
+// readers read MARKS; the house reader reads the FLOOR and never touches a mark —
+// `B4n`'s finding, and the reason it could describe a house at all. Claiming only edges
+// would leave `house_recover` answering the same house every round, which is not a
+// wrong answer but an endless one.
+pub struct Claims {
+  cl_edges: EdgeSet,       // marks already attributed to some structure
+  cl_cells: HexSet,        // …and the floor cells that went with them
 }
 
-// The rectangle a `skip = false` caller passes and nothing reads.
+pub fn claims_new(q0: integer, r0: integer, wq: integer, hr: integer) -> Claims {
+  Claims { cl_edges: edgeset_new(q0, r0, wq, hr),
+           cl_cells: hexset_chunk(q0, r0, wq, hr) }
+}
+
+// ⚠ **A CLAIM IS IDEMPOTENT AND SAYS WHETHER IT WAS NEW**, which is what lets the peel
+// notice a reader that answers without accounting for anything. That is not defensive:
+// it is the difference between a loop that ends and one that does not.
+fn claim_edge(cl: Claims, q: integer, r: integer, nq: integer, nr: integer) -> integer {
+  if edge_mat(cl.cl_edges, q, r, nq, nr) != 0 { return 0; }
+  edge_set_mat(cl.cl_edges, q, r, nq, nr, 1);
+  1
+}
+
+fn mark_left(wld: VoxelWorld, q: integer, r: integer, d: integer, ref: float,
+             cl: Claims) -> boolean {
+  if !edge_is_wall(wall_of(wld, q, r, d, ref)) { return false; }
+  (ml_nq, ml_nr) = hex_grid::hex_neighbor(q, r, d);
+  edge_mat(cl.cl_edges, q, r, ml_nq, ml_nr) == 0
+}
+
+// How many marks in this window nothing has accounted for yet.
+pub fn marks_unclaimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                       hr: integer, ref: float, cl: Claims) -> integer {
+  mu_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for mu_d in [4, 5, 0] {
+        if mark_left(wld, q, r, mu_d, ref, cl) { mu_n = mu_n + 1; }
+      }
+    }
+  }
+  mu_n
+}
+
+// ── WHAT EACH DESCRIPTION OWNS ─────────────────────────────────────────────
 //
-// ⚠ **A SENTINEL RATHER THAN A SECOND COPY OF EACH SEARCH.** `disc_recover` and
-// `disc_recover_outside` are one body — a pair differing only in one `continue` is
-// exactly the duplication `edges_mat_outside` refused to make — and loft has no
-// optional parameter, so the unused half of the pair has to be spelled. It is
-// public because the PICTURE has the same two calls to make.
-pub fn box_none() -> Box { hex_shape::box_new(0, 0, 1, 1, 0, false) }
+// ⚠ **EVERY ONE OF THESE IS THE SHAPE'S OWN MEMBERSHIP, NOT A RULE INVENTED HERE.** A
+// disc owns the edges its own boundary walk stamps — `disc_holds` either side, which is
+// `disc_fits`' `want`; an octagon the same through `poly_holds`; a run owns
+// `run_edges`' answer, which is `wall_stamp`'s marking rule and was made stable at
+// `B4r`; and a house owns what `house_owns` says. ⛔ **The run was the one that could
+// not be asked before `B4q`**, and the one whose answer was not stable before `B4r` —
+// which is why the peel is this step and not that one.
+
+// A house owns its boundary, the mitre one cell past it, and its own floor.
+pub fn claim_house(cl: Claims, b: Box, q0: integer, r0: integer, wq: integer,
+                   hr: integer) -> integer {
+  ch_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if box_holds(b, q, r) && !hexset_get(cl.cl_cells, q, r) {
+        hexset_set(cl.cl_cells, q, r, true);
+        ch_n = ch_n + 1;
+      }
+      for ch_d in [4, 5, 0] {
+        (ch_nq, ch_nr) = hex_grid::hex_neighbor(q, r, ch_d);
+        if house_owns(b, q, r, ch_nq, ch_nr) {
+          ch_n = ch_n + claim_edge(cl, q, r, ch_nq, ch_nr);
+        }
+      }
+    }
+  }
+  ch_n
+}
+
+pub fn claim_disc(cl: Claims, cq: integer, cr: integer, shell: integer, q0: integer,
+                  r0: integer, wq: integer, hr: integer) -> integer {
+  cd_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for cd_d in [4, 5, 0] {
+        (cd_nq, cd_nr) = hex_grid::hex_neighbor(q, r, cd_d);
+        if disc_holds(cq, cr, shell, q, r) != disc_holds(cq, cr, shell, cd_nq, cd_nr) {
+          cd_n = cd_n + claim_edge(cl, q, r, cd_nq, cd_nr);
+        }
+      }
+    }
+  }
+  cd_n
+}
+
+pub fn claim_oct(cl: Claims, cq: integer, cr: integer, shell: integer, q0: integer,
+                 r0: integer, wq: integer, hr: integer) -> integer {
+  co_vk = oct_poly_k(shell);
+  co_vm = oct_poly_m(shell);
+  co_bk = lattice_k(cq, cr);
+  co_bm = lattice_m(cq, cr);
+  co_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      co_in = hex_form::poly_holds(co_vk, co_vm, lattice_k(q, r) - co_bk,
+                                                 lattice_m(q, r) - co_bm);
+      for co_d in [4, 5, 0] {
+        (co_nq, co_nr) = hex_grid::hex_neighbor(q, r, co_d);
+        if co_in != hex_form::poly_holds(co_vk, co_vm, lattice_k(co_nq, co_nr) - co_bk,
+                                                       lattice_m(co_nq, co_nr) - co_bm) {
+          co_n = co_n + claim_edge(cl, q, r, co_nq, co_nr);
+        }
+      }
+    }
+  }
+  co_n
+}
+
+pub fn claim_run(cl: Claims, x0: float, z0: float, x1: float, z1: float, q0: integer,
+                 r0: integer, wq: integer, hr: integer) -> integer {
+  cr_g = run_edges(wall_run_new(x0, z0, x1, z1, WALL_MAT), q0, r0, wq, hr, WALL_MAT);
+  cr_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for cr_d in [4, 5, 0] {
+        (cr_nq, cr_nr) = hex_grid::hex_neighbor(q, r, cr_d);
+        if edge_mat(cr_g, q, r, cr_nq, cr_nr) != 0 {
+          cr_n = cr_n + claim_edge(cl, q, r, cr_nq, cr_nr);
+        }
+      }
+    }
+  }
+  cr_n
+}
+
+// The claim set `B4o`'s and `B4p`'s Box-shaped doors describe, so those keep asking
+// their own question through the one mechanism underneath.
+pub fn claims_of_house(b: Box, q0: integer, r0: integer, wq: integer,
+                       hr: integer) -> Claims {
+  ck = claims_new(q0, r0, wq, hr);
+  claim_house(ck, b, q0, r0, wq, hr);
+  ck
+}
 
 // Is `(q, r)` inside the disc of `shell` about `(cq, cr)`?
 //
@@ -957,11 +1089,11 @@ fn disc_fits(marks: vector<boolean>, cq: integer, cr: integer, shell: integer,
 // correct rather than a trade: the store does not change while a window is being
 // described, so `candidates × window × 6` reads collapse to `window × 6`.
 fn disc_marks(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
-              ref: float, skip: boolean, b: Box) -> vector<boolean> {
+              ref: float, cl: Claims) -> vector<boolean> {
   out: vector<boolean> = [];
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
-      for d in 0..6 { out += [mark_left(wld, q, r, d, ref, skip, b)]; }
+      for d in 0..6 { out += [mark_left(wld, q, r, d, ref, cl)]; }
     }
   }
   out
@@ -1006,7 +1138,7 @@ pub fn disc_span(shell: integer) -> integer {
 // candidates, and the centre of a disc is always inside the cells its rim touches.
 pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                     ref: float) -> DiscRead {
-  disc_recover_at(wld, q0, r0, wq, hr, ref, false, box_none())
+  disc_recover_at(wld, q0, r0, wq, hr, ref, claims_new(q0, r0, wq, hr))
 }
 
 // …and the same search over what one rectangle does NOT own — plan 26 `B4p`.
@@ -1017,11 +1149,17 @@ pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: 
 // unchanged, and a copy would be free to drift from every one of them.
 pub fn disc_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                             hr: integer, ref: float, b: Box) -> DiscRead {
-  disc_recover_at(wld, q0, r0, wq, hr, ref, true, b)
+  disc_recover_at(wld, q0, r0, wq, hr, ref, claims_of_house(b, q0, r0, wq, hr))
+}
+
+// …and over whatever has already been attributed — plan 26 `B4s`.
+pub fn disc_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                            hr: integer, ref: float, cl: Claims) -> DiscRead {
+  disc_recover_at(wld, q0, r0, wq, hr, ref, cl)
 }
 
 fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
-                   ref: float, skip: boolean, b: Box) -> DiscRead {
+                   ref: float, cl: Claims) -> DiscRead {
   lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
   marks = 0;
   for r in r0..r0 + hr {
@@ -1032,7 +1170,7 @@ fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
       // 0/1/2 instead. Measured, both tile the plane and both count the same; it is
       // written the documented way so the next reader is not left to find that out.
       for d in [4, 5, 0] {
-        if !mark_left(wld, q, r, d, ref, skip, b) { continue; }
+        if !mark_left(wld, q, r, d, ref, cl) { continue; }
         if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
         if q < lo_q { lo_q = q; }
         if q > hi_q { hi_q = q; }
@@ -1045,7 +1183,7 @@ fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   // ⚠ THE TWO SILENCES ARE DIFFERENT AND MUST NOT READ ALIKE — `B0`'s rule, and
   // `probe/l1` lost a run to exactly this shape of ambiguity.
   if marks == 0 { return disc_no("no wall marks in this window", 0); }
-  table = disc_marks(wld, q0, r0, wq, hr, ref, skip, b);
+  table = disc_marks(wld, q0, r0, wq, hr, ref, cl);
   // ⚠ **THE SHELLS ARE BOUNDED BY THE MARKS' OWN EXTENT, WHICH IS A CORRECTNESS
   // STATEMENT BEFORE IT IS A SPEED ONE.** A disc whose own window is wider than the
   // marks that are supposed to bound it cannot reproduce them, so trying it is not
@@ -1209,18 +1347,24 @@ pub fn oct_span(shell: integer) -> integer {
 // how two readers of one field come to disagree.
 pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                    ref: float) -> OctRead {
-  oct_recover_at(wld, q0, r0, wq, hr, ref, false, box_none())
+  oct_recover_at(wld, q0, r0, wq, hr, ref, claims_new(q0, r0, wq, hr))
 }
 
 // …and the same search over what one rectangle does NOT own — plan 26 `B4p`,
 // `disc_recover_outside`'s rule at the second round shape.
 pub fn oct_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                            hr: integer, ref: float, b: Box) -> OctRead {
-  oct_recover_at(wld, q0, r0, wq, hr, ref, true, b)
+  oct_recover_at(wld, q0, r0, wq, hr, ref, claims_of_house(b, q0, r0, wq, hr))
+}
+
+// …and over whatever has already been attributed — plan 26 `B4s`.
+pub fn oct_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                           hr: integer, ref: float, cl: Claims) -> OctRead {
+  oct_recover_at(wld, q0, r0, wq, hr, ref, cl)
 }
 
 fn oct_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
-                  ref: float, skip: boolean, b: Box) -> OctRead {
+                  ref: float, cl: Claims) -> OctRead {
   lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
   marks = 0;
   for r in r0..r0 + hr {
@@ -1228,7 +1372,7 @@ fn oct_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: in
       // ⚠ THE THREE LATTICE DIRECTIONS A CELL OWNS — `edge_owner`'s table, as
       // `disc_recover` reads them and for the same reason.
       for d in [4, 5, 0] {
-        if !mark_left(wld, q, r, d, ref, skip, b) { continue; }
+        if !mark_left(wld, q, r, d, ref, cl) { continue; }
         if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
         if q < lo_q { lo_q = q; }
         if q > hi_q { hi_q = q; }
@@ -1257,7 +1401,7 @@ fn oct_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: in
   br0 = lo_r - 2;
   bwq = hi_q - lo_q + 5;
   bhr = hi_r - lo_r + 5;
-  table = disc_marks(wld, bq0, br0, bwq, bhr, ref, skip, b);
+  table = disc_marks(wld, bq0, br0, bwq, bhr, ref, cl);
   span = hi_q - lo_q;
   if hi_r - lo_r > span { span = hi_r - lo_r; }
   for shell in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
@@ -1331,7 +1475,8 @@ pub fn oct_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   fa_r0 = fa_lo_r - 2;
   fa_w = fa_hi_q - fa_lo_q + 5;
   fa_h = fa_hi_r - fa_lo_r + 5;
-  oct_fits(disc_marks(wld, fa_q0, fa_r0, fa_w, fa_h, ref, false, box_none()),
+  oct_fits(disc_marks(wld, fa_q0, fa_r0, fa_w, fa_h, ref,
+                      claims_new(fa_q0, fa_r0, fa_w, fa_h)),
            oct_poly_k(shell), oct_poly_m(shell), cq, cr, fa_q0, fa_r0, fa_w, fa_h)
 }
 
@@ -1515,6 +1660,18 @@ pub fn house_owns(b: Box, q: integer, r: integer, nq: integer, nr: integer) -> b
 // one field come to disagree about which edges exist.
 pub fn edges_mat_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                          hr: integer, ref: float, b: Box) -> EdgeSet {
+  edges_mat_claimed(wld, q0, r0, wq, hr, ref, claims_of_house(b, q0, r0, wq, hr))
+}
+
+// …and with whatever has already been attributed taken out — plan 26 `B4s`.
+//
+// ⚠ **THE MATERIAL CHANNEL IS THE ONE THING THAT MAKES THIS NOT `mark_left`.** The run
+// reader takes every non-zero byte — *"a doorway is a material on a wall that
+// continues"* — while the round readers take `edge_is_wall` only, so what is a MARK
+// differs between them by design. What has been CLAIMED does not, which is why the
+// claim set is consulted here and the wall test is not.
+pub fn edges_mat_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                         hr: integer, ref: float, cl: Claims) -> EdgeSet {
   eo_e = edgeset_new(q0, r0, wq, hr);
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
@@ -1522,7 +1679,7 @@ pub fn edges_mat_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
         eo_m = wall_of(wld, q, r, eo_d, ref);
         if eo_m == 0 { continue; }
         (eo_nq, eo_nr) = hex_grid::hex_neighbor(q, r, eo_d);
-        if house_owns(b, q, r, eo_nq, eo_nr) { continue; }
+        if edge_mat(cl.cl_edges, q, r, eo_nq, eo_nr) != 0 { continue; }
         edge_set_mat(eo_e, q, r, eo_nq, eo_nr, eo_m);
       }
     }
@@ -1541,7 +1698,13 @@ pub fn edges_mat_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
 // structure each mark belongs to before asking what it describes.
 pub fn wall_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                             hr: integer, ref: float, b: Box) -> RunRead {
-  wo_e = edges_mat_outside(wld, q0, r0, wq, hr, ref, b);
+  wall_recover_claimed(wld, q0, r0, wq, hr, ref, claims_of_house(b, q0, r0, wq, hr))
+}
+
+// …and the run described by what nothing has claimed yet — plan 26 `B4s`.
+pub fn wall_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                            hr: integer, ref: float, cl: Claims) -> RunRead {
+  wo_e = edges_mat_claimed(wld, q0, r0, wq, hr, ref, cl);
   (wo_d, wo_a, wo_b, wo_p, wo_ok) = hex_shape::wall_read_run(wo_e, q0, r0, wq, hr);
   if !wo_ok { return run_no(edges_count(wo_e, q0, r0, wq, hr)); }
   wo_ea = hex_shape::wall_end_a(wo_d, wo_a, wo_p);
@@ -1558,11 +1721,24 @@ pub fn wall_recover_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integ
 // The rectangle these FLOOR cells describe, and what its boundary makes of the marks.
 pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                      ref: float) -> HouseRead {
+  house_recover_claimed(wld, q0, r0, wq, hr, ref, claims_new(q0, r0, wq, hr))
+}
+
+// …with the floor cells some earlier description already accounted for left out —
+// plan 26 `B4s`.
+//
+// ⛔ **THIS IS THE CHANNEL A PEEL CANNOT DO WITHOUT.** Every other reader is subtracted
+// by taking its MARKS away; this one never looks at a mark, so taking them away leaves
+// it answering the same rectangle for ever. Two houses in one window are two rounds
+// only because the first one's floor stops being floor.
+pub fn house_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                             hr: integer, ref: float, cl: Claims) -> HouseRead {
   floor = hexset_chunk(q0, r0, wq, hr);
   lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
   ncell = 0;
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
+      if hexset_get(cl.cl_cells, q, r) { continue; }
       li = edge_layer(wld, q, r, ref);
       if li < 0 { continue; }
       if (hex_voxel::world_cell(wld, q, r, li).h_material as integer ?? 0) != FLOOR_MAT {
@@ -1647,7 +1823,8 @@ pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr:
         if want && !got { missing = missing + 1; }
         if !got { continue; }
         if want { continue; }
-        if house_owns(best, q, r, nq, nr) { stray = stray + 1; } else { other = other + 1; }
+        if house_owns(best, q, r, nq, nr) { stray = stray + 1; }
+        else if edge_mat(cl.cl_edges, q, r, nq, nr) == 0 { other = other + 1; }
       }
     }
   }
@@ -1666,7 +1843,7 @@ pub fn house_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr:
 // window holding two walls.
 pub fn marks_body(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                   ref: float) -> text {
-  marks_body_at(wld, q0, r0, wq, hr, ref, false, box_none())
+  marks_body_at(wld, q0, r0, wq, hr, ref, claims_new(q0, r0, wq, hr))
 }
 
 // …and the body the marks one rectangle does NOT own declare — plan 26 `B4p`.
@@ -1679,18 +1856,24 @@ pub fn marks_body(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: in
 // the reader for it.
 pub fn marks_body_outside(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                           hr: integer, ref: float, b: Box) -> text {
-  marks_body_at(wld, q0, r0, wq, hr, ref, true, b)
+  marks_body_at(wld, q0, r0, wq, hr, ref, claims_of_house(b, q0, r0, wq, hr))
+}
+
+// …and the body the marks nothing has claimed yet declare — plan 26 `B4s`.
+pub fn marks_body_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                          hr: integer, ref: float, cl: Claims) -> text {
+  marks_body_at(wld, q0, r0, wq, hr, ref, cl)
 }
 
 fn marks_body_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
-                 ref: float, skip: boolean, b: Box) -> text {
+                 ref: float, cl: Claims) -> text {
   seen = "";
   first = true;
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       for d in [4, 5, 0] {
         mb_m = wall_of(wld, q, r, d, ref);
-        if !mark_left(wld, q, r, d, ref, skip, b) { continue; }
+        if !mark_left(wld, q, r, d, ref, cl) { continue; }
         mb_b = wall_type(wld, hex_voxel::world_region_at(wld, q, r), mb_m).wt_body;
         if first { seen = mb_b; first = false; }
         else if mb_b != seen { return ""; }

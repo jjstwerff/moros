@@ -1,0 +1,223 @@
+// EVERY STRUCTURE IN A WINDOW, BY PEELING — plan 26 `B4s`.
+//
+// ⛔ **A WINDOW HELD TWO DESCRIPTIONS AND EVERY REAL SCENE HOLDS MORE.** `B4o` split a
+// house's marks from a wall's; `B4p` gave that leftover the whole chain. Both took out
+// exactly ONE structure, because the exclusion was a `Box` — so a window with three
+// things in it described two and dropped the third in silence.
+//
+// ⚠ **WHAT MADE THE LOOP POSSIBLE IS `run_edges`.** Every other shape could always say
+// what it owns: a disc's boundary walk, an octagon's `poly_holds`, a rectangle's
+// `house_owns`. The RUN could not be asked at all until `B4q` extracted the stamper's
+// rule, and its answer was not stable until `B4r` — a peel built before either would
+// have subtracted the wrong edges on five headings in ten.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+use hex_grid;
+
+const YAW = 1.5707963267948966;
+const U = 0.25;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn house_at(w: VoxelWorld, x: float, z: float) {
+  s = EditSession {};
+  session_at(s, w, x, z, YAW);
+  assert(press_verb(s, w, s.es_author, VB_PLACE, "").ak_ok, "the fixture's house was refused");
+}
+
+fn tower_at(w: VoxelWorld, x: float, z: float) {
+  s = EditSession {};
+  session_at(s, w, x, z, 0.0);
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the fixture's tower was refused");
+}
+
+fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+}
+
+// The chain, peeled — the same order and the same readers `plan_panel` asks, written
+// out here so the LIBRARY's half can be tested without a picture.
+fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+        cl: Claims) -> text {
+  out = "";
+  for i in 0..8 {
+    rr = wall_recover_claimed(w, q0, r0, wq, hr, 0.0, cl);
+    if rr.rr_ok {
+      out = out + "run;";
+      if claim_run(cl, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, q0, r0, wq, hr) == 0 {
+        return out + "STUCK;";
+      }
+      continue;
+    }
+    dc = disc_recover_claimed(w, q0, r0, wq, hr, 0.0, cl);
+    if dc.dc_ok {
+      out = out + "disc;";
+      if claim_disc(cl, dc.dc_cq, dc.dc_cr, dc.dc_shell, q0, r0, wq, hr) == 0 {
+        return out + "STUCK;";
+      }
+      continue;
+    }
+    hh = house_recover_claimed(w, q0, r0, wq, hr, 0.0, cl);
+    if hh.hs_ok {
+      out = out + "house;";
+      hb = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
+      if claim_house(cl, hb, q0, r0, wq, hr) == 0 { return out + "STUCK;"; }
+      continue;
+    }
+    return out;
+  }
+  out + "CAPPED;"
+}
+
+// ── ⛔ THE ROW `B4p` MEASURED THE OTHER WAY ────────────────────────────────
+//
+// `B4p` pinned this scene as the limitation: *"a closed rim contributes no ends, so
+// `wall_read_run` sees exactly the wall's two and answers for the wall — correctly, and
+// with 54 of the tower's marks unmentioned."* The wall is still described first. The
+// difference is that its marks are then taken out, and what is left IS a disc.
+fn test_a_house_a_tower_and_a_wall_are_all_three_described() {
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  tower_at(w, 0.0, 0.0 - 12.0);
+  wall_at(w, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
+  cl = claims_new(0 - 12, 0 - 16, 25, 26);
+  got = peel(w, 0 - 12, 0 - 16, 25, 26, cl);
+  assert(got == "house;run;disc;",
+         "the peel described `{got}`, not a house, a run and a disc");
+  // ⚠ **AND NOTHING IS LEFT OVER**, which is the claim that says the three descriptions
+  // account for the field rather than merely being three answers.
+  left = marks_unclaimed(w, 0 - 12, 0 - 16, 25, 26, 0.0, cl);
+  assert(left == 0, "{left} marks are explained by none of the three");
+}
+
+// ── THE FLOOR CHANNEL IS WHAT ENDS THE LOOP ───────────────────────────────
+//
+// ⛔ **EVERY OTHER READER IS SUBTRACTED BY TAKING ITS MARKS AWAY, AND THE HOUSE READER
+// NEVER LOOKS AT A MARK.** `B4n`'s finding — the rectangle comes from the FLOOR — is
+// what makes it able to describe a house at all, and it is exactly why claiming edges
+// cannot silence it. Without the cell channel the peel does not give a wrong answer; it
+// gives the same right one for ever.
+fn test_claiming_a_houses_marks_is_not_what_silences_it() {
+  w = flat_world();
+  house_at(w, 0.0, 0.0);
+  h = house_recover(w, 0 - 10, 0 - 10, 21, 21, 0.0);
+  assert(h.hs_ok, "no rectangle: {h.hs_why}");
+  b = hex_shape::box_new(h.hs_cq, h.hs_cr, h.hs_wid, h.hs_dep, h.hs_rot, false);
+
+  // ⚠ EDGES ONLY — a run straight through the house takes several of its marks out.
+  // The reader must be unmoved, because it never reads them.
+  edges = claims_new(0 - 10, 0 - 10, 21, 21);
+  before = marks_unclaimed(w, 0 - 10, 0 - 10, 21, 21, 0.0, edges);
+  claim_run(edges, 0.0 - 9.0, 3.0, 9.0, 3.0, 0 - 10, 0 - 10, 21, 21);
+  after = marks_unclaimed(w, 0 - 10, 0 - 10, 21, 21, 0.0, edges);
+  assert(after < before,
+         "the fixture claimed none of the house's {before} marks, so this row proves "
+       + "nothing about the edge channel");
+  e = house_recover_claimed(w, 0 - 10, 0 - 10, 21, 21, 0.0, edges);
+  assert(e.hs_ok && e.hs_cq == h.hs_cq && e.hs_cr == h.hs_cr && e.hs_wid == h.hs_wid
+         && e.hs_dep == h.hs_dep,
+         "a house with some of its MARKS claimed reads back as a different rectangle — "
+       + "the reader has started reading them, and `B4n`'s finding wants re-measuring");
+
+  // …and with its floor accounted for, it is silent
+  cells = claims_new(0 - 10, 0 - 10, 21, 21);
+  claim_house(cells, b, 0 - 10, 0 - 10, 21, 21);
+  assert(!house_recover_claimed(w, 0 - 10, 0 - 10, 21, 21, 0.0, cells).hs_ok,
+         "a house whose own floor is accounted for is described a second time — the "
+       + "peel would answer it for ever");
+}
+
+// ⚠ **A CLAIM IS IDEMPOTENT AND SAYS WHETHER IT WAS NEW**, which is what lets the peel
+// notice a reader that answers without accounting for anything. Without it the loop's
+// only bound is the cap, and a cap is not a termination argument.
+fn test_a_claim_is_idempotent_and_reports_only_what_was_new() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  d = disc_recover(w, 0 - 10, 0 - 10, 21, 21, 0.0);
+  assert(d.dc_ok, "the fixture's tower did not recover: {d.dc_why}");
+  cl = claims_new(0 - 10, 0 - 10, 21, 21);
+  first = claim_disc(cl, d.dc_cq, d.dc_cr, d.dc_shell, 0 - 10, 0 - 10, 21, 21);
+  again = claim_disc(cl, d.dc_cq, d.dc_cr, d.dc_shell, 0 - 10, 0 - 10, 21, 21);
+  assert(first > 0, "claiming a disc's boundary claimed nothing");
+  assert(again == 0, "claiming it twice claimed {again} more");
+}
+
+// ⛔ **WHAT A SHAPE OWNS MUST OVERLAP WHAT IT EXPLAINED**, or the peel would subtract
+// somebody else's marks — which is `B4o`'s defect with the sign flipped. Measured
+// against the reader's own count rather than against the claim: two numbers from
+// opposite sides.
+fn test_each_shape_accounts_for_the_marks_it_was_recovered_from() {
+  // a disc
+  dw = flat_world();
+  tower_at(dw, 0.0, 0.0);
+  dd = disc_recover(dw, 0 - 10, 0 - 10, 21, 21, 0.0);
+  dcl = claims_new(0 - 10, 0 - 10, 21, 21);
+  claim_disc(dcl, dd.dc_cq, dd.dc_cr, dd.dc_shell, 0 - 10, 0 - 10, 21, 21);
+  assert(marks_unclaimed(dw, 0 - 10, 0 - 10, 21, 21, 0.0, dcl) == 0,
+         "a disc leaves {marks_unclaimed(dw, 0 - 10, 0 - 10, 21, 21, 0.0, dcl)} of its "
+       + "own {dd.dc_marks} marks unaccounted for");
+
+  // a run
+  rw = flat_world();
+  wall_at(rw, 0.0 - 9.0, 0.0, 6.0, 0.0);
+  rr = wall_recover(rw, 0 - 14, 0 - 14, 29, 29, 0.0);
+  assert(rr.rr_ok, "the fixture's wall did not recover");
+  rcl = claims_new(0 - 14, 0 - 14, 29, 29);
+  claim_run(rcl, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, 0 - 14, 0 - 14, 29, 29);
+  assert(marks_unclaimed(rw, 0 - 14, 0 - 14, 29, 29, 0.0, rcl) == 0,
+         "a run leaves {marks_unclaimed(rw, 0 - 14, 0 - 14, 29, 29, 0.0, rcl)} of its "
+       + "own {rr.rr_marks} marks unaccounted for");
+
+  // a house — its boundary AND the mitre one cell past it
+  hw = flat_world();
+  house_at(hw, 0.0, 0.0);
+  hh = house_recover(hw, 0 - 10, 0 - 10, 21, 21, 0.0);
+  hcl = claims_new(0 - 10, 0 - 10, 21, 21);
+  claim_house(hcl, hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep,
+                                      hh.hs_rot, false), 0 - 10, 0 - 10, 21, 21);
+  assert(marks_unclaimed(hw, 0 - 10, 0 - 10, 21, 21, 0.0, hcl) == 0,
+         "a house leaves {marks_unclaimed(hw, 0 - 10, 0 - 10, 21, 21, 0.0, hcl)} marks "
+       + "unaccounted for — including its mitre, which `B4o` measured it owns");
+}
+
+// ── ⛔ AND WHAT THE PEEL STILL CANNOT DO, MEASURED RATHER THAN ASSUMED ─────
+//
+// ⛔ **TWO OF A KIND ARE ONE FIELD NO READER CAN EXPLAIN, AND THAT IS R1 REFUSING
+// CORRECTLY.** `disc_fits` and `box_fits` compare over the WHOLE field they are given,
+// in both directions — *every boundary edge is marked AND every mark is a boundary
+// edge* — which is what stops a disc being accepted with a wall drawn across it. The
+// price is that a field holding two discs is a field no single disc reproduces.
+//
+// ⚠ **THE PEEL DOES NOT HELP HERE AND CANNOT**: it subtracts what has been described,
+// and nothing has been. What this wants is SEGMENTATION — the marks split into
+// components before any reader is asked — which is a different mechanism and a
+// different step. These numbers are its baseline.
+fn test_two_of_a_kind_are_refused_and_the_count_says_how_many() {
+  hw = flat_world();
+  house_at(hw, 0.0, 0.0);
+  house_at(hw, 0.0 - 16.0, 0.0);
+  hcl = claims_new(0 - 18, 0 - 8, 26, 20);
+  assert(peel(hw, 0 - 18, 0 - 8, 26, 20, hcl) == "",
+         "two houses in one window are described now — the reader has gained a way to "
+       + "isolate one floor from another, and this row is the news");
+  assert(marks_unclaimed(hw, 0 - 18, 0 - 8, 26, 20, 0.0, hcl) > 0,
+         "two houses left nothing unexplained while describing nothing");
+
+  ww = flat_world();
+  wall_at(ww, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
+  wall_at(ww, 6.0, 0.0 - 3.0, 6.0, 6.0);
+  wcl = claims_new(0 - 14, 0 - 8, 26, 18);
+  assert(peel(ww, 0 - 14, 0 - 8, 26, 18, wcl) == "",
+         "two walls in one window are described now — `wall_read_run` refuses a marking "
+       + "with four ends, so this row is the news");
+}

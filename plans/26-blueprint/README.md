@@ -226,6 +226,21 @@ heading — was never affected and four of eight sampled headings were; the corp
 instrument rather than a fact; and a description that genuinely is not its wall must still
 report a residual, or the fix has been made by switching the measurement off.
 
+**`B4s`** — **expected result**: a window holding a house, a tower and a wall draws
+**three** descriptions — `house 0,4 4x5 rot 3 (8 fit) · 4 stray + run d6 p8 + disc 0,-8
+shell 156` — with **nothing** unexplained, where `B4p` drew two and dropped the third in
+silence. **Invariant**: *a description is subtracted before the next question is asked,
+and what it subtracts is the shape's own membership* — a disc's boundary walk, an
+octagon's `poly_holds`, a rectangle's `house_owns`, and for a run `run_edges`, which
+`B4q` made askable and `B4r` made stable. **Negative controls**: a window holding ONE
+structure must still draw exactly one description, or the loop is running where it should
+not; claiming a house's MARKS must leave it describable and claiming its CELLS must
+silence it, because the house reader never reads a mark and edges alone would loop for
+ever; a claim must report only what was NEW, since that is the peel's whole termination
+argument and a cap is not one; and two of a kind — two houses, two walls, two rims — must
+still be **refused with the marks counted**, because the peel subtracts what has been
+described and nothing has been.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -264,6 +279,7 @@ as a byte.
 | **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
 | **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
 | **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red, **two of them green** | ✅ **SHIPPED** `4d47020` |
+| **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 

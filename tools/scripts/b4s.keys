@@ -1,0 +1,29 @@
+# B4s — A VILLAGE: EVERY STRUCTURE IN THE WINDOW, BY PEELING
+#
+# ⛔ **`B4o` ASKED FOR THIS PICTURE AND SAID THE CORPUS DID NOT HAVE IT** — *"a window
+# with three structures describes the house and one of the other two. What decides
+# whether that matters is a picture of a village."*
+#
+# ⚠ **`B4p` MEASURED THE COST EXACTLY.** A closed rim contributes no chain ENDS, so
+# `wall_read_run` sees only the wall's two and answers for the wall — correctly, with the
+# tower's 54 marks unmentioned. The peel takes each description's own marks out before
+# asking the next question, so the rim is alone by the time it is asked about.
+#
+# ⚠ **AND THE ORDER IN THE CAPTION IS THE CHAIN'S, NOT THE SCENE'S**: house, then run,
+# then disc. The house is first because the round readers refuse a field holding one.
+#
+#   make plan-view WORLD=b4s Q0=-12 Q1=13 R0=-16 R1=10 REF=2.0
+
+echo --- a house
+at 0 0 90
+verb place
+
+echo --- a round tower, six clear cells south of it
+at 0 -12 0
+verb tower
+
+echo --- and a wall down the west side
+at -9 -3 0
+verb run
+at -9 6 0
+verb run

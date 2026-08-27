@@ -507,6 +507,11 @@ fn test_a_leftover_of_two_structures_is_refused_rather_than_described() {
 // a wall"*. It is pinned here because `B4o`'s *"the split is one level deep"* reads like
 // a gap and is in fact two different behaviours: **refused** when the leftover has no
 // ends to offer, and **one of them described** when it has exactly two.
+//
+// ✅ **AND THE PICTURE NO LONGER DROPS THE THIRD — plan 26 `B4s`.** This row is about the
+// Box-shaped door, which takes out exactly one structure and always will. The PEEL takes
+// the wall's own marks out next and the rim is then alone: `peel.loft` measures this same
+// scene answering `house; run; disc;` with **nothing** left over.
 fn test_a_third_structure_is_dropped_rather_than_reported() {
   w = housed_and_towered();
   d = run_between(0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0, WALL_MAT);
