@@ -232,7 +232,7 @@ as a byte.
 | **`B4m`** — the octagon's DESCRIPTION, and which reader the palette asks | M | `octagon.loft` — the centre and shell recover at two sizes and off the origin, a gapped rim and an over-large candidate are refused, **a disk and an octagon are measured to be one field at four sizes** and the admitted set is what separates them; `planview.loft` — the outline is eight points read out of the picture, the palette decides which description is drawn, an unknown body falls through, and `plan_tally` gets the five rows the driver's counter never had; five faults seen red | ✅ **SHIPPED** `552343b` |
 | **`B4n`** — a HOUSE's description: the rectangle its floor determines | M | `house_box.loft` — the membership pinned against `box_fill` at twelve rotations, the drawn corners round-tripped through `box_to_local`, the anchor the house's own cell and not the origin, a bitten floor refused with its count, the class reported, and **`B0`'s four stray edges measured at last**; `planview.loft` — the rectangle drawn as four points read out of the picture and the caption carrying both residuals; five faults seen red | ✅ **SHIPPED** `0efad03` |
 | **`B4o`** — two descriptions in one window: whose mark is this? | M | `house_box.loft` — a house accounts for every one of its own marks and leaves none over, the mitre count is unmoved by a wall entering the window, **`B1`'s wall recovers once the house's marks are attributed**, and a wall alone reads identically through both doors; `planview.loft` — both descriptions drawn and tallied as two, and the caption not calling the wall the house's mitre; five faults seen red | ✅ **SHIPPED** `8e97ae0` |
-| **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** |
+| **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
 
 ### Why `B0` is one phase and not two
 
@@ -1919,6 +1919,126 @@ nothing here has measured. ⚠ **And the split is one level deep** — a window 
 structures describes the house and one of the other two. What decides whether that
 matters is a picture of a village, which nothing in the corpus has yet.
 
+
+## What `B4p` turned up
+
+**Shipped `686e4d4`.** `hex_editor::mark_left` + `box_none`, and a second door on each
+reader — `disc_recover_outside`, `oct_recover_outside`, `marks_body_outside`;
+`hex_mesh::plan_describe` + `PlanDesc` + `desc_phrase`, which is the chain extracted from
+`plan_panel`; `tools/scripts/b4p.keys`. 18 rows in `house_box.loft` and 47 in
+`planview.loft`.
+
+![a house and a round tower, both described](../../doc/claude/img-house-tower-b4p.png)
+
+*`b4p.keys` — a house and a round tower six clear cells south of it, in one window. Both
+dashed blue outlines are descriptions; the four stubs at the house's corners are its
+mitre. `make plan-view WORLD=b4p Q0=-7 Q1=8 R0=-15 R1=9 REF=2.0`.*
+
+### ⛔ `B4o`'s second asking was an EXCERPT of the first
+
+`B4o` wrote the leftover's reader out by hand in `plan_panel` and named what it left out —
+*"the leftover reader is the run reader alone; a leftover disc or octagon is a further
+step"*. Read as a limitation that is a missing capability. It is not: **every round reader
+it needed already existed and was already green**, and a house standing near a tower was
+enough to make both unreachable. The picture said `+ 54 unexplained` about a rim this
+editor had stamped four lines earlier in the same script.
+
+✅ The chain is one function now — run, then the palette's round reader — and a single flag
+decides only WHOSE marks. The exclusion is `house_owns`, the predicate
+`edges_mat_outside` was already asking, reached through `mark_left`; `disc_recover_outside`
+and `oct_recover_outside` are `disc_recover` and `oct_recover` **with that flag**, not
+second copies of two searches whose every constant (`disc_span` over `tower_pad`, the
+ascending-shell `break`, the store read once into a flat table, the tight comparison box)
+was a measured finding.
+
+### ⛔ The palette must be asked of the LEFTOVER, and the window's answer is the wrong one
+
+A house of `WALL_MAT` beside an octagonal tower makes the **window's** marks disagree about
+the body, so `marks_body` answers `""` — which is correct and is the honest report that a
+window is not one structure. A chain reading that reaches the **disc** reader, which
+refuses an octagon correctly, having been asked the wrong question. So §2.5's *an octagon
+tower is never deduced; it is stored* needed a second door too, or it stopped applying the
+moment anything else stood in the picture.
+
+⚠ **AND THE ROW THAT SAYS SO ASSERTS BOTH ENDS**: the window's body is measured **not** to
+be `THICK_OCT` and the leftover's measured to be, in one test — otherwise a fixture where
+the two happened to agree would pass a chain that never asked the second question.
+
+### The split is one level deep, and that is TWO behaviours rather than one gap
+
+`B4o` wrote *"a window with three structures describes the house and one of the other
+two"*. Measured, it is two different answers with different failure modes:
+
+| the leftover holds | what happens |
+|---|---|
+| two rims (house + two towers) | ⛔ **refused** — no ends to offer and no single disc, so the caption counts **108** marks it cannot explain |
+| a rim and a wall (house + tower + wall) | ⚠ **the wall is described** — a closed rim contributes no ends, so `wall_read_run` sees exactly the wall's two and answers for the wall, correctly, with the tower's 54 marks **unmentioned** |
+
+⚠ **The second is `wall_recover`'s own documented answer** — *"it does not check the path
+in between … a caller must not treat `rr_ok` as this is a wall"* — and it is what makes the
+leftover COUNT in the caption load-bearing rather than decoration: it is the only place the
+dropped structure appears at all. Both are pinned, because a limitation that reads as one
+sentence is two things to fix.
+
+### The picture needed no new element, and the tally needed no new row
+
+The circle and the octagon are `B4h`'s and `B4m`'s own SVG, emitted from one place now
+instead of two, and `plan_tally` has counted all four classes since `B4m`. ⚠ **That is the
+counter's own defect not recurring for the first time in four steps** — `B1`, `B4h` and
+`B4m` each added a description the driver's tally could not see, and `B4m` moved it into
+`plan_tally` where a test can reach it. A second description of a shape it already knew
+cost nothing.
+
+⚠ **The one thing that did need saying is the CAPTION.** The window's own description has
+read `d0 p5` for a run since `B1` — the run is the one kind whose noun `desc ` implies — and
+a leftover has to spell it, because `+ d0 p5` reads as more of the phrase before it.
+`desc_phrase` is one function deciding both, so the two spellings cannot drift.
+
+### The sabotage sweep
+
+Five faults, restored from copies taken before the sweep — never `git checkout` — with the
+two readers, their second door, and **the picture actually asking it** asserted present
+before row 0, and every row separating *the suite went red* from *the package would not
+build* rather than reading a red as a catch.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the leftover gets the run reader alone — `B4o`'s behaviour restored | `planview` |
+| 2 | the exclusion is never applied, so every mark is a leftover mark | `house_box` · `planview` |
+| 3 | the palette is read off the WHOLE window again | `house_box` · `planview` |
+| 4 | the exclusion reaches the extent scan and **not** the comparison table | `house_box` · `planview` |
+| 5 | the picture asks the whole-window disc reader — built and not called | `planview` |
+
+⚠ **ROWS 1 AND 5 ARE PICTURE FAULTS AND `house_box` IS GREEN IN BOTH, WHICH IS THE POINT
+RATHER THAN A GAP.** The library rows are about what the readers answer; the wiring is a
+claim only the picture can carry, and a sweep where every row reddened everything would say
+the two suites were asking one question. ⚠ **And row 4 is the one a single-site fault could
+not have found**: the extent scan and the comparison table are two reads of the field, and a
+step that excluded marks from one and not the other leaves both readers running, both
+answering, and the disc quietly refused.
+
+### The pre-push proof ran per FILE, and `B4n` is why
+
+`make lib-test` calls `loft test` once per PACKAGE — one process, one 300-second deadline —
+and `hex_editor` reached it at `B4n` at 59 files. It still does, and not because of this
+step: the deadline fired inside `hex_voxel`'s `stored_present`, and the interpreted per-file
+run measured **before** these rows existed already summed past it — `octagon` alone is 114 s
+and `disc` 34 s. `TEST_NATIVE=1 tools/run-tests.sh hex_editor hex_mesh hex_part` is what
+`B4n` added for exactly this, and it is the proof this step rests on: **92 files,
+green on both backends — 145 s interpreted and 116 s `--native`.** ⚠ **AND `make lib-test` IS STILL LEFT ALONE**, for `B4n`'s reason —
+changing what the pre-push gate MEANS is a decision, not a fix.
+
+### What it deliberately does not do
+
+⚠ **THE SPLIT IS STILL ONE LEVEL DEEP** — and the table above says what that costs in each
+direction. Peeling further needs a second ownership rule: `house_owns` is the rectangle's
+mitre reach, and *what a run owns* or *what a rim owns* is a different question that nothing
+here has measured. ⚠ **AND THE HOUSE IS STILL THE ONLY STRUCTURE THAT PEELS.** A window
+holding two houses describes one of them, because `house_recover` reads the window's whole
+FLOOR and the exclusion is over marks. ⚠ **And a window whose marks all declare `THICK_OCT`
+is still an octagon or nothing** — `pd_stop`, `B4m`'s behaviour unchanged: the palette named
+the reader, so a refusal there is the answer rather than a reason to ask the house.
 
 ## Open questions
 

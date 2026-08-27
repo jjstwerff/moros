@@ -96,6 +96,27 @@ those marks are not one path, because they are not one structure.
 
 ![a house and a wall, both described](img-two-desc-b4o.png)
 
+✅ **AND `B4p` GAVE THE SECOND STRUCTURE THE WHOLE CHAIN.** `B4o`'s leftover reader was the
+run reader alone and it said so, so a house with a **tower** beside it captioned `+ 54
+unexplained` about a rim this editor had stamped itself. The chain is one function now — run,
+then the palette's round reader — asked of the window and then of what the rectangle does not
+own, so the second asking cannot be a smaller version of the first. ⚠ **And the palette has to
+be asked of the LEFTOVER**: a house of `WALL_MAT` beside an octagonal tower makes the *window's*
+marks disagree about the body, so `marks_body` answers `""` — the honest report that a window is
+not one structure — and a chain reading that reaches the DISC reader, which refuses an octagon
+correctly, having been asked the wrong question. That is §2.5's *an octagon tower is never
+deduced; it is stored* reaching a scene with more than one thing in it.
+
+![a house and a round tower, both described](img-house-tower-b4p.png)
+
+⚠ **THE SPLIT IS STILL ONE LEVEL DEEP, AND THAT IS TWO BEHAVIOURS RATHER THAN ONE GAP** —
+measured, not assumed. Two towers beside a house offer no ends at all, so the leftover is
+**refused** and the caption counts the 108 marks it cannot explain. A tower **and** a wall: the
+rim is a closed loop contributing no ends, so `wall_read_run` sees exactly the wall's two and
+answers for the wall — correctly, and with the tower's 54 marks unmentioned. So a third structure
+costs **silence** rather than a refusal, and the leftover COUNT in the caption is the only place
+that absence can be seen.
+
 ⚠ **AND "ALL POSSIBLE SHAPES" IS A CONSTRAINT ON THE DESIGN, NOT A LATER PHASE.** Roads and
 railroads are domain **B** (`hex_way` linework, `D`'s 24 directions); vehicles are `hex_rig`
 assemblies with joints, already carrying the cart. **The editor must not be house-shaped**: what
