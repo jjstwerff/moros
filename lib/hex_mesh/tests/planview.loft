@@ -1057,3 +1057,174 @@ fn test_a_stamped_slot_nobody_declared_is_still_loud() {
   assert(attr(odd, "data-thick") == "0",
          "an undeclared byte reports thickness {attr(odd, "data-thick")}");
 }
+
+// ── `B4m` — AND WHICH ROUND READER? THE PALETTE SAYS ───────────────────────
+//
+// ⛔ **§2.5: *an octagon tower is never deduced; it is stored*, and the reason is
+// measured rather than argued.** A disk and an octagon are the SAME FIELD at four
+// sizes — `disc 156 == octagon 192` among them — so no reader looking only at cells
+// can tell them apart there. `hex_editor::marks_body` is what picks the model, and
+// `oct_recover` only offers shells the gesture can actually build.
+
+fn oct_typed_world(shell: integer, body: text) -> VoxelWorld {
+  w = flat_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+           [hex_voxel::PalEntry { pl_slot: 5, pl_name: "tower body={body}" }]);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, 0.0);
+  assert(hex_editor::session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(hex_editor::session_select_shell(s, shell).ak_ok, "shell {shell} refused");
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the tower was refused");
+  w
+}
+
+fn test_an_octagon_is_drawn_as_an_octagon() {
+  w = oct_typed_world(156, hex_editor::WALL_BODY_OCT);
+  svg = plan_svg(w, 0 - 10, 0 - 10, 21, 21, 8.0, "oct");
+
+  cap = caption(svg);
+  assert(cap.contains("octagon 0,0 shell 156"),
+         "the caption does not name the octagon it drew: {cap}");
+  assert(tag_count(svg, "<polygon class='oct'") == 1,
+         "{tag_count(svg, \"<polygon class='oct'\")} octagon outlines drawn, not one");
+  // ⚠ **THE OUTLINE IS EIGHT POINTS, READ OUT OF THE PICTURE** — a `<polygon>` with
+  // seven would draw a septagon that measures as a description all the same.
+  pts = "";
+  for ln in svg.split('\n') {
+    if ln.contains("<polygon class='oct'") { pts = ln; }
+  }
+  assert(pts != "", "the octagon line did not come back out of the picture");
+  // ⚠ **THE POINTS ATTRIBUTE, NOT THE LINE** — the line also carries `rgb(30,90,220)`,
+  // whose two commas made the first version of this row report ten points for eight.
+  pa = pts.find("points='");
+  assert(pa != null, "the outline carries no points at all: {pts}");
+  prest = pts[(((pa ?? 0) + 8) as i32)..];
+  pe = prest.find("'");
+  assert(pe != null, "the points attribute is not closed: {pts}");
+  plist = prest[0..(pe ?? 0)];
+  npt = 0;
+  for pc in plist.split(',') { npt = npt + 1; }
+  assert(npt == 9,
+         "the outline carries {npt - 1} points, not eight: {plist}");
+}
+
+// ⛔ **THE SAME FIELD, A DIFFERENT PALETTE, A DIFFERENT PICTURE.** This is the row
+// that says the shape came from the declaration and not from the cells.
+fn test_the_palette_decides_which_description_is_drawn() {
+  ow = oct_typed_world(156, hex_editor::WALL_BODY_OCT);
+  cw = oct_typed_world(156, "THICK_CURVED");
+
+  osvg = plan_svg(ow, 0 - 10, 0 - 10, 21, 21, 8.0, "o");
+  csvg = plan_svg(cw, 0 - 10, 0 - 10, 21, 21, 8.0, "c");
+  assert(caption(osvg).contains("octagon"), "the octagon world drew no octagon");
+  assert(caption(csvg).contains("disc"), "the round world drew no disc");
+  // …and it is the OUTLINE that changed, not only the sentence.
+  assert(tag_count(osvg, "<polygon class='oct'") == 1
+         && tag_count(osvg, "<circle class='disc'") == 0,
+         "the octagon world drew a circle or no polygon");
+  assert(tag_count(csvg, "<circle class='disc'") == 1
+         && tag_count(csvg, "<polygon class='oct'") == 0,
+         "the round world drew a polygon or no circle");
+
+  // ⛔ **AND THE OBVIOUS CONTROL HERE IS BLIND, WHICH IS PLAN 26 `B4l`'s OWN FINDING
+  // BITING A SECOND TIME.** *"…and the two FIELDS differ, so this is not one field
+  // described two ways"* was written as a mark COUNT and went red: at shell 156 the
+  // octagon is 51 cells with a **54**-edge rim and the disk is 55 cells with a
+  // **54**-edge rim. `hex_editor/tests/octagon.loft` is where that claim belongs and
+  // where it is made byte for byte over the field — a picture cannot add to it, and a
+  // count here could only mislead.
+  assert(tag_count(osvg, FIELD) == tag_count(csvg, FIELD),
+         "the two rims are {tag_count(osvg, FIELD)} and {tag_count(csvg, FIELD)} marks "
+       + "— they no longer coincide at shell 156, so the note above is stale and wants "
+       + "re-measuring rather than deleting");
+}
+
+// ⚠ **A BODY THIS TREE DOES NOT KNOW FALLS THROUGH TO THE ROUND READER**, which is
+// the open vocabulary again: `@HB-X69`'s extension point must not be a list the
+// picture closes.
+fn test_an_unknown_body_still_draws_the_round_description() {
+  w = oct_typed_world(156, "THICK_MYSTERY");
+  cap = caption(plan_svg(w, 0 - 10, 0 - 10, 21, 21, 8.0, "u"));
+  assert(cap.contains("disc 0,0 shell 156"),
+         "an unknown body did not fall through to the disc reader: {cap}");
+}
+
+// ── `B4m` — THE TALLY THE DRIVER PRINTS ────────────────────────────────────
+//
+// ⛔ **THIS COUNTER HAS BEEN WRONG THREE TIMES, EACH TIME IN A DRIVER WITH NO TEST.**
+// `B1`: 11 edges for 10 marks and one run. `B4h`: *description refused* for a disc
+// whose description was three lines above. `B4m`: **325 cells and refused** for a
+// picture captioned *cells 324 … desc octagon 0,0 shell 468*. All three are one shape
+// — a tally matched on the ELEMENT name, in a program the suite could not see. These
+// rows are the instrument that landing needed.
+
+fn tally_world_run() -> VoxelWorld {
+  w = flat_world();
+  d = hex_editor::run_between(0.0, 0.0, 6.0, 0.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the run was refused: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  tm = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, tm);
+  w
+}
+
+fn test_a_description_is_counted_once_whichever_shape_it_is() {
+  // a run, a disc and an octagon: three different elements, one description each
+  rt = plan_tally(plan_svg(tally_world_run(), 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
+  assert(rt.pt_descs == 1, "a run tallied {rt.pt_descs} descriptions");
+
+  ct = plan_tally(plan_svg(oct_typed_world(156, "THICK_CURVED"),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "c"));
+  assert(ct.pt_descs == 1, "a disc tallied {ct.pt_descs} descriptions");
+
+  ot = plan_tally(plan_svg(oct_typed_world(156, hex_editor::WALL_BODY_OCT),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "o"));
+  assert(ot.pt_descs == 1, "an octagon tallied {ot.pt_descs} descriptions");
+
+  // …and a picture with no marks has no description, or the rows above would pass for
+  // a counter that answers 1 to everything.
+  bt = plan_tally(plan_svg(flat_world(), 0 - 8, 0 - 8, 9, 9, 2.0, "bare"));
+  assert(bt.pt_descs == 0 && bt.pt_marks == 0,
+         "a bare window tallied {bt.pt_descs} descriptions and {bt.pt_marks} marks");
+}
+
+// ⛔ **THE ROW THAT WOULD HAVE CAUGHT `B4m`'s OWN DEFECT.** An octagon is drawn as a
+// `<polygon>`, which is also what a CELL is drawn as — so a tally keyed on the element
+// counts the description as a cell and reports one more cell than the window holds.
+fn test_a_description_never_lands_in_the_cell_count() {
+  bare = plan_tally(plan_svg(flat_world(), 0 - 10, 0 - 10, 21, 21, 8.0, "bare"));
+  ot = plan_tally(plan_svg(oct_typed_world(156, hex_editor::WALL_BODY_OCT),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "o"));
+  assert(ot.pt_descs == 1, "the fixture drew no octagon to be miscounted");
+  assert(ot.pt_cells == bare.pt_cells,
+         "a window with an octagon in it tallies {ot.pt_cells} cells against the same "
+       + "window's {bare.pt_cells} — the description landed in the cell count");
+  // …and the same for the disc, which is a `<circle>` and could equally be claimed by
+  // some future counter.
+  ct = plan_tally(plan_svg(oct_typed_world(156, "THICK_CURVED"),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "c"));
+  assert(ct.pt_cells == bare.pt_cells,
+         "a window with a disc in it tallies {ct.pt_cells} cells against {bare.pt_cells}");
+}
+
+// ⚠ **THE MARKS ARE THE FIELD'S AND NOT THE DESCRIPTION'S**, which is `B1`'s own
+// eleven-for-ten: a run is a `<line>` too.
+fn test_the_mark_count_is_the_field_alone() {
+  w = tally_world_run();
+  t = plan_tally(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
+  assert(t.pt_descs == 1, "the fixture drew no run");
+  assert(t.pt_marks == tag_count(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run"), FIELD),
+         "the tally counts {t.pt_marks} marks against the picture's own "
+       + "{tag_count(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, \"run\"), FIELD)} — the "
+       + "description is being counted as field");
+}
+
+fn test_the_level_count_is_what_reached_the_file() {
+  one = plan_tally(plan_levels(flat_world(), 0, 0, 5, 5, [2.0], plan_bare(), "one"));
+  two = plan_tally(plan_levels(flat_world(), 0, 0, 5, 5, [2.0, 5.0], plan_bare(), "two"));
+  assert(one.pt_levels == 1 && two.pt_levels == 2,
+         "the tally reports {one.pt_levels} and {two.pt_levels} levels, not 1 and 2");
+}
+

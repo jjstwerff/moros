@@ -947,6 +947,274 @@ pub fn disc_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: 
   disc_no("{marks} marks, and no disc of any shell reproduces them", marks)
 }
 
+// ── AN OCTAGONAL WALL'S DESCRIPTION — plan 26 `B4m`, BLUEPRINT §2.5 ────────
+//
+// ⛔ **THE PALETTE PICKS THE MODEL AND THE FIELD FIXES ITS PARAMETERS.** §2.5 says the
+// first half — *"an octagon tower is never deduced; it is stored"* — and names the
+// hazard that makes it load-bearing: anything recovering a tower's shape from GEOMETRY
+// gets `rebuild_construct`'s **confident hexagon**, `sides = 6` with nothing
+// unexplained and no warning, which is `probe/l1`'s plausible-wrong-answer one shape
+// over. So *which reader is asked* is a palette question, and only *which centre and
+// which shell* is a field question.
+//
+// ⚠ **THE SECOND HALF IS `B4h`'s, UNCHANGED**: `FORMAL_CORE` §6's R1 regime,
+// generate-and-compare, never a fit. A candidate octagon is DRAWN by the same
+// `poly_holds` membership `oct_fill` stamps with and compared to the store edge for
+// edge; what comes back reproduces the field exactly or is refused.
+//
+// ⚠ **AND THE TWO READERS MUST DISAGREE ABOUT EVERY WINDOW THEY BOTH SEE**, which is
+// what the palette buys. At every shell the tower gesture admits, a disk is not an
+// octagon and an octagon is not a disk — `fit_oct_shell` refuses the seven where they
+// coincide — so asking the wrong reader gives a refusal rather than a wrong shape.
+// That is a property worth having and not one to rely on: a world whose palette says
+// `THICK_CURVED` over an octagon's field draws **no description**, which is the honest
+// answer, and `octagon.loft` measures it rather than assuming it.
+pub struct OctRead {
+  ot_ok:    boolean,
+  ot_why:   text,
+  ot_cq:    integer,        // the centre CELL — exact, the same way a disc's is
+  ot_cr:    integer,
+  ot_shell: integer,        // …and the size only as a SHELL, coarser even than a disc's
+  ot_x:     float,          // the centre in the drawing's own frame
+  ot_z:     float,
+  ot_marks: integer,        // the stored edges it accounts for, all of them
+}
+
+// ⚠ A REFUSAL CARRIES ITS MARK COUNT — `disc_no`'s rule, and for its reason: *no marks
+// at all* and *marks I could not explain* are different facts.
+fn oct_no(why: text, marks: integer) -> OctRead {
+  OctRead { ot_ok: false, ot_why: why, ot_cq: 0, ot_cr: 0, ot_shell: 0 - 1,
+            ot_x: 0.0, ot_z: 0.0, ot_marks: marks }
+}
+
+// Does the octagon `(vk, vm)` about `(cq, cr)` reproduce the window's wall bytes?
+//
+// ⚠ **BOTH DIRECTIONS, OVER THE WHOLE WINDOW** — `disc_fits`'s rule: *every boundary
+// edge is marked* and *every mark is a boundary edge* are two claims, and asking only
+// the first accepts an octagon with a wall drawn across it.
+//
+// ⚠ **THE POLYGON IS THE CALLER'S**, because building it here would call `sqrt`, `cos`
+// and `sin` and allocate two vectors **twelve times per cell** — `disc_recover`'s own
+// profile is the warning: the cost was never the arithmetic it looked like.
+fn oct_fits(marks: vector<boolean>, vk: vector<integer>, vm: vector<integer>,
+            cq: integer, cr: integer,
+            q0: integer, r0: integer, wq: integer, hr: integer) -> boolean {
+  bk = lattice_k(cq, cr);
+  bm = lattice_m(cq, cr);
+  // ⛔ **MEMBERSHIP ONCE PER CELL, NOT ONCE PER EDGE — AND A DEADLINE IS WHAT SAID
+  // SO.** The first version asked `poly_holds` for the cell and for each of its six
+  // neighbours: **seven calls per cell, per candidate**, and `loft test` hit its own
+  // 300-second deadline inside `oct_recover` rather than failing a row. ⚠ The run
+  // before that printed **no result line at all and exited 0**, which reads exactly
+  // like a suite that passed — `CLAUDE.md`'s *a grep over a log defaults to absent*,
+  // met head on. `disc_fits` can afford the naive shape because `vec_n2_4` is four
+  // integer operations; `poly_holds` walks eight edges twice.
+  //
+  // The table covers the box plus one ring, so every neighbour of a scanned cell is
+  // in it and no lookup falls outside.
+  tw = wq + 2;
+  th = hr + 2;
+  inside: vector<boolean> = [];
+  for r in r0 - 1..r0 + hr + 1 {
+    for q in q0 - 1..q0 + wq + 1 {
+      inside += [hex_form::poly_holds(vk, vm, lattice_k(q, r) - bk,
+                                              lattice_m(q, r) - bm)];
+    }
+  }
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      base = (((r - r0) * wq) + (q - q0)) * 6;
+      inq = inside[((r - r0 + 1) * tw) + (q - q0 + 1)] ?? false;
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        want = inq != (inside[((nr - r0 + 1) * tw) + (nq - q0 + 1)] ?? false);
+        if want != (marks[base + d] ?? false) { return false; }
+      }
+    }
+  }
+  true
+}
+
+// The octagon's OWN half-extent in cells, measured off the shape.
+//
+// ⚠ **NOT `tower_pad`, AND NOT `disc_span` EITHER** — `disc_span`'s comment records
+// what using the pad as an extent cost, and an octagon is not a disc of the same
+// shell: it is smaller at most sizes and reaches past the circumcircle at 324 and 576.
+// Measuring it off the fill is the only version that cannot be wrong by a shell.
+pub fn oct_span(shell: integer) -> integer {
+  pad = tower_pad(shell);
+  cells = hexset_chunk(0 - pad, 0 - pad, 2 * pad + 1, 2 * pad + 1);
+  oct_fill(0, 0, shell, cells);
+  best = 0;
+  for r in 0 - pad..pad + 1 {
+    for q in 0 - pad..pad + 1 {
+      if !hexset_get(cells, q, r) { continue; }
+      aq = q; if aq < 0 { aq = 0 - aq; }
+      ar = r; if ar < 0 { ar = 0 - ar; }
+      if aq > best { best = aq; }
+      if ar > best { best = ar; }
+    }
+  }
+  best
+}
+
+// The octagon these marks describe, or a refusal that says which silence it is.
+//
+// ⚠ **THE SEARCH IS `disc_recover`'s, DELIBERATELY THE SAME SHAPE** — candidate
+// centres from the marks' own extent, shells ascending with a `break` once the shape
+// outgrows them, and the store read ONCE into a flat table. Each of those three was a
+// measured correctness or cost finding there, and re-deriving them differently here is
+// how two readers of one field come to disagree.
+pub fn oct_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   ref: float) -> OctRead {
+  lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
+  marks = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      // ⚠ THE THREE LATTICE DIRECTIONS A CELL OWNS — `edge_owner`'s table, as
+      // `disc_recover` reads them and for the same reason.
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }
+        if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
+        if q < lo_q { lo_q = q; }
+        if q > hi_q { hi_q = q; }
+        if r < lo_r { lo_r = r; }
+        if r > hi_r { hi_r = r; }
+        marks = marks + 1;
+      }
+    }
+  }
+  if marks == 0 { return oct_no("no wall marks in this window", 0); }
+  // ⚠ **THE COMPARISON BOX IS THE MARKS' OWN EXTENT PLUS TWO, NOT THE WINDOW.**
+  // Every mark is inside `lo..hi` by construction, so a scan of the whole window spends
+  // its first rows agreeing about empty ground before it can reach a disagreement —
+  // which is the worst case for a check that exists to fail fast, and it is every
+  // candidate that does not fit. ⚠ **The margin is what catches a candidate too BIG
+  // for its marks**: such a shape has no boundary inside the box at all, so `want` is
+  // false where a mark is true and it is refused there — the ring makes that a
+  // statement rather than a hope, and `test_an_octagon_larger_than_its_marks_is_refused`
+  // is where it is measured.
+  bq0 = lo_q - 2;
+  br0 = lo_r - 2;
+  bwq = hi_q - lo_q + 5;
+  bhr = hi_r - lo_r + 5;
+  table = disc_marks(wld, bq0, br0, bwq, bhr, ref);
+  span = hi_q - lo_q;
+  if hi_r - lo_r > span { span = hi_r - lo_r; }
+  for shell in hex_shape::arc_shells_upto(TOWER_SHELL_MAX) {
+    if 2 * oct_span(shell) > span + 3 { break; }
+    // ⛔ **THE READER'S ADMITTED SET IS THE GESTURE'S, AND MEASURING WHY IS THIS
+    // STEP.** `FORMAL_CORE` §6's R1 is *"the shape is in the ADMITTED SET and the
+    // field determines it uniquely"*, and the admitted set for an octagon is what
+    // `fit_oct_shell` accepts. Without this line the reader answers shells no gesture
+    // can build — and it is not hypothetical: **a disk and an octagon are the same
+    // field at four sizes**, measured over every shell to 1008 —
+    //
+    //     disc 108 == octagon 144      disc 252 == octagon 300
+    //     disc 156 == octagon 192      disc 372 == octagon 432
+    //
+    // …plus 12 and 48, where the two coincide outright. The right-hand column is the
+    // seven shells `fit_oct_shell` refuses, which is the same fact from the other
+    // side. ⚠ **So the FIELD cannot always tell the two shapes apart**, and §2.5's
+    // *an octagon tower is never deduced; it is stored* is load-bearing rather than a
+    // preference: a reader admitting the whole shell grid would describe every round
+    // tower of shell 156 as an octagon, confidently and with nothing unexplained.
+    if oct_is_disc(shell, tower_pad(shell)) { continue; }
+    // ⚠ **ONCE PER SHELL, NOT ONCE PER CANDIDATE.** The polygon depends on the shell
+    // alone; the centre only moves the anchor `oct_fits` subtracts.
+    vk = oct_poly_k(shell);
+    vm = oct_poly_m(shell);
+    for cr in lo_r..hi_r + 1 {
+      for cq in lo_q..hi_q + 1 {
+        if !oct_fits(table, vk, vm, cq, cr, bq0, br0, bwq, bhr) { continue; }
+        (ox, oz) = hex_to_px(cq, cr);
+        return OctRead { ot_ok: true, ot_why: "", ot_cq: cq, ot_cr: cr,
+                         ot_shell: shell, ot_x: ox, ot_z: oz, ot_marks: marks };
+      }
+    }
+  }
+  oct_no("{marks} marks, and no octagon of any shell reproduces them", marks)
+}
+
+// Does the octagon `(cq, cr, shell)` reproduce this window's marks exactly?
+//
+// ⚠ **THE SEARCH'S OWN TEST, WITH THE SEARCH TAKEN OUT.** `oct_recover` answers *which
+// octagon*, and a row asking *is THIS one accepted* has to reach the comparison
+// directly — otherwise a candidate the search never tried reads as one it rejected,
+// and those two are the difference between a filter and a verdict.
+pub fn oct_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   cq: integer, cr: integer, shell: integer, ref: float) -> boolean {
+  fa_lo_q = 0; fa_hi_q = 0; fa_lo_r = 0; fa_hi_r = 0;
+  fa_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }
+        if fa_n == 0 { fa_lo_q = q; fa_hi_q = q; fa_lo_r = r; fa_hi_r = r; }
+        if q < fa_lo_q { fa_lo_q = q; }
+        if q > fa_hi_q { fa_hi_q = q; }
+        if r < fa_lo_r { fa_lo_r = r; }
+        if r > fa_hi_r { fa_hi_r = r; }
+        fa_n = fa_n + 1;
+      }
+    }
+  }
+  if fa_n == 0 { return false; }
+  fa_q0 = fa_lo_q - 2;
+  fa_r0 = fa_lo_r - 2;
+  fa_w = fa_hi_q - fa_lo_q + 5;
+  fa_h = fa_hi_r - fa_lo_r + 5;
+  oct_fits(disc_marks(wld, fa_q0, fa_r0, fa_w, fa_h, ref),
+           oct_poly_k(shell), oct_poly_m(shell), cq, cr, fa_q0, fa_r0, fa_w, fa_h)
+}
+
+// The one BODY every mark in this window declares, or `""` when they do not agree.
+//
+// ⛔ **A WINDOW HOLDING TWO BODIES HAS NO ANSWER, AND SAYING SO IS THE POINT.** The
+// palette picks which reader is asked; a window whose marks disagree about the body
+// has not picked one, so it falls through to the round reader exactly as an undeclared
+// world does. ⚠ **That is not a shape claim** — it is the honest report that this
+// window is not one structure, which is the same silence `wall_read_run` gives a
+// window holding two walls.
+pub fn marks_body(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                  ref: float) -> text {
+  seen = "";
+  first = true;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        mb_m = wall_of(wld, q, r, d, ref);
+        if !edge_is_wall(mb_m) { continue; }
+        mb_b = wall_type(wld, hex_voxel::world_region_at(wld, q, r), mb_m).wt_body;
+        if first { seen = mb_b; first = false; }
+        else if mb_b != seen { return ""; }
+      }
+    }
+  }
+  seen
+}
+
+// The eight corners of the octagon `(cq, cr, shell)` in the drawing's own frame — `x`.
+//
+// ⚠ **THE DRAWING SITE MUST NOT REBUILD THE SHAPE**, which is why this exists: a
+// picture that placed eight corners of its own would be a second definition of what an
+// octagon is, agreeing with the first only by having no reason to differ. `hex_to_px`
+// is the frame, and `(k·√3/2, m/2)` is what a lattice offset is worth in it.
+pub fn oct_px_x(cq: integer, cr: integer, shell: integer) -> vector<float> {
+  (px_cx, _px_cz) = hex_to_px(cq, cr);
+  out: vector<float> = [];
+  for k in oct_poly_k(shell) { out += [px_cx + (k as float) * 0.8660254037844386]; }
+  out
+}
+
+// …and `z`, in the same order.
+pub fn oct_px_z(cq: integer, cr: integer, shell: integer) -> vector<float> {
+  (_px_cx, px_cz) = hex_to_px(cq, cr);
+  out: vector<float> = [];
+  for m in oct_poly_m(shell) { out += [px_cz + (m as float) * 0.5]; }
+  out
+}
+
 // ── The exact perimeter ─────────────────────────────────────────────────────
 //
 // ⚠ THIS IS A REGION'S BOUNDARY, NOT A WALL. The two were conflated in this rung's

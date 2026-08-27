@@ -82,37 +82,23 @@ fn main() {
   // ⚠ COUNTED OUT OF THE TEXT THAT WAS WRITTEN, not out of a variable the emitter
   // filled in — the same rule the test obeys. A report that trusted the producer
   // would say `5 edges` for a picture holding none.
-  // ⚠ **THE TWO KINDS OF LINE ARE COUNTED APART, AND THIS LINE ONCE DID NOT.** When
-  // `B1` added the description, a count of `<line` read **11 edges** for a world
-  // holding **10** marks and one recovered run — a number that was true about the
-  // file and false about the world, which is the shape this tree keeps finding.
-  ncell = 0;
-  nedge = 0;
-  nrun = 0;
-  for ln in svg.split('\n') {
-    if ln.size() < 18 { continue; }
-    if ln[0..18] == "<line class='edge'" { nedge = nedge + 1; }
-    if ln[0..17] == "<line class='run'" { nrun = nrun + 1; }
-    // ⚠ **AND THE DISC IS A DESCRIPTION TOO — plan 26 `B4h`.** A `<circle>` is what a
-    // round rim recovers as, and a counter that read only `<line class='run'` reported
-    // `description refused` for a tower whose description was in the file three lines
-    // above. Measured on the first picture: `disc 0,0 shell 156` in the panel caption
-    // and `refused` on this line, in one run.
-    if ln.size() >= 20 { if ln[0..20] == "<circle class='disc'" { nrun = nrun + 1; } }
-    if ln[0..9] == "<polygon " { ncell = ncell + 1; }
-  }
+  // ⚠ **THE TALLY IS `hex_mesh`'s, BECAUSE THIS ONE WAS WRONG TWICE — plan 26 `B4m`.**
+  // It lived here and matched ELEMENT names: `B1` made it read **11 edges** for a world
+  // holding 10 marks and one recovered run; `B4h` made it say *description refused* for
+  // a disc whose description was three lines above; `B4m` made it say **325 cells and
+  // refused** for a picture captioned *cells 324 … desc octagon 0,0 shell 468*, because
+  // an octagon is a `<polygon>` and the cell counter had claimed that tag by name.
+  // Three landings at one site is a class, and a driver is where a class hides — so it
+  // is `plan_tally` now, matched on the CLASS, with `planview.loft`'s own tests on it.
+  tally = plan_tally(svg);
+  ncell = tally.pt_cells;
+  nedge = tally.pt_marks;
   // The caption in the picture says the same thing, so the two cannot drift into
   // disagreeing about the same file.
   said = "refused";
-  if nrun > 0 { said = "recovered"; }
+  if tally.pt_descs > 0 { said = "recovered"; }
   if nedge == 0 { said = "no marks"; }
-  // ⚠ THE LEVEL COUNT IS THE ELEMENT COUNT, not `len(refs)` — the same rule as the
-  // marks: report what reached the file.
-  nlev = 0;
-  for ln in svg.split('\n') {
-    if ln.size() < 17 { continue; }
-    if ln[0..17] == "<g class='level' " { nlev = nlev + 1; }
-  }
+  nlev = tally.pt_levels;
   // ⚠ THE HEIGHTS ARE IN THE LINE, because *which floor is this* is the one question
   // a level index cannot answer — a level is a sheet index and a ref is a height, and
   // BLUEPRINT §3.4 exists because those two get conflated.

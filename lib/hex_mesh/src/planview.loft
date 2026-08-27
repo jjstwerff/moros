@@ -329,6 +329,40 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
     // window with no marks at all has nothing to describe; a window with marks the
     // run reader could not explain is exactly where a second description belongs.
     // The two silences stay different, which is what this branch was written for.
+    // ── AND WHICH ROUND READER? THE PALETTE SAYS — plan 26 `B4m` ────────────
+    //
+    // ⛔ **§2.5: *an octagon tower is never deduced; it is stored*.** A shape read out
+    // of GEOMETRY gets `rebuild_construct`'s confident hexagon — `sides = 6`, nothing
+    // unexplained, no warning — so *which* reader is asked is a palette question and
+    // only *which centre and which shell* is a field question. `marks_body` answers
+    // `""` for a window whose marks disagree, which falls through here exactly as an
+    // undeclared world does.
+    if hex_editor::marks_body(w, q0, r0, q1 - q0, r1 - r0, ref)
+       == hex_editor::WALL_BODY_OCT {
+      ot = hex_editor::oct_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
+      if ot.ot_ok {
+        say = "octagon {ot.ot_cq},{ot.ot_cr} shell {ot.ot_shell}";
+        // ⚠ **THE CORNERS ARE `hex_editor`'s** — `oct_px_x`/`oct_px_z` — because a
+        // picture placing eight of its own would be a second definition of the shape,
+        // agreeing with the gesture only by having no reason to differ.
+        ox = hex_editor::oct_px_x(ot.ot_cq, ot.ot_cr, ot.ot_shell);
+        oz = hex_editor::oct_px_z(ot.ot_cq, ot.ot_cr, ot.ot_shell);
+        pts = "";
+        for oi in 0..len(ox) { pts = pts + "{fx(ox[oi] ?? 0.0)},{fx(oz[oi] ?? 0.0)} "; }
+        // ⚠ THE SAME DASHED BLUE THE RUN AND THE DISC USE, for their reason: all
+        // three are the DESCRIPTION drawn over the field it came from.
+        runs = "<polygon class='oct' data-cq='{ot.ot_cq}' data-cr='{ot.ot_cr}'"
+             + " data-shell='{ot.ot_shell}' data-marks='{ot.ot_marks}'"
+             + " points='{pts}' fill='none' stroke='rgb(30,90,220)'"
+             + " stroke-width='0.05' stroke-dasharray='0.32 0.18'/>\n";
+      } else {
+        say = "refused ({nedge} marks)";
+      }
+      return PlanPanel { pp_body: cells + edges + runs, pp_cells: ncell,
+                         pp_marks: nedge, pp_say: say, pp_bad: nbad,
+                         pp_minx: box.pb_minx, pp_maxx: box.pb_maxx,
+                         pp_minz: box.pb_minz, pp_maxz: box.pb_maxz };
+    }
     dc = hex_editor::disc_recover(w, q0, r0, q1 - q0, r1 - r0, ref);
     if dc.dc_ok {
       say = "disc {dc.dc_cq},{dc.dc_cr} shell {dc.dc_shell}";
@@ -654,4 +688,48 @@ pub fn plan_pick(q0: integer, r0: integer, q1: integer, r1: integer,
 pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
                 ref: float, title: text) -> text {
   plan_levels(w, q0, r0, q1, r1, [ref], plan_bare(), title)
+}
+
+// ── WHAT ACTUALLY REACHED THE FILE — plan 26 `B4m` ─────────────────────────
+//
+// ⛔ **THE DRIVER COUNTED THE PICTURE'S ELEMENTS AND GOT IT WRONG TWICE AT ONE SITE.**
+// `B4h` added the disc and `src/plan_view.loft` reported *description refused* for a
+// tower whose description was three lines above it, because its tally matched
+// `<line class='run'` alone. `B4m` added the octagon and it happened again — and this
+// time it took the CELL count with it, because an octagon is drawn as a `<polygon>`
+// and the cell tally claimed that element by name: **325 cells and `description
+// refused`** for a picture captioned *cells 324 … desc octagon 0,0 shell 468*.
+//
+// ⚠ **SO THE TALLY LIVES HERE, WHERE IT CAN BE TESTED, AND MATCHES THE CLASS RATHER
+// THAN THE ELEMENT.** A tag name is not an identity: the next description to arrive
+// will reuse some element too, and a counter keyed on `<polygon ` is wrong the day it
+// does. ⚠ It reads the emitted TEXT and nothing else — `CLAUDE.md`: *measure what was
+// actually emitted, never a number the producer re-derives* — which is why it takes
+// the SVG rather than a `PlanPanel`.
+pub struct PlanTally {
+  pt_cells:  integer,
+  pt_marks:  integer,
+  pt_descs:  integer,      // runs, discs and octagons together — a description is one
+  pt_levels: integer,
+}
+
+fn starts(ln: text, head: text) -> boolean {
+  if ln.size() < head.size() { return false; }
+  ln[0..(head.size() as i32)] == head
+}
+
+pub fn plan_tally(svg: text) -> PlanTally {
+  cells = 0;
+  marks = 0;
+  descs = 0;
+  levels = 0;
+  for ln in svg.split('\n') {
+    if starts(ln, "<polygon class='cell'") { cells = cells + 1; }
+    if starts(ln, "<line class='edge'") { marks = marks + 1; }
+    if starts(ln, "<line class='run'") { descs = descs + 1; }
+    if starts(ln, "<circle class='disc'") { descs = descs + 1; }
+    if starts(ln, "<polygon class='oct'") { descs = descs + 1; }
+    if starts(ln, "<g class='level' ") { levels = levels + 1; }
+  }
+  PlanTally { pt_cells: cells, pt_marks: marks, pt_descs: descs, pt_levels: levels }
 }
