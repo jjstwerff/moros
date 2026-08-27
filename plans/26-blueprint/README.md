@@ -279,7 +279,7 @@ as a byte.
 | **`B4p`** — the leftover runs the WHOLE chain: a house and a TOWER in one window | M | `house_box.loft` — a tower beside a house recovers its own centre and shell through the leftover door while the whole window is refused, a tower alone reads identically through both doors, the **leftover's** palette is what picks its reader, a leftover of two structures is refused rather than described, and a third structure is measured being dropped in silence; `planview.loft` — the circle and the octagon each drawn beside the rectangle and tallied as two, and a leftover the chain cannot explain counted rather than drawn; `tools/scripts/b4p.keys`; five faults seen red | ✅ **SHIPPED** `686e4d4` |
 | **`B4q`** — a run's description measured against its own field | M | `run_fit.loft` — the generator reproduces `wall_stamp`'s world over six headings, an authored wall reports zero of both, **the same run walked backwards reports 9 stray and 9 missing of 11**, due east is the control that is unmoved, a wandering chain is answered AND says so, a refusal carries its mark count, and `stray`/`missing` are pinned on a one-sided fit; `planview.loft` — the caption clean for one wall and loud for the other, read out of the picture; `tools/scripts/b4q.keys`, [`probe/b4q`](../../probe/b4q/README.md); five faults seen red | ✅ **SHIPPED** `a305679` |
 | **`B4r`** — the wall walked either way is one field | M | `run_fit.loft` — **all 24 headings, both directions, identical edge for edge and each reproducing its own description**; the wandering chain still answers AND still reports a residual, off a cell centre; `planview.loft` — the two pictures compared element by element and one clean caption each, with a loud one kept beside them; the corpus byte-identical with `b4q.keys` moving as the control; `probe/t4` unmoved; five faults seen red, **two of them green** | ✅ **SHIPPED** `4d47020` |
-| **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** |
+| **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** `7842187` |
 
 ### Why `B0` is one phase and not two
 
@@ -2347,6 +2347,120 @@ structure in a window is the next step and nothing else blocks it.
 ⛔ **AND IT DOES NOT TOUCH THE THIRD COPY OF THE MARKING RULE.** `road_stamp`'s fence loop is
 `run_edges`' body again; folding it in wants the `cut` tally reconciled with what `run_edges`
 returns, which is a second change wearing one diff.
+
+## What `B4s` turned up
+
+**Shipped `7842187`.** `hex_editor::Claims` and its two channels, `claim_house` /
+`claim_disc` / `claim_oct` / `claim_run`, `marks_unclaimed`, and a `_claimed` door on
+every reader; the peel loop in `plan_panel`, with the house moved into `plan_describe` so
+the chain is one call; `tools/scripts/b4s.keys`. 5 rows in `peel.loft` and 52 in
+`planview.loft`.
+
+![a house, a tower and a wall, all three described](../../doc/claude/img-village-b4s.png)
+
+*`b4s.keys` — `desc house 0,4 4x5 rot 3 (8 fit) · 4 stray + run d6 p8 + disc 0,-8 shell
+156`, and **nothing unexplained**. `B4p` drew two of these three and reported the tower as
+`+ 54 unexplained`. `make plan-view WORLD=b4s Q0=-12 Q1=13 R0=-16 R1=10 REF=2.0`.*
+
+### ✅ The village `B4o` asked for
+
+`B4o` named the gap and the picture that would settle it: *"a window with three structures
+describes the house and one of the other two. What decides whether that matters is a
+picture of a village, which nothing in the corpus has yet."* `B4p` measured the mechanism
+exactly — a closed rim contributes no chain ends, so `wall_read_run` sees only the wall's
+two and answers for the wall, with the tower's 54 marks unmentioned.
+
+The peel takes each description's own marks out before asking the next question, so the
+rim is **alone** by the time it is asked about. The order in the caption is the chain's,
+not the scene's: house, then run, then disc.
+
+### ⚠ Two channels, because the readers read two things
+
+The run, disc and octagon readers read MARKS. The house reader reads the **floor** and
+never touches a mark — `B4n`'s finding, and the reason it can describe a house at all. So
+claiming edges cannot silence it: it does not give a wrong answer, it gives the same right
+one for ever. ⚠ **Both halves are measured rather than argued** — a house with some of its
+marks claimed reads back as the same rectangle, and a house whose floor is claimed is
+refused.
+
+### ⛔ The first three-description picture caught `B4o`'s defect in a THIRD reader
+
+It captioned the wall `· 54 stray` — the tower's whole rim — about a wall that is
+perfectly good. `rr_stray` counts marks the reader was **handed** and did not want, which
+in a window holding one structure is a fact about the wall and in a village is a fact
+about the tower.
+
+⚠ **`B4q` ADOPTED THE HOUSE'S GRAMMAR FOR TWO NUMBERS THAT ARE NOT THE SAME KIND.** The
+house's `hs_stray` is *marks the mitre explains* — which it OWNS. The run's `rr_stray` is
+*marks I was given and do not want* — which it does not. They read alike in a caption and
+only a village tells them apart.
+
+✅ **Only `missing` reaches the caption now**: edges the description GENERATES that the
+store does not hold, which no other structure can affect. What nothing explains is the
+window's own `+ N unexplained`, counted from the claims after the peel — which is where a
+leftover belonged all along. ⚠ Nothing measurable is lost: the two were symmetric in every
+case the reader itself produced (9 and 9, 3 and 3), `RunRead` still carries both, and
+`run_fits_at` still pins which is which on a one-sided fit.
+
+### ⛔ Two of a kind are still refused, and the numbers are the next step's baseline
+
+| the window holds | described | marks left |
+|---|---|---|
+| a house, a tower and a wall | `house; run; disc;` | **0** |
+| two houses | *nothing* | 84 |
+| two walls | *nothing* | 23 |
+| a house and two towers | `house;` | 108 |
+
+⚠ **THE PEEL CANNOT HELP HERE AND IT IS NOT A FAILURE.** It subtracts what has been
+DESCRIBED, and nothing has been. `disc_fits` and `box_fits` compare over the whole field
+in **both** directions — *every boundary edge is marked AND every mark is a boundary edge*
+— which is exactly what stops a disc being accepted with a wall drawn across it (`B4h`'s
+own control). The price is that a field holding two rims is a field no single disc
+reproduces. **That is `FORMAL_CORE` §6's R1 refusing correctly.**
+
+⚠ **WHAT IT WANTS IS SEGMENTATION** — the marks split into components before any reader is
+asked — which is a different mechanism, and the library has none: `wall_chain_ends` and
+`wall_chain_branches` walk vertices, `set_connected` and `flood_outside` work on cells, and
+nothing labels an EdgeSet's components. ⚠ And two houses is not even that: it is a FLOOR
+problem, so a mark-component walk would not touch it.
+
+### The sabotage sweep
+
+Five faults, restored from copies, with the claim set, **both channels** and the picture
+peeling with it asserted present before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the picture describes once and stops — `B4p`'s behaviour restored | `planview` |
+| 2 | a house claims its MARKS and not its floor | `peel` · `planview` |
+| 3 | a claim is no longer idempotent, so `new` is always positive | `peel` |
+| 4 | a run claims nothing, so the peel subtracts the wrong structure | `peel` · `planview` |
+| 5 | what is left over is never counted | `planview` |
+
+⚠ **ROW 3 IS RED IN ONE FILE AND THAT IS THE TERMINATION ARGUMENT.** The peel ends because
+a claim reports only what was NEW; a cap is a backstop, not a reason. Nothing the picture
+draws can see that, because with the cap in place a non-idempotent claim still produces a
+picture — it just produces it eight times over.
+
+⚠ **AND ROWS 2 AND 4 ARE THE TWO CHANNELS FROM OPPOSITE SIDES**: take the floor away and
+the house is described for ever, take the run's edges away and the disc that follows it is
+handed the wall's marks. A single row could have passed for either.
+
+### And the store is untouched, which this step had to check rather than assume
+
+A peel READS; it writes nothing. But it moved the exclusion, the chain's shape and the
+caption at once, so the corpus is the control: `house`, `door`, `wall`, `b4o` and `b4p`
+key exactly what they keyed at `B4r`, and `probe/t4` holds `deck.keys` at
+`cea971a07899e420b344c0054567f4e1`. **94 files green on both backends** — 190 s
+interpreted and 78 s `--native`.
+
+### What it deliberately does not do
+
+⛔ **IT DOES NOT SEGMENT**, and the table above is why that is the next step rather than a
+gap in this one. ⛔ **AND THE HOUSE IS STILL THE ONLY READER WITH A CELL CHANNEL** — a part
+placed with `verb place` writes floor too, so a window holding a house and a PART is
+untested ground.
 
 ## Open questions
 
