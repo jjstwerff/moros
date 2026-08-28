@@ -100,7 +100,7 @@ against its baseline in `make fast`.
 | a part cannot be opened for editing from either renderer | `44:` has no client binding — a script or `wscat` only |
 | a material cannot be CHOSEN | there is no `session_select_*` for materials; the panel lists them and a click says so out loud |
 | the toolbar's six buttons do nothing | superseded by the verb bar; a click is consumed and says so |
-| the editor program is not lavition-only | `tools/layering.sh`: *still imports Moros — 2 of them*. Plan 19 `L6.3` |
+| ~~the editor program is not lavition-only~~ | ✅ **STALE — re-measured 2026-08-28.** `tools/layering.sh` is silent and `make probe-split` exits 0 on all nine rows: *no Moros import anywhere in `src/`, and it builds with `lib/moros_*` absent* — all five programs and 53 gates. What is left of plan 19 `L6.3` is the REPO, not the coupling. ⚠ This row said otherwise for a week, which is the cost of a *what it does NOT do* list nothing re-runs |
 | five camera scripts are checked by nothing | `K3f` — `ceiling` `cutaway` `eyes` `floorprobe` `lamp` leave the same world and session to the byte |
 
 ### ⚠ Built and not yet called — re-verified 2026-08-21
