@@ -305,6 +305,19 @@ own sub-run also fits within its marks and a short one would leave a remainder n
 generates; and every `B4v`, `B4u` and `B4t` fixture must be unmoved, with the corpus as
 the control.
 
+**`B4x`** — **expected result**: a wall that TURNS is described run by run — a zigzag of
+three draws **three** runs with nothing unexplained, where today it draws two and leaves
+**12 of its 18 marks**; a closed room of four walls draws **four**, where today it draws
+**nothing at all** and leaves all **50**. **Invariant**: *a wall may begin at any corner of
+the chain, and the longest-first rule is what keeps a straight wall whole* — measured, not
+assumed. **Negative controls**: a straight wall must stay **ONE** run and a plus **two**,
+which is the row that catches an over-eager cut; the L, the Y, the four crossings and every
+`B4w`, `B4v`, `B4u` and `B4t` fixture must be unmoved, with the corpus as the control; a
+sub-run must still never be taken from the middle of a chain; and ⚠ **the cost must be
+measured rather than declared** — the pool is quadratic and each pair costs a whole
+`run_edges`, and admitting every corner is already measured to blow `loft test`'s own
+300-second deadline on the closed room.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -348,6 +361,7 @@ as a byte.
 | **`B4u`** — structures that TOUCH: the field split at the vertices its marks share | M | `peel.loft` — five touching pairs each drawn apart with nothing left over and each first measured to be ONE cell component; the flood pinned against the corner identity partition for partition; a lone house still one piece; a piece never crossing a cell component; and a wall MEETING a rim answering one run and a count, with the pair a cell further out as the control, and the house's residual unmoved by a tower ONE cell away where `B4o` measured that control at eight; `planview.loft` — two runs, a house and a disc with **no run over the rim**, and the interlocked pair's single description beside its own control; `tools/scripts/b4u.keys`; six faults seen red, **one of them green** | ✅ **SHIPPED** `e888590` |
 | **`B4v`** — a component no reader explains, partitioned by what a candidate accounts for | M | `peel.loft` — a wall MEETING a rim and two rims that meet each answering two descriptions with nothing over; two walls crossing still refused; a trial that reaches outside its component refused by the same one number; a candidate claiming nothing new refused; the largest shell taken first; `planview.loft` — the two pictures drawn and tallied, the crossed pair still `refused`, and a set that explains only PART of its component not drawn; `tools/scripts/b4v.keys`; eight faults swept, five red and **three green** | ✅ **SHIPPED** `67dba5a` |
 | **`B4w`** — a CROSSING: a run begins where the chain does | M | `peel.loft` — four crossing geometries each measured to be ONE component and each closing as two runs; three T stems with both outcomes asserted per stem and both required to occur; a sub-run never taken from the middle of a chain; a candidate already claimed not offered again; `planview.loft` — a crossing drawn as two runs, and a T that the trial reaches into and cannot close still `refused`; `tools/scripts/b4w.keys`; seven faults swept, six red | ✅ **SHIPPED** 04eaf12 |
+| **`B4x`** — a wall that TURNS: the chain cut at its corners | M | `peel.loft` — a zigzag of three walls and a closed room of four each drawn run by run with nothing unexplained, against a straight wall that stays one run and a plus that stays two; the L, the Y, the crossings and every prior fixture unmoved; a sub-run still never taken from the middle; `planview.loft` — the room drawn as four runs and tallied; the corpus as the control | ⛔ **DESIGNED, NOT BUILT** — measured below |
 
 ### Why `B0` is one phase and not two
 
@@ -3042,3 +3056,113 @@ record is where a measurement belongs; a suite is for the claim it supports.
 3. **What draws a wall's THICKNESS?** `@HB-X69` puts it in the palette, so the view must
    read `wd_thickness` through the palette rather than measure the cells. Untouched by
    `B0` — which draws edges, not bands — and it is the first thing `B1` will want.
+
+## What the `B4x` MEASUREMENT turned up — the step is designed, not built
+
+⛔ **NOTHING HERE SHIPPED.** `B4w` was the last row in the phases table, so the next step
+had to be found rather than read off. It was found by *measuring what the peel refuses
+today* — and three designs for closing it were refuted, each by its own probe, before the
+session ran out of runway. This is the record of what is now known, so the build can start
+from evidence instead of from the first guess.
+
+### The survey: what the peel does with geometries no fixture had asked it about
+
+Nine shapes through `peel`, at `crossing_closes`'s own window and wall scale (37×37, walls
+within ±6) so that a refusal is the peel's and **not a clipped fixture**. ⚠ **The first run
+of this survey used a ±14 window and every answer was different** — a wall at ±4.0 world is
+16 cells, so the fixtures were being cut in half and the survey was measuring the clipping.
+The controls are what caught it.
+
+| the shape | `got` | marks left |
+|---|---|---|
+| **CONTROL** one wall | `run;` | 0 |
+| **CONTROL** a plus | `run;run;` | 0 |
+| an L | `run;run;` | 0 |
+| a Y (three from one point) | `run;run;run;` | 0 |
+| a wall through a tower's rim | `disc;run;` | 0 |
+| a wall through a house | `run;house;` | 0 |
+| a wall along a house's side | `house;` | 0 |
+| ⛔ **a zigzag** (three walls, two bends) | `run;run;` | **12 of 18** |
+| ⛔ **a closed room** (four walls) | *(nothing)* | **50 of 50** |
+
+### The degrees are what separate them, and they are one defect
+
+`corner_pool` admits a vertex at **degree 1** (a chain end) or **degree ≥ 3** (a junction).
+Measured over the same fixtures:
+
+| the shape | deg 1 | deg 2 | deg 3+ | **pool** |
+|---|---|---|---|---|
+| one wall | 2 | 13 | 0 | 2 |
+| a plus | 4 | 23 | 2 | 6 |
+| an L | **4** | 11 | 0 | 4 |
+| a Y | 3 | 19 | 1 | 4 |
+| a zigzag | **4** | 16 | 0 | 4 |
+| ⛔ a closed room | **0** | 50 | **0** | **0** |
+
+✅ **THE L SURVIVES BY ACCIDENT AND THE MEASUREMENT SAYS SO.** Two walls meeting at a corner
+have `deg1 = 4`, not 2 — they do **not** fuse, so each keeps its own two ends and the pool
+already holds them. The zigzag's three walls give `deg1 = 4` as well, so **one** of its two
+corners fused and one did not; that one fused corner is the whole 12-mark residual. ⛔ **And
+a closed room fuses at every corner**: no end, no junction, an **empty pool**, and
+`run_within` is handed nothing to offer. The two rows are one defect — *a vertex where two
+runs meet, which is neither an end nor a branch.*
+
+### ⛔ Three designs refuted, each by its own probe
+
+**1 · the exact heading pre-filter — refuted by measurement.** If every corner were admitted,
+the pool is quadratic; the obvious cheap filter is `wall_read_run`'s own exact integer test
+(`da*tb − db*ta == 0` over the 24 headings), applied to the pair before any `run_edges`.
+Measured, it barely cuts: on a **straight wall** 63 of 105 pairs are d24-parallel, and on the
+closed room 413 of 1225. The lattice's staircase vertices are densely collinear, so the
+filter that looked like a 50× reduction is a 3×.
+
+**2 · admit every corner anyway — half confirmed, half refuted, and both halves matter.**
+Patching `corner_pool` to admit degree 2:
+
+- ✅ **the zigzag closes** — `run;run;run;` with **nothing** left, up from 12 marks lost;
+- ✅ **both controls are unmoved** — a straight wall stays one run, a plus stays two. So
+  `B4w`'s second reason for excluding degree 2 (*a sub-run would be offered*) is confirmed
+  **harmless**: the longest-first rule does protect a straight wall, measured rather than
+  argued;
+- ⛔ **the closed room never returns.** The file ended at **5m00.009s** with no result line
+  and exit code 0 — `loft test`'s 300-second deadline, in exactly the silent form `CLAUDE.md`
+  documents. So `B4w`'s *first* reason, the cost, is the real one, and it is now measured on
+  the shape that needs the pool most.
+
+**3 · the ordered chain walk — the right idea, and three broken instruments before the
+finding.** `CLAUDE.md` names this gap by hand: *"what is actually missing is an entry point
+that accepts what the STORE has — an unordered set of marked edges — and the ordered
+chain-walk that turns it into what `surface_of` already consumes."* Prototyped three times:
+
+| attempt | a straight wall came back as | why |
+|---|---|---|
+| seed at the first edge in scan order | **14 pieces** | it headed at that edge's arbitrary second vertex — into the dead end half the time. `CLAUDE.md`'s own sentence: *a scan of the store has no order at all* |
+| seed at a **degree-1** vertex, grow greedily | **14 pieces** | it asked `run_between` about a 2-edge stub, which is below `RUN_SHORT` and is **refused** — so no piece could ever begin |
+| seed at a degree-1 vertex, cut **longest-first** | **14 pieces** | ⛔ the finding below |
+
+⛔ **THE THIRD IS THE ONE WORTH KEEPING: MY ACCEPTANCE WAS STRICTER THAN THE SHIPPED ONE.**
+It asked for exact set equality — every edge one run generates is walked, and the counts
+match — and that fails on a **straight wall at full length**, because a wall's extreme
+*vertices* are not the gesture's *endpoints*: `wall_stamp` runs between two world points, and
+`run_between(vertex₀, vertexₙ)` is a slightly different run generating a slightly different
+set. ✅ **Which is exactly why `run_within` reads back through `wall_read_run` and accepts by
+WITHIN-ness (`rr_missing == 0`) rather than by equality.** The acceptance test must be the one
+the code already uses; inventing a stricter one is the same error as inventing the algorithm,
+one level down.
+
+⚠ **THE THIRD PROTOTYPE'S OWN NUMBERS, IN FULL**: a straight wall **14 pieces of 14 edges**,
+an L **13 of 13** — one piece per edge, with `stubs = 0`, so the walk *did* order the chain
+and it was the cut test that refused at every length. The run then hit its own 900-second
+timeout before reaching the zigzag and the room, so **those two were never measured under
+prototype 3** and nothing here claims otherwise.
+
+### What the next session should do first
+
+Rebuild prototype 3 with **`run_span`'s** within-ness as the cut test rather than set
+equality, and re-measure the four piece counts (1 / 2 / 3 / 4). The design stands or falls
+on that one number, and everything else above is already paid for.
+
+⚠ **And the closed room needs one more decision the walk does not settle**: a loop has no
+canonical start, so a walk seeded anywhere cuts one of its four walls in two and returns
+**five** pieces. The first and last piece must be merged when they are one run — exact, by
+the same test, but it is a clause somebody has to write on purpose.
