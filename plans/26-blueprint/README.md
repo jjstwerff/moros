@@ -3279,3 +3279,59 @@ did not take.
 mark at a vertex; none of these four fixtures has a `deg ≥ 3` vertex, so a `T` or a `+`
 would need a rule the probe does not have — and `B4w` already measured that a `T` is
 recoverable only sometimes.
+
+## ⛔ THE CORRECTION — the section above is one seed reported five times
+
+**Everything above was measured at a single starting vertex per fixture, and a closed loop
+has no canonical start.** The walk then moved out of the probe and into
+`hex_shape::wall_chain_walk` — same algorithm, different scan order, therefore a different
+seed — and the room went from **six** pieces with within-ness losing 36 marks, to **four**
+with nothing lost, **in every cut**. Neither run was a fact about the cut rule. A cycle can
+be walked from any of its vertices, so all fifty are askable, and they had to be.
+
+### ✅ The ACCEPTANCE is settled, and the headline finding survives
+
+| the cut, over all 50 seeds of the room | pieces | seeds that lost nothing | worst loss |
+|---|---|---|---|
+| ⛔ **within-ness alone** — what the row above asked for | 1 … 7 | ⛔ **12 of 50** | ⛔ **45 of 50 marks** |
+| within **and** covers the span — R1 both ways | 4 … 9 | ✅ **50 of 50** | ✅ 0 |
+| exact set equality — prototype 3's own | 4 … 9 | ✅ **50 of 50** | ✅ 0 |
+
+✅ **Within-ness alone is not *unlucky at one seed*, it is UNSOUND**, and for the reason the
+section above gives: the number it maximises is the run's own **size**, never how much of
+the chain it accounts for. Both **two-way** tests are clean at every seed and are
+indistinguishable from each other here. That is `FORMAL_CORE` §6's R1 in both directions,
+which is `B4v`'s own sentence one level down.
+
+### ⛔ The PARTITION is not settled, and the minimum's justification is refuted
+
+| how the chain is cut | pieces for a four-wall room | `run_edges` |
+|---|---|---|
+| greedy longest-first, two-way | **4 … 9** over 50 seeds | 128 |
+| the **fewest** runs — shortest path over the chain | **4 … 7** over 8 sampled seeds | **1012** |
+
+⛔ **THE MINIMUM WAS WORTH EIGHT TIMES THE COST ONLY IF THE ANSWER STOPPED MOVING, AND IT
+DOES NOT.** A shortest path over a **linear** chain cut at an arbitrary point is not the
+minimum for a **cycle**: the seed's own wall is split in two, and the merge clause only
+sometimes puts it back. So *"asking for the fewest runs returns the corner control's four
+walls to the mark"* is true at one seed and false at three of the eight sampled.
+
+⚠ **AND THE CORNER CONTROL IS WHAT MAKES THAT A DIAGNOSIS RATHER THAN A SHRUG.** Each of the
+room's four walls measured ALONE is one run of 12 / 13 / 12 / 13 marks — **exactly its 50** —
+so the right answer is a valid partition at every seed, and every rule tried here misses it
+at most of them.
+
+⛔ **The tie-break is refuted too**: taking the longest vertex span on a tie, rather than
+`run_within`'s strict `>`, leaves marks over on both the zigzag (1) and the room (5). It is
+the only variant that breaks a fixture the plain rule closes.
+
+### What is now open, precisely
+
+**A loop must be cut circularly.** Every rule measured here cuts a cycle as if it were a
+path, from a vertex the scan chose, and every one of them pays for it. The question is no
+longer *which acceptance* — that is answered — but *how a cycle is partitioned without a
+start*.
+
+⚠ **AND THE LESSON IS THIS TREE'S OWN, ONE LEVEL IN.** *Give a claim the instrument that can
+SEE it.* A single seed can no more see a seed-dependent answer than a colour can see a
+count — and five cut rules agreeing at one seed reads exactly like five confirmations.

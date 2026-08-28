@@ -4,25 +4,25 @@ the CONTROL — prototype 3's own acceptance, exact set equality:
   equal  a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 15  (n=14)[0-14:14/]
   equal  an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 0  over 0  run_edges 15  (n=6)[0-6:6/](n=7)[0-7:7/]
   equal  a zigzag       : marks 16  deg 1/2/3+ = 4/14/0  chains 2  pieces 3  merged 3  stubs 0  over 0  run_edges 31  (n=14)[0-2:2/2-14:12/](n=2)[0-2:2/]
-  equal  a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 7  merged 7  stubs 0  over 0  run_edges 219  loop(n=50)[0-4:4/4-6:2/6-14:8/14-26:12/26-39:13/39-49:10/49-50:1/]
+  equal  a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 128  loop(n=50)[0-13:13/13-25:12/25-38:13/38-50:12/]
 
 the SUBJECT — `run_span`'s within-ness, `run_within`'s strict `>` on a tie:
   within a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 1  over 0  run_edges 16  (n=14)[0-13:14/]
   within an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 2  over 0  run_edges 17  (n=6)[0-5:6/](n=7)[0-6:7/]
   within a zigzag       : marks 16  deg 1/2/3+ = 4/14/0  chains 2  pieces 3  merged 3  stubs 1  over 0  run_edges 32  (n=14)[0-2:2/2-13:12/](n=2)[0-2:2/]
-  within a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 3  merged 2  stubs 0  over 36  run_edges 77  loop(n=50)[0-37:10/37-39:2/39-50:12/]
+  within a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 128  loop(n=50)[0-13:13/13-25:12/25-38:13/38-50:12/]
 
 …and with the LONGEST vertex span taking a tie:
   long   a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 15  (n=14)[0-14:14/]
   long   an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 0  over 0  run_edges 15  (n=6)[0-6:6/](n=7)[0-7:7/]
   long   a zigzag       : marks 16  deg 1/2/3+ = 4/14/0  chains 2  pieces 3  merged 3  stubs 0  over 1  run_edges 30  (n=14)[0-3:2/3-14:11/](n=2)[0-2:2/]
-  long   a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 2  merged 1  stubs 1  over 39  run_edges 71  loop(n=50)[0-40:10/41-50:10/]
+  long   a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 5  run_edges 123  loop(n=50)[0-15:13/15-26:10/26-40:12/40-50:10/]
 
 R1 BOTH WAYS — within the marks AND covering the span it steps over:
   cover  a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 15  (n=14)[0-14:14/]
   cover  an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 0  over 0  run_edges 15  (n=6)[0-6:6/](n=7)[0-7:7/]
   cover  a zigzag       : marks 16  deg 1/2/3+ = 4/14/0  chains 2  pieces 3  merged 3  stubs 0  over 0  run_edges 31  (n=14)[0-2:2/2-14:12/](n=2)[0-2:2/]
-  cover  a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 6  merged 6  stubs 0  over 0  run_edges 217  loop(n=50)[0-4:4/4-6:2/6-14:8/14-26:12/26-39:13/39-50:11/]
+  cover  a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 128  loop(n=50)[0-13:13/13-25:12/25-38:13/38-50:12/]
 
 the CORNER CONTROL — each of the room's four walls alone in the window:
   cover  south          : marks 12  deg 1/2/3+ = 2/11/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 13  (n=12)[0-12:12/]
@@ -30,8 +30,15 @@ the CORNER CONTROL — each of the room's four walls alone in the window:
   cover  north          : marks 12  deg 1/2/3+ = 2/11/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 13  (n=12)[0-12:12/]
   cover  west           : marks 13  deg 1/2/3+ = 2/12/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 14  (n=13)[0-13:13/]
 
+EVERY SEED OF THE ROOM — `!` marks a seed that left marks over:
+  cover  a closed room  : 50 seeds  pieces 4..9  clean 50/50  worst over 0  [45665576557664657575755564567557755957475858585667]
+  within a closed room  : 50 seeds  pieces 1..7  clean 12/50  worst over 45  [43!2!2!3!3!2!3!1!2!762!2!652!52!51!2!2!2!1!43!4!4!3!3!2!3!1!2!3!3!2!2!754!54!51!2!2!2!3!]
+  equal  a closed room  : 50 seeds  pieces 4..9  clean 50/50  worst over 0  [45675577557764657575756564567557755967475858585767]
+  fewest a closed room  : 8 seeds of 50  merged 4..7  clean 8/8  [45546746]
+
 THE FEWEST RUNS — the same feasibility test, over the whole chain at once:
   fewest a straight wall: marks 14  chains 1  pieces 1  merged 1  gaps 0  over 0  run_edges 19  (n=14)[0-14/]
   fewest an L           : marks 13  chains 2  pieces 2  merged 2  gaps 0  over 0  run_edges 19  (n=6)[0-6/](n=7)[0-7/]
   fewest a zigzag       : marks 16  chains 2  pieces 3  merged 3  gaps 0  over 0  run_edges 55  (n=14)[0-2/2-14/](n=2)[0-2/]
-  fewest a closed room  : marks 50  chains 1  pieces 5  merged 4  gaps 0  over 0  run_edges 1022  loop(n=50)[0-1/1-14/14-26/26-39/39-50/]
+  fewest a closed room  : marks 50  chains 1  pieces 4  merged 4  gaps 0  over 0  run_edges 1012  loop(n=50)[0-13/13-25/25-38/38-50/]
+EXIT=0

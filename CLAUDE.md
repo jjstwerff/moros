@@ -189,10 +189,22 @@ edge vectors cancelled, because `surface_of` walks a side **in reading order** a
 the store has no order at all.
 
 ⚠ **SO THE GAP IS NEVER WHERE THE FIRST GUESS PUTS IT.** It looked like *we need a line-fitting
-algorithm*; the arithmetic already existed and was exact. What is actually missing is an entry
+algorithm*; the arithmetic already existed and was exact. What was actually missing is an entry
 point that accepts what the STORE has — an unordered set of marked edges — and the ordered
 chain-walk that turns it into what `surface_of` already consumes. **Find the library's entry
 point first; the shape of the gap is the difference between what it takes and what you hold.**
+
+✅ **AND THAT ONE IS BUILT — `hex_shape::wall_chain_walk`, 2026-08-28** (plan 26 `B4x`,
+[`probe/b4x`](probe/b4x/README.md)). It landed where `wall_chain_ends` and
+`wall_chain_branches` already lived — the two functions that build the vertex-incidence
+table, count degrees and **throw the walk away** — so the gap was one function wide in a
+package that already held everything under it. ⚠ **Note where it was found**: the shape was
+measured in a moros probe first and only then built upstream, which is this tree's promotion
+rule and not a detour. ⛔ **And note what the contract had to say out loud**, none of it
+guessable from the signature: *one call is one chain and a marking is often several* (an L is
+**two** — two walls meeting do not fuse), *a closed loop has no canonical start*, and *at a
+branch the order is one of several*. ⚠ The consumer that reads the walk still lives in
+`probe/b4x`; `run_within` and `corner_pool` are untouched.
 
 ⚠ **AND THE FORMAL DEFINITION EXISTED THE WHOLE TIME, IN A TREE NOBODY HAD OPENED.**
 `../hexbody/ROUNDTRIP.md` is *"the settled formal core"* — §6.1 says **a wall surface is the

@@ -909,17 +909,20 @@ probe-b1p:
 probe-b2p:
 	@loft --interpret --lib lib/ probe/b2p/b2p.loft 2>/dev/null | sed -n '/^B2p/,$$p'
 
-# B4x (plan 26) — A WALL THAT TURNS. An ordered chain walk over the marks, cut into runs.
-# ✅ 1 / 2 / 3 / 5 -> 4 pieces with NOTHING left over, where the shipped peel loses 12 of a
-# zigzag's 18 marks and all 50 of a closed room's. ⛔ But NOT by the route the `B4x`
-# measurement named: within-ness alone loses 36 of the room's 50, because the number it
-# maximises is the run's own size and not how much of the chain it accounts for. The
-# acceptance is `FORMAL_CORE` §6's R1 BOTH WAYS, and the partition is the FEWEST runs
-# rather than the first ones — a greedy seam steps across a corner and never re-syncs.
-# ⚠ Takes ~25 s: the minimum is quadratic in the chain. Not in `make fast`; it ships
-# nothing, and its subject is a design decision rather than a guard.
+# B4x (plan 26) — A WALL THAT TURNS. `hex_shape::wall_chain_walk` orders the marks into a
+# chain; this cuts it into runs, and is that entry point's consumer check. ✅ 1 / 2 / 3 / 4
+# pieces with NOTHING left over, where the shipped peel loses 12 of a zigzag's 18 marks and
+# all 50 of a closed room's. ⛔ Its own first version had ONE seed per fixture and drew
+# conclusions about cut rules from it; a loop can be walked from any of its vertices, so the
+# sweep over every seed is the control that separates the rule from the starting point.
+# ⚠ NEEDS THE loft-libs-world WORKING TREE — `wall_chain_walk` is not in the published
+# hex_shape 0.1.1, so the second `--lib` is load-bearing rather than a convenience.
+# ⚠ Takes minutes. Not in `make fast`; it ships nothing, and its subject is a design
+# decision rather than a guard.
+LIBSWORLD ?= $(HOME)/workspace/loft-libs-world
 probe-b4x:
-	@loft --interpret --lib lib/ probe/b4x/b4x.loft 2>/dev/null | sed -n '/^B4x/,$$p'
+	@loft --interpret --lib $(LIBSWORLD)/ --lib lib/ probe/b4x/b4x.loft 2>/dev/null \
+	  | sed -n '/^B4x/,$$p'
 
 # B3p (BLUEPRINT §3.1) — DOES THE WALKER MOVE WITH NO COLLISION `EdgeSet`? ✅ The
 # LIBRARY can: `walk_to` with an empty set covers 42.67773189849706, the no-fence
