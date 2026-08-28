@@ -34,9 +34,23 @@ run() {
 }
 
 # The driver join has its own instrument: `tools/scripts/push.keys` against its baseline.
+#
+# ⛔ **AND IT REPORTS THE WORLD SEPARATELY FROM THE TRANSCRIPT, BECAUSE `k3d` RED ALONE
+# CANNOT TELL A LOST CAPABILITY FROM A CHANGED SENTENCE.** Its record is both, so deleting
+# the runner's own `println` turns it red exactly as dropping the mode does. The md5 is
+# what separates them: a driver that stops carrying the mode builds a DIFFERENT WORLD, and
+# a driver that stops talking about it builds the same one.
 runk3d() {
-  if sh probe/k3d/run.sh 2>&1 | grep -q '^  FAIL .*push'; then echo "  k3d RED: push.keys"
-  else echo "  k3d green"; fi
+  sh probe/k3d/run.sh > /dev/null 2>&1 || true
+  if diff -q probe/k3d/base/push.txt probe/k3d/out/push.txt > /dev/null 2>&1; then
+    echo "  k3d green"
+  else
+    if [ "$(sed -n 's/^md5: //p' probe/k3d/base/push.txt)"        = "$(sed -n 's/^md5: //p' probe/k3d/out/push.txt)" ]; then
+      echo "  k3d RED: push.keys — the transcript moved, THE WORLD DID NOT"
+    else
+      echo "  k3d RED: push.keys — the world moved (the gesture stopped happening)"
+    fi
+  fi
 }
 
 echo "row 0 — control, nothing cut"
@@ -54,6 +68,8 @@ PY
 run
 
 echo "row 2 — ⛔ the LEVEL STAMP'S TRIGGER: once per hex ENTERED instead of every tick"
+echo "        (the deadlock argument this row was written for is REFUTED — it went green."
+echo "         What separates the two triggers is TURNING, and that row is what catches it)"
 restore
 python3 - "$SRC" <<'PY'
 import sys

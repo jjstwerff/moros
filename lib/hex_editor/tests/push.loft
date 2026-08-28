@@ -614,17 +614,19 @@ fn test_a_push_through_a_doorway_is_refused() {
 // ─────────────────────────────────────────────────────────────────────────────
 // `G2` — A HELD TOGGLE OVER A WALK, AND THE BODY IS THE TICK'S
 //
-// ⛔ **THE THING A PUSH MOVES IS THE THING STOPPING THE WALK**, which is what decides
-// the trigger. The level stamp fires once per hex ENTERED — *"so how fast you walk
-// cannot change the shape of the ground you leave"* — and a push cannot use that rule:
-// the author is pressed against the wall, so no new hex is ever entered and the gesture
-// would hang on itself. It fires every tick instead, and what makes that safe is
-// `push_cell`'s `already`: taking a cell that is in the set writes nothing, so a
-// thousand ticks standing still take the one cell one tick takes.
+// ⛔ **THE FIRST ARGUMENT FOR THE PER-TICK TRIGGER WAS A DEADLOCK, AND THE SWEEP
+// REFUTED IT.** It ran: *the thing a push moves is the thing stopping the walk, so no
+// new hex is ever entered and a per-hex trigger would hang on itself*.
+// `probe/wp/sweep-g2.sh` row 2 IS the level stamp's trigger applied to the push, and it
+// went **green** — a walker meeting a wall is standing in a hex they have just entered.
 //
-// ⚠ **AND THE RATE CANNOT VARY ANYWAY.** `tick_dt()` is a constant by law — the
-// server's own comment records what a variable one cost — so there is no faster tick to
-// outrun the gesture with.
+// ✅ **WHAT SEPARATES THE TWO IS TURNING**, which is the last row in this file: *the
+// wall in front of you gives way* is about the FACING, and a facing changes with no hex
+// entered at all.
+//
+// ⚠ **AND WHAT MAKES PER-TICK SAFE IS `push_cell`'s `already`** — taking a cell that is
+// in the set writes nothing, so a thousand ticks standing still take the one cell one
+// tick takes. The rate cannot vary anyway: `tick_dt()` is a constant by law.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TICK_REACH = 8;
@@ -839,4 +841,48 @@ fn test_a_pushed_walk_stops_a_house_reading_as_a_house() {
   assert(!af.hs_ok,
          "the house still reads after a corridor was driven out of it — L11 is paid "
        + "and `WALL_PUSH` §7 is the section to move");
+}
+
+// ── ⛔ THE TRIGGER: TURNING IS A PUSH, AND WALKING IS NOT THE ONLY ONE ────
+fn test_turning_on_the_spot_takes_the_cell_you_turn_to_face() {
+  // ⛔ **THE SABOTAGE SWEEP IS WHY THIS ROW EXISTS, AND IT REFUTED THE ARGUMENT THE
+  // CODE WAS WRITTEN ON.** `G2` fires every tick rather than once per hex ENTERED, and
+  // the reason first given was a DEADLOCK — *the thing a push moves is the thing
+  // stopping the walk, so no new hex is ever entered*. `probe/wp/sweep-g2.sh` row 2 put
+  // the level stamp's own trigger on the push and went **green**: there is no deadlock,
+  // because a walker meeting a wall is standing in a hex they have just entered, so the
+  // per-hex trigger fires there too.
+  //
+  // ✅ **WHAT ACTUALLY SEPARATES THE TWO IS TURNING.** *The wall in front of them gives
+  // way* is a statement about the FACING, and a facing changes with no hex entered at
+  // all — so a per-hex trigger would leave an author turning on the spot with the
+  // gesture held and nothing happening. This row is that difference, and it is what
+  // makes row 2 red.
+  w = roomed(WALL_MAT);
+  // stand at the rim on the WEST side, facing east — into the room, so there is
+  // nothing to take and the gesture is armed against its own floor
+  (wx, wz) = hex_grid::hex_to_px(0 - ROOM_N, 0);
+  wk = walker_in(w, wx, wz, 0.0);
+  before = floor_cells(w);
+  for _i in 0..20 { ticked(wk, w, true); }
+  assert(floor_cells(w) == before,
+         "facing into the room took {floor_cells(w) - before} cells — the fixture is "
+       + "not facing what this row thinks");
+
+  // …now turn on the spot until the wall is in front, without walking a step
+  wk.wk_held = HELD_LEFT;
+  turned = 0;
+  for _i in 0..400 {
+    if floor_cells(w) > before { continue; }
+    ticked(wk, w, true);
+    turned = turned + 1;
+  }
+  (tq, tr) = px_to_hex(wk.wk_x, wk.wk_z);
+  assert(tq == 0 - ROOM_N && tr == 0,
+         "the walker left ({0 - ROOM_N},0) for ({tq},{tr}) — turning moved them, so this "
+       + "row cannot separate a turn from a step");
+  assert(floor_cells(w) == before + 1,
+         "turning on the spot with the gesture held took {floor_cells(w) - before} cells "
+       + "in {turned} ticks — a facing is what a push is aimed by, and a trigger that "
+       + "waits for a hex cannot see one");
 }

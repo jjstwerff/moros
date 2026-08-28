@@ -267,19 +267,27 @@ tick while the toggle holds; the body is in `hex_editor::tick.loft` beside the w
 server, the page and `editor_run` get it from one place — [WALK_TICK](WALK_TICK.md)'s whole
 finding is that writing the tick twice loses a clause.
 
-⛔ **THE TRIGGER IS EVERY TICK AND NOT ONCE PER HEX, AND THE DIFFERENCE IS A DEADLOCK
-RATHER THAN A PREFERENCE.** The level stamp three lines away in the same function fires
-*once per hex ENTERED* — *"so how fast you walk cannot change the shape of the ground you
-leave"* — and a push cannot borrow that rule, because **the thing a push moves is the thing
-stopping the walk**. The author is pressed against the wall, so no new hex is ever entered,
-so the trigger would never fire and the wall would never give way: the gesture hangs on
-itself.
+⛔ **THE TRIGGER IS EVERY TICK AND NOT ONCE PER HEX — AND THE FIRST ARGUMENT FOR THAT WAS
+WRONG, WHICH IS THE MOST USEFUL THING IN THIS SECTION.** It ran: *the thing a push moves is
+the thing stopping the walk, so the author pressed against the wall never enters a new hex,
+the trigger never fires, and the gesture hangs on itself.* It is coherent and it is false.
+[`probe/wp/sweep-g2.sh`](../../probe/wp/sweep-g2.sh) row 2 **is** the level stamp's trigger
+applied to the push, and it went **green**: a walker meeting a wall is standing in a hex
+they have JUST ENTERED, so a per-hex trigger fires there too.
+
+✅ **WHAT ACTUALLY SEPARATES THE TWO IS TURNING.** *The wall in front of you gives way* is a
+statement about the **facing**, and a facing changes with no hex entered at all — so a
+per-hex trigger leaves an author turning on the spot with the gesture held and nothing
+happening. Measured: turning in place with the toggle held takes exactly the cell turned
+into, having taken nothing while facing the room. That row is what makes sweep row 2 red,
+and before it existed the trigger this code depends on was defended by an argument no test
+could see.
 
 ✅ **AND WHAT MAKES PER-TICK SAFE IS `push_cell`'s `already`, NOT A GUARD.** Taking a cell
 that is in the set writes nothing, so a thousand ticks standing still take the one cell one
-tick takes — measured, with `w_tau` unmoved. The other half is that `tick_dt()` is a
-constant by law, so there is no faster tick to outrun the gesture with. **Idempotence is
-what buys the trigger the level stamp had to earn with a hex key.**
+tick takes — measured, with `w_tau` unmoved. `tick_dt()` is a constant by law, so there is
+no faster tick to outrun the gesture with. **Idempotence is what makes the trigger safe; the
+facing is what makes it right.**
 
 ⚠ **AND IT IS A VERB'S MODE, NOT A WIRE MESSAGE.** `levelling` and `roading` are the two
 modes this editor already had and **both are driver-local booleans behind message ids of
@@ -397,7 +405,7 @@ that makes it worth having: **every line below is a measurement in
 | the mechanic | `push_cell` — one cell across the boundary, at the source's height |
 | the subject | `session_push` — the material under the author's feet, so a road, a room floor and a tunnel are one gesture with no branch |
 | the verb | `VB_PUSH`, the eighteenth of `the_vocabulary()`, bound to `2` |
-| **`G2`** the held toggle | `press_verb` flips `es_pushing`; `walk_tick` performs one transfer per tick; all three drivers carry one boolean across. ⛔ Every tick and **not** once per hex — the thing a push moves is the thing stopping the walk, so a per-hex trigger would never fire. ✅ Safe because `push_cell`'s `already` writes nothing: a thousand ticks standing still take the one cell one tick takes, `w_tau` unmoved |
+| **`G2`** the held toggle | `press_verb` flips `es_pushing`; `walk_tick` performs one transfer per tick; all three drivers carry one boolean across. ⛔ Every tick and **not** once per hex — because a push is aimed by the **facing**, and a facing changes with no hex entered: turning in place with the toggle held takes the cell turned into. ⚠ The deadlock argument this trigger was first defended with is **refuted** — sweep row 2 is the per-hex trigger and went green until the turning row existed. ✅ Safe because `push_cell`'s `already` writes nothing: a thousand ticks standing still take the one cell one tick takes, `w_tau` unmoved |
 | the driver join | `tools/scripts/push.keys` — the library tests call `walk_tick` directly and cannot see whether a driver carries the mode. Baselined by `probe/k3d`, and blessing it wrote **one** baseline: no other script's world moved |
 | **L1** derivation | `boundary_follow` — the six edges of the transferred cell, compared against `hex_draw::draw_walls` edge for edge |
 | **L2** unit | one cell, one of the author's own six neighbours |
@@ -433,6 +441,30 @@ them and went green; row 9 put a wrong-id sabotage back beside the blind digest 
 **anyway**, through `pu_id` and the per-edge loop. **No row is currently carried by those
 terms** — they stay because the case they cover is silent, and the comment now says so.
 [probe/wp](../../probe/wp/README.md).
+
+### ✅ `G2`'s sweep, and the row that refuted the code's own justification
+
+[`probe/wp/sweep-g2.sh`](../../probe/wp/sweep-g2.sh), eight rows.
+
+| row | what was cut | what went red |
+|---|---|---|
+| **0** | nothing — the control | green, and the push block asserted present first |
+| 1 | the push block (the feature absent) | **6** rows |
+| ⛔ **2** | the LEVEL STAMP'S TRIGGER — once per hex entered | **1** — the turning row, **and it went green before that row existed** |
+| 3 | the second press does not disarm | **1** — the toggle row, and only it |
+| 4 | the arming press no longer transfers | **2** — both verb rows |
+| **5** | CONTROL — the push moved above the level stamp instead of below | green |
+| 6 | the RUNNER stops carrying the mode | library green, **k3d red — and the WORLD moved** |
+| **7** | CONTROL — the runner's report line deleted, the mode still carried | library green, **k3d red — the TRANSCRIPT moved, the world did not** |
+
+⛔ **ROW 2 IS THE ENTRY, AND IT WENT GREEN.** The trigger this gesture depends on was
+defended by an argument nothing could see, and the sweep is what found that. The turning
+row was written to answer it, and the argument in the code is now the one that is measured.
+
+⚠ **AND ROWS 6 AND 7 ARE A PAIR BECAUSE `k3d` RED ALONE CANNOT TELL A LOST CAPABILITY FROM A
+CHANGED SENTENCE** — its record is the transcript *and* the world. Deleting the runner's own
+`println` turns it red exactly as dropping the mode does; the **md5** is what separates them,
+so the sweep reports that line rather than the verdict.
 
 ### ⚠ And the precondition that fails on the editor's own house
 

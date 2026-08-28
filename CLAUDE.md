@@ -592,9 +592,13 @@ address (or the hostname `make browser` prints) cannot connect.
   is byte-identical *and* why a road laid past a stranger's house cannot rub its wall out.
   ✅ **`G2` IS BUILT — the toggle is HELD over a walk**, `press_verb` flipping the mode and
   `walk_tick` performing one transfer per tick, so `2` means the same thing in all three
-  drivers. ⛔ **Every tick and NOT once per hex, and the difference is a deadlock**: the thing a
-  push moves is the thing stopping the walk, so the level stamp's per-hex trigger would never
-  fire — and what makes per-tick safe is `push_cell`'s `already` writing nothing, not a guard.
+  drivers. ⛔ **Every tick and NOT once per hex — and the argument for that was REFUTED by the
+  gesture's own sabotage sweep.** It claimed a deadlock; row 2 IS the per-hex trigger and went
+  **green**, because a walker meeting a wall stands in a hex they have just entered. ✅ What
+  separates them is **turning** — a push is aimed by the FACING, and a facing changes with no
+  hex entered — and what makes per-tick safe is `push_cell`'s `already` writing nothing.
+  ⚠ **The trigger the code depends on was defended by an argument no test could see**, which
+  is what a sweep is for.
   ⛔ **It still does not pay `L11`, and the reason is the CONTROLS rather than the gesture**:
   `W` walks along the facing and the push takes the cell along the facing, so **you can only
   push where you walk** — a walk drives a one-cell CORRIDOR and `house_recover` refuses the

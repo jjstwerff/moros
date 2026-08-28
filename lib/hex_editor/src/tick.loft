@@ -310,11 +310,19 @@ pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
 
   // ── THE PUSH — `WALL_PUSH` `G2`, and it is EVERY TICK ───────────────────
   //
-  // ⛔ **NOT once per hex entered, which is the level stamp's trigger three lines up,
-  // and the difference is a DEADLOCK rather than a preference.** The thing a push
-  // moves is the thing stopping the walk: the author is pressed against the wall, so
-  // no new hex is ever entered, so a per-hex trigger would never fire and the wall
-  // would never give way. The gesture would hang on itself.
+  // ⛔ **NOT once per hex entered, which is the level stamp's trigger three lines up —
+  // and the reason first written here was WRONG.** It said the difference is a
+  // *deadlock*: the thing a push moves is the thing stopping the walk, so no new hex is
+  // ever entered and a per-hex trigger would hang on itself. `probe/wp/sweep-g2.sh`
+  // row 2 put the level stamp's own trigger on this block and went **green**. There is
+  // no deadlock — a walker meeting a wall is standing in a hex they have JUST ENTERED,
+  // so a per-hex trigger fires there too.
+  //
+  // ✅ **WHAT ACTUALLY SEPARATES THE TWO IS TURNING.** *The wall in front of you gives
+  // way* is a statement about the FACING, and a facing changes with no hex entered at
+  // all: a per-hex trigger leaves an author turning on the spot with the gesture held
+  // and nothing happening. `test_turning_on_the_spot_takes_the_cell_you_turn_to_face`
+  // is that difference, and it is what makes row 2 red.
   //
   // ⚠ **AND *ONCE PER HEX* WAS EARNED FOR A REASON THAT DOES NOT APPLY HERE.** The
   // level stamp is per hex *"so how fast you walk cannot change the shape of the
@@ -322,7 +330,8 @@ pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
   // there is no faster tick to outrun the gesture with — and taking a cell already in
   // the set writes NOTHING (`push_cell`'s `already`, which is why it is not a
   // refusal), so a thousand ticks standing still take exactly the one cell one tick
-  // takes. The idempotence is what makes the per-tick trigger safe.
+  // takes. The idempotence is what makes the per-tick trigger SAFE; the facing is what
+  // makes it RIGHT.
   //
   // ⚠ **AFTER THE WALK, SO THE CELL IN FRONT IS IN FRONT OF WHERE YOU NOW ARE.** The
   // collision proxy was built at the top of this tick and does not see this write, so
