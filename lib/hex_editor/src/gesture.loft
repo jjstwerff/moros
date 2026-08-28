@@ -1344,18 +1344,130 @@ pub fn run_within(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: in
     }
   }
   if best == 0 { return run_no(0); }
-  // ⚠ **THE ANSWER IS READ BACK THROUGH THE LIBRARY'S OWN CONVERSION**, not assembled
-  // here: the winner's own field goes to `wall_read_run`, exactly as the strict reader's
-  // does, so a `d24` and a period mean the same thing in both captions.
-  rw_win = run_edges(wall_run_new(bx0, bz0, bx1, bz1, WALL_MAT), q0, r0, wq, hr, WALL_MAT);
-  (rw_d, rw_a, rw_b, rw_p, rw_ok) = hex_shape::wall_read_run(rw_win, q0, r0, wq, hr);
-  if !rw_ok { return run_no(best); }
-  rw_ea = hex_shape::wall_end_a(rw_d, rw_a, rw_p);
-  rw_eb = hex_shape::wall_end_b(rw_d, rw_b, rw_p);
-  run_fit(edges_mat_claimed(wld, q0, r0, wq, hr, ref, within), rw_d, rw_p,
-          hex_shape::tri_x(rw_a, rw_b), hex_shape::tri_y(rw_a, rw_b),
-          hex_shape::tri_x(rw_ea, rw_eb), hex_shape::tri_y(rw_ea, rw_eb),
+  run_answer(wld, q0, r0, wq, hr, ref, within, bx0, bz0, bx1, bz1, best)
+}
+
+// ⚠ **THE ANSWER IS READ BACK THROUGH THE LIBRARY'S OWN CONVERSION**, not assembled at the
+// call site: the winner's own field goes to `wall_read_run`, so a `d24` and a period mean
+// the same thing in every caption. Shared by both run readers below — the pool's and the
+// chain's — because two spellings of this would be two `d24` conventions.
+fn run_answer(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+              ref: float, within: Claims, x0: float, z0: float, x1: float, z1: float,
+              n: integer) -> RunRead {
+  ra_win = run_edges(wall_run_new(x0, z0, x1, z1, WALL_MAT), q0, r0, wq, hr, WALL_MAT);
+  (ra_d, ra_a, ra_b, ra_p, ra_ok) = hex_shape::wall_read_run(ra_win, q0, r0, wq, hr);
+  if !ra_ok { return run_no(n); }
+  ra_ea = hex_shape::wall_end_a(ra_d, ra_a, ra_p);
+  ra_eb = hex_shape::wall_end_b(ra_d, ra_b, ra_p);
+  run_fit(edges_mat_claimed(wld, q0, r0, wq, hr, ref, within), ra_d, ra_p,
+          hex_shape::tri_x(ra_a, ra_b), hex_shape::tri_y(ra_a, ra_b),
+          hex_shape::tri_x(ra_ea, ra_eb), hex_shape::tri_y(ra_ea, ra_eb),
           q0, r0, wq, hr)
+}
+
+// ── ⛔ A WALL THAT TURNS: THE CHAIN, CUT INTO RUNS — plan 26 `B4x` ────────
+//
+// ⛔ **`corner_pool` HAS NOTHING TO OFFER A CLOSED ROOM.** It admits a vertex at degree 1
+// (a chain end) or degree >= 3 (a junction), and a room fuses at every corner — no end, no
+// junction, an EMPTY pool. Measured: a room of four walls draws NOTHING and loses all 50 of
+// its marks; a zigzag of three loses 12 of its 18, because one of its two corners fused.
+//
+// ✅ **SO THE CANDIDATES COME FROM THE CHAIN INSTEAD OF THE CORNERS.**
+// `hex_shape::wall_chain_walk` returns the marking in the order a walk meets it — the entry
+// point `CLAUDE.md` named as missing and hex_shape 0.1.2 now ships — and a run is then a
+// SPAN of that chain rather than a pair drawn from a pool.
+//
+// ⛔ **THE ACCEPTANCE IS `FORMAL_CORE` §6'S R1 IN BOTH DIRECTIONS, AND ONE HALF ALONE IS
+// UNSOUND.** `run_span` is the *nothing outside* half — every edge the candidate generates
+// is a mark of this component, and it accounts for something new. On its own it cuts a room
+// cleanly at only **12 of its 50 possible starting vertices**, losing up to 45 marks, because
+// the number it maximises is the run's own SIZE and not how much of the chain it accounts
+// for: the seam advances by vertex index while the coverage advances by generated field.
+// Adding `chain_covers` — every mark the seam steps over is generated — makes it clean at
+// **50 of 50**. [probe/b4x](../../../probe/b4x/README.md).
+//
+// ⚠ **AND IT IS THE WEAKER QUESTION, SO IT IS ASKED LAST.** `run_within` reads a pool of
+// exact corners and is both cheaper and stronger where one exists; this is the fallback for
+// the marking that has none. Every fixture that closed before still takes that branch.
+//
+// ⛔ **WHAT THIS DOES NOT DO IS RETURN THE FEWEST RUNS.** Measured over all 50 seeds, the
+// greedy cut describes a four-wall room in **4…9** runs — always with nothing left over, but
+// sometimes splitting one wall into collinear pieces. Asking for the MINIMUM instead was
+// tried and refused on its own numbers: it costs eight times the `run_edges` (1012 against
+// 128) and still moves, **4…7**, because a shortest path over a LINEAR chain cut at a
+// scan-chosen vertex is not a CYCLE's minimum. Both are strictly better than the nothing
+// this replaces; neither is the four walls somebody built.
+
+// Does this candidate generate every mark of the chain span it would step over?  The other
+// half of R1 — `run_span` asks whether it reaches outside, this asks whether it reaches all.
+fn chain_covers(g: EdgeSet, ch: WallChain, s: integer, k: integer) -> boolean {
+  for cc_i in s..k {
+    cc_q = ch.wc_q[cc_i] ?? 0;
+    cc_r = ch.wc_r[cc_i] ?? 0;
+    (cc_nq, cc_nr) = hex_grid::hex_neighbor(cc_q, cc_r, ch.wc_d[cc_i] ?? 0);
+    if edge_mat(g, cc_q, cc_r, cc_nq, cc_nr) == 0 { return false; }
+  }
+  true
+}
+
+// This component's marks, as an `EdgeSet` the chain walk can be asked about — `mark_left`'s
+// own predicate, so the walk and the acceptance agree about what a mark is.
+fn marks_edges(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+               ref: float, cl: Claims) -> EdgeSet {
+  me_e = edgeset_new(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for me_d in [4, 5, 0] {
+        if !mark_left(wld, q, r, me_d, ref, cl) { continue; }
+        (me_nq, me_nr) = hex_grid::hex_neighbor(q, r, me_d);
+        edge_set_mat(me_e, q, r, me_nq, me_nr, 1);
+      }
+    }
+  }
+  me_e
+}
+
+// The longest run along this component's chain that starts where the chain is still
+// unclaimed — one run per call, which is what the peel's loop asks for.
+pub fn run_chain_within(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                        hr: integer, ref: float, within: Claims, cl: Claims) -> RunRead {
+  rc_e = marks_edges(wld, q0, r0, wq, hr, ref, within);
+  rc_n = hex_shape::wall_chain_walk(rc_e, q0, r0, wq, hr, 0).wc_n;
+  for rc_c in 0..rc_n {
+    ch = hex_shape::wall_chain_walk(rc_e, q0, r0, wq, hr, rc_c);
+    rc_len = len(ch.wc_q);
+    // ⚠ **THE SEAM IS THE FIRST MARK NOTHING HAS CLAIMED**, not vertex zero: the loop calls
+    // this again after claiming, and a seam that always restarted at the beginning would
+    // offer the same run for ever.
+    rc_s = 0 - 1;
+    for rc_i in 0..rc_len {
+      (rc_nq, rc_nr) = hex_grid::hex_neighbor(ch.wc_q[rc_i] ?? 0, ch.wc_r[rc_i] ?? 0,
+                                              ch.wc_d[rc_i] ?? 0);
+      if edge_mat(cl.cl_edges, ch.wc_q[rc_i] ?? 0, ch.wc_r[rc_i] ?? 0,
+                  rc_nq, rc_nr) == 0 { rc_s = rc_i; break; }
+    }
+    if rc_s < 0 { continue; }
+    // ⚠ **LONGEST FIRST.** Every sub-run of a wall is also within its marks, so a shorter
+    // candidate always fits and leaves a remainder no span generates — the same reason
+    // `run_within` descends. Descending and taking the first acceptance is the longest
+    // accepted span, which is what the measurement maximised.
+    rc_k = rc_len;
+    while rc_k > rc_s {
+      cand = run_between(ch.wc_x[rc_s] ?? 0.0, ch.wc_y[rc_s] ?? 0.0,
+                         ch.wc_x[rc_k] ?? 0.0, ch.wc_y[rc_k] ?? 0.0, WALL_MAT);
+      if cand.rd_ok {
+        rc_g = run_edges(cand.rd_run, q0, r0, wq, hr, WALL_MAT);
+        rc_within = run_span(wld, q0, r0, wq, hr, ref, within, cl, rc_g);
+        if rc_within > 0 && chain_covers(rc_g, ch, rc_s, rc_k) {
+          return run_answer(wld, q0, r0, wq, hr, ref, within,
+                            cand.rd_run.wr_x0, cand.rd_run.wr_z0,
+                            cand.rd_run.wr_x1, cand.rd_run.wr_z1, rc_within);
+        }
+      }
+      rc_k = rc_k - 1;
+    }
+  }
+  run_no(0)
 }
 
 // ── THE SEAM: one call, so a consumer never holds a `Labels` ──────────────

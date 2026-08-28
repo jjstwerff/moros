@@ -533,6 +533,16 @@ fn plan_describe_within(w: VoxelWorld, q0: integer, r0: integer, q1: integer,
   // the round readers are unaffected either way.
   rw = hex_editor::run_within(w, q0, r0, dwq, dhr, ref, within, cl);
   if rw.rr_ok { return desc_of_run(rw); }
+  // ── ⛔ AND A WALL THAT TURNS, WHERE THE POOL IS EMPTY — plan 26 `B4x` ──────
+  //
+  // ⛔ **A CORNER WHERE TWO RUNS MEET IS NEITHER AN END NOR A JUNCTION**, so `corner_pool`
+  // has nothing to offer it. A closed room fuses at every corner and drew NOTHING at all,
+  // losing all 50 of its marks; a zigzag of three walls lost 12 of its 18. This reader cuts
+  // `hex_shape::wall_chain_walk`'s ordered chain into spans instead, and it is asked last
+  // because it is the weakest question here — where a pool exists, the reader above is both
+  // cheaper and stronger, and every scene that closed before still takes that branch.
+  rc = hex_editor::run_chain_within(w, q0, r0, dwq, dhr, ref, within, cl);
+  if rc.rr_ok { return desc_of_run(rc); }
   desc_no(false)
 }
 pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,

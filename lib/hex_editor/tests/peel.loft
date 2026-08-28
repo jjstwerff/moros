@@ -61,7 +61,10 @@ fn trial(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer, base
   sc = claims_copy(base, q0, r0, wq, hr);
   within = segment_claims(base, w, q0, r0, wq, hr, 0.0, sg, id);
   got = "";
-  for t in 0..8 {
+  // ⚠ **SIXTEEN, NOT EIGHT — plan 26 `B4x`.** The greedy chain cut describes a four-wall
+  // room in 4…9 runs depending on where its walk started, so a cap of eight would turn a
+  // measured worst case into a silent truncation.
+  for t in 0..16 {
     rest = segment_claims(sc, w, q0, r0, wq, hr, 0.0, sg, id);
     rr = wall_recover_claimed(w, q0, r0, wq, hr, 0.0, rest);
     // ⚠ `missing == 0` IS THE *WITHIN* TEST FOR A RUN, in the number `RunRead` has
@@ -88,6 +91,17 @@ fn trial(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer, base
     rw = run_within(w, q0, r0, wq, hr, 0.0, within, sc);
     if rw.rr_ok
        && claim_run(sc, rw.rr_x0, rw.rr_z0, rw.rr_x1, rw.rr_z1, q0, r0, wq, hr) > 0 {
+      got = got + "run;";
+      continue;
+    }
+    // ⛔ **AND LAST OF ALL, THE CHAIN — plan 26 `B4x`.** `corner_pool` admits a chain END
+    // or a JUNCTION, and a wall that TURNS gives neither: a closed room fuses at every
+    // corner, so the pool is empty and the reader above is handed nothing to offer. This
+    // one cuts the walk into spans instead. Weakest and last, for the same reason
+    // `run_within` is next-to-last.
+    rc = run_chain_within(w, q0, r0, wq, hr, 0.0, within, sc);
+    if rc.rr_ok
+       && claim_run(sc, rc.rr_x0, rc.rr_z0, rc.rr_x1, rc.rr_z1, q0, r0, wq, hr) > 0 {
       got = got + "run;";
       continue;
     }
@@ -333,7 +347,12 @@ fn test_two_of_a_kind_are_each_described() {
 // reproduces it, no floor for the house reader. ⚠ **Without this row the step could have
 // shipped a chain that answered for anything** — which is what softening the both-ways
 // comparison would have bought, and the reason it was not touched.
-fn test_a_component_no_reader_explains_is_still_refused() {
+fn test_a_closed_outline_no_round_reader_explains_is_cut_into_runs() {
+  // ⚠ **THIS ROW ASSERTED A REFUSAL UNTIL `B4x`, AND THE BOUNDARY MOVED ON PURPOSE.** A
+  // two-cell domino's outline is a closed loop of straight stretches that no round reader
+  // reproduces, so the peel drew nothing and counted all ten marks. The chain cut covers it
+  // exactly — three runs, nothing over — and an exact cover is the acceptance `FORMAL_CORE`
+  // §6 states, whether or not anybody built three walls there.
   w = flat_world();
   for d0 in 0..6 {
     (nq, nr) = hex_grid::hex_neighbor(0, 0, d0);
@@ -348,11 +367,32 @@ fn test_a_component_no_reader_explains_is_still_refused() {
   assert(segment_count(sg) == 1,
          "the domino's boundary is {segment_count(sg)} components, not one — the fixture "
        + "is not what this row is about");
-  assert(peel(w, 0 - 8, 0 - 8, 17, 17, cl) == "",
-         "a closed loop no disc reproduces was described as "
-       + "`{peel(w, 0 - 8, 0 - 8, 17, 17, claims_new(0 - 8, 0 - 8, 17, 17))}`");
-  assert(marks_unclaimed(w, 0 - 8, 0 - 8, 17, 17, 0.0, cl) > 0,
-         "it left nothing unexplained while explaining nothing");
+  got = peel(w, 0 - 8, 0 - 8, 17, 17, cl);
+  assert(got == "run;run;run;", "the domino's outline describes `{got}`");
+  assert(marks_unclaimed(w, 0 - 8, 0 - 8, 17, 17, 0.0, cl) == 0,
+         "it left {marks_unclaimed(w, 0 - 8, 0 - 8, 17, 17, 0.0, cl)} marks unexplained");
+}
+
+// ⛔ **AND THE GUARD THAT REPLACES THE REFUSAL: THE CHAIN READER MUST STEAL NOTHING.** It is
+// asked last, so a shape a round reader explains must never come back as runs — a rim cut
+// into straight pieces is the *wall nobody built* `B4u` named, and it is the one way this
+// step could have made the picture worse. Measured over the whole package: 751 of 754 tests
+// were unmoved by it, and the three that moved are this file's own boundary rows.
+fn test_the_chain_reader_does_not_steal_a_shape_a_round_reader_explains() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  cl = claims_new(0 - 18, 0 - 18, 37, 37);
+  all = marks_unclaimed(w, 0 - 18, 0 - 18, 37, 37, 0.0, cl);
+  assert(all > 40, "the rim is {all} marks — too small to be the curve this row is about");
+  got = peel(w, 0 - 18, 0 - 18, 37, 37, cl);
+  assert(got == "disc;", "a whole tower rim describes `{got}`, not one disc");
+  assert(marks_unclaimed(w, 0 - 18, 0 - 18, 37, 37, 0.0, cl) == 0,
+         "the rim left marks over");
+  h = flat_world();
+  house_at(h, 0.0, 0.0);
+  hc = claims_new(0 - 18, 0 - 18, 37, 37);
+  hgot = peel(h, 0 - 18, 0 - 18, 37, 37, hc);
+  assert(hgot == "house;", "a house describes `{hgot}`, not one house");
 }
 
 // ── ✅ AND STRUCTURES THAT TOUCH, WHICH THE CELL FLOOD COULD NOT — `B4u` ──
@@ -858,12 +898,17 @@ fn test_the_relaxed_reader_admits_only_shells_a_tower_can_be() {
 // when it finds something. Without both, a pass that drew a right shape over a field it
 // does not account for would ship as a picture with a silent leftover, which is exactly
 // what `B4p` spent a step removing.
-fn test_a_set_that_explains_only_part_of_its_component_is_refused() {
-  // ⚠ **A `T` WHOSE STEM MEETS THE CROSSBAR AT NO CORNER — plan 26 `B4w` MEASURED WHICH.**
-  // Of eight stem positions along one crossbar, **two** close and six do not: the stem's
-  // far endpoint is a continuous point on the crossbar's centreline, and it is recoverable
-  // exactly when the field's own corners happen to carry it. This is one that does not, so
-  // the trial FINDS the crossbar and still cannot close — which is the acceptance side.
+fn test_a_tee_whose_stem_meets_no_corner_now_closes_by_splitting_the_crossbar() {
+  // ⚠ **`B4w` MEASURED WHICH TEE JUNCTIONS CLOSE: TWO OF EIGHT.** The stem's far endpoint is
+  // a continuous point on the crossbar's centreline, and `corner_pool` could offer it only
+  // where the field's own corners happened to carry it. This is one of the six that did not,
+  // and it drew nothing while counting every mark.
+  //
+  // ✅ **THE CHAIN MAKES THAT POINT A VERTEX BY CONSTRUCTION**, because the walk passes
+  // through it — so the stem is recoverable, and the price is named rather than hidden: the
+  // crossbar comes back as TWO collinear runs instead of one. Two walls authored, three
+  // described, every mark accounted for. `B4w`'s own record says neither outcome is wrong,
+  // because the union test is the acceptance either way.
   w = flat_world();
   wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
   wall_at(w, 0.0, 0.0, 0.0, 8.0);
@@ -874,12 +919,14 @@ fn test_a_set_that_explains_only_part_of_its_component_is_refused() {
   all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
   cl = claims_new(q0, r0, wq, hr);
   got = peel(w, q0, r0, wq, hr, cl);
-  assert(got == "",
-         "a component the trial explains only part of was described as `{got}` — the "
-       + "union test accepted a set that does not account for it");
-  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == all,
-         "the refused trial left claims behind — it must run on a COPY, or the marks the "
-       + "refusal exists to count are silenced by it");
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,
+         "the T describes `{got}` and still leaves "
+       + "{marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl)} of its {all} marks");
+  // ⚠ **THREE, NOT TWO — the split is the finding.** A row asserting two would be asserting
+  // that the crossbar survives whole, which is exactly what this cut does not promise.
+  assert(got == "run;run;run;",
+         "the T describes `{got}` — two authored walls should come back as three runs, the "
+       + "crossbar split at the stem");
 }
 
 // ── ⛔ AND WHICH `T`s CLOSE, WHICH IS NOT A CATEGORY BUT A MEASUREMENT — `B4w` ─
@@ -893,15 +940,20 @@ fn test_a_set_that_explains_only_part_of_its_component_is_refused() {
 // exactly; one that does not is refused with every mark counted, because the union test is
 // the acceptance either way. A row that only asserted the total would pass on a chain that
 // drew something false, so both halves are checked per stem.
-fn test_which_tee_junctions_close_is_measured_not_assumed() {
+fn test_every_tee_stem_closes_now_and_the_crossbar_is_what_pays() {
+  // ⚠ **THIS ROW MEASURED A SPLIT AND NOW MEASURES ITS ABSENCE — deliberately.** Under
+  // `corner_pool` alone, two of eight stem positions closed and six were refused, and this
+  // row's guard was that BOTH outcomes occur: all-closed "would mean the pool is finding
+  // runs it should not". That reading was right about the pool and does not carry to the
+  // chain, where the stem's meeting point is a walk vertex whatever its position — so every
+  // stem closes, and the guard has to become what it COSTS instead of whether it happens.
+  //
   // ⚠ **THE WINDOW IS THE T's OWN EXTENT AND THE STEMS ARE THREE.** Each stem is a whole
-  // peel — every reader over every cell — so this row is the most expensive in the file by
-  // a wide margin: at seven stems over a 37×37 window it took **109 s on its own**. What
-  // the claim needs is that BOTH outcomes occur and that neither is wrong; three stems
-  // carry that, and the eight that established the two-of-eight count are in the record.
+  // peel over every reader, so this row is among the most expensive in the file.
   q0 = 0 - 12; r0 = 0 - 12; wq = 25; hr = 25;
   closed = 0;
-  refused = 0;
+  whole = 0;
+  split = 0;
   for i in 0..3 {
     x = (i as float) - 1.0;
     w = flat_world();
@@ -912,25 +964,26 @@ fn test_which_tee_junctions_close_is_measured_not_assumed() {
     cl = claims_new(q0, r0, wq, hr);
     got = peel(w, q0, r0, wq, hr, cl);
     left = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
-    if left == 0 {
-      assert(got != "", "the T at x={x} explained every mark while describing nothing");
-      closed = closed + 1;
-    } else {
-      // ⛔ **REFUSED MEANS NOTHING IS DRAWN AND EVERY MARK IS COUNTED**, not a partial
-      // picture: a trial that could not close must leave the field exactly as it found it.
-      assert(got == "",
-             "the T at x={x} drew `{got}` and still left {left} of its {all} marks — a set "
-           + "that does not account for its component was accepted");
-      assert(left == all, "the refused T at x={x} left claims behind");
-      refused = refused + 1;
-    }
+    assert(left == 0,
+           "the T at x={x} describes `{got}` and leaves {left} of its {all} marks — a set "
+         + "that does not account for its component was accepted");
+    // ⚠ **TWO OR THREE, AND WHICH ONE IS THE ORDERING SHOWING ITSELF.** Where the pool
+    // carries the stem's meeting point it answers first and the crossbar survives WHOLE —
+    // two runs for two authored walls, the better description. Where it cannot, the chain
+    // cuts through the junction and the crossbar comes back as two collinear pieces.
+    assert(got == "run;run;" || got == "run;run;run;",
+           "the T at x={x} describes `{got}`");
+    if got == "run;run;" { whole = whole + 1; } else { split = split + 1; }
+    closed = closed + 1;
   }
-  assert(closed + refused == 3, "{closed + refused} stems measured, not three");
-  // ⚠ **BOTH OUTCOMES MUST OCCUR**, or the row is measuring a constant: all-closed would
-  // mean the pool is finding runs it should not, all-refused that `B4w` does nothing here.
-  assert(closed > 0 && refused > 0,
-         "{closed} closed and {refused} refused — one outcome never happens, so this row "
-       + "cannot tell the generator from a constant");
+  assert(closed == 3, "{closed} stems closed, not three");
+  // ⛔ **BOTH OUTCOMES MUST STILL OCCUR, AND THE CLAIM HAS CHANGED.** It is no longer
+  // *closed vs refused* — nothing refuses now — but *the pool served it vs the chain did*.
+  // All-split would mean the chain reader is answering where the stronger reader could, and
+  // all-whole that this row no longer reaches the chain at all.
+  assert(whole > 0 && split > 0,
+         "{whole} kept the crossbar whole and {split} split it — one outcome never happens, "
+       + "so this row cannot tell the fallback from a replacement");
 }
 
 // ⛔ **THE POOL IS ENDS *AND* JUNCTIONS, AND EACH HALF IS LOAD-BEARING.** A crossing's four
@@ -971,4 +1024,66 @@ fn test_run_within_does_not_offer_a_run_already_claimed() {
   assert(!again.rr_ok,
          "the same run is offered a second time as d{again.rr_d} p{again.rr_p} — the pass "
        + "would never end");
+}
+
+// ── ✅ AND A WALL THAT TURNS — plan 26 `B4x` ──────────────────────────────
+//
+// ⛔ **`corner_pool` COULD SERVE NEITHER OF THESE.** It admits a vertex at degree 1 (a chain
+// end) or degree >= 3 (a junction); a corner where two runs MEET is neither. Measured before
+// this landed: a zigzag of three walls drew `run;run;` and lost **12 of its 18 marks**, and a
+// closed room of four drew **nothing at all** and lost all **50**.
+//
+// ⚠ **THE ACCEPTANCE IS THE POINT, NOT THE COUNT.** `run_span`'s within-ness alone — every
+// edge the candidate generates is a mark of this component — cuts a room cleanly at only 12
+// of its 50 possible starting vertices, losing up to 45 marks. `chain_covers` is the other
+// half of `FORMAL_CORE` §6's R1, and with it all 50 seeds leave nothing over.
+// [probe/b4x](../../../probe/b4x/README.md).
+fn test_a_zigzag_of_three_walls_is_read_as_three() {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0, 0.0 - 4.0, 0.0);
+  wall_at(w, 0.0 - 4.0, 0.0, 4.0, 4.0);
+  wall_at(w, 4.0, 4.0, 6.0, 4.0);
+  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+  cl = claims_new(q0, r0, wq, hr);
+  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
+  assert(all == 16, "the zigzag is {all} marks, not the 16 this row was measured on");
+  got = peel(w, q0, r0, wq, hr, cl);
+  assert(got == "run;run;run;", "a zigzag of three walls describes `{got}`");
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,
+         "it leaves {marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl)} of its {all} marks over");
+}
+
+fn test_a_closed_room_leaves_nothing_over() {
+  w = flat_world();
+  wall_at(w, 0.0 - 5.0, 0.0 - 5.0, 5.0, 0.0 - 5.0);
+  wall_at(w, 5.0, 0.0 - 5.0, 5.0, 5.0);
+  wall_at(w, 5.0, 5.0, 0.0 - 5.0, 5.0);
+  wall_at(w, 0.0 - 5.0, 5.0, 0.0 - 5.0, 0.0 - 5.0);
+  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+  cl = claims_new(q0, r0, wq, hr);
+  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
+  assert(all == 50, "the room is {all} marks, not the 50 this row was measured on");
+  // ⚠ **THE CONTROL IS THAT THE POOL REALLY IS EMPTY**, so this row is about the gap rather
+  // than about a shape the older reader could already serve: no free end, no junction.
+  me = edges_mat_claimed(w, q0, r0, wq, hr, 0.0, cl);
+  assert(hex_shape::wall_chain_ends(me, q0, r0, wq, hr) == 0,
+         "the room has {hex_shape::wall_chain_ends(me, q0, r0, wq, hr)} free ends, so "
+       + "`corner_pool` could serve it and this row is about nothing");
+  assert(hex_shape::wall_chain_branches(me, q0, r0, wq, hr) == 0,
+         "the room has a junction, so the pool is not empty either");
+  got = peel(w, q0, r0, wq, hr, cl);
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,
+         "the room leaves {marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl)} of its {all} marks "
+       + "over — it describes `{got}`");
+  // ⚠ **EVERY DESCRIPTION IS A RUN, AND THE COUNT IS DELIBERATELY NOT PINNED TO FOUR.** The
+  // greedy cut splits a wall into collinear pieces depending on where the walk started —
+  // 4…9 over the room's 50 seeds, measured. Four walls is the floor and nine the ceiling; a
+  // row asserting one number would be asserting where this fixture's scan happens to begin.
+  runs_ok = false;
+  exp = "";
+  for n in 1..10 {
+    exp = exp + "run;";
+    if got == exp && n >= 4 { runs_ok = true; }
+  }
+  assert(runs_ok, "the room describes `{got}` — not between four and nine runs");
 }
