@@ -304,7 +304,20 @@ fn main() {
   println("  place: ok={h2.ak_ok} {h2.ak_why}  roofs after {len(sd.es_roofs.items)}");
   println("  w_tau {tau0} -> {wd.w_tau} — it wrote {wd.w_tau - tau0} time(s)");
 
-  // ── C2b. ⛔ A DEFECT THIS ROW FOUND ON THE WAY PAST, KEPT BECAUSE IT IS REAL ──
+  // ── C2b. ✅ A DEFECT THIS ROW FOUND ON THE WAY PAST — FIXED 2026-08-28 ───────
+  //
+  // ⚠ **AND IT SAT HERE, CORRECTLY DESCRIBED, FOR MONTHS.** Everything below was
+  // right the day it was written; what it lacked was a test and a line in
+  // `EDITOR_DEFECTS.md`, so it was a finding in a probe nobody re-read. It was found
+  // a second time on 2026-08-28 from the outside, by writing an adopter's first
+  // program — which is the cheaper lesson of the two: **a recorded finding with no
+  // gate under it is indistinguishable from an unrecorded one.**
+  //
+  // `place_house` now snapshots the padded window before it writes and puts it back
+  // when the roof is refused, and `roof_over` asks every band before it writes any.
+  // The refusal below now reports **0 writes and 0 runs filed**; the sentence it
+  // prints is `the roof was refused, so the house was: …`. `probe/adopt` row D and
+  // `hex_editor/tests/footprint.loft` are the gates that keep it.
   //
   // The station above started at (0, 1.0) and `place` answered **`ak_ok: false`**
   // there — *"the walls stand but the roof was refused"* — after writing to the

@@ -121,6 +121,28 @@ layering:
 # would test nothing and report success.
 LIB_TEST_PACKAGES = $(if $(L),$(shell sh tools/rdeps.sh $(L)),$(if $(P),$(P),$(LIB_PACKAGES)))
 
+# ── THE SUITE, ONE FILE PER PROCESS — `tools/suite.sh` ──────────────────────
+#
+# ⛔ `make lib-test` RUNS A WHOLE PACKAGE IN ONE `loft test`, AND `hex_editor` NO
+# LONGER FITS. loft applies a 300-second deadline to the whole `run-interpret`
+# phase; 775 tests exceed it, so `lib-test` on that package can only ever be RED —
+# correctly, and for a reason that is not a defect in the code. Measured 2026-08-28:
+# it stops inside `tests/opening.loft`, which passes 21 of 21 in 4.3 s on its own.
+# ⚠ `lib-test` itself is sound — a planted failure AND a planted timeout both come
+# back as exit 2, because `.SHELLFLAGS` carries `-o pipefail`. The problem is the
+# wall, not the reporting.
+#
+# `make suite` runs one FILE per process, so the deadline bounds the slowest file
+# instead of the sum, and a file that reports nothing at all is RED rather than
+# absent. 62 files and 777 tests in `hex_editor`.
+#
+#   make suite                    every package
+#   make suite P=hex_editor       one
+#   make suite JOBS=6             in parallel
+#   SUITE_NATIVE=1 make suite     the native backend too
+suite:
+	@SUITE_JOBS=$(if $(JOBS),$(JOBS),4) sh tools/suite.sh $(P)
+
 lib-test: layering | .test-logs
 	@if [ -z "$(strip $(LIB_TEST_PACKAGES))" ]; then \
 		echo "lib-test: nothing selected — rdeps said nothing for L=$(L)"; exit 2; fi
@@ -957,6 +979,17 @@ probe-auth:
 # and this is the decisive backstop that proves the ratchet matches what compiles.
 probe-split:
 	@sh probe/l6/run.sh
+
+# ADOPT — THE FIRST HOUR. What a stranger writes before reading anything: twelve
+# lines against the public API, no editor and no browser. It is the only standing
+# answer to EDITOR_SUBSTRATE's DoD clause 8 (*picking it up is fun*), and writing it
+# by hand on 2026-08-28 found two live defects that 775 library tests and 58 gates
+# had never asked about — because our own fixtures always face a placeable way and
+# always place on open ground. probe/adopt/README.md has the four rows.
+probe-adopt:
+	@$(LOFT) --interpret --lib lib/ probe/adopt/adopt.loft 2>/dev/null \
+	 | tee /dev/stderr | grep -q '^probe/adopt: the first hour holds' \
+	 || { echo "probe-adopt: FAILED"; exit 1; }
 
 # K1 (plan 22) — CAN ANYTHING HERE SEE A WRONG PROFILE, and does a word neither
 # driver knows FAIL the run? ⛔ It asked *does `verb` build what `key` built* until

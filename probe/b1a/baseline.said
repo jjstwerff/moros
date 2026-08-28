@@ -1,6 +1,6 @@
 editor: brush (10,0)
 editor: brush (10,0)
-editor: house refused — a footprint at this facing has no mitred corners; turn one step (rot 9 of 12, offer 8, residual 0)
+editor: house refused — a footprint at this facing has no mitred corners; turn one step — you are on facing 0 of 12, offer facing 11 (rot 9 -> 8, residual 0)
 editor: fenced 42 edges (21 stored outside) at (0,0) radius 3
 editor: fenced 42 edges (21 stored outside) at (0,0) radius 3
 editor: brush (10,0)

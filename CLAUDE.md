@@ -422,6 +422,16 @@ address (or the hostname `make browser` prints) cannot connect.
 
 ## Scene tools
 
+- [Focus](doc/claude/FOCUS.md) — ⛔ **WHERE THE WORK GOES NEXT, and the two priorities are ONE
+  problem.** *"The blueprint lets us define the blocks for the other part; without those every
+  project will feel lost."* The blueprint is where a project's vocabulary is **authored** and the
+  palette is where it is **stored** — today the first is a read-only SVG dump with two callers and
+  the second is 329 compile-time constants, so an adopter has neither end and inherits Moros's
+  village. ⛔ Its blocking number: **a closed room of four walls draws NOTHING** and leaves all 50
+  marks (`B4x`) — a room fuses at every corner, so `corner_pool` is empty — and there is no point
+  authoring over a reader that cannot see the object a blueprint is made of. ⚠ Read its §4 for the
+  instrument: every integration finding came from **writing the adopter's first program**, twelve
+  lines against the public API, which surfaced two live defects 775 tests never asked about
 - [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands,
   decisions taken, what is open. Short on purpose; the thirteen-session record is
   [Journal](doc/claude/JOURNAL.md), which nothing thins

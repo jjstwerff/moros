@@ -204,6 +204,100 @@ fn test_the_four_runs_meet_end_to_end() {
   }
 }
 
+// ⛔ THE OFFER USED TO NAME A FACING THAT IS ITSELF REFUSED — fixed 2026-08-28.
+//
+// `fp_offer` is a Box ROTATION and an author turns in FACINGS, 90° apart by
+// construction. The refusal handed out the rotation, so an author at hour 0 was told
+// *offer 8*; hour 8 answered *offer 4*; hour 4 answered *offer 0*. **Three refused
+// facings offering each other in a cycle**, with every individual number correct —
+// which is why nothing caught it: the arithmetic was right and the FRAME was wrong.
+//
+// ⚠ THE TEST TAKES THE OFFER RATHER THAN CHECKING ITS PARITY. Asserting
+// `box_orbit(offer) == 0` would pass on the broken version too, because the offer
+// was always an even rotation; it was never an even *facing*. The only question that
+// separates the two is *can the author do what they were just told to do*.
+fn test_every_refused_facing_offers_one_the_author_can_take() {
+  refused = 0;
+  for h in 0..12 {
+    yaw = (h as float ?? 0.0) * 2.0 * PI / 12.0 ?? 0.0;
+    f = hex_editor::pose_footprint(0.0, 0.0, yaw, HOUSE_W, HOUSE_D);
+    if f.fp_ok { continue; }
+    refused = refused + 1;
+    off = hex_editor::footprint_offer_facing(f);
+    assert(hex_editor::footprint_facing(f) == h,
+           "the refusal knows which facing the author is on: said {hex_editor::footprint_facing(f)}, was {h}");
+    assert(off != h, "an offer that is where you already stand is not an offer");
+    g = hex_editor::pose_footprint(0.0, 0.0,
+          (off as float ?? 0.0) * 2.0 * PI / 12.0 ?? 0.0, HOUSE_W, HOUSE_D);
+    assert(g.fp_ok,
+           "hour {h} offers facing {off}, and turning there must place: {g.fp_rot} is on the odd orbit");
+  }
+  // ⚠ AND THE COUNT, or a version that refused NOTHING would pass every line above.
+  assert(refused == 6, "six of the twelve facings are refused, got {refused}");
+}
+
+// ⛔ A ROOF REFUSAL USED TO LEAVE THE HOUSE STANDING — fixed 2026-08-28.
+//
+// `place_house` lays the floor, stamps four walls and *then* asks for the roof. On
+// the editor's own constants a house under a ceiling — a cave, or the underside of a
+// storey — is refused by `F1`, and the world was left holding 27 floor cells, 84 wall
+// bytes and 4 filed wall runs under an `ak_ok: false`.
+//
+// ⚠ **THE NEIGHBOURING TEST IS WHY IT SURVIVED.** Its name is the general sentence —
+// *is refused and writes nothing* — and it visits the FACING refusal, which returns
+// before any write. The one path that can leave a half-house is the one path it does
+// not reach.
+//
+// ⚠ **AND `w_tau` IS THE WRONG INSTRUMENT HERE, unlike next door.** The unwind is
+// itself a write, so the edit clock legitimately moves; asserting it would fail on the
+// fix. What must be unchanged is the world's CONTENT — no floor, no wall byte, no run,
+// no roof plan, and no label burned.
+fn caved_world() -> VoxelWorld {
+  w = housed_world();
+  for r in 0 - 16..17 {
+    for q in 0 - 16..17 {
+      world_merge_band(w, q, r, 28, 28,
+        [Hex { h_height: 28, h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) }]);
+    }
+  }
+  w
+}
+
+fn floors_and_walls(w: VoxelWorld) -> integer {
+  n = 0;
+  for r in 0 - 24..25 {
+    for q in 0 - 24..25 {
+      c = world_ground_cell(w, q, r);
+      if (c.h_material as integer ?? 0) == hex_editor::FLOOR_MAT { n = n + 1; }
+      for d in 0..6 { if hex_editor::wall_of(w, q, r, d, 0.0) != 0 { n = n + 1; } }
+    }
+  }
+  n
+}
+
+fn test_a_house_whose_roof_is_refused_leaves_no_walls_standing() {
+  w = caved_world();
+  runs = hex_editor::WallRuns { items: [] };
+  roofs = hex_editor::RoofPlans { items: [] };
+  before = floors_and_walls(w);
+  label_before = w.w_next_id;
+  assert(before == 0, "the fixture starts with no house in it, got {before}");
+  ack = hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, PI / 6.0 ?? 0.0),
+                                HOUSE_W, HOUSE_D, 12, runs, roofs);
+  // ⚠ THE FIXTURE GUARD. If the ceiling ever stops refusing the roof this test goes
+  // green while measuring nothing — the shape `A7`'s self-repairing test had.
+  assert(!ack.ak_ok, "the fixture must REFUSE, or nothing below is being tested: {ack.ak_why}");
+  assert(ack.ak_why.contains("roof"), "and refuse for the roof: {ack.ak_why}");
+  assert(floors_and_walls(w) == 0,
+         "a refused house leaves no floor and no wall: {floors_and_walls(w)} left behind");
+  assert(len(runs.items) == 0, "and no run filed — a run without a wall draws a line in the air");
+  assert(len(roofs.items) == 0, "and no roof plan filed for a house that is not there");
+  // The label is allocated only once the roof's bands have all been accepted, so a
+  // refused roof must not have burned one.
+  assert(w.w_next_id == label_before,
+         "and no layer label spent: {label_before} -> {w.w_next_id}");
+}
+
 fn test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing() {
   // The lattice's own limit reaching the author: due east has no mitred corners,
   // and a refusal must leave the world exactly as it was.

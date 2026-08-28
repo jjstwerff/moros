@@ -302,6 +302,35 @@ pub fn pose_footprint(px: float, py: float, facing: float,
 }
 
 // The placement, as the shape family holds it — valid on both orbits.
+// ── ⛔ THE OFFER, IN THE UNITS THE AUTHOR TURNS IN — 2026-08-28 ─────────────
+//
+// `fp_offer` is a **Box rotation**, and an author has a **facing**. The two are 90°
+// apart by construction — `pose_footprint` computes `rot = fdir - 3`, because the
+// rectangle's u axis is square to the way the person is looking — so handing the
+// rotation to a person is handing them a number from a frame they are not standing
+// in.
+//
+// ⛔ **AND IT WAS DOING EXACTLY THAT, WITH A THREE-CYCLE AS THE RESULT.** Measured
+// over all twelve facings: an author at hour 0 was told *offer 8*; turning to hour 8
+// was refused with *offer 4*; hour 4 was refused with *offer 0*, which is where they
+// started. **Every refusal named a facing that is itself unplaceable**, so the
+// doorstep's whole promise — reason, offer, residual, never a blank no — was a loop.
+// The arithmetic was never wrong; it was answered in the wrong frame, which is the
+// harder half to see because every individual number is correct.
+//
+// ⚠ **A FUNCTION, NOT AN EIGHTH FIELD.** The offer facing is `fp_offer` read from the
+// other side of the same 90°, so storing it would be a second copy of one fact — and
+// this file has a comment three screens up about exactly that, on the seat.
+pub fn footprint_offer_facing(f: Footprint) -> integer {
+  (f.fp_offer + 3) % POSE_ROT ?? 0
+}
+
+// The facing the author is actually on, in the same twelve. Paired with the offer so
+// a message can say *you are here, go there* rather than only naming a destination.
+pub fn footprint_facing(f: Footprint) -> integer {
+  (f.fp_rot + 3) % POSE_ROT ?? 0
+}
+
 pub fn footprint_box(f: Footprint) -> Box {
   box_new(f.fp_cq, f.fp_cr, f.fp_wid, f.fp_dep, f.fp_rot, false)
 }
@@ -375,8 +404,18 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
                    grade: integer, runs: WallRuns, roofs: RoofPlans) -> Ack {
   f = pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
   if !f.fp_ok {
-    return ack_no("a footprint at this facing has no mitred corners; turn one step "
-                + "(rot {f.fp_rot} of 12, offer {f.fp_offer}, residual {f.fp_residual})");
+    // ⚠ **THE OFFER IS A FACING, NOT A ROTATION** — see `footprint_offer_facing`.
+    // This line used to hand out `fp_offer`, a Box rotation, to a person who turns in
+    // facings, and the three refused facings it names form a cycle that never reaches
+    // a placeable one. The rotation is kept in the message because it is what
+    // `footprint_plan` reads, but it is labelled as the internal number it is.
+    // ⚠ THE WORD `offer` STAYS — it is the K-FIT doorstep's own vocabulary (reason,
+    // offer, residual) and `footprint.loft` matches on it. What changed is the NUMBER
+    // beside it, which is now a facing.
+    return ack_no("a footprint at this facing has no mitred corners; turn one step — "
+                + "you are on facing {footprint_facing(f)} of 12, offer facing "
+                + "{footprint_offer_facing(f)} (rot {f.fp_rot} -> {f.fp_offer}, "
+                + "residual {f.fp_residual})");
   }
   pad = wid + dep + 4;
   cells = hexset_chunk(f.fp_cq - pad, f.fp_cr - pad, 2 * pad + 1, 2 * pad + 1);
@@ -468,6 +507,61 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   if moved < 0 { moved = 0 - moved; }
   owed = (cost / w.w_unit ?? 0.0) as integer;
 
+  // ── ⛔ WHAT A REFUSAL HAS TO PUT BACK — measured 2026-08-28 ────────────────
+  //
+  // ⛔ **THIS FUNCTION USED TO LEAVE A HALF-HOUSE, UNDER A COMMENT SAYING IT DOES
+  // NOT.** Twenty lines down, the roof's refusal says *"A refusal here refuses the
+  // HOUSE — half a house is not an answer"*; what it actually did was return
+  // `ack_no` over a world holding **27 floor cells, 84 wall bytes and 4 filed wall
+  // runs**. On the editor's own constants (ε 10, θ 4) it is one ordinary gesture:
+  // place a house under a ceiling — a cave, or the underside of a storey — and the
+  // roof band is refused by `F1` while the walls have already been stamped.
+  //
+  // ⚠ **AND THE TEST THAT READS AS THE GENERAL CLAIM VISITS THE OTHER BRANCH.**
+  // `test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing` asserts
+  // `w.w_tau == before` — for the FACING refusal, which returns before any write.
+  // The one refusal path that CAN leave a half-house is the one path it does not
+  // reach, and its name is the general sentence. That is this tree's own *a guard
+  // that works in ONE DIRECTION reads exactly like a guard*, one level up.
+  //
+  // ⚠ **THE SNAPSHOT IS THE PADDED WINDOW, WHICH IS THE SAME BOUND THE WRITES
+  // USE.** Narrowing it to the footprint would be the `map_to_stencil` defect
+  // again: three of the six directions store an edge against the NEIGHBOUR, so the
+  // wall ringing a room is owned by the empty cell outside it, and `B4o` measured
+  // `place` stamping one edge PAST each corner. A restore set smaller than the
+  // write set is a restore that leaves walls standing round nothing.
+  //
+  // ⚠ **AND A `Hex` CARRIES ITS OWN EDGES**, so putting the cell back puts the wall
+  // bytes back with it — one primitive undoes both writes rather than two undos
+  // that can disagree about which cells they cover.
+  //
+  // ✅ **THE ACCEPTED PATH IS UNMOVED, MEASURED RATHER THAN ASSUMED.** The snapshot is
+  // reads, and a read does not touch the edit clock — so a house that goes down keys
+  // the **identical world**: `τ 5426`, 90 495 bytes, same digest, before and after this
+  // change, run side by side out of two `lib/` trees. That is this tree's upper bound on
+  // a step (*both paths run at once and are compared exactly*) rather than a swap and a
+  // look.
+  //
+  // ⚠ **WHAT A REFUSAL CANNOT PUT BACK IS THE CLOCK, AND THAT IS RIGHT.** The unwind is
+  // itself a write, so `w_tau` and the touched layers' `ly_ver` advance — measured, seven
+  // bytes of 106 913, all of them clocks. A mesh cache SHOULD see those layers as
+  // touched; what must be identical is the content, and it is. ⛔ So `w_tau == before` is
+  // the wrong assertion for this path, and it is exactly the one the neighbouring facing
+  // test makes — which is the other half of why that test could never have covered this.
+  keepq: vector<integer> = [];
+  keepr: vector<integer> = [];
+  keepc: vector<hex_voxel::Hex> = [];
+  for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
+    for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
+      keepq += [q]; keepr += [r]; keepc += [world_ground_cell(w, q, r)];
+    }
+  }
+  // The registries are appended to as well, so the count before is what a refusal
+  // has to come back to. A run filed for a wall that is not there draws a line in
+  // the air — `footprint.loft` says exactly that about the other refusal path.
+  runs0  = len(runs.items);
+  roofs0 = len(roofs.items);
+
   for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
     for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
       if hexset_get(cells, q, r) { ground_set(w, q, r, seat, FLOOR_MAT); }
@@ -495,7 +589,17 @@ pub fn place_house(w: VoxelWorld, a: Author, wid: integer, dep: integer,
   // line earlier so there is a single plan rather than two agreeing ones.
   rp = roof_plan_of(f, roof_eave_y(seat, STOREY_H, w.w_unit), ROOF_PITCH_DEFAULT);
   rf = roof_over(w, f, cells, rp, 0);
-  if !rf.ak_ok { return ack_no("the walls stand but the roof was refused: {rf.ak_why}"); }
+  if !rf.ak_ok {
+    // ⚠ `roof_over` IS ATOMIC SINCE 2026-08-28 — it asks every band before it writes
+    // any — so at this point the roof has written nothing and what is left to put
+    // back is exactly the floor and the walls this function wrote.
+    for i in 0..len(keepq) {
+      ground_write(w, keepq[i] ?? 0, keepr[i] ?? 0, keepc[i] ?? hex_voxel::Hex {});
+    }
+    runs.items  = [for i in 0..runs0  { runs.items[i]  ?? WallRun {} }];
+    roofs.items = [for i in 0..roofs0 { roofs.items[i] ?? RoofPlan {} }];
+    return ack_no("the roof was refused, so the house was: {rf.ak_why}");
+  }
   // ⚠ **AND THE PLAN IS FILED HERE, BECAUSE THIS IS WHERE THE ROOF IS KNOWN.** The
   // socket used to do it afterwards and had to re-derive all three arguments: the
   // footprint (`pose_footprint` called a second time on the author's pose), the seat
@@ -584,7 +688,6 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet,
   // touches; letting each allocate its own label is the violation this repairs.
   // Measured before it: a cone centred on a seam came back labelled 5 on one side
   // and 4 on the other.
-  roof_id = hex_voxel::world_fresh_label(w);
   n = 0;
   ridge = 0;
 
@@ -620,6 +723,27 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet,
   // declaration chose that value*. A roof is not the authority on a wall, so the
   // answer is for it to stop writing the cell rather than to fill the fields in.
   eave_u = (rp.rp_eave / w.w_unit ?? 0.0) as integer;
+
+  // ── ⛔ EVERY BAND IS ASKED BEFORE ANY BAND IS WRITTEN ──────────────────
+  //
+  // ⛔ **THIS LOOP USED TO WRITE AND CHECK IN ONE PASS, AND A REFUSAL ON THE 12th
+  // CELL LEFT ELEVEN ROOF CELLS IN THE WORLD.** Measured 2026-08-28 on the editor's
+  // own constants (ε 10, θ 4): a house placed under a ceiling anywhere between 28
+  // and 44 refuses at `(2,-1)` with `layer 2 is 1 above layer 1, needs 10` — and
+  // `place_house`, whose own comment says *"a refusal here refuses the HOUSE — half a
+  // house is not an answer"*, then returned `ack_no` over a world holding 27 floor
+  // cells, 84 wall bytes and a partial roof.
+  //
+  // ⚠ **THE CHECK IS THE WRITER'S OWN, NOT A SECOND DERIVATION.**
+  // `world_merge_band_as` IS `world_band_check` followed by `world_set_column_as`,
+  // so asking first cannot disagree with what writing would have answered — which
+  // is the whole reason this is a hoist rather than a new predicate. And `hu` is
+  // derived ONCE, here, and carried to the write: recomputing it in the second pass
+  // would be the two-derivations-of-one-quantity shape this file has been bitten by
+  // three times.
+  qs: vector<integer> = [];
+  rs: vector<integer> = [];
+  hs: vector<integer> = [];
   for r in f.fp_cr - pad..f.fp_cr + pad + 1 {
     for q in f.fp_cq - pad..f.fp_cq + pad + 1 {
       if hexset_get(cells, q, r) {
@@ -630,19 +754,49 @@ pub fn roof_over(w: VoxelWorld, f: Footprint, cells: HexSet,
         (rpx, rpz) = hex_to_px(q, r);
         hu = (roof_plan_y(rp, rpx, rpz) / w.w_unit ?? 0.0) as integer;
         if hu > ridge { ridge = hu; }
-        band: vector<hex_voxel::Hex> = [
-          hex_voxel::Hex { h_height: (hu as u16? ?? 0),
-                           h_material: (ROOF_MAT as u8? ?? 0) }
-        ];
-        wr = world_merge_band_as(w, q, r, eave_u, hu, band, roof_id);
-        if wr.cw_code != 0 {
-          return ack_no("the roof was refused at ({q},{r}): {wr.cw_detail}");
+        ck = hex_voxel::world_band_check(w, q, r, eave_u, hu, roof_band(hu));
+        if ck.cw_code != 0 {
+          return ack_no("the roof was refused at ({q},{r}): {ck.cw_detail}");
         }
-        n = n + 1;
+        qs += [q]; rs += [r]; hs += [hu];
       }
     }
   }
+
+  // ⚠ ONE ROOF, ONE LABEL, HOWEVER MANY CHUNKS IT COVERS — `I1`. A layer is
+  // chunk-wide, so a roof spanning a boundary makes a layer record in each chunk it
+  // touches; letting each allocate its own label is the violation this repairs.
+  // Measured before it: a cone centred on a seam came back labelled 5 on one side
+  // and 4 on the other.
+  // ⚠ **ALLOCATED AFTER THE CHECKS, so a refused roof does not burn a label** —
+  // `world_fresh_label` bumps the world's counter, which is a write in every sense
+  // that matters to a world key.
+  roof_id = hex_voxel::world_fresh_label(w);
+  for i in 0..len(qs) {
+    q = qs[i] ?? 0;
+    r = rs[i] ?? 0;
+    hu = hs[i] ?? 0;
+    wr = world_merge_band_as(w, q, r, eave_u, hu, roof_band(hu), roof_id);
+    if wr.cw_code != 0 {
+      // ⛔ UNREACHABLE BY CONSTRUCTION, AND SAID OUT LOUD RATHER THAN SWALLOWED.
+      // The check above asked this exact question of this exact band; if the answer
+      // has changed, the store moved under us and a silent `ack_ok` would be the
+      // half-house defect wearing a fix's clothes.
+      return ack_no("the roof was refused at ({q},{r}) AFTER its band was accepted "
+                  + "— the store changed under the gesture: {wr.cw_detail}");
+    }
+    n = n + 1;
+  }
   ack_at(ack_about(n, "roof over {n} cells, ridge at {ridge}", ridge), f.fp_cq, f.fp_cr)
+}
+
+// The one-cell band a roof writes at a column. ⚠ A FUNCTION BECAUSE IT IS READ
+// TWICE — once by the check pass and once by the write pass — and two literals
+// would be two chances to differ in the one place where differing is undetectable:
+// the check would pass on a band the write does not perform.
+fn roof_band(hu: integer) -> vector<hex_voxel::Hex> {
+  [ hex_voxel::Hex { h_height: (hu as u16? ?? 0),
+                     h_material: (ROOF_MAT as u8? ?? 0) } ]
 }
 
 // The pitch a house gets when nobody says otherwise. ⚠ MEASURED IN A PICTURE, not

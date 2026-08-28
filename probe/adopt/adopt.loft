@@ -1,0 +1,130 @@
+// THE ADOPTER'S FIRST PROGRAM — what a stranger writes before reading anything.
+//
+// ⚠ THIS IS AN INSTRUMENT, NOT A DEMO. Every integration finding in
+// `doc/claude/FOCUS.md` came from writing this file by hand on 2026-08-28: twelve
+// lines against the public API, no editor, no browser, no gate. It compiled and ran
+// first try — and it surfaced two live defects that 775 library tests and 58 gates
+// had never asked about, because our own fixtures always face a placeable way and
+// always place on open ground.
+//
+// **What it measures is the first hour**, which is DoD clause 8 (*picking it up is
+// fun*) — the only clause in EDITOR_SUBSTRATE with no gate. It answers three
+// questions a stranger asks in order:
+//
+//   A · can I make a world and put a house in it, from the public names alone?
+//   B · when I am refused, am I told something I can DO?
+//   C · and if I do it, does it work?
+//
+// ⚠ B AND C ARE TWO QUESTIONS AND THE SECOND IS THE ONE THAT BITES. Until
+// 2026-08-28 every refused facing named a facing that was itself refused — three of
+// them in a cycle — so B passed and C did not, and no test in the tree separated
+// them. A refusal that names an action is not a doorstep until the action works.
+use hex_voxel;
+use hex_editor;
+
+const HOURS = 12;
+
+fn facing(h: integer) -> float { (h as float ?? 0.0) * 2.0 * PI / (HOURS as float) ?? 0.0 }
+
+// What a house has left in the world: floor cells and wall bytes, over a window
+// wider than any footprint this places.
+fn built(w: VoxelWorld) -> integer {
+  n = 0;
+  for r in 0 - 24..25 {
+    for q in 0 - 24..25 {
+      c = hex_voxel::world_ground_cell(w, q, r);
+      if (c.h_material as integer ?? 0) == hex_editor::FLOOR_MAT { n = n + 1; }
+      for d in 0..6 { if hex_editor::wall_of(w, q, r, d, 0.0) != 0 { n = n + 1; } }
+    }
+  }
+  n
+}
+
+fn ground() -> VoxelWorld {
+  w = hex_voxel::world_new(0.25, hex_editor::W_RESERVE,
+                           hex_editor::WORLD_EPS, hex_editor::WORLD_THETA).wn_world;
+  hex_editor::ground_fill(w, 0 - 24, 0 - 24, 49, 49, 12, hex_editor::SURFACE_MAT);
+  w
+}
+
+fn main() {
+  bad = 0;
+
+  // ── A · the shortest path from nothing to a house ────────────────────────
+  placed = 0;
+  for h in 0..HOURS {
+    // ⚠ A FRESH SESSION PER ATTEMPT, AND THE FIRST VERSION SHARED ONE — which read
+    // as **2 of 12 facings can place a house** and was the probe measuring itself.
+    // `es_roofs` is the registry `D2b` asks *does this footprint overlap a filed
+    // plan*, so every attempt after the first success was refused for standing in
+    // the house the previous iteration built. A fresh world without a fresh session
+    // is a world the session still believes has a house in it.
+    w = ground();
+    sess = hex_editor::session_new();
+    a = hex_editor::author_on(w, 0.0, 0.0, facing(h));
+    if hex_editor::press_verb(sess, w, a, "place").ak_ok { placed = placed + 1; }
+  }
+  println("A  facings that place a house: {placed} of {HOURS}");
+  if placed == 0 {
+    println("   FAIL  a stranger who tries every facing still has no house");
+    bad = bad + 1;
+  }
+
+  // ── B and C · a refusal names an action, and the action works ────────────
+  refused = 0;
+  taken = 0;
+  for h in 0..HOURS {
+    f = hex_editor::pose_footprint(0.0, 0.0, facing(h),
+                                   hex_editor::HOUSE_W, hex_editor::HOUSE_D);
+    if f.fp_ok { continue; }
+    refused = refused + 1;
+    off = hex_editor::footprint_offer_facing(f);
+    v = ground();
+    s2 = hex_editor::session_new();
+    b = hex_editor::author_on(v, 0.0, 0.0, facing(off));
+    ack = hex_editor::press_verb(s2, v, b, "place");
+    if ack.ak_ok { taken = taken + 1; }
+    else { println("   FAIL  hour {h} offers facing {off}, and taking it is refused: {ack.ak_why}"); }
+  }
+  println("B  refusals that name a facing: {refused}");
+  println("C  offers that can be taken:    {taken} of {refused}");
+  if refused == 0 { println("   FAIL  nothing was refused — B and C measured nothing"); bad = bad + 1; }
+  if taken != refused { bad = bad + 1; }
+
+  // ── D · a refusal leaves the world alone ─────────────────────────────────
+  //
+  // A house under a ceiling — a cave, or the underside of a storey — is refused by
+  // the fold rule after the walls have been stamped. ⚠ THE FIXTURE GUARD IS THE
+  // POINT: if this stops refusing, every assertion below goes green while measuring
+  // nothing.
+  u = ground();
+  for r in 0 - 16..17 {
+    for q in 0 - 16..17 {
+      hex_voxel::world_merge_band(u, q, r, 28, 28,
+        [hex_voxel::Hex { h_height: 28,
+                          h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) }]);
+    }
+  }
+  runs  = hex_editor::WallRuns { items: [] };
+  roofs = hex_editor::RoofPlans { items: [] };
+  before = built(u);
+  labels = u.w_next_id;
+  ack = hex_editor::place_house(u, hex_editor::author_on(u, 0.0, 0.0, facing(1)),
+                                hex_editor::HOUSE_W, hex_editor::HOUSE_D, 12, runs, roofs);
+  if ack.ak_ok {
+    println("D  FAIL  the fixture placed a house — nothing below is being tested");
+    bad = bad + 1;
+  } else {
+    left = built(u) - before;
+    println("D  a refused house leaves: {left} cells+walls, {len(runs.items)} runs, "
+          + "{len(roofs.items)} roof plans, {u.w_next_id - labels} labels");
+    if left != 0 || len(runs.items) != 0 || len(roofs.items) != 0
+       || u.w_next_id != labels {
+      println("   FAIL  a refusal that half-builds is worse than one that says no");
+      bad = bad + 1;
+    }
+  }
+
+  if bad == 0 { println("probe/adopt: the first hour holds"); }
+  else { println("probe/adopt: {bad} FAILED"); }
+}
