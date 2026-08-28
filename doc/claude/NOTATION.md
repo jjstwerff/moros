@@ -164,10 +164,60 @@ tags.**
 | **1** | ✅ **BUILT — `tools/citations.py`, in `make fast`.** 98 sites, 20 upstream tags, all resolve; SKIPs when `../hexbody` is absent | ⚠ **And it found a collision before it ran once**: `WORLD_MODEL.md` defines its OWN `X1`–`X5` (plan #8's `CW_EXTENT`, `CW_CONCURRENT`, churn), which a naive checker would have resolved against hexbody **by coincidence** and reported green |
 | **2** | ✅ **DONE — upstream citations are `@HB-X<n>`; this tree's own stay bare.** 120 sites over 40 files, and `citations.py` now enforces **both** directions | ⚠ **The overlap was real**: the two families were spelled alike and overlapped in 1–5, missing each other only because this tree's hexbody citations happened to start at 24. The prefix bought a second thing — a bare tag can now be *required* to be defined here, which could not be ASKED before |
 | **3** | **read the library example tags** — `@HXS-…`, `@HXP-…` already exist in `loft-libs-world` and answer *"show me this function used correctly"*, which is what every probe in plan 24 spent a run rediscovering | zero cost: they are already written |
-| **4** | **`dups` by meaning** — once citations exist, ask which rule is enforced from two sites | plan 24 found four second-implementations by hand |
+| **4** | ✅ **BUILT — `python3 tools/citations.py dups`.** Rules claimed by two or more PRODUCTION files, ranked by how many; tests and gates shown as context | plan 24 found four second-implementations by hand, and reading them off a list costs a second |
 
 ⚠ **STEP 1 ONLY, AND NOT THE WHOLE APPARATUS.** loft has 356 rules, a `formal/` tree and a
 feature catalogue because it is a language. Moros consumes a formal core it does not own; what it
 needs is the **citation** half, not the rule-authoring half. Copying `formal/` here would create
 exactly the second authority [FORMAL_CORE](FORMAL_CORE.md) warns against — the rules stay in
 hexbody, and this tree proves it still points at them.
+
+
+## 6. ✅ What was adopted, and what `dups` says today — 2026-08-29
+
+**The doctrine is in [CLAUDE.md](../../CLAUDE.md)'s working rules now**, in one line: *the formal
+definitions come first, every time, and they are validated rather than assumed — a rule may be
+sharpened or extended upstream, but never bent here.*
+
+⛔ **AND IT WAS WRITTEN FROM A MISS RATHER THAN FROM A PRINCIPLE.** A session went to
+re-deriving *how do you recover four walls from a marking* — an ordered chain walk, a cyclic
+minimum partition, three refuted cut rules, a published library function — while the core
+answers it in three rows: `@HB-X36` (the side runs **partition** the boundary, corner edges
+claimed once, gated at three sizes), `@HB-X45` (a convex form recovers **exactly and
+constructively**, 119/119), and `@HB-X29`, which names the mistake itself — world linework is
+*"where nothing has to close or meet a corner"*, so **four runs are not a room**.
+
+### 6.1 The instrument, and the correction it needed on its first run
+
+`dups` reads **code**, never prose: a document citing one rule in five paragraphs is prose doing
+its job, while two functions citing one rule are two enforcements of it.
+
+⚠ **AND ITS FIRST RANKING WAS WRONG IN THE WAY THIS TREE'S INSTRUMENTS USUALLY ARE.** It put
+`@HB-X70` first at **23 sites** — sixteen of them assertions in `lib/*/tests/` and `.mjs` gates.
+**A rule being CHECKED sixteen times is the system working**, not a duplicate; ranked over
+production files only, the list drops from *everything* to **11 tags**, and `@HB-X70` sits
+fourth.
+
+### 6.2 The reading, on the day it was built
+
+**11 tags are claimed by two or more production files.** That is a list of *candidates* — two
+files claiming one rule may be one enforcement and one caller — and it is the first time the
+question can be asked without reading everything:
+
+| tag | production files | what to look at |
+|---|---|---|
+| `@HB-X69` | **6** | the wall-type palette: `gesture`, `octagon`, `session`, `walltype`, `planview`, `editor_server` |
+| `@HB-X12` | 5 | `WallDef.wd_body` — the shape vocabulary, incl. `moros_map/src/palette.loft` |
+| `@HB-X49` | 5 | reaches **both** drivers, `editor_run` and `editor_server` |
+| `X108` | 5 | ours, and a **probe** is one of the five (`probe/m2p`) |
+| `@HB-X29` | 4 | ⚠ **two of the four are probes** — `probe/h1` and `probe/m1p` |
+| `@HB-X70` | 4 | openings, the widest by sites (23) and mostly tests |
+
+⚠ **A PROBE BESIDE A LIBRARY IS THE SHAPE TO LOOK AT FIRST.** This tree's own rule is that a
+probe measures the library and never re-derives it — `surface_of`'s integer body was copied into
+one once, *"with the `Plan` taken out"*, and scored **worse than the float fit it was
+correcting**. `@HB-X29` and `X108` both show that shape today.
+
+⚠ **AND `dups` IS A DESIGN INSTRUMENT, NOT A GATE.** It lists; it does not fail. Two files
+claiming one rule is a question, and a checker that answered it automatically would be inventing
+the judgement the list exists to inform.

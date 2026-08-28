@@ -154,8 +154,32 @@ closed form** — nothing measured, fitted or tuned. These are `hex_draw::BAND_T
 | **`@HB-X27`** | **the marks evaluate back to the SAWTOOTH, not the line** — the straight line is `rebuild`'s job | the store holds a zigzag by construction; recovery is a named map, not an afterthought |
 | **`@HB-X47`** | the wall surface is the exact average of its edges | §6.1's gate |
 | **`@HB-X24`** | **there is no square sublattice of a hexagonal lattice** — a lattice polygon cannot be a rectangle | `Plan` is continuous-then-rasterised; a rectangle's corner is quantised away |
+| **`@HB-X36`** | **the side runs PARTITION the boundary — a corner edge is claimed exactly once.** `housedraw::side_edges` assigns every boundary edge to one side and the four runs sum to the boundary exactly: `5×4 → 38 = 9+10+9+10`, `4×4 → 38 = 11+8+11+8`, `6×4 → 46 = 11+12+11+12` | ⛔ **this is *recover the four walls of a room*, already solved and gated.** A session was spent re-deriving it as a chain walk and a minimum partition. **Read this row before writing a cut rule** |
+| **`@HB-X45`** | **constructive recovery is exact for convex forms** — every admitted form is convex, every polygon vertex is a hex centre, so the **convex hull of the filled cells IS the polygon** and its vertices are the corners; no float enters, and it proposes then VERIFIES by re-drawing. **119/119 corpus entries, 0 diffs** — R1 with `ρ = 0`. **Limit: convex only** | a room's description comes from its **cells**, not from its marks — which is why `house_recover` reads the FLOOR and why a room built as four linework runs has no floor to read |
+| **`@HB-X62`** | **the corner MITERS EXACTLY** — adjacent fitted surfaces differ by heading `3` or `9`, exactly 90°, in integer heading indices over all 12 orientations × 4 corners; intersecting the two mean lines closes the outline with a gap of **exactly 0** at all 48 corners | the corner is a solved object upstream. ⚠ **And `place_house` already enforces it at the doorstep** — *"a footprint at this facing has no mitred corners; turn one step"* — while the `wall` verb has no such refusal |
 | **`@HB-X70`** | ⛔ **an opening is never "no wall"** — a door, a window and a real gap are all **materials on a wall that continues** | ⚠ **and it names a live moros defect**: `builtin_house_door` leaves the doorway edge at material `0`, its own comment calling that *"crawler's convention: a door is a gap"*. Measured: material 0 gives **36 edges / 2 dangling ends** where every real opening gives **38 / 0** — the wall is *broken* |
 | **`@HB-X67`** | the height slot is an integer at `HEIGHT_SCALE = 0.25` wu, and the doorstep enforces it | ⚠ **prices [EDITOR_DEFECTS](EDITOR_DEFECTS.md) entry 3**: `SEAT_MEAN` lands **exactly half a unit off** (`1.125` = 4.5 units), so it must be **refused with an offer**, not truncated |
+
+## ⛔ §7 — the two domains decide which of these applies, and getting it wrong is the whole trap
+
+⚠ **`@HB-X29` NAMES IT IN A SUBORDINATE CLAUSE, AND IT IS THE MOST LOAD-BEARING SENTENCE IN THIS
+FILE.** The in-between 12 of `D` carry a uniform bias, *"which is why a house is never drawn with
+an in-between angle — they are **world linework** (`D`), **where nothing has to close or meet a
+corner**."*
+
+| | domain A — a **stencil** | domain B — **linework** |
+|---|---|---|
+| directions | `H₁₂` | `D`, `\|D\| = 24` |
+| what it is | a house, a room, a tower — a **form** | a road, a fence, a wall run |
+| must it close at a corner? | **yes** — `@HB-X36` partitions the boundary, `@HB-X62` miters it exactly | ⛔ **no, and the model says so** |
+| how it is recovered | **R1, constructive and exact** from the CELLS — `@HB-X45`, 119/119, `ρ = 0` | R2, a trace over marks, with a residual |
+
+⛔ **SO A ROOM BUILT AS FOUR `wall` RUNS IS A DOMAIN ERROR, NOT A BUG TO PATCH.** Measured
+2026-08-29 over 25 rectangles: only 7 present as one closed chain, 17 carry a junction, and
+**7 have a hole a flood escapes through** — every break at a corner, one hex edge wide.
+⚠ **The stencil path refuses instead of leaking**: `place_house` answers *"a footprint at this
+facing has no mitred corners; turn one step"* with a facing to use. **The wall verb has no such
+doorstep**, which is the asymmetry to fix — not the reader that has to make sense of the result.
 
 ## How to re-sync this file
 

@@ -31,6 +31,16 @@
 #   check          every @HB- tag resolves upstream; every bare tag is defined here
 #   list           every upstream tag and whether this tree cites it
 #   sites <tag>    the sites citing one tag  (@HB-X47, or a bare local tag)
+#   dups           tags cited from 2+ CODE sites — the duplication question, asked by
+#                  MEANING rather than by code shape, and taken from `../loft2`'s
+#                  `rule_tags.py dups`
+#
+# ⚠ `dups` READS CODE ONLY, AND THAT IS THE WHOLE POINT.  A document may cite one rule
+# in five paragraphs and that is prose doing its job; two FUNCTIONS citing one rule are
+# two enforcements of it, which is a second implementation found by what the code claims
+# rather than by how it looks.  Plan 24 found four of those by hand — `HEADINGS = 24`
+# against `D`, `wall_stamp` against `wall_write`, our edge bytes against
+# `hex_field::EdgeSet`, and a missing material bridge — and a tool would have named them.
 #
 # ⚠ SKIPS RATHER THAN FAILS when `../hexbody` is absent.  A consistency check, not a
 # capability the build depends on — a clone without the sibling tree must not go red.
@@ -144,6 +154,31 @@ def citations():
     return out
 
 
+# ⚠ A PROBE IS CODE HERE.  This tree's own rule is that a probe measures the library and
+# never re-derives it — `surface_of`'s integer body was copied into a probe once, "with
+# the `Plan` taken out", and scored worse than the float fit it was correcting.  A probe
+# citing the same rule as a library function is exactly that shape, so it is listed and
+# labelled rather than filtered out.
+CODE = (".loft", ".mjs")
+
+
+def role(rel):
+    # ⚠ A TEST IS NOT AN IMPLEMENTATION, AND THE FIRST VERSION COUNTED IT AS ONE.  It
+    # ranked `@HB-X70` first at 23 sites, sixteen of them assertions and gate scripts —
+    # a rule being CHECKED sixteen times is the system working, not a duplicate.  What
+    # `dups` is for is two pieces of PRODUCTION code claiming one rule, so the ranking
+    # is over those and the rest is shown as context.
+    if "/tests/" in rel or rel.endswith("_test.loft"):
+        return "test "
+    if rel.startswith("lib/"):
+        return "lib  "
+    if rel.startswith("src/"):
+        return "src  "
+    if rel.startswith("probe/"):
+        return "probe"
+    return "tool "
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
 
@@ -161,6 +196,37 @@ def main():
         print(f"upstream defines {len(up)} tags; this tree cites {len(used)}")
         for t in sorted(up):
             print(f"  @HB-X{t:<3} {'cited' if t in used else ''}")
+        return 0
+
+    if cmd == "dups":
+        by = {}
+        for tag, rel, n, text, up in citations():
+            if not rel.endswith(CODE):
+                continue
+            by.setdefault((up, tag), []).append((rel, n, text))
+
+        def impls(sites):
+            """Distinct production FILES claiming the rule — the duplication question."""
+            return sorted({r for r, _, _ in sites if role(r) in ("lib  ", "src  ", "probe")})
+
+        rows = [(u, t, v) for (u, t), v in by.items() if len(impls(v)) > 1]
+        rows.sort(key=lambda r: (-len(impls(r[2])), not r[0], r[1]))
+        if not rows:
+            print("citations: no tag is claimed by two production files")
+            return 0
+        print("citations: {} tag(s) claimed by two or more PRODUCTION files "
+              "(tests shown as context)\n".format(len(rows)))
+        for up, tag, sites in rows:
+            name = "@HB-X{}".format(tag) if up else "X{}".format(tag)
+            files = impls(sites)
+            print("{}  — {} production file(s), {} site(s)".format(name, len(files), len(sites)))
+            for rel in files:
+                ns = [str(n) for r, n, _ in sorted(sites) if r == rel]
+                print("    {} {}:{}".format(role(rel), rel, ",".join(ns)))
+            ts = sorted({r for r, _, _ in sites if role(r) not in ("lib  ", "src  ", "probe")})
+            if ts:
+                print("    …checked by {}".format(", ".join(ts)))
+            print()
         return 0
 
     if cmd == "sites":

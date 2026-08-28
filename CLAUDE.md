@@ -264,6 +264,35 @@ never persisted"* per chunk. **The editor was not proposing an architecture; it 
 against one already written down.** [FORMAL_CORE.md](doc/claude/FORMAL_CORE.md) is the binding
 extract, and it is a **pointer, not an authority** — hexbody is read-only from here.
 
+⛔ **SO THE FORMAL DEFINITIONS COME FIRST, EVERY TIME — AND THEY ARE VALIDATED, NOT ASSUMED.**
+Before designing anything geometric, **read the rule**: the design starts from it rather than
+arriving at it. ⚠ **They are not sacred** — a rule may be **sharpened or extended**, and that is
+upstream work, raised as a ticket with the measurement behind it. What is forbidden is bending
+code around a rule nobody read, or inventing a second rule here. ⚠ **And validate often**:
+`python3 tools/citations.py check` is in `make fast`, and `dups` asks the other half.
+
+⛔ **MEASURED 2026-08-29 — A WHOLE SESSION WENT TO RE-DERIVING WHAT THE CORE ALREADY HOLDS.**
+Four `wall` runs were treated as a room, and *how do you recover four walls from a marking* was
+rebuilt from nothing: an ordered chain walk, a cyclic minimum partition, three refuted cut rules,
+a published library function. **The core answers it in three rows.** `@HB-X36` — the side runs
+**partition** a rectangle's boundary and a corner edge is claimed exactly once, gated at three
+sizes. `@HB-X45` — a convex form's recovery is **exact and constructive**, the convex hull of the
+cells *is* the polygon, 119/119 with `ρ = 0`. And `@HB-X29` names the whole mistake in one clause:
+the 24 world-linework directions are *"where nothing has to close or meet a corner"* — so **four
+runs are not a room**, which is why 7 of 25 of them have a hole you can walk through and why
+`place_house` refuses a facing whose corners would not mitre while the wall verb builds silently.
+⚠ **The wrong turn was not the algorithm. It was starting without the definition.**
+
+✅ **AND THE TAGS SAY WHICH CODE IS WHICH RULE — cite the rule you enforce.** `@HB-X<n>` cites
+hexbody's core; a bare `X<n>` cites one of ours. `tools/citations.py` — `check` (every citation
+resolves; in `make fast`), `list`, `sites <tag>` (who cites this rule), and **`dups`** (rules
+claimed by two or more PRODUCTION files — *the duplication question asked by MEANING rather than
+by code shape*, taken from `../loft2`'s `rule_tags.py`). ⚠ **A test is context, not an
+implementation**: the first `dups` ranked `@HB-X70` top at 23 sites, sixteen of them assertions
+and gate scripts — a rule being CHECKED sixteen times is the system working. **An uncited
+implementation cannot be found by `dups`, and the second one gets written by somebody who could
+not see the first.**
+
 ⚠ **SO OUR OWN 24 HEADINGS ARE AN INVENTED ALGORITHM ALREADY SHIPPED, AND MY CORRECTION OF IT WAS
 WRONG TOO.** `hex_editor::HEADINGS = 24` with `WALL_SNAP = 2*pi/24` and an `atan2` asks for
 directions that **do not exist** — `X31`: *no odd multiple of 15° is reachable at all*. But the
