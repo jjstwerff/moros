@@ -261,6 +261,14 @@ pub struct PlanDesc {
   pd_args: text,        // …and its parameters, in the caption's own words
   pd_svg:  text,
   pd_stop: boolean,     // the palette NAMED the octagon reader, and it refused
+  // ⚠ **THE READER'S OWN RESIDUAL, NOT A SECOND MEASUREMENT — plan 26 `B4v`.** *Were you
+  // handed marks you do not want?* is what decides whether a set of shapes is worth
+  // trying, and every reader already answers it: `rr_stray` for a run, `hs_other` for a
+  // house, and **false by construction** for the round pair, whose fit is an equality
+  // over the whole component. ⛔ Asking it by CLAIMING into a copy instead — the obvious
+  // way — costs a window-sized copy per component per round, on the path every clean
+  // picture takes.
+  pd_short: boolean,
   pd_cq:    integer,    // a disc's or an octagon's centre, and a house's anchor
   pd_cr:    integer,
   pd_shell: integer,
@@ -280,6 +288,7 @@ pub struct PlanDesc {
 // the house reader afterwards would let a declaration be overruled by a search.
 fn desc_no(stop: boolean) -> PlanDesc {
   PlanDesc { pd_ok: false, pd_kind: "", pd_args: "", pd_svg: "", pd_stop: stop,
+             pd_short: false,
              pd_cq: 0, pd_cr: 0, pd_shell: 0, pd_wid: 0, pd_dep: 0, pd_rot: 0,
              pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 }
 }
@@ -330,6 +339,97 @@ fn plan_claim(d: PlanDesc, cl: Claims, q0: integer, r0: integer, q1: integer,
   0
 }
 
+// ── WHAT EACH ANSWER LOOKS LIKE, ONCE — plan 26 `B4v` ─────────────────────
+//
+// ⚠ **LIFTED OUT OF `plan_describe` UNCHANGED, BECAUSE THERE ARE TWO CHAINS NOW.** The
+// strict chain and `B4v`'s relaxed one ask different questions of the same readers and
+// must draw the same picture from the same answer; a second copy of these would be free
+// to disagree about a caption or a `data-` attribute, which is the divergence
+// `edges_mat_outside`'s own comment is written against.
+fn desc_of_run(rr: hex_editor::RunRead) -> PlanDesc {
+  rsay = "d{rr.rr_d} p{rr.rr_p}";
+  if rr.rr_missing > 0 { rsay = rsay + " · {rr.rr_missing} missing"; }
+  PlanDesc { pd_ok: true, pd_kind: "run",
+    pd_args: rsay,
+    pd_svg: "<line class='run' data-d='{rr.rr_d}' data-p='{rr.rr_p}'"
+          + " data-marks='{rr.rr_marks}' data-stray='{rr.rr_stray}'"
+          + " data-missing='{rr.rr_missing}'"
+          + " x1='{fx(rr.rr_x0)}' y1='{fx(rr.rr_z0)}'"
+          + " x2='{fx(rr.rr_x1)}' y2='{fx(rr.rr_z1)}'"
+          + " stroke='{DESC_INK}' stroke-width='0.05'"
+          + " stroke-dasharray='0.32 0.18' stroke-linecap='round'/>\n",
+    pd_stop: false, pd_short: rr.rr_stray > 0,
+    pd_cq: 0, pd_cr: 0, pd_shell: 0, pd_wid: 0, pd_dep: 0, pd_rot: 0,
+    pd_x0: rr.rr_x0, pd_z0: rr.rr_z0, pd_x1: rr.rr_x1, pd_z1: rr.rr_z1 }
+}
+
+fn desc_of_oct(ot: hex_editor::OctRead) -> PlanDesc {
+  // ⚠ **THE CORNERS ARE `hex_editor`'s** — `oct_px_x`/`oct_px_z` — because a picture
+  // placing eight of its own would be a second definition of the shape, agreeing with
+  // the gesture only by having no reason to differ.
+  ox = hex_editor::oct_px_x(ot.ot_cq, ot.ot_cr, ot.ot_shell);
+  oz = hex_editor::oct_px_z(ot.ot_cq, ot.ot_cr, ot.ot_shell);
+  opts = "";
+  for oi in 0..len(ox) { opts = opts + "{fx(ox[oi] ?? 0.0)},{fx(oz[oi] ?? 0.0)} "; }
+  PlanDesc { pd_ok: true, pd_kind: "octagon",
+    pd_args: "{ot.ot_cq},{ot.ot_cr} shell {ot.ot_shell}",
+    pd_svg: "<polygon class='oct' data-cq='{ot.ot_cq}' data-cr='{ot.ot_cr}'"
+          + " data-shell='{ot.ot_shell}' data-marks='{ot.ot_marks}'"
+          + " points='{opts}' fill='none' stroke='{DESC_INK}'"
+          + " stroke-width='0.05' stroke-dasharray='0.32 0.18'/>\n",
+    pd_stop: false, pd_short: false,
+    pd_cq: ot.ot_cq, pd_cr: ot.ot_cr, pd_shell: ot.ot_shell,
+    pd_wid: 0, pd_dep: 0, pd_rot: 0,
+    pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 }
+}
+
+fn desc_of_disc(dc: hex_editor::DiscRead) -> PlanDesc {
+  // ⚠ AND `r` IS `√N / 2` — the field's own distance, measured against `hex_to_px`'s
+  // furthest cell centre at six shells, never a fitted radius.
+  PlanDesc { pd_ok: true, pd_kind: "disc",
+    pd_args: "{dc.dc_cq},{dc.dc_cr} shell {dc.dc_shell}",
+    pd_svg: "<circle class='disc' data-cq='{dc.dc_cq}' data-cr='{dc.dc_cr}'"
+          + " data-shell='{dc.dc_shell}' data-marks='{dc.dc_marks}'"
+          + " cx='{fx(dc.dc_x)}' cy='{fx(dc.dc_z)}' r='{fx(dc.dc_rad)}'"
+          + " fill='none' stroke='{DESC_INK}' stroke-width='0.05'"
+          + " stroke-dasharray='0.32 0.18'/>\n",
+    pd_stop: false, pd_short: false,
+    pd_cq: dc.dc_cq, pd_cr: dc.dc_cr, pd_shell: dc.dc_shell,
+    pd_wid: 0, pd_dep: 0, pd_rot: 0,
+    pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 }
+}
+
+fn desc_of_house(w: VoxelWorld, hh: hex_editor::HouseRead) -> PlanDesc {
+  hsay = "{hh.hs_cq},{hh.hs_cr} {hh.hs_wid}x{hh.hs_dep} rot {hh.hs_rot}";
+  // ⚠ **THE AMBIGUITY IS REPORTED, NOT HIDDEN** — §6's R2 rule, and here the ambiguity
+  // is the SIZE: raising one extent by a hex step can admit no new row of cell centres,
+  // so several rectangles fill the same field. The answer is the smallest, and the
+  // count says how many there were.
+  if hh.hs_class > 1 { hsay = hsay + " ({hh.hs_class} fit)"; }
+  // ⚠ **AND THE MARKS THE RECTANGLE DOES NOT EXPLAIN ARE THE POINT OF THE PAIRING** —
+  // `B0` found four wall edges bounding none of the house's cells and could not say
+  // whether they were authored. The rectangle can.
+  if hh.hs_stray > 0 { hsay = hsay + " · {hh.hs_stray} stray"; }
+  if hh.hs_missing > 0 { hsay = hsay + " · {hh.hs_missing} missing"; }
+  hbox = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
+  bx = hex_editor::box_px_x(hbox, w);
+  bz = hex_editor::box_px_z(hbox, w);
+  hpts = "";
+  for hi in 0..len(bx) { hpts = hpts + "{fx(bx[hi] ?? 0.0)},{fx(bz[hi] ?? 0.0)} "; }
+  PlanDesc { pd_ok: true, pd_kind: "house", pd_args: hsay,
+    pd_svg: "<polygon class='house' data-cq='{hh.hs_cq}' data-cr='{hh.hs_cr}'"
+          + " data-wid='{hh.hs_wid}' data-dep='{hh.hs_dep}' data-rot='{hh.hs_rot}'"
+          + " data-class='{hh.hs_class}' data-stray='{hh.hs_stray}'"
+          + " data-missing='{hh.hs_missing}' data-other='{hh.hs_other}'"
+          + " points='{hpts}' fill='none'"
+          + " stroke='{DESC_INK}' stroke-width='0.05'"
+          + " stroke-dasharray='0.32 0.18'/>\n",
+    pd_stop: false, pd_short: hh.hs_other > 0,
+    pd_cq: hh.hs_cq, pd_cr: hh.hs_cr, pd_shell: 0,
+    pd_wid: hh.hs_wid, pd_dep: hh.hs_dep, pd_rot: hh.hs_rot,
+    pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 }
+}
+
 fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
                  ref: float, cl: Claims) -> PlanDesc {
   dwq = q1 - q0;
@@ -357,60 +457,17 @@ fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integ
     // ⚠ **`missing` IS THE DESCRIPTION'S OWN PROPERTY AND SURVIVES** — edges this run
     // GENERATES that the store does not hold, which no other structure can affect. And
     // what nothing explains is the window's own `+ N unexplained`, counted from the
-    // claims after the peel, which is where a leftover belonged all along. The two were
-    // symmetric in every case the reader itself produced (9 and 9, 3 and 3), so nothing
-    // measurable is lost — `RunRead` still carries both, and `run_fits_at` still pins
-    // which is which.
-    rsay = "d{rr.rr_d} p{rr.rr_p}";
-    if rr.rr_missing > 0 { rsay = rsay + " · {rr.rr_missing} missing"; }
-    return PlanDesc { pd_ok: true, pd_kind: "run",
-      pd_args: rsay,
-      pd_svg: "<line class='run' data-d='{rr.rr_d}' data-p='{rr.rr_p}'"
-            + " data-marks='{rr.rr_marks}' data-stray='{rr.rr_stray}'"
-            + " data-missing='{rr.rr_missing}'"
-            + " x1='{fx(rr.rr_x0)}' y1='{fx(rr.rr_z0)}'"
-            + " x2='{fx(rr.rr_x1)}' y2='{fx(rr.rr_z1)}'"
-            + " stroke='{DESC_INK}' stroke-width='0.05'"
-            + " stroke-dasharray='0.32 0.18' stroke-linecap='round'/>\n",
-      pd_stop: false, pd_cq: 0, pd_cr: 0, pd_shell: 0, pd_wid: 0, pd_dep: 0, pd_rot: 0,
-      pd_x0: rr.rr_x0, pd_z0: rr.rr_z0, pd_x1: rr.rr_x1, pd_z1: rr.rr_z1 };
+    // claims after the peel, which is where a leftover belonged all along.
+    return desc_of_run(rr);
   }
   body = hex_editor::marks_body_claimed(w, q0, r0, dwq, dhr, ref, cl);
   if body == hex_editor::WALL_BODY_OCT {
     ot = hex_editor::oct_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
     if !ot.ot_ok { return desc_no(true); }
-    // ⚠ **THE CORNERS ARE `hex_editor`'s** — `oct_px_x`/`oct_px_z` — because a
-    // picture placing eight of its own would be a second definition of the shape,
-    // agreeing with the gesture only by having no reason to differ.
-    ox = hex_editor::oct_px_x(ot.ot_cq, ot.ot_cr, ot.ot_shell);
-    oz = hex_editor::oct_px_z(ot.ot_cq, ot.ot_cr, ot.ot_shell);
-    opts = "";
-    for oi in 0..len(ox) { opts = opts + "{fx(ox[oi] ?? 0.0)},{fx(oz[oi] ?? 0.0)} "; }
-    return PlanDesc { pd_ok: true, pd_kind: "octagon",
-      pd_args: "{ot.ot_cq},{ot.ot_cr} shell {ot.ot_shell}",
-      pd_svg: "<polygon class='oct' data-cq='{ot.ot_cq}' data-cr='{ot.ot_cr}'"
-            + " data-shell='{ot.ot_shell}' data-marks='{ot.ot_marks}'"
-            + " points='{opts}' fill='none' stroke='{DESC_INK}'"
-            + " stroke-width='0.05' stroke-dasharray='0.32 0.18'/>\n",
-      pd_stop: false, pd_cq: ot.ot_cq, pd_cr: ot.ot_cr, pd_shell: ot.ot_shell,
-      pd_wid: 0, pd_dep: 0, pd_rot: 0,
-      pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 };
+    return desc_of_oct(ot);
   }
   dc = hex_editor::disc_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
-  if dc.dc_ok {
-    // ⚠ AND `r` IS `√N / 2` — the field's own distance, measured against `hex_to_px`'s
-    // furthest cell centre at six shells, never a fitted radius.
-    return PlanDesc { pd_ok: true, pd_kind: "disc",
-      pd_args: "{dc.dc_cq},{dc.dc_cr} shell {dc.dc_shell}",
-      pd_svg: "<circle class='disc' data-cq='{dc.dc_cq}' data-cr='{dc.dc_cr}'"
-            + " data-shell='{dc.dc_shell}' data-marks='{dc.dc_marks}'"
-            + " cx='{fx(dc.dc_x)}' cy='{fx(dc.dc_z)}' r='{fx(dc.dc_rad)}'"
-            + " fill='none' stroke='{DESC_INK}' stroke-width='0.05'"
-            + " stroke-dasharray='0.32 0.18'/>\n",
-      pd_stop: false, pd_cq: dc.dc_cq, pd_cr: dc.dc_cr, pd_shell: dc.dc_shell,
-      pd_wid: 0, pd_dep: 0, pd_rot: 0,
-      pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 };
-  }
+  if dc.dc_ok { return desc_of_disc(dc); }
   // ── AND IF IT IS NOT ANY OF THOSE, IS IT A HOUSE? — plan 26 `B4n` ──────────
   //
   // ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS WHAT A BLUEPRINT IS
@@ -423,33 +480,50 @@ fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integ
   // where every reader above gave up, so no two of them answer for one window.
   hh = hex_editor::house_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
   if !hh.hs_ok { return desc_no(false); }
-  hsay = "{hh.hs_cq},{hh.hs_cr} {hh.hs_wid}x{hh.hs_dep} rot {hh.hs_rot}";
-  // ⚠ **THE AMBIGUITY IS REPORTED, NOT HIDDEN** — §6's R2 rule, and here the ambiguity
-  // is the SIZE: raising one extent by a hex step can admit no new row of cell centres,
-  // so several rectangles fill the same field. The answer is the smallest, and the
-  // count says how many there were.
-  if hh.hs_class > 1 { hsay = hsay + " ({hh.hs_class} fit)"; }
-  // ⚠ **AND THE MARKS THE RECTANGLE DOES NOT EXPLAIN ARE THE POINT OF THE PAIRING** —
-  // `B0` found four wall edges bounding none of the house's cells and could not say
-  // whether they were authored. The rectangle can.
-  if hh.hs_stray > 0 { hsay = hsay + " · {hh.hs_stray} stray"; }
-  if hh.hs_missing > 0 { hsay = hsay + " · {hh.hs_missing} missing"; }
-  hbox = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
-  bx = hex_editor::box_px_x(hbox, w);
-  bz = hex_editor::box_px_z(hbox, w);
-  hpts = "";
-  for hi in 0..len(bx) { hpts = hpts + "{fx(bx[hi] ?? 0.0)},{fx(bz[hi] ?? 0.0)} "; }
-  PlanDesc { pd_ok: true, pd_kind: "house", pd_args: hsay,
-    pd_svg: "<polygon class='house' data-cq='{hh.hs_cq}' data-cr='{hh.hs_cr}'"
-          + " data-wid='{hh.hs_wid}' data-dep='{hh.hs_dep}' data-rot='{hh.hs_rot}'"
-          + " data-class='{hh.hs_class}' data-stray='{hh.hs_stray}'"
-          + " data-missing='{hh.hs_missing}' data-other='{hh.hs_other}'"
-          + " points='{hpts}' fill='none'"
-          + " stroke='{DESC_INK}' stroke-width='0.05'"
-          + " stroke-dasharray='0.32 0.18'/>\n",
-    pd_stop: false, pd_cq: hh.hs_cq, pd_cr: hh.hs_cr, pd_shell: 0,
-    pd_wid: hh.hs_wid, pd_dep: hh.hs_dep, pd_rot: hh.hs_rot,
-    pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 }
+  desc_of_house(w, hh)
+}
+
+// ── ⛔ THE SAME CHAIN, ASKED OF A COMPONENT NO ONE OF THEM EXPLAINS — `B4v` ─
+//
+// ⛔ **`B4u` LEFT STRUCTURES THAT SHARE A VERTEX IN ONE COMPONENT**, and its own record
+// named the price: a wall MEETING a rim draws the wall and counts the rim's 52 marks;
+// two rims that meet are refused with all 106 counted. No flood cuts those, because the
+// marks genuinely are one chain.
+//
+// ✅ **SO THE COMPONENT IS PARTITIONED BY WHAT A CANDIDATE ACCOUNTS FOR.** Each reader is
+// asked for a shape whose own boundary lies **within** the component's marks — `within`,
+// which does not shrink as the pass claims — while the run and house readers keep reading
+// the REMAINDER, because a chain reader handed the same marks twice answers the same run
+// for ever.
+//
+// ⚠ **THE RUN IS ADMITTED ONLY AT `missing == 0`**, which is that same *within* test
+// spelled in the number `RunRead` has carried since `B4q`: edges this run generates that
+// the store does not hold. A run that wants an edge the field lacks is not part of any
+// exact cover of it.
+//
+// ⛔ **AND NOTHING HERE IS SAFE ON ITS OWN.** A one-directional fit accepts a disc drawn
+// inside any dense field, which is exactly what `B4t` refused to soften. What makes it
+// sound is the caller's union test — the pass is accepted only when the shapes it found
+// claim every mark of the component and no mark outside it — so this function must never
+// be called except through that.
+fn plan_describe_within(w: VoxelWorld, q0: integer, r0: integer, q1: integer,
+                        r1: integer, ref: float, within: Claims,
+                        cl: Claims) -> PlanDesc {
+  dwq = q1 - q0;
+  dhr = r1 - r0;
+  rr = hex_editor::wall_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
+  if rr.rr_ok && rr.rr_missing == 0 { return desc_of_run(rr); }
+  body = hex_editor::marks_body_claimed(w, q0, r0, dwq, dhr, ref, within);
+  if body == hex_editor::WALL_BODY_OCT {
+    ot = hex_editor::oct_within(w, q0, r0, dwq, dhr, ref, within, cl);
+    if !ot.ot_ok { return desc_no(true); }
+    return desc_of_oct(ot);
+  }
+  dw = hex_editor::disc_within(w, q0, r0, dwq, dhr, ref, within, cl);
+  if dw.dc_ok { return desc_of_disc(dw); }
+  hh = hex_editor::house_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
+  if !hh.hs_ok { return desc_no(false); }
+  desc_of_house(w, hh)
 }
 pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
               ref: float) -> PlanPanel {
@@ -572,8 +646,33 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
     told = nd;
     for cid in 0..hex_editor::segment_count(sg) {
       if nd >= PLAN_DESC_MAX { capped = true; break; }
-      dsc = plan_describe(w, q0, r0, q1, r1, ref,
-              hex_editor::segment_claims(cl, w, q0, r0, q1 - q0, r1 - r0, ref, sg, cid));
+      only = hex_editor::segment_claims(cl, w, q0, r0, q1 - q0, r1 - r0, ref, sg, cid);
+      // ⚠ **THE TWO NUMBERS THE TRIAL IS JUDGED BY, READ BEFORE ANYTHING IS CLAIMED.**
+      before = hex_editor::marks_unclaimed(w, q0, r0, q1 - q0, r1 - r0, ref, cl);
+      mine = hex_editor::marks_unclaimed(w, q0, r0, q1 - q0, r1 - r0, ref, only);
+      dsc = plan_describe(w, q0, r0, q1, r1, ref, only);
+      // ⛔ **AND IF ONE READER CANNOT EXPLAIN THE COMPONENT, A SET OF THEM MAY — plan 26
+      // `B4v`.** `B4u` left structures that share a VERTEX in one component: a wall
+      // meeting a rim drew the wall and counted the rim's 52 marks, two rims that meet
+      // were refused with all 106. The trial is asked here and taken only when it closes,
+      // which is what keeps `FORMAL_CORE` §6's R1 exact — over the union rather than over
+      // one shape.
+      //
+      // ⚠ **IT IS ASKED IN TWO PLACES AND NEITHER IS OPTIONAL**: where the strict chain
+      // refused outright, and where it answered about a field it does not account for.
+      // The second is the wall-meets-rim case, and skipping it would leave the honest
+      // single description standing where a whole explanation exists.
+      if !dsc.pd_ok || dsc.pd_short {
+        tr = plan_trial(w, q0, r0, q1, r1, ref, cl, sg, cid, before, mine,
+                        PLAN_DESC_MAX - nd);
+        if tr.tr_ok {
+          if nd == 0 { say = tr.tr_say; } else { say = say + " + " + tr.tr_say; }
+          runs = runs + tr.tr_svg;
+          nd = nd + tr.tr_n;
+          cl = tr.tr_cl;
+          continue;
+        }
+      }
       if !dsc.pd_ok { continue; }
       if nd == 0 { say = desc_phrase(dsc.pd_kind, dsc.pd_args); }
       else { say = say + " + " + desc_phrase(dsc.pd_kind, dsc.pd_args); }
@@ -590,7 +689,8 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
       // measured, a wall meeting a tower's rim at a vertex is described, breaks the rim
       // into two arcs, and each arc is then described as a further run. The description
       // stands — `B1`'s picture is a description drawn over marks it MISSES — and what
-      // it could not explain is counted rather than re-read.
+      // it could not explain is counted rather than re-read. ⚠ **`B4v` reaches this only
+      // when the trial above could not close**, which is the honest half of that case.
       if hex_editor::segment_marks_left(w, q0, r0, q1 - q0, r1 - r0, ref, cl, sg, cid) > 0 {
         part = true;
       }
@@ -620,6 +720,59 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
   PlanPanel { pp_body: cells + edges + runs, pp_cells: ncell, pp_marks: nedge,
               pp_say: say, pp_bad: nbad, pp_minx: box.pb_minx, pp_maxx: box.pb_maxx,
               pp_minz: box.pb_minz, pp_maxz: box.pb_maxz }
+}
+
+// ── THE TRIAL, AND THE ONE NUMBER THAT ACCEPTS IT — plan 26 `B4v` ─────────
+//
+// ⛔ **A ONE-DIRECTIONAL FIT WOULD ANSWER FOR ANYTHING, AND THIS IS WHAT STOPS IT.**
+// `plan_describe_within` accepts a shape whose boundary lies within the component's
+// marks; on its own that is exactly the softening `B4t` refused. R1 is restored here,
+// one level up: the SET the trial found is accepted only when it claims **every** mark
+// of the component and **no mark outside it**.
+//
+// ⚠ **AND THAT IS ONE INTEGER, MEASURED IN BOTH DIRECTIONS AT ONCE.** `before` is what
+// the window had unclaimed, `mine` is this component's share of it; the trial is right
+// exactly when what is left afterwards is `before - mine`. Too few claims and the
+// number is high — the component is not explained; too many and it is low — the trial
+// reached into a neighbour, which is `B4o`'s defect and which a count of the component
+// alone cannot see.
+//
+// ⚠ **THE TRIAL RUNS ON A COPY**, so a rejected one leaves nothing behind: its claims
+// would otherwise silence the very marks the refusal is there to count.
+struct PlanTrial {
+  tr_ok:  boolean,
+  tr_cl:  Claims,          // …the claims to adopt, on success
+  tr_svg: text,
+  tr_say: text,
+  tr_n:   integer,         // how many descriptions it took
+}
+
+fn plan_trial(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
+              ref: float, base: Claims, sg: Segments, cid: integer, before: integer,
+              mine: integer, room: integer) -> PlanTrial {
+  wq = q1 - q0;
+  hr = r1 - r0;
+  sc = hex_editor::claims_copy(base, q0, r0, wq, hr);
+  within = hex_editor::segment_claims(base, w, q0, r0, wq, hr, ref, sg, cid);
+  svg = "";
+  say = "";
+  n = 0;
+  for _t in 0..room {
+    d = plan_describe_within(w, q0, r0, q1, r1, ref, within,
+          hex_editor::segment_claims(sc, w, q0, r0, wq, hr, ref, sg, cid));
+    if !d.pd_ok { break; }
+    // ⚠ **A DESCRIPTION THAT CLAIMS NOTHING NEW ENDS IT** — the peel's own guard, and
+    // here it is the whole termination argument: a shape already claimed still lies
+    // within the marks and would be returned for ever.
+    if plan_claim(d, sc, q0, r0, q1, r1) == 0 { break; }
+    if n > 0 { say = say + " + "; }
+    say = say + desc_phrase(d.pd_kind, d.pd_args);
+    svg = svg + d.pd_svg;
+    n = n + 1;
+  }
+  after = hex_editor::marks_unclaimed(w, q0, r0, wq, hr, ref, sc);
+  PlanTrial { tr_ok: n > 0 && after == before - mine, tr_cl: sc, tr_svg: svg,
+              tr_say: say, tr_n: n }
 }
 
 // ── THE AUTHOR ON THE PLAN — plan 26 `B3`, BLUEPRINT §3.1 ──────────────────

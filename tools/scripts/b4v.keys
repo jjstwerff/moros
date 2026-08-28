@@ -1,0 +1,28 @@
+# B4v — A COMPONENT NO ONE READER EXPLAINS, PARTITIONED BY WHAT A CANDIDATE ACCOUNTS FOR
+#
+# ⛔ **`B4u` SPLIT THE FIELD AT THE VERTICES ITS MARKS SHARE, AND STRUCTURES THAT SHARE
+# ONE ARE STILL ONE COMPONENT.** Its own record named the price: a wall that MEETS a rim
+# draws the wall and counts the rim's 52 marks; two rims that meet are refused with all
+# 106 counted. No flood cuts those, because the marks genuinely are one chain.
+#
+# ✅ **SO THE COMPONENT IS PARTITIONED BY WHAT A CANDIDATE ACCOUNTS FOR**, and
+# `FORMAL_CORE` §6's R1 is restored one level up: each shape's boundary must lie WITHIN
+# the component's marks, and the SET is accepted only when it claims every one of them
+# and nothing outside — one integer, measured in both directions.
+#
+# ⚠ **EVERY STRUCTURE HERE IS IN ONE COMPONENT WITH ITS NEIGHBOUR**, which is what makes
+# the picture about the trial rather than about things standing clear of each other.
+#
+#   make plan-view WORLD=b4v Q0=-14 Q1=22 R0=-12 R1=10 REF=2.0
+
+echo --- two round towers whose rims MEET
+at 0 0 0
+verb tower
+at 13 0 0
+verb tower
+
+echo --- and a curtain wall running past the second one, meeting its rim
+at 20 -13 0
+verb run
+at 20 13 0
+verb run

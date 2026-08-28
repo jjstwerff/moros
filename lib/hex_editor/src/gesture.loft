@@ -901,6 +901,30 @@ pub fn claims_new(q0: integer, r0: integer, wq: integer, hr: integer) -> Claims 
            cl_cells: hexset_chunk(q0, r0, wq, hr) }
 }
 
+// The same claims, somewhere else — plan 26 `B4v`.
+//
+// ⛔ **A TRIAL THAT MAY BE REJECTED CANNOT WRITE INTO THE ANSWER.** `B4v` peels a
+// component with a relaxed reader and accepts the result only if the SET it found
+// accounts for that component exactly; a trial that failed would otherwise leave its
+// claims behind and silence the very marks the refusal is supposed to count. So the
+// trial runs on a copy and the real claims are written only on success.
+pub fn claims_copy(src: Claims, q0: integer, r0: integer, wq: integer,
+                   hr: integer) -> Claims {
+  cc = claims_new(q0, r0, wq, hr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if hexset_get(src.cl_cells, q, r) { hexset_set(cc.cl_cells, q, r, true); }
+      for cc_d in [4, 5, 0] {
+        (cc_nq, cc_nr) = hex_grid::hex_neighbor(q, r, cc_d);
+        if edge_mat(src.cl_edges, q, r, cc_nq, cc_nr) != 0 {
+          edge_set_mat(cc.cl_edges, q, r, cc_nq, cc_nr, 1);
+        }
+      }
+    }
+  }
+  cc
+}
+
 // ⚠ **A CLAIM IS IDEMPOTENT AND SAYS WHETHER IT WAS NEW**, which is what lets the peel
 // notice a reader that answers without accounting for anything. That is not defensive:
 // it is the difference between a loop that ends and one that does not.
@@ -1425,6 +1449,134 @@ pub fn disc_span(shell: integer) -> integer {
   best
 }
 
+// ── ⛔ A COMPONENT NO SINGLE READER EXPLAINS — plan 26 `B4v` ───────────────
+//
+// ⛔ **`B4u` SPLIT THE FIELD AT THE VERTICES ITS MARKS SHARE, AND STRUCTURES THAT SHARE
+// ONE ARE STILL ONE COMPONENT.** A wall that MEETS a rim, two rims that meet: measured,
+// the first draws the wall and counts the rim's 52 marks, and the second is refused with
+// all 106 counted. No flood cuts those, because the marks genuinely are one chain.
+//
+// ✅ **SO THE COMPONENT IS PARTITIONED BY WHAT A CANDIDATE ACCOUNTS FOR**, and
+// `FORMAL_CORE` §6's R1 is restored one level up: each shape's own boundary must lie
+// **within** the component's marks, and the SET is accepted only when it claims every one
+// of them and nothing else. That is still generate-and-compare in both directions — the
+// difference is that the comparison is against the union rather than against one shape.
+//
+// ⚠ **THE RELAXATION IS EXACTLY ONE DIRECTION, AND ONLY HERE.** `disc_fits` asks *every
+// boundary edge is marked AND every mark is a boundary edge*; this asks the first alone.
+// On its own that would accept a disc drawn inside any dense field, which is what `B4t`
+// refused to do — the union test is what makes it safe, and it is not optional.
+fn disc_fits_within(marks: vector<boolean>, cq: integer, cr: integer, shell: integer,
+                    q0: integer, r0: integer, wq: integer, hr: integer) -> boolean {
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      base = (((r - r0) * wq) + (q - q0)) * 6;
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if disc_holds(cq, cr, shell, q, r) == disc_holds(cq, cr, shell, nq, nr) { continue; }
+        if !(marks[base + d] ?? false) { return false; }
+      }
+    }
+  }
+  true
+}
+
+// Does this candidate's boundary hold a mark nothing has claimed yet?
+//
+// ⛔ **A CANDIDATE THAT ACCOUNTS FOR NOTHING NEW IS THE PASS'S ONLY WAY NOT TO END.**
+// The peel's own `claimed nothing → stop` guard says the same thing about a description;
+// here it has to be asked BEFORE the answer is given, because a rim already claimed still
+// lies within the marks and would be returned for ever.
+fn disc_is_new(cq: integer, cr: integer, shell: integer, q0: integer, r0: integer,
+               wq: integer, hr: integer, cl: Claims) -> boolean {
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if disc_holds(cq, cr, shell, q, r) == disc_holds(cq, cr, shell, nq, nr) { continue; }
+        if edge_mat(cl.cl_edges, q, r, nq, nr) == 0 { return true; }
+      }
+    }
+  }
+  false
+}
+
+// The largest disc whose whole boundary lies within `within`'s marks and which accounts
+// for something `cl` has not — plan 26 `B4v`.
+//
+// ⚠ **TWO MARK SETS, AND THEY ARE DIFFERENT ON PURPOSE.** `within` is the COMPONENT — the
+// marks the union must close over, fixed for the whole pass — while `cl` is what the pass
+// has claimed so far. Reading the remainder for membership would refuse a structure whose
+// edges another one already took, and two structures sharing an edge is exactly the case
+// this step exists for: a wall meeting a rim shares two.
+//
+// ⚠ **LARGEST FIRST, WHICH IS NOT A PREFERENCE.** A small rim can lie inside a large
+// one's field, so a greedy pass that took the small one would claim marks belonging to
+// nothing and the union could never close. The shells arrive ascending from
+// `arc_shells_upto`, so the walk is over their reverse.
+pub fn disc_within(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                   ref: float, within: Claims, cl: Claims) -> DiscRead {
+  lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
+  marks = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        if !mark_left(wld, q, r, d, ref, within) { continue; }
+        if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
+        if q < lo_q { lo_q = q; }
+        if q > hi_q { hi_q = q; }
+        if r < lo_r { lo_r = r; }
+        if r > hi_r { hi_r = r; }
+        marks = marks + 1;
+      }
+    }
+  }
+  if marks == 0 { return disc_no("no wall marks in this component", 0); }
+  bq0 = lo_q - 2;
+  br0 = lo_r - 2;
+  bwq = hi_q - lo_q + 5;
+  bhr = hi_r - lo_r + 5;
+  table = disc_marks(wld, bq0, br0, bwq, bhr, ref, within);
+  span = hi_q - lo_q;
+  if hi_r - lo_r > span { span = hi_r - lo_r; }
+  // ⛔ **THE TOP SHELL IS FOUND WITH THE SAME `break` `disc_recover` USES, AND SKIPPING
+  // THAT COST 108 SECONDS.** The walk here is DESCENDING, so the too-wide shells come
+  // first and a bare `continue` would call `disc_span` — which allocates and fills a set
+  // up to 87×87 — for every one of them. That is exactly the shape `disc_recover`'s own
+  // comment records as **16.3 s against 2.0 s** on one panel, reintroduced by walking the
+  // other way. The soundness is the same: `disc_span` is non-decreasing in the shell, so
+  // one ascending scan finds the last admissible index and the descent starts there.
+  shells = hex_shape::arc_shells_upto(TOWER_SHELL_MAX);
+  top = 0 - 1;
+  for sa in 0..len(shells) {
+    if 2 * disc_span(shells[sa] ?? 0) > span + 3 { break; }
+    top = sa;
+  }
+  for si in 0..top + 1 {
+    shell = shells[top - si] ?? 0;
+    // ⛔ **THE ADMITTED SET IS THE GESTURE'S, AND A ONE-DIRECTIONAL FIT IS WHY IT HAS TO
+    // BE SAID HERE.** `FORMAL_CORE` §6's R1 is *the shape is in the ADMITTED SET and the
+    // field determines it uniquely*; `disc_recover` gets the first half for free, because
+    // an equality over the whole component can only be satisfied by a shape the field
+    // actually is. Within-ness cannot: measured, a shell-**0** disc — one cell's six
+    // edges — lies inside the marks of a wall meeting a rim, and `fit_shell` is what says
+    // no tower is that small. `oct_within` has the same line as `oct_is_disc`.
+    if !fit_shell(shell).ft_ok { continue; }
+    for cr in lo_r..hi_r + 1 {
+      for cq in lo_q..hi_q + 1 {
+        if !disc_fits_within(table, cq, cr, shell, bq0, br0, bwq, bhr) { continue; }
+        if !disc_is_new(cq, cr, shell, q0, r0, wq, hr, cl) { continue; }
+        (dx, dz) = hex_to_px(cq, cr);
+        return DiscRead { dc_ok: true, dc_why: "", dc_cq: cq, dc_cr: cr,
+                          dc_shell: shell, dc_x: dx, dc_z: dz,
+                          dc_rad: (sqrt(shell as float) ?? 0.0) * 0.5,
+                          dc_marks: marks };
+      }
+    }
+  }
+  disc_no("{marks} marks, and no disc of any shell lies within them", marks)
+}
+
 // The disc these marks describe, or a refusal that says which silence it is.
 //
 // ⚠ **THE CANDIDATE CENTRES ARE THE MARKED CELLS' OWN EXTENT**, not the window's: a
@@ -1642,6 +1794,116 @@ pub fn oct_span(shell: integer) -> integer {
     }
   }
   best
+}
+
+// ── AND THE OCTAGON'S MIRROR OF IT — plan 26 `B4v` ────────────────────────
+//
+// ⚠ **THE PALETTE PICKS WHICH ROUND READER IS ASKED, SO RELAXING ONE AND NOT THE OTHER
+// WOULD BE A DIFFERENCE THE PALETTE CANNOT SEE.** `B4m` made that the rule — the body
+// decides the model and the field fixes its parameters — and a world declaring
+// `THICK_OCT` would otherwise keep `B4u`'s behaviour while a `THICK_CURVED` one gained
+// this. Same body, one direction dropped, same two mark sets.
+fn oct_fits_within(marks: vector<boolean>, vk: vector<integer>, vm: vector<integer>,
+                   cq: integer, cr: integer,
+                   q0: integer, r0: integer, wq: integer, hr: integer) -> boolean {
+  bk = lattice_k(cq, cr);
+  bm = lattice_m(cq, cr);
+  tw = wq + 2;
+  inside: vector<boolean> = [];
+  for r in r0 - 1..r0 + hr + 1 {
+    for q in q0 - 1..q0 + wq + 1 {
+      inside += [hex_form::poly_holds(vk, vm, lattice_k(q, r) - bk,
+                                              lattice_m(q, r) - bm)];
+    }
+  }
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      base = (((r - r0) * wq) + (q - q0)) * 6;
+      inq = inside[((r - r0 + 1) * tw) + (q - q0 + 1)] ?? false;
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if inq == (inside[((nr - r0 + 1) * tw) + (nq - q0 + 1)] ?? false) { continue; }
+        if !(marks[base + d] ?? false) { return false; }
+      }
+    }
+  }
+  true
+}
+
+fn oct_is_new(vk: vector<integer>, vm: vector<integer>, cq: integer, cr: integer,
+              q0: integer, r0: integer, wq: integer, hr: integer, cl: Claims) -> boolean {
+  bk = lattice_k(cq, cr);
+  bm = lattice_m(cq, cr);
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      inq = hex_form::poly_holds(vk, vm, lattice_k(q, r) - bk, lattice_m(q, r) - bm);
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if inq == hex_form::poly_holds(vk, vm, lattice_k(nq, nr) - bk,
+                                               lattice_m(nq, nr) - bm) { continue; }
+        if edge_mat(cl.cl_edges, q, r, nq, nr) == 0 { return true; }
+      }
+    }
+  }
+  false
+}
+
+// The largest octagon whose whole boundary lies within `within`'s marks and which
+// accounts for something `cl` has not — `disc_within`'s rule at the second round shape.
+//
+// ⚠ **THE ADMITTED SET IS STILL `fit_oct_shell`'s**, for `oct_recover`'s own reason: a
+// disk and an octagon are one field at four sizes, so a reader admitting the whole shell
+// grid would describe every round tower of shell 156 as the octagon of 192 — and here it
+// would do so while the union test still closed, which is worse than a wrong answer alone.
+pub fn oct_within(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                  ref: float, within: Claims, cl: Claims) -> OctRead {
+  lo_q = 0; hi_q = 0; lo_r = 0; hi_r = 0;
+  marks = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        if !mark_left(wld, q, r, d, ref, within) { continue; }
+        if marks == 0 { lo_q = q; hi_q = q; lo_r = r; hi_r = r; }
+        if q < lo_q { lo_q = q; }
+        if q > hi_q { hi_q = q; }
+        if r < lo_r { lo_r = r; }
+        if r > hi_r { hi_r = r; }
+        marks = marks + 1;
+      }
+    }
+  }
+  if marks == 0 { return oct_no("no wall marks in this component", 0); }
+  bq0 = lo_q - 2;
+  br0 = lo_r - 2;
+  bwq = hi_q - lo_q + 5;
+  bhr = hi_r - lo_r + 5;
+  table = disc_marks(wld, bq0, br0, bwq, bhr, ref, within);
+  span = hi_q - lo_q;
+  if hi_r - lo_r > span { span = hi_r - lo_r; }
+  // ⚠ **THE TOP SHELL FIRST, `disc_within`'s REASON EXACTLY** — `oct_span` fills a set
+  // per shell too, and descending past every too-wide one would pay for all of them.
+  shells = hex_shape::arc_shells_upto(TOWER_SHELL_MAX);
+  top = 0 - 1;
+  for sa in 0..len(shells) {
+    if 2 * oct_span(shells[sa] ?? 0) > span + 3 { break; }
+    top = sa;
+  }
+  for si in 0..top + 1 {
+    shell = shells[top - si] ?? 0;
+    if !fit_shell(shell).ft_ok { continue; }
+    if oct_is_disc(shell, tower_pad(shell)) { continue; }
+    vk = oct_poly_k(shell);
+    vm = oct_poly_m(shell);
+    for cr in lo_r..hi_r + 1 {
+      for cq in lo_q..hi_q + 1 {
+        if !oct_fits_within(table, vk, vm, cq, cr, bq0, br0, bwq, bhr) { continue; }
+        if !oct_is_new(vk, vm, cq, cr, q0, r0, wq, hr, cl) { continue; }
+        return OctRead { ot_ok: true, ot_why: "", ot_cq: cq, ot_cr: cr,
+                         ot_shell: shell, ot_marks: marks };
+      }
+    }
+  }
+  oct_no("{marks} marks, and no octagon of any shell lies within them", marks)
 }
 
 // The octagon these marks describe, or a refusal that says which silence it is.

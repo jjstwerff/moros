@@ -51,6 +51,61 @@ fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
 // ⚠ **THE FIELD IS SPLIT FIRST — plan 26 `B4t`.** A component is asked about by CLAIMING
 // everything else, so every reader keeps the signature it had and `FORMAL_CORE` §6's R1
 // keeps comparing over a field that is entirely one structure's.
+// ⛔ **AND A COMPONENT NO ONE READER EXPLAINS GETS A SET OF THEM — plan 26 `B4v`.**
+// Each shape's own boundary must lie WITHIN the component's marks, and the set is taken
+// only when it claims every one of them and nothing outside — one integer, both
+// directions. ⚠ **The trial runs on a copy**, so a rejected one leaves nothing behind:
+// its claims would otherwise silence the marks the refusal exists to count.
+fn trial(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer, base: Claims,
+         sg: Segments, id: integer, before: integer, mine: integer) -> text {
+  sc = claims_copy(base, q0, r0, wq, hr);
+  within = segment_claims(base, w, q0, r0, wq, hr, 0.0, sg, id);
+  got = "";
+  for t in 0..8 {
+    rest = segment_claims(sc, w, q0, r0, wq, hr, 0.0, sg, id);
+    rr = wall_recover_claimed(w, q0, r0, wq, hr, 0.0, rest);
+    // ⚠ `missing == 0` IS THE *WITHIN* TEST FOR A RUN, in the number `RunRead` has
+    // carried since `B4q`: edges it generates that the store does not hold.
+    if rr.rr_ok && rr.rr_missing == 0
+       && claim_run(sc, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, q0, r0, wq, hr) > 0 {
+      got = got + "run;";
+      continue;
+    }
+    dw = disc_within(w, q0, r0, wq, hr, 0.0, within, sc);
+    if dw.dc_ok && claim_disc(sc, dw.dc_cq, dw.dc_cr, dw.dc_shell, q0, r0, wq, hr) > 0 {
+      got = got + "disc;";
+      continue;
+    }
+    hh = house_recover_claimed(w, q0, r0, wq, hr, 0.0, rest);
+    if hh.hs_ok {
+      hb = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
+      if claim_house(sc, hb, q0, r0, wq, hr) > 0 { got = got + "house;"; continue; }
+    }
+    break;
+  }
+  if got == "" { return ""; }
+  if marks_unclaimed(w, q0, r0, wq, hr, 0.0, sc) != before - mine { return ""; }
+  // …accepted: the copy becomes the answer
+  claims_adopt(base, sc, q0, r0, wq, hr);
+  got
+}
+
+// The trial's claims, moved onto the real set once it has been accepted.
+fn claims_adopt(dst: Claims, src: Claims, q0: integer, r0: integer, wq: integer,
+                hr: integer) {
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if hexset_get(src.cl_cells, q, r) { hexset_set(dst.cl_cells, q, r, true); }
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(src.cl_edges, q, r, nq, nr) != 0 {
+          edge_set_mat(dst.cl_edges, q, r, nq, nr, 1);
+        }
+      }
+    }
+  }
+}
+
 fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         cl: Claims) -> text {
   out = "";
@@ -61,7 +116,22 @@ fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
     told = out;
     for id in 0..segment_count(sg) {
       only = segment_claims(cl, w, q0, r0, wq, hr, 0.0, sg, id);
+      before = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
+      mine = marks_unclaimed(w, q0, r0, wq, hr, 0.0, only);
       rr = wall_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+      // ⛔ **THE TRIAL IS ASKED WHERE ONE READER CANNOT ACCOUNT FOR THE COMPONENT** —
+      // either because it refused, or because it answered while being handed marks it
+      // does not want, which is `rr_stray` for a run and `hs_other` for a house.
+      short = rr.rr_ok && rr.rr_stray > 0;
+      if !rr.rr_ok {
+        dq = disc_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+        hq = house_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+        short = !dq.dc_ok && (!hq.hs_ok || hq.hs_other > 0);
+      }
+      if short {
+        t = trial(w, q0, r0, wq, hr, cl, sg, id, before, mine);
+        if t != "" { out = out + t; continue; }
+      }
       if rr.rr_ok {
         out = out + "run;";
         if claim_run(cl, rr.rr_x0, rr.rr_z0, rr.rr_x1, rr.rr_z1, q0, r0, wq, hr) == 0 {
@@ -521,14 +591,14 @@ fn test_a_piece_never_crosses_a_cell_component() {
   assert(!crosses(d, 0 - 12, 0 - 12, 30, 26), "a piece of the attached pair crosses two");
 }
 
-// ── ⛔ AND WHAT SHARING A VERTEX STILL COSTS ──────────────────────────────
+// ── ✅ AND SHARING A VERTEX IS DESCRIBED NOW — plan 26 `B4v` ─────────────
 //
 // A wall that MEETS a tower's rim shares vertices with it, so no flood separates them —
-// the honest residual of this step, the same shape as `B4t`'s own. What must not happen
-// is the peel making it worse: the wall is described, its claim breaks the rim into two
-// arcs, and each arc reads back as a further run. A description that explained only part
-// of its component ends the rounds instead, so the fragments are COUNTED.
-fn test_a_wall_meeting_a_rim_is_one_run_and_a_count() {
+// `B4u`'s honest residual, and it drew the wall and counted the rim's 52 marks. The
+// component is partitioned by what a candidate ACCOUNTS FOR instead: each shape's own
+// boundary must lie WITHIN the component's marks, and the set is taken only when it
+// claims every one of them and nothing outside.
+fn test_a_wall_meeting_a_rim_is_a_run_and_a_disc() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
   wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
@@ -539,9 +609,9 @@ fn test_a_wall_meeting_a_rim_is_one_run_and_a_count() {
        + "row is about nothing");
   cl = claims_new(0 - 14, 0 - 14, 34, 30);
   got = peel(w, 0 - 14, 0 - 14, 34, 30, cl);
-  assert(got == "run;", "a wall meeting a rim describes `{got}`, not one run");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 34, 30, 0.0, cl) > 0,
-         "it explained everything, so the fixture is not the interlocked one");
+  assert(got == "run;disc;", "a wall meeting a rim describes `{got}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 34, 30, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 14, 0 - 14, 34, 30, 0.0, cl)} marks over — `B4u` left 52");
 
   // …and the control, one cell further out: no shared vertex, both described
   c = flat_world();
@@ -623,4 +693,156 @@ fn test_a_component_is_handed_only_its_own_floor() {
   assert(answered == 1,
          "the house reader answers for {answered} of the {segment_count(sg)} components — "
        + "a piece is being handed a floor that stands in another component");
+}
+
+// ── ✅ TWO RIMS THAT MEET, AND WHAT THE UNION TEST REFUSES — plan 26 `B4v` ─
+//
+// ⛔ **`B4u` REFUSED THIS WITH ALL 106 MARKS COUNTED**, and correctly: neither rim is the
+// whole component's boundary, so the both-ways fit each round reader makes could not
+// accept either. A SET of them can, and R1 moves up one level to the union.
+fn test_two_rims_that_meet_are_two_discs() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  tower_at(w, 13.0, 0.0);
+  ed = edgeset_new(0 - 14, 0 - 14, 44, 30);
+  np = marks_label(w, 0 - 14, 0 - 14, 44, 30, 0.0, claims_new(0 - 14, 0 - 14, 44, 30), ed);
+  assert(np == 1,
+         "the two rims are {np} pieces, so they do not share a vertex and `B4u` already "
+       + "describes them — this row is about nothing");
+  cl = claims_new(0 - 14, 0 - 14, 44, 30);
+  got = peel(w, 0 - 14, 0 - 14, 44, 30, cl);
+  assert(got == "disc;disc;", "two rims that meet describe `{got}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl)} marks over");
+}
+
+// ⛔ **AND WHAT NO SET CLOSES OVER IS STILL REFUSED.** Two walls crossing at a vertex are
+// one component with four chain ends and no rim in them, so nothing is drawn and every
+// mark is counted — exactly what `B4u` did. ⚠ **Without this row the relaxation could
+// have shipped a chain that answers for anything**, which is what a one-directional fit
+// does on its own.
+fn test_two_walls_crossing_are_still_refused() {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
+  wall_at(w, 0.0, 0.0 - 6.0, 0.0, 6.0);
+  assert(touching(w, 0 - 14, 0 - 14, 30, 30) == 1, "the crossing is not one component");
+  cl = claims_new(0 - 14, 0 - 14, 30, 30);
+  got = peel(w, 0 - 14, 0 - 14, 30, 30, cl);
+  assert(got == "", "a crossing no set of shapes closes over described `{got}`");
+  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 30, 30, 0.0, cl)
+         == marks_unclaimed(w, 0 - 14, 0 - 14, 30, 30, 0.0,
+                            claims_new(0 - 14, 0 - 14, 30, 30)),
+         "a refused trial left claims behind — it must run on a COPY, or the marks the "
+       + "refusal exists to count are silenced by it");
+}
+
+// ── ⚠ THE ACCEPTANCE IS ONE NUMBER AND IT IS TWO-DIRECTIONAL ──────────────
+//
+// ⛔ **TOO FEW CLAIMS AND THE COMPONENT IS NOT EXPLAINED; TOO MANY AND THE TRIAL REACHED
+// INTO A NEIGHBOUR** — `B4o`'s defect, which a count of the component alone cannot see.
+// Both are `after == before - mine`, measured here from either side on one field.
+fn test_the_union_test_refuses_a_trial_that_reaches_outside() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  wall_at(w, 0.0 - 20.0, 0.0 - 6.0, 0.0 - 20.0, 6.0);
+  q0 = 0 - 26; r0 = 0 - 16; wq = 44; hr = 34;
+  cl = claims_new(q0, r0, wq, hr);
+  sg = segments_of(w, q0, r0, wq, hr, 0.0, cl);
+  assert(segment_count(sg) == 2,
+         "the tower and the far wall are {segment_count(sg)} components, not two");
+  before = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
+  // the tower's own component
+  tid = 0 - 1;
+  for id in 0..segment_count(sg) {
+    only = segment_claims(cl, w, q0, r0, wq, hr, 0.0, sg, id);
+    if disc_recover_claimed(w, q0, r0, wq, hr, 0.0, only).dc_ok { tid = id; }
+  }
+  assert(tid >= 0, "no component recovers as a disc — the fixture is not what this needs");
+  only = segment_claims(cl, w, q0, r0, wq, hr, 0.0, sg, tid);
+  mine = marks_unclaimed(w, q0, r0, wq, hr, 0.0, only);
+  d = disc_recover_claimed(w, q0, r0, wq, hr, 0.0, only);
+
+  // …the rim alone: exactly its own component, and the number accepts
+  right = claims_copy(cl, q0, r0, wq, hr);
+  claim_disc(right, d.dc_cq, d.dc_cr, d.dc_shell, q0, r0, wq, hr);
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, right) == before - mine,
+         "the rim alone does not satisfy the acceptance — the number cannot say yes");
+
+  // …and the rim PLUS the far wall: the component is explained and a neighbour is not
+  // its business, so the same number must refuse
+  wide = claims_copy(cl, q0, r0, wq, hr);
+  claim_disc(wide, d.dc_cq, d.dc_cr, d.dc_shell, q0, r0, wq, hr);
+  claim_run(wide, 0.0 - 20.0, 0.0 - 6.0, 0.0 - 20.0, 6.0, q0, r0, wq, hr);
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, wide) != before - mine,
+         "a trial that claimed a NEIGHBOUR's marks as well is accepted — the number is "
+       + "one-directional and cannot see it");
+}
+
+// ⛔ **A CANDIDATE THAT ACCOUNTS FOR NOTHING NEW IS THE PASS'S ONLY TERMINATION
+// ARGUMENT.** A rim already claimed still lies within the marks and would be returned for
+// ever, so `disc_within` has to ask before it answers rather than after.
+fn test_a_within_candidate_already_claimed_is_not_offered_again() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  q0 = 0 - 10; r0 = 0 - 10; wq = 21; hr = 21;
+  base = claims_new(q0, r0, wq, hr);
+  first = disc_within(w, q0, r0, wq, hr, 0.0, base, claims_new(q0, r0, wq, hr));
+  assert(first.dc_ok, "the rim is not within its own marks: {first.dc_why}");
+  taken = claims_new(q0, r0, wq, hr);
+  claim_disc(taken, first.dc_cq, first.dc_cr, first.dc_shell, q0, r0, wq, hr);
+  again = disc_within(w, q0, r0, wq, hr, 0.0, base, taken);
+  assert(!again.dc_ok,
+         "the same rim is offered a second time as {again.dc_cq},{again.dc_cr} shell "
+       + "{again.dc_shell} — the pass would never end");
+}
+
+// ⛔ **AND THE ADMITTED SET IS THE GESTURE'S, WHICH ONLY THE RELAXED READER NEEDS.**
+// Measured: a shell-**0** disc — one cell's six edges — lies inside the marks of a wall
+// meeting a rim, and `disc_recover`'s equality could never reach it. `fit_shell` is what
+// says no tower is that small, and without it the picture draws a circle of no radius
+// over a cell that is part of two other structures.
+fn test_the_relaxed_reader_admits_only_shells_a_tower_can_be() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
+  q0 = 0 - 14; r0 = 0 - 14; wq = 34; hr = 30;
+  base = claims_new(q0, r0, wq, hr);
+  cl = claims_new(q0, r0, wq, hr);
+  // walk every disc the reader will offer, and none may be a shell no tower can be
+  for i in 0..6 {
+    d = disc_within(w, q0, r0, wq, hr, 0.0, base, cl);
+    if !d.dc_ok { break; }
+    assert(fit_shell(d.dc_shell).ft_ok,
+           "the relaxed reader offered shell {d.dc_shell}, which `fit_shell` refuses — "
+         + "no gesture can build it and no field is it");
+    if claim_disc(cl, d.dc_cq, d.dc_cr, d.dc_shell, q0, r0, wq, hr) == 0 { break; }
+  }
+}
+
+// ⛔ **AND A SET THAT EXPLAINS PART OF ITS COMPONENT IS REFUSED, WITH THE MARKS
+// COUNTED.** A tower whose rim a **T** of two walls meets is one component; the trial
+// finds the rim, and what is left is three chain ends that no run and no disc answers
+// for. ⚠ **This is the row the ACCEPTANCE side is measured by** — the crossed walls above
+// refuse because the trial finds nothing at all, which says nothing about what happens
+// when it finds something. Without both, a pass that drew a right shape over a field it
+// does not account for would ship as a picture with a silent leftover, which is exactly
+// what `B4p` spent a step removing.
+fn test_a_set_that_explains_only_part_of_its_component_is_refused() {
+  w = flat_world();
+  tower_at(w, 0.0, 0.0);
+  wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
+  wall_at(w, 8.0, 0.0, 16.0, 0.0);
+  q0 = 0 - 16; r0 = 0 - 16; wq = 40; hr = 33;
+  ed = edgeset_new(q0, r0, wq, hr);
+  assert(marks_label(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr), ed) == 1,
+         "the tower and the T are not one component, so this row is about nothing");
+  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+  cl = claims_new(q0, r0, wq, hr);
+  got = peel(w, q0, r0, wq, hr, cl);
+  assert(got == "",
+         "a component the trial explains only part of was described as `{got}` — the "
+       + "union test accepted a set that does not account for it");
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == all,
+         "the refused trial left claims behind — it must run on a COPY, or the marks the "
+       + "refusal exists to count are silenced by it");
 }
