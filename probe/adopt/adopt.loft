@@ -35,6 +35,12 @@ fn built(w: VoxelWorld) -> integer {
       c = hex_voxel::world_ground_cell(w, q, r);
       if (c.h_material as integer ?? 0) == hex_editor::FLOOR_MAT { n = n + 1; }
       for d in 0..6 { if hex_editor::wall_of(w, q, r, d, 0.0) != 0 { n = n + 1; } }
+      // ⚠ EVERY LAYER, because a roof is not a ground cell. A count that reads only
+      // the ground sees a partial roof as zero — the unwind restores ground cells and
+      // cannot remove a layer added above them.
+      for cell in hex_voxel::world_column(w, q, r).co_cells {
+        if (cell.h_material as integer ?? 0) == hex_editor::ROOF_MAT { n = n + 1; }
+      }
     }
   }
   n
@@ -100,8 +106,14 @@ fn main() {
   u = ground();
   for r in 0 - 16..17 {
     for q in 0 - 16..17 {
-      hex_voxel::world_merge_band(u, q, r, 28, 28,
-        [hex_voxel::Hex { h_height: 28,
+      // ⚠ **40 IS MEASURED, NOT PICKED.** The roof's bands are asked cell by cell, so a
+      // ceiling that refuses the FIRST one can never leave a partial roof and row D
+      // would pass without exercising the roof at all. Over six ceilings: 28 accepts
+      // **0** bands before refusing, 32 accepts 0, 36 accepts 1, **40 accepts 4 then
+      // refuses 5**, and 44+ accept all 27 and never refuse. Only 40 puts roof cells
+      // in the world before the refusal arrives.
+      hex_voxel::world_merge_band(u, q, r, 40, 40,
+        [hex_voxel::Hex { h_height: 40,
                           h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) }]);
     }
   }

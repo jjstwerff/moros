@@ -256,20 +256,46 @@ fn caved_world() -> VoxelWorld {
   w = housed_world();
   for r in 0 - 16..17 {
     for q in 0 - 16..17 {
-      world_merge_band(w, q, r, 28, 28,
-        [Hex { h_height: 28, h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) }]);
+      // ⚠ **40, AND THE HEIGHT IS CHOSEN BY MEASUREMENT.** The roof's bands are asked
+      // cell by cell, so a ceiling that refuses the FIRST one can never leave a
+      // partial roof and the roof half of `house_left` would have no teeth. Measured
+      // over six ceilings: 28 accepts **0** bands before refusing, 32 accepts 0, 36
+      // accepts 1, and **40 accepts 4 and then refuses 5** — the only one in the range
+      // that puts roof cells in the world before the refusal arrives. 44 and above
+      // accept all 27 and do not refuse at all.
+      world_merge_band(w, q, r, 40, 40,
+        [Hex { h_height: 40, h_material: (hex_editor::SURFACE_MAT as u8? ?? 0) }]);
     }
   }
   w
 }
 
-fn floors_and_walls(w: VoxelWorld) -> integer {
+// Everything a house writes: floor cells, wall bytes, and roof cells.
+//
+// ⚠ **THE ROOF HAD TO BE COUNTED SEPARATELY, AND THE SABOTAGE SWEEP IS WHAT SAID
+// SO.** The first version read only `world_ground_cell` and the wall bytes — and a
+// roof is not a ground cell, it is **its own LAYER**. So a sweep row that removed
+// `roof_over`'s band pre-check left a partially written roof standing and this
+// helper returned **0**: `place_house`'s unwind puts ground cells back with
+// `ground_write`, which cannot remove a layer that was added above them. The only
+// assertion that caught that row was the label counter, incidentally.
+//
+// ⛔ **WHICH MEANS THE TWO HALVES OF THE FIX ARE LOAD-BEARING TOGETHER.** The unwind
+// is sufficient *because* `roof_over` is atomic; make `roof_over` write as it checks
+// again and the unwind is no longer enough. Anyone "simplifying" that two-pass loop
+// back into one would reintroduce a quieter half-house — which is exactly the kind
+// of thing a count that cannot see it lets through.
+fn house_left(w: VoxelWorld) -> integer {
   n = 0;
   for r in 0 - 24..25 {
     for q in 0 - 24..25 {
       c = world_ground_cell(w, q, r);
       if (c.h_material as integer ?? 0) == hex_editor::FLOOR_MAT { n = n + 1; }
       for d in 0..6 { if hex_editor::wall_of(w, q, r, d, 0.0) != 0 { n = n + 1; } }
+      // Every layer of the column, not just the ground one.
+      for cell in world_column(w, q, r).co_cells {
+        if (cell.h_material as integer ?? 0) == hex_editor::ROOF_MAT { n = n + 1; }
+      }
     }
   }
   n
@@ -279,7 +305,7 @@ fn test_a_house_whose_roof_is_refused_leaves_no_walls_standing() {
   w = caved_world();
   runs = hex_editor::WallRuns { items: [] };
   roofs = hex_editor::RoofPlans { items: [] };
-  before = floors_and_walls(w);
+  before = house_left(w);
   label_before = w.w_next_id;
   assert(before == 0, "the fixture starts with no house in it, got {before}");
   ack = hex_editor::place_house(w, hex_editor::author_on(w, 0.0, 0.0, PI / 6.0 ?? 0.0),
@@ -288,8 +314,8 @@ fn test_a_house_whose_roof_is_refused_leaves_no_walls_standing() {
   // green while measuring nothing — the shape `A7`'s self-repairing test had.
   assert(!ack.ak_ok, "the fixture must REFUSE, or nothing below is being tested: {ack.ak_why}");
   assert(ack.ak_why.contains("roof"), "and refuse for the roof: {ack.ak_why}");
-  assert(floors_and_walls(w) == 0,
-         "a refused house leaves no floor and no wall: {floors_and_walls(w)} left behind");
+  assert(house_left(w) == 0,
+         "a refused house leaves no floor, no wall and no roof: {house_left(w)} left behind");
   assert(len(runs.items) == 0, "and no run filed — a run without a wall draws a line in the air");
   assert(len(roofs.items) == 0, "and no roof plan filed for a house that is not there");
   // The label is allocated only once the roof's bands have all been accepted, so a

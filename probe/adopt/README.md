@@ -52,3 +52,44 @@ first success was refused for standing inside the house the previous iteration h
 **A fresh world without a fresh session is a world the session still believes has a house in
 it**, and the probe was measuring itself. Two of twelve is a plausible-looking number, which
 is what makes it worth writing down.
+
+## The sabotage sweep — six rows, and the two controls are half of it
+
+Run 2026-08-28 against the committed subject, restoring from copies (never `git
+checkout`, which would delete the subject and report every row as a miss), with the
+subject asserted present before row 0 and **every sabotaged tree asserted to build**
+before its row was read.
+
+| row | what was broken | what went red, and on which words |
+|---|---|---|
+| 0 | ✅ **CONTROL** — nothing | green |
+| 1 | the offer goes back to being a rotation | `…offers facing 8, and turning there must place: 5 is on the odd orbit` |
+| 2 | the unwind removed from `place_house` | `a refused house leaves no floor, no wall and no roof: **111** left behind` |
+| 3 | `roof_over` writes as it checks — the true "before" | `…: **4** left behind` |
+| 4 | the label spent before the roof is known to fit | `and no layer label spent: 6 -> 7` |
+| 5 | ✅ **CONTROL** — a comment inserted beside the subject | green |
+
+⚠ **ROW 5 IS WHY THE OTHERS MEAN ANYTHING.** Four red rows say the tests detect
+*something*; a harmless edit in the same function staying green is what says they
+detect *these things*. Without it the table is compatible with a suite that fails on
+any change at all.
+
+## ⛔ Row 3 is the row that found a hole in the test, and it took two tries
+
+The first attempt at "break the atomicity" deleted the band pre-check — and the test
+caught it only **incidentally**, on the label counter, while the cell count said
+**0**. The reason is worth keeping: a roof is not a ground cell, it is **its own
+layer**, and `place_house`'s unwind puts ground cells back with `ground_write`, which
+cannot remove a layer added above them. So a partial roof was invisible to a count
+that read the ground.
+
+⚠ **AND THE FIXTURE COULD NOT SEE IT EITHER.** The bands are asked cell by cell, so a
+ceiling that refuses the *first* one never leaves a partial roof at all. Measured over
+six ceilings — 28 accepts **0** bands before refusing, 32 accepts 0, 36 accepts 1,
+**40 accepts 4 then refuses 5**, and 44+ accept all 27 and never refuse. The fixture
+is 40 for that reason, and row 3 now reports `4 left behind` — the exact number the
+measurement predicted.
+
+⛔ **SO THE TWO HALVES OF THE FIX ARE LOAD-BEARING TOGETHER**: the unwind is
+sufficient *because* `roof_over` is atomic. Anyone folding that two-pass loop back
+into one reintroduces a quieter half-house, and row 3 is what stands in the way.
