@@ -570,6 +570,20 @@ address (or the hostname `make browser` prints) cannot connect.
   edges carry one id, so a per-edge thickness would be an eighth slot `L13` forbids), so the
   gesture is *choose a wall TYPE*, never *drag a thickness handle*. ⛔ And `@HB-X63` gates the
   round trip for the foxel while leaving the **palette** at T4 — the half a blueprint edits
+- [Wall push](doc/claude/WALL_PUSH.md) — **a wall you lean on, and everything that moves with
+  it**: a held toggle that displaces the wall in front of the author, growing a house,
+  lengthening a tunnel or sliding an internal partition — `run`'s shape, but moving marks
+  instead of laying them. ⛔ Its §0 is the number that shapes the gesture and it is the
+  lattice's, not a choice: the parallel-line spacing is `√3/(2√N)` and `N` takes **three**
+  values over the 24 headings — `0.866`, `0.5`, `0.1387` — **no two commensurable** (√3, √13,
+  √39). So a house cannot be grown evenly, and a diagonal wall moves **6.25× more slowly**
+  per step. ⚠ The count survives because a neighbour is **stretched, not moved** — its period
+  changes, never its direction — and the one way a push loses a wall is a period below
+  `wall_min_p`, which is an OFFER rather than a refusal. ⛔ Two things are undecided and named:
+  whether a transitively pushed obstacle in another direction class can take an equal
+  displacement at all (§0 says usually not), and whether moving an INTERNAL wall leaves a
+  window that can still be described as a house. Designed, not built; §7 is the afternoon
+  that would falsify it
 - [House rooms](doc/claude/HOUSE_ROOMS.md) — **a house is a floor plan of boxes**: rooms are the
   house we already have, placed again adjacent, and a stair adds a LEVEL. ⚠ Its two live findings:
   `place_house`'s `D2b` guard **refuses exactly this** (it asks *does the footprint overlap a
