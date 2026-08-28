@@ -61,20 +61,27 @@ reader.** The mechanism is exact and already isolated: `corner_pool` admits a ve
 degree 1 (a chain end) or degree ≥ 3 (a junction), and a room fuses at every corner — `deg1
 = 0`, `deg3+ = 0`, an **empty pool**, so `run_within` is handed nothing to offer.
 
-✅ **THAT ONE IS ANSWERED — `B4x`'s third measurement, 2026-08-29.** A cycle has no start, so
-do not choose one: feasibility is a property of a vertex PAIR, so the table is
-rotation-invariant. Build it once and take the linear minimum from every start against it —
-the room comes back as its **four walls, uniquely, nothing over**, for one table's worth of
-`run_edges` (2454, against 1012 for a single seed of the linear minimum).
+⛔ **THE PARAGRAPH ABOVE WAS TRUE FOR FOUR HOURS.** `hex_editor::run_chain_within` shipped in
+`13db614` at 20:39 on 2026-08-28 — the day this document was written — wired into the peel
+and into the plan view. **That commit touched three code files and no document**, so this
+section, the plan, `STATE` and `CLAUDE.md` all went on saying *a closed room draws NOTHING*
+and a session was planned against it. ✅ **Measured through `hex_mesh::plan_svg` on
+2026-08-29, the same room is four runs with nothing missing.**
 
-⛔ **AND THE ROOM THAT DRAWS NOTHING IS 7 OF 25.** An empty pool needs `deg1 = 0` **and**
-`deg3+ = 0`; measured over 25 closed rectangles, only **7** present as one closed chain and
-**17 carry a junction** — so the other eighteen are **not** the empty-pool case. ⚠ What the
-shipped peel makes of them is *not* measured; `B4x`'s first survey lost 12 of a zigzag's 18
-marks, which is the shape to expect. ⛔ **And on those broken chains the minimum is not
-unique**: a 14×6 room has five optimal partitions of four pieces, and they are four
-different pictures, not a one-vertex wiggle. The fragment a broken corner leaves mid-wall is
-what can be spent anywhere.
+⛔ **THE REAL NUMBER IS 8 OF 25.** A rectangle authored as four walls comes back as exactly
+four descriptions in **8 of 25** — the 7 whose marks form one closed chain, plus `8 × 3`
+whose four walls never meet — and as **5 or 6** in the other 17, which are exactly the ones
+whose chain carries a **junction**. No marks are left undrawn on any of them.
+
+⛔ **AND THE SAME ROOM MOVED IS DESCRIBED DIFFERENTLY**: a 5×5 at six positions half a cell
+apart gives **4 4 4 4 6 6**, and every position whose chain is a loop gives 4. **So the loss
+is the corner, not the cut.**
+
+✅ **THE CYCLE IS ANSWERED AND IT WAS NOT THE BILL.** A cycle has no start, so do not choose
+one: feasibility is a property of a vertex PAIR, so the table is rotation-invariant — build
+it once and take the minimum over every start, and the room comes back as its four walls
+uniquely, for one table's worth of `run_edges`. ⚠ It **beats the shipped peel on no fixture
+measured**, because the peel re-seeds after each claim; it buys a guarantee, not a fix.
 
 ✅ **AND THE CORNER IS MEASURED IN THE SAME RUN: THE BREAK IS ONE HEX EDGE WIDE.** All 80
 breaks across the 25 rectangles sit **at a corner** — none mid-wall — and **76 of 80** have

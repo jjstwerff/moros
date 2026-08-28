@@ -486,13 +486,16 @@ address (or the hostname `make browser` prints) cannot connect.
   the second is 329 compile-time constants, so an adopter has neither end and inherits Moros's
   village. ⛔ Its blocking number was: **a closed room of four walls draws NOTHING** and leaves all
   50 marks (`B4x`) — a room fuses at every corner, so `corner_pool` is empty — and there is no
-  point authoring over a reader that cannot see the object a blueprint is made of. ✅ **THAT ONE IS
-  ANSWERED, 2026-08-29**: a cycle has no start, so do not choose one — feasibility is a property of
-  a vertex PAIR, so the table is rotation-invariant, and one table plus the minimum over every
-  start returns the room's four walls **uniquely** with nothing over. ⛔ **And it is 7 of 25**: an
-  empty pool needs `deg1 = 0` AND `deg3+ = 0`, and only 7 of 25 closed rectangles present as one
-  closed chain while **17 carry a junction**, which is not the empty-pool case at all — and where the minimum stops being unique (five
-  four-piece partitions for a 14×6 room, and they are four different pictures). ✅ **AND THE CORNER IS MEASURED: the break is ONE HEX EDGE wide** — all 80 breaks sit at a
+  point authoring over a reader that cannot see the object a blueprint is made of. ⛔ **AND THAT
+  SENTENCE WAS TRUE FOR FOUR HOURS**: `run_chain_within` shipped in `13db614` (2026-08-28 20:39)
+  wired into the peel and the plan view — **three code files and no document** — so this line, the
+  plan, `FOCUS` and `STATE` all went on saying it for a day and a session was planned against it.
+  *A claim nobody re-runs stays stale in a document*, which is *a check nobody runs drifts red in
+  silence* one level up. ✅ **Measured 2026-08-29 the room is four runs with nothing missing**, and
+  the real number is **8 of 25**: a four-wall rectangle is described as four in 8 cases and as **5
+  or 6** in the other 17 — exactly the ones whose chain carries a junction — with nothing left
+  undrawn. ⛔ **And the same room moved gives `4 4 4 4 6 6`**, every LOOP position giving 4, so the
+  loss is **the CORNER, not the cut**. ✅ **AND THE CORNER IS MEASURED: the break is ONE HEX EDGE wide** — all 80 breaks sit at a
   corner, none mid-wall, and 76 of 80 have another break exactly one edge away, the steps being
   `hex_edge_corners`' own six and nothing else. ⚠ **So *one edge* is an integer, not a radius** —
   and `B1` is a decision (join in the reader, or close the corner in `wall_stamp`) whose control

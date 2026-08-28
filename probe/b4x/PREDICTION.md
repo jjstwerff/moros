@@ -133,3 +133,21 @@ would also fuse two walls that have nothing to do with each other.
 ⚠ **If both come back at one edge, the width is not enough to decide a join** and the rule
 needs the direction as well — which is the whole point of building the control before the
 rule it guards.
+
+## ⛔ And the last prediction of the session was right for the wrong reason
+
+Before running the shipped reader over the same fixtures:
+
+> `run_chain_within` cuts LONGEST-FIRST from *the first mark nothing has claimed* — one seed,
+> chosen by the scan — and a greedy cut of this room gives **4 … 9** pieces depending on which
+> one that is. **So the description count should MOVE when the same room is translated.**
+
+✅ **It moves — `4 4 4 4 6 6` over six half-cell positions.**
+⛔ **And the reason is not the seam.** The degree table beside each count says every position
+whose chain is a **loop** gives 4, and both 6s are broken chains. The peel re-seeds after
+every claim, which evidently recovers what a single-pass greedy cut loses.
+
+⚠ **A prediction that comes true is not a confirmed mechanism**, and the only thing that
+separated the two here was printing the degree table next to the count — an instrument added
+because the field changes when a room is moved (50, 51 and 49 marks at three positions), not
+because the answer was doubted.

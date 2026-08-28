@@ -33,6 +33,7 @@ use hex_voxel;
 use hex_shape;
 use hex_grid;
 use hex_field;
+use hex_mesh;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;
@@ -1142,6 +1143,67 @@ fn join_control() {
   }
 }
 
+// ── ⛔ AND WHAT THE SHIPPED READER MAKES OF THEM — measured, not inferred ──
+//
+// ⛔ **THE RECORD THIS PROBE WAS WRITTEN AGAINST IS STALE.** `B4x`'s survey said a closed
+// room draws NOTHING and loses all 50 marks; `run_chain_within` shipped four hours later
+// (`13db614`) and the plan view describes the same room as **four runs**. Every claim here
+// about what the reader cannot do is therefore checked against `hex_mesh::plan_svg` itself
+// rather than against the record — the shipped picture, end to end, with the peel's own
+// readers in the order the peel asks them.
+//
+// ⚠ **AND THE QUESTION THAT REPLACES IT IS THE SEED AGAIN.** `run_chain_within` cuts
+// LONGEST-FIRST from *the first mark nothing has claimed* — one seed, chosen by the scan —
+// and the sweep above says a greedy cut of this room gives **4 … 9** pieces depending on
+// which one that is. So the description count should MOVE when the same room is translated,
+// and that is a defect a fixture standing still can never see.
+fn rect_at(a: float, b: float, dx: float, dz: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, dx - a, dz - b, dx + a, dz - b);
+  wall_at(w, dx + a, dz - b, dx + a, dz + b);
+  wall_at(w, dx + a, dz + b, dx - a, dz + b);
+  wall_at(w, dx - a, dz + b, dx - a, dz - b);
+  w
+}
+
+// ⚠ **AND THE CHAIN SHAPE IS PRINTED BESIDE THE COUNT**, because moving a room changes its
+// FIELD as well as the seam the scan picks — 50, 51 and 49 marks at three positions — and
+// without the degree table a count of 6 cannot say which of the two it is.
+fn peel_says(tag: text, w: VoxelWorld) -> integer {
+  marks = marks_of(w);
+  total = edges_in(marks);
+  d1 = 0; d2 = 0; d3 = 0;
+  degrees(marks, d1, d2, d3);
+  ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0);
+  shape = if ch.wc_loop && ch.wc_n == 1 { "LOOP  " } else { "broken" };
+  svg = hex_mesh::plan_svg(w, Q0, R0, Q0 + WQ, R0 + HR, 0.0, "{tag}");
+  t = hex_mesh::plan_tally(svg);
+  println("    {tag}: marks {total}  deg 1/2/3+ = {d1}/{d2}/{d3}  chains {ch.wc_n}"
+        + "  {shape}  drawn {t.pt_marks}  descriptions {t.pt_descs}");
+  t.pt_descs
+}
+
+fn peel_sweep() {
+  println("  the four walls of ONE room, moved around the world:");
+  lo = 999;
+  hi = 0;
+  for k in 0..6 {
+    d = (k as float) * 0.5;
+    n = peel_says("5x5 at +{d}      ", rect_at(5.0, 5.0, d, 0.0));
+    if n < lo { lo = n; }
+    if n > hi { hi = n; }
+  }
+  println("  a four-wall room is described in {lo}..{hi} pieces depending on WHERE it is");
+  println("  and the same 25 rectangles the fuse sweep measured:");
+  for ia in 0..5 {
+    for ib in 0..5 {
+      a = 4.0 + (ia as float);
+      b = 3.0 + (ib as float);
+      peel_says("{a} x {b}          ", rect(a, b));
+    }
+  }
+}
+
 fn fuse_sweep() {
   loops = 0;
   tried = 0;
@@ -1233,6 +1295,9 @@ fn main() {
   cyc_measure("a wider room   ", room2());
   cyc_measure("a triangle     ", triangle());
   cyc_measure("an L-shaped room", ell_room());
+  println("");
+  println("WHAT THE SHIPPED PLAN VIEW DRAWS FOR THESE — `hex_mesh::plan_svg`, end to end:");
+  peel_sweep();
   println("");
   println("THE CONTROL FOR A JOIN RULE — does *one hex edge* separate the right things:");
   join_control();

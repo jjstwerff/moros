@@ -3336,6 +3336,25 @@ start*.
 SEE it.* A single seed can no more see a seed-dependent answer than a colour can see a
 count — and five cut rules agreeing at one seed reads exactly like five confirmations.
 
+## ⛔ `B4x` IS BUILT, AND THIS PLAN NEVER SAID SO
+
+**`hex_editor::run_chain_within` landed in `13db614`, 2026-08-28 20:39** — wired into the
+peel's trial and into `plan_describe_within`, so it has a production consumer. The commit
+touched `gesture.loft`, `tests/peel.loft` and `planview.loft` — **three code files and no
+document**. So the section above ("the step is designed, not built"), [FOCUS](../../doc/claude/FOCUS.md)
+(written the same day), [STATE](../../doc/claude/STATE.md) and `CLAUDE.md` all went on
+saying *a closed room draws NOTHING and loses all 50 marks*, and the next session planned
+against that sentence.
+
+⚠ **THIS IS THIS TREE'S OWN LESSON ONE LEVEL UP.** *A check nobody runs drifts red in
+silence* has a twin: **a claim nobody re-runs stays stale in a document**, and a
+`what it does NOT do` list is the most dangerous place for one. [STATE](../../doc/claude/STATE.md)
+already carries a row that "said otherwise for a week"; this is the same shape, in the plan
+that owns the work.
+
+✅ **Measured 2026-08-29 through `hex_mesh::plan_svg`**, the closed 5×5 room is
+`run d6 p10 + run d0 p6 + run d6 p10 + run d0 p6` — four runs, nothing missing.
+
 ## ✅ What the THIRD `B4x` measurement turned up — the cycle is answered, the corner is not
 
 **Run 2026-08-29**, [`probe/b4x`](../../probe/b4x/README.md), `make probe-b4x`. The step the
@@ -3381,12 +3400,20 @@ stamped and degree-counted in three seconds with no `run_edges` at all:
 | carries a JUNCTION — three marks at one vertex | ⛔ **17 of 25** |
 | `8 × 3` | ⛔ **four separate chains**, `8/46/0` — the corners never meet |
 
-⚠ **SO `B4x`'s HEADLINE — *a closed room draws NOTHING and leaves all 50 marks* — IS THE 28%
-CASE.** An empty `corner_pool` needs `deg1 = 0` **and** `deg3+ = 0`; the other eighteen
-rectangles are **not** that case. ⚠ **What the shipped peel then makes of them is not
-measured here** — only that the pool is non-empty; `B4x`'s first survey lost 12 of a
-zigzag's 18 marks, which is the shape to expect. The cyclic cut closes exactly the case that
-draws nothing, and closing it does not make a room round-trip in general.
+⚠ **AND WHAT THE SHIPPED PEEL MAKES OF ALL 25 IS MEASURED, NOT INFERRED** —
+`hex_mesh::plan_svg`, end to end:
+
+| a rectangle authored as FOUR walls comes back as… | |
+|---|---|
+| exactly **4** descriptions | ✅ **8 of 25** — the 7 loops plus `8 × 3`, whose four walls are four separate chains |
+| **5 or 6** | ⛔ **17 of 25** — exactly the ones whose chain carries a junction |
+| marks left undrawn | ✅ **none on any of the 25**: `drawn` equals `marks` every time |
+
+⛔ **AND THE SAME ROOM MOVED IS DESCRIBED DIFFERENTLY** — a 5×5 at six positions half a cell
+apart: **4 4 4 4 6 6**. ✅ **Every position whose chain is a LOOP gives 4**, and both 6s are
+broken chains, so **this is the corner and not the seam** — which refutes the prediction that
+produced the sweep, since a single-pass greedy cut over 50 seeds gives 4…9 and the peel's
+re-seeding after each claim evidently recovers.
 
 ### ⛔ And on a broken chain the minimum is not unique — this measurement's own prediction, refuted
 
@@ -3431,8 +3458,9 @@ separate walls). Both are the corner missing or gaining a single mark.
 
 ### What the next session should do first
 
-⛔ **NOT ANOTHER CUT RULE.** Three have been refuted and the fourth is right; the partition
-is not where the loss is.
+⛔ **NOT ANOTHER CUT RULE, AND NOT THE CYCLE EITHER.** The cyclic minimum is measured and
+correct and **beats the shipped peel on no fixture here**; it buys a guarantee where the peel
+has an observation. The measurable loss is entirely the 17 rectangles with a junction.
 
 **Close the corner, and decide at which end.** Either the reader joins chain ends across a
 one-edge break, or `wall_stamp` leaves the corner closed — the measurement says the gap is

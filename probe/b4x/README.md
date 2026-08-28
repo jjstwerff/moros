@@ -19,13 +19,28 @@ functions that count degrees and throw the walk away. The probe holds no copy of
 [registry#26](https://github.com/loft-lang/registry/pull/26) merged and signed, so `make
 probe-b4x` resolves the walk from the registry like any other consumer.
 
+## ⛔ FIRST — THE RECORD THIS PROBE WAS WRITTEN AGAINST WENT STALE FOUR HOURS AFTER IT
+
+**`B4x`'s cut is BUILT.** `hex_editor::run_chain_within`, wired into `plan_describe_within`,
+landed in `13db614` at 20:39 on 2026-08-28 — after this probe's second measurement and after
+[FOCUS](../../doc/claude/FOCUS.md) was written. ⛔ **That commit touched three code files and
+no document**, so the plan, `STATE`, `FOCUS`, `CLAUDE.md` and this README all went on saying
+*a closed room draws NOTHING and loses all 50 marks* for a day, and a session was planned
+against it.
+
+✅ **Measured through `hex_mesh::plan_svg` on 2026-08-29, the same closed room is four runs
+with nothing missing.** Every claim below about what the reader cannot do is now checked
+against the shipped picture rather than against the record.
+
 ## The verdict, in three parts
 
 ✅ **The ACCEPTANCE is settled**, and not the way the record prescribed.
-✅ **The PARTITION is settled too, on a CYCLE** — third measurement, below: one feasibility
-table, the minimum over every start, four walls uniquely and nothing over.
-⛔ **And a closed rectangle is a cycle in 7 of 25**, so that answers the case that draws
-nothing today and not the general one.
+✅ **The PARTITION on a CYCLE is settled too** — third measurement, below: one feasibility
+table, the minimum over every start, four walls uniquely and nothing over. ⚠ **And it beats
+the shipped peel on no fixture measured**, because the peel re-seeds after every claim; what
+it adds is a guarantee where the shipped reader has an observation.
+⛔ **The corner is what is left.** A rectangle is described as its four walls in **8 of 25**;
+the other 17 come back as 5 or 6, and they are exactly the 17 whose chain carries a junction.
 
 ## ⛔ Half one: the acceptance, over every seed
 
@@ -165,11 +180,20 @@ is **not** what a closed rectangle normally does. Twenty-five of them, `a` in 4�
 | carries a JUNCTION — a vertex where three marks meet | ⛔ **17 of 25** |
 | `8 × 3` | ⛔ **four separate chains**, `8/46/0` — the corners do not meet at all |
 
-⚠ **SO THE DEFECT [FOCUS](../../doc/claude/FOCUS.md) NAMES IS THE 28% CASE.** *A closed room
-draws nothing because `corner_pool` is empty* needs `deg1 = 0` **and** `deg3+ = 0`; the other
-seventeen are **not** that case. ⚠ **What the shipped peel then makes of them is not
-measured here** — only that the pool is non-empty. The cyclic cut closes exactly the case
-that draws nothing, and it does not on its own make a room round-trip.
+⚠ **AND WHAT THE SHIPPED PEEL MAKES OF THEM IS MEASURED NOW** — `hex_mesh::plan_svg`, end to
+end, on all 25:
+
+| a rectangle authored as FOUR walls comes back as… | |
+|---|---|
+| exactly **4** descriptions | ✅ **8 of 25** — the 7 loops, plus `8 × 3` whose four walls are four separate chains |
+| **5 or 6** | ⛔ **17 of 25** — exactly the ones whose chain carries a junction |
+| marks left undrawn, anywhere | ✅ **none**: `drawn` equals `marks` on all 25 |
+
+⛔ **AND THE SAME ROOM MOVED IS DESCRIBED DIFFERENTLY**: a 5×5 at six positions half a cell
+apart gives **4 4 4 4 6 6** — and the degree table says which is which. **Every position
+whose chain is a LOOP gives 4**; both 6s are broken chains. ⚠ **So this is the corner, not
+the seam** — which refutes the prediction that led to it, since a greedy cut swept over 50
+seeds gives 4…9 and the peel's re-seeding after each claim evidently recovers.
 
 ### ✅ AND THE BREAK IS ONE HEX EDGE WIDE — measured, not thresholded
 
@@ -235,9 +259,11 @@ cycle, where no fragment exists, the minimum is unique.
 
 ## What this leaves open, precisely
 
-~~**A loop must be cut circularly.**~~ ✅ **ANSWERED** — build the feasibility table once and
-take the minimum over every start; the room comes back as its four walls, uniquely, for one
-table's worth of `run_edges`.
+~~**A loop must be cut circularly.**~~ ✅ **ANSWERED, and it turned out not to be the bill.**
+Build the feasibility table once and take the minimum over every start: the room comes back
+as its four walls, uniquely, for one table's worth of `run_edges`. ⚠ **The shipped peel
+already returns four for every loop measured**, so this buys a guarantee rather than a fix —
+worth having written down, not worth shipping on its own.
 
 ⛔ **WHAT IS OPEN IS ONE LEVEL EARLIER: THE CORNER** — and it is measured now. A closed
 rectangle is a closed chain in **7 of 25**; the other eighteen break, **always at a corner**,
@@ -254,9 +280,10 @@ does separate the two cases on everything measured.
 
 ## What it deliberately does not do
 
-- **It ships nothing into the editor.** `run_within` and `corner_pool` are untouched, and the
-  peel still loses the zigzag's 12 marks and all 50 of the room's. What landed is the library
-  entry point plus this measurement of what to build on it.
+- ~~**It ships nothing into the editor.**~~ ⛔ **STALE THE SAME EVENING IT WAS WRITTEN** —
+  `run_chain_within` shipped in `13db614`, and this line went on saying otherwise. `run_within`
+  and `corner_pool` are indeed untouched; the sentence after them was a claim about the
+  editor, and nothing re-ran it.
 - **It does not handle a junction.** `wall_chain_walk` reports `wc_branch` and the cut here
   ignores it; no fixture has a `deg ≥ 3` vertex, and `B4w` already measured that a `T` is
   recoverable only sometimes.
