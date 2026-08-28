@@ -3166,3 +3166,116 @@ on that one number, and everything else above is already paid for.
 canonical start, so a walk seeded anywhere cuts one of its four walls in two and returns
 **five** pieces. The first and last piece must be merged when they are one run — exact, by
 the same test, but it is a clause somebody has to write on purpose.
+
+## What the SECOND `B4x` measurement turned up — the number is 1 / 2 / 3 / 5 → 4
+
+⛔ **STILL NOTHING SHIPPED.** [`probe/b4x`](../../probe/b4x/README.md), `make probe-b4x`;
+predictions written first. `run_within` and `corner_pool` are untouched, so the peel still
+draws `run;run;` for a zigzag and **nothing** for a room.
+
+✅ **The design holds — and the route named above to reach it does not.**
+
+| the cut | wall | L | zigzag | room | marks over |
+|---|---|---|---|---|---|
+| set equality — prototype 3's own, kept as the control | 1 | 2 | 3 | **7** | 0 |
+| ⛔ **within-ness — what the row above asked for** | 1 | 2 | 3 | **3** | ⛔ **36 of 50** |
+| within-ness, longest span on a tie | 1 | 2 | 3 | **2** | ⛔ **39 of 50** |
+| within-ness **and** it covers the span — R1 both ways | 1 | 2 | 3 | **6** | 0 |
+| …and the **fewest** runs rather than the first ones | **1** | **2** | **3** | **5 → 4** | **0** |
+
+### ⛔ Two sentences of the row above are refuted, and the second one is the useful one
+
+⛔ **THE STRICT ACCEPTANCE IS NOT WHAT BROKE PROTOTYPE 3.** Rebuilt, exact set equality
+closes every fixture with `over 0` — a straight wall in **one** piece, not fourteen. So
+*"a wall's extreme vertices are not the gesture's endpoints, so `run_between(v₀, vₙ)`
+generates a slightly different set"* is **false for these fixtures**: it generates exactly
+the wall's fourteen marks. Prototype 3's code is gone and what actually failed in it cannot
+be recovered — but it was not this, and the prescription that followed from it is wrong.
+
+⛔ **WITHIN-NESS ALONE CANNOT CUT A CHAIN.** The number it maximises is *the run's own
+size*, never *how much of the chain it accounts for*, so the seam advances by vertex index
+while the coverage advances by generated field and nothing ties them together. The room's
+three pieces span vertices `0-37`, `37-39`, `39-50` while covering 10, 2 and 12 marks —
+twenty-four marks of coverage over fifty vertices of seam.
+
+✅ **THE ACCEPTANCE IS `FORMAL_CORE` §6'S R1, BOTH WAYS — which is `B4v`'s own sentence one
+level down.** *"Each candidate's boundary must lie WITHIN the component's marks, and the
+set is taken only when it claims every one of them and nothing outside."* Within-ness is
+the *nothing outside* half **alone**; adding *every one of them* — every mark the seam
+steps over is generated — takes the room from 36 marks lost to none. ⚠ The step above
+proposed replacing a two-way test with a one-way one, in a plan whose last four steps were
+each about making an acceptance two-directional.
+
+### ⛔ And a greedy seam steps across a corner
+
+Even with the two-way test, longest-first gives the room **six** runs where four walls were
+built: `0-4 4-6 6-14 14-26 26-39 39-50`. The first piece crosses a corner — a 4-mark run
+spanning it lies within the field exactly as the 2-mark run stopping at it does, and
+longest-first prefers the longer — and every seam after it is off phase.
+
+⚠ **THE CORNER CONTROL IS WHAT MAKES THAT A DIAGNOSIS RATHER THAN A GUESS.** Each of the
+room's four walls measured ALONE in the same window is **one** run, of 12 / 13 / 12 / 13
+marks — **exactly 50, the room's own total**. The corners add nothing and lose nothing, so
+a four-run partition was available the whole time and the cut rule is what missed it.
+
+✅ **SO ASK FOR THE FEWEST RUNS, NOT THE FIRST ONES.** The same feasibility test over the
+chain at once — a shortest path whose edges are the feasible spans. The room comes back
+`0-1 / 1-14 / 14-26 / 26-39 / 39-50`, and the loop merge folds the 11-mark tail into the
+1-mark head: **12 / 13 / 12 / 13, the corner control's four walls to the mark.**
+
+### The clauses that had to be written on purpose
+
+⚠ **A FIELD IS SEVERAL CHAINS, NOT ONE — and the first survey's own degrees said so.** An
+L has `deg1 = 4`, so its two walls do not fuse and each keeps its own two ends. The first
+version of this probe walked one chain, stopped, and reported half an L with the other half
+as a residual.
+
+⚠ **A LOOP HAS NO CANONICAL START.** The merge the row above predicted would be needed is
+needed, and it fires exactly once — on the room, nowhere else.
+
+⚠ **AND THE FIXTURE IS AIMED AT NOMINAL CORNERS.** Chaining each wall onto the previous
+one's *snapped* end looks more careful and is worse: four walls round a square that way
+give `deg 1/2/3+ = 1/57/1` — a free end and a junction, so not a room — where four walls
+each aimed at their own corner give `0/50/0`. The stamper's snap is what makes the corners
+meet.
+
+### The instrument, checked before it was believed
+
+The fixtures are recognised by their **degree table**, the only thing the first survey
+recorded about them: a straight wall `2/13/0` at 14 marks, an L `4/11/0` at 13, a closed
+room `0/50/0` at 50 — the empty `corner_pool`, which is the whole defect. All three
+reproduce it exactly. ⛔ **The zigzag does not** — the survey's is 18 marks at `4/16/0` and
+a sweep of sixteen bend geometries found none; this one is 16 at `4/14/0`, the same
+signature (three walls, one corner fused and one not, so two chains) at a different size.
+
+⛔ **AND THE FIRST VERSION OF THIS PROBE WAS WRONG IN A WAY ONLY A COUNT COULD SEE.** It
+took the first accepted `k` descending from the far end, and the closed room came back as
+**one piece of one edge**: a far-away vertex snaps to a *short* run whose few edges are
+trivially within the marks. The accepted run's length is not monotone in the vertex index.
+
+### Cost, in `run_edges` calls
+
+| | wall | L | zigzag | room |
+|---|---|---|---|---|
+| greedy, two-way | 15 | 15 | 31 | 217 |
+| fewest runs | 19 | 19 | 55 | **1022** |
+
+⚠ **The minimum is quadratic in the chain where the greedy one is linear.** 1022 calls for
+a 50-mark room is seconds; a chain four times as long is sixteen times the work, and that
+is the number to watch before this goes near `loft test`'s 300-second deadline. For
+comparison, the thing it replaces — admitting every corner to `corner_pool` — blew that
+deadline **on this room**.
+
+### What the next session should do first, again
+
+**Decide where the walk lives, then build it.** `CLAUDE.md` names the ordered chain walk as
+a **library** gap and it still is: `hex_shape` owns `wall_chain_ends` and
+`wall_chain_branches`, both of which count degrees and throw the components away. What is
+missing there is *the chain in reading order*; what belongs here is the cut. That is a
+decision about a published package, and it is the one thing this measurement deliberately
+did not take.
+
+⚠ **And nothing here has been asked about a junction.** The walk takes the first unused
+mark at a vertex; none of these four fixtures has a `deg ≥ 3` vertex, so a `T` or a `+`
+would need a rule the probe does not have — and `B4w` already measured that a `T` is
+recoverable only sometimes.

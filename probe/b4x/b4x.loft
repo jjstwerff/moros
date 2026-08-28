@@ -1,0 +1,618 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `B4x` — THE ORDERED CHAIN WALK, CUT BY WITHIN-NESS.  Plan 26.
+//
+//   loft --interpret --lib lib/ probe/b4x/b4x.loft     (or `make probe-b4x`)
+//
+// ⛔ **`corner_pool` HAS NOTHING TO OFFER A CLOSED ROOM.** It admits a vertex at degree 1
+// (a chain end) or degree >= 3 (a junction); a room fuses at every corner, so the pool is
+// EMPTY and `run_within` is handed nothing. The `B4x` measurement refuted three ways of
+// closing that, and named the fourth — an ordered chain walk, which `CLAUDE.md` calls the
+// missing library entry point — as the one to rebuild with `run_span`'s acceptance.
+//
+// Predictions are in `PREDICTION.md` and were written before this ran.
+//
+// ⚠ **THE CUT IS `run_within`'S OWN RULE, NOT "THE FIRST THAT FITS"**: over every later
+// vertex of the chain, the candidate generating the MOST marks wins. The first version of
+// this probe took the first accepted `k` descending from the far end, and a closed room
+// came back as ONE piece of ONE edge — a far-away vertex snaps to a short run whose two
+// edges are trivially within the marks. The accepted run's length is not monotone in the
+// vertex index, and only a count can see that.
+//
+// ⚠ **THE SET-EQUALITY CUT IS KEPT AS THE NEGATIVE CONTROL** — same walk, same fixtures.
+// Without it a green table says nothing about which half of the prototype was wrong.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+use hex_grid;
+use hex_field;
+
+const Q0 = 0 - 18;
+const R0 = 0 - 18;
+const WQ = 37;
+const HR = 37;
+
+// The three cuts, so the runs differ in one argument rather than in a copied loop.
+const CUT_WITHIN = 0;   // `run_span`'s within-ness, `run_within`'s strict `>` on ties
+const CUT_EQUAL = 1;    // prototype 3's exact set equality — the negative control
+const CUT_LONG = 2;     // within-ness, and the LONGEST vertex span wins a tie
+const CUT_COVER = 3;    // within-ness AND it covers the walked span — R1, both ways
+const INF = 100000;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// ⚠ **EACH WALL IS AIMED AT THE NOMINAL CORNER, AND THAT IS NOT A DETAIL.** Chaining the
+// next wall onto the previous one's SNAPPED end looks more careful and is worse: measured,
+// four walls round a square that way give `deg 1/2/3+ = 1/57/1` — a free end and a
+// junction, so not a room at all — where four walls each aimed at their own corner give
+// `0/50/0`. The stamper's snap is what makes the corners meet.
+fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  if !d.rd_ok { println("  ⛔ the fixture's wall was refused: {d.rd_why}"); return; }
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  if m == 0 { println("  ⛔ the fixture's wall stamped nothing"); }
+}
+
+// The window's marks, by the predicate `mark_left` uses — `edge_is_wall`, not any
+// non-zero byte — so `within` below compares what `run_span` compares.
+fn marks_of(w: VoxelWorld) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        edge_set_mat(e, q, r, nq, nr, 1);
+      }
+    }
+  }
+  e
+}
+
+fn edges_copy(src: EdgeSet) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(src, q, r, nq, nr) != 0 { edge_set_mat(e, q, r, nq, nr, 1); }
+      }
+    }
+  }
+  e
+}
+
+fn edges_in(e: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(e, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// The `B4x` survey's own table, over the whole field, so a fixture can be recognised as
+// the shape that survey measured.
+fn degrees(marks: EdgeSet, d1: &integer, d2: &integer, d3: &integer) {
+  va: vector<integer> = [];
+  vb: vector<integer> = [];
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(marks, q, r, nq, nr) == 0 { continue; }
+        (c1, c2) = hex_grid::hex_edge_corners(d);
+        va += [hex_shape::hex_corner_tri_a(q, r, c1)];
+        vb += [hex_shape::hex_corner_tri_b(q, r, c1)];
+        va += [hex_shape::hex_corner_tri_a(q, r, c2)];
+        vb += [hex_shape::hex_corner_tri_b(q, r, c2)];
+      }
+    }
+  }
+  a1 = 0; a2 = 0; a3 = 0;
+  for i in 0..len(va) {
+    first = true;
+    for k in 0..i {
+      if (va[k] ?? 0) == (va[i] ?? 0) && (vb[k] ?? 0) == (vb[i] ?? 0) { first = false; }
+    }
+    if !first { continue; }
+    deg = 0;
+    for j in 0..len(va) {
+      if (va[j] ?? 0) == (va[i] ?? 0) && (vb[j] ?? 0) == (vb[i] ?? 0) { deg = deg + 1; }
+    }
+    if deg == 1 { a1 = a1 + 1; }
+    if deg == 2 { a2 = a2 + 1; }
+    if deg >= 3 { a3 = a3 + 1; }
+  }
+  d1 = a1; d2 = a2; d3 = a3;
+}
+
+// ── THE WALK ───────────────────────────────────────────────────────────────
+//
+// ⚠ **A SCAN OF THE STORE HAS NO ORDER AT ALL** — `CLAUDE.md`'s own sentence, and the
+// first two prototypes died on it. The seed is a degree-1 vertex where one exists, and
+// the walk follows the one unused mark at each vertex, so what comes back is the chain
+// in reading order rather than in scan order.
+//
+// ⚠ **ONE CALL IS ONE CHAIN, AND A FIELD IS SEVERAL.** The `B4x` survey's own degrees
+// say so: an L has `deg1 = 4`, so its two walls do NOT fuse and each keeps its own two
+// ends. A walk that ordered one chain and stopped described half an L and left the other
+// half as a residual — the first version of this probe did exactly that.
+struct Chain {
+  ch_x:    vector<float>,     // the ordered vertices, in world
+  ch_z:    vector<float>,
+  ch_q:    vector<integer>,   // …and the mark crossed between each pair
+  ch_r:    vector<integer>,
+  ch_d:    vector<integer>,
+  ch_loop: boolean,           // the walk came back to its seed
+}
+
+fn chain_of(rest: EdgeSet) -> Chain {
+  mq: vector<integer> = [];
+  mr: vector<integer> = [];
+  md: vector<integer> = [];
+  ka: vector<integer> = []; kb: vector<integer> = [];
+  la: vector<integer> = []; lb: vector<integer> = [];
+  kx: vector<float> = []; kz: vector<float> = [];
+  lx: vector<float> = []; lz: vector<float> = [];
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(rest, q, r, nq, nr) == 0 { continue; }
+        (c1, c2) = hex_grid::hex_edge_corners(d);
+        mq += [q]; mr += [r]; md += [d];
+        ka += [hex_shape::hex_corner_tri_a(q, r, c1)];
+        kb += [hex_shape::hex_corner_tri_b(q, r, c1)];
+        kx += [hex_shape::hex_corner_x(q, r, c1)];
+        kz += [hex_shape::hex_corner_y(q, r, c1)];
+        la += [hex_shape::hex_corner_tri_a(q, r, c2)];
+        lb += [hex_shape::hex_corner_tri_b(q, r, c2)];
+        lx += [hex_shape::hex_corner_x(q, r, c2)];
+        lz += [hex_shape::hex_corner_y(q, r, c2)];
+      }
+    }
+  }
+  vta: vector<integer> = []; vtb: vector<integer> = [];
+  vx: vector<float> = []; vz: vector<float> = [];
+  e0: vector<integer> = []; e1: vector<integer> = [];
+  for i in 0..len(mq) {
+    for side in [0, 1] {
+      ta = if side == 0 { ka[i] ?? 0 } else { la[i] ?? 0 };
+      tb = if side == 0 { kb[i] ?? 0 } else { lb[i] ?? 0 };
+      id = 0 - 1;
+      for v in 0..len(vta) {
+        if (vta[v] ?? 0) == ta && (vtb[v] ?? 0) == tb { id = v; }
+      }
+      if id < 0 {
+        id = len(vta);
+        vta += [ta]; vtb += [tb];
+        vx += [if side == 0 { kx[i] ?? 0.0 } else { lx[i] ?? 0.0 }];
+        vz += [if side == 0 { kz[i] ?? 0.0 } else { lz[i] ?? 0.0 }];
+      }
+      if side == 0 { e0 += [id]; } else { e1 += [id]; }
+    }
+  }
+  // ⚠ **A LOOP HAS NO CANONICAL START**, so with no degree-1 vertex the seed is the
+  // first the scan met — and the walk then cuts one of the room's walls in two.
+  seed = 0;
+  for v in 0..len(vta) {
+    deg = 0;
+    for i in 0..len(e0) {
+      if (e0[i] ?? 0) == v || (e1[i] ?? 0) == v { deg = deg + 1; }
+    }
+    if deg == 1 { seed = v; break; }
+  }
+  used: vector<boolean> = [];
+  for i in 0..len(e0) { used += [false]; }
+  ox: vector<float> = [vx[seed] ?? 0.0];
+  oz: vector<float> = [vz[seed] ?? 0.0];
+  wq: vector<integer> = []; wr: vector<integer> = []; wd: vector<integer> = [];
+  cur = seed;
+  for step in 0..len(e0) {
+    pick = 0 - 1;
+    nxt = 0 - 1;
+    for i in 0..len(e0) {
+      if used[i] ?? false { continue; }
+      if (e0[i] ?? 0) == cur { pick = i; nxt = e1[i] ?? 0; break; }
+      if (e1[i] ?? 0) == cur { pick = i; nxt = e0[i] ?? 0; break; }
+    }
+    if pick < 0 { break; }
+    used[pick] = true;
+    ox += [vx[nxt] ?? 0.0];
+    oz += [vz[nxt] ?? 0.0];
+    wq += [mq[pick] ?? 0]; wr += [mr[pick] ?? 0]; wd += [md[pick] ?? 0];
+    cur = nxt;
+  }
+  Chain { ch_x: ox, ch_z: oz, ch_q: wq, ch_r: wr, ch_d: wd,
+          ch_loop: cur == seed && len(wq) > 0 }
+}
+
+// ── THE CUT TESTS ──────────────────────────────────────────────────────────
+//
+// ⚠ **`run_span`'S OWN QUESTION, AND NOTHING ADDED**: does every edge this run generates
+// lie within the marks. Returns the edge count, or `0` for *it reaches outside*.
+fn within(g: EdgeSet, marks: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(g, q, r, nq, nr) == 0 { continue; }
+        if edge_mat(marks, q, r, nq, nr) == 0 { return 0; }
+        n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+// ⛔ **THE ACCEPTANCE PROTOTYPE 3 USED, KEPT AS THE CONTROL.** Every walked mark of the
+// span is generated AND the counts match — a stricter question than the shipped reader
+// asks, which the `B4x` record blames for a straight wall coming back in fourteen pieces.
+fn equals_span(g: EdgeSet, ch: Chain, s: integer, k: integer) -> integer {
+  n = 0;
+  for i in s..k {
+    q = ch.ch_q[i] ?? 0;
+    r = ch.ch_r[i] ?? 0;
+    (nq, nr) = hex_grid::hex_neighbor(q, r, ch.ch_d[i] ?? 0);
+    if edge_mat(g, q, r, nq, nr) == 0 { return 0; }
+    n = n + 1;
+  }
+  if edges_in(g) != n { return 0; }
+  n
+}
+
+// ⚠ **`FORMAL_CORE` §6'S R1, ONE LEVEL DOWN — and `B4v`'s own sentence about the peel:**
+// *"each candidate's boundary must lie WITHIN the component's marks, and the set is taken
+// only when it claims every one of them and nothing outside."* Within-ness is the
+// *nothing outside* half alone; this is the other half — every mark the seam is about to
+// step over is generated. Returns the span length, so maximising it is longest-first.
+fn covers_span(g: EdgeSet, ch: Chain, s: integer, k: integer) -> integer {
+  for i in s..k {
+    q = ch.ch_q[i] ?? 0;
+    r = ch.ch_r[i] ?? 0;
+    (nq, nr) = hex_grid::hex_neighbor(q, r, ch.ch_d[i] ?? 0);
+    if edge_mat(g, q, r, nq, nr) == 0 { return 0; }
+  }
+  k - s
+}
+
+// Edges this candidate accounts for that nothing has yet — `run_span`'s second clause,
+// and what stops a run being offered twice.
+fn novel(g: EdgeSet, cov: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(g, q, r, nq, nr) == 0 { continue; }
+        if edge_mat(cov, q, r, nq, nr) == 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn absorb(g: EdgeSet, cov: EdgeSet) {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(g, q, r, nq, nr) != 0 { edge_set_mat(cov, q, r, nq, nr, 1); }
+      }
+    }
+  }
+}
+
+// ── THE MEASUREMENT ────────────────────────────────────────────────────────
+fn measure(tag: text, w: VoxelWorld, cut: integer) {
+  marks = marks_of(w);
+  total = edges_in(marks);
+  d1 = 0; d2 = 0; d3 = 0;
+  degrees(marks, d1, d2, d3);
+  rest = edges_copy(marks);
+  cov = edgeset_new(Q0, R0, WQ, HR);
+  chains = 0;
+  pieces = 0;
+  merged = 0;
+  stubs = 0;
+  calls = 0;
+  desc = "";
+  for c in 0..8 {
+    ch = chain_of(rest);
+    n = len(ch.ch_x) - 1;
+    if n <= 0 { break; }
+    chains = chains + 1;
+    if ch.ch_loop { desc = desc + "loop(n={n})["; } else { desc = desc + "(n={n})["; }
+    here = 0;
+    first_end = 0 - 1;
+    last_start = 0 - 1;
+    s = 0;
+    for guard in 0..64 {
+      if s >= n { break; }
+      best = 0;
+      bk = 0 - 1;
+      k = s + 1;
+      while k <= n {
+        cand = run_between(ch.ch_x[s] ?? 0.0, ch.ch_z[s] ?? 0.0,
+                           ch.ch_x[k] ?? 0.0, ch.ch_z[k] ?? 0.0, WALL_MAT);
+        if cand.rd_ok {
+          g = run_edges(cand.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+          calls = calls + 1;
+          ok = if cut == CUT_EQUAL { equals_span(g, ch, s, k) } else {
+                 if cut == CUT_COVER {
+                   if within(g, marks) > 0 { covers_span(g, ch, s, k) } else { 0 }
+                 } else { within(g, marks) } };
+          // ⚠ **THE TIE-BREAK IS A CLAUSE, AND IT IS MEASURED RATHER THAN ARGUED.** Two
+          // candidates can generate the SAME field from different vertex spans, because a
+          // chain's last vertex need not add an edge. `run_within`'s strict `>` keeps the
+          // first — the SHORTER span — and the seam then stops one vertex early.
+          take = if cut == CUT_LONG { ok >= best } else { ok > best };
+          if ok > 0 && take && novel(g, cov) > 0 { best = ok; bk = k; }
+        }
+        k = k + 1;
+      }
+      if bk < 0 { stubs = stubs + 1; s = s + 1; continue; }
+      wc = run_between(ch.ch_x[s] ?? 0.0, ch.ch_z[s] ?? 0.0,
+                       ch.ch_x[bk] ?? 0.0, ch.ch_z[bk] ?? 0.0, WALL_MAT);
+      wg = run_edges(wc.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+      calls = calls + 1;
+      absorb(wg, cov);
+      if first_end < 0 { first_end = bk; }
+      last_start = s;
+      pieces = pieces + 1;
+      here = here + 1;
+      desc = desc + "{s}-{bk}:{best}/";
+      s = bk;
+    }
+    // ⚠ **A LOOP'S FIRST AND LAST PIECE ARE ONE RUN AND THE WALK CANNOT KNOW IT** — the
+    // seed is arbitrary, so it lands in the middle of a wall. The merge is the same test
+    // one span further, and it is a clause written on purpose rather than a side effect.
+    mine = here;
+    if ch.ch_loop && here >= 2 && last_start >= 0 && first_end >= 0 {
+      mc = run_between(ch.ch_x[last_start] ?? 0.0, ch.ch_z[last_start] ?? 0.0,
+                       ch.ch_x[first_end] ?? 0.0, ch.ch_z[first_end] ?? 0.0, WALL_MAT);
+      if mc.rd_ok {
+        mg = run_edges(mc.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+        calls = calls + 1;
+        if within(mg, marks) > 0 { mine = here - 1; }
+      }
+    }
+    merged = merged + mine;
+    desc = desc + "]";
+    for i in 0..len(ch.ch_q) {
+      dq = ch.ch_q[i] ?? 0;
+      dr = ch.ch_r[i] ?? 0;
+      (dnq, dnr) = hex_grid::hex_neighbor(dq, dr, ch.ch_d[i] ?? 0);
+      edge_set_mat(rest, dq, dr, dnq, dnr, 0);
+    }
+  }
+  over = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(marks, q, r, nq, nr) == 0 { continue; }
+        if edge_mat(cov, q, r, nq, nr) == 0 { over = over + 1; }
+      }
+    }
+  }
+  what = if cut == CUT_EQUAL { "equal " } else {
+           if cut == CUT_LONG { "long  " } else {
+             if cut == CUT_COVER { "cover " } else { "within" } } };
+  println("  {what} {tag}: marks {total}  deg 1/2/3+ = {d1}/{d2}/{d3}  chains {chains}"
+        + "  pieces {pieces}  merged {merged}  stubs {stubs}  over {over}"
+        + "  run_edges {calls}  {desc}");
+}
+
+// ── ⛔ THE FEWEST RUNS, NOT THE FIRST ONES — the greedy seam drifts ────────
+//
+// ⛔ **GREEDY LONGEST-FIRST STEPS ACROSS A CORNER AND NEVER RE-SYNCS.** Measured on the
+// room: the four walls alone are 12 + 13 + 12 + 13 = exactly its 50 marks and each is ONE
+// run, yet the greedy cut returns spans `0-4 4-6 6-14 14-26 26-39 39-50`. The first piece
+// crosses a corner — a 4-mark run spanning it lies within the field just as a 2-mark run
+// stopping at it does, and longest-first prefers the longer — and every seam after that is
+// off phase.
+//
+// ✅ **SO ASK FOR THE MINIMUM.** Feasibility is the same one-integer test, both ways; the
+// question is which PARTITION of the chain to take, and *fewest pieces* is the answer
+// `FORMAL_CORE` §6 already implies — a description nobody built is one description too
+// many. It is a shortest path over the chain's vertices: `n^2/2` feasibility tests, each
+// the same `run_edges` the greedy cut makes, and it is exact rather than a search.
+fn measure_dp(tag: text, w: VoxelWorld) {
+  marks = marks_of(w);
+  total = edges_in(marks);
+  rest = edges_copy(marks);
+  cov = edgeset_new(Q0, R0, WQ, HR);
+  chains = 0;
+  pieces = 0;
+  merged = 0;
+  calls = 0;
+  gaps = 0;
+  desc = "";
+  for c in 0..8 {
+    ch = chain_of(rest);
+    n = len(ch.ch_x) - 1;
+    if n <= 0 { break; }
+    chains = chains + 1;
+    best: vector<integer> = [0];
+    from: vector<integer> = [0 - 1];
+    for j in 1..n + 1 {
+      bj = INF;
+      bi = 0 - 1;
+      for i in 0..j {
+        if (best[i] ?? INF) >= INF { continue; }
+        if (best[i] ?? INF) + 1 >= bj { continue; }
+        cand = run_between(ch.ch_x[i] ?? 0.0, ch.ch_z[i] ?? 0.0,
+                           ch.ch_x[j] ?? 0.0, ch.ch_z[j] ?? 0.0, WALL_MAT);
+        if !cand.rd_ok { continue; }
+        g = run_edges(cand.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+        calls = calls + 1;
+        if within(g, marks) == 0 { continue; }
+        if covers_span(g, ch, i, j) == 0 { continue; }
+        bj = (best[i] ?? INF) + 1;
+        bi = i;
+      }
+      best += [bj];
+      from += [bi];
+    }
+    if (best[n] ?? INF) >= INF {
+      gaps = gaps + 1;
+      desc = desc + "(n={n})[unreachable]";
+    } else {
+      pi: vector<integer> = [];
+      pj: vector<integer> = [];
+      j = n;
+      for step in 0..64 {
+        if j <= 0 { break; }
+        i = from[j] ?? 0;
+        pi += [i]; pj += [j];
+        j = i;
+      }
+      here = len(pi);
+      pieces = pieces + here;
+      if ch.ch_loop { desc = desc + "loop(n={n})["; } else { desc = desc + "(n={n})["; }
+      for k in 0..here {
+        a = pi[here - 1 - k] ?? 0;
+        b = pj[here - 1 - k] ?? 0;
+        wc = run_between(ch.ch_x[a] ?? 0.0, ch.ch_z[a] ?? 0.0,
+                         ch.ch_x[b] ?? 0.0, ch.ch_z[b] ?? 0.0, WALL_MAT);
+        wg = run_edges(wc.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+        calls = calls + 1;
+        absorb(wg, cov);
+        desc = desc + "{a}-{b}/";
+      }
+      desc = desc + "]";
+      mine = here;
+      if ch.ch_loop && here >= 2 {
+        la = pi[0] ?? 0;
+        fb = pj[here - 1] ?? 0;
+        mc = run_between(ch.ch_x[la] ?? 0.0, ch.ch_z[la] ?? 0.0,
+                         ch.ch_x[fb] ?? 0.0, ch.ch_z[fb] ?? 0.0, WALL_MAT);
+        if mc.rd_ok {
+          mg = run_edges(mc.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+          calls = calls + 1;
+          if within(mg, marks) > 0 { mine = here - 1; }
+        }
+      }
+      merged = merged + mine;
+    }
+    for i in 0..len(ch.ch_q) {
+      dq = ch.ch_q[i] ?? 0;
+      dr = ch.ch_r[i] ?? 0;
+      (dnq, dnr) = hex_grid::hex_neighbor(dq, dr, ch.ch_d[i] ?? 0);
+      edge_set_mat(rest, dq, dr, dnq, dnr, 0);
+    }
+  }
+  over = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(marks, q, r, nq, nr) == 0 { continue; }
+        if edge_mat(cov, q, r, nq, nr) == 0 { over = over + 1; }
+      }
+    }
+  }
+  println("  fewest {tag}: marks {total}  chains {chains}  pieces {pieces}"
+        + "  merged {merged}  gaps {gaps}  over {over}  run_edges {calls}  {desc}");
+}
+
+// ── THE FIXTURES — the `B4x` survey's own shapes ───────────────────────────
+//
+// ⚠ **RECOGNISED BY THEIR DEGREE TABLE, NOT BY THEIR COORDINATES**, which the survey did
+// not record. The straight wall (`2/13/0`, 14 marks), the L (`4/11/0`, 13) and the closed
+// room (`0/50/0`, 50) reproduce it exactly. ⛔ **The zigzag does not**: the survey's is 18
+// marks at `4/16/0` and a sweep of sixteen bend geometries found none — this one is 16 at
+// `4/14/0`, which is the same SIGNATURE (three walls, one corner fused and one not, so
+// two chains) at a different size.
+fn straight() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
+  w
+}
+
+fn ell() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0, 0.0, 0.0);
+  wall_at(w, 0.0, 0.0, 0.0, 6.0);
+  w
+}
+
+fn zigzag() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0, 0.0 - 4.0, 0.0);
+  wall_at(w, 0.0 - 4.0, 0.0, 4.0, 4.0);
+  wall_at(w, 4.0, 4.0, 6.0, 4.0);
+  w
+}
+
+// ⚠ **THE CORNER CONTROL.** Three of the room's four walls come back whole and the
+// fourth fragments; a wall measured ALONE in the same window is what separates *this
+// wall's geometry* from *what its corners add to it*.
+fn one(x0: float, z0: float, x1: float, z1: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, x0, z0, x1, z1);
+  w
+}
+
+fn room() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 5.0, 0.0 - 5.0, 5.0, 0.0 - 5.0);
+  wall_at(w, 5.0, 0.0 - 5.0, 5.0, 5.0);
+  wall_at(w, 5.0, 5.0, 0.0 - 5.0, 5.0);
+  wall_at(w, 0.0 - 5.0, 5.0, 0.0 - 5.0, 0.0 - 5.0);
+  w
+}
+
+fn main() {
+  println("B4x — the ordered chain walk, cut by within-ness (plan 26)");
+  println("");
+  println("the CONTROL — prototype 3's own acceptance, exact set equality:");
+  measure("a straight wall", straight(), CUT_EQUAL);
+  measure("an L           ", ell(), CUT_EQUAL);
+  measure("a zigzag       ", zigzag(), CUT_EQUAL);
+  measure("a closed room  ", room(), CUT_EQUAL);
+  println("");
+  println("the SUBJECT — `run_span`'s within-ness, `run_within`'s strict `>` on a tie:");
+  measure("a straight wall", straight(), CUT_WITHIN);
+  measure("an L           ", ell(), CUT_WITHIN);
+  measure("a zigzag       ", zigzag(), CUT_WITHIN);
+  measure("a closed room  ", room(), CUT_WITHIN);
+  println("");
+  println("…and with the LONGEST vertex span taking a tie:");
+  measure("a straight wall", straight(), CUT_LONG);
+  measure("an L           ", ell(), CUT_LONG);
+  measure("a zigzag       ", zigzag(), CUT_LONG);
+  measure("a closed room  ", room(), CUT_LONG);
+  println("");
+  println("R1 BOTH WAYS — within the marks AND covering the span it steps over:");
+  measure("a straight wall", straight(), CUT_COVER);
+  measure("an L           ", ell(), CUT_COVER);
+  measure("a zigzag       ", zigzag(), CUT_COVER);
+  measure("a closed room  ", room(), CUT_COVER);
+  println("");
+  println("the CORNER CONTROL — each of the room's four walls alone in the window:");
+  measure("south          ", one(0.0 - 5.0, 0.0 - 5.0, 5.0, 0.0 - 5.0), CUT_COVER);
+  measure("east           ", one(5.0, 0.0 - 5.0, 5.0, 5.0), CUT_COVER);
+  measure("north          ", one(5.0, 5.0, 0.0 - 5.0, 5.0), CUT_COVER);
+  measure("west           ", one(0.0 - 5.0, 5.0, 0.0 - 5.0, 0.0 - 5.0), CUT_COVER);
+  println("");
+  println("THE FEWEST RUNS — the same feasibility test, over the whole chain at once:");
+  measure_dp("a straight wall", straight());
+  measure_dp("an L           ", ell());
+  measure_dp("a zigzag       ", zigzag());
+  measure_dp("a closed room  ", room());
+}

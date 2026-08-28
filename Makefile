@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -908,6 +908,18 @@ probe-b1p:
 # stray of 8.2 that was a fact about the three walls the fixture never declared.
 probe-b2p:
 	@loft --interpret --lib lib/ probe/b2p/b2p.loft 2>/dev/null | sed -n '/^B2p/,$$p'
+
+# B4x (plan 26) — A WALL THAT TURNS. An ordered chain walk over the marks, cut into runs.
+# ✅ 1 / 2 / 3 / 5 -> 4 pieces with NOTHING left over, where the shipped peel loses 12 of a
+# zigzag's 18 marks and all 50 of a closed room's. ⛔ But NOT by the route the `B4x`
+# measurement named: within-ness alone loses 36 of the room's 50, because the number it
+# maximises is the run's own size and not how much of the chain it accounts for. The
+# acceptance is `FORMAL_CORE` §6's R1 BOTH WAYS, and the partition is the FEWEST runs
+# rather than the first ones — a greedy seam steps across a corner and never re-syncs.
+# ⚠ Takes ~25 s: the minimum is quadratic in the chain. Not in `make fast`; it ships
+# nothing, and its subject is a design decision rather than a guard.
+probe-b4x:
+	@loft --interpret --lib lib/ probe/b4x/b4x.loft 2>/dev/null | sed -n '/^B4x/,$$p'
 
 # B3p (BLUEPRINT §3.1) — DOES THE WALKER MOVE WITH NO COLLISION `EdgeSet`? ✅ The
 # LIBRARY can: `walk_to` with an empty set covers 42.67773189849706, the no-fence
