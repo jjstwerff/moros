@@ -1,0 +1,83 @@
+// PROBE 4 — the hex-set model: a wall is where inside meets outside.
+use hex_field;
+use hex_grid;
+use hex_shape;
+
+const Q0 = 0 - 20;
+const W = 41;
+
+// |∂I| — an edge is a wall iff exactly one of its two cells is inside.
+fn boundary(cells: HexSet) -> integer {
+  n = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if !hexset_get(cells, q, r) { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_neighbor(q, r, d);
+        if !hexset_get(cells, nq, nr) { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn inside_neighbours(cells: HexSet, q: integer, r: integer) -> integer {
+  k = 0;
+  for d in 0..6 {
+    (nq, nr) = hex_neighbor(q, r, d);
+    if hexset_get(cells, nq, nr) { k = k + 1; }
+  }
+  k
+}
+
+fn main() {
+  println("WP probe 4 — the hex-set model");
+  println("");
+  // a rectangle of cells, the shape `place_house` fills
+  base = hexset_chunk(Q0, Q0, W, W);
+  b = box_new(0, 0, 7, 5, 0, false);
+  filled = box_fill(b, base);
+  b0 = boundary(base);
+  println("a {filled}-cell house: |boundary| = {b0} edges");
+  println("");
+  println("ADD ONE HEX — the change in |boundary| against its inside-neighbour count k:");
+  println("  k   predicted 6-2k   measured");
+  for k_target in 0..7 {
+    // find a cell outside the set with exactly k_target inside neighbours
+    fq = 999;
+    fr = 999;
+    for r in Q0 + 1..Q0 + W - 1 {
+      for q in Q0 + 1..Q0 + W - 1 {
+        if hexset_get(base, q, r) { continue; }
+        if fq != 999 { continue; }
+        if inside_neighbours(base, q, r) == k_target { fq = q; fr = r; }
+      }
+    }
+    if fq == 999 { println("  {k_target}   {6 - 2 * k_target}   (no such cell)"); continue; }
+    t = hexset_chunk(Q0, Q0, W, W);
+    for r in Q0..Q0 + W {
+      for q in Q0..Q0 + W {
+        if hexset_get(base, q, r) { hexset_set(t, q, r, true); }
+      }
+    }
+    hexset_set(t, fq, fr, true);
+    println("  {k_target}   {6 - 2 * k_target}   {boundary(t) - b0}   at ({fq},{fr})");
+  }
+  println("");
+  // ⚠ and the whole-face sweep: push every cell of one side out by one
+  t2 = hexset_chunk(Q0, Q0, W, W);
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if hexset_get(base, q, r) { hexset_set(t2, q, r, true); }
+    }
+  }
+  swept = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if !hexset_get(base, q, r) { continue; }
+      (nq, nr) = hex_neighbor(q, r, 0);
+      if !hexset_get(base, nq, nr) { hexset_set(t2, nq, nr, true); swept = swept + 1; }
+    }
+  }
+  println("SWEEP ONE WHOLE FACE (dir 0, {swept} cells): |boundary| {b0} -> {boundary(t2)}");
+}

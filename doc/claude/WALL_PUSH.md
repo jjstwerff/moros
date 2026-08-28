@@ -3,236 +3,210 @@ Copyright (c) 2026 Jurjen Stellingwerff
 SPDX-License-Identifier: LGPL-3.0-or-later
 -->
 
-# Wall push — a wall you lean on, and everything that moves with it
+# Wall push — the formal rules
 
 **Designed, not built.** A toggle the author holds while walking: the wall in front of them
-gives way and travels ahead of them. A house grows or shrinks, a tunnel lengthens, an
-internal partition slides across a room. The gesture is `run`'s shape — arm, walk, release —
-and the difference is that it **displaces** marks instead of laying them.
+gives way and travels ahead. A house grows or shrinks, a tunnel lengthens, an internal
+partition slides. The gesture is `run`'s shape — arm, walk, release.
 
-⚠ **THIS IS A DEFORMATION, NOT A REDRAW.** The point of the gesture is that the house you
-already have survives it: the same walls, the same openings, the same materials, in new
-places. Every rule below exists to keep that true, and the ones that can fail say so out
-loud rather than approximating.
+⚠ **§1 IS A SPECIFICATION, NOT A REPRESENTATION.** The cell-set model below is how to *think*
+about the world; it is not how the code is written and no implementation is required to
+materialise a `HexSet`. Every law in §2 is therefore stated over **observables** — what the
+store holds and what the readers recover — so it constrains the *result* and never the route.
+[HEX_STACK](HEX_STACK.md)'s first invariant still governs: the store is the only authority,
+and everything else is derived.
 
-Read [FORMAL_CORE](FORMAL_CORE.md) first — the lattice, the three direction sets and §6's two
-recovery regimes are the ground this stands on. [TERRAIN_EDITS](TERRAIN_EDITS.md) is the
-same question one layer down (*how the ground moves, and what moves with it*), and its
-order-divergence table applies here unchanged.
-
----
-
-## 0. ⛔ The number that shapes the whole gesture
-
-**One push step is not one distance.** A wall's line lives on the triangle lattice, and the
-parallel lattice lines in a direction `d24` are spaced
-
-    spacing = S·√3 / (2·√N),   N = a² + ab + b²  for the primitive vector (a, b)
-
-`N` is an exact integer and — measured over all 24 directions, `hex_shape::tri_n2` — it takes
-**exactly three values**:
-
-| class | `d24` | N | spacing, world units | which walls |
-|---|---|---|---|---|
-| edge | 2 · 6 · 10 · 14 · 18 · 22 | **1** | **0.8660254037844386** | six of the twelve exact headings |
-| vertex | 0 · 4 · 8 · 12 · 16 · 20 | **3** | **0.5** | the other six exact headings |
-| in-between | every odd `d24` | **39** | **0.13867504905630726** | the twelve that sit 1.1021° off nominal |
-
-⚠ **AND NO TWO ARE COMMENSURABLE** — `hex_shape::commensurable` is the predicate, and it is
-false for all three pairs: the ratios are √3, √13 and √39, none rational. So **no whole
-number of one class's steps ever equals a whole number of another's.**
-
-Three consequences, and they are facts about the lattice rather than choices:
-
-⛔ **@WP-0a A HOUSE CANNOT BE GROWN EVENLY.** A rectangle's four walls occupy two direction
-classes, so *one push on each side* widens it by `2 × 0.866` one way and `2 × 0.5` the other.
-An author who pushes each wall the same number of times does not get a scaled house; they get
-a differently-proportioned one. The editor must show the distance, not the step count.
-
-⛔ **@WP-0b A DIAGONAL WALL MOVES SIX TIMES MORE SLOWLY.** An in-between heading steps
-`0.1387` where an edge-class wall steps `0.866` — a factor of `6.25`. Pushing a diagonal wall
-across a room is 6× the walking. That is not a tuning knob; it is `N = 39`.
-
-⚠ **@WP-0c AND THE STEP IS AT LEAST THE SPACING, NOT NECESSARILY THE SPACING.** A run is
-anchored at a triangle-lattice **vertex**, and `hex_shape::tri_is_vertex` separates vertices
-from centres — so the next parallel *lattice line* may carry no admissible anchor and the true
-quantum may be 2 or 3 spacings for some classes. **This is unmeasured.** The rule below is
-stated as *the smallest admissible translation*, with the spacing as its lower bound; §7 names
-the probe that would settle it.
+Read [FORMAL_CORE](FORMAL_CORE.md) first. [TERRAIN_EDITS](TERRAIN_EDITS.md) is the same
+question one layer down.
 
 ---
 
-## 1. What moves
+## 1. The reference semantics
 
-**@WP-1 A push translates a wall's LINE and never its direction.** The pushed wall keeps its
-`d24`. A gesture that rotated a wall would be a different verb, and the recovery readers
-(`wall_read_run`, and the chain cut of plan 26 `B4x`) would have to re-derive a heading the
-author never chose.
+Let `H` be the hex lattice. A **structure** `S` is a finite set of cells `I(S) ⊆ H` — its
+inside. House, room, tunnel void, courtyard: one object.
 
-**@WP-2 The translation is along the wall's own normal, in the direction the author faces.**
-`hex_editor::run_normal` is that normal; the sign is the author's facing projected onto it.
-A push with no component along the normal is a **refusal**, not a zero-length move.
+**Its walls are derived**, not stored as movable things:
 
-**@WP-3 The displacement is the smallest translation that leaves the wall admissible** — its
-anchor on a triangle-lattice vertex and `wall_run_ok(d24, a, b, p)` true. Exact integers
-throughout; no float step, no snap-after-the-fact.
+    ∂I  =  { edges (c, c') : exactly one of c, c' lies in I }
 
-**@WP-4 The pushed wall is the one the author is in contact with and facing.** Contact is the
-author's own position against the wall's band, which is `hex_editor::wall_of` at the author's
-cell plus the facing test — the same pair `shelter_at` already asks. Two walls in contact at
-once is a **refusal**: the gesture must never guess which one was meant.
+This is not a new rule. It is `housedraw::draw_walls`' own, quoted inside
+`hex_shape/src/hexwall.loft` — *"an edge between an inside cell and an outside one"* — and it
+is what makes a marking closed by construction and one wide for free.
 
----
+A **push** is the transfer of exactly one cell across that boundary, in the direction the
+author faces:
 
-## 2. What comes with it
+    grow    c ∉ I,  c adjacent to I,  author inside      I' = I ∪ {c}
+    shrink  c ∈ I,  c on ∂I,          author outside     I' = I \ {c}
 
-This is the half the request names: *normally this will not reduce the number of walls,
-because when hitting obstacles these also move indirectly with the push.*
-
-**@WP-5 A wall sharing a vertex with the pushed wall does not translate — its PERIOD
-changes.** A rectangle's side pushed outward drags the two walls at its ends; they keep their
-direction and their far anchors and grow by whatever `p` the new corner requires
-(`hex_shape::wall_snap_p`). This is why the count survives: the neighbours are *stretched*,
-not moved and not re-created.
-
-**@WP-6 THE COUNT IS PRESERVED EXACTLY WHILE EVERY INCIDENT WALL KEEPS AN ADMISSIBLE
-PERIOD.** The one way a push reduces the count is a neighbour whose period would fall below
-`wall_min_p(d24, a, b)` — a wall pushed until the wall beside it has no length left. That
-wall is **removed**, and the removal is reported to the author rather than silent. Symmetric
-on the way back: a push that would re-create it does not, because the store no longer records
-it. ⚠ **So push is NOT invertible across a collapse**, and §6's round-trip rule is stated for
-the non-collapsing case only.
-
-**@WP-7 A structure the pushed wall would overlap is itself pushed, transitively.** The
-obstacle's own walls enter the pushed set and take the same *displacement vector* — not the
-same step count, because @WP-0a: a pushed structure whose walls run in another direction class
-cannot move by an integer number of its own steps. ⛔ **This is the hardest rule in the
-document and the one most likely to be wrong.** Either the obstacle moves by a distance that
-is inadmissible for its own headings — and the push must refuse — or the propagation must
-quantise per structure and the two drift apart. **Undecided; §7's probe is aimed at exactly
-this.**
-
-**@WP-8 The transitive closure must be finite and must not contain the pushed wall.** A ring
-of structures each pushing the next back onto the first is a cycle; a cycle is a **refusal**
-naming the loop, never a partial application.
-
-**@WP-9 An enclosed floor moves with its boundary.** `TERRAIN_EDITS`' rule for a building
-riding its pad, one layer in: the cells a pushed boundary encloses are refilled from the new
-shape, never edited cell by cell. `hex_place::combine_cut` is the exact, float-free, order-free
-primitive for it — and it has **zero callers in this tree** (see [HOUSE_ROOMS](HOUSE_ROOMS.md)),
-so this rule is also the first consumer it would get.
+⚠ **THE MODEL IS INDICATIVE AND THE STORE IS AUTHORITATIVE, SO THE ARROW POINTS THIS WAY**:
+`I` is *recovered from* the store, never kept beside it. "Transfer a hex" is shorthand for
+*write the store so that the recovered set differs by exactly that cell*. An implementation
+that edits edge marks, a `Box`, a run record and a floor fill — which is what the store
+actually holds — satisfies the laws below if and only if its observable result matches.
 
 ---
 
-## 3. Features ride, and one end is the anchor
+## 2. The laws
 
-**@WP-10 An opening is a span on its wall's surface, so a translation preserves it exactly.**
-`@HB-X12`'s feature list is parameters on the surface, not marks in the field — a wall that
-moves carries its doors and windows with no recomputation and no rounding.
+Each is a statement about observables, with the measurement that would falsify it.
 
-**@WP-11 A LENGTHENED WALL ANCHORS ITS FEATURES TO THE END THAT DID NOT MOVE.** A stretched
-neighbour grows at the corner the push displaced; a door two metres from the *other* end must
-stay two metres from it. Anchoring to the moved end would slide every opening in the house
-every time any wall is pushed, which is the failure this rule exists to name.
+### L1 — derivation
+**After any push, the wall edges the store holds are exactly `∂I'`.**
+No edge is a wall for any other reason, and none is missing. *Falsified by* comparing the
+store's marks against `∂` of the recovered cell set, edge for edge.
 
-**@WP-12 The palette is untouched.** Thickness, body and material are the wall type's
-(`@HB-X69`), and a push changes no id. A pushed wall is the same wall.
+### L2 — unit
+**One push transfers one cell, and the direction is one of the six neighbours.**
+There is no other quantum: no direction classes, no snap, no sub-hex step. *Falsified by* a
+push whose recovered set differs from the previous by other than one cell.
+
+### L3 — cost of a transfer  ✅ measured
+**Transferring a cell with `k` inside neighbours changes the wall-edge count by `6 − 2k`.**
+Exact integer, no cases. Measured against the prediction over a 37-cell house
+([probe/wp](../../probe/wp/README.md) probe 4):
+
+| `k` | `Δ|∂I|` predicted | measured |
+|---|---|---|
+| 0 — an island | +6 | **+6** |
+| 1 — a spur off a face | +4 | **+4** |
+| 2 — a normal face push | +2 | **+2** |
+| 3 — a notch filled | **0** | **0** |
+| 4 / 5 / 6 — a concavity or a hole | −2 / −4 / −6 | no such cell in a convex house |
+
+✅ **THE REQUEST'S CLAUSE IS A THEOREM OF THIS LAW, NOT A RULE TO ENFORCE.** *"Normally this
+will not reduce the number of walls"* holds because a push against a **convex** face has
+`k ≤ 2`, so `Δ ≥ +2`. The count falls only at `k ≥ 4` — filling something in, which is what
+the author meant when they stood there. ⚠ **And nothing has to defend it**: the count is an
+output of `∂`, so no code path can create or destroy a wall as an act.
+
+### L4 — locality
+**A push changes the store only within the closed neighbourhood of the transferred cell**,
+plus whatever L7 propagates. This is what bounds the cost, and it is the law an
+over-eager implementation breaks first. *Falsified by* a diff of the store outside that
+neighbourhood.
+
+### L5 — invertibility
+**Push then unpush is the identity on the store, byte for byte.** In the reference semantics
+this is nearly trivial — `(I ∪ {c}) \ {c} = I` — which is itself an argument for the model.
+It is not trivial in the store, where cells, edges, the palette and the enclosed floor must
+all come back. *Falsified by* a world key before and after.
+
+### L6 — partition
+**For a structure partitioned into rooms `A` and `B`, a transfer between them leaves
+`∂(A ∪ B)` unchanged.** Moving an internal wall cannot move the outside of the house, because
+`A ∪ B` did not change. The request's third case is a consequence, not a special case.
+
+### L7 — yield
+**If the transferred cell belongs to another structure `J`, the push succeeds only if `J`
+yields it** — `J' = J \ {c}` — and `J`'s own boundary moves accordingly, transitively. There
+is no displacement to reconcile between structures: they meet on cells, and a cell belongs to
+one of them.
+
+### L8 — connectivity
+**A push must not disconnect a structure, nor breach an enclosure that was closed.**
+`set_connected` is the predicate for the first; `flood_outside` + `leak_count` for the second
+— and `@HXS-007` is the worked example of why the first does not imply the second: *connected
+is not closed*, a ring with one cell out is still one chain you can walk through.
+
+### L9 — features ride, anchored to the fixed end
+**An opening is a span on its wall's surface (`@HB-X12`), so a moved face carries its doors
+with no recomputation.** ⚠ **But a swept face is a LONGER wall than it was** (L3: `+2` edges
+per swept cell), so a span must be anchored to the end that did **not** move. Anchoring to
+the moved end slides every opening in the house whenever any wall is pushed.
+
+### L10 — the palette is untouched
+**A push changes no wall id.** Thickness, body and material are the wall type's (`@HB-X69`);
+a pushed wall is the same wall.
+
+### L11 — a sweep preserves the description  ⛔ the load-bearing one
+**Sweeping a whole face leaves the structure describable as what it was.** Measured: sweeping
+one face of a 37-cell house — five cells — takes `|∂I|` from 46 to 50 and the house is still
+a rectangle. Pushing **one** of those five gives `+2` and a shape that is not.
+
+⛔ **THIS IS WHY THE GESTURE IS A WALK AND NOT A POKE.** `house_recover` reads a *rectangle*
+off the floor cells. A bump is not one, so the window falls through to the run readers — and
+plan 26 `B4x`'s chain cut now covers such a shape *exactly*, which means the degradation is
+**silent and complete** rather than a refusal. An editor that lets you poke will quietly turn
+houses into linework. *Falsified by* a swept face that no longer reads as `house`.
 
 ---
 
-## 4. Where the verb lives
+## 3. The gesture
 
-**@WP-13 Push is a VERB, not a key.** [EDITING_MODES](EDITING_MODES.md) is binding: a key
-names a verb, the wire carries the verb, and *verb + mode + selection* binds to the gesture.
-Push joins `the_vocabulary()` as an 18th entry — `keymap.loft` and `verb.loft` both refuse a
-verb that is not in that list, which is the check that keeps the four sites from diverging.
+**G1 Push is a VERB, not a key.** [EDITING_MODES](EDITING_MODES.md) is binding: a key names a
+verb, the wire carries the verb, and *verb + mode + selection* binds to the gesture. Push
+joins `the_vocabulary()` as an 18th entry — `keymap.loft` and `verb.loft` both refuse a verb
+that is not in that list, which is the check that keeps the four sites from diverging.
 
-**@WP-14 It is a HELD toggle, and the tick is shared.** The body belongs in
-`hex_editor::tick.loft` beside the walk, so the server, the page and `editor_run` get it from
-one place — [WALK_TICK](WALK_TICK.md)'s whole finding is that writing the tick twice loses a
-clause. One push step per tick while contact and facing hold.
+**G2 It is a HELD toggle over a WALK, and the tick is shared.** One transfer per tick while
+contact and facing hold; the body belongs in `hex_editor::tick.loft` beside the walk, so the
+server, the page and `editor_run` get it from one place — [WALK_TICK](WALK_TICK.md)'s whole
+finding is that writing the tick twice loses a clause. This is the sense in which it works
+*like drawing a road*: the unit is a tick and the author's path is what makes it a wall
+rather than a dent (L11).
 
-**@WP-15 The blueprint and the world are the same gesture.** [BLUEPRINT](BLUEPRINT.md) §0's
-plan view already authors with `pick <x>,<y> <verb>`; push needs no second implementation
-there, because the plan view acts on the same store. What differs is only that the author's
-position is a pick rather than a pose.
+**G3 The blueprint and the world are the same gesture.** [BLUEPRINT](BLUEPRINT.md) §0's plan
+view authors with `pick <x>,<y> <verb>` against the same store; only the author's position
+differs — a pick rather than a pose.
+
+**G4 `hex_place::combine_cut` is the primitive.** Exact, float-free, order-free union and
+difference of cell sets, and it has **zero callers in this tree** ([HOUSE_ROOMS](HOUSE_ROOMS.md)).
+This would be its first.
 
 ---
 
-## 5. Refusals, named
+## 4. Refusals, named
 
-A refusal is data — `FORMAL_CORE`'s law **P4**, and the reason `run_between` returns a `why`.
-Push refuses, never approximates, when:
+A refusal is data — `FORMAL_CORE`'s law **P4**.
 
 | | |
 |---|---|
-| **R1** | the author faces no wall, or two at once |
-| **R2** | the facing has no component along the wall's normal (@WP-2) |
-| **R3** | no admissible translation exists in that direction (@WP-3) |
-| **R4** | an incident wall's period would fall below `wall_min_p` — reported as a **collapse offer**, not a silent removal (@WP-6) |
-| **R5** | the transitive push set is cyclic (@WP-8) |
-| **R6** | a pushed obstacle's own headings admit no equal displacement (@WP-7) |
-
-⚠ **R4 IS AN OFFER AND THE OTHERS ARE REFUSALS**, because losing a wall is a thing an author
-may well mean. The distinction is the one `hex_shape`'s doorstep already draws: *there is no
-legal move* against *this move costs you something*.
+| **R1** | the author faces no wall of the structure they are in |
+| **R2** | the transfer would disconnect the structure, or breach a closed enclosure (L8) |
+| **R3** | the cell belongs to a structure that will not yield it (L7), transitively |
+| **R4** | the transitive yield set is cyclic |
+| **R5** | the cell lies outside the region the author may edit |
 
 ---
 
-## 6. The invariants worth gating
+## 5. ⛔ What the probes refuted — including this document's first draft
 
-**@WP-16 PUSH-THEN-UNPUSH IS THE IDENTITY ON THE STORE**, byte for byte, in the absence of a
-collapse (@WP-6). This is the cheapest falsification the design has and it should be the first
-test written: a world key before and after a push and its inverse. ⚠ **It can fail in a way no
-picture shows** — `B4q`'s finding is that the same wall walked the other way is a different
-field, so a push that re-derives the run rather than translating it would come back mirrored
-with an identical mark count.
+[probe/wp](../../probe/wp/README.md), predictions written first.
 
-**@WP-17 A PUSHED HOUSE IS STILL DESCRIBED AS A HOUSE.** After the gesture, the plan view's
-reader must still answer `house`, not a pile of runs. This is a live risk rather than a
-formality: `house_recover` reads a **rectangle** off the floor cells, and pushing an *internal*
-partition leaves a room that is not one. ⛔ **So moving an internal wall changes what the
-window can be described as**, and the honest options are that the house becomes two rooms
-(`X52` — two adjacent boxes FUSE, so whether that is a hall or a room is hexbody's call) or
-that the description degrades to runs. **Undecided, and it is the most consequential open
-question here.**
+⛔ **THE FIRST DRAFT HAD THE WRONG OBJECT.** It modelled a push as *translating a wall's line*
+— a `WallRun` moved along its normal — and built five rules on the lattice arithmetic that
+follows. The rules were internally correct and answered a question the gesture does not ask.
 
-**@WP-18 The cost is `w_tau`, not seconds.** A push is a write per displaced edge plus a
-refill of the enclosed floor; the edit clock makes that an exact integer on any box
-(`lib/hex_editor/tests/cost.loft`). A gesture whose cost grows with the *world* rather than
-with the pushed set has propagated further than @WP-7 allows.
+- ⛔ **`@WP-0b` was wrong and inverted.** It said a diagonal wall moves **6.25× more slowly**
+  per push, from the parallel-line spacing `√3/(2√N)`. The shortest admissible translation is
+  **1** for `N = 3`, **√3 = 1.732** for `N = 1`, **√13 = 3.606** for `N = 39` — the diagonal
+  is the **coarsest** heading, not the finest.
+- ✅ **`@WP-0c` was right, and by more than it guessed.** It called the line spacing a lower
+  bound. The true quantum is **2×** it for both exact classes and **26×** for the in-between.
+- ⛔ **`@WP-7`'s worry and its refusal were unfounded** — **576 of 576** (pusher, obstacle)
+  heading pairs admit the displacement, because the search returns an integer lattice vector
+  and a lattice vector maps the lattice to itself.
+- ⚠ **And probe 3 was vacuous until it was fixed.** It stamped `a0 + da - da`, the same call
+  as the original, and compared a function against itself. Rewritten to push, recover through
+  `wall_read_run` and unpush from the recovered description: identical on all three headings.
+  ⛔ **It still does not exercise `B4q`'s risk**, because it stamps with
+  `hex_shape::wall_write` while `B4q`'s mirroring was measured in `hex_editor::wall_stamp`.
 
----
-
-## 7. ⛔ What would falsify this, and it is one afternoon
-
-Three probes, in the order that kills the design fastest if it is wrong:
-
-1. **The quantum (@WP-0c).** For each of the 24 headings, find the smallest translation along
-   the normal whose anchor is again a `tri_is_vertex`. If it is not the lattice spacing, §0's
-   table is a lower bound and the gameplay numbers change. **Pure arithmetic, no world.**
-2. **The obstacle (@WP-7).** Two walls of different direction classes, one pushed into the
-   other. Does an equal displacement exist for both? If it does not — and §0 says it usually
-   cannot — then transitive push either refuses far more often than the request expects, or it
-   is not a rigid translation at all.
-3. **The round trip (@WP-16).** A house, a push, an unpush, `deck.keys`-style world key
-   against the original. This is the one that catches a re-derived rather than translated
-   wall.
-
-⚠ **AND THE INSTRUMENT NEEDS CHECKING BEFORE THE ABSENCE IS BELIEVED** — a push that writes
-nothing and reports success would pass a mark count, a picture and a cost check alike. Probe 3
-must be shown to go red on a wall displaced by one step in the wrong direction before its
-green means anything.
+⚠ **The draft is an instance of this tree's own rule** — *the gap is never where the first
+guess puts it*. Five rules of exact arithmetic, correct in themselves, about the wrong object.
 
 ---
 
-## 8. What this document does not decide
+## 6. What this does not decide
 
-- **Whether an internal wall may be pushed at all** (@WP-17) — it changes the window's
-  describability, and that is hexbody's boundary rather than the editor's.
-- **Whether a tunnel is the same object as a house** — the request says lengthening a tunnel
-  is the same gesture; a tunnel's walls are a run pair rather than a `Box`, so @WP-5's
-  stretch rule may be all it needs and @WP-9 may not apply.
-- **Whether push composes with terrain.** [TERRAIN_EDITS](TERRAIN_EDITS.md)'s order-divergence
-  table says hill-then-build is not build-then-hill; push-then-hill is a third order nobody
-  has measured.
+- **Whether two adjacent rooms fuse.** `X52` says two adjacent boxes FUSE into one space, so
+  whether pushing a partition to nothing leaves a hall or a room is hexbody's call.
+  [HOUSE_ROOMS](HOUSE_ROOMS.md).
+- **What a pushed cell does to the ground.** A house rides its pad rigidly
+  ([TERRAIN_EDITS](TERRAIN_EDITS.md)); growing the footprint must extend the pad, and
+  push-then-hill is a third order in that document's divergence table nobody has measured.
+- **How a structure is identified in the store.** L1 and L7 both need *which* structure a cell
+  belongs to, and the store records regions, floors and runs rather than labelled sets. The
+  recovery half of that is what plan 26 `B4x` has been building; the authoring half is open.

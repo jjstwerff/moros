@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -919,6 +919,16 @@ probe-b2p:
 # decision rather than a guard.
 probe-b4x:
 	@loft --interpret --lib lib/ probe/b4x/b4x.loft 2>/dev/null | sed -n '/^B4x/,$$p'
+
+# WP (WALL_PUSH) — the four probes of the wall-push design. ⛔ Two of the first draft's rules
+# are REFUTED: a diagonal wall moves 3.6x FURTHER per step, not 6.25x less (the line spacing
+# was a lower bound by 2x / 26x), and the obstacle refusal was unfounded — 576 of 576 heading
+# pairs admit the displacement. ✅ Probe 4 measures the model that replaced it: a wall is
+# where inside meets outside, and transferring a cell with k inside neighbours changes the
+# wall-edge count by exactly 6-2k. Pure arithmetic, no world, seconds.
+probe-wp:
+	@loft --interpret probe/wp/wp.loft 2>/dev/null | sed -n '/^WP —/,$$p'
+	@loft --interpret probe/wp/wp4.loft 2>/dev/null | sed -n '/^WP probe 4/,$$p'
 
 # B3p (BLUEPRINT §3.1) — DOES THE WALKER MOVE WITH NO COLLISION `EdgeSet`? ✅ The
 # LIBRARY can: `walk_to` with an empty set covers 42.67773189849706, the no-fence

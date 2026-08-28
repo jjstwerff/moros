@@ -1,0 +1,212 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `WP` — the three probes of WALL_PUSH.md §7.
+//
+//   loft --interpret probe/wp/wp.loft        (or `make probe-wp`)
+//
+// 1. the QUANTUM: how far does a push actually move a wall?  §0 tabulates the parallel
+//    lattice-line spacing and calls it a LOWER BOUND, because a run is anchored at a
+//    triangle-lattice VERTEX and the next line need not carry one.
+// 2. the OBSTACLE: can a transitively pushed structure take the same displacement?  It can,
+//    for any structure, exactly when that displacement is a lattice vector.
+// 3. the ROUND TRIP: push, unpush, compare the fields edge for edge.
+//
+// Predictions are in PREDICTION.md and were written first.
+use hex_shape;
+use hex_field;
+use hex_grid;
+
+const Q0 = 0 - 20;
+const W = 41;
+
+// ── THE EXACT PERPENDICULARITY TEST, AND IT IS CHECKED BEFORE IT IS USED ──
+//
+// A triangle-lattice point `(a, b)` sits at `tri_x = a*sqrt(3)/6`, `tri_y = a/6 + b/3` —
+// hex_shape's own conversion.  Expanding the dot product of two such points and clearing
+// the denominator (36) leaves `4ac + 2ad + 2bc + 4bd`, i.e. `2ac + ad + bc + 2bd` up to a
+// positive factor.  Integer, exact, no epsilon.
+fn tri_dot(a: integer, b: integer, c: integer, d: integer) -> integer {
+  2 * a * c + a * d + b * c + 2 * b * d
+}
+
+fn tri_len(a: integer, b: integer) -> float {
+  x = tri_x(a, b);
+  y = tri_y(a, b);
+  sqrt(x * x + y * y) ?? 0.0
+}
+
+// ⚠ **THE INSTRUMENT, CHECKED AGAINST THE FLOATS IT REPLACES.** A wrong integer test would
+// silently select the wrong displacements and every number below would be a fact about the
+// mistake.
+fn check_dot() -> integer {
+  bad = 0;
+  for a in 0 - 4..5 {
+    for b in 0 - 4..5 {
+      for c in 0 - 4..5 {
+        for d in 0 - 4..5 {
+          fi = tri_x(a, b) * tri_x(c, d) + tri_y(a, b) * tri_y(c, d);
+          ii = tri_dot(a, b, c, d);
+          zero_f = fi > 0.0 - 0.000000001 && fi < 0.000000001;
+          if zero_f != (ii == 0) { bad = bad + 1; }
+          if !zero_f && ((fi > 0.0) != (ii > 0)) { bad = bad + 1; }
+        }
+      }
+    }
+  }
+  bad
+}
+
+// ── PROBE 1 + 2: the shortest admissible translation across the wall ──────
+//
+// Perpendicular to the heading, landing on a vertex the lattice admits, and short.  Because
+// the search is over INTEGER `(da, db)`, whatever it finds is a lattice vector by
+// construction — which is probe 2's whole question.
+fn quantum(d24: integer, a0: integer, b0: integer, p: integer,
+           oa: &integer, ob: &integer) -> float {
+  va = tri_a(d24);
+  vb = tri_b(d24);
+  best = 1.0e30;
+  ba = 0;
+  bb = 0;
+  for da in 0 - 24..25 {
+    for db in 0 - 24..25 {
+      if da == 0 && db == 0 { continue; }
+      if tri_dot(va, vb, da, db) != 0 { continue; }
+      if !tri_is_vertex(a0 + da, b0 + db) { continue; }
+      if !wall_run_ok(d24, a0 + da, b0 + db, p) { continue; }
+      l = tri_len(da, db);
+      if l < best { best = l; ba = da; bb = db; }
+    }
+  }
+  oa = ba;
+  ob = bb;
+  if best > 1.0e29 { return 0.0; }
+  best
+}
+
+// ── PROBE 3: the round trip ───────────────────────────────────────────────
+fn stamp(d24: integer, a: integer, b: integer, p: integer) -> EdgeSet {
+  e = edgeset_new(Q0, Q0, W, W);
+  wall_write(wall_from_run(d24, a, b, p, 7), e, Q0, Q0, W, W);
+  e
+}
+
+fn same_field(x: EdgeSet, y: EdgeSet) -> boolean {
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..3 {
+        (nq, nr) = hex_neighbor(q, r, d);
+        if edge_mat(x, q, r, nq, nr) != edge_mat(y, q, r, nq, nr) { return false; }
+      }
+    }
+  }
+  true
+}
+
+fn field_size(x: EdgeSet) -> integer {
+  n = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..3 {
+        (nq, nr) = hex_neighbor(q, r, d);
+        if edge_mat(x, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  println("WP — the three probes of WALL_PUSH §7");
+  println("");
+  bad = check_dot();
+  println("instrument: the integer perpendicularity test disagrees with the floats on "
+        + "{bad} of 6561 pairs");
+  if bad != 0 { println("⛔ ABORT — every number below would be about the mistake"); return; }
+  println("");
+
+  a0 = hex_corner_tri_a(0, 0, 0);
+  b0 = hex_corner_tri_b(0, 0, 0);
+
+  println("PROBE 1+2 — the shortest admissible translation ACROSS a wall");
+  println("  d24  N  line-spacing   quantum   ratio  lattice vector (da,db)");
+  stuck = 0;
+  for d in 0..24 {
+    p = wall_snap_p(d, a0, b0, 3);
+    if p <= 0 { continue; }
+    n = tri_n2(d);
+    sp = 1.7320508075688772 / (2.0 * (sqrt(n as float) ?? 1.0)) ?? 0.0;
+    da = 0;
+    db = 0;
+    qn = quantum(d, a0, b0, p, da, db);
+    if qn == 0.0 { stuck = stuck + 1; }
+    ratio = if sp > 0.0 { qn / sp ?? 0.0 } else { 0.0 };
+    println("  {d}  N={n}  {sp}  {qn}  {ratio}x  ({da},{db})");
+  }
+  println("  headings with NO admissible translation: {stuck} of 24");
+  println("");
+
+  // ── PROBE 2 PROPER: can the OBSTACLE take the pusher's vector? ──────────
+  //
+  // ⚠ **A LATTICE VECTOR IS NOT ENOUGH, AND THE FIRST VERSION OF THIS PROBE STOPPED THERE.**
+  // Translating by a lattice vector keeps every point on the lattice — but a run's
+  // admissibility depends on its ANCHOR's class (`wall_min_p` differs by vertex), so the
+  // question `@WP-7` actually asks is whether wall B is still legal after moving by wall A's
+  // quantum. That is a pair test, not a property of one heading.
+  println("PROBE 2 — can an obstacle take the pusher's displacement?");
+  pairs = 0;
+  ok2 = 0;
+  worst = "";
+  for dp in 0..24 {
+    pp = wall_snap_p(dp, a0, b0, 3);
+    if pp <= 0 { continue; }
+    pa = 0;
+    pb = 0;
+    if quantum(dp, a0, b0, pp, pa, pb) == 0.0 { continue; }
+    for db2 in 0..24 {
+      pb2 = wall_snap_p(db2, a0, b0, 3);
+      if pb2 <= 0 { continue; }
+      pairs = pairs + 1;
+      if tri_is_vertex(a0 + pa, b0 + pb) && wall_run_ok(db2, a0 + pa, b0 + pb, pb2) {
+        ok2 = ok2 + 1;
+      } else {
+        if worst == "" { worst = "d24 {dp} pushing d24 {db2}"; }
+      }
+    }
+  }
+  println("  {ok2} of {pairs} (pusher, obstacle) pairs: the obstacle stays admissible");
+  if worst != "" { println("  first refusal: {worst}"); }
+  println("");
+
+  println("PROBE 3 — push, then RECOVER and unpush");
+  // ⛔ **THE FIRST VERSION OF THIS ROW WAS VACUOUS.** It stamped `a0 + da - da`, which is the
+  // same call as `home` — a table checked against itself cannot be surprised. What `@WP-16`
+  // actually warns about is a push that RE-DERIVES the run instead of translating it: `B4q`
+  // measured that the same wall walked the other way is a DIFFERENT field with an identical
+  // mark count. So the round trip here goes through `wall_read_run` on the pushed field.
+  for d in [0, 2, 1] {
+    p = wall_snap_p(d, a0, b0, 3);
+    if p <= 0 { continue; }
+    da = 0;
+    db = 0;
+    if quantum(d, a0, b0, p, da, db) == 0.0 { continue; }
+    home = stamp(d, a0, b0, p);
+    pushed = stamp(d, a0 + da, b0 + db, p);
+    (rd, ra, rb, rp, rok) = wall_read_run(pushed, Q0, Q0, W, W);
+    if !rok {
+      println("  d24 {d}: the pushed wall does not read back at all");
+      continue;
+    }
+    // the recovered description, re-stamped where it was found …
+    again = stamp(rd, ra, rb, rp);
+    // … and translated back by the same vector, which is direction-free
+    back = stamp(rd, ra - da, rb - db, rp);
+    sa = 3 * tri_a(d);
+    sb = 3 * tri_b(d);
+    slid = stamp(d, a0 + sa, b0 + sb, p);
+    println("  d24 {d}: {field_size(home)} edges · read back as d24 {rd} p {rp} · "
+          + "re-stamp == pushed {same_field(again, pushed)} · unpush == home "
+          + "{same_field(back, home)} · slid-along differs {!same_field(home, slid)}");
+  }
+}

@@ -1,0 +1,54 @@
+WP — the three probes of WALL_PUSH §7
+
+instrument: the integer perpendicularity test disagrees with the floats on 0 of 6561 pairs
+
+PROBE 1+2 — the shortest admissible translation ACROSS a wall
+  d24  N  line-spacing   quantum   ratio  lattice vector (da,db)
+  0  N=3  0.5  1  2x  (0,3)
+  1  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (3,-12)
+  2  N=1  0.8660254037844386  1.7320508075688772  2x  (-3,6)
+  3  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (-9,12)
+  4  N=3  0.5  0.9999999999999999  1.9999999999999998x  (3,-3)
+  5  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (-12,9)
+  6  N=1  0.8660254037844386  1.7320508075688772  2x  (-6,3)
+  7  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (12,-3)
+  8  N=3  0.5  0.9999999999999999  1.9999999999999998x  (-3,0)
+  9  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (9,3)
+  10  N=1  0.8660254037844386  1.7320508075688772  2x  (-3,-3)
+  11  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (-3,-9)
+  12  N=3  0.5  1  2x  (0,3)
+  13  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (3,-12)
+  14  N=1  0.8660254037844386  1.7320508075688772  2x  (-3,6)
+  15  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (-9,12)
+  16  N=3  0.5  0.9999999999999999  1.9999999999999998x  (3,-3)
+  17  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (-12,9)
+  18  N=1  0.8660254037844386  1.7320508075688772  2x  (-6,3)
+  19  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (12,-3)
+  20  N=3  0.5  0.9999999999999999  1.9999999999999998x  (-3,0)
+  21  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (9,3)
+  22  N=1  0.8660254037844386  1.7320508075688772  2x  (-3,-3)
+  23  N=39  0.13867504905630726  3.605551275463989  26.000000000000004x  (-3,-9)
+  headings with NO admissible translation: 0 of 24
+
+PROBE 2 — can an obstacle take the pusher's displacement?
+  576 of 576 (pusher, obstacle) pairs: the obstacle stays admissible
+
+PROBE 3 — push, then RECOVER and unpush
+  d24 0: 6 edges · read back as d24 0 p 3 · re-stamp == pushed true · unpush == home true · slid-along differs true
+  d24 2: 4 edges · read back as d24 2 p 3 · re-stamp == pushed true · unpush == home true · slid-along differs true
+  d24 1: 24 edges · read back as d24 1 p 3 · re-stamp == pushed true · unpush == home true · slid-along differs true
+WP probe 4 — the hex-set model
+
+a 37-cell house: |boundary| = 46 edges
+
+ADD ONE HEX — the change in |boundary| against its inside-neighbour count k:
+  k   predicted 6-2k   measured
+  0   6   6   at (-19,-19)
+  1   4   4   at (-4,-3)
+  2   2   2   at (-3,-3)
+  3   0   0   at (-4,0)
+  4   -2   (no such cell)
+  5   -4   (no such cell)
+  6   -6   (no such cell)
+
+SWEEP ONE WHOLE FACE (dir 0, 5 cells): |boundary| 46 -> 50
