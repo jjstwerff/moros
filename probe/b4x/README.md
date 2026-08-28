@@ -12,8 +12,13 @@ The first `B4x` measurement ended with one instruction:
 
 ⚠ **THIS IS ALSO THE CONSUMER CHECK FOR `hex_shape::wall_chain_walk`.** The walk was measured
 here and then built where `wall_chain_ends` and `wall_chain_branches` already live — the two
-functions that count degrees and throw the walk away. The probe holds no copy of it, and
-needs the `loft-libs-world` **working tree**: the published `hex_shape` 0.1.1 has no walk.
+functions that count degrees and throw the walk away. The probe holds no copy of it.
+
+✅ **Released as `hex_shape` 0.1.2** — tag `hex_shape-v0.1.2`,
+[registry#26](https://github.com/loft-lang/registry/pull/26) open with all four gates green.
+⚠ Until that merges the installed `hex_shape` is 0.1.1, which has no walk, so `make
+probe-b4x` passes a second `--lib` at the `loft-libs-world` working tree. Drop it once
+`loft install hex_shape@0.1.2` resolves.
 
 ## The verdict, in two halves
 

@@ -915,8 +915,9 @@ probe-b2p:
 # all 50 of a closed room's. ⛔ Its own first version had ONE seed per fixture and drew
 # conclusions about cut rules from it; a loop can be walked from any of its vertices, so the
 # sweep over every seed is the control that separates the rule from the starting point.
-# ⚠ NEEDS THE loft-libs-world WORKING TREE — `wall_chain_walk` is not in the published
-# hex_shape 0.1.1, so the second `--lib` is load-bearing rather than a convenience.
+# ⚠ THE SECOND `--lib` IS LOAD-BEARING, NOT A CONVENIENCE. `wall_chain_walk` ships in
+# hex_shape 0.1.2, but the INSTALLED hex_shape is 0.1.1 until loft-lang/registry#26 merges
+# and is re-signed. Drop it once `loft install hex_shape@0.1.2` resolves.
 # ⚠ Takes minutes. Not in `make fast`; it ships nothing, and its subject is a design
 # decision rather than a guard.
 LIBSWORLD ?= $(HOME)/workspace/loft-libs-world

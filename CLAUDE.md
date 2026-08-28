@@ -194,7 +194,7 @@ point that accepts what the STORE has — an unordered set of marked edges — a
 chain-walk that turns it into what `surface_of` already consumes. **Find the library's entry
 point first; the shape of the gap is the difference between what it takes and what you hold.**
 
-✅ **AND THAT ONE IS BUILT — `hex_shape::wall_chain_walk`, 2026-08-28** (plan 26 `B4x`,
+✅ **AND THAT ONE IS BUILT AND PUBLISHED — `hex_shape::wall_chain_walk`, 0.1.2, 2026-08-28** (plan 26 `B4x`,
 [`probe/b4x`](probe/b4x/README.md)). It landed where `wall_chain_ends` and
 `wall_chain_branches` already lived — the two functions that build the vertex-incidence
 table, count degrees and **throw the walk away** — so the gap was one function wide in a
