@@ -1220,6 +1220,144 @@ pub fn marks_label(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   ml_n
 }
 
+// ── ⛔ A CROSSING: WHERE A RUN CAN BEGIN — plan 26 `B4w` ───────────────────
+//
+// ⛔ **`B4v` REFUSED TWO WALLS THAT CROSS, AND ITS OWN RECORD NAMED WHY**: the trial had
+// no candidate generator for a run. `disc_within` searches centres and shells; a run has
+// no such grid — its endpoints are continuous world points.
+//
+// ✅ **BUT A WALL CAN ONLY BEGIN WHERE THE CHAIN DOES.** A free END is a vertex where one
+// mark meets (degree 1); a JUNCTION is where three or more do. Both are exact integers
+// over `hex_corner_tri_a`/`hex_corner_tri_b` — the identity `wall_chain_ends` counts
+// degrees with — so the candidate set is a handful of corners rather than a search over
+// the plane, and it is generate-and-compare from there: `run_edges` for the pair, and the
+// answer is admitted only if every edge it wants is a mark of this component.
+//
+// ⚠ **THE JUNCTION HALF CHANGES NO VERDICT, AND IT STAYS.** A sweep row removing degree ≥ 3
+// went **green**: nothing these fixtures build begins where another wall passes. It is kept
+// on `oct_recover`'s footing at its own two-cell margin — the statement is true of walls and
+// merely unreachable here — rather than because a timing said so. ⛔ It was deleted once for
+// that green and put back on a wall-clock reading that turned out to be the machine, not
+// this loop; the cost was a TEST running seven whole peels where three carry its claim.
+//
+// ⚠ **MEASURED AT FOUR GEOMETRIES** — a plus, a diagonal, an offset pair and a long/short
+// pair — and in each the two authored walls are the only two pairs that fit, with their
+// union exactly the field.
+//
+// ⛔ **AND WHETHER A `T` IS RECOVERABLE IS A MEASUREMENT, NOT A CATEGORY.** Its stem's far
+// endpoint is a continuous point on the crossbar's centreline; the pool holds the field's
+// own CORNERS, and the two coincide only sometimes. Measured over eight stem positions
+// along one crossbar: **two close and six are refused with every mark counted.** That is
+// `FORMAL_CORE` §6's R1/R2 line showing itself in the field — where the corners do not
+// carry the point there is no exact answer, only a fit, which §6 names as the trap.
+// ⚠ **Neither outcome is wrong**, because the union test is the acceptance either way.
+// The world points a run in this component may begin or end at.
+//
+// ⚠ **ONE WALK, TWO ANSWERS**, because the degree count and the world point come from the
+// same corner and splitting them would be two walks that could disagree about which
+// corner is which.
+fn corner_pool(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+               ref: float, within: Claims) -> (vector<float>, vector<float>) {
+  ta: vector<integer> = [];
+  tb: vector<integer> = [];
+  px: vector<float> = [];
+  pz: vector<float> = [];
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for cp_d in [4, 5, 0] {
+        if !mark_left(wld, q, r, cp_d, ref, within) { continue; }
+        (cp_e1, cp_e2) = hex_grid::hex_edge_corners(cp_d);
+        for cp_k in 0..2 {
+          cp_c = if cp_k == 0 { cp_e1 } else { cp_e2 };
+          ta += [hex_shape::hex_corner_tri_a(q, r, cp_c)];
+          tb += [hex_shape::hex_corner_tri_b(q, r, cp_c)];
+          px += [hex_shape::hex_corner_x(q, r, cp_c)];
+          pz += [hex_shape::hex_corner_y(q, r, cp_c)];
+        }
+      }
+    }
+  }
+  ex: vector<float> = [];
+  ez: vector<float> = [];
+  for i in 0..len(ta) {
+    deg = 0;
+    first = true;
+    for j in 0..len(ta) {
+      if (ta[j] ?? 0) != (ta[i] ?? 0) || (tb[j] ?? 0) != (tb[i] ?? 0) { continue; }
+      deg = deg + 1;
+      if j < i { first = false; }
+    }
+    // ⚠ **DEGREE 2 IS THE MIDDLE OF A CHAIN AND IS EXCLUDED**: a wall that began there
+    // would be a sub-run of one already in the pool, which the longest-first rule below
+    // exists to refuse. ⛔ Admitting it is not merely redundant — the pool is quadratic in
+    // its own size and each pair costs a whole `run_edges`, and a row admitting every
+    // corner took both suites past `loft test`'s own 300-second deadline.
+    if first && (deg == 1 || deg >= 3) { ex += [px[i] ?? 0.0]; ez += [pz[i] ?? 0.0]; }
+  }
+  (ex, ez)
+}
+
+// Does every edge this run generates lie within the component's marks, and does it
+// account for anything `cl` has not?  Returns its edge count, or `0` for neither.
+fn run_span(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+            ref: float, within: Claims, cl: Claims, g: EdgeSet) -> integer {
+  rs_n = 0;
+  rs_new = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for rs_d in [4, 5, 0] {
+        (rs_nq, rs_nr) = hex_grid::hex_neighbor(q, r, rs_d);
+        if edge_mat(g, q, r, rs_nq, rs_nr) == 0 { continue; }
+        if !mark_left(wld, q, r, rs_d, ref, within) { return 0; }
+        rs_n = rs_n + 1;
+        if edge_mat(cl.cl_edges, q, r, rs_nq, rs_nr) == 0 { rs_new = rs_new + 1; }
+      }
+    }
+  }
+  if rs_new == 0 { return 0; }
+  rs_n
+}
+
+// The longest run whose whole field lies within this component's marks and which accounts
+// for something `cl` has not — plan 26 `B4w`, `disc_within`'s rule for the one shape that
+// has no parameter grid.
+//
+// ⚠ **LONGEST FIRST, AND HERE IT IS NOT DEFENSIVE.** Every sub-run of a wall also lies
+// within its marks, so a shorter candidate always fits and always leaves a remainder that
+// no pair of pool corners generates — the union could then never close. `disc_within`'s
+// descent is the same rule where the parameter is a shell.
+pub fn run_within(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                  ref: float, within: Claims, cl: Claims) -> RunRead {
+  (ex, ez) = corner_pool(wld, q0, r0, wq, hr, ref, within);
+  best = 0;
+  bx0 = 0.0; bz0 = 0.0; bx1 = 0.0; bz1 = 0.0;
+  for i in 0..len(ex) {
+    for j in i + 1..len(ex) {
+      cand = run_between(ex[i] ?? 0.0, ez[i] ?? 0.0, ex[j] ?? 0.0, ez[j] ?? 0.0, WALL_MAT);
+      if !cand.rd_ok { continue; }
+      rw_g = run_edges(cand.rd_run, q0, r0, wq, hr, WALL_MAT);
+      rw_n = run_span(wld, q0, r0, wq, hr, ref, within, cl, rw_g);
+      if rw_n <= best { continue; }
+      best = rw_n;
+      bx0 = cand.rd_run.wr_x0; bz0 = cand.rd_run.wr_z0;
+      bx1 = cand.rd_run.wr_x1; bz1 = cand.rd_run.wr_z1;
+    }
+  }
+  if best == 0 { return run_no(0); }
+  // ⚠ **THE ANSWER IS READ BACK THROUGH THE LIBRARY'S OWN CONVERSION**, not assembled
+  // here: the winner's own field goes to `wall_read_run`, exactly as the strict reader's
+  // does, so a `d24` and a period mean the same thing in both captions.
+  rw_win = run_edges(wall_run_new(bx0, bz0, bx1, bz1, WALL_MAT), q0, r0, wq, hr, WALL_MAT);
+  (rw_d, rw_a, rw_b, rw_p, rw_ok) = hex_shape::wall_read_run(rw_win, q0, r0, wq, hr);
+  if !rw_ok { return run_no(best); }
+  rw_ea = hex_shape::wall_end_a(rw_d, rw_a, rw_p);
+  rw_eb = hex_shape::wall_end_b(rw_d, rw_b, rw_p);
+  run_fit(edges_mat_claimed(wld, q0, r0, wq, hr, ref, within), rw_d, rw_p,
+          hex_shape::tri_x(rw_a, rw_b), hex_shape::tri_y(rw_a, rw_b),
+          hex_shape::tri_x(rw_ea, rw_eb), hex_shape::tri_y(rw_ea, rw_eb),
+          q0, r0, wq, hr)
+}
+
 // ── THE SEAM: one call, so a consumer never holds a `Labels` ──────────────
 //
 // ⚠ **THE PICTURE ASKS *HOW MANY STRUCTURES ARE LEFT* AND *SHOW ME THE nTH*, AND NOTHING

@@ -81,6 +81,16 @@ fn trial(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer, base
       hb = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
       if claim_house(sc, hb, q0, r0, wq, hr) > 0 { got = got + "house;"; continue; }
     }
+    // ⚠ **LAST — plan 26 `B4w`.** A run whose endpoints are the component's own ends and
+    // junctions is the weakest question here, so it is asked only where every stronger
+    // one has given up: a house's marks hold pool corners too, and the house reader must
+    // reach its floor first.
+    rw = run_within(w, q0, r0, wq, hr, 0.0, within, sc);
+    if rw.rr_ok
+       && claim_run(sc, rw.rr_x0, rw.rr_z0, rw.rr_x1, rw.rr_z1, q0, r0, wq, hr) > 0 {
+      got = got + "run;";
+      continue;
+    }
     break;
   }
   if got == "" { return ""; }
@@ -716,24 +726,45 @@ fn test_two_rims_that_meet_are_two_discs() {
          "{marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl)} marks over");
 }
 
-// ⛔ **AND WHAT NO SET CLOSES OVER IS STILL REFUSED.** Two walls crossing at a vertex are
-// one component with four chain ends and no rim in them, so nothing is drawn and every
-// mark is counted — exactly what `B4u` did. ⚠ **Without this row the relaxation could
-// have shipped a chain that answers for anything**, which is what a one-directional fit
-// does on its own.
-fn test_two_walls_crossing_are_still_refused() {
+// ── ✅ AND A CROSSING IS TWO RUNS — plan 26 `B4w` ─────────────────────────
+//
+// ⛔ **`B4v` REFUSED THIS AND ITS RECORD NAMED WHY**: the trial had no candidate generator
+// for a run, because a run's endpoints are continuous world points rather than a grid.
+//
+// ✅ **A WALL CAN ONLY BEGIN WHERE THE CHAIN DOES** — at a free END (one mark meets) or at
+// a JUNCTION (three or more), both exact integers over the corner identity. ⚠ **FOUR
+// GEOMETRIES, BECAUSE ONE CLOSING PROVES NOTHING ABOUT A GENERATOR**: a plus, a diagonal,
+// an offset pair and a long/short pair.
+fn crossing(ax0: float, az0: float, ax1: float, az1: float,
+            bx0: float, bz0: float, bx1: float, bz1: float) -> VoxelWorld {
   w = flat_world();
-  wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
-  wall_at(w, 0.0, 0.0 - 6.0, 0.0, 6.0);
-  assert(touching(w, 0 - 14, 0 - 14, 30, 30) == 1, "the crossing is not one component");
-  cl = claims_new(0 - 14, 0 - 14, 30, 30);
-  got = peel(w, 0 - 14, 0 - 14, 30, 30, cl);
-  assert(got == "", "a crossing no set of shapes closes over described `{got}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 30, 30, 0.0, cl)
-         == marks_unclaimed(w, 0 - 14, 0 - 14, 30, 30, 0.0,
-                            claims_new(0 - 14, 0 - 14, 30, 30)),
-         "a refused trial left claims behind — it must run on a COPY, or the marks the "
-       + "refusal exists to count are silenced by it");
+  wall_at(w, ax0, az0, ax1, az1);
+  wall_at(w, bx0, bz0, bx1, bz1);
+  w
+}
+
+fn crossing_closes(tag: text, w: VoxelWorld) {
+  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+  assert(touching(w, q0, r0, wq, hr) == 1,
+         "{tag} is {touching(w, q0, r0, wq, hr)} components, so `B4u` already separates "
+       + "it and this row is about nothing");
+  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+  cl = claims_new(q0, r0, wq, hr);
+  got = peel(w, q0, r0, wq, hr, cl);
+  assert(got == "run;run;", "{tag} describes `{got}`, not two runs");
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,
+         "{tag} leaves {marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl)} of its {all} marks over");
+}
+
+fn test_two_walls_that_cross_are_two_runs() {
+  crossing_closes("a plus",
+    crossing(0.0 - 6.0, 0.0, 6.0, 0.0, 0.0, 0.0 - 6.0, 0.0, 6.0));
+  crossing_closes("a diagonal X",
+    crossing(0.0 - 6.0, 0.0 - 6.0, 6.0, 6.0, 0.0 - 6.0, 6.0, 6.0, 0.0 - 6.0));
+  crossing_closes("an offset pair",
+    crossing(0.0 - 7.0, 1.0, 5.0, 1.0, 1.0, 0.0 - 5.0, 1.0, 7.0));
+  crossing_closes("a long and a short",
+    crossing(0.0 - 10.0, 0.0, 10.0, 0.0, 0.0, 0.0 - 4.0, 0.0, 4.0));
 }
 
 // ── ⚠ THE ACCEPTANCE IS ONE NUMBER AND IT IS TWO-DIRECTIONAL ──────────────
@@ -828,14 +859,18 @@ fn test_the_relaxed_reader_admits_only_shells_a_tower_can_be() {
 // does not account for would ship as a picture with a silent leftover, which is exactly
 // what `B4p` spent a step removing.
 fn test_a_set_that_explains_only_part_of_its_component_is_refused() {
+  // ⚠ **A `T` WHOSE STEM MEETS THE CROSSBAR AT NO CORNER — plan 26 `B4w` MEASURED WHICH.**
+  // Of eight stem positions along one crossbar, **two** close and six do not: the stem's
+  // far endpoint is a continuous point on the crossbar's centreline, and it is recoverable
+  // exactly when the field's own corners happen to carry it. This is one that does not, so
+  // the trial FINDS the crossbar and still cannot close — which is the acceptance side.
   w = flat_world();
-  tower_at(w, 0.0, 0.0);
-  wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
-  wall_at(w, 8.0, 0.0, 16.0, 0.0);
-  q0 = 0 - 16; r0 = 0 - 16; wq = 40; hr = 33;
+  wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
+  wall_at(w, 0.0, 0.0, 0.0, 8.0);
+  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
   ed = edgeset_new(q0, r0, wq, hr);
   assert(marks_label(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr), ed) == 1,
-         "the tower and the T are not one component, so this row is about nothing");
+         "the T is not one component, so this row is about nothing");
   all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
   cl = claims_new(q0, r0, wq, hr);
   got = peel(w, q0, r0, wq, hr, cl);
@@ -845,4 +880,95 @@ fn test_a_set_that_explains_only_part_of_its_component_is_refused() {
   assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == all,
          "the refused trial left claims behind — it must run on a COPY, or the marks the "
        + "refusal exists to count are silenced by it");
+}
+
+// ── ⛔ AND WHICH `T`s CLOSE, WHICH IS NOT A CATEGORY BUT A MEASUREMENT — `B4w` ─
+//
+// ⛔ **THE FIRST STATEMENT OF THIS WAS "A T IS NOT RECOVERABLE", AND THE SUITE REFUTED
+// IT.** A T's stem ends at a continuous point on the crossbar's centreline; the pool holds
+// the field's own CORNERS. Whether the two coincide is a fact about where the stem was
+// authored, not about T-junctions — so the honest claim is a count, and this row is it.
+//
+// ⚠ **WHAT MATTERS IS THAT NEITHER OUTCOME IS WRONG.** A T that closes is described
+// exactly; one that does not is refused with every mark counted, because the union test is
+// the acceptance either way. A row that only asserted the total would pass on a chain that
+// drew something false, so both halves are checked per stem.
+fn test_which_tee_junctions_close_is_measured_not_assumed() {
+  // ⚠ **THE WINDOW IS THE T's OWN EXTENT AND THE STEMS ARE THREE.** Each stem is a whole
+  // peel — every reader over every cell — so this row is the most expensive in the file by
+  // a wide margin: at seven stems over a 37×37 window it took **109 s on its own**. What
+  // the claim needs is that BOTH outcomes occur and that neither is wrong; three stems
+  // carry that, and the eight that established the two-of-eight count are in the record.
+  q0 = 0 - 12; r0 = 0 - 12; wq = 25; hr = 25;
+  closed = 0;
+  refused = 0;
+  for i in 0..3 {
+    x = (i as float) - 1.0;
+    w = flat_world();
+    wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
+    wall_at(w, x, 0.0, x, 8.0);
+    assert(touching(w, q0, r0, wq, hr) == 1, "the T at x={x} is not one component");
+    all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+    cl = claims_new(q0, r0, wq, hr);
+    got = peel(w, q0, r0, wq, hr, cl);
+    left = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
+    if left == 0 {
+      assert(got != "", "the T at x={x} explained every mark while describing nothing");
+      closed = closed + 1;
+    } else {
+      // ⛔ **REFUSED MEANS NOTHING IS DRAWN AND EVERY MARK IS COUNTED**, not a partial
+      // picture: a trial that could not close must leave the field exactly as it found it.
+      assert(got == "",
+             "the T at x={x} drew `{got}` and still left {left} of its {all} marks — a set "
+           + "that does not account for its component was accepted");
+      assert(left == all, "the refused T at x={x} left claims behind");
+      refused = refused + 1;
+    }
+  }
+  assert(closed + refused == 3, "{closed + refused} stems measured, not three");
+  // ⚠ **BOTH OUTCOMES MUST OCCUR**, or the row is measuring a constant: all-closed would
+  // mean the pool is finding runs it should not, all-refused that `B4w` does nothing here.
+  assert(closed > 0 && refused > 0,
+         "{closed} closed and {refused} refused — one outcome never happens, so this row "
+       + "cannot tell the generator from a constant");
+}
+
+// ⛔ **THE POOL IS ENDS *AND* JUNCTIONS, AND EACH HALF IS LOAD-BEARING.** A crossing's four
+// arms are free ends; a wall that begins where another passes has none. ⚠ Measured through
+// the ANSWER rather than through the pool, because a count of corners cannot say which run
+// was generated from them.
+fn test_a_run_is_not_offered_from_the_middle_of_a_chain() {
+  // one plain wall: its own sub-runs all lie within its marks, so a pool admitting
+  // degree-2 corners would have plenty to offer — and the longest must still win
+  w = flat_world();
+  wall_at(w, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
+  q0 = 0 - 16; r0 = 0 - 12; wq = 30; hr = 26;
+  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+  got = run_within(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr),
+                   claims_new(q0, r0, wq, hr));
+  assert(got.rr_ok, "a plain wall is not within its own marks: it read nothing");
+  cl = claims_new(q0, r0, wq, hr);
+  claim_run(cl, got.rr_x0, got.rr_z0, got.rr_x1, got.rr_z1, q0, r0, wq, hr);
+  assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,
+         "the run it offered accounts for {marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl)} "
+       + "of a plain wall's {all} marks short of all of them — a SUB-run was taken, and "
+       + "the remainder is one no pair of corners can generate");
+}
+
+// ⛔ **A CANDIDATE THAT ACCOUNTS FOR NOTHING NEW MUST BE SKIPPED.** The pool does not
+// shrink as the pass claims — it is the whole component's, so the winning run stays within
+// the marks for ever and would be offered again.
+fn test_run_within_does_not_offer_a_run_already_claimed() {
+  w = flat_world();
+  wall_at(w, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
+  q0 = 0 - 16; r0 = 0 - 12; wq = 30; hr = 26;
+  base = claims_new(q0, r0, wq, hr);
+  first = run_within(w, q0, r0, wq, hr, 0.0, base, claims_new(q0, r0, wq, hr));
+  assert(first.rr_ok, "the wall is not within its own marks");
+  taken = claims_new(q0, r0, wq, hr);
+  claim_run(taken, first.rr_x0, first.rr_z0, first.rr_x1, first.rr_z1, q0, r0, wq, hr);
+  again = run_within(w, q0, r0, wq, hr, 0.0, base, taken);
+  assert(!again.rr_ok,
+         "the same run is offered a second time as d{again.rr_d} p{again.rr_p} — the pass "
+       + "would never end");
 }

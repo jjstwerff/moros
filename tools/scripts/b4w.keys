@@ -1,0 +1,27 @@
+# B4w — A CROSSING: A RUN BEGINS AT AN END OR A JUNCTION
+#
+# ⛔ **`B4v` REFUSED TWO WALLS THAT CROSS, AND ITS OWN RECORD NAMED WHY**: the trial had no
+# candidate generator for a run. `disc_within` searches centres and shells; a run has no
+# such grid — its endpoints are continuous world points.
+#
+# ✅ **BUT A WALL CAN ONLY BEGIN WHERE THE CHAIN DOES.** A free END is a vertex where one
+# mark meets; a JUNCTION is where three or more do. Both are exact integers over the corner
+# identity `wall_chain_ends` counts degrees with, so the candidate set is a handful of
+# corners — and it is generate-and-compare from there, with `B4v`'s union test unchanged.
+#
+# ⛔ **A `T` IS A DIFFERENT ANSWER AND IT IS MEASURED, NOT ASSUMED.** Its stem ends at a
+# continuous point on the crossbar's centreline; of eight stem positions along one
+# crossbar, **two** close and six are refused with every mark counted. That is
+# `FORMAL_CORE` §6's R1/R2 boundary showing itself, not a gap in the pool.
+#
+#   make plan-view WORLD=b4w Q0=-16 Q1=16 R0=-14 R1=14 REF=2.0
+
+echo --- two walls that CROSS, which `B4v` refused with all 28 marks counted
+at -10 0 0
+verb run
+at 10 0 0
+verb run
+at 0 -8 0
+verb run
+at 0 8 0
+verb run

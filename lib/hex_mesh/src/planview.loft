@@ -522,8 +522,18 @@ fn plan_describe_within(w: VoxelWorld, q0: integer, r0: integer, q1: integer,
   dw = hex_editor::disc_within(w, q0, r0, dwq, dhr, ref, within, cl);
   if dw.dc_ok { return desc_of_disc(dw); }
   hh = hex_editor::house_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
-  if !hh.hs_ok { return desc_no(false); }
-  desc_of_house(w, hh)
+  if hh.hs_ok { return desc_of_house(w, hh); }
+  // ⛔ **AND LAST, A RUN FROM THE COMPONENT'S OWN ENDS AND JUNCTIONS — plan 26 `B4w`.**
+  // `B4v` refused two walls that CROSS because the trial had no candidate generator for a
+  // run: its endpoints are continuous world points rather than a grid. A wall can only
+  // begin where the chain does, and that is a handful of exact corners.
+  //
+  // ⚠ **IT IS LAST BECAUSE IT IS THE WEAKEST QUESTION HERE.** A house's marks hold pool
+  // corners too, and the house reader must reach its floor first; a rim's hold none, so
+  // the round readers are unaffected either way.
+  rw = hex_editor::run_within(w, q0, r0, dwq, dhr, ref, within, cl);
+  if rw.rr_ok { return desc_of_run(rw); }
+  desc_no(false)
 }
 pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
               ref: float) -> PlanPanel {
