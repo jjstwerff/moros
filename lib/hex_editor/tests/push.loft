@@ -10,6 +10,13 @@
 use hex_editor;
 use hex_voxel;
 use hex_grid;
+// ⛔ **THE BOUNDARY RULE IS `hex_draw`'s AND THIS FILE ASKS IT RATHER THAN RESTATING IT.**
+// `draw_walls` marks *"every edge between a cell of the region and one outside it"* — law
+// L1's `∂` in the library that owns it. A second copy written here would agree with
+// `boundary_follow` by construction and could never be surprised.
+use hex_draw;
+use hex_field;
+use hex_edge;
 
 const Q0 = 0 - 12;
 const W = 25;
@@ -40,13 +47,23 @@ fn boundary(w: VoxelWorld, mat: integer) -> integer {
 }
 
 // Everything the window holds, so a locality claim can be made over the whole of it.
+//
+// ⛔ **THE EDGE BYTES ARE IN IT, AND LEAVING THEM OUT WAS AN INSTRUMENT THAT COULD NOT SEE
+// THE FEATURE ABOUT TO BE BUILT.** Before L1 a push wrote only `h_material` and `h_height`,
+// so a digest over those two was a complete reading of it. The moment the boundary follows
+// the cell, a digest blind to `h_wall_*` answers *nothing moved* to a gesture scribbling
+// edges across the window — and the two rows that would report it, L4 and L5, are the two
+// rows whose whole job is to say what a push does NOT touch.
 fn digest(w: VoxelWorld) -> integer {
   h = 0;
   for r in Q0..Q0 + W {
     for q in Q0..Q0 + W {
       c = world_ground_cell(w, q, r);
       h = h + (q + 40) * 7919 * (c.h_material as integer ?? 0)
-            + (r + 40) * 104729 * (c.h_height as integer ?? 0);
+            + (r + 40) * 104729 * (c.h_height as integer ?? 0)
+            + (q + 40) * 15485863 * (c.h_wall_nw as integer ?? 0)
+            + (r + 40) * 32452843 * (c.h_wall_ne as integer ?? 0)
+            + (q + r + 80) * 49979687 * (c.h_wall_e as integer ?? 0);
     }
   }
   h
@@ -191,4 +208,389 @@ fn test_the_push_verb_takes_a_cell() {
   assert(ak.ak_ok, "the push verb was refused: {ak.ak_why}");
   assert(boundary(w, ROAD_MAT) != before,
          "pressing the verb changed no boundary — it is bound to nothing");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L1 — THE MARKS THE STORE HOLDS ARE EXACTLY `∂I'`
+//
+// ⛔ **THE ORACLE IS `hex_draw::draw_walls`, NOT A SECOND READING OF THE PUSH.** The rows
+// below rebuild the cell set out of the store, hand it to the library's own boundary rule
+// and compare its answer against the store's edge bytes. `boundary_follow` applies that
+// same rule at the six edges where membership changed; if the two are ever asked to agree
+// by resemblance rather than by measurement, the check is worth nothing.
+//
+// ⚠ **AND THE FIXTURE'S WALLS COME FROM THE ORACLE TOO**, so law L1's precondition — the
+// marks were `∂I` before the push — is a fact about the room rather than an assertion in
+// the row that needs it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const REF     = 2.0;      // world units: the fixtures' ground is height 8 at 0.25 wu
+const FLOOR_H = 8;
+const ROOM_N  = 2;        // a 19-cell room — the centre cell and two rings
+// A wall slot this editor's vocabulary does not name, which `edge_is_wall` still answers
+// yes for: a world's own declared wall type. Law L10 is measured with it rather than with
+// `WALL_MAT`, because `WALL_MAT` is 1 and an invented id would most likely be 1 too.
+const TYPED   = 9;
+
+// The store's cells of one material, as the `HexSet` the library's boundary rule takes.
+fn cells_of(w: VoxelWorld, mat: integer) -> HexSet {
+  co_s = hexset_chunk(Q0, Q0, W, W);
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if mat_at(w, q, r) == mat { hexset_set(co_s, q, r, true); }
+    }
+  }
+  co_s
+}
+
+// `∂I`, as `hex_draw` defines it. The count is discarded: this is a set, and the rows below
+// ask about membership rather than about how many edges the library happened to mark.
+fn want_walls(w: VoxelWorld, mat: integer, id: integer) -> EdgeSet {
+  ww_e = edgeset_new(Q0, Q0, W, W);
+  ww_ignored = draw_walls(cells_of(w, mat), ww_e, id);
+  ww_e
+}
+
+// Stamp `∂I` into the store — the fixture's walls, from the definition.
+fn redraw(w: VoxelWorld, mat: integer, id: integer) -> integer {
+  rd_e = want_walls(w, mat, id);
+  rd_n = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..6 {
+        (rd_q, rd_r) = hex_grid::hex_neighbor(q, r, d);
+        rd_m = edge_mat(rd_e, q, r, rd_q, rd_r);
+        if rd_m == 0 { continue; }
+        wall_set(w, q, r, d, rd_m, FLOOR_H, REF);
+        rd_n = rd_n + 1;
+      }
+    }
+  }
+  rd_n
+}
+
+// A room whose stored marks are exactly its boundary.
+fn roomed(id: integer) -> VoxelWorld {
+  rm_w = flat_world();
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if hex_grid::hex_distance(q, r, 0, 0) <= ROOM_N {
+        ground_set(rm_w, q, r, FLOOR_H, FLOOR_MAT);
+      }
+    }
+  }
+  redraw(rm_w, FLOOR_MAT, id);
+  rm_w
+}
+
+// What the store holds against what the library says it should — as sightings, since every
+// edge is visited from both of its cells. `(0, 0)` is law L1.
+//
+// ⚠ **IT COMPARES *WALL OR NOT*, NEVER THE ID, AND THAT IS THE DIVISION OF LABOUR RATHER
+// THAN A WEAKENING.** L1 says which edges are walls; L10 says whose. Comparing ids here
+// would report the fence row's kept `FENCE_MAT` as a defect, which is the one outcome that
+// row exists to prove correct — so the id is asked for separately, by the rows that own it.
+fn against(w: VoxelWorld, mat: integer, id: integer) -> (integer, integer) {
+  ag_want = want_walls(w, mat, id);
+  ag_stray = 0;
+  ag_miss = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      for d in 0..6 {
+        (ag_q, ag_r) = hex_grid::hex_neighbor(q, r, d);
+        ag_held = wall_of(w, q, r, d, REF) != 0;
+        ag_wanted = edge_mat(ag_want, q, r, ag_q, ag_r) != 0;
+        if ag_held && !ag_wanted { ag_stray = ag_stray + 1; }
+        if ag_wanted && !ag_held { ag_miss = ag_miss + 1; }
+      }
+    }
+  }
+  (ag_stray, ag_miss)
+}
+
+// Sweep one whole face: stand on every cell of the room's rim in turn, face east, and take
+// the cell in front. The rim cells on the far side have room in front of them and report
+// `already`, which is the gesture's own answer and not a skip this row invents.
+//
+// ⚠ **REFUSALS ARE COUNTED AND NOT ASSERTED AWAY.** A helper that swallowed one would make
+// the L1 row's `0 stray, 0 missing` an answer about a shorter face than it thinks it swept.
+fn sweep_east(w: VoxelWorld, mat: integer) -> (integer, integer) {
+  sw_n = 0;
+  sw_no = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if hex_grid::hex_distance(q, r, 0, 0) != ROOM_N { continue; }
+      (sw_x, sw_z) = hex_grid::hex_to_px(q, r);
+      sw_p = push_cell(w, stood(w, sw_x, sw_z, 0.0), mat);
+      if !sw_p.pu_ok { sw_no = sw_no + 1; }
+      if sw_p.pu_new { sw_n = sw_n + 1; }
+    }
+  }
+  (sw_n, sw_no)
+}
+
+// ── L1 — after a swept face, the store's marks are `∂I'` exactly ──────────
+fn test_after_a_push_the_marks_are_exactly_the_boundary() {
+  w = roomed(WALL_MAT);
+  (s0, m0) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(s0 == 0 && m0 == 0,
+         "the fixture is not its own boundary before anything is pushed: {s0} stray, "
+       + "{m0} missing");
+  (n, refused) = sweep_east(w, FLOOR_MAT);
+  assert(n > 0, "the sweep took no cell — this row cannot see anything");
+  assert(refused == 0, "{refused} of the face refused — a shorter face than this row swept");
+  (s1, m1) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(s1 == 0 && m1 == 0,
+         "after {n} pushes the store holds {s1} stray and {m1} missing against "
+       + "`hex_draw::draw_walls`");
+}
+
+// ── AND THE COMPARISON CAN FAIL — the instrument, checked ─────────────────
+fn test_the_boundary_comparison_finds_an_unmaintained_write() {
+  // ⚠ **AN INSTRUMENT GETS CHECKED AGAINST SOMETHING IT SHOULD FIND BEFORE IT IS TRUSTED
+  // TO REPORT AN ABSENCE.** The row above reports `0 stray, 0 missing`, which is also what
+  // a comparison aimed at the wrong channel, the wrong window or the wrong material would
+  // say. This writes the cell exactly as `push_cell` did BEFORE law L1 was built — the
+  // membership moved and the marks did not — and the same call must report it.
+  w = roomed(WALL_MAT);
+  (x, z) = hex_grid::hex_to_px(ROOM_N, 0);
+  a = stood(w, x, z, 0.0);
+  (found, tq, tr) = cell_ahead(a.au_x, a.au_z, a.au_yaw);
+  assert(found, "no cell ahead of the rim — the fixture is not what this row thinks");
+  ground_set(w, tq, tr, FLOOR_H, FLOOR_MAT);
+  (s, m) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(s + m > 0,
+         "a cell written with no boundary maintenance reports {s} stray and {m} missing — "
+       + "the comparison cannot see the thing it is aimed at");
+}
+
+// ── L10 — the id is CARRIED, and `pu_id` says which ───────────────────────
+fn test_the_moved_boundary_keeps_the_wall_id() {
+  // A room walled in a type this vocabulary does not name. An id invented at the write
+  // would be `WALL_MAT`; a carried one is `TYPED`, and the two are distinguishable.
+  w = roomed(TYPED);
+  (x, z) = hex_grid::hex_to_px(ROOM_N, 0);
+  p = push_cell(w, stood(w, x, z, 0.0), FLOOR_MAT);
+  assert(p.pu_ok && p.pu_new, "nothing was pushed: {p.pu_say}");
+  assert(p.pu_id == TYPED, "the wall that travelled is id {p.pu_id}, not the room's {TYPED}");
+  assert(p.pu_marks > 0, "the push wrote no edge at all");
+  (s, m) = against(w, FLOOR_MAT, TYPED);
+  assert(s == 0 && m == 0,
+         "the room's own wall type does not survive a push: {s} stray, {m} missing");
+  // …and every byte on the new boundary is that type, not the editor's plain wall
+  for d in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(p.pu_q, p.pu_r, d);
+    if mat_at(w, nq, nr) == FLOOR_MAT { continue; }
+    b = wall_of(w, p.pu_q, p.pu_r, d, REF);
+    assert(b == TYPED, "the new boundary at direction {d} carries {b}, not {TYPED}");
+  }
+}
+
+// ── L4/L5 in a room — out and back, byte for byte ─────────────────────────
+fn test_pushing_a_room_out_and_back_is_the_identity() {
+  // ⚠ **THE WAY BACK IS THE SAME GESTURE, NOT AN UNDO.** Standing outside on the ground
+  // and facing the cell just taken, the set being grown is the GROUND — so `push_cell`
+  // shrinks the room through the identical call, and the wall it carries back is the one
+  // now in front of the author. A push has no inverse operation to keep in step with it.
+  w = roomed(WALL_MAT);
+  d0 = digest(w);
+  (ox, oz) = hex_grid::hex_to_px(ROOM_N, 0);
+  out = push_cell(w, stood(w, ox, oz, 0.0), FLOOR_MAT);
+  assert(out.pu_ok && out.pu_new, "nothing was pushed out: {out.pu_say}");
+  assert(out.pu_marks > 0, "the push out wrote no edge — law L1 is not being exercised");
+  assert(digest(w) != d0, "the push changed nothing — the control cannot see a difference");
+
+  (bx, bz) = hex_grid::hex_to_px(ROOM_N + 2, 0);
+  back = push_cell(w, stood(w, bx, bz, 3.141592653589793), SURFACE_MAT);
+  assert(back.pu_ok && back.pu_new, "nothing was pushed back: {back.pu_say}");
+  assert(back.pu_q == out.pu_q && back.pu_r == out.pu_r,
+         "the way back took ({back.pu_q},{back.pu_r}) and the way out ({out.pu_q},"
+       + "{out.pu_r})");
+  assert(back.pu_id == WALL_MAT,
+         "the wall carried back is id {back.pu_id} — the boundary the push out left is "
+       + "not the one the way back reads");
+  assert(digest(w) == d0, "out and back is not the identity on the store");
+}
+
+// ── THE VERB REACHES THE BOUNDARY, NOT ONLY THE CELL ──────────────────────
+fn test_the_push_verb_moves_the_wall_in_front() {
+  // ⛔ **A FUNCTION TESTED GREEN AND WIRED TO NOTHING IS THIS TREE'S COMMONEST DEFECT**, and
+  // `boundary_follow` is one call deep: the row above presses nothing. This one presses the
+  // key's verb and then asks the library whether the store is a boundary.
+  w = roomed(WALL_MAT);
+  s = EditSession {};
+  (x, z) = hex_grid::hex_to_px(ROOM_N, 0);
+  session_at(s, w, x, z, 0.0);
+  before = boundary(w, FLOOR_MAT);
+  ak = press_verb(s, w, s.es_author, VB_PUSH, "");
+  assert(ak.ak_ok, "the push verb was refused: {ak.ak_why}");
+  assert(boundary(w, FLOOR_MAT) != before, "the verb took no cell");
+  // ⚠ **AND THE AUTHOR IS TOLD**, because a push that moved a boundary and one that moved
+  // only a cell print the same word otherwise — which is law L1 being invisible from
+  // inside the editor, and this tree finds defects by USING it.
+  assert(ak.ak_why.contains("wall edges"),
+         "the acknowledgement says '{ak.ak_why}' and never mentions the wall it moved");
+  (st, ms) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(st == 0 && ms == 0,
+         "the verb moved the room and left {st} stray and {ms} missing marks behind");
+}
+
+// ── ⛔ AND ON THE EDITOR'S OWN HOUSE, WHOSE MARKS ARE NOT `∂I` TO BEGIN WITH ──
+//
+// ⛔ **`place_house` DOES NOT LEAVE A BOUNDARY, AND IT NEVER HAS.** Its walls are stamped
+// from four run LINES by `wall_stamp`, not from the floor's membership, so the store holds
+// edges that bound no house cell — [BLUEPRINT](../../../doc/claude/BLUEPRINT.md) §0's first
+// picture found four of them, one carrying an opening. Law L1's precondition therefore
+// fails on the one structure the editor actually builds, and a row asserting `(0, 0)` here
+// would be asserting somebody else's defect away.
+//
+// ✅ **SO THE CLAIM IS THE ONE A PUSH CAN OWE: IT NEVER MAKES THE STORE LESS LIKE ITS
+// BOUNDARY.** Only the six edges of the transferred cell change status, and those six are
+// written exactly; every other edge's residual is untouched. The measurement is
+// componentwise `≤`, which is L1 stated for a store that did not start clean — which is
+// the real editor.
+fn test_a_push_never_adds_to_what_the_boundary_does_not_explain() {
+  w = flat_world();
+  s = EditSession {};
+  ph_a = author_at(0.0, 0.0 - 4.0, 1.5707963267948966, (FLOOR_H as float) * 0.25);
+  ph = place_house(w, ph_a, HOUSE_W, HOUSE_D, grade_under(w, ph_a), s.es_runs, s.es_roofs);
+  assert(ph.ak_ok, "the house was refused: {ph.ak_why}");
+  (b_stray, b_miss) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(b_stray + b_miss > 0,
+         "`place_house` left an exact boundary — the premise of this row is gone, and the "
+       + "row above is the one that should be asserting it");
+
+  // A floor cell with open ground to its east: stand there, face east, push out.
+  fq = 0;
+  fr = 0;
+  found = false;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if found { continue; }
+      if mat_at(w, q, r) != FLOOR_MAT { continue; }
+      (eq, er) = hex_grid::hex_neighbor(q, r, 0);
+      if mat_at(w, eq, er) == FLOOR_MAT { continue; }
+      fq = q; fr = r; found = true;
+    }
+  }
+  assert(found, "no floor cell of the house has open ground east of it");
+  (hx, hz) = hex_grid::hex_to_px(fq, fr);
+  p = push_cell(w, stood(w, hx, hz, 0.0), FLOOR_MAT);
+  assert(p.pu_ok && p.pu_new, "the house would not push: {p.pu_say}");
+  assert(p.pu_id == WALL_MAT,
+         "the wall in front of the author reads {p.pu_id} — the house's own wall is "
+       + "{WALL_MAT}, so this row is not standing where it thinks");
+  // ✅ **MEASURED: 8 stray and 0 missing before, 6 and 0 after** — 8 sightings is the FOUR
+  // edges `BLUEPRINT` §0 names, each seen from both of its cells, and the push took one of
+  // them out because it happened to lie on the transferred cell's rim. ⚠ The row asserts
+  // only `≤`: which of the four a push reaches is the fixture's business, and a row pinned
+  // to `6` would be asserting where the author happened to stand.
+  (a_stray, a_miss) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(a_stray <= b_stray && a_miss <= b_miss,
+         "the push took the store further from its own boundary: {b_stray}/{b_miss} stray/"
+       + "missing before, {a_stray}/{a_miss} after");
+  assert(p.pu_marks > 0, "the push wrote no edge on a house that has walls");
+}
+
+// ── L10 STRICTLY — a boundary already standing is somebody else's ─────────
+fn test_a_push_does_not_repaint_a_boundary_it_did_not_make() {
+  // ⛔ **THE TRANSFERRED CELL WAS OUTSIDE THE SET, SO ANY BYTE ALREADY ON ITS OUTWARD
+  // EDGES BELONGS TO SOMETHING ELSE.** `∂I'` wants a wall there and the store already
+  // holds one; the set of walled edges is exact whichever id survives, and the only thing
+  // an overwrite changes is whose wall it is. Here it is a FENCE, which a room growing
+  // past it must not turn into masonry.
+  w = roomed(WALL_MAT);
+  (fx, fz) = hex_grid::hex_to_px(ROOM_N, 0);
+  (found, tq, tr) = cell_ahead(fx, fz, 0.0);
+  assert(found, "no cell ahead of the rim");
+  // a fence on the far side of the cell about to be taken — outward, so `∂I'` wants an
+  // edge exactly there and this row is about the id rather than about the edge
+  wall_set(w, tq, tr, 0, FENCE_MAT, FLOOR_H, REF);
+  assert(wall_of(w, tq, tr, 0, REF) == FENCE_MAT, "the fixture's fence did not go down");
+
+  p = push_cell(w, stood(w, fx, fz, 0.0), FLOOR_MAT);
+  assert(p.pu_ok && p.pu_new, "nothing was pushed: {p.pu_say}");
+  assert(wall_of(w, tq, tr, 0, REF) == FENCE_MAT,
+         "the room grew past the fence and repainted it as {wall_of(w, tq, tr, 0, REF)}");
+  // …and the boundary is still complete, so keeping the fence cost no edge
+  (s, m) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(s == 0 && m == 0,
+         "keeping the fence left {s} stray and {m} missing — the two claims are in "
+       + "conflict and the law is not");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⛔ WHAT IS NOT BUILT, PINNED RATHER THAN CAVEATED — `WALL_PUSH` §7
+//
+// Two rows that assert a LIMIT. They exist so the boundary of the feature is a measurement
+// somebody can re-run, and so that the day structure identity arrives they go red and send
+// the reader to §6 — where the question they turn on is already written down.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── L6/L7 — an internal partition cannot be pushed at all ─────────────────
+fn test_an_internal_partition_is_not_reachable() {
+  // ⛔ **MEMBERSHIP IS THE MATERIAL, SO TWO ROOMS OF ONE FLOOR ARE ONE SET.** The third of
+  // the request's three cases — *an internal partition slides* — asks about a wall between
+  // two cells the store cannot tell apart, so the cell in front is already in the set and
+  // the gesture answers `already`. That is §6's open question (*how a structure is
+  // identified in the store*) with a consequence attached, not a bug in the mechanic.
+  w = roomed(WALL_MAT);
+  // a partition down the middle: the edge between (0,0) and its east neighbour
+  wall_set(w, 0, 0, 0, WALL_MAT, FLOOR_H, REF);
+  assert(wall_of(w, 0, 0, 0, REF) == WALL_MAT, "the fixture's partition did not go down");
+  d0 = digest(w);
+  (x, z) = hex_grid::hex_to_px(0, 0);
+  p = push_cell(w, stood(w, x, z, 0.0), FLOOR_MAT);
+  assert(p.pu_ok, "the push refused rather than reporting: {p.pu_say}");
+  assert(!p.pu_new,
+         "the partition moved — structure identity has arrived and `WALL_PUSH` §6 is the "
+       + "section to read, along with L6 and L7");
+  assert(digest(w) == d0, "nothing was transferred and the store changed anyway");
+  assert(wall_of(w, 0, 0, 0, REF) == WALL_MAT, "the partition was rubbed out");
+}
+
+// ── R6 — a doorway is refused, and the refusal is what L9 costs ───────────
+fn test_a_push_through_a_doorway_is_refused() {
+  // ⛔ **THIS ROW MEASURED THE DAMAGE BEFORE IT NAMED THE REFUSAL.** Law L10 carries the
+  // faced byte onto the new face, and an edge is ONE byte holding the wall and the feature
+  // at once (`@HB-X70`) — so pushing from inside a doorway turned five edges of masonry
+  // into **five edges of hole**: not a house with a door in it, a room with a side missing.
+  // The measurement is kept in the assertion below, because a refusal whose alternative is
+  // not written down reads like caution.
+  //
+  // ⚠ **AND THERE IS NOTHING EXACT TO PUT IN ITS PLACE, WHICH IS WHY IT IS A REFUSAL AND
+  // NOT A FIX.** The right answer is law **L9** — the opening is a span on the wall's
+  // surface and rides it — and the wall type the door perforates is recorded nowhere the
+  // gesture can read. Substituting `WALL_MAT` invents an id in a room that may be walled in
+  // another type, which is the one thing L10 forbids.
+  w = roomed(WALL_MAT);
+  (x, z) = hex_grid::hex_to_px(ROOM_N, 0);
+  (found, tq, tr) = cell_ahead(x, z, 0.0);
+  assert(found, "no cell ahead of the rim");
+  d = hex_grid::hex_neighbor_dir(ROOM_N, 0, tq, tr);
+  assert(d >= 0, "the cell ahead is not a neighbour, so this row has no faced edge");
+  wall_set(w, ROOM_N, 0, d, DOOR_MAT, FLOOR_H, REF);
+  assert(wall_of(w, ROOM_N, 0, d, REF) == DOOR_MAT, "the fixture's door did not go in");
+  d0 = digest(w);
+
+  p = push_cell(w, stood(w, x, z, 0.0), FLOOR_MAT);
+  assert(!p.pu_ok, "a push through a doorway was accepted — `WALL_PUSH` L9 and R6");
+  assert(digest(w) == d0, "the refusal wrote to the store");
+
+  // ⛔ **AND WHAT R6 COSTS IS A NOTCH, WHICH IS L11 — SAID OUT LOUD RATHER THAN IMPLIED.**
+  // The rest of the face sweeps; the doorway's own cell does not. So the face comes out
+  // one cell short at exactly the place the author was standing, and L11's *a sweep
+  // preserves the description* is what that breaks — the whole reason the gesture is a walk
+  // and not a poke. The refusal keeps the world coherent and hands the shape problem to the
+  // law that owns it, which is a trade rather than a fix.
+  (n, refused) = sweep_east(w, FLOOR_MAT);
+  assert(n > 0, "the rest of the face refused too — R6 is wider than it says it is");
+  assert(refused == 1, "{refused} cells of the face refused, not the doorway's one");
+  (s, m) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(s == 0 && m == 0,
+         "the notched face is not its own boundary: {s} stray, {m} missing — a refusal in "
+       + "the middle of a sweep must still leave L1 standing");
+  // the doorway is still there, on a wall that did not move
+  assert(wall_of(w, ROOM_N, 0, d, REF) == DOOR_MAT,
+         "the door was lost by a sweep that never touched its cell");
 }

@@ -5,7 +5,8 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Wall push — the formal rules
 
-**Built — the mechanic and the verb; see §7.** A toggle the author holds while walking: the wall in front of them
+**Built — the mechanic, the verb and the boundary; see §7 for what is not.** A toggle the
+author holds while walking: the wall in front of them
 gives way and travels ahead. A house grows or shrinks, a tunnel lengthens, an internal
 partition slides. The gesture is `run`'s shape — arm, walk, release.
 
@@ -124,10 +125,32 @@ direction, which is what plan 26 `B4x` has been buying — to make misalignment 
 
 Each is a statement about observables, with the measurement that would falsify it.
 
-### L1 — derivation
+### L1 — derivation  ✅ built
 **After any push, the wall edges the store holds are exactly `∂I'`.**
 No edge is a wall for any other reason, and none is missing. *Falsified by* comparing the
 store's marks against `∂` of the recovered cell set, edge for edge.
+
+✅ **AND `∂` IS A FUNCTION, WHICH IS WHY THIS IS SIX WRITES AND NOT A REDRAW.** A push does
+not *move* a wall: it changes one cell's membership, and only the six edges of that cell can
+have changed status, because every other edge's two cells are exactly as they were. So L1
+and **L4** come out as the same six writes rather than as a bound one has to defend against
+the other. `hex_editor::boundary_follow`, called from `push_cell`.
+
+⚠ **THE DEFINITION IS `hex_draw::draw_walls`' AND IS NOT COPIED.** `tests/push.loft`
+rebuilds the cell set out of the store, hands it to the library's own boundary rule and
+compares its answer against the store's edge bytes — with the unmaintained write as the
+negative control, so the comparison is known to be able to fail. Sweeping a face of a
+19-cell room leaves **0 stray and 0 missing**; the same fixture with the cell written and
+the marks left alone reports the difference.
+
+⛔ **AND THE PRECONDITION FAILS ON THE ONE STRUCTURE THE EDITOR ACTUALLY BUILDS.**
+`place_house` stamps its walls from four run LINES, not from the floor's membership, so it
+leaves edges that bound no house cell — measured here at **8 stray sightings, 0 missing**,
+which is the four edges [BLUEPRINT](BLUEPRINT.md) §0's first picture found, each seen from
+both of its cells. A row asserting `(0, 0)` there would be asserting somebody else's defect
+away. ✅ **So the claim a push can actually owe is componentwise `≤`: it never makes the
+store less like its own boundary.** Measured: **8/0 before, 6/0 after** — the push took one
+of the four out, because it happened to lie on the transferred cell's rim.
 
 ### L2 — unit
 **One push transfers one cell, and the direction is one of the six neighbours.**
@@ -188,9 +211,31 @@ with no recomputation.** ⚠ **But a swept face is a LONGER wall than it was** (
 per swept cell), so a span must be anchored to the end that did **not** move. Anchoring to
 the moved end slides every opening in the house whenever any wall is pushed.
 
-### L10 — the palette is untouched
+### L10 — the palette is untouched  ✅ built
 **A push changes no wall id.** Thickness, body and material are the wall type's (`@HB-X69`);
 a pushed wall is the same wall.
+
+✅ **THE ID IS CARRIED, NEVER INVENTED**, and the byte carried is the one the author was
+standing behind — *the wall in front of you gives way and travels ahead*, spelled as
+arithmetic. Measured with a wall type this editor's vocabulary does not name (slot 9), which
+an invented id would not reproduce: `WALL_MAT` is 1, and a guess would most likely be 1 too.
+
+⛔ **AND *NO WALL ID* INCLUDES ONE THIS PUSH DID NOT PUT THERE.** The transferred cell was
+outside the set, so a byte already standing on one of its outward edges belongs to something
+else — a fence round the yard, a neighbour's house, a wall of another type. `∂I'` wants an
+edge there and the store already holds one: **the set of walled edges is exact whichever id
+survives**, and the only thing an overwrite would change is whose wall it is. So a boundary
+already standing is left alone, and a room grown past a fence keeps the fence.
+
+⚠ **CLEARING IS NOT SYMMETRICAL WITH THAT, AND IT IS NOT AN OVERSIGHT.** An edge that has
+become interior cannot be a wall under `∂` whatever its id, so it goes whether it was ours
+or not.
+
+✅ **AND `0` IS AN ID.** When there is no wall in front of the author the structure has none
+and the maintenance writes **nothing at all** — which is what keeps a road and a tunnel
+floor byte-identical, and is a stronger statement than *a road has no walls to maintain*: it
+also means a road pushed along the outside of somebody's house cannot rub that house's wall
+out on the way past.
 
 ### L11 — a sweep preserves the description  ⛔ the load-bearing one
 **Sweeping a whole face leaves the structure describable as what it was.** Measured: sweeping
@@ -245,6 +290,7 @@ A refusal is data — `FORMAL_CORE`'s law **P4**.
 | **R3** | the cell belongs to a structure that will not yield it (L7), transitively |
 | **R4** | the transitive yield set is cyclic |
 | **R5** | the cell lies outside the region the author may edit |
+| ✅ **R6** | the author faces an **opening** rather than a wall — built, and it is what law **L9** costs. An edge is one byte holding the wall and the feature at once (`@HB-X70`), so carrying a `DOOR_MAT` onto the new face turns five edges of masonry into **five edges of hole** — measured before it was refused. The wall type the door perforates is recorded nowhere the gesture can read, and `WALL_MAT` would be an invented id in a room that may be walled in another type, which is exactly what L10 forbids. ⛔ **What it costs is a NOTCH**: the rest of the face sweeps and the doorway's cell does not, which is L11 — the refusal keeps the world coherent and hands the shape problem to the law that owns it. ⚠ A **fence** is not refused: it is a boundary in its own right rather than a hole in one, so carrying it forward extends a paddock and stays exact |
 
 ---
 
@@ -278,7 +324,7 @@ guess puts it*. Five rules of exact arithmetic, correct in themselves, about the
 
 ## 6. What this does not decide
 
-- **Whether two adjacent rooms fuse.** `X52` says two adjacent boxes FUSE into one space, so
+- **Whether two adjacent rooms fuse.** `@HB-X52` says two adjacent boxes FUSE into one space, so
   whether pushing a partition to nothing leaves a hall or a room is hexbody's call.
   [HOUSE_ROOMS](HOUSE_ROOMS.md).
 - **What a pushed cell does to the ground.** A house rides its pad rigidly
@@ -287,3 +333,55 @@ guess puts it*. Five rules of exact arithmetic, correct in themselves, about the
 - **How a structure is identified in the store.** L1 and L7 both need *which* structure a cell
   belongs to, and the store records regions, floors and runs rather than labelled sets. The
   recovery half of that is what plan 26 `B4x` has been building; the authoring half is open.
+
+---
+
+## 7. ✅ What is built, and ⛔ what is not
+
+⚠ **THE PREVIOUS COMMIT'S MESSAGE PROMISED THIS SECTION AND DID NOT WRITE IT** — *"two of
+three subjects finished, and the boundary is in §7"* — while this document's own header and
+[STATE](STATE.md)'s verb table both sent the reader here. A pointer to a section that does
+not exist reads exactly like a section that says nothing, which is why the reader has no way
+to tell the difference. It is here now, and the discipline it is written under is the one
+that makes it worth having: **every line below is a measurement in
+`lib/hex_editor/tests/push.loft`, not a plan.**
+
+### ✅ Built
+
+| | |
+|---|---|
+| the mechanic | `push_cell` — one cell across the boundary, at the source's height |
+| the subject | `session_push` — the material under the author's feet, so a road, a room floor and a tunnel are one gesture with no branch |
+| the verb | `VB_PUSH`, the eighteenth of `the_vocabulary()`, bound to `2` |
+| **L1** derivation | `boundary_follow` — the six edges of the transferred cell, compared against `hex_draw::draw_walls` edge for edge |
+| **L2** unit | one cell, one of the author's own six neighbours |
+| **L3** cost | `pu_dn = 6 − 2k`, against an independently counted boundary, over four pushes so `k` varies |
+| **L4** locality | restoring the one cell restores the window's digest — **and the digest counts the edge bytes now**, which it did not before L1 and could not have seen a scribble through |
+| **L5** invertibility | out and back is byte-identical, and *back* is the same call rather than an undo: standing outside, the set being grown is the GROUND |
+| **L10** palette | the id is carried, measured with a wall type this vocabulary does not name — and a boundary already standing is never repainted |
+| **R6** | a push through a doorway is refused |
+
+### ⛔ Not built, and what each one turns on
+
+| | |
+|---|---|
+| **G2 — the held toggle** | one press is one transfer. There is no arm-walk-release and no body in `tick.loft`, so the gesture is a **poke** today and L11 is the law that says what that costs. This is the next step, and [WALK_TICK](WALK_TICK.md) is where the body goes |
+| **L11 — a sweep preserves the description** | follows G2. Nothing refuses a poke, and `B4x`'s chain cut now reads the resulting bump *exactly*, so the degradation is silent and complete |
+| **L6 — partition**, **L7 — yield** | ⛔ **not reachable at all, and measured saying so.** Membership is the MATERIAL, so two rooms of one floor are ONE set: standing in room A facing room B, the cell ahead is already in the set and the gesture answers `already`. The request's third case — *an internal partition slides* — needs §6's open question answered first, and the test row that pins this goes red the day it is |
+| **L8 — connectivity** | no refusal exists. `push_cell` refuses `nothing ahead` and R6, and nothing else — R1–R5 are all unbuilt, so a push can breach a closed enclosure and nothing says so |
+| **L9 — features ride** | R6 is the placeholder, not the answer. An opening is a span on the wall's surface (`@HB-X12`) and the store's edge is one byte holding both |
+| **the filed `WallRun` records** | ⛔ **not maintained, and this is the one to read before looking at a pushed house.** `place_house` files four runs and [EDITOR_DEFECTS](EDITOR_DEFECTS.md) 4 measured that **every wall is drawn twice** — once round the hex edges from the store, once straight from the run. A push moves the store's marks and leaves the run where it was, so the two drawings come apart. The defect is not this document's; the consequence is |
+| **the ground** | §6's second bullet, untouched: a grown footprint does not extend the pad, and *push-then-hill* is still an unmeasured order in [TERRAIN_EDITS](TERRAIN_EDITS.md)'s divergence table |
+
+### ⚠ And the precondition that fails on the editor's own house
+
+`place_house` stamps its walls from four run **lines**, so the store it leaves is not `∂I` —
+**8 stray sightings, 0 missing**, which is the four edges [BLUEPRINT](BLUEPRINT.md) §0's
+first picture found, each seen from both of its cells. So L1 as written cannot be asserted
+there, and what a push can actually owe is componentwise **`≤`**: *it never makes the store
+less like its own boundary*. Measured, **8/0 before and 6/0 after** — the push took one of
+the four out, because it happened to lie on the transferred cell's rim.
+
+⚠ **That number is the honest reading of what L1 bought.** The room fixtures are exact
+because their walls come from `draw_walls`; the editor's own houses are not, and they will
+stay that way until `place_house` stamps from membership rather than from a line.

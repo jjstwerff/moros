@@ -40,6 +40,12 @@ vertex and its run stays admissible.
 
 ⛔ **So `@WP-7`'s worry, and the refusal `R6` it justified, were unfounded.**
 
+⚠ **THAT `R6` IS THE FIRST DRAFT'S AND IS NOT THE ONE IN `WALL_PUSH` §4 TODAY.** The draft's
+was *an obstacle cannot take the displacement*, refuted here and deleted with the rest of the
+line model. The live `R6` — added 2026-08-28 with law `L1` — is **a push through a doorway is
+refused**, which this probe never touched. Same letter, different refusal, and the older one
+is the one that is gone.
+
 ⚠ **The first version of this probe stopped one step short and would have said the same thing
 for the wrong reason.** It checked only that the displacement is a lattice vector. That is not
 enough: a run's admissibility depends on its **anchor's class**, so the question is whether

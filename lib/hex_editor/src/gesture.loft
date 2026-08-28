@@ -3502,10 +3502,20 @@ pub struct PushMade {
   pu_h:   integer,    // the height it took, which is the source's
   pu_dn:  integer,    // the change in wall-edge count, `6 - 2k`
   pu_new: boolean,    // false when the cell was already in the set
+  // ── WHAT THE BOUNDARY DID, REPORTED RATHER THAN RE-DERIVED — law L1 ──────
+  //
+  // ⚠ **`pu_id` IS THE WALL THAT TRAVELLED, AND `0` IS AN ANSWER.** It is the byte the
+  // author was standing behind, carried onto the new boundary because law L10 says a push
+  // changes no wall id. Zero means there was no wall in front of them — a road, a tunnel
+  // floor, open ground — and then `pu_marks` is 0 and the store's edge channel is
+  // untouched, which is the whole of why two of the three subjects need no maintenance.
+  pu_id:    integer,
+  pu_marks: integer,  // edge bytes written — at most the six of the cell taken
 }
 
 fn push_no(why: text) -> PushMade {
-  PushMade { pu_ok: false, pu_say: why, pu_mat: 0, pu_was: 0, pu_dn: 0, pu_new: false }
+  PushMade { pu_ok: false, pu_say: why, pu_mat: 0, pu_was: 0, pu_dn: 0, pu_new: false,
+             pu_id: 0, pu_marks: 0 }
 }
 
 // How many of this cell's six neighbours are already in the set — law L3's `k`.
@@ -3518,6 +3528,66 @@ fn set_neighbours(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> inte
     }
   }
   sn_k
+}
+
+// ── ⛔ L1: THE MARKS FOLLOW THE CELL, AND SIX EDGES ARE THE WHOLE OF IT ──────
+//
+// **`∂` is a function, so a push does not MOVE a wall.** It changes one cell's membership,
+// and the boundary of the new set is a different set of edges. Only the six edges of the
+// transferred cell can have changed status, because every other edge's two cells are
+// exactly as they were — which is why law **L1** (*the wall edges the store holds are
+// exactly `∂I'`*) and law **L4** (*nothing outside the closed neighbourhood is written*)
+// come out as the same six writes rather than as a bound one has to defend against the
+// other.
+//
+// ⚠ **THE DEFINITION IS `hex_draw::draw_walls`' AND IS NOT COPIED HERE.** That function
+// marks *"every edge between a cell of the region and one outside it"* over a whole
+// `HexSet`; this is the same rule asked only where membership changed. The two are held
+// together by measurement rather than by resemblance: `tests/push.loft` rebuilds the set
+// out of the store, hands it to `draw_walls` and compares the library's answer against the
+// store's marks edge for edge — with the unmaintained write as the negative control, so
+// the comparison is known to be able to fail.
+//
+// ⚠ **AND THE ID IS CARRIED, NEVER INVENTED — law L10.** A push changes no wall id, so the
+// byte the new boundary takes is the byte the author was standing behind: *the wall in
+// front of you gives way and travels ahead*, spelled as arithmetic. When there is no wall
+// in front of them this writes **nothing at all** — which is what keeps a road and a
+// tunnel floor byte-identical, and is a stronger statement than *a road has no walls to
+// maintain*: it also means a road pushed along the outside of somebody's house cannot rub
+// that house's wall out on the way past.
+fn boundary_follow(wld: VoxelWorld, q: integer, r: integer, mat: integer, id: integer,
+               h: integer, ref: float) -> integer {
+  if id == 0 { return 0; }
+  bf_n = 0;
+  for bf_d in 0..6 {
+    (bf_q, bf_r) = hex_grid::hex_neighbor(q, r, bf_d);
+    bf_want = id;
+    if (world_ground_cell(wld, bf_q, bf_r).h_material as integer ?? 0) == mat {
+      bf_want = 0;
+    }
+    // ⚠ **ONLY WHERE THE BYTE ACTUALLY CHANGES.** `wall_set` writes the owner cell back
+    // whatever it held, and the owner of three of these six is a NEIGHBOUR — so an
+    // unconditional pass would bump `w_tau` on every tick of a walk and create a layer
+    // under a cell that has none. Neither is a write law L4 owes.
+    bf_held = wall_of(wld, q, r, bf_d, ref);
+    if bf_held == bf_want { continue; }
+    // ⛔ **AND A BOUNDARY IS NEVER REPAINTED — law L10 READ THE STRICT WAY.** *A push
+    // changes no wall id* includes an id this push did not put there. The transferred
+    // cell was outside the set, so a byte already standing on one of its outward edges
+    // belongs to something else: a fence round the yard, a neighbour's house, a wall of
+    // a different type. `∂I'` wants an edge there and the store already holds one — the
+    // set of walled edges is exact either way, and the only thing overwriting would
+    // change is whose wall it is. Measured in `tests/push.loft`: a room pushed against
+    // a fence keeps the fence.
+    //
+    // ⚠ **CLEARING IS NOT SYMMETRICAL WITH IT, AND THAT IS NOT AN OVERSIGHT.** An edge
+    // that has become interior cannot be a wall under `∂` whatever its id, so it goes
+    // whether it was ours or not.
+    if bf_want != 0 && bf_held != 0 { continue; }
+    wall_set(wld, q, r, bf_d, bf_want, h, ref);
+    bf_n = bf_n + 1;
+  }
+  bf_n
 }
 
 // Take the cell in front of the author into the set named by `mat` — one cell, one of six
@@ -3539,12 +3609,53 @@ pub fn push_cell(wld: VoxelWorld, a: Author, mat: integer) -> PushMade {
   if pc_was == mat {
     return PushMade { pu_ok: true, pu_say: "already", pu_q: pc_q, pu_r: pc_r, pu_mat: mat,
                       pu_was: pc_was, pu_h: pc_tgt.h_height as integer ?? 0, pu_dn: 0,
-                      pu_new: false };
+                      pu_new: false, pu_id: 0, pu_marks: 0 };
   }
   pc_k = set_neighbours(wld, pc_q, pc_r, mat);
+  // ── THE WALL IN FRONT, READ BEFORE THE CELL MOVES — law L1 ──────────────
+  //
+  // ⚠ **AT THE AUTHOR'S OWN LEVEL, WHICH IS THE SOURCE CELL'S HEIGHT.** `wall_of` and
+  // `wall_set` both pick the owner's layer from a reference height, and an edge read at
+  // one level and written at another is `wall_set`'s own *"fenced a room on the first
+  // floor and got a fence in the yard below"*, one gesture over. One reference serves
+  // the read, the six writes and the height a created layer takes.
+  //
+  // ⚠ **`pc_dir` CANNOT BE `-1` FOR ANY POSE THIS GESTURE ACCEPTS** — `cell_ahead` walks
+  // out in 0.25 wu steps and returns the FIRST cell that is not the author's own, which
+  // is adjacent by construction. It is read rather than assumed because the consequence
+  // of a non-neighbour is silent: no faced edge, so no id, so no marks — the gesture
+  // would go on transferring cells and quietly stop maintaining the boundary.
+  pc_ref = (pc_h as float) * wld.w_unit;
+  pc_dir = hex_grid::hex_neighbor_dir(pc_sq, pc_sr, pc_q, pc_r);
+  pc_id = 0;
+  if pc_dir >= 0 { pc_id = wall_of(wld, pc_sq, pc_sr, pc_dir, pc_ref); }
+  // ── ⛔ R6: AN OPENING IS NOT A WALL TO PUSH, AND THE STORE CANNOT SAY WHICH WALL ──
+  //
+  // ⛔ **MEASURED BEFORE IT WAS REFUSED — a swept doorway came out as FIVE DOORWAYS.** Law
+  // L10 carries the faced byte onto the new face, and an edge is ONE byte holding the wall
+  // and the feature at once (`@HB-X70`): carrying a `DOOR_MAT` forward turns five edges of
+  // masonry into five edges of hole, which is not a house with a door in it — it is a room
+  // with a side missing. `tests/push.loft` measured the 5.
+  //
+  // ⚠ **AND THERE IS NOTHING EXACT TO DO INSTEAD, WHICH IS WHY THIS IS A REFUSAL RATHER
+  // THAN A FIX.** The right answer is law **L9** — the opening is a span on the wall's
+  // surface and rides it, anchored to the end that did not move — and the wall type the
+  // door perforates is not recorded anywhere this call can read. Substituting `WALL_MAT`
+  // would invent an id in a room that may be walled in another type, which is the one
+  // thing L10 forbids. A refusal is data (`FORMAL_CORE` P4); a guess is not.
+  //
+  // ⚠ **A FENCE IS NOT REFUSED**, deliberately: `FENCE_MAT` is a boundary in its own right
+  // rather than a hole in one, so carrying it forward extends a paddock and stays exact.
+  if is_opening(pc_id) {
+    return push_no("you are facing a doorway, not a wall — a push carries the wall's own "
+                 + "id and an opening is a hole in one, so step along the face and push "
+                 + "from beside it");
+  }
   ground_set(wld, pc_q, pc_r, pc_h, mat);
+  pc_marks = boundary_follow(wld, pc_q, pc_r, mat, pc_id, pc_h, pc_ref);
   PushMade { pu_ok: true, pu_say: "pushed", pu_q: pc_q, pu_r: pc_r, pu_mat: mat,
-             pu_was: pc_was, pu_h: pc_h, pu_dn: 6 - 2 * pc_k, pu_new: true }
+             pu_was: pc_was, pu_h: pc_h, pu_dn: 6 - 2 * pc_k, pu_new: true,
+             pu_id: pc_id, pu_marks: pc_marks }
 }
 
 pub fn storey_add(wld: VoxelWorld, cq: integer, cr: integer, dir: integer, rad: integer,

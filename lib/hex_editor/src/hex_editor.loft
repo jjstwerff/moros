@@ -2174,7 +2174,14 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   if verb == VB_PUSH {
     vp_made = session_push(w, a);
     if !vp_made.pu_ok { return ack_no(vp_made.pu_say); }
-    return ack_at(ack_about(if vp_made.pu_new { 1 } else { 0 }, vp_made.pu_say, 0),
+    // ⚠ **THE WALL IS IN THE SENTENCE, because law L1 is invisible otherwise.** A push
+    // that moved a boundary and one that moved only a cell print the same word, and the
+    // difference is the whole of what `L1` bought — `place_house` says *"{marked} wall
+    // edges"* for the same reason. `pu_marks` is what was WRITTEN rather than what `∂`
+    // says: an edge already standing is kept (L10), so the two differ on purpose.
+    vp_say = vp_made.pu_say;
+    if vp_made.pu_marks > 0 { vp_say = "{vp_say}, {vp_made.pu_marks} wall edges"; }
+    return ack_at(ack_about(if vp_made.pu_new { 1 } else { 0 }, vp_say, 0),
                   vp_made.pu_q, vp_made.pu_r);
   }
   if verb == VB_SEAT {

@@ -304,6 +304,14 @@ does**, so the wording can never quietly drift back. ⚠ A second stale comment 
 server called the `0` branch *"reachable only if `field_fill` gains another way to decline"*, and it
 is reachable two ordinary ways — standing on a road, or on a field you already filled.
 
+⛔ **AND THE PUSH VERB GIVES THE PAIR A THIRD WAY TO COME APART — 2026-08-28.** `WALL_PUSH`
+law `L1` is built: a push rewrites the six edges of the cell it transfers, so the store's
+marks follow the room. **The filed `WallRun` does not** — nothing maintains it — so on a
+house `place_house` built, one push moves the hex-edge drawing and leaves the straight one
+where it was. ⚠ **It is this defect and not a new one**: with a single drawing there would
+be nothing to diverge, and the fix is the same fix. Named in
+[WALL_PUSH](WALL_PUSH.md) §7 so nobody looks at a pushed house and reports it twice.
+
 ---
 
 ## 5. After a reload the straight walls are gone

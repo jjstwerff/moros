@@ -583,7 +583,19 @@ address (or the hostname `make browser` prints) cannot connect.
   `house_recover` refuses, so the window falls through to the run readers — and `B4x`'s chain
   cut now covers it *exactly*, making the degradation **silent**. ⛔ And §5 records what
   [`probe/wp`](probe/wp/README.md) refuted, including this document's own first draft, which
-  modelled a push as translating a wall's LINE and was five correct rules about the wrong object
+  modelled a push as translating a wall's LINE and was five correct rules about the wrong object.
+  ✅ **`L1` IS BUILT AND IT IS SIX WRITES, NOT A REDRAW** — `∂` is a function, so a push does not
+  MOVE a wall: it changes one cell's membership, and only that cell's six edges can have changed
+  status, which makes `L1` and `L4` the same writes rather than two bounds to hold apart. The
+  definition stays `hex_draw::draw_walls`' and is compared against, never copied. ⚠ **The id is
+  CARRIED and `0` is an answer**: no wall in front means nothing is written, which is why a road
+  is byte-identical *and* why a road laid past a stranger's house cannot rub its wall out.
+  ⛔ **Read its §7 for what is NOT built, which is where the value is** — the gesture is still a
+  **poke** (`L11` unpaid), an internal partition is **not reachable at all** because membership
+  is the MATERIAL, and `place_house` leaves **8 stray sightings** so `L1`'s precondition fails on
+  the one structure the editor actually builds: what a push can owe there is componentwise `≤`,
+  measured at 8/0 before and 6/0 after. ⚠ And `R6` is what law `L9` costs, priced rather than
+  asserted: a swept doorway came out as **five doorways** before it was refused
 - [House rooms](doc/claude/HOUSE_ROOMS.md) — **a house is a floor plan of boxes**: rooms are the
   house we already have, placed again adjacent, and a stair adds a LEVEL. ⚠ Its two live findings:
   `place_house`'s `D2b` guard **refuses exactly this** (it asks *does the footprint overlap a
