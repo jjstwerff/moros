@@ -5,7 +5,7 @@ SPDX-License-Identifier: LGPL-3.0-or-later
 
 # Wall push — the formal rules
 
-**Designed, not built.** A toggle the author holds while walking: the wall in front of them
+**Built — the mechanic and the verb; see §7.** A toggle the author holds while walking: the wall in front of them
 gives way and travels ahead. A house grows or shrinks, a tunnel lengthens, an internal
 partition slides. The gesture is `run`'s shape — arm, walk, release.
 
@@ -47,6 +47,78 @@ that edits edge marks, a `Box`, a run record and a floor fill — which is what 
 actually holds — satisfies the laws below if and only if its observable result matches.
 
 ---
+
+## 1a. ✅ Why the hex grid is an asset here, having been the cost everywhere else
+
+**Every hard thing in this tree has been the RECOVERY direction** — field to description.
+`corner_pool` cannot serve a corner where two runs meet; `FORMAL_CORE` §6 has two regimes
+because some shapes are recoverable exactly and some only fitted; plan 26 `B4x` spent a whole
+phase learning that within-ness alone is unsound. And `AUTHORING_MAP` §5.2 measured the price
+on the *aiming* side: the direction quantiser's cells are **13.898 / 15 / 16.102°**, so
+*"the authoring resolution is 6.949° and no input precision improves it"*.
+
+⛔ **A PUSH HAS NO AIMING, NO SNAP AND NO FIT.** Its unit is a **step of the character**, and
+the six neighbours of a hex are exact integers. There is no angle to quantise, no `d24` to
+choose, no `wall_min_p` to satisfy, no run to snap between admissible vertices — the author's
+own step selects one of six, and the store takes that cell.
+
+✅ **So the lattice that made deriving a form hard is what makes authoring one easy.** The
+editor stops trying to assemble a shape from separate blocks and hope it reads correctly; it
+knows exactly what to draw, because the author walked there. ⚠ **That is also why the first
+draft of this document was wrong**: it reached for the lattice's *line* arithmetic — the half
+that is hard — for a gesture whose whole advantage is that it never touches it.
+
+### What the free-placement builders pay instead
+
+A free-placement builder — Conan Exiles, Palworld, Valheim — makes a house out of **pieces
+that must meet**, and the work to make that look right is mostly not modelling the pieces.
+
+**The compatibility surface is quadratic in the piece count.** Every piece carries snap
+sockets, and placement searches nearby pieces for a compatible one. A new piece is not done
+when it looks good; it is done when it has been tried against every plausible neighbour —
+wall to wall, wall to floor, floor to roof, roof to roof at each pitch, stair to landing,
+every tier and every material variant. That is why build sets grow slowly and why new ones
+are usually re-skins of existing footprints rather than new footprints.
+
+**And seams appear for reasons no artist caused:**
+
+| | |
+|---|---|
+| float drift | placement error accumulates along a chain of snaps, so the twentieth piece is not where the first said it would be |
+| dimension mismatch | a "2 m" wall modelled at 1.998 against a floor at 2.000 |
+| coplanar faces | two surfaces at the same depth, z-fighting |
+| shading | normals and lightmaps discontinuous across a join whose geometry is exact |
+| LOD | two adjacent pieces swapping level at different distances |
+| pitch | roof angles that do not tile with each other |
+
+**Every standard mitigation is a way to HIDE it, not to prevent it**: model pieces oversized
+so the join is buried inside solid material; author trim and corner caps whose only job is to
+cover a junction; put a snap grid underneath the free placement; paint a decal over it. Each
+costs geometry, and the oversizing trades a seam for a z-fight.
+
+⛔ **THAT COST IS PER-ASSET AND IT NEVER ENDS.** It is paid again by every piece added for the
+life of the game.
+
+✅ **A LATTICE CANNOT REPRESENT THE PROBLEM.** Two cells share an edge or they do not — there
+is no float, no socket, no search. A wall exists exactly where two cells disagree about
+membership, and there is exactly **one** wall there, because `∂` is a function. There is no
+second piece to misalign with the first, so the whole geometric class of seam is not a thing
+that can occur. Adding a wall type is one palette entry (`@HB-X69`), not a snap set against
+every existing piece.
+
+⚠ **HONESTLY: THE GEOMETRIC SEAM GOES, THE SHADING ONE DOES NOT.** Normals, lightmaps, LOD
+and t-junctions in the emitted mesh are the renderer's problem either way — `hex_mesh` still
+has to emit a watertight mesh from an exact field. What the lattice removes is the *authoring*
+class, which is the expensive one.
+
+⛔ **AND THE PRICE IS EXPRESSIVENESS, PAID ONCE AND VISIBLY.** `45°` is not a lattice
+direction at all — `tan 45° = 1` needs `m/k = √3`, irrational — which is why
+[BLUEPRINT](BLUEPRINT.md) makes an octagonal face its own **material** rather than another
+heading. A free-placement game can put a wall anywhere; this cannot, and says so.
+
+**So the two are a cost curve rather than a preference**: they pay quadratic content cost
+forever to buy arbitrary placement; this pays a one-time algorithmic cost — the recovery
+direction, which is what plan 26 `B4x` has been buying — to make misalignment unrepresentable.
 
 ## 2. The laws
 
@@ -133,9 +205,14 @@ houses into linework. *Falsified by* a swept face that no longer reads as `house
 
 ---
 
-## 3. The gesture
+## 3. The gesture  ✅ built
 
-**G1 Push is a VERB, not a key.** [EDITING_MODES](EDITING_MODES.md) is binding: a key names a
+**G1 Push is a VERB, not a key.** ✅ `VB_PUSH`, the eighteenth entry of `the_vocabulary()`,
+bound to `2`. ⛔ **It may not spend one of the freed letters, and the suite said so.** `P` was
+the obvious mnemonic and `P I U N M` are pinned to NOTHING by `tests/verb.loft` — they are the
+evidence that `opening`'s six keys collapsed to one, and *"a second key naming anything there
+is what a lost selection looks like from here"*. A digit follows `tower`'s `1` and its note:
+the editor has run out of letters, the binding is data, and a person remaps it from inside. [EDITING_MODES](EDITING_MODES.md) is binding: a key names a
 verb, the wire carries the verb, and *verb + mode + selection* binds to the gesture. Push
 joins `the_vocabulary()` as an 18th entry — `keymap.loft` and `verb.loft` both refuse a verb
 that is not in that list, which is the check that keeps the four sites from diverging.

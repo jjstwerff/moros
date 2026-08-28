@@ -136,7 +136,7 @@ fn test_a_code_resolves_to_what_its_name_resolves_to() {
       if verb_at_code(m, c) != VB_NONE { hit = hit + 1; }
     }
   }
-  assert(hit == 17, "{hit} codes reached a verb where the definition has 17");
+  assert(hit == 18, "{hit} codes reached a verb where the definition has 18");
 }
 
 // ⚠ **THE UNBOUND VERB IS `""`, AND `keymap.loft` CANNOT SAY SO.** It is the mechanism
@@ -215,7 +215,7 @@ fn test_every_verb_the_definition_lists_is_bound() {
   a = author_on(w, 0.0, 0.0, 0.0);
   // The control: an empty definition would satisfy the loop below by having nothing
   // in it, which is the shape a query that lost its rows returns.
-  assert(len(vs) == 17,
+  assert(len(vs) == 18,
          "the definition lists {len(vs)} verbs — this row is walking a set that is "
        + "not the editor's vocabulary");
   for v in vs {
@@ -277,7 +277,7 @@ fn test_binding_over_a_taken_key_displaces_the_verb_that_had_it_and_says_so() {
   assert(key_for(m, VB_CELLAR) == "",
          "the cellar kept key '{key_for(m, VB_CELLAR)}' after losing it");
   assert(verb_is_known(m, VB_CELLAR), "the cellar was dropped from the definition");
-  assert(len(keymap_verbs(m)) == 17,
+  assert(len(keymap_verbs(m)) == 18,
          "the definition has {len(keymap_verbs(m))} verbs after a rebind — a rebind "
        + "moves a row and must neither add nor drop one");
   // …and `B`, which the storey left, is free for something else now.
@@ -297,7 +297,7 @@ fn test_two_verbs_can_trade_keys_and_the_definition_stays_one_row_per_verb() {
   assert(verb_in(m, "B") == VB_CELLAR && verb_in(m, "C") == VB_STOREY,
          "'B' names '{verb_in(m, \"B\")}' and 'C' names '{verb_in(m, \"C\")}'");
   assert(verb_in(m, "9") == VB_NONE, "the parking key still names '{verb_in(m, \"9\")}'");
-  assert(len(keymap_verbs(m)) == 17,
+  assert(len(keymap_verbs(m)) == 18,
          "the definition has {len(keymap_verbs(m))} rows after three rebinds");
 }
 
@@ -310,7 +310,7 @@ fn test_a_rebind_refuses_a_verb_the_editor_does_not_have() {
   assert(!r.bm_ok, "'tunnel' is not a verb and the rebind reported success");
   assert(r.bm_say.contains("tunnel"), "the refusal does not name it: '{r.bm_say}'");
   assert(verb_in(m, "5") == VB_NONE, "'5' now names '{verb_in(m, \"5\")}'");
-  assert(len(keymap_verbs(m)) == 17,
+  assert(len(keymap_verbs(m)) == 18,
          "a refused rebind left {len(keymap_verbs(m))} rows");
 }
 
@@ -395,7 +395,7 @@ fn test_arm_pick_press_moves_the_verb_and_the_old_key_goes_dead() {
   assert(verb_at_code(m, key_code_of("ArrowUp")) == VB_NONE,
          "the old key still reaches '{verb_at_code(m, key_code_of(\"ArrowUp\"))}' — a "
        + "rebind that adds a row instead of moving one leaves both live");
-  assert(len(keymap_verbs(m)) == 17,
+  assert(len(keymap_verbs(m)) == 18,
          "the definition has {len(keymap_verbs(m))} rows after a rebind through the "
        + "machine");
 }

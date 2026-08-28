@@ -1847,6 +1847,13 @@ pub const VB_STAIR_DOWN = "stair_down";
 // `test_every_verb_the_definition_produces_is_bound` exists to refuse, so the name was
 // left to the step that binds it. `hole`'s refusal has said *lay a slab first* since
 // `Z`, and this is the verb it was naming.
+// ⛔ **THE EIGHTEENTH VERB, AND IT MAY NOT SPEND A FREED KEY** — which is worth writing down,
+// because that is where I first put it. `P I U N M` were `opening`'s aliases before `S3`'s
+// collapse and `tests/verb.loft` pins all five to NOTHING: they are the evidence the collapse
+// happened, and a second key naming anything there *"is what a lost selection looks like from
+// here"*. The guard caught it. So push takes a DIGIT, following `tower`'s `1` and its note —
+// the editor has run out of letters, the binding is data, and a person remaps it from inside.
+pub const VB_PUSH = "push";
 pub const VB_HOLE = "hole";
 pub const VB_SLAB = "slab";
 
@@ -1929,6 +1936,7 @@ pub fn keymap_default() -> KeyMap {
     bind_of("Z", VB_HOLE),
     bind_of("B", VB_STOREY),
     bind_of("C", VB_CELLAR),
+    bind_of("2", VB_PUSH),
   ])
 }
 
@@ -1952,6 +1960,7 @@ pub fn verb_short(verb: text) -> text {
   if verb == VB_TOWER      { return "towr"; }
   if verb == VB_WALL       { return "wall"; }
   if verb == VB_RUN        { return "run"; }
+  if verb == VB_PUSH       { return "push"; }
   if verb == VB_AIM        { return "aim"; }
   if verb == VB_SEAT       { return "seat"; }
   if verb == VB_ANNEX      { return "anex"; }
@@ -2159,6 +2168,15 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // parameter: a seat writes into `es_props` and nothing into the store. The mesher
   // reads the registry. That is why `SeatMade` carries a cell at all — the caller
   // rebuilding a picture has no store write to notice.
+  // ⚠ **NO SELECTION, AND THAT IS THE VERB RATHER THAN AN OMISSION.** `session_push` reads
+  // the material under the author's feet — the subject of a push is WHERE they are, so a
+  // road, a room floor and a tunnel are one gesture. See `WALL_PUSH.md` and `session_push`.
+  if verb == VB_PUSH {
+    vp_made = session_push(w, a);
+    if !vp_made.pu_ok { return ack_no(vp_made.pu_say); }
+    return ack_at(ack_about(if vp_made.pu_new { 1 } else { 0 }, vp_made.pu_say, 0),
+                  vp_made.pu_q, vp_made.pu_r);
+  }
   if verb == VB_SEAT {
     vs_made = session_seat(sess, a);
     if !vs_made.sm_ok { return ack_no(vs_made.sm_say); }

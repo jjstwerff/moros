@@ -994,6 +994,25 @@ pub struct RunLaid {
 // ⚠ THE MATERIAL IS THE CALLER'S, and until a selection holds it that is the honest
 // shape rather than a shortcut: `25:1` is a wall and `25:3` a road, both reach this
 // from the wire today, and only one of them has a key. See `VB_RUN`.
+// ── ⛔ THE SUBJECT OF A PUSH IS WHERE THE AUTHOR IS STANDING ──────────────
+//
+// **One mechanic, three subjects, and no selection at all.** Standing on a road it extends
+// the road; on a house floor it grows the room; in a tunnel it lengthens the tunnel. The
+// gesture never branches on which — it reads the material under the author's feet and hands
+// that to `push_cell` as the set to take a cell into.
+//
+// ⚠ **THIS IS `EDITING_MODES`' OWN RULE AND NOT A SHORTCUT.** WHERE decides what a verb
+// means; WHAT YOU CHOSE decides what it produces. A push has nothing to choose between, so
+// it has no selection — and the editor has no material picker to give it one
+// (`STATE.md`: *a material cannot be CHOSEN*). Reading the standing cell is the WHERE axis
+// doing its job, which is why *"a house in a cave switches to houses again"* is the same
+// sentence one gesture over.
+pub fn session_push(w: VoxelWorld, a: Author) -> PushMade {
+  (sp_q, sp_r) = px_to_hex(a.au_x, a.au_z);
+  sp_mat = world_ground_cell(w, sp_q, sp_r).h_material as integer ?? 0;
+  push_cell(w, a, sp_mat)
+}
+
 pub fn session_run(s: EditSession, w: VoxelWorld, a: Author, mat: integer) -> RunLaid {
   sr_fit = fit_edge_mat(mat);
   if !sr_fit.ft_ok {

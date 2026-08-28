@@ -1,0 +1,194 @@
+// THE PUSH — one cell across a boundary, and the laws of `WALL_PUSH.md` §2.
+//
+// ✅ **THE HEX GRID PAYS HERE, HAVING COST SO MUCH ELSEWHERE.** Recovering a form FROM the
+// field is the hard direction — `corner_pool`, the chain cut, `FORMAL_CORE` §6's two regimes,
+// and `AUTHORING_MAP` §5.2's finding that the aiming quantiser's cells are 13.898/15/16.102°
+// so *"the authoring resolution is 6.949° and no input precision improves it"*. **A push has
+// no aiming at all.** The six neighbours are exact, and which one is chosen by the author's
+// own step — so the unit of authoring is a step of the character rather than a form pieced
+// together from blocks and hoped to look right.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const Q0 = 0 - 12;
+const W = 25;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, Q0, Q0, W, W, 8, SURFACE_MAT);
+  w
+}
+
+fn mat_at(w: VoxelWorld, q: integer, r: integer) -> integer {
+  world_ground_cell(w, q, r).h_material as integer ?? 0
+}
+
+// |∂I| computed independently of `push_cell` — an edge is a wall where membership differs.
+fn boundary(w: VoxelWorld, mat: integer) -> integer {
+  n = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if mat_at(w, q, r) != mat { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if mat_at(w, nq, nr) != mat { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// Everything the window holds, so a locality claim can be made over the whole of it.
+fn digest(w: VoxelWorld) -> integer {
+  h = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      c = world_ground_cell(w, q, r);
+      h = h + (q + 40) * 7919 * (c.h_material as integer ?? 0)
+            + (r + 40) * 104729 * (c.h_height as integer ?? 0);
+    }
+  }
+  h
+}
+
+fn stood(w: VoxelWorld, x: float, z: float, yaw: float) -> Author {
+  author_at(x, z, yaw, 0.0)
+}
+
+// ── L2 — one push transfers ONE cell, in one of six directions ────────────
+fn test_a_push_transfers_exactly_one_cell() {
+  w = flat_world();
+  a = stood(w, 0.0, 0.0, 0.0);
+  before = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W { if mat_at(w, q, r) == ROAD_MAT { before = before + 1; } }
+  }
+  p = push_cell(w, a, ROAD_MAT);
+  assert(p.pu_ok, "the push refused: {p.pu_say}");
+  after = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W { if mat_at(w, q, r) == ROAD_MAT { after = after + 1; } }
+  }
+  assert(after - before == 1, "the push took {after - before} cells, not one");
+  assert(mat_at(w, p.pu_q, p.pu_r) == ROAD_MAT,
+         "the cell it named is not the cell it took");
+  // …and it is a NEIGHBOUR of where the author stood, not an arbitrary cell
+  (sq, sr) = px_to_hex(a.au_x, a.au_z);
+  adj = false;
+  for d in 0..6 {
+    (nq, nr) = hex_grid::hex_neighbor(sq, sr, d);
+    if nq == p.pu_q && nr == p.pu_r { adj = true; }
+  }
+  assert(adj, "the cell taken is not one of the six neighbours of the author's own");
+}
+
+// ── L3 — the cost is `6 - 2k`, and it is reported rather than assumed ─────
+fn test_the_wall_edge_count_changes_by_six_minus_twice_k() {
+  // ⚠ **FOUR PUSHES ALONG ONE LINE, so `k` takes more than one value** — a row that pushed
+  // once would confirm the formula at a single point and could not tell it from a constant.
+  w = flat_world();
+  seen_k0 = false;
+  seen_kn = false;
+  for i in 0..4 {
+    a = stood(w, (i as float) * 1.8, 0.0, 0.0);
+    (tq, tr) = px_to_hex(a.au_x, a.au_z);
+    k = 0;
+    for d in 0..6 {
+      (nq, nr) = hex_grid::hex_neighbor(tq, tr, d);
+      if mat_at(w, nq, nr) == ROAD_MAT { k = k + 1; }
+    }
+    b0 = boundary(w, ROAD_MAT);
+    p = push_cell(w, a, ROAD_MAT);
+    assert(p.pu_ok, "push {i} refused: {p.pu_say}");
+    if !p.pu_new { continue; }
+    b1 = boundary(w, ROAD_MAT);
+    // the `k` of the cell that was actually taken, counted before the write
+    assert(b1 - b0 == p.pu_dn,
+           "push {i}: the boundary moved {b1 - b0} and the push reported {p.pu_dn}");
+    if p.pu_dn == 6 { seen_k0 = true; }
+    if p.pu_dn < 6 { seen_kn = true; }
+  }
+  assert(seen_k0, "no push started a fresh set — `k = 0` never occurred");
+  assert(seen_kn, "every push reported the same cost, so this row cannot see the formula");
+}
+
+// ── L4 — nothing outside the transferred cell is written ──────────────────
+fn test_a_push_writes_nothing_but_the_cell_it_takes() {
+  w = flat_world();
+  a = stood(w, 0.0, 0.0, 0.0);
+  d0 = digest(w);
+  p = push_cell(w, a, ROAD_MAT);
+  assert(p.pu_ok && p.pu_new, "the push did nothing to measure");
+  // undo the one cell by hand, and the whole window must be as it was
+  ground_set(w, p.pu_q, p.pu_r, p.pu_h, p.pu_was);
+  assert(digest(w) == d0,
+         "restoring the single cell did not restore the window — the push wrote elsewhere");
+}
+
+// ── L5 — push then unpush is the identity on the store ────────────────────
+fn test_push_then_unpush_is_the_identity() {
+  w = flat_world();
+  a = stood(w, 0.0, 0.0, 0.0);
+  d0 = digest(w);
+  p = push_cell(w, a, ROAD_MAT);
+  assert(p.pu_ok && p.pu_new, "nothing was pushed");
+  assert(digest(w) != d0, "the push changed nothing — the control cannot see a difference");
+  ground_set(w, p.pu_q, p.pu_r, p.pu_h, p.pu_was);
+  assert(digest(w) == d0, "push then unpush is not the identity");
+}
+
+// ── THE SUBJECT — one mechanic, and the material is where you stand ───────
+fn test_the_subject_is_the_material_under_the_author() {
+  // ⚠ **THE SAME CALL, TWICE, WITH NO BRANCH.** A road extends and a floor grows because the
+  // author is standing on different things, which is `EDITING_MODES`' WHERE axis — not
+  // because the gesture asks which subject it is dealing with.
+  road = flat_world();
+  ground_set(road, 0, 0, 8, ROAD_MAT);
+  ra = stood(road, 0.0, 0.0, 0.0);
+  rp = session_push(road, ra);
+  assert(rp.pu_ok && rp.pu_new, "standing on a road, the push did nothing: {rp.pu_say}");
+  assert(rp.pu_mat == ROAD_MAT, "it extended '{rp.pu_mat}' rather than the road");
+
+  floor = flat_world();
+  ground_set(floor, 0, 0, 8, FLOOR_MAT);
+  fa = stood(floor, 0.0, 0.0, 0.0);
+  fp = session_push(floor, fa);
+  assert(fp.pu_ok && fp.pu_new, "standing on a floor, the push did nothing: {fp.pu_say}");
+  assert(fp.pu_mat == FLOOR_MAT, "it grew '{fp.pu_mat}' rather than the room");
+
+  assert(rp.pu_q == fp.pu_q && rp.pu_r == fp.pu_r,
+         "the two subjects took different cells from the same pose — the mechanic differs, "
+       + "and it must not");
+}
+
+// ── A CELL ALREADY IN THE SET IS NOT A REFUSAL ────────────────────────────
+fn test_pushing_into_the_set_is_reported_not_refused() {
+  // Walking along a face pushes cells the previous tick already took; a gesture that refused
+  // there would stutter on its own path.
+  w = flat_world();
+  a = stood(w, 0.0, 0.0, 0.0);
+  first = push_cell(w, a, ROAD_MAT);
+  assert(first.pu_ok && first.pu_new, "the first push did nothing");
+  d1 = digest(w);
+  again = push_cell(w, a, ROAD_MAT);
+  assert(again.pu_ok, "the second push REFUSED where it should report: {again.pu_say}");
+  assert(!again.pu_new, "the second push claimed to take a cell that was already taken");
+  assert(again.pu_dn == 0, "it reported a cost of {again.pu_dn} for writing nothing");
+  assert(digest(w) == d1, "the second push wrote to the store");
+}
+
+// ── THE VERB REACHES IT ───────────────────────────────────────────────────
+fn test_the_push_verb_takes_a_cell() {
+  // ⛔ **THE DEFECT THIS TREE CALLS ITS COMMONEST**: a function tested green and wired to no
+  // consumer. This row presses the verb rather than calling the primitive.
+  w = flat_world();
+  ground_set(w, 0, 0, 8, ROAD_MAT);
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  before = boundary(w, ROAD_MAT);
+  ak = press_verb(s, w, s.es_author, VB_PUSH, "");
+  assert(ak.ak_ok, "the push verb was refused: {ak.ak_why}");
+  assert(boundary(w, ROAD_MAT) != before,
+         "pressing the verb changed no boundary — it is bound to nothing");
+}

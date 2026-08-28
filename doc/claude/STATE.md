@@ -38,7 +38,7 @@ grows back.
 there is an author standing in the world, gestures land where they are standing and facing,
 and the camera is derived from their pose.
 
-⚠ **THE VERBS ARE WHAT IT CAN DO, AND THE LIST IS THE WHOLE LIST** — all **17** of
+⚠ **THE VERBS ARE WHAT IT CAN DO, AND THE LIST IS THE WHOLE LIST** — all **18** of
 `the_vocabulary()`, which is the number `keymap.loft` and `verb.loft` both refuse to let
 a verb arrive without.
 
@@ -49,6 +49,7 @@ a verb arrive without.
 | enclosure | `fence` · `wall` (both hexagonal) · `tower` — ROUND at a chosen shell, or **OCTAGONAL** when the chosen wall type's body says `THICK_OCT` (plan 26 `B4l`) |
 | buildings | `place` (a procedural house, or the chosen PART instead) · `storey` above · `cellar` below · `opening` (door or window, profile from the selection) |
 | fittings | `seat` · `annex` · `slab` · `hole` · `stair_up` · `stair_down` |
+| deformation | `push` (`2`) — take the cell you face into the set you are standing on: a road extends, a room floor grows, a tunnel lengthens, **one gesture with no selection**. [WALL_PUSH](WALL_PUSH.md), and its §7 says what is NOT built — the stored wall edges are not yet maintained, so it is complete for cells and half-done for a room's walls |
 
 ⚠ **AND WHAT A VERB MAKES IS NOT ALWAYS ITS OWN.** `tower` reads the SHAPE off the chosen
 wall type's palette body and the SIZE off `session_shell` — plan 26 `B4l`. That is the only

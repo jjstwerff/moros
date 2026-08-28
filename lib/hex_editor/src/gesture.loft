@@ -3469,6 +3469,84 @@ pub fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integ
   (false, chq, chr0)
 }
 
+// ── ⛔ THE PUSH: ONE CELL ACROSS A BOUNDARY — WALL_PUSH.md ────────────────
+//
+// **A structure is the set of cells that belong to it, and a wall is where inside meets
+// outside.** That is the reference semantics of [WALL_PUSH](../../../doc/claude/WALL_PUSH.md)
+// §1, and it is a SPECIFICATION rather than a representation: this store keeps no `HexSet`.
+// Membership is the cell's **material**, which is what makes the set recoverable FROM the
+// store rather than kept beside it — `HEX_STACK`'s first invariant, unbroken.
+//
+// ✅ **SO ONE MECHANIC SERVES THREE SUBJECTS.** Taking the cell in front into the set is
+// *grow the room* standing on a floor, *extend the road* standing on a road, and *lengthen
+// the tunnel* standing in one. The gesture does not branch on which: the subject is WHERE THE
+// AUTHOR IS, which is `EDITING_MODES`' own rule — WHERE decides which verbs exist and what
+// they mean, and a push that asked a selection instead would need a material picker the
+// editor does not have.
+//
+// ⚠ **THE TARGET TAKES THE SOURCE'S HEIGHT, NOT ITS OWN.** A cell joining a set joins it at
+// the set's level — that is what makes a road stay walkable across a dip and a room floor
+// stay flat. Law **L4**: nothing outside the transferred cell is written.
+//
+// ⚠ **AND `pu_dn` IS LAW L3 REPORTED RATHER THAN ASSUMED**: `6 - 2k` for `k` neighbours
+// already in the set, measured on the field before the write. A caller that wants to know
+// whether a push grew or shrank the wall it is standing behind reads this; a caller that
+// wants to know whether the structure is still describable asks a reader.
+pub struct PushMade {
+  pu_ok:  boolean,
+  pu_say: text,
+  pu_q:   integer,    // the cell taken
+  pu_r:   integer,
+  pu_mat: integer,    // what it became
+  pu_was: integer,    // what it was — the value an unpush restores (law L5)
+  pu_h:   integer,    // the height it took, which is the source's
+  pu_dn:  integer,    // the change in wall-edge count, `6 - 2k`
+  pu_new: boolean,    // false when the cell was already in the set
+}
+
+fn push_no(why: text) -> PushMade {
+  PushMade { pu_ok: false, pu_say: why, pu_mat: 0, pu_was: 0, pu_dn: 0, pu_new: false }
+}
+
+// How many of this cell's six neighbours are already in the set — law L3's `k`.
+fn set_neighbours(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
+  sn_k = 0;
+  for sn_d in 0..6 {
+    (sn_q, sn_r) = hex_grid::hex_neighbor(q, r, sn_d);
+    if (world_ground_cell(wld, sn_q, sn_r).h_material as integer ?? 0) == mat {
+      sn_k = sn_k + 1;
+    }
+  }
+  sn_k
+}
+
+// Take the cell in front of the author into the set named by `mat` — one cell, one of six
+// directions, and nothing else written.  Laws L2 and L4 of `WALL_PUSH`.
+pub fn push_cell(wld: VoxelWorld, a: Author, mat: integer) -> PushMade {
+  (pc_found, pc_q, pc_r) = cell_ahead(a.au_x, a.au_z, a.au_yaw);
+  if !pc_found {
+    return push_no("nothing ahead to push — turn to face across a cell boundary");
+  }
+  (pc_sq, pc_sr) = px_to_hex(a.au_x, a.au_z);
+  pc_src = world_ground_cell(wld, pc_sq, pc_sr);
+  pc_h = pc_src.h_height as integer ?? 0;
+  pc_tgt = world_ground_cell(wld, pc_q, pc_r);
+  pc_was = pc_tgt.h_material as integer ?? 0;
+  // ⚠ **ALREADY IN THE SET IS NOT A REFUSAL.** Walking along a face pushes a cell that is
+  // sometimes already taken — by the previous tick, or by the structure itself — and a
+  // gesture that refused there would stutter on its own path. It reports `pu_new: false`
+  // and writes nothing, which is what law L4 asks of it.
+  if pc_was == mat {
+    return PushMade { pu_ok: true, pu_say: "already", pu_q: pc_q, pu_r: pc_r, pu_mat: mat,
+                      pu_was: pc_was, pu_h: pc_tgt.h_height as integer ?? 0, pu_dn: 0,
+                      pu_new: false };
+  }
+  pc_k = set_neighbours(wld, pc_q, pc_r, mat);
+  ground_set(wld, pc_q, pc_r, pc_h, mat);
+  PushMade { pu_ok: true, pu_say: "pushed", pu_q: pc_q, pu_r: pc_r, pu_mat: mat,
+             pu_was: pc_was, pu_h: pc_h, pu_dn: 6 - 2 * pc_k, pu_new: true }
+}
+
 pub fn storey_add(wld: VoxelWorld, cq: integer, cr: integer, dir: integer, rad: integer,
               why: &text) -> integer {
   // TWO PASSES, and the order is the point. Pass 1 asks whether EVERY cell in the
