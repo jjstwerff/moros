@@ -46,3 +46,61 @@ survey measured and no number here speaks to it.
    room. The cut is `O(n)` `run_edges` calls per piece where the pool is quadratic in
    its own size; the call count is reported so the claim is a number rather than a wall
    clock.
+
+---
+
+# `B4x` third attempt — the cycle, cut without a start. Written before the run
+
+The second measurement closed the acceptance and left one sentence open:
+
+> **A loop must be cut circularly.** Every rule measured here cuts a cycle as if it were a
+> path, from a vertex the scan chose, and every one of them pays for it. The question is no
+> longer *which acceptance* — that is answered — but *how a cycle is partitioned without a
+> start*, and the corner control says a right answer exists at every seed.
+
+## The design, and the one observation it turns on
+
+⚠ **FEASIBILITY IS A PROPERTY OF A PAIR OF VERTICES, NOT OF WHERE THE WALK STARTED.**
+`run_between(v_i, v_j)` takes two coordinates; rotating the chain relabels `i` and `j` and
+changes nothing else. So the expensive half — `run_edges`, `within`, `covers_span` — is
+**rotation-invariant**, and the fifty seeds of the second measurement paid for the same
+table fifty times.
+
+**So: build the table once, over every `(start, span)` on the cycle, then run the linear
+minimum from EVERY cut vertex against that one table and take the fewest.** Every cyclic
+partition has at least one cut vertex, and from that vertex it is a linear partition — so
+the minimum over all starts *is* the cycle's minimum, exactly, with no seed left in the
+answer.
+
+## The predictions
+
+| | prediction |
+|---|---|
+| a closed room, cut circularly | **4** pieces, **0** marks over |
+| its spans | the corner control's — `12 / 13 / 12 / 13` marks |
+| how many of the 50 starts reach 4 | **4**, the corners and nothing else |
+| distinct optimal partitions | **1** — so *fewest runs* names one description and needs no tie-break |
+| the per-start histogram, all 50 | `4 … 7`, containing the stride-7 sample `4 5 5 4 6 7 4 6` at its own positions |
+| cost | **one table** — under `2450` `run_edges`, against `1012` for ONE seed of the linear minimum and ~8000 for the eight sampled |
+| a straight wall / an L / a zigzag | **1 / 2 / 3**, unchanged — a path has a canonical start, and the cycle DP reduces to the linear one on it |
+
+## The instrument check, before the answer is believed
+
+**The table must reproduce a number already measured live.** `dp_sweep` prints the linear
+minimum at eight seeds of the room from `run_between` calls made at that seed; the table's
+own DP at those same eight starts must agree, value for value. If it does not, the table is
+not the same question and nothing below it means anything.
+
+## What could refute the design
+
+1. ⛔ **The minimum is BELOW four with nothing over.** Then *fewest runs* is the wrong
+   objective outright — it would be naming a description the author did not build, and the
+   corner control could not be reached by minimising at all. This is the one that would
+   send the design back.
+2. ⛔ **Several distinct four-piece partitions.** Then the minimum does not name a
+   description on its own and a tie-break has to be chosen — and the second measurement
+   already refuted the obvious one (longest span on a tie leaves marks over on two
+   fixtures).
+3. **The cost is not one table.** If the table is dense the DP is free, but the table is
+   `n²` and the room is `n = 50`; a shape with 200 marks is 16× this. The number to watch
+   is `run_edges`, not the wall clock.

@@ -1,6 +1,7 @@
 # `B4x` — the ordered chain walk, and what one seed cannot tell you
 
-**Run 2026-08-28.** Plan [26](../../plans/26-blueprint/README.md) `B4x`, second measurement.
+**Run 2026-08-28, and again 2026-08-29.** Plan [26](../../plans/26-blueprint/README.md)
+`B4x`, second and third measurements.
 `make probe-b4x`; predictions in [PREDICTION.md](PREDICTION.md), written first; the run in
 [run.txt](run.txt).
 
@@ -18,10 +19,13 @@ functions that count degrees and throw the walk away. The probe holds no copy of
 [registry#26](https://github.com/loft-lang/registry/pull/26) merged and signed, so `make
 probe-b4x` resolves the walk from the registry like any other consumer.
 
-## The verdict, in two halves
+## The verdict, in three parts
 
 ✅ **The ACCEPTANCE is settled**, and not the way the record prescribed.
-⛔ **The PARTITION is not**, and no rule measured here returns the four walls reliably.
+✅ **The PARTITION is settled too, on a CYCLE** — third measurement, below: one feasibility
+table, the minimum over every start, four walls uniquely and nothing over.
+⛔ **And a closed rectangle is a cycle in 7 of 25**, so that answers the case that draws
+nothing today and not the general one.
 
 ## ⛔ Half one: the acceptance, over every seed
 
@@ -117,12 +121,87 @@ within the marks. The accepted run's length is not monotone in the vertex index.
 rules agree on `1 / 2 / 3 / 4` there. That is not five confirmations; it is one seed reported
 five times, and the sweep is the row that means anything.
 
+## ✅ THE THIRD MEASUREMENT — the cycle, cut without a start
+
+**Run 2026-08-29.** Predictions in [PREDICTION.md](PREDICTION.md), written first.
+
+### The observation the whole thing turns on
+
+⚠ **FEASIBILITY IS A PROPERTY OF A PAIR OF VERTICES, NOT OF WHERE THE WALK STARTED.**
+`run_between` takes two coordinates; rotating the chain relabels `i` and `j` and changes
+nothing else. So the expensive half — `run_edges`, `within`, `covers_span` — is
+**rotation-invariant**, and the fifty-seed sweeps above paid for one table fifty times.
+
+✅ **So build the table once and ask every start against it.** Every cyclic partition has at
+least one cut vertex, and from that vertex it is a linear partition — so the minimum over
+all starts **is** the cycle's minimum, exactly, with no seed left in the answer.
+
+| the closed room, cut circularly | |
+|---|---|
+| pieces | ✅ **4** |
+| marks left over | ✅ **0** |
+| distinct optimal partitions | ✅ **1** — the minimum names one description, no tie-break needed |
+| its spans | `0-13 · 13-25 · 25-38 · 38-0` = **13 / 12 / 13 / 12** marks, the corner control's own multiset |
+| cost | **2454** `run_edges`, once — against **1012** for ONE seed of the linear minimum and ~8000 for the eight that were sampled |
+| a straight wall / an L / a zigzag | **1 / 2 / 3**, unchanged: a path has a canonical start and the cycle DP reduces to the linear one |
+
+### ✅ The instrument was checked against a number already measured live
+
+**The table records WHICH HALF of the two-way test passed**, so `dp_once`'s within-only
+merge clause replays off it with no further `run_edges`. At stride 7 the table says
+**`4 5 5 4 6 7 4 6`** — which is `dp_sweep`'s own live line, value for value. The table is
+the same question, and the full fifty-start histogram is now free where eight sampled seeds
+cost ~8000 `run_edges`.
+
+### ⛔ AND THE CLOSED CHAIN IS THE LUCKY CASE — 7 OF 25
+
+The 5×5 room fuses at all four corners (`deg 1/2/3+ = 0/50/0`, one chain, a loop) and that
+is **not** what a closed rectangle normally does. Twenty-five of them, `a` in 4…8 by `b` in
+3…7 world units, stamped and degree-counted — no `run_edges` at all, three seconds:
+
+| | |
+|---|---|
+| one closed chain | ✅ **7 of 25** |
+| carries a JUNCTION — a vertex where three marks meet | ⛔ **17 of 25** |
+| `8 × 3` | ⛔ **four separate chains**, `8/46/0` — the corners do not meet at all |
+
+⚠ **SO THE DEFECT [FOCUS](../../doc/claude/FOCUS.md) NAMES IS THE 28% CASE.** *A closed room
+draws nothing because `corner_pool` is empty* needs `deg1 = 0` **and** `deg3+ = 0`; the other
+seventeen are **not** that case. ⚠ **What the shipped peel then makes of them is not
+measured here** — only that the pool is non-empty. The cyclic cut closes exactly the case
+that draws nothing, and it does not on its own make a room round-trip.
+
+### ⛔ And on a broken chain the minimum is NOT unique — this measurement's own prediction, refuted
+
+| the fixture | chains | pieces | distinct optimal partitions |
+|---|---|---|---|
+| a closed room, 5×5 | 1, a loop | 4 | ✅ **1** |
+| a triangle | 2 | 4 | ✅ **1** |
+| ⛔ a wider room, 14×6 | 2 | 5 | ⛔ **5** |
+| ⛔ an L-shaped room | 3 | 8 | ⛔ **16** (1 × 4 × 4) |
+
+⛔ **AND THEY ARE NOT A ONE-VERTEX WIGGLE.** The wider room's long chain cuts at
+`0·1·17·25`, `0·3·17·25`, `0·11·17·25`, `0·16·17·25` or `0·18·20·25` — the first piece is
+**1, 3, 11 or 16** marks long, or the whole partition moves. Four pieces either way, nothing
+over either way, and four different pictures.
+
+⚠ **The mechanism is the same broken corner.** A chain that starts mid-wall begins with a
+fragment, and a fragment can be spent anywhere — so the ambiguity is not a property of
+*fewest runs*, it is what a free end left in the middle of a wall does to it. On the true
+cycle, where no fragment exists, the minimum is unique.
+
 ## What this leaves open, precisely
 
-**A loop must be cut circularly.** Every rule here cuts a cycle as if it were a path, from a
-vertex the scan chose, and every one of them pays for it. The question is no longer *which
-acceptance* — that is answered — but *how a cycle is partitioned without a start*, and the
-corner control says a right answer exists at every seed.
+~~**A loop must be cut circularly.**~~ ✅ **ANSWERED** — build the feasibility table once and
+take the minimum over every start; the room comes back as its four walls, uniquely, for one
+table's worth of `run_edges`.
+
+⛔ **WHAT IS OPEN IS ONE LEVEL EARLIER: THE CORNER.** A closed rectangle is a closed chain in
+**7 of 25**, and the other eighteen arrive with free ends and junctions the walk splits at —
+which is where the fragments come from, and the fragments are what make the minimum
+ambiguous (5 partitions for a 14×6 room, 16 for an L). **Another cut rule cannot fix that**;
+the next question is what `wall_stamp` leaves at a corner where two walls meet, and it has
+never been measured.
 
 ## What it deliberately does not do
 
@@ -132,5 +211,8 @@ corner control says a right answer exists at every seed.
 - **It does not handle a junction.** `wall_chain_walk` reports `wc_branch` and the cut here
   ignores it; no fixture has a `deg ≥ 3` vertex, and `B4w` already measured that a `T` is
   recoverable only sometimes.
-- **It does not sweep the minimum over all fifty seeds** — eight, at stride 7. One seed of the
-  room is ~1000 `run_edges`; fifty is not a probe, it is an afternoon.
+- ~~**It does not sweep the minimum over all fifty seeds**~~ — ✅ it does now, and for less
+  than three seeds' worth of `run_edges`, because the table the sweep was re-deriving is the
+  same one at every seed.
+- **It does not ask why a corner breaks.** The rate is measured (7 of 25) and the mechanism
+  is not; that is `wall_stamp`'s corner, not the reader's.

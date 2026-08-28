@@ -3335,3 +3335,88 @@ start*.
 ⚠ **AND THE LESSON IS THIS TREE'S OWN, ONE LEVEL IN.** *Give a claim the instrument that can
 SEE it.* A single seed can no more see a seed-dependent answer than a colour can see a
 count — and five cut rules agreeing at one seed reads exactly like five confirmations.
+
+## ✅ What the THIRD `B4x` measurement turned up — the cycle is answered, the corner is not
+
+**Run 2026-08-29**, [`probe/b4x`](../../probe/b4x/README.md), `make probe-b4x`. The step the
+correction above named: *how a cycle is partitioned without a start.*
+
+### ✅ It is answered, and the answer is that the expensive half has no start in it
+
+⚠ **FEASIBILITY IS A PROPERTY OF A PAIR OF VERTICES.** `run_between` takes two coordinates;
+rotating the chain relabels `i` and `j` and changes nothing else. So `run_edges`, `within`
+and `covers_span` — the whole cost — are **rotation-invariant**, and the fifty-seed sweeps
+were paying for one table fifty times.
+
+**Build the table once over every `(start, span)`, then take the linear minimum from every
+start against that one table.** Every cyclic partition has at least one cut vertex, and from
+that vertex it is a linear partition, so the minimum over all starts *is* the cycle's
+minimum — exactly, with no seed left in the answer.
+
+| the closed room | |
+|---|---|
+| pieces | ✅ **4**, `0-13 · 13-25 · 25-38 · 38-0` = 13 / 12 / 13 / 12 marks |
+| against the corner control | ✅ the same multiset — each wall measured alone is 12 / 13 / 12 / 13 |
+| marks left over | ✅ **0** |
+| distinct optimal partitions | ✅ **1** — *fewest runs* names one description here and needs no tie-break |
+| cost | **2454** `run_edges` once, against **1012** for ONE seed of the linear minimum and ~8000 for the eight sampled |
+
+### ✅ And the instrument was checked against a number already measured live
+
+The table records **which half** of the two-way test passed, so `dp_once`'s within-only
+merge clause replays off it with no further `run_edges`. At stride 7 the table says
+`4 5 5 4 6 7 4 6` — `dp_sweep`'s own live line, value for value. ⚠ Without that the two
+disagreed and the difference read as a defect in the table; it was the merge clause, and
+only a like-for-like comparison could say so.
+
+### ⛔ THE FINDING THAT MOVES THE PLAN: a closed rectangle is a closed chain in 7 of 25
+
+The 5×5 room fuses at all four corners — `deg 1/2/3+ = 0/50/0` — and that is **not** what a
+closed rectangle normally does. Twenty-five of them, `a` in 4…8 by `b` in 3…7 world units,
+stamped and degree-counted in three seconds with no `run_edges` at all:
+
+| | |
+|---|---|
+| one closed chain | ✅ **7 of 25** |
+| carries a JUNCTION — three marks at one vertex | ⛔ **17 of 25** |
+| `8 × 3` | ⛔ **four separate chains**, `8/46/0` — the corners never meet |
+
+⚠ **SO `B4x`'s HEADLINE — *a closed room draws NOTHING and leaves all 50 marks* — IS THE 28%
+CASE.** An empty `corner_pool` needs `deg1 = 0` **and** `deg3+ = 0`; the other eighteen
+rectangles are **not** that case. ⚠ **What the shipped peel then makes of them is not
+measured here** — only that the pool is non-empty; `B4x`'s first survey lost 12 of a
+zigzag's 18 marks, which is the shape to expect. The cyclic cut closes exactly the case that
+draws nothing, and closing it does not make a room round-trip in general.
+
+### ⛔ And on a broken chain the minimum is not unique — this measurement's own prediction, refuted
+
+| the fixture | chains | pieces | distinct optimal partitions |
+|---|---|---|---|
+| a closed room, 5×5 | 1, a loop | 4 | ✅ **1** |
+| a triangle | 2 | 4 | ✅ **1** |
+| ⛔ a wider room, 14×6 | 2 | 5 | ⛔ **5** |
+| ⛔ an L-shaped room | 3 | 8 | ⛔ **16** (1 × 4 × 4) |
+
+⛔ **AND THEY ARE NOT A ONE-VERTEX WIGGLE**, which is the reason the cut lists are printed
+rather than the count: the wider room's long chain cuts at `0·1·17·25`, `0·3·17·25`,
+`0·11·17·25`, `0·16·17·25` or `0·18·20·25` — a first piece of **1, 3, 11 or 16** marks, or
+the whole partition moved. Four pieces, nothing over, four different pictures.
+
+⚠ **The mechanism is the same broken corner**: a chain that starts mid-wall begins with a
+fragment, and a fragment can be spent anywhere. On the true cycle no fragment exists and the
+minimum is unique. **So the ambiguity is not a property of *fewest runs*** — it is what a
+free end left in the middle of a wall does to it.
+
+### What the next session should do first
+
+⛔ **NOT ANOTHER CUT RULE.** Three have now been refuted and the fourth is right; the
+partition is no longer where the loss is.
+
+**Measure the corner.** What does `wall_stamp` leave where two walls meet — and why does
+`5 × 5` fuse while `5 × 6` leaves three free ends and a junction? That number decides
+whether `B1` is a reader change at all: if a corner can be made to close, 25 of 25 become
+the case that is now answered; if it cannot, the reader owes a rule for **joining chains
+across a junction** before any partition rule matters.
+
+⚠ **And it is cheap** — the whole 25-rectangle sweep is three seconds and no `run_edges`,
+because degrees and chain counts do not need the acceptance test at all.

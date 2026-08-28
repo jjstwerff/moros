@@ -41,4 +41,58 @@ THE FEWEST RUNS — the same feasibility test, over the whole chain at once:
   fewest an L           : marks 13  chains 2  pieces 2  merged 2  gaps 0  over 0  run_edges 19  (n=6)[0-6/](n=7)[0-7/]
   fewest a zigzag       : marks 16  chains 2  pieces 3  merged 3  gaps 0  over 0  run_edges 55  (n=14)[0-2/2-14/](n=2)[0-2/]
   fewest a closed room  : marks 50  chains 1  pieces 4  merged 4  gaps 0  over 0  run_edges 1012  loop(n=50)[0-13/13-25/25-38/38-50/]
+
+THE CYCLE, CUT WITHOUT A START — one table, every start asked against it:
+  cyclic a straight wall: marks 14  chains 1  pieces 1  partitions 1  over 0  run_edges 106  (n=14)x1[0-14:14/] 1..1
+      every start: [1]
+  cyclic an L           : marks 13  chains 2  pieces 2  partitions 1  over 0  run_edges 51  (n=6)x1[0-6:6/] 1..1(n=7)x1[0-7:7/] 1..1
+      every start: [11]
+  cyclic a zigzag       : marks 16  chains 2  pieces 3  partitions 1  over 0  run_edges 111  (n=14)x1[0-2:2/2-14:12/] 2..2(n=2)x1[0-2:2/] 1..1
+      every start: [21]
+  cyclic a closed room  : marks 50  chains 1  pieces 4  partitions 1  over 0  run_edges 2454  loop(n=50)@0x1[0-13:13/13-25:12/25-38:13/38-0:12/] 4..7
+      every start: [45665576557554656575755564567557755755465657575556]
+      …and with `dp_once`'s merge clause replayed off the same table:
+      merged:      [45654465446444555464644464556446644744464646464446]  at stride 7: [45546746] — compare `fewest` above
+      chain 1: 5 partitions of 4 —  0·1·17·25·  0·3·17·25·  0·11·17·25·  0·16·17·25·  0·18·20·25·
+  cyclic a wider room   : marks 50  chains 2  pieces 5  partitions 5  over 0  run_edges 979  (n=7)x1[0-7:7/] 1..1(n=43)x5[0-1:1/1-17:16/17-25:8/25-43:18/] 4..4
+      every start: [14]
+  cyclic a triangle     : marks 39  chains 2  pieces 4  partitions 1  over 0  run_edges 424  (n=15)x1[0-1:1/1-15:14/] 2..2(n=24)x1[0-12:12/12-24:12/] 2..2
+      every start: [22]
+      chain 1: 4 partitions of 4 —  0·1·13·29·  0·9·13·29·  0·12·13·29·  0·14·16·29·
+      chain 2: 4 partitions of 3 —  0·1·7·  0·6·7·  0·4·8·  0·6·8·
+  cyclic an L-shaped room: marks 58  chains 3  pieces 8  partitions 16  over 0  run_edges 794  (n=8)x1[0-8:8/] 1..1(n=35)x4[0-1:1/1-13:12/13-29:16/29-35:6/] 4..4(n=15)x4[0-1:1/1-7:6/7-15:8/] 3..3
+      every start: [143]
+
+HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:
+    4 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken
+    4 x 4: marks 36  deg 1/2/3+ = 2/32/2  chains 2  broken
+    4 x 5: marks 42  deg 1/2/3+ = 0/42/0  chains 1  LOOP
+    4 x 6: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken
+    4 x 7: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken
+    5 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken
+    5 x 4: marks 44  deg 1/2/3+ = 2/40/2  chains 2  broken
+    5 x 5: marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP
+    5 x 6: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken
+    5 x 7: marks 60  deg 1/2/3+ = 2/56/2  chains 2  broken
+    6 x 3: marks 42  deg 1/2/3+ = 3/36/3  chains 3  broken
+    6 x 4: marks 46  deg 1/2/3+ = 0/46/0  chains 1  LOOP
+    6 x 5: marks 56  deg 1/2/3+ = 2/52/2  chains 2  broken
+    6 x 6: marks 58  deg 1/2/3+ = 3/52/3  chains 3  broken
+    6 x 7: marks 62  deg 1/2/3+ = 0/62/0  chains 1  LOOP
+    7 x 3: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken
+    7 x 4: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken
+    7 x 5: marks 58  deg 1/2/3+ = 0/58/0  chains 1  LOOP
+    7 x 6: marks 66  deg 1/2/3+ = 3/63/1  chains 2  broken
+    7 x 7: marks 68  deg 1/2/3+ = 2/64/2  chains 2  broken
+    8 x 3: marks 50  deg 1/2/3+ = 8/46/0  chains 4  broken
+    8 x 4: marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP
+    8 x 5: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken
+    8 x 6: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken
+    8 x 7: marks 70  deg 1/2/3+ = 0/70/0  chains 1  LOOP
+  a closed rectangle is ONE closed chain in 7 of 25, and carries a JUNCTION in 17 of 25
+
+…and what the cut rules above make of the two new closed shapes:
+  cover  a wider room   : marks 50  deg 1/2/3+ = 3/47/1  chains 2  pieces 5  merged 5  stubs 0  over 0  run_edges 121  (n=7)[0-7:7/](n=43)[0-18:18/18-20:2/20-25:5/25-43:18/]
+  cover  a triangle     : marks 39  deg 1/2/3+ = 2/35/2  chains 2  pieces 5  merged 5  stubs 0  over 0  run_edges 68  (n=15)[0-4:4/4-14:10/14-15:1/](n=24)[0-12:12/12-24:12/]
+  cover  an L-shaped room: marks 58  deg 1/2/3+ = 4/53/2  chains 3  pieces 9  merged 9  stubs 0  over 0  run_edges 130  (n=8)[0-8:8/](n=35)[0-14:14/14-16:2/16-29:13/29-35:6/](n=15)[0-6:6/6-10:4/10-12:2/12-15:3/]
 EXIT=0

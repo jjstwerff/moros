@@ -600,6 +600,273 @@ fn seed_sweep(tag: text, w: VoxelWorld, cut: integer) {
         + "  worst over {worst}  [{hist}]");
 }
 
+// ── ✅ THE CYCLE, CUT WITHOUT A START ──────────────────────────────────────
+//
+// ⚠ **FEASIBILITY IS A PROPERTY OF A PAIR OF VERTICES, NOT OF WHERE THE WALK STARTED.**
+// `run_between` takes two coordinates; rotating the chain relabels `i` and `j` and changes
+// nothing else. So the expensive half — `run_edges`, `within`, `covers_span` — is
+// **rotation-invariant**, and the seed sweeps above paid for one table fifty times.
+//
+// ✅ **SO BUILD THE TABLE ONCE AND ASK EVERY START AGAINST IT.** Every cyclic partition has
+// at least one cut vertex, and from that vertex it is a linear partition; so the minimum
+// over all starts IS the cycle's minimum, exactly, with no seed left in the answer.
+
+// `covers_span` over a CYCLIC arc — the same question, with the index wrapped.
+fn covers_arc(g: EdgeSet, mq: vector<integer>, mr: vector<integer>, md: vector<integer>,
+              i: integer, l: integer, n: integer) -> integer {
+  for t in 0..l {
+    x = ((i + t) % n) ?? 0;
+    q = mq[x] ?? 0;
+    r = mr[x] ?? 0;
+    (nq, nr) = hex_grid::hex_neighbor(q, r, md[x] ?? 0);
+    if edge_mat(g, q, r, nq, nr) == 0 { return 0; }
+  }
+  l
+}
+
+// `tab[i * (n + 1) + l]` is 1 when a run from vertex `i` spanning `l` marks is accepted
+// BOTH ways — within the field and covering every mark it steps over. `loopy` decides
+// whether the span may wrap; a path chain has `n + 1` vertices and no wrap.
+fn feas_table(marks: EdgeSet, vx: vector<float>, vy: vector<float>, mq: vector<integer>,
+              mr: vector<integer>, md: vector<integer>, n: integer, loopy: boolean,
+              calls: &integer) -> vector<integer> {
+  w = n + 1;
+  size = n * w;
+  tab: vector<integer> = [];
+  for t in 0..size { tab += [0]; }
+  for i in 0..n {
+    hi = if loopy { n - 1 } else { n - i };
+    for l in 1..hi + 1 {
+      j = if loopy { ((i + l) % n) ?? 0 } else { i + l };
+      cand = run_between(vx[i] ?? 0.0, vy[i] ?? 0.0, vx[j] ?? 0.0, vy[j] ?? 0.0, WALL_MAT);
+      if !cand.rd_ok { continue; }
+      g = run_edges(cand.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+      calls = calls + 1;
+      if within(g, marks) == 0 { continue; }
+      // ⚠ **THE TABLE RECORDS WHICH HALF PASSED**, so `dp_once`'s within-only merge clause
+      // can be replayed off it with no further `run_edges` — which is what makes the
+      // instrument check a comparison rather than an explanation.
+      if covers_arc(g, mq, mr, md, i, l, n) == 0 { tab[i * w + l] = 1; continue; }
+      tab[i * w + l] = 3;
+    }
+  }
+  tab
+}
+
+// The linear minimum from cut vertex `c`, read off the table — no `run_edges` at all.
+// `npart` comes back as how many DISTINCT optimal partitions start there, which is what
+// answers *does the minimum name one description*.
+fn dp_from(tab: vector<integer>, n: integer, c: integer, npart: &integer) -> integer {
+  w = n + 1;
+  best: vector<integer> = [0];
+  cnt: vector<integer> = [1];
+  for p in 1..n + 1 {
+    bp = INF;
+    for p0 in 0..p {
+      if (best[p0] ?? INF) >= INF { continue; }
+      i = ((c + p0) % n) ?? 0;
+      if (tab[i * w + (p - p0)] ?? 0) != 3 { continue; }
+      if (best[p0] ?? INF) + 1 < bp { bp = (best[p0] ?? INF) + 1; }
+    }
+    ways = 0;
+    if bp < INF {
+      for p0 in 0..p {
+        if (best[p0] ?? INF) + 1 != bp { continue; }
+        i = ((c + p0) % n) ?? 0;
+        if (tab[i * w + (p - p0)] ?? 0) != 3 { continue; }
+        ways = ways + (cnt[p0] ?? 0);
+      }
+    }
+    best += [bp];
+    cnt += [ways];
+  }
+  npart = cnt[n] ?? 0;
+  best[n] ?? INF
+}
+
+// The winning partition's own spans — one back-walk, so the pieces can be absorbed and
+// the residual counted the same way every other cut here is measured.
+fn dp_spans(tab: vector<integer>, n: integer, c: integer) -> vector<integer> {
+  w = n + 1;
+  best: vector<integer> = [0];
+  from: vector<integer> = [0 - 1];
+  for p in 1..n + 1 {
+    bp = INF;
+    bi = 0 - 1;
+    for p0 in 0..p {
+      if (best[p0] ?? INF) >= INF { continue; }
+      if (best[p0] ?? INF) + 1 >= bp { continue; }
+      i = ((c + p0) % n) ?? 0;
+      if (tab[i * w + (p - p0)] ?? 0) != 3 { continue; }
+      bp = (best[p0] ?? INF) + 1;
+      bi = p0;
+    }
+    best += [bp];
+    from += [bi];
+  }
+  out: vector<integer> = [];
+  if (best[n] ?? INF) >= INF { return out; }
+  p = n;
+  for step in 0..64 {
+    if p <= 0 { break; }
+    out += [from[p] ?? 0];
+    p = from[p] ?? 0;
+  }
+  out
+}
+
+// ⚠ **AND WHEN THE MINIMUM IS NOT UNIQUE, *HOW* IT IS NOT MATTERS.** Two optimal
+// partitions that differ by one vertex at a seam describe the same walls and any
+// deterministic pick is harmless; two that cut in different places are two different
+// pictures, and the design owes a tie-break rule. Only the cut lists can tell them apart.
+fn dp_enum(tab: vector<integer>, n: integer, c: integer, cap: integer) -> vector<text> {
+  w = n + 1;
+  best: vector<integer> = [0];
+  for p in 1..n + 1 {
+    bp = INF;
+    for p0 in 0..p {
+      if (best[p0] ?? INF) >= INF { continue; }
+      i = ((c + p0) % n) ?? 0;
+      if (tab[i * w + (p - p0)] ?? 0) != 3 { continue; }
+      if (best[p0] ?? INF) + 1 < bp { bp = (best[p0] ?? INF) + 1; }
+    }
+    best += [bp];
+  }
+  out: vector<text> = [];
+  if (best[n] ?? INF) >= INF { return out; }
+  posw: vector<integer> = [n];
+  txtw: vector<text> = [""];
+  for round in 0..64 {
+    if len(posw) == 0 { break; }
+    np: vector<integer> = [];
+    nt: vector<text> = [];
+    for k in 0..len(posw) {
+      p = posw[k] ?? 0;
+      t = txtw[k] ?? "";
+      if p == 0 { out += [t]; continue; }
+      for p0 in 0..p {
+        if (best[p0] ?? INF) + 1 != (best[p] ?? INF) { continue; }
+        i = ((c + p0) % n) ?? 0;
+        if (tab[i * w + (p - p0)] ?? 0) != 3 { continue; }
+        if len(np) >= cap { continue; }
+        np += [p0];
+        nt += ["{p0}·" + t];
+      }
+    }
+    posw = np;
+    txtw = nt;
+  }
+  out
+}
+
+// ⚠ **`dp_once`'S OWN MERGE CLAUSE, REPLAYED OFF THE TABLE.** It cuts a loop linearly and
+// then asks whether the last piece and the first are one run — a within-only test, which is
+// the weaker half the table already recorded. Replaying it is what lets the table be
+// compared with a live measurement value for value instead of being explained.
+fn dp_merged(tab: vector<integer>, n: integer, c: integer) -> integer {
+  w = n + 1;
+  span = dp_spans(tab, n, c);
+  here = len(span);
+  if here < 2 { return here; }
+  la = span[0] ?? 0;
+  fb = span[here - 2] ?? 0;
+  if fb >= la { return here; }
+  i = ((c + la) % n) ?? 0;
+  if (tab[i * w + (n - la + fb)] ?? 0) >= 1 { return here - 1; }
+  here
+}
+
+// ⚠ **THE INSTRUMENT IS CHECKED AGAINST A NUMBER ALREADY MEASURED LIVE.** `dp_sweep` prints
+// the linear minimum at eight seeds from `run_between` calls made at that seed; the table's
+// own DP at those same starts must agree value for value, or the table is a different
+// question and nothing below it means anything. Printed as `stride7` for comparison.
+fn cyc_measure(tag: text, w: VoxelWorld) {
+  marks = marks_of(w);
+  total = edges_in(marks);
+  cov = edgeset_new(Q0, R0, WQ, HR);
+  chains = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0).wc_n;
+  calls = 0;
+  pieces = 0;
+  parts = 1;
+  desc = "";
+  hist = "";
+  mist = "";
+  stride7 = "";
+  for c in 0..chains {
+    ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, c);
+    n = len(ch.wc_q);
+    if n <= 0 { continue; }
+    tab = feas_table(marks, ch.wc_x, ch.wc_y, ch.wc_q, ch.wc_r, ch.wc_d, n, ch.wc_loop,
+                     calls);
+    starts = if ch.wc_loop { n } else { 1 };
+    lo = INF;
+    hi = 0;
+    at = 0;
+    ways_total = 0;
+    for s in 0..starts {
+      np = 0;
+      p = dp_from(tab, n, s, np);
+      if p < lo { lo = p; at = s; }
+      if p > hi && p < INF { hi = p; }
+      if p >= INF { hist = hist + "-"; } else { hist = hist + "{p}"; }
+      if ch.wc_loop {
+        m = dp_merged(tab, n, s);
+        mist = mist + "{m}";
+        if ((s % 7) ?? 0) == 0 { stride7 = stride7 + "{m}"; }
+      }
+    }
+    // ⚠ **A PARTITION IS COUNTED ONCE PER CUT VERTEX IT HAS**, so the ways summed over
+    // every start divide by the piece count to give distinct partitions of the CYCLE.
+    for s in 0..starts {
+      np = 0;
+      if dp_from(tab, n, s, np) == lo { ways_total = ways_total + np; }
+    }
+    distinct = if ch.wc_loop && lo > 0 { (ways_total / lo) ?? 0 } else { ways_total };
+    span = dp_spans(tab, n, at);
+    here = len(span);
+    pieces = pieces + here;
+    parts = parts * distinct;
+    if ch.wc_loop { desc = desc + "loop(n={n})@{at}x{distinct}["; }
+    else { desc = desc + "(n={n})x{distinct}["; }
+    for k in 0..here {
+      p0 = span[here - 1 - k] ?? 0;
+      p1 = if k == here - 1 { n } else { span[here - 2 - k] ?? 0 };
+      i = ((at + p0) % n) ?? 0;
+      j = if ch.wc_loop { ((at + p1) % n) ?? 0 } else { at + p1 };
+      wc = run_between(ch.wc_x[i] ?? 0.0, ch.wc_y[i] ?? 0.0,
+                       ch.wc_x[j] ?? 0.0, ch.wc_y[j] ?? 0.0, WALL_MAT);
+      wg = run_edges(wc.rd_run, Q0, R0, WQ, HR, WALL_MAT);
+      calls = calls + 1;
+      absorb(wg, cov);
+      desc = desc + "{i}-{j}:{p1 - p0}/";
+    }
+    desc = desc + "] {lo}..{hi}";
+    if distinct > 1 {
+      alts = dp_enum(tab, n, at, 32);
+      show = "";
+      for k in 0..len(alts) { show = show + "  {alts[k] ?? \"\"}"; }
+      println("      chain {c}: {distinct} partitions of {lo} —{show}");
+    }
+  }
+  over = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(marks, q, r, nq, nr) == 0 { continue; }
+        if edge_mat(cov, q, r, nq, nr) == 0 { over = over + 1; }
+      }
+    }
+  }
+  println("  cyclic {tag}: marks {total}  chains {chains}  pieces {pieces}"
+        + "  partitions {parts}  over {over}  run_edges {calls}  {desc}");
+  if hist != "" { println("      every start: [{hist}]"); }
+  if mist != "" {
+    println("      …and with `dp_once`'s merge clause replayed off the same table:");
+    println("      merged:      [{mist}]  at stride 7: [{stride7}] — compare `fewest` above");
+  }
+}
+
 // ── THE FIXTURES — the `B4x` survey's own shapes ───────────────────────────
 //
 // ⚠ **RECOGNISED BY THEIR DEGREE TABLE, NOT BY THEIR COORDINATES**, which the survey did
@@ -647,6 +914,84 @@ fn room() -> VoxelWorld {
   w
 }
 
+// ⚠ **ONE SQUARE IS ONE SHAPE.** A cycle whose corners are all right angles and whose walls
+// are all axis-aligned could be closing by luck, so the claim is measured on two more: a
+// TRIANGLE, whose corners are neither, and an L-SHAPED room, which has a RE-ENTRANT one —
+// the corner a run could cross while staying inside the marks.
+// A second true cycle, so *four pieces* is not a fact about one square: the same
+// axis-aligned corners that fuse, at a different aspect and different wall lengths.
+fn room2() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 7.0, 0.0 - 3.0, 7.0, 0.0 - 3.0);
+  wall_at(w, 7.0, 0.0 - 3.0, 7.0, 3.0);
+  wall_at(w, 7.0, 3.0, 0.0 - 7.0, 3.0);
+  wall_at(w, 0.0 - 7.0, 3.0, 0.0 - 7.0, 0.0 - 3.0);
+  w
+}
+
+fn triangle() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0 - 4.0, 6.0, 0.0 - 4.0);
+  wall_at(w, 6.0, 0.0 - 4.0, 0.0, 6.0);
+  wall_at(w, 0.0, 6.0, 0.0 - 6.0, 0.0 - 4.0);
+  w
+}
+
+fn ell_room() -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 6.0, 0.0 - 6.0, 6.0, 0.0 - 6.0);
+  wall_at(w, 6.0, 0.0 - 6.0, 6.0, 0.0 - 1.0);
+  wall_at(w, 6.0, 0.0 - 1.0, 0.0 - 1.0, 0.0 - 1.0);
+  wall_at(w, 0.0 - 1.0, 0.0 - 1.0, 0.0 - 1.0, 6.0);
+  wall_at(w, 0.0 - 1.0, 6.0, 0.0 - 6.0, 6.0);
+  wall_at(w, 0.0 - 6.0, 6.0, 0.0 - 6.0, 0.0 - 6.0);
+  w
+}
+
+// ── ⛔ AND THE CLOSED CHAIN IS THE LUCKY CASE, NOT THE TYPICAL ONE ────────
+//
+// The 5x5 room fixture fuses at all four corners — `deg 1/2/3+ = 0/50/0`, one chain, a
+// loop. ⛔ **Three closed shapes built the same way do not**: a 14x6 rectangle comes back
+// `3/47/1`, a triangle `2/35/2`, an L-shaped room `4/53/2` — junctions and free ends, so
+// the walk returns several chains and the cyclic question never arises. Whether that is a
+// property of one unlucky coordinate or the normal state of affairs is a RATE, and a rate
+// is cheap here: stamping and degree-counting need no `run_edges` at all.
+fn rect(a: float, b: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - a, 0.0 - b, a, 0.0 - b);
+  wall_at(w, a, 0.0 - b, a, b);
+  wall_at(w, a, b, 0.0 - a, b);
+  wall_at(w, 0.0 - a, b, 0.0 - a, 0.0 - b);
+  w
+}
+
+fn fuse_sweep() {
+  loops = 0;
+  tried = 0;
+  forks = 0;
+  for ia in 0..5 {
+    for ib in 0..5 {
+      a = 4.0 + (ia as float);
+      b = 3.0 + (ib as float);
+      w = rect(a, b);
+      marks = marks_of(w);
+      total = edges_in(marks);
+      d1 = 0; d2 = 0; d3 = 0;
+      degrees(marks, d1, d2, d3);
+      ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0);
+      isloop = ch.wc_loop && ch.wc_n == 1;
+      tag = if isloop { "LOOP" } else { "broken" };
+      tried = tried + 1;
+      if isloop { loops = loops + 1; }
+      if d3 > 0 { forks = forks + 1; }
+      println("    {a} x {b}: marks {total}  deg 1/2/3+ = {d1}/{d2}/{d3}"
+            + "  chains {ch.wc_n}  {tag}");
+    }
+  }
+  println("  a closed rectangle is ONE closed chain in {loops} of {tried}, and carries a"
+        + " JUNCTION in {forks} of {tried}");
+}
+
 fn main() {
   println("B4x — the ordered chain walk, cut by within-ness (plan 26)");
   println("");
@@ -691,4 +1036,21 @@ fn main() {
   measure_dp("an L           ", ell());
   measure_dp("a zigzag       ", zigzag());
   measure_dp("a closed room  ", room());
+  println("");
+  println("THE CYCLE, CUT WITHOUT A START — one table, every start asked against it:");
+  cyc_measure("a straight wall", straight());
+  cyc_measure("an L           ", ell());
+  cyc_measure("a zigzag       ", zigzag());
+  cyc_measure("a closed room  ", room());
+  cyc_measure("a wider room   ", room2());
+  cyc_measure("a triangle     ", triangle());
+  cyc_measure("an L-shaped room", ell_room());
+  println("");
+  println("HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:");
+  fuse_sweep();
+  println("");
+  println("…and what the cut rules above make of the two new closed shapes:");
+  measure("a wider room   ", room2(), CUT_COVER);
+  measure("a triangle     ", triangle(), CUT_COVER);
+  measure("an L-shaped room", ell_room(), CUT_COVER);
 }

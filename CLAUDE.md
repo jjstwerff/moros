@@ -484,9 +484,16 @@ address (or the hostname `make browser` prints) cannot connect.
   project will feel lost."* The blueprint is where a project's vocabulary is **authored** and the
   palette is where it is **stored** — today the first is a read-only SVG dump with two callers and
   the second is 329 compile-time constants, so an adopter has neither end and inherits Moros's
-  village. ⛔ Its blocking number: **a closed room of four walls draws NOTHING** and leaves all 50
-  marks (`B4x`) — a room fuses at every corner, so `corner_pool` is empty — and there is no point
-  authoring over a reader that cannot see the object a blueprint is made of. ⚠ Read its §4 for the
+  village. ⛔ Its blocking number was: **a closed room of four walls draws NOTHING** and leaves all
+  50 marks (`B4x`) — a room fuses at every corner, so `corner_pool` is empty — and there is no
+  point authoring over a reader that cannot see the object a blueprint is made of. ✅ **THAT ONE IS
+  ANSWERED, 2026-08-29**: a cycle has no start, so do not choose one — feasibility is a property of
+  a vertex PAIR, so the table is rotation-invariant, and one table plus the minimum over every
+  start returns the room's four walls **uniquely** with nothing over. ⛔ **And it is 7 of 25**: an
+  empty pool needs `deg1 = 0` AND `deg3+ = 0`, and only 7 of 25 closed rectangles present as one
+  closed chain while **17 carry a junction**, which is not the empty-pool case at all — and where the minimum stops being unique (five
+  four-piece partitions for a 14×6 room, and they are four different pictures). ⚠ **So the blocker
+  moved one level earlier, to the CORNER** — not another cut rule. ⚠ Read its §4 for the
   instrument: every integration finding came from **writing the adopter's first program**, twelve
   lines against the public API, which surfaced two live defects 775 tests never asked about
 - [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands,

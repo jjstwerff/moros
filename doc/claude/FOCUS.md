@@ -61,20 +61,42 @@ reader.** The mechanism is exact and already isolated: `corner_pool` admits a ve
 degree 1 (a chain end) or degree ≥ 3 (a junction), and a room fuses at every corner — `deg1
 = 0`, `deg3+ = 0`, an **empty pool**, so `run_within` is handed nothing to offer.
 
-⚠ **There is no point building an authoring surface over a reader that cannot see a room.**
-Everything else in this section is blocked on this one number.
+✅ **THAT ONE IS ANSWERED — `B4x`'s third measurement, 2026-08-29.** A cycle has no start, so
+do not choose one: feasibility is a property of a vertex PAIR, so the table is
+rotation-invariant. Build it once and take the linear minimum from every start against it —
+the room comes back as its **four walls, uniquely, nothing over**, for one table's worth of
+`run_edges` (2454, against 1012 for a single seed of the linear minimum).
+
+⛔ **AND THE ROOM THAT DRAWS NOTHING IS 7 OF 25.** An empty pool needs `deg1 = 0` **and**
+`deg3+ = 0`; measured over 25 closed rectangles, only **7** present as one closed chain and
+**17 carry a junction** — so the other eighteen are **not** the empty-pool case. ⚠ What the
+shipped peel makes of them is *not* measured; `B4x`'s first survey lost 12 of a zigzag's 18
+marks, which is the shape to expect. ⛔ **And on those broken chains the minimum is not
+unique**: a 14×6 room has five optimal partitions of four pieces, and they are four
+different pictures, not a one-vertex wiggle. The fragment a broken corner leaves mid-wall is
+what can be spent anywhere.
+
+⚠ **So the blocker moved one level earlier, to the CORNER.** Not another cut rule — three
+have been refuted and the fourth is right. The unmeasured number is what `wall_stamp` leaves
+where two walls meet, and why `5 × 5` fuses while `5 × 6` leaves three free ends and a
+junction.
 
 ### The order of work
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ⛔ designed, three prototypes refuted; the next step is written down exactly |
+| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is measured and answered (`B4x` third measurement); ⛔ the CORNER that breaks the chain in 18 of 25 rooms is not |
 | B2 | the plan view **inside a renderer** | an instrument nobody can open while editing is an instrument nobody reads | not started |
 | B3 | **authoring in the plan** — `pick` from a pointer, not from a script | this is the editor half of "blueprint editor" | `pick` exists headless (`B4b`) |
 | B4 | **the block vocabulary authored here** — wall types, house types, parts, saved to the world's palette | the project owner's actual requirement; see §2 | the storage exists (`PAL_HTYPE`), the authoring does not |
 | B5 | multiple floors side by side; furniture; thickness | [BLUEPRINT.md](BLUEPRINT.md)'s own remaining §2 | designed |
 
 ### ⚠ `B1` does not need a new idea — it needs one number
+
+⚠ **UPDATED 2026-08-29 — the number below was taken, and it moved the question.** The
+prescription in this section is spent: the cut is settled (see above), and what `B1` now
+wants is the corner measurement, not another partition rule. Kept for the record of what
+each refutation cost.
 
 Plan 26's own record has done the expensive part. **Three designs were refuted, each by its
 own probe**, and the third refutation is the one to build from:
