@@ -171,6 +171,29 @@ seventeen are **not** that case. ⚠ **What the shipped peel then makes of them 
 measured here** — only that the pool is non-empty. The cyclic cut closes exactly the case
 that draws nothing, and it does not on its own make a room round-trip.
 
+### ✅ AND THE BREAK IS ONE HEX EDGE WIDE — measured, not thresholded
+
+Every vertex of degree ≠ 2 is a break, and every break has a position, so *is the break at a
+corner* is answerable exactly. Over the same 25 rectangles, **80 breaks**:
+
+| | |
+|---|---|
+| breaks within 1.5 units of a nominal corner | ✅ **78 of 80** — and the other two are at 1.83, still that corner's |
+| breaks with **no** break anywhere near a corner | ✅ **0 of 25 rectangles** — nothing breaks mid-wall |
+| breaks with another break **exactly one hex edge** away | ✅ **76 of 80** |
+| the other four | two hex edges — `6 × 3` and `6 × 6`, both `deg 3/36/3` |
+
+⚠ **AND *ONE HEX EDGE* IS AN INTEGER FACT HERE, NOT A RADIUS.** The measured steps between a
+break and its partner are `(0,3) (3,0) (3,-3) (0,-3) (-3,0) (-3,3)` in triangle-lattice
+coordinates and **nothing else** — which is exactly what `hex_edge_corners` returns for
+`d = 0…5`, checked against it directly, all of world length 1. So a join rule built on this
+needs no threshold, and would not be the float fit `CLAUDE.md` forbids.
+
+⚠ **The break has two shapes and they are the same width.** Where a corner overshoots there
+is a **fork one edge from a free end** (`4 × 4`: `deg3` and `deg1`, one step apart); where it
+falls short there are **two free ends one edge apart** (`8 × 3`, four separate walls). Both
+are the corner missing or gaining a single mark.
+
 ### ⛔ And on a broken chain the minimum is NOT unique — this measurement's own prediction, refuted
 
 | the fixture | chains | pieces | distinct optimal partitions |
@@ -196,12 +219,17 @@ cycle, where no fragment exists, the minimum is unique.
 take the minimum over every start; the room comes back as its four walls, uniquely, for one
 table's worth of `run_edges`.
 
-⛔ **WHAT IS OPEN IS ONE LEVEL EARLIER: THE CORNER.** A closed rectangle is a closed chain in
-**7 of 25**, and the other eighteen arrive with free ends and junctions the walk splits at —
-which is where the fragments come from, and the fragments are what make the minimum
-ambiguous (5 partitions for a 14×6 room, 16 for an L). **Another cut rule cannot fix that**;
-the next question is what `wall_stamp` leaves at a corner where two walls meet, and it has
-never been measured.
+⛔ **WHAT IS OPEN IS ONE LEVEL EARLIER: THE CORNER** — and it is measured now. A closed
+rectangle is a closed chain in **7 of 25**; the other eighteen break, **always at a corner**,
+and the break is **one hex edge wide in 76 of 80 cases** (two edges in the other four). That
+is where the fragments come from, and the fragments are what make the minimum ambiguous.
+
+**So the next step is a decision with a number behind it**: join chain ends across a
+one-edge break in the reader, or make `wall_stamp` leave the corner closed. ⚠ Neither is
+measured yet — this probe says the gap is exactly one edge, not which end should close it.
+⛔ **And a join rule is not free**: joining two ends one edge apart would also fuse two walls
+that merely pass close, so whatever closes the corner owes the control this probe has not
+built — **two unrelated walls one edge apart must NOT become one chain**.
 
 ## What it deliberately does not do
 
@@ -214,5 +242,8 @@ never been measured.
 - ~~**It does not sweep the minimum over all fifty seeds**~~ — ✅ it does now, and for less
   than three seeds' worth of `run_edges`, because the table the sweep was re-deriving is the
   same one at every seed.
-- **It does not ask why a corner breaks.** The rate is measured (7 of 25) and the mechanism
-  is not; that is `wall_stamp`'s corner, not the reader's.
+- **It does not ask why a corner breaks.** The rate (7 of 25), the place (always a corner)
+  and the width (one hex edge, 76 of 80) are measured; *why* the stamper lands one edge out,
+  and which end should close it, are not.
+- **It does not build the join.** The control that would have to come with it — two
+  unrelated walls one edge apart staying two chains — does not exist here.

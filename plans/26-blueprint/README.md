@@ -3407,16 +3407,41 @@ fragment, and a fragment can be spent anywhere. On the true cycle no fragment ex
 minimum is unique. **So the ambiguity is not a property of *fewest runs*** — it is what a
 free end left in the middle of a wall does to it.
 
+### ✅ And the corner was measured in the same run — the break is ONE HEX EDGE wide
+
+The rate said 18 rectangles break; it did not say where or how far. Every vertex of degree
+≠ 2 is a break and every break has a position, so both are exact. **80 breaks:**
+
+| | |
+|---|---|
+| within 1.5 units of a nominal corner | ✅ **78 of 80**, the other two at 1.83 — that corner's as well |
+| breaking mid-wall | ✅ **none, in any of the 25** |
+| with another break **exactly one hex edge** away | ✅ **76 of 80** |
+| the other four | two hex edges — `6 × 3` and `6 × 6`, both `deg 3/36/3` |
+
+⚠ **AND *ONE HEX EDGE* IS AN INTEGER FACT, NOT A RADIUS.** The steps measured between a
+break and its partner are `(0,3) (3,0) (3,-3) (0,-3) (-3,0) (-3,3)` in triangle-lattice
+coordinates and **nothing else** — exactly what `hex_edge_corners` returns for `d = 0…5`,
+checked against it directly, each of world length 1. A join rule built on this needs no
+threshold and is not the float fit `CLAUDE.md` forbids.
+
+⚠ **The break has two shapes and one width.** Overshoot leaves a **fork one edge from a free
+end** (`4 × 4`); falling short leaves **two free ends one edge apart** (`8 × 3`, four
+separate walls). Both are the corner missing or gaining a single mark.
+
 ### What the next session should do first
 
-⛔ **NOT ANOTHER CUT RULE.** Three have now been refuted and the fourth is right; the
-partition is no longer where the loss is.
+⛔ **NOT ANOTHER CUT RULE.** Three have been refuted and the fourth is right; the partition
+is not where the loss is.
 
-**Measure the corner.** What does `wall_stamp` leave where two walls meet — and why does
-`5 × 5` fuse while `5 × 6` leaves three free ends and a junction? That number decides
-whether `B1` is a reader change at all: if a corner can be made to close, 25 of 25 become
-the case that is now answered; if it cannot, the reader owes a rule for **joining chains
-across a junction** before any partition rule matters.
+**Close the corner, and decide at which end.** Either the reader joins chain ends across a
+one-edge break, or `wall_stamp` leaves the corner closed — the measurement says the gap is
+exactly one edge, and says nothing about which end owes the fix.
 
-⚠ **And it is cheap** — the whole 25-rectangle sweep is three seconds and no `run_edges`,
-because degrees and chain counts do not need the acceptance test at all.
+⛔ **And the control comes with it, not after**: joining ends one edge apart would also fuse
+**two unrelated walls that merely pass close**, and no fixture here has a pair of those. That
+control is the first thing to build, before the rule it guards — this tree has now twice
+written a rule whose own test could not fail.
+
+⚠ **The whole 25-rectangle sweep is three seconds and no `run_edges`**, because degrees,
+positions and chain counts do not need the acceptance test at all.

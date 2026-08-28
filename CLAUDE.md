@@ -492,8 +492,11 @@ address (or the hostname `make browser` prints) cannot connect.
   start returns the room's four walls **uniquely** with nothing over. ⛔ **And it is 7 of 25**: an
   empty pool needs `deg1 = 0` AND `deg3+ = 0`, and only 7 of 25 closed rectangles present as one
   closed chain while **17 carry a junction**, which is not the empty-pool case at all — and where the minimum stops being unique (five
-  four-piece partitions for a 14×6 room, and they are four different pictures). ⚠ **So the blocker
-  moved one level earlier, to the CORNER** — not another cut rule. ⚠ Read its §4 for the
+  four-piece partitions for a 14×6 room, and they are four different pictures). ✅ **AND THE CORNER IS MEASURED: the break is ONE HEX EDGE wide** — all 80 breaks sit at a
+  corner, none mid-wall, and 76 of 80 have another break exactly one edge away, the steps being
+  `hex_edge_corners`' own six and nothing else. ⚠ **So *one edge* is an integer, not a radius** —
+  and `B1` is a decision (join in the reader, or close the corner in `wall_stamp`) whose control
+  comes first: two unrelated walls one edge apart must NOT become one chain. ⚠ Read its §4 for the
   instrument: every integration finding came from **writing the adopter's first program**, twelve
   lines against the public API, which surfaced two live defects 775 tests never asked about
 - [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands,

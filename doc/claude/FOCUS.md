@@ -76,10 +76,16 @@ unique**: a 14×6 room has five optimal partitions of four pieces, and they are 
 different pictures, not a one-vertex wiggle. The fragment a broken corner leaves mid-wall is
 what can be spent anywhere.
 
-⚠ **So the blocker moved one level earlier, to the CORNER.** Not another cut rule — three
-have been refuted and the fourth is right. The unmeasured number is what `wall_stamp` leaves
-where two walls meet, and why `5 × 5` fuses while `5 × 6` leaves three free ends and a
-junction.
+✅ **AND THE CORNER IS MEASURED IN THE SAME RUN: THE BREAK IS ONE HEX EDGE WIDE.** All 80
+breaks across the 25 rectangles sit **at a corner** — none mid-wall — and **76 of 80** have
+another break exactly one hex edge away (two edges for the other four). The steps are
+`(0,3) (3,0) (3,-3) (0,-3) (-3,0) (-3,3)` and nothing else, which is `hex_edge_corners`'
+own `d = 0…5`, so *one edge* is an integer fact and a join rule needs no threshold.
+
+⛔ **So `B1` is now a decision, not a search**: join chain ends across a one-edge break in
+the reader, or make `wall_stamp` leave the corner closed. ⚠ **And the control comes first** —
+joining ends one edge apart would also fuse two unrelated walls that merely pass close, and
+no fixture has a pair of those yet.
 
 ### The order of work
 

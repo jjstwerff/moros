@@ -719,6 +719,10 @@ fn dp_spans(tab: vector<integer>, n: integer, c: integer) -> vector<integer> {
 // partitions that differ by one vertex at a seam describe the same walls and any
 // deterministic pick is harmless; two that cut in different places are two different
 // pictures, and the design owes a tie-break rule. Only the cut lists can tell them apart.
+//
+// ⚠ **THE LIST IS CAPPED AND THE COUNT IS NOT** — `distinct` comes from the counting DP and
+// is exact, so a printed list shorter than it says the enumeration was truncated rather
+// than that the count was wrong.
 fn dp_enum(tab: vector<integer>, n: integer, c: integer, cap: integer) -> vector<text> {
   w = n + 1;
   best: vector<integer> = [0];
@@ -965,10 +969,104 @@ fn rect(a: float, b: float) -> VoxelWorld {
   w
 }
 
+// ⛔ **WHERE DOES THE CHAIN BREAK, AND IS IT AT A CORNER?** The rate above says a closed
+// rectangle is a closed chain in 7 of 25; it does not say what the other eighteen do wrong.
+// Every vertex of degree != 2 is a break — a free end or a fork — and each one has a
+// position, so the question *is the break at a corner* is answerable exactly. The nominal
+// corners are `(±a, ±b)`; a break is charged to the nearest one, with its distance.
+fn breaks_at(marks: EdgeSet, a: float, b: float, near: &integer, far: &integer,
+             worst: &float, adjacent: &integer, breaks: &integer) -> text {
+  va: vector<integer> = [];
+  vb: vector<integer> = [];
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(marks, q, r, nq, nr) == 0 { continue; }
+        (c1, c2) = hex_grid::hex_edge_corners(d);
+        va += [hex_shape::hex_corner_tri_a(q, r, c1)];
+        vb += [hex_shape::hex_corner_tri_b(q, r, c1)];
+        va += [hex_shape::hex_corner_tri_a(q, r, c2)];
+        vb += [hex_shape::hex_corner_tri_b(q, r, c2)];
+      }
+    }
+  }
+  out = "";
+  n1 = 0;
+  n2 = 0;
+  n3 = 0;
+  n4 = 0;
+  wd = 0.0;
+  for i in 0..len(va) {
+    first = true;
+    for k in 0..i {
+      if (va[k] ?? 0) == (va[i] ?? 0) && (vb[k] ?? 0) == (vb[i] ?? 0) { first = false; }
+    }
+    if !first { continue; }
+    deg = 0;
+    for j in 0..len(va) {
+      if (va[j] ?? 0) == (va[i] ?? 0) && (vb[j] ?? 0) == (vb[i] ?? 0) { deg = deg + 1; }
+    }
+    if deg == 2 { continue; }
+    x = hex_shape::tri_x(va[i] ?? 0, vb[i] ?? 0);
+    y = hex_shape::tri_y(va[i] ?? 0, vb[i] ?? 0);
+    // the nearest nominal corner, and how far the break sits from it
+    best = 1000.0;
+    for sx in [0.0 - 1.0, 1.0] {
+      for sy in [0.0 - 1.0, 1.0] {
+        dx = x - sx * a;
+        dy = y - sy * b;
+        d2 = dx * dx + dy * dy;
+        if d2 < best { best = d2; }
+      }
+    }
+    dist = sqrt(best) ?? 0.0;
+    if dist <= 1.5 { n1 = n1 + 1; } else { n2 = n2 + 1; }
+    if dist > wd { wd = dist; }
+    // ⚠ **AND HOW FAR APART THE TWO ENDS OF A BROKEN CORNER ARE IS AN INTEGER QUESTION.**
+    // A threshold on a world distance is the float fit this tree refuses; the triangle
+    // lattice carries the answer exactly, as the step from this break to the nearest other
+    // one. If that step is constant, a join rule needs no radius at all.
+    ga = 0;
+    gb = 0;
+    gbest = 1000000;
+    for j in 0..len(va) {
+      if (va[j] ?? 0) == (va[i] ?? 0) && (vb[j] ?? 0) == (vb[i] ?? 0) { continue; }
+      dj = 0;
+      for k in 0..len(va) {
+        if (va[k] ?? 0) == (va[j] ?? 0) && (vb[k] ?? 0) == (vb[j] ?? 0) { dj = dj + 1; }
+      }
+      if dj == 2 { continue; }
+      da = (va[j] ?? 0) - (va[i] ?? 0);
+      db = (vb[j] ?? 0) - (vb[i] ?? 0);
+      m = da * da + db * db;
+      if m < gbest { gbest = m; ga = da; gb = db; }
+    }
+    // ✅ **AND ONE HEX EDGE IS EXACTLY THESE SIX STEPS** — measured against
+    // `hex_edge_corners` itself, `d = 0…5` giving `(0,3) (3,0) (3,-3) (0,-3) (-3,0)
+    // (-3,3)`, all of world length 1. So *one edge away* is an integer fact here, not a
+    // radius, and a join rule built on it needs no threshold at all.
+    one = (ga == 0 && gb == 3) || (ga == 3 && gb == 0) || (ga == 3 && gb == 0 - 3)
+       || (ga == 0 && gb == 0 - 3) || (ga == 0 - 3 && gb == 0) || (ga == 0 - 3 && gb == 3);
+    if one { n3 = n3 + 1; }
+    n4 = n4 + 1;
+    out = out + " deg{deg}@{dist}/({ga},{gb})";
+  }
+  near = n1;
+  far = n2;
+  worst = wd;
+  adjacent = n3;
+  breaks = n4;
+  out
+}
+
 fn fuse_sweep() {
   loops = 0;
   tried = 0;
   forks = 0;
+  away = 0;
+  adj = 0;
+  brk = 0;
   for ia in 0..5 {
     for ib in 0..5 {
       a = 4.0 + (ia as float);
@@ -984,12 +1082,20 @@ fn fuse_sweep() {
       tried = tried + 1;
       if isloop { loops = loops + 1; }
       if d3 > 0 { forks = forks + 1; }
+      nr1 = 0; fr1 = 0; wd1 = 0.0; adj1 = 0; brk1 = 0;
+      where = breaks_at(marks, a, b, nr1, fr1, wd1, adj1, brk1);
+      adj = adj + adj1;
+      brk = brk + brk1;
       println("    {a} x {b}: marks {total}  deg 1/2/3+ = {d1}/{d2}/{d3}"
-            + "  chains {ch.wc_n}  {tag}");
+            + "  chains {ch.wc_n}  {tag}  breaks at a corner {nr1}, elsewhere {fr1},"
+            + " furthest {wd1} —{where}");
+      if fr1 > 0 { away = away + 1; }
     }
   }
   println("  a closed rectangle is ONE closed chain in {loops} of {tried}, and carries a"
         + " JUNCTION in {forks} of {tried}");
+  println("  a break away from any corner (> 1.5 units) in {away} of {tried}");
+  println("  and {adj} of {brk} breaks have another break exactly ONE HEX EDGE away");
 }
 
 fn main() {

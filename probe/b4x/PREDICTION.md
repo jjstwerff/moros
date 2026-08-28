@@ -104,3 +104,17 @@ not the same question and nothing below it means anything.
 3. **The cost is not one table.** If the table is dense the DP is free, but the table is
    `n²` and the room is `n = 50`; a shape with 200 marks is 16× this. The number to watch
    is `run_edges`, not the wall clock.
+
+## ⚠ Written after the run, before the corner sweep — the second question of the same session
+
+The third measurement's own answer named the next number: **why does a closed rectangle break
+at all?** The predictions for the sweep that followed, written before it ran:
+
+| | prediction | measured |
+|---|---|---|
+| where the breaks are | at the corners | ✅ **all 80**, none mid-wall |
+| how wide a break is | ⛔ *unpredicted — this was the point of asking* | ✅ **one hex edge**, 76 of 80 |
+| is a break a gap or a fork | both, depending on the coordinate | ✅ both: `8 × 3` is four walls with gaps, `4 × 4` is a fork one edge from a free end |
+
+⚠ **AND THE PREDICTION TABLE IS SHORT ON PURPOSE.** The width was the question; guessing it
+first would have made the sweep a confirmation instead of a measurement.

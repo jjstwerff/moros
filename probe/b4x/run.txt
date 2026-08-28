@@ -64,32 +64,34 @@ THE CYCLE, CUT WITHOUT A START — one table, every start asked against it:
       every start: [143]
 
 HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:
-    4 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken
-    4 x 4: marks 36  deg 1/2/3+ = 2/32/2  chains 2  broken
-    4 x 5: marks 42  deg 1/2/3+ = 0/42/0  chains 1  LOOP
-    4 x 6: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken
-    4 x 7: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken
-    5 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken
-    5 x 4: marks 44  deg 1/2/3+ = 2/40/2  chains 2  broken
-    5 x 5: marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP
-    5 x 6: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken
-    5 x 7: marks 60  deg 1/2/3+ = 2/56/2  chains 2  broken
-    6 x 3: marks 42  deg 1/2/3+ = 3/36/3  chains 3  broken
-    6 x 4: marks 46  deg 1/2/3+ = 0/46/0  chains 1  LOOP
-    6 x 5: marks 56  deg 1/2/3+ = 2/52/2  chains 2  broken
-    6 x 6: marks 58  deg 1/2/3+ = 3/52/3  chains 3  broken
-    6 x 7: marks 62  deg 1/2/3+ = 0/62/0  chains 1  LOOP
-    7 x 3: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken
-    7 x 4: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken
-    7 x 5: marks 58  deg 1/2/3+ = 0/58/0  chains 1  LOOP
-    7 x 6: marks 66  deg 1/2/3+ = 3/63/1  chains 2  broken
-    7 x 7: marks 68  deg 1/2/3+ = 2/64/2  chains 2  broken
-    8 x 3: marks 50  deg 1/2/3+ = 8/46/0  chains 4  broken
-    8 x 4: marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP
-    8 x 5: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken
-    8 x 6: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken
-    8 x 7: marks 70  deg 1/2/3+ = 0/70/0  chains 1  LOOP
+    4 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.1345426738990312 — deg3@1.1345426738990312/(3,-3) deg1@0.5991526087921623/(-3,3) deg1@0.5991526087921623/(0,3) deg1@0.5991526087921623/(0,-3)
+    4 x 4: marks 36  deg 1/2/3+ = 2/32/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4884187277689946 — deg3@1.4884187277689946/(3,-3) deg1@0.5358983848622456/(-3,3) deg3@1.4884187277689946/(3,0) deg1@0.5358983848622456/(-3,0)
+    4 x 5: marks 42  deg 1/2/3+ = 0/42/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    4 x 6: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.1345426738990312 — deg3@1.1345426738990312/(3,-3) deg1@0.5991526087921623/(-3,3) deg1@0.5991526087921623/(0,3) deg1@0.5991526087921623/(0,-3)
+    4 x 7: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4884187277689946 — deg3@1.4884187277689946/(3,-3) deg1@0.5358983848622456/(-3,3) deg3@1.4884187277689946/(3,0) deg1@0.5358983848622456/(-3,0)
+    5 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken  breaks at a corner 3, elsewhere 1, furthest 1.8327530790104964 — deg3@1.8327530790104964/(3,-3) deg1@0.8359005986228675/(-3,3) deg1@0.8359005986228675/(0,3) deg1@0.8359005986228675/(0,-3)
+    5 x 4: marks 44  deg 1/2/3+ = 2/40/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 0.8359005986228675 — deg3@0.8359005986228675/(3,-3) deg1@0.19615242270663202/(-3,3) deg3@0.8359005986228675/(3,0) deg1@0.19615242270663202/(-3,0)
+    5 x 5: marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    5 x 6: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken  breaks at a corner 3, elsewhere 1, furthest 1.8327530790104964 — deg3@1.8327530790104964/(3,-3) deg1@0.8359005986228675/(-3,3) deg1@0.8359005986228675/(0,3) deg1@0.8359005986228675/(0,-3)
+    5 x 7: marks 60  deg 1/2/3+ = 2/56/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 0.8359005986228675 — deg3@0.8359005986228675/(3,-3) deg1@0.19615242270663202/(-3,3) deg3@0.8359005986228675/(3,0) deg1@0.19615242270663202/(-3,0)
+    6 x 3: marks 42  deg 1/2/3+ = 3/36/3  chains 3  broken  breaks at a corner 6, elsewhere 0, furthest 1.2830319277089004 — deg3@1.2830319277089004/(3,-6) deg1@0.5038512499807395/(-3,6) deg3@0.5038512499807395/(0,3) deg3@1.2830319277089004/(3,0) deg1@0.5038512499807395/(-3,0) deg1@0.5038512499807395/(0,-3)
+    6 x 4: marks 46  deg 1/2/3+ = 0/46/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    6 x 5: marks 56  deg 1/2/3+ = 2/52/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 0.803847577293368 — deg3@0.803847577293368/(3,-3) deg1@0.5038512499807395/(-3,3) deg3@0.803847577293368/(3,0) deg1@0.5038512499807395/(-3,0)
+    6 x 6: marks 58  deg 1/2/3+ = 3/52/3  chains 3  broken  breaks at a corner 6, elsewhere 0, furthest 1.2830319277089004 — deg3@1.2830319277089004/(3,-6) deg1@0.5038512499807395/(-3,6) deg3@0.5038512499807395/(0,3) deg3@1.2830319277089004/(3,0) deg1@0.5038512499807395/(-3,0) deg1@0.5038512499807395/(0,-3)
+    6 x 7: marks 62  deg 1/2/3+ = 0/62/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    7 x 3: marks 50  deg 1/2/3+ = 3/47/1  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0025740751400225 — deg3@1.0025740751400225/(3,-3) deg1@0.9385089893872778/(-3,3) deg1@0.9385089893872778/(0,3) deg1@0.9385089893872778/(0,-3)
+    7 x 4: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0627842815571809 — deg3@1.0627842815571809/(3,-3) deg1@0.07179676972449123/(-3,3) deg3@1.0627842815571809/(3,0) deg1@0.07179676972449123/(-3,0)
+    7 x 5: marks 58  deg 1/2/3+ = 0/58/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    7 x 6: marks 66  deg 1/2/3+ = 3/63/1  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0025740751400225 — deg3@1.0025740751400225/(3,-3) deg1@0.9385089893872778/(-3,3) deg1@0.9385089893872778/(0,3) deg1@0.9385089893872778/(0,-3)
+    7 x 7: marks 68  deg 1/2/3+ = 2/64/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0627842815571809 — deg3@1.0627842815571809/(3,-3) deg1@0.07179676972449123/(-3,3) deg3@1.0627842815571809/(3,0) deg1@0.07179676972449123/(-3,0)
+    8 x 3: marks 50  deg 1/2/3+ = 8/46/0  chains 4  broken  breaks at a corner 8, elsewhere 0, furthest 0.5406864664857399 — deg1@0.5406864664857399/(0,3) deg1@0.5406864664857399/(0,3) deg1@0.5406864664857399/(0,-3) deg1@0.5406864664857399/(0,-3) deg1@0.5406864664857399/(0,3) deg1@0.5406864664857399/(0,3) deg1@0.5406864664857399/(0,-3) deg1@0.5406864664857399/(0,-3)
+    8 x 4: marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    8 x 5: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0717967697244912 — deg3@1.0717967697244912/(3,-3) deg1@0.5406864664857399/(-3,3) deg3@1.0717967697244912/(3,0) deg1@0.5406864664857399/(-3,0)
+    8 x 6: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4658609468813386 — deg3@1.4658609468813386/(3,-3) deg1@0.5406864664857399/(-3,3) deg3@1.4658609468813386/(3,0) deg1@0.5406864664857399/(-3,0)
+    8 x 7: marks 70  deg 1/2/3+ = 0/70/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
   a closed rectangle is ONE closed chain in 7 of 25, and carries a JUNCTION in 17 of 25
+  a break away from any corner (> 1.5 units) in 2 of 25
+  and 76 of 80 breaks have another break exactly ONE HEX EDGE away
 
 …and what the cut rules above make of the two new closed shapes:
   cover  a wider room   : marks 50  deg 1/2/3+ = 3/47/1  chains 2  pieces 5  merged 5  stubs 0  over 0  run_edges 121  (n=7)[0-7:7/](n=43)[0-18:18/18-20:2/20-25:5/25-43:18/]
