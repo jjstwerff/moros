@@ -49,12 +49,38 @@ green (plan 26 `B2`) and one that will not build goes red everywhere.
 edit it did not make destroys its ability to tell its own work from yours; raise findings
 instead. ⚠ **`../loft` is READ plus FILE TICKETS, and nothing else** — no PRs, no closing or
 merging, no cloning-and-building, no *running* its binaries, and never mutating its working
-tree. Verify against the **installed** `/usr/local/bin/loft`, which is moros's own toolchain;
-reaching for `../loft/target/release/loft` is already over the line. When a loft fix is needed
+tree. Verify against **`loft` on `PATH`**, which is what `make` uses (`LOFT ?= loft`) and is
+`~/.local/bin/loft` here; reaching for `../loft/target/release/loft` **by that path** is still
+over the line — see the ⚠ below for what it is and is not. When a loft fix is needed
 here, note the dependency and wait for their branch — a cherry-pick PR was opened once, closed
 unmerged, and the maintainer landed it their own way, which is how it should go.
 `loft-libs-*` is shared and consumed from the **working tree**, so a new public name can turn
 a sibling's build red with no local edit — grep the sibling before adding one. Kill only processes you can identify as yours; this box runs other agents' work.
+
+⛔ **AND THIS RULE SAID `/usr/local/bin/loft` FOR MONTHS, WHICH CANNOT BUILD THIS TREE AT ALL.**
+Measured 2026-08-28: that binary is root-owned from **2026-08-16 23:08** and fails on every
+package here with `Library 'self' not found` at each `use self::` site. The `use self::<x>;`
+form is the fix for [loft#976](https://github.com/loft-lang/loft/issues/976) — the rule further
+down that `make fast`'s `tools/basenames.sh` **enforces** — so following the old sentence
+meant a toolchain that refuses the tree's own required idiom. It was never what anything ran:
+`LOFT ?= loft`, and `~/.local/bin` sits ahead of `/usr/local/bin` on `PATH`.
+
+⚠ **AND A VERSION CHECK CANNOT TELL THE TWO APART — BOTH SAY `loft 2026.8.0`.** Different
+binaries, different sizes, different behaviour, one version string. **`sha256sum` is the only
+instrument that answers**, which is this tree's own *a grep over a log is an instrument* one
+layer down: `loft --version` agreeing is not evidence that two boxes, two sessions or two
+agents ran the same compiler.
+
+⛔ **AND THE TOOLCHAIN ON `PATH` IS A COPY OF THE SIBLING'S RELEASE BUILD, SO IT MOVES WHEN
+THEY REBUILD.** `~/.local/bin/loft` is byte-identical to `../loft/target/release/loft`
+(same sha256, separate inode — a copy, not a link). **Measured: it was replaced mid-session on
+2026-08-28 at 23:44, six minutes after a commit whose every suite, sweep and probe had run on
+the previous copy.** Nothing was invalidated and nothing had been re-checked either, which is
+the honest reading of any green in this tree: **a passing run is a statement about the binary
+that was on `PATH` when it ran**, and `sha256sum $(which loft)` is how you say which one that
+was. ⚠ That is also why the path prohibition survives its own byte-identity: the file under
+`../loft/target/` is *being rebuilt* while you would be reading it, so running it races their
+`cargo build` in a way running your own copy does not.
 
 ⚠ **AND THEIR CI TAKES THE NATIVE LIBRARIES OUT FROM UNDER YOURS.** loft's own
 `make rebuild-native-cdylibs` empties `~/.loft/build-cache/<lib>-<ver>/release` and
