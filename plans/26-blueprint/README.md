@@ -288,6 +288,23 @@ that claims nothing NEW must not be taken, since that is the pass's only termina
 argument; and the LARGEST fitting shell must be taken first, because a smaller rim can
 lie inside a larger one's field and a greedy pass that took it would never close.
 
+**`B4w`** — **expected result**: two walls that CROSS draw **two** runs with nothing
+unexplained — at four geometries, a plus, a diagonal, an offset pair and a long/short pair
+— where `B4v` refuses all four with every mark counted. **Invariant**: *a run's endpoints
+are recovered where a wall can BEGIN, which is a chain end or a junction* — degree 1 or
+degree ≥ 3 over `hex_corner_tri_a`/`hex_corner_tri_b`, so the candidate set is exact
+integers and the acceptance is still `B4v`'s union. **Negative controls**: a **T** is a
+MEASUREMENT rather than a category — its stem ends at a continuous point on the crossbar's
+centreline, so it is recoverable exactly when the field's own corners carry it, and over
+eight stem positions **two close and six are refused with every mark counted**; the row must
+assert both halves per stem AND that both outcomes occur, or it is measuring a constant; the four crossings must each be
+measured to be ONE component first, or `B4u` already separates them and the step is about
+nothing; a candidate that claims nothing NEW must be skipped, since the pool does not
+shrink as the pass claims; the LONGEST fitting candidate must be taken, because a wall's
+own sub-run also fits within its marks and a short one would leave a remainder no end
+generates; and every `B4v`, `B4u` and `B4t` fixture must be unmoved, with the corpus as
+the control.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -330,6 +347,7 @@ as a byte.
 | **`B4t`** — two of a kind: the field split before any reader is asked | M | `peel.loft` — two houses answering `house;house;` and two walls `run;run;` with nothing left over, the village's order now the scan's, and **a component no reader explains still refused**; `planview.loft` — a house and two towers drawn as three with two circles, one structure still one description, and the `refused` caption state kept on a fixture that refuses structurally; `tools/scripts/b4t.keys` — five structures, five descriptions; five faults seen red, **one of them green** | ✅ **SHIPPED** `f982255` |
 | **`B4u`** — structures that TOUCH: the field split at the vertices its marks share | M | `peel.loft` — five touching pairs each drawn apart with nothing left over and each first measured to be ONE cell component; the flood pinned against the corner identity partition for partition; a lone house still one piece; a piece never crossing a cell component; and a wall MEETING a rim answering one run and a count, with the pair a cell further out as the control, and the house's residual unmoved by a tower ONE cell away where `B4o` measured that control at eight; `planview.loft` — two runs, a house and a disc with **no run over the rim**, and the interlocked pair's single description beside its own control; `tools/scripts/b4u.keys`; six faults seen red, **one of them green** | ✅ **SHIPPED** `e888590` |
 | **`B4v`** — a component no reader explains, partitioned by what a candidate accounts for | M | `peel.loft` — a wall MEETING a rim and two rims that meet each answering two descriptions with nothing over; two walls crossing still refused; a trial that reaches outside its component refused by the same one number; a candidate claiming nothing new refused; the largest shell taken first; `planview.loft` — the two pictures drawn and tallied, the crossed pair still `refused`, and a set that explains only PART of its component not drawn; `tools/scripts/b4v.keys`; eight faults swept, five red and **three green** | ✅ **SHIPPED** `67dba5a` |
+| **`B4w`** — a CROSSING: a run begins where the chain does | M | `peel.loft` — four crossing geometries each measured to be ONE component and each closing as two runs; three T stems with both outcomes asserted per stem and both required to occur; a sub-run never taken from the middle of a chain; a candidate already claimed not offered again; `planview.loft` — a crossing drawn as two runs, and a T that the trial reaches into and cannot close still `refused`; `tools/scripts/b4w.keys`; seven faults swept, six red | ✅ **SHIPPED** 04eaf12 |
 
 ### Why `B0` is one phase and not two
 
@@ -2921,6 +2939,95 @@ narrowing is the RUN reader**, which would have to enumerate the chain's ends an
 them — `hex_shape::wall_chain_ends` builds exactly that incidence and returns a **count**,
 which is the third time this plan has found the answer it needs inside a function that
 discards it (`set_connected` at `B4t`, the same function's degrees at `B4u`).
+
+## What `B4w` turned up
+
+**Shipped** 04eaf12. `hex_editor::run_within` + `corner_pool` + `run_span`, wired last in both
+trials; `tools/scripts/b4w.keys`. 3 rows in `peel.loft` and 1 in `planview.loft`, with two
+of `B4v`'s rows rewritten because this step supersedes them.
+
+![two walls that cross, both described](../../doc/claude/img-crossing-b4w.png)
+
+*`b4w.keys` — `desc run d0 p11 + run d6 p16`, with **nothing unexplained**, out of one
+component. `B4v` refused this with all 42 marks counted.
+`make plan-view WORLD=b4w Q0=-11 Q1=11 R0=-9 R1=9 REF=2.0`.*
+
+### A run has no parameter grid, and that is why `B4v` had no generator for it
+
+`disc_within` searches centres and shells because a disc HAS a grid. A run's endpoints are
+continuous world points, so there is nothing to enumerate — which is exactly why `B4v`
+refused a crossing while describing two rims that meet.
+
+✅ **A WALL CAN ONLY BEGIN WHERE THE CHAIN ENDS.** A free END is a vertex where exactly one
+mark meets — exact integers over `hex_corner_tri_a`/`hex_corner_tri_b`, the identity
+`wall_chain_ends` counts degrees with, which is the **third** time this plan has taken what
+that family computes and discards (`set_connected` at `B4t`, its degrees at `B4u`, its
+incidence here). The pool is a handful of corners, and it is generate-and-compare from
+there with `B4v`'s union test unchanged.
+
+⚠ **AND THE LONGEST CANDIDATE IS NOT A PREFERENCE HERE, UNLIKE THE DISC'S.** Every
+sub-run of a wall also lies within its marks, so a short candidate always fits and always
+leaves a remainder no pair of corners can generate — the union could then never close.
+`test_a_run_is_not_offered_from_the_middle_of_a_chain` measures that through the ANSWER
+rather than through the pool, because a count of corners cannot say which run came from it.
+
+### ⛔ Three guesses refuted before the generator, and the suite refuted the fourth
+
+| the guess | what measured it |
+|---|---|
+| split the marks at BRANCH vertices and read each piece | a crossing **shatters** into 5 pieces, two unreadable — and a lone house becomes **8** |
+| `hex_shape::wall_along_max` is "how far the wall runs" | it is a **wobble** metric; its own comment says it delivers no verdict |
+| pool the free ends of the REMAINDER | a junction stops being one the moment the first wall through it is claimed |
+| *"a T is not recoverable"* | ⛔ **the suite went red on it** — `B4v`'s tower-and-T fixture closed |
+| *"the junction clause is dead code"* | ⛔ deleting it looked confirmed by a timing that was **the machine** |
+| *"the junction clause is a cost surface"* | ⛔ the same timing, read the other way, and also wrong |
+
+⛔ **THAT LAST ONE IS THE FINDING.** The claim was written from ONE geometry. Measured over
+**eight** stem positions along one crossbar, **two close and six do not** — a T's stem ends
+at a continuous point on the crossbar's centreline, and it is recoverable exactly when the
+field's own corners happen to carry it. So the boundary is not *crossing vs T*: it is
+`FORMAL_CORE` §6's R1/R2 line showing itself in the field, and where the corners do not
+carry the point there is no exact answer to be had — only a fit, which §6 names as the trap.
+
+✅ **AND NEITHER OUTCOME IS WRONG**, which is what makes shipping it honest: a T that closes
+is described exactly, one that does not is refused with every mark counted, and the union
+test is the acceptance either way. `test_which_tee_junctions_close_is_measured_not_assumed`
+asserts both halves per stem, and that **both outcomes occur** — all-closed would mean the
+pool is finding runs it should not, all-refused that this step does nothing here.
+
+### The sabotage sweep, and the clause it deleted
+
+Seven faults, restored from copies, with the pool, the span test, the reader and the
+picture's use of it asserted present before row 0.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the run reader is never asked — `B4v`'s behaviour restored | `planview` |
+| 2 | the pool is free ENDS only — a junction is not a beginning | ⚠ **nothing** |
+| 3 | the pool admits the MIDDLE of a chain too | `peel` · `planview` |
+| 4 | the SHORTEST fitting candidate wins instead of the longest | `peel` · `planview` |
+| 5 | a candidate need not lie within the component's marks | `peel` · `planview` |
+| 6 | a candidate that accounts for nothing new is taken anyway | `peel` · `planview` |
+
+⛔ **ROW 2 IS GREEN AND THE CLAUSE STAYS.** *Ends **and junctions*** was the design;
+removing degree ≥ 3 changes no verdict, so nothing any fixture builds needs it. It is kept
+on the same footing as `B4v`'s row 5 and `B4t`'s row 3: *a wall can begin where another
+passes* is true of walls, and the fixtures merely cannot reach it.
+
+⛔ **AND THE CLAUSE WAS DELETED FOR THAT GREEN, THEN PUT BACK ON A NUMBER THAT WAS NOT
+EVIDENCE.** With it gone both suites ran past `loft test`'s 300-second deadline, which read
+as *the clause was a cost surface all along* — the row's own timings, 160 s + 138 s against
+a 107 s + 127 s control, seemed to confirm it. ⚠ **Both readings were wrong.** Restoring
+the clause left the code byte-identical to what the sweep had timed at 107 s and the file
+still hit the deadline, on a load of 2.5. **A wall clock measures the machine**, which
+`CLAUDE.md` says in one line and which this step ignored three times.
+
+✅ **THE REAL COST WAS THE ROW ITSELF.** `test_which_tee_junctions_close_is_measured_not
+_assumed` ran **seven** whole peels over a 37×37 window — **109 s of the file, on its own**.
+Three stems over the T's own extent carry the same claim, both outcomes included: **7 s**.
+⚠ The eight stems that established the two-of-eight count are a measurement, and this
+record is where a measurement belongs; a suite is for the claim it supports.
 
 ## Open questions
 

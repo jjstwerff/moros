@@ -138,9 +138,19 @@ shell-**0** disc — a circle of no radius over one cell's six edges — lies in
 a wall meeting a rim. The bound is `fit_shell`, the tower gesture's own predicate, which is
 R1's first half said out loud: *the shape is in the admitted set*.
 
-⛔ **THE RESIDUAL IS A CROSSING.** Two walls meeting at a vertex have four chain ends and no
-rim in them, so no set of shapes closes over them and every mark is counted. Narrowing that
-needs the run reader to enumerate the chain's ends and pair them.
+✅ **AND A CROSSING IS TWO RUNS — `B4w`.** A run has no parameter grid the way a disc has
+centres and shells, which is why `B4v` had no generator for it; but a wall can only BEGIN
+where the chain does — a free end or a junction — and those are a handful of exact corners.
+
+![two walls that cross, both described](img-crossing-b4w.png)
+
+⚠ **A `T` IS A MEASUREMENT RATHER THAN A CATEGORY, AND THE SUITE IS WHAT SAID SO.** The
+first statement of this was *"a T is not recoverable"*, written from one geometry; over
+**eight** stem positions along one crossbar, **two close and six do not**. A stem ends at a
+continuous point on the crossbar's centreline, and it is recoverable exactly when the
+field's own corners happen to carry it — `FORMAL_CORE` §6's R1/R2 line showing itself in the
+field. ⛔ **Neither outcome is wrong**: what does not close is refused with every mark
+counted, because the union test is the acceptance either way.
 
 ⚠ **THE SPLIT IS STILL ONE LEVEL DEEP, AND THAT IS TWO BEHAVIOURS RATHER THAN ONE GAP** —
 measured, not assumed. Two towers beside a house offer no ends at all, so the leftover is
