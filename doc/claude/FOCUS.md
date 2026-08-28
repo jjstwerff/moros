@@ -83,9 +83,11 @@ another break exactly one hex edge away (two edges for the other four). The step
 own `d = 0…5`, so *one edge* is an integer fact and a join rule needs no threshold.
 
 ⛔ **So `B1` is now a decision, not a search**: join chain ends across a one-edge break in
-the reader, or make `wall_stamp` leave the corner closed. ⚠ **And the control comes first** —
-joining ends one edge apart would also fuse two unrelated walls that merely pass close, and
-no fixture has a pair of those yet.
+the reader, or make `wall_stamp` leave the corner closed. ✅ **And the control for the join is
+built and green** — fourteen fixtures of two walls at gaps 0.2 … 2.6, collinear and parallel:
+**no unrelated pair has ends one hex edge apart** (nearest √3), while `8 × 3`'s four broken
+corners report four. ⚠ The instrument was checked against a fixture that has the thing, after
+the first version of the control passed for the wrong reason.
 
 ### The order of work
 

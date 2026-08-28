@@ -1060,6 +1060,88 @@ fn breaks_at(marks: EdgeSet, a: float, b: float, near: &integer, far: &integer,
   out
 }
 
+// ⛔ **THE CONTROL FOR A JOIN RULE THAT DOES NOT EXIST YET.** The sweep above says a break
+// is one hex edge wide, which suggests *two chain ends one hex edge apart are one chain*.
+// That rule would also fuse two walls that merely pass close, and no fixture here had a pair
+// of them — so this builds the pair and measures the same number for it. ⚠ **Built before
+// the rule**, because a control written afterwards is a control written to pass.
+fn chain_ends(marks: EdgeSet, ca: &vector<integer>, cb: &vector<integer>,
+              cw: &vector<integer>) {
+  n = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0).wc_n;
+  for c in 0..n {
+    ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, c);
+    if ch.wc_loop { continue; }
+    last = len(ch.wc_va) - 1;
+    if last < 1 { continue; }
+    ca += [ch.wc_va[0] ?? 0];  cb += [ch.wc_vb[0] ?? 0];  cw += [c];
+    ca += [ch.wc_va[last] ?? 0]; cb += [ch.wc_vb[last] ?? 0]; cw += [c];
+  }
+}
+
+fn one_edge(da: integer, db: integer) -> boolean {
+  (da == 0 && db == 3) || (da == 3 && db == 0) || (da == 3 && db == 0 - 3)
+    || (da == 0 && db == 0 - 3) || (da == 0 - 3 && db == 0) || (da == 0 - 3 && db == 3)
+}
+
+fn ends_report(tag: text, w: VoxelWorld) {
+  marks = marks_of(w);
+  total = edges_in(marks);
+  ca: vector<integer> = [];
+  cb: vector<integer> = [];
+  cw: vector<integer> = [];
+  chain_ends(marks, ca, cb, cw);
+  chains = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0).wc_n;
+  pairs = 0;
+  best = 1000.0;
+  ba = 0;
+  bb = 0;
+  for i in 0..len(ca) {
+    for j in i + 1..len(ca) {
+      if (cw[i] ?? 0) == (cw[j] ?? 0) { continue; }
+      da = (ca[j] ?? 0) - (ca[i] ?? 0);
+      db = (cb[j] ?? 0) - (cb[i] ?? 0);
+      dx = hex_shape::tri_x(da, db);
+      dy = hex_shape::tri_y(da, db);
+      d = sqrt(dx * dx + dy * dy) ?? 0.0;
+      if d < best { best = d; ba = da; bb = db; }
+      if one_edge(da, db) { pairs = pairs + 1; }
+    }
+  }
+  verdict = if pairs > 0 { "⛔ a one-edge join FUSES them" } else { "no one-edge pair" };
+  println("    {tag}: marks {total}  chains {chains}  ends {len(ca)}"
+        + "  nearest ends across chains {best} at ({ba},{bb})"
+        + "  one-edge pairs {pairs}  {verdict}");
+}
+
+// ⚠ **THE GAP IS SWEPT RATHER THAN GUESSED** — the first pair of fixtures put the two
+// walls two edges apart and the control came back green for the wrong reason, which is a
+// control that cannot fail wearing a control's clothes.
+fn near_pair(g: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 8.0, 0.0, 0.0 - g, 0.0);
+  wall_at(w, g, 1.0, 8.0, 1.0);
+  w
+}
+
+fn split_wall(g: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - 8.0, 0.0, 0.0 - g, 0.0);
+  wall_at(w, g, 0.0, 8.0, 0.0);
+  w
+}
+
+fn join_control() {
+  // ⚠ **THE INSTRUMENT IS CHECKED AGAINST A FIXTURE THAT HAS THE THING.** A control that
+  // reports *no one-edge pair* everywhere reads exactly like a control that cannot see one,
+  // and `8 x 3`'s four separate walls are known to have four of them.
+  ends_report("a broken corner — 8 x 3 ", rect(8.0, 3.0));
+  for k in 0..7 {
+    g = 0.2 + (k as float) * 0.4;
+    ends_report("collinear, gap {g}  ", split_wall(g));
+    ends_report("parallel,  gap {g}  ", near_pair(g));
+  }
+}
+
 fn fuse_sweep() {
   loops = 0;
   tried = 0;
@@ -1151,6 +1233,9 @@ fn main() {
   cyc_measure("a wider room   ", room2());
   cyc_measure("a triangle     ", triangle());
   cyc_measure("an L-shaped room", ell_room());
+  println("");
+  println("THE CONTROL FOR A JOIN RULE — does *one hex edge* separate the right things:");
+  join_control();
   println("");
   println("HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:");
   fuse_sweep();

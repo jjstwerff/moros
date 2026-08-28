@@ -194,6 +194,26 @@ is a **fork one edge from a free end** (`4 × 4`: `deg3` and `deg1`, one step ap
 falls short there are **two free ends one edge apart** (`8 × 3`, four separate walls). Both
 are the corner missing or gaining a single mark.
 
+### ✅ And the control for the join rule was built BEFORE the rule — and it passes
+
+*Two chain ends one hex edge apart are one chain* is the rule the width suggests, and it
+would also fuse two walls that merely pass close. **Fourteen fixtures**, two walls each at
+gaps of 0.2 … 2.6 world units, collinear and parallel:
+
+| | |
+|---|---|
+| unrelated pairs whose ends are one hex edge apart | ✅ **0 of 14** |
+| the nearest they ever come | **√3 ≈ 1.73**, usually exactly 2 |
+| ⚠ the instrument, checked against a fixture that HAS the thing | ✅ `8 × 3` reports **4** one-edge pairs — its four broken corners |
+
+⚠ **THE FIRST PAIR OF FIXTURES MADE THE CONTROL PASS FOR THE WRONG REASON.** They put the two
+walls *two* edges apart, so the rule was never tested; the gap is swept now, and the run that
+found it is the reason the instrument check above exists at all.
+
+⚠ **A hypothesis the data is consistent with, and which this does not prove**: two walls
+close enough for their ends to be one edge apart have already fused into one chain, so the
+dangerous case cannot arise. Fourteen fixtures in one family is a green, not a theorem.
+
 ### ⛔ And on a broken chain the minimum is NOT unique — this measurement's own prediction, refuted
 
 | the fixture | chains | pieces | distinct optimal partitions |
@@ -227,9 +247,10 @@ is where the fragments come from, and the fragments are what make the minimum am
 **So the next step is a decision with a number behind it**: join chain ends across a
 one-edge break in the reader, or make `wall_stamp` leave the corner closed. ⚠ Neither is
 measured yet — this probe says the gap is exactly one edge, not which end should close it.
-⛔ **And a join rule is not free**: joining two ends one edge apart would also fuse two walls
-that merely pass close, so whatever closes the corner owes the control this probe has not
-built — **two unrelated walls one edge apart must NOT become one chain**.
+✅ **AND THE CONTROL IS BUILT AND GREEN**: over fourteen fixtures of two walls at gaps
+0.2 … 2.6, collinear and parallel, **no unrelated pair ever has ends one hex edge apart** —
+the nearest is √3 — while `8 × 3`'s four broken corners report four such pairs. So the width
+does separate the two cases on everything measured.
 
 ## What it deliberately does not do
 
@@ -245,5 +266,5 @@ built — **two unrelated walls one edge apart must NOT become one chain**.
 - **It does not ask why a corner breaks.** The rate (7 of 25), the place (always a corner)
   and the width (one hex edge, 76 of 80) are measured; *why* the stamper lands one edge out,
   and which end should close it, are not.
-- **It does not build the join.** The control that would have to come with it — two
-  unrelated walls one edge apart staying two chains — does not exist here.
+- **It does not build the join.** Its control exists and is green; the rule itself, and the
+  decision of whether it belongs in the reader or in `wall_stamp`, do not.

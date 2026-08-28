@@ -3438,10 +3438,20 @@ is not where the loss is.
 one-edge break, or `wall_stamp` leaves the corner closed — the measurement says the gap is
 exactly one edge, and says nothing about which end owes the fix.
 
-⛔ **And the control comes with it, not after**: joining ends one edge apart would also fuse
-**two unrelated walls that merely pass close**, and no fixture here has a pair of those. That
-control is the first thing to build, before the rule it guards — this tree has now twice
-written a rule whose own test could not fail.
+✅ **AND THE CONTROL WAS BUILT FIRST, AND IT PASSES.** Joining ends one edge apart would also
+fuse two walls that merely pass close, so the pair was built before the rule: fourteen
+fixtures, two walls each at gaps 0.2 … 2.6 world units, collinear and parallel. **No
+unrelated pair has ends one hex edge apart** — the nearest they come is √3, usually exactly
+2 — while `8 × 3`'s four broken corners report **four** such pairs.
+
+⚠ **AND THE FIRST VERSION OF THAT CONTROL PASSED FOR THE WRONG REASON**: its two walls were
+*two* edges apart, so the rule was never tested. The gap is swept now, and the instrument is
+checked against a fixture that has the thing before its silence is believed — which is this
+tree's own rule, and it took a green reading to remember it.
+
+⚠ **A hypothesis this does not prove**: two walls close enough for their ends to be one edge
+apart have already fused into one chain, so the dangerous case cannot arise. Fourteen
+fixtures in one family is a green, not a theorem.
 
 ⚠ **The whole 25-rectangle sweep is three seconds and no `run_edges`**, because degrees,
 positions and chain counts do not need the acceptance test at all.

@@ -63,6 +63,23 @@ THE CYCLE, CUT WITHOUT A START — one table, every start asked against it:
   cyclic an L-shaped room: marks 58  chains 3  pieces 8  partitions 16  over 0  run_edges 794  (n=8)x1[0-8:8/] 1..1(n=35)x4[0-1:1/1-13:12/13-29:16/29-35:6/] 4..4(n=15)x4[0-1:1/1-7:6/7-15:8/] 3..3
       every start: [143]
 
+THE CONTROL FOR A JOIN RULE — does *one hex edge* separate the right things:
+    a broken corner — 8 x 3 : marks 50  chains 4  ends 8  nearest ends across chains 1 at (0,3)  one-edge pairs 4  ⛔ a one-edge join FUSES them
+    collinear, gap 0.2  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 0.2  : marks 18  chains 2  ends 4  nearest ends across chains 1.7320508075688772 at (3,3)  one-edge pairs 0  no one-edge pair
+    collinear, gap 0.6000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 1.7320508075688772 at (6,-3)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 0.6000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 1  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 1  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 1.4000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 1.4000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 3 at (9,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 1.8  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 1.8  : marks 14  chains 2  ends 4  nearest ends across chains 4.58257569495584 at (15,-3)  one-edge pairs 0  no one-edge pair
+    collinear, gap 2.2  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 2.2  : marks 14  chains 2  ends 4  nearest ends across chains 4.58257569495584 at (15,-3)  one-edge pairs 0  no one-edge pair
+    collinear, gap 2.6000000000000005  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 2.6000000000000005  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+
 HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:
     4 x 3: marks 34  deg 1/2/3+ = 3/31/1  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.1345426738990312 — deg3@1.1345426738990312/(3,-3) deg1@0.5991526087921623/(-3,3) deg1@0.5991526087921623/(0,3) deg1@0.5991526087921623/(0,-3)
     4 x 4: marks 36  deg 1/2/3+ = 2/32/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4884187277689946 — deg3@1.4884187277689946/(3,-3) deg1@0.5358983848622456/(-3,3) deg3@1.4884187277689946/(3,0) deg1@0.5358983848622456/(-3,0)

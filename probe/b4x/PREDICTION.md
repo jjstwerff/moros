@@ -118,3 +118,18 @@ at all?** The predictions for the sweep that followed, written before it ran:
 
 ⚠ **AND THE PREDICTION TABLE IS SHORT ON PURPOSE.** The width was the question; guessing it
 first would have made the sweep a confirmation instead of a measurement.
+
+## ⚠ The control, predicted before it was built — two walls that merely pass close
+
+The corner sweep says a break is one hex edge wide, which suggests a join rule: *two chain
+ends one hex edge apart are one chain*. **The control has to come first**, because that rule
+would also fuse two walls that have nothing to do with each other.
+
+| the fixture | prediction |
+|---|---|
+| two parallel walls one hex row apart, ends offset | ⛔ their nearest free ends are **also one hex edge apart** — so the naive rule fuses them |
+| two collinear walls with a one-edge gap | ✅ one hex edge apart, and here that is the right answer |
+
+⚠ **If both come back at one edge, the width is not enough to decide a join** and the rule
+needs the direction as well — which is the whole point of building the control before the
+rule it guards.

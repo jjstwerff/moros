@@ -496,7 +496,10 @@ address (or the hostname `make browser` prints) cannot connect.
   corner, none mid-wall, and 76 of 80 have another break exactly one edge away, the steps being
   `hex_edge_corners`' own six and nothing else. ⚠ **So *one edge* is an integer, not a radius** —
   and `B1` is a decision (join in the reader, or close the corner in `wall_stamp`) whose control
-  comes first: two unrelated walls one edge apart must NOT become one chain. ⚠ Read its §4 for the
+  comes first — and is **built and green**: 14 fixtures of two walls at gaps 0.2…2.6 give **no**
+  unrelated pair one edge apart (nearest √3) while `8 × 3`'s broken corners give four. ⚠ Its first
+  version passed for the wrong reason, which is why it now checks the instrument against a fixture
+  that HAS the thing before believing its silence. ⚠ Read its §4 for the
   instrument: every integration finding came from **writing the adopter's first program**, twelve
   lines against the public API, which surfaced two live defects 775 tests never asked about
 - [State](doc/claude/STATE.md) — **read first after a break**: where the editor work stands,
