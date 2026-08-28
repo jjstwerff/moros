@@ -218,6 +218,66 @@ probe measures the library and never re-derives it — `surface_of`'s integer bo
 one once, *"with the `Plan` taken out"*, and scored **worse than the float fit it was
 correcting**. `@HB-X29` and `X108` both show that shape today.
 
-⚠ **AND `dups` IS A DESIGN INSTRUMENT, NOT A GATE.** It lists; it does not fail. Two files
-claiming one rule is a question, and a checker that answered it automatically would be inventing
-the judgement the list exists to inform.
+### 6.3 ⛔ The verdict is the point — a row is a QUESTION, not a defect
+
+**The sub-goal `dups` serves is finding one algorithm written twice.** But two files claiming one
+rule are not automatically that, and deciding which is a judgement no checker can make. So every
+row gets a **verdict**, by hand, with the argument — `tools/dups.tsv`, one line each:
+
+| verdict | what it means |
+|---|---|
+| **`one`** | a genuine duplicate implementation — **an open debt**, merge it into one |
+| **`merged`** | it was `one`; the merge has landed |
+| **`broad`** | ⛔ **the RULE is too wide** — the two sites are different things, so sharpen or split it **upstream** |
+| **`constraint`** | the tag names a rule that **binds** many sites rather than an algorithm implemented once |
+| **`inherent`** | really two, and the difference belongs to the application |
+
+⚠ **`broad` IS THE ONE THAT MAKES THIS MORE THAN A LINT.** A rule cited by two sites that turn
+out to be different things is a rule stated at the wrong altitude — and the fix goes to the
+definition, never to the code. That is the same doctrine as [CLAUDE.md](../../CLAUDE.md)'s *a
+rule may be sharpened or extended upstream, never bent here*, arrived at from the other end.
+
+⚠ **AND THE FILE COUNT IS PART OF EACH VERDICT.** A verdict is about the sites somebody actually
+read; when a further file claims the rule the count stops matching and the row **re-opens**. That
+is how *"`@HB-X68` becomes a duplicate at three carriers"* is a mechanism rather than a hope.
+
+### 6.4 The docket, worked — and it contains no duplicates
+
+**All 11 rows carry a verdict, 2026-08-29**, and the result is worth stating because it is not
+the expected one:
+
+| verdict | rows | |
+|---|---|---|
+| `constraint` | **7** | `@HB-X69` `@HB-X70` `@HB-X31` `X2` `X108` `X109` `X111` — a rule with several obligations, plus the probe that measures it |
+| `inherent` | **4** | `@HB-X12` `@HB-X49` `@HB-X29` `@HB-X68` |
+| `one` | **0** | nothing here is one algorithm written twice |
+
+**Two of the `inherent` rows are the interesting ones:**
+
+- ✅ **`@HB-X12` is a SPLIT the rule itself describes** — the cell carries an id, the palette
+  carries the float — so both halves cite it. `moros_map/src/palette.loft` had already said so in
+  its own words: *"`@HB-X12` is the rule; this file is the other half of it."*
+- ✅ **`@HB-X49` is two DRIVERS of one gesture, and that was VERIFIED rather than assumed.** The
+  prose in `editor_run` and `editor_server` is near-identical, which is exactly the shape
+  [WALK_TICK](WALK_TICK.md) found had drifted once — a tick body written twice with the second
+  copy missing a clause. Checked: both reach `press_verb` → `tower_ring`, and
+  `hex_shape::arc_fill` is called only in `gesture.loft`. **One body, two drivers.**
+- ⚠ **`@HB-X68` is the watched one.** One doorstep contract — ordinal parameters get an offer,
+  nominal ones are refused without one — carried by `hex_editor::Fit` and `hex_part::SocketFit`,
+  which differ because each package answers in its own shape. A shared type needs a package below
+  both, and the name `Fit` has already collided across this graph. **A third carrier makes it
+  `one`**, and the file count in the docket is what will say so.
+
+### 6.5 The gate, and it was seen failing before it was trusted
+
+`python3 tools/citations.py dups --check` is in `make fast`. Three sabotage rows, each caught:
+
+| | |
+|---|---|
+| a verdict removed | ⛔ exit 1, `UNEVALUATED` |
+| a file count left stale at 3 while the code has 4 | ⛔ exit 1, `RE-OPENED — verdict constraint was over 3 file(s), now 4` |
+| a row set to `one` | ⛔ `open debt — a genuine duplicate to merge: @HB-X68` |
+| the docket restored | ✅ exit 0 |
+
+⚠ **`dups` WITHOUT `--check` STILL ONLY LISTS.** The gate asks whether a row has been *looked
+at*; it never decides what the answer is.

@@ -31,9 +31,21 @@
 #   check          every @HB- tag resolves upstream; every bare tag is defined here
 #   list           every upstream tag and whether this tree cites it
 #   sites <tag>    the sites citing one tag  (@HB-X47, or a bare local tag)
-#   dups           tags cited from 2+ CODE sites — the duplication question, asked by
+#   dups [--check] tags cited from 2+ CODE sites — the duplication question, asked by
 #                  MEANING rather than by code shape, and taken from `../loft2`'s
 #                  `rule_tags.py dups`
+#
+# ⚠ **A ROW IS A QUESTION, NOT A DEFECT, AND THE VERDICT IS WHAT MAKES IT WORTH ASKING.**
+# `tools/dups.tsv` carries one hand-written verdict per tag — `one` (a real duplicate, an
+# open debt), `merged`, `broad` (the RULE is too wide; sharpen it upstream), `constraint`
+# (the tag names a rule that BINDS many sites rather than an algorithm implemented once),
+# `inherent` (really two, and the difference belongs to the application).  `--check` fails
+# on a row with no verdict, so a new duplicate is evaluated rather than accumulated.
+#
+# ⚠ **AND THE FILE COUNT IS PART OF THE VERDICT.**  A verdict is about the sites somebody
+# READ.  When a further file claims the rule the count stops matching and the row returns
+# to the docket — which is how "this becomes a duplicate at three" is a mechanism instead
+# of a hope.
 #
 # ⚠ `dups` READS CODE ONLY, AND THAT IS THE WHOLE POINT.  A document may cite one rule
 # in five paragraphs and that is prose doing its job; two FUNCTIONS citing one rule are
@@ -160,6 +172,24 @@ def citations():
 # citing the same rule as a library function is exactly that shape, so it is listed and
 # labelled rather than filtered out.
 CODE = (".loft", ".mjs")
+DOCKET = os.path.join(ROOT, "tools/dups.tsv")
+
+
+def verdicts():
+    """tag -> (verdict, files-at-verdict, reason), from the hand-written docket."""
+    out = {}
+    try:
+        with open(DOCKET, encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("#") or not line.strip():
+                    continue
+                part = line.rstrip("\n").split("\t")
+                if len(part) < 4:
+                    continue
+                out[part[0]] = (part[1], int(part[2]), part[3])
+    except OSError:
+        pass
+    return out
 
 
 def role(rel):
@@ -199,6 +229,7 @@ def main():
         return 0
 
     if cmd == "dups":
+        strict = "--check" in sys.argv
         by = {}
         for tag, rel, n, text, up in citations():
             if not rel.endswith(CODE):
@@ -214,11 +245,26 @@ def main():
         if not rows:
             print("citations: no tag is claimed by two production files")
             return 0
+        vd = verdicts()
+        open_rows = []
+        debts = []
         print("citations: {} tag(s) claimed by two or more PRODUCTION files "
               "(tests shown as context)\n".format(len(rows)))
         for up, tag, sites in rows:
             name = "@HB-X{}".format(tag) if up else "X{}".format(tag)
             files = impls(sites)
+            got = vd.get(name)
+            if got is None:
+                mark = "⛔ UNEVALUATED — add a row to tools/dups.tsv"
+                open_rows.append(name)
+            elif got[1] != len(files):
+                mark = "⛔ RE-OPENED — verdict `{}` was over {} file(s), now {}".format(
+                    got[0], got[1], len(files))
+                open_rows.append(name)
+            else:
+                mark = "{}: {}".format(got[0], got[2])
+                if got[0] == "one":
+                    debts.append(name)
             print("{}  — {} production file(s), {} site(s)".format(name, len(files), len(sites)))
             for rel in files:
                 ns = [str(n) for r, n, _ in sorted(sites) if r == rel]
@@ -226,7 +272,14 @@ def main():
             ts = sorted({r for r, _, _ in sites if role(r) not in ("lib  ", "src  ", "probe")})
             if ts:
                 print("    …checked by {}".format(", ".join(ts)))
+            print("    {}".format(mark))
             print()
+        if debts:
+            print("⛔ open debt — a genuine duplicate to merge: {}".format(", ".join(debts)))
+        if open_rows:
+            print("⛔ {} row(s) need a verdict: {}".format(len(open_rows), ", ".join(open_rows)))
+            return 1 if strict else 0
+        print("dups: every row carries a verdict over the files it was written for")
         return 0
 
     if cmd == "sites":

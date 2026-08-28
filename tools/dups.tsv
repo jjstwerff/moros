@@ -1,0 +1,32 @@
+# The DUPLICATION DOCKET — one row per tag that two or more production files claim.
+# Written by hand; `python3 tools/citations.py dups` reads it, and `dups --check`
+# (in `make fast`) fails on a row that has none.
+#
+# ⚠ A ROW HERE IS A QUESTION THAT HAS BEEN ANSWERED, NOT A DEFECT.  Two files citing
+# one rule may be one algorithm written twice — or one CONSTRAINT binding both, or two
+# halves of a split the rule itself describes.  The verdict says which, with the
+# argument, so nobody re-derives it next session.
+#
+# ⚠ AND THE FILE COUNT IS PART OF THE VERDICT.  A verdict is about the sites that were
+# READ; when a new file claims the rule, the count no longer matches and the row goes
+# back on the docket.  That is what makes "this becomes a duplicate at three" a
+# mechanism rather than a hope.
+#
+#   one         a genuine duplicate implementation — an open debt, merge it
+#   merged      it was `one`; the merge has landed
+#   broad       the RULE is too broad — the two sites are different things, sharpen it upstream
+#   constraint  the tag names a rule that BINDS many sites, not an algorithm implemented once
+#   inherent    really two, and the difference belongs to the application
+#
+# tag	verdict	files	reason
+@HB-X69	constraint	6	Thickness is palette-side, so a cell stores an id. That binds the palette reader, the selection, the wire, the plan's stroke, the octagon body and the field — six sites obeying one constraint, none of them an algorithm.
+@HB-X70	constraint	4	An opening is never absence. It binds the gesture that makes one, the session that picks its material, the mesher that draws it and the wire message — four obligations, one rule.
+@HB-X31	constraint	2	No odd multiple of 15 degrees exists. One library site obeys it; probe/h1 MEASURES it, which is the validation the rule asks for, not a second implementation.
+X2	constraint	2	`WS_CONCURRENT` is declared once in hex_voxel; editor_server is its one consumer, discussing the case it names.
+X109	constraint	2	The authoring residual bound. session obeys it, probe/m1p measures it.
+X111	constraint	2	One upstream fact — the in-between period is 6.245 wu — justifying two independent choices: the reach's UNIT in session, and why the aim refusal is reachable in hex_editor. Neither computes it.
+X108	constraint	5	The agreement law binds `aim` and `run` and forbids mixing them in one gesture; probe/m2p measures the agreement. Four obligations plus its measurement.
+@HB-X12	inherent	5	The rule describes a SPLIT — the cell carries an id, the palette carries the float — so both halves cite it. `moros_map/src/palette.loft` says so in its own words: "`@HB-X12` is the rule; this file is the other half of it."
+@HB-X49	inherent	5	Two DRIVERS of one gesture, verified rather than assumed: `editor_run` and `editor_server` both reach `press_verb` -> `tower_ring`, and `hex_shape::arc_fill` is called only in gesture.loft. The prose is near-identical; the code is one body.
+@HB-X29	inherent	4	Two probes asking different questions of one fact: probe/h1 asks whether the bias is UNIFORM, probe/m1p asks what authoring RESOLUTION follows from it. Two libraries cite the fact without deriving it.
+@HB-X68	inherent	3	⚠ WATCHED. One doorstep contract (ordinal offers, nominal refuses without one) carried by two structs — `hex_editor::Fit` and `hex_part::SocketFit` — which differ because each package answers in its own shape (a sentence plus ok, versus a code). A shared type needs a package below both, and the name `Fit` has already collided across this graph. A THIRD carrier makes this `one`.

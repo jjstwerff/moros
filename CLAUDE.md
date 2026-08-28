@@ -293,6 +293,23 @@ and gate scripts — a rule being CHECKED sixteen times is the system working. *
 implementation cannot be found by `dups`, and the second one gets written by somebody who could
 not see the first.**
 
+⛔ **AND A `dups` ROW IS A QUESTION WITH THREE HONEST ANSWERS, SO EVERY ONE CARRIES A VERDICT** —
+`tools/dups.tsv`, hand-written, checked by `dups --check` in `make fast`. **`one`**: really one
+algorithm written twice — an open debt, merge it. ⛔ **`broad`**: the two sites are different
+things, so **the RULE is at the wrong altitude** and the fix goes to the definition **upstream**,
+never to the code. **`inherent`**: really two, and the difference belongs to the application.
+(Plus `constraint` — the tag names a rule that BINDS many sites rather than an algorithm — and
+`merged`.) ⚠ **THE FILE COUNT IS PART OF THE VERDICT**, so a third claimant **re-opens** a row
+settled at two: that is how *"`@HB-X68` becomes a duplicate at three carriers"* is a mechanism
+instead of a hope.
+
+⚠ **AND THE FIRST FULL DOCKET FOUND NO DUPLICATES, WHICH IS THE RESULT WORTH KNOWING** — 11 rows,
+7 `constraint`, 4 `inherent`, **0 `one`**. Two are worth reading: `@HB-X12`'s two files are the
+two halves of a split *the rule itself describes*, and `@HB-X49`'s two drivers were **verified**
+to reach one `tower_ring` rather than assumed — near-identical prose over one body, which is
+exactly the shape [WALK_TICK](doc/claude/WALK_TICK.md) found had drifted once. **A green docket is
+a statement that somebody looked, not that nothing was there.**
+
 ⚠ **SO OUR OWN 24 HEADINGS ARE AN INVENTED ALGORITHM ALREADY SHIPPED, AND MY CORRECTION OF IT WAS
 WRONG TOO.** `hex_editor::HEADINGS = 24` with `WALL_SNAP = 2*pi/24` and an `atan2` asks for
 directions that **do not exist** — `X31`: *no odd multiple of 15° is reachable at all*. But the
