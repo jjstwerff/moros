@@ -1960,8 +1960,14 @@ fn local_step(st: Client, sess: hex_editor::EditSession) -> hex_editor::TickOut 
   // and the library therefore cannot ask what is under the feet. The page has a
   // mesher, so the page hands one in — the same seam `cliff_edges` takes its terrain
   // by, and the same call `local_fall` used to make inline.
+  // ⚠ **THE PUSH ARRIVES AS ONE BOOLEAN — `WALL_PUSH` `G2`.** The page has no gesture
+  // of its own here and must not grow one: `press_verb` flipped `es_pushing` and
+  // `walk_tick` performs the transfer, so the page's `2` and the server's `2` are one
+  // body. This module's own history is the argument — the level stamp was missing from
+  // this file entirely, and `l` reported a success it had not performed.
   hex_editor::walk_tick(st.wk, st.cache, sess.es_runs, LOCAL_COLL_R,
                         hex_editor::walker_step(st.cache.w_unit), hex_editor::LEVEL_R,
+                        sess.es_pushing,
                         fn(gx: float, gz: float, gref: float) -> float {
                           hex_mesh::ground_under(st.cache, gx, gz, gref) })
 }

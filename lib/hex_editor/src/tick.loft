@@ -45,6 +45,11 @@ use self::gesture;
 use self::pose;
 use self::walk;
 use self::fall;
+// ⛔ **FOR `session_push`, AND FOR NOTHING ELSE — `WALL_PUSH` `G2`.** The subject of a
+// push is the material under the author's feet, and that rule already has a body. A tick
+// that decided it again would be this module's own founding defect, one gesture over:
+// every primitive was shared and only the sequencing was written twice.
+use self::session;
 
 use hex_edge;
 use hex_way;
@@ -135,7 +140,23 @@ pub struct TickOut {
   // The proxy was rebuilt this tick. A driver that keeps its OWN derived set over
   // the same key — the server's camera set is the one — refreshes it on this rather
   // than writing the key out a second time.
-  tk_rebuilt: boolean
+  tk_rebuilt: boolean,
+  // ── WHAT THE PUSH DID — `WALL_PUSH` `G2` ──────────────────────────────────
+  //
+  // ⚠ **`tk_pushed` IS *A CELL WAS TAKEN*, NOT *THE MODE IS ON*.** Holding the toggle
+  // against a cell already in the set is the ordinary state of the gesture — you are
+  // standing still, or walking through ground you just took — and it writes nothing.
+  // A driver marks its dirty region on this, so a flag that meant *the mode is on*
+  // would re-mesh a neighbourhood thirty times a second for a world that did not move.
+  tk_pushed: boolean,
+  tk_pq: integer,
+  tk_pr: integer,
+  tk_pmarks: integer,      // edge bytes the boundary followed with — law L1
+  // ⚠ **A REFUSAL EVERY TICK IS ONE REFUSAL**, so this carries the sentence and the
+  // driver decides how often to say it. `level_warned` is the shape: the stamp reports
+  // per footfall and the server speaks once per run.
+  tk_prefused: boolean,
+  tk_psay: text
 }
 
 // A walker standing at a point, with an empty proxy that the first tick builds.
@@ -208,9 +229,12 @@ pub fn walk_proxy(wk: Walker, w: VoxelWorld, runs: WallRuns,
 // world is `c96b2ce7a569fa2dd88577a71a507f48` either way.
 pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
                  reach: integer, step_max: integer, level_r: integer,
+                 pushing: boolean,
                  gnd: fn(float, float, float) -> float) -> TickOut {
   out = TickOut { tk_moved: false, tk_dirty: false, tk_dq: 0, tk_dr: 0, tk_drad: 0,
-                  tk_clamped: 0, tk_residual: 0, tk_owed: 0, tk_rebuilt: false };
+                  tk_clamped: 0, tk_residual: 0, tk_owed: 0, tk_rebuilt: false,
+                  tk_pushed: false, tk_pq: 0, tk_pr: 0, tk_pmarks: 0,
+                  tk_prefused: false, tk_psay: "" };
   out.tk_rebuilt = walk_proxy(wk, w, runs, reach, step_max);
   ref_u = wk.wk_csurf as float;
   dt = tick_dt();
@@ -281,6 +305,41 @@ pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
         out.tk_owed = slope_owed(w, nq, nr);
       }
       wk.wk_y = (wk.wk_level_h as float) * w.w_unit;
+    }
+  }
+
+  // ── THE PUSH — `WALL_PUSH` `G2`, and it is EVERY TICK ───────────────────
+  //
+  // ⛔ **NOT once per hex entered, which is the level stamp's trigger three lines up,
+  // and the difference is a DEADLOCK rather than a preference.** The thing a push
+  // moves is the thing stopping the walk: the author is pressed against the wall, so
+  // no new hex is ever entered, so a per-hex trigger would never fire and the wall
+  // would never give way. The gesture would hang on itself.
+  //
+  // ⚠ **AND *ONCE PER HEX* WAS EARNED FOR A REASON THAT DOES NOT APPLY HERE.** The
+  // level stamp is per hex *"so how fast you walk cannot change the shape of the
+  // ground you leave"*. A push cannot be sped up: `tick_dt()` is a constant by law, so
+  // there is no faster tick to outrun the gesture with — and taking a cell already in
+  // the set writes NOTHING (`push_cell`'s `already`, which is why it is not a
+  // refusal), so a thousand ticks standing still take exactly the one cell one tick
+  // takes. The idempotence is what makes the per-tick trigger safe.
+  //
+  // ⚠ **AFTER THE WALK, SO THE CELL IN FRONT IS IN FRONT OF WHERE YOU NOW ARE.** The
+  // collision proxy was built at the top of this tick and does not see this write, so
+  // the wall this push clears releases the walk on the NEXT tick — `walk_proxy` keys
+  // on `w_tau`, which this moves. One tick of lag, and it is the only ordering this
+  // gesture can have.
+  if pushing {
+    pu = session_push(w, author_at(wk.wk_x, wk.wk_z, wk.wk_yaw, wk.wk_y));
+    if !pu.pu_ok {
+      out.tk_prefused = true;
+      out.tk_psay = pu.pu_say;
+    } else if pu.pu_new {
+      out.tk_pushed = true;
+      out.tk_pq = pu.pu_q;
+      out.tk_pr = pu.pu_r;
+      out.tk_pmarks = pu.pu_marks;
+      out.tk_moved = true;
     }
   }
 

@@ -3705,6 +3705,8 @@ fn main() {
   // author. Same shape as the pair itself: two questions, two answers.
   level_stalled = false;
   roading = false;             // laying road as the character walks
+  // The last push refusal broadcast, so an identical one is not broadcast again.
+  push_warned = "";
   // ⚠ WATER IS A MODE LIKE ROAD AND ITS ROUTE IS NOT — plan 20 `A10`. *When there are
   // hills already it takes the lowest path, but without them we still have to draw them
   // like a road.* So the gesture is a road's — walk and it lays — and the DIRECTION at
@@ -6766,9 +6768,33 @@ fn main() {
       // that it is called here, once per `TICK_US` of simulated time, is the one thing
       // about the tick that is a fact about this driver rather than about the walker.
       tk = hex_editor::walk_tick(wk, wld, sess.es_runs, COLL_R, cliff_step(), hex_editor::LEVEL_R,
+                                 sess.es_pushing,
                                  fn(gx: float, gz: float, gref: float) -> float {
                                    hex_mesh::ground_under(wld, gx, gz, gref) });
       if tk.tk_moved { moved = true; }
+      // ── WHAT THE PUSH LEFT FOR THIS DRIVER — `WALL_PUSH` `G2` ────────────
+      //
+      // ⚠ **A RADIUS OF TWO, BECAUSE THE WRITE IS ONE CELL AND ITS SIX EDGES** — and
+      // three of those six are stored on the NEIGHBOUR, which is `place_house`'s own
+      // finding about a restore window: *a set smaller than the write set leaves walls
+      // standing round nothing*. One further out costs nothing and cannot be short.
+      if tk.tk_pushed {
+        mark_dirty(dirty, tk.tk_pq, tk.tk_pr, 2);
+        moved = true;
+      }
+      // ⚠ **ONCE PER RUN, THE WAY THE LEVEL WARNINGS ARE.** A held push against a
+      // doorway refuses on every tick, and a per-tick broadcast is a stream of one
+      // sentence. It re-arms when the refusal stops, so walking off the doorway and
+      // back onto it says so again.
+      if tk.tk_prefused {
+        if tk.tk_psay != push_warned {
+          push_warned = tk.tk_psay;
+          srv.broadcast("S:push refused — {tk.tk_psay}");
+          println("editor: push refused — {tk.tk_psay}");
+        }
+      } else {
+        push_warned = "";
+      }
       // ── WHAT THE LEVEL STAMP LEFT FOR THIS DRIVER TO DO ──────────────────
       //
       // Mesh the disc, and say the two things the author is owed. Both reports are

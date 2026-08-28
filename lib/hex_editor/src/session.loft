@@ -236,6 +236,25 @@ pub struct EditSession {
   // round on the body alone would build the ring it already built. The size is a
   // choice, and this is where it is remembered.
   es_shell: integer = TOWER_SHELL_DEFAULT,
+  // ── ⛔ THE PUSH IS HELD, NOT PRESSED — `WALL_PUSH` §3 `G2` ──────────────────
+  //
+  // **A mode, not a selection**, so it sits with `es_draft` rather than with the seven
+  // above it: those answer *what this author has chosen*, this one answers *what this
+  // author is in the middle of doing*. A run is two presses and keeps its draft here
+  // for the same reason.
+  //
+  // ⛔ **AND IT IS A VERB'S MODE RATHER THAN A WIRE MESSAGE, WHICH IS THE WHOLE POINT
+  // OF PUTTING IT HERE.** `levelling` and `roading` are the two modes this editor
+  // already has and BOTH are driver-local booleans behind their own message ids — so
+  // each driver decides for itself what the key means, which is the four-site
+  // divergence [EDITING_MODES](../../../doc/claude/EDITING_MODES.md) names. `press_verb`
+  // flips this one, so `2` means the same thing in the server, on the page and in the
+  // runner because there is one body that decides.
+  //
+  // ⚠ **THE TICK READS IT AS A BOOLEAN PARAMETER, NEVER THIS STRUCT.** `walk_tick`'s
+  // invariant is that a tick is a function of *(world, walker, held keys)*; handing it
+  // a session would let it reach for eight registries it has no business in.
+  es_pushing: boolean = false,
 }
 
 // A session over a fresh world, at the constants the editor uses.

@@ -90,11 +90,34 @@ const COLL_R = 8;
 // walker can climb is a property of the figure against the world it stands in.
 fn run_ticks(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, n: integer,
              last: &integer) {
+  // The last refusal spoken, so an identical one is not spoken again.
+  push_said = "";
   for _t in 0..n {
-    hex_editor::walk_tick(wk, w, sess.es_runs, COLL_R,
+    // ⚠ **THE MODE IS THE SESSION'S AND THE TICK IS THE LIBRARY'S — `WALL_PUSH` `G2`.**
+    // `press_verb` flips `es_pushing`, `walk_tick` performs the transfer, and this
+    // driver hands one boolean across. Everything a person could get wrong about what
+    // `2` means is on the other side of that line.
+    rt_tk = hex_editor::walk_tick(wk, w, sess.es_runs, COLL_R,
                           hex_editor::walker_step(w.w_unit), hex_editor::LEVEL_R,
+                          sess.es_pushing,
                           fn(gx: float, gz: float, gref: float) -> float {
                             hex_mesh::ground_under(w, gx, gz, gref) });
+    // ⚠ **ONE LINE PER CELL TAKEN, AND NOTHING WHILE THE GESTURE IS MERELY ON.** A
+    // held push against ground it has already taken writes nothing (`push_cell`'s
+    // `already`), so `tk_pushed` is the only thing that could produce a line — a
+    // runner that logged the MODE would print thirty identical rows a second and
+    // `probe/k3d` would baseline the noise.
+    if rt_tk.tk_pushed {
+      println("  push ({rt_tk.tk_pq},{rt_tk.tk_pr}) {rt_tk.tk_pmarks} wall edges");
+    }
+    // ⚠ **AND A REFUSAL ONCE, NOT PER TICK.** Standing in a doorway with the toggle on
+    // refuses every tick for the same reason; the runner's record is a transcript, so
+    // the second identical line is noise the first already carried.
+    if rt_tk.tk_prefused && rt_tk.tk_psay != push_said {
+      push_said = rt_tk.tk_psay;
+      println("  push refused — {rt_tk.tk_psay}");
+    }
+    if !rt_tk.tk_prefused { push_said = ""; }
     say_mode(w, wk, sess, last);
   }
 }

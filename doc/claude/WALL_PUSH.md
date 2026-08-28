@@ -250,7 +250,7 @@ houses into linework. *Falsified by* a swept face that no longer reads as `house
 
 ---
 
-## 3. The gesture  ✅ built
+## 3. The gesture  ✅ built — `G1` and `G2`
 
 **G1 Push is a VERB, not a key.** ✅ `VB_PUSH`, the eighteenth entry of `the_vocabulary()`,
 bound to `2`. ⛔ **It may not spend one of the freed letters, and the suite said so.** `P` was
@@ -262,12 +262,56 @@ verb, the wire carries the verb, and *verb + mode + selection* binds to the gest
 joins `the_vocabulary()` as an 18th entry — `keymap.loft` and `verb.loft` both refuse a verb
 that is not in that list, which is the check that keeps the four sites from diverging.
 
-**G2 It is a HELD toggle over a WALK, and the tick is shared.** One transfer per tick while
-contact and facing hold; the body belongs in `hex_editor::tick.loft` beside the walk, so the
+**G2 It is a HELD toggle over a WALK, and the tick is shared.** ✅ **Built.** One transfer per
+tick while the toggle holds; the body is in `hex_editor::tick.loft` beside the walk, so the
 server, the page and `editor_run` get it from one place — [WALK_TICK](WALK_TICK.md)'s whole
-finding is that writing the tick twice loses a clause. This is the sense in which it works
-*like drawing a road*: the unit is a tick and the author's path is what makes it a wall
-rather than a dent (L11).
+finding is that writing the tick twice loses a clause.
+
+⛔ **THE TRIGGER IS EVERY TICK AND NOT ONCE PER HEX, AND THE DIFFERENCE IS A DEADLOCK
+RATHER THAN A PREFERENCE.** The level stamp three lines away in the same function fires
+*once per hex ENTERED* — *"so how fast you walk cannot change the shape of the ground you
+leave"* — and a push cannot borrow that rule, because **the thing a push moves is the thing
+stopping the walk**. The author is pressed against the wall, so no new hex is ever entered,
+so the trigger would never fire and the wall would never give way: the gesture hangs on
+itself.
+
+✅ **AND WHAT MAKES PER-TICK SAFE IS `push_cell`'s `already`, NOT A GUARD.** Taking a cell
+that is in the set writes nothing, so a thousand ticks standing still take the one cell one
+tick takes — measured, with `w_tau` unmoved. The other half is that `tick_dt()` is a
+constant by law, so there is no faster tick to outrun the gesture with. **Idempotence is
+what buys the trigger the level stamp had to earn with a hex key.**
+
+⚠ **AND IT IS A VERB'S MODE, NOT A WIRE MESSAGE.** `levelling` and `roading` are the two
+modes this editor already had and **both are driver-local booleans behind message ids of
+their own**, so each driver decides for itself what the key means — the four-site divergence
+[EDITING_MODES](EDITING_MODES.md) names. `press_verb` flips `es_pushing`, so `2` means the
+same thing in the server, on the page and in the runner because one body decides.
+
+⚠ **THE ARMING PRESS STILL TRANSFERS, AND THAT IS NOT A CONVENIENCE.** The author is
+standing against the wall — that is how they came to press the key — and the wall is what
+stops their walk. A toggle that only armed would leave them pressed to a wall that has not
+moved, waiting for a step the wall forbids.
+
+⛔ **IT DOES NOT PAY L11, AND THE REASON IS THE CONTROLS RATHER THAN THE GESTURE.** `W`
+walks along the facing and `cell_ahead` takes the cell along the facing, so **you can only
+push in the direction you walk**. Walking into a wall drives a **one-cell corridor** through
+it; sweeping a face would mean walking ALONG the face while facing it, and this editor has
+no input for that — there is no strafe, and A/D turn. Measured both ways: every cell a
+pushed walk takes lies on the walk's own line, and `house_recover` reads a house before the
+walk and refuses it after. **That is L11's own falsification sentence, run as a measurement
+rather than as a warning.**
+
+⚠ **AND THE CORRIDOR IS NOT STRAIGHT WHEN THE WALL IS NOT SQUARE TO IT.** `tools/scripts/push.keys`
+walks into a house placed at facing 30 and the eight cells taken wander by three rows,
+because `walk_to` slides along a surface it cannot cross and the corridor follows the slide.
+Stable, deterministic, and what a person actually gets.
+
+⛔ **AND THE ROAD — THE GESTURE THIS PARAGRAPH USED TO CITE AS ITS MODEL — IS NOT DRIVEN BY
+A WALK AT ALL.** `road_lay` has exactly **one** call site in the tree and it is inside
+`editor_server.loft`'s `MSG_PLACE` handler, so holding the road toggle and *walking* lays
+nothing; only a teleport does. The page has no `road_lay` at all. So *"it works like drawing
+a road"* was a comparison to something that does not work that way, and the sentence is
+removed rather than repaired. [EDITOR_DEFECTS](EDITOR_DEFECTS.md).
 
 **G3 The blueprint and the world are the same gesture.** [BLUEPRINT](BLUEPRINT.md) §0's plan
 view authors with `pick <x>,<y> <verb>` against the same store; only the author's position
@@ -353,6 +397,8 @@ that makes it worth having: **every line below is a measurement in
 | the mechanic | `push_cell` — one cell across the boundary, at the source's height |
 | the subject | `session_push` — the material under the author's feet, so a road, a room floor and a tunnel are one gesture with no branch |
 | the verb | `VB_PUSH`, the eighteenth of `the_vocabulary()`, bound to `2` |
+| **`G2`** the held toggle | `press_verb` flips `es_pushing`; `walk_tick` performs one transfer per tick; all three drivers carry one boolean across. ⛔ Every tick and **not** once per hex — the thing a push moves is the thing stopping the walk, so a per-hex trigger would never fire. ✅ Safe because `push_cell`'s `already` writes nothing: a thousand ticks standing still take the one cell one tick takes, `w_tau` unmoved |
+| the driver join | `tools/scripts/push.keys` — the library tests call `walk_tick` directly and cannot see whether a driver carries the mode. Baselined by `probe/k3d`, and blessing it wrote **one** baseline: no other script's world moved |
 | **L1** derivation | `boundary_follow` — the six edges of the transferred cell, compared against `hex_draw::draw_walls` edge for edge |
 | **L2** unit | one cell, one of the author's own six neighbours |
 | **L3** cost | `pu_dn = 6 − 2k`, against an independently counted boundary, over four pushes so `k` varies |
@@ -365,13 +411,13 @@ that makes it worth having: **every line below is a measurement in
 
 | | |
 |---|---|
-| **G2 — the held toggle** | one press is one transfer. There is no arm-walk-release and no body in `tick.loft`, so the gesture is a **poke** today and L11 is the law that says what that costs. This is the next step, and [WALK_TICK](WALK_TICK.md) is where the body goes |
-| **L11 — a sweep preserves the description** | follows G2. Nothing refuses a poke, and `B4x`'s chain cut now reads the resulting bump *exactly*, so the degradation is silent and complete |
+| ⛔ **L11 — a sweep preserves the description** | **`G2` was supposed to pay this and does not, and the reason is the CONTROLS.** `W` walks along the facing and `cell_ahead` takes the cell along the facing, so **you can only push in the direction you walk**: a walk drives a one-cell **corridor**, which is the dent L11 refuses. Sweeping a face means walking ALONG it while facing it, and this editor has no strafe — A/D turn. Measured both ways: every cell a pushed walk takes lies on the walk's own line, and `house_recover` reads a house before and refuses it after. ⚠ **So the next step is an INPUT question, not a gesture one**, and that is the finding `G2` bought |
 | **L6 — partition**, **L7 — yield** | ⛔ **not reachable at all, and measured saying so.** Membership is the MATERIAL, so two rooms of one floor are ONE set: standing in room A facing room B, the cell ahead is already in the set and the gesture answers `already`. The request's third case — *an internal partition slides* — needs §6's open question answered first, and the test row that pins this goes red the day it is |
 | **L8 — connectivity** | no refusal exists. `push_cell` refuses `nothing ahead` and R6, and nothing else — R1–R5 are all unbuilt, so a push can breach a closed enclosure and nothing says so |
 | **L9 — features ride** | R6 is the placeholder, not the answer. An opening is a span on the wall's surface (`@HB-X12`) and the store's edge is one byte holding both |
 | **the filed `WallRun` records** | ⛔ **not maintained, and this is the one to read before looking at a pushed house.** `place_house` files four runs and [EDITOR_DEFECTS](EDITOR_DEFECTS.md) 4 measured that **every wall is drawn twice** — once round the hex edges from the store, once straight from the run. A push moves the store's marks and leaves the run where it was, so the two drawings come apart. The defect is not this document's; the consequence is |
 | **the ground** | §6's second bullet, untouched: a grown footprint does not extend the pad, and *push-then-hill* is still an unmeasured order in [TERRAIN_EDITS](TERRAIN_EDITS.md)'s divergence table |
+| ⛔ **the road, which is not this document's and is worth knowing anyway** | `G2` used to cite the road as its model — *"it works like drawing a road"*. `road_lay` has **one** call site in the tree and it is inside `editor_server.loft`'s `MSG_PLACE` handler, so holding the road toggle and *walking* lays nothing; only a teleport does, and the page has no `road_lay` at all. The corpus never noticed because its scripts drive the character with `at`. [EDITOR_DEFECTS](EDITOR_DEFECTS.md) |
 
 ### ✅ The sabotage sweep, and the row that refuted its own prediction
 

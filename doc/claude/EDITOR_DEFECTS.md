@@ -312,6 +312,15 @@ where it was. ⚠ **It is this defect and not a new one**: with a single drawing
 be nothing to diverge, and the fix is the same fix. Named in
 [WALL_PUSH](WALL_PUSH.md) §7 so nobody looks at a pushed house and reports it twice.
 
+⛔ **AND WHILE LOOKING FOR IT: `road_lay` HAS ONE CALL SITE AND IT IS A TELEPORT — 2026-08-28.**
+`hex_editor::road_lay` is called from exactly one place in the tree,
+`src/editor_server.loft`'s `MSG_PLACE` handler. So **holding the road toggle and walking
+lays no road**; only an `at` does. The page has no `road_lay` at all, so a road cannot be
+laid there by any means. ⚠ **The corpus could not see it**: its scripts drive the character
+with `at`, which is the one path that works. Found while building `WALL_PUSH` `G2`, whose
+own text cited the road as *the* model for a gesture held over a walk — the model does not
+work that way.
+
 ---
 
 ## 5. After a reload the straight walls are gone

@@ -590,8 +590,19 @@ address (or the hostname `make browser` prints) cannot connect.
   definition stays `hex_draw::draw_walls`' and is compared against, never copied. ⚠ **The id is
   CARRIED and `0` is an answer**: no wall in front means nothing is written, which is why a road
   is byte-identical *and* why a road laid past a stranger's house cannot rub its wall out.
-  ⛔ **Read its §7 for what is NOT built, which is where the value is** — the gesture is still a
-  **poke** (`L11` unpaid), an internal partition is **not reachable at all** because membership
+  ✅ **`G2` IS BUILT — the toggle is HELD over a walk**, `press_verb` flipping the mode and
+  `walk_tick` performing one transfer per tick, so `2` means the same thing in all three
+  drivers. ⛔ **Every tick and NOT once per hex, and the difference is a deadlock**: the thing a
+  push moves is the thing stopping the walk, so the level stamp's per-hex trigger would never
+  fire — and what makes per-tick safe is `push_cell`'s `already` writing nothing, not a guard.
+  ⛔ **It still does not pay `L11`, and the reason is the CONTROLS rather than the gesture**:
+  `W` walks along the facing and the push takes the cell along the facing, so **you can only
+  push where you walk** — a walk drives a one-cell CORRIDOR and `house_recover` refuses the
+  house after it. Sweeping a face needs walking ALONG it while facing it, and there is no
+  strafe, so **the next step is an input question**. ⛔ **And the road it cited as its model is
+  not driven by a walk at all** — `road_lay` has one call site and it is inside `MSG_PLACE`.
+  ⛔ **Read its §7 for what is NOT built, which is where the value is** —
+  an internal partition is **not reachable at all** because membership
   is the MATERIAL, and `place_house` leaves **8 stray sightings** so `L1`'s precondition fails on
   the one structure the editor actually builds: what a push can owe there is componentwise `≤`,
   measured at 8/0 before and 6/0 after. ⚠ And `R6` is what law `L9` costs, priced rather than

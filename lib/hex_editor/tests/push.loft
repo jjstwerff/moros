@@ -297,6 +297,15 @@ fn roomed(id: integer) -> VoxelWorld {
 // THAN A WEAKENING.** L1 says which edges are walls; L10 says whose. Comparing ids here
 // would report the fence row's kept `FENCE_MAT` as a defect, which is the one outcome that
 // row exists to prove correct — so the id is asked for separately, by the rows that own it.
+//
+// ⛔ **AND IT REPORTS A VIOLATION FOR ANY STRUCTURE THAT LEAVES THE WINDOW, WHICH LOOKS
+// EXACTLY LIKE A DEFECT IN THE GESTURE.** `cells_of` scans `[Q0, Q0 + W)` only, so a cell
+// one step outside is *not in the set* as far as `draw_walls` is concerned: the edge facing
+// it comes back **missing** and the walls around it come back **stray**. Measured while
+// building `G2` — a pushed walk of 200 ticks reached `q = 13` against a window ending at
+// 12 and reported `2 stray, 1 missing`, which reads as *the tick path does not maintain
+// the boundary* and is a fact about this function. **Every walking row therefore asserts
+// its own containment**, and `walked_inside` is where that is done once.
 fn against(w: VoxelWorld, mat: integer, id: integer) -> (integer, integer) {
   ag_want = want_walls(w, mat, id);
   ag_stray = 0;
@@ -600,4 +609,234 @@ fn test_a_push_through_a_doorway_is_refused() {
   // the doorway is still there, on a wall that did not move
   assert(wall_of(w, ROOM_N, 0, d, REF) == DOOR_MAT,
          "the door was lost by a sweep that never touched its cell");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `G2` — A HELD TOGGLE OVER A WALK, AND THE BODY IS THE TICK'S
+//
+// ⛔ **THE THING A PUSH MOVES IS THE THING STOPPING THE WALK**, which is what decides
+// the trigger. The level stamp fires once per hex ENTERED — *"so how fast you walk
+// cannot change the shape of the ground you leave"* — and a push cannot use that rule:
+// the author is pressed against the wall, so no new hex is ever entered and the gesture
+// would hang on itself. It fires every tick instead, and what makes that safe is
+// `push_cell`'s `already`: taking a cell that is in the set writes nothing, so a
+// thousand ticks standing still take the one cell one tick takes.
+//
+// ⚠ **AND THE RATE CANNOT VARY ANYWAY.** `tick_dt()` is a constant by law — the
+// server's own comment records what a variable one cost — so there is no faster tick to
+// outrun the gesture with.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TICK_REACH = 8;
+const TICK_STEP  = 4;
+
+fn walker_in(w: VoxelWorld, x: float, z: float, yaw: float) -> Walker {
+  tw = walker_new(x, (FLOOR_H as float) * w.w_unit, z);
+  tw.wk_yaw = yaw;
+  tw
+}
+
+// One tick, with the CELL's own height as the ground — a test needs no mesher, which is
+// the seam `walk_tick` takes its sampler by.
+fn ticked(wk: Walker, w: VoxelWorld, pushing: boolean) -> TickOut {
+  walk_tick(wk, w, WallRuns { items: [] }, TICK_REACH, TICK_STEP, LEVEL_R, pushing,
+            fn(gx: float, gz: float, gref: float) -> float {
+              (gq, gr) = hex_grid::px_to_hex(gx, gz);
+              (terrain_h(gq, gr, w) as float) * w.w_unit
+            })
+}
+
+fn floor_cells(w: VoxelWorld) -> integer {
+  fc = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W { if mat_at(w, q, r) == FLOOR_MAT { fc = fc + 1; } }
+  }
+  fc
+}
+
+// Walk east from the room's centre for `n` ticks, with the toggle in the given state.
+//
+// ⛔ **AND IT ASSERTS IT STAYED INSIDE THE ORACLE'S WINDOW.** `against` is blind past
+// `Q0 + W` and answers *stray* and *missing* rather than *I cannot see that* — so a row
+// that walked out of the window would report a boundary violation the gesture did not
+// commit. A margin of two, because the cell the last push takes is one PAST the cell the
+// walker is standing in.
+fn walked(w: VoxelWorld, pushing: boolean, n: integer) -> Walker {
+  wk = walker_in(w, 0.0, 0.0, 0.0);
+  wk.wk_held = HELD_FWD;
+  for _i in 0..n { ticked(wk, w, pushing); }
+  (wq, wr) = px_to_hex(wk.wk_x, wk.wk_z);
+  assert(wq > Q0 + 1 && wq < Q0 + W - 2 && wr > Q0 + 1 && wr < Q0 + W - 2,
+         "the walk left the window the oracle can see: ({wq},{wr}) against "
+       + "[{Q0}, {Q0 + W}) — every boundary number below would be about the window");
+  wk
+}
+
+// ── THE WALL STOPS THE WALK — the control, and it must go first ───────────
+fn test_the_rooms_wall_stops_a_walker_who_is_not_pushing() {
+  // ⚠ **WITHOUT THIS ROW EVERY ROW BELOW IS VACUOUS.** *The push let me through* is
+  // only a claim if something was in the way; a room whose walls do not block would
+  // make the whole section report success for a walker who was never stopped.
+  w = roomed(WALL_MAT);
+  wk = walked(w, false, 150);
+  assert(wk.wk_x > 0.0, "the walker did not move at all — the fixture is not walkable");
+  (sq, sr) = px_to_hex(wk.wk_x, wk.wk_z);
+  assert(mat_at(w, sq, sr) == FLOOR_MAT,
+         "the walker ended on '{mat_at(w, sq, sr)}' — the room's wall did not stop them");
+  assert(floor_cells(w) == 19, "the room grew to {floor_cells(w)} cells with push OFF");
+}
+
+// ── `G2` — THE WALL GIVES WAY AND THE WALK CONTINUES ──────────────────────
+fn test_the_held_push_lets_the_walk_through_its_own_wall() {
+  held = roomed(WALL_MAT);
+  hw = walked(held, true, 150);
+  free = roomed(WALL_MAT);
+  fw = walked(free, false, 150);
+  assert(hw.wk_x > fw.wk_x,
+         "pushing carried the walker to {hw.wk_x} and not pushing to {fw.wk_x} — the "
+       + "wall did not give way");
+  assert(floor_cells(held) > 19,
+         "the room is still {floor_cells(held)} cells — nothing was taken");
+  // …and the walker is standing on floor they made, not outside on the grass
+  (hq, hr) = px_to_hex(hw.wk_x, hw.wk_z);
+  assert(mat_at(held, hq, hr) == FLOOR_MAT,
+         "the walker ended on '{mat_at(held, hq, hr)}' — they left the set they were "
+       + "growing");
+}
+
+// ── AND LAW L1 HOLDS THROUGH THE TICK, NOT ONLY THROUGH THE PRESS ─────────
+fn test_the_tick_leaves_the_store_a_boundary() {
+  // ⛔ **A SECOND CALLER OF ONE RULE IS WHERE THAT RULE COMES APART.** `press_verb` and
+  // `walk_tick` both reach `push_cell`, and this asks the tick's world the question
+  // `test_after_a_push_the_marks_are_exactly_the_boundary` asks the press's.
+  w = roomed(WALL_MAT);
+  wk = walked(w, true, 150);
+  assert(floor_cells(w) > 19, "nothing was pushed, so nothing is being measured");
+  (s, m) = against(w, FLOOR_MAT, WALL_MAT);
+  assert(s == 0 && m == 0,
+         "after a pushed walk the store holds {s} stray and {m} missing against "
+       + "`hex_draw::draw_walls`");
+}
+
+// ── STANDING STILL BORES NOTHING ──────────────────────────────────────────
+fn test_a_held_push_that_does_not_walk_takes_one_cell() {
+  // ⚠ **THIS IS WHAT MAKES THE PER-TICK TRIGGER SAFE**, and it is `push_cell`'s
+  // `already` doing the work rather than a guard in the tick. A gesture that refused
+  // there would stutter on its own path; one that wrote there would bore a tunnel
+  // through a wall the author is merely leaning on.
+  w = roomed(WALL_MAT);
+  wk = walker_in(w, 0.0, 0.0, 0.0);
+  // stand at the rim, facing out, holding nothing
+  (rx, rz) = hex_grid::hex_to_px(ROOM_N, 0);
+  wk.wk_x = rx;
+  wk.wk_z = rz;
+  before = floor_cells(w);
+  first = ticked(wk, w, true);
+  assert(first.tk_pushed, "the first tick took no cell");
+  assert(floor_cells(w) == before + 1, "the first tick took more than one cell");
+  tau1 = w.w_tau;
+  took = 0;
+  for _i in 0..200 { if ticked(wk, w, true).tk_pushed { took = took + 1; } }
+  assert(took == 0, "{took} more cells were taken by a walker who never moved");
+  assert(w.w_tau == tau1, "the store's clock moved {w.w_tau - tau1} while nothing was written");
+  assert(floor_cells(w) == before + 1, "the room grew to {floor_cells(w)} standing still");
+}
+
+// ── THE TOGGLE IS OFF WHEN IT IS OFF ──────────────────────────────────────
+fn test_the_second_press_stops_the_gesture() {
+  // ⛔ **PRESSED, NOT SET.** The mode is `press_verb`'s to flip, and a row that set
+  // `es_pushing` by hand would be testing a field rather than the verb — which is the
+  // half a driver can get wrong.
+  w = roomed(WALL_MAT);
+  s = EditSession {};
+  (x, z) = hex_grid::hex_to_px(ROOM_N, 0);
+  session_at(s, w, x, z, 0.0);
+  on = press_verb(s, w, s.es_author, VB_PUSH, "");
+  assert(on.ak_ok, "the first press was refused: {on.ak_why}");
+  assert(s.es_pushing, "the first press did not arm the gesture");
+  off = press_verb(s, w, s.es_author, VB_PUSH, "");
+  assert(off.ak_ok, "the second press was refused: {off.ak_why}");
+  assert(!s.es_pushing, "the second press did not disarm it");
+
+  // …and a walk with it off takes nothing more
+  wk = walker_in(w, x, z, 0.0);
+  wk.wk_held = HELD_FWD;
+  after = floor_cells(w);
+  for _i in 0..200 { ticked(wk, w, s.es_pushing); }
+  assert(floor_cells(w) == after,
+         "the room grew from {after} to {floor_cells(w)} with the gesture off");
+}
+
+// ── ⛔ L11, PRICED: A WALK STILL MAKES A DENT ─────────────────────────────
+//
+// L11 is *a sweep preserves the description* — **sweeping a whole face leaves the
+// structure describable as what it was**, and *"an editor that lets you poke will
+// quietly turn houses into linework."* `G2` was supposed to be what pays it: a walk
+// rather than a poke.
+//
+// ⛔ **IT DOES NOT, AND THE REASON IS THE CONTROLS RATHER THAN THE GESTURE.** `W` walks
+// along the facing and `cell_ahead` takes the cell along the facing, so **you can only
+// push in the direction you walk**. Walking into a wall drives a ONE-CELL CORRIDOR
+// through it; sweeping a face would mean walking ALONG the face while facing it, which
+// this editor has no input for — there is no strafe, and A/D turn.
+//
+// So the row measures the corridor rather than asserting the law, and `WALL_PUSH` §7
+// keeps L11 in the *not built* column with this as its price.
+fn test_a_pushed_walk_drives_a_corridor_and_not_a_swept_face() {
+  w = roomed(WALL_MAT);
+  before = floor_cells(w);
+  wk = walked(w, true, 150);
+  gained = floor_cells(w) - before;
+  assert(gained > 2, "only {gained} cells were taken — too few to have a shape at all");
+  // every cell the walk added lies on the walk's own row: a corridor one cell wide
+  off_line = 0;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if mat_at(w, q, r) != FLOOR_MAT { continue; }
+      if hex_grid::hex_distance(q, r, 0, 0) <= ROOM_N { continue; }
+      if r != 0 { off_line = off_line + 1; }
+    }
+  }
+  assert(off_line == 0,
+         "{off_line} of the {gained} cells taken lie off the walk's line — the gesture "
+       + "has grown a way to sweep sideways and `WALL_PUSH` L11 is the law to re-read");
+}
+
+// ── AND THE HOUSE READER SAYS WHAT THAT COSTS ────────────────────────────
+fn test_a_pushed_walk_stops_a_house_reading_as_a_house() {
+  // ⛔ **L11'S OWN FALSIFICATION, RUN AS A MEASUREMENT.** *"Falsified by a swept face
+  // that no longer reads as `house`."* The house reads before the walk and does not
+  // read after it, which is the sentence L11 warned about — with the difference that
+  // it is now measured rather than predicted.
+  w = flat_world();
+  s = EditSession {};
+  ha = author_at(0.0, 0.0 - 4.0, 1.5707963267948966, (FLOOR_H as float) * 0.25);
+  hk = place_house(w, ha, HOUSE_W, HOUSE_D, grade_under(w, ha), s.es_runs, s.es_roofs);
+  assert(hk.ak_ok, "the house was refused: {hk.ak_why}");
+  b4 = house_recover(w, Q0, Q0, W, W, REF);
+  assert(b4.hs_ok, "the house does not read before anything is pushed: {b4.hs_why}");
+
+  // stand on a floor cell with open ground east of it and walk east, pushing
+  fq = 0; fr = 0; found = false;
+  for r in Q0..Q0 + W {
+    for q in Q0..Q0 + W {
+      if found { continue; }
+      if mat_at(w, q, r) != FLOOR_MAT { continue; }
+      (eq, er) = hex_grid::hex_neighbor(q, r, 0);
+      if mat_at(w, eq, er) == FLOOR_MAT { continue; }
+      fq = q; fr = r; found = true;
+    }
+  }
+  assert(found, "no floor cell of the house has open ground east of it");
+  (hx, hz) = hex_grid::hex_to_px(fq, fr);
+  wk = walker_in(w, hx, hz, 0.0);
+  wk.wk_held = HELD_FWD;
+  for _i in 0..80 { ticked(wk, w, true); }
+  (wq, wr) = px_to_hex(wk.wk_x, wk.wk_z);
+  assert(wq > Q0 + 1 && wq < Q0 + W - 2, "the walk left the window: ({wq},{wr})");
+
+  af = house_recover(w, Q0, Q0, W, W, REF);
+  assert(!af.hs_ok,
+         "the house still reads after a corridor was driven out of it — L11 is paid "
+       + "and `WALL_PUSH` §7 is the section to move");
 }

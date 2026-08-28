@@ -37,7 +37,7 @@ fn stander(w: VoxelWorld) -> hex_editor::Walker {
 // One tick, with the CELL's own height as the ground under the feet. A driver hands
 // in `hex_mesh::ground_under`, which smooths; a test wants the exact step.
 fn tick(wk: hex_editor::Walker, w: VoxelWorld, runs: WallRuns) -> hex_editor::TickOut {
-  hex_editor::walk_tick(wk, w, runs, REACH, STEP_MAX, hex_editor::LEVEL_R,
+  hex_editor::walk_tick(wk, w, runs, REACH, STEP_MAX, hex_editor::LEVEL_R, false,
                         fn(gx: float, gz: float, gref: float) -> float {
                           (gq, gr) = hex_grid::px_to_hex(gx, gz);
                           (hex_editor::terrain_h(gq, gr, w) as float) * w.w_unit

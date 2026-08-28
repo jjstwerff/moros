@@ -1,0 +1,35 @@
+# `G2` — THE PUSH HELD OVER A WALK, DRIVEN THROUGH THE RUNNER
+#
+# ⛔ **THIS SCRIPT IS THE DRIVER HALF AND THE LIBRARY TESTS CANNOT BE IT.**
+# `tests/push.loft` calls `walk_tick` directly, so nothing there can say whether a
+# DRIVER carries `es_pushing` across. A function tested green and wired to no consumer
+# is this tree's commonest defect, and `WALL_PUSH` `G2` is three hands on one gesture:
+# `press_verb` flips the mode, `walk_tick` performs the transfer, and the driver joins
+# them. This is where the join is exercised.
+#
+# ⚠ **THE FIRST PRESS REPORTS `already`, AND THAT IS THE POINT OF STANDING INSIDE.**
+# The author faces more of their own floor, so the arming press takes nothing — the
+# gesture arms anyway, which is what separates a toggle from a transfer. Every line
+# after `keys 1` is the TICK, and there is no other way for them to appear.
+#
+# ⚠ **AND THE CELLS TAKEN ARE NOT A STRAIGHT LINE, WHICH IS THE WALL DEFLECTING THE
+# WALKER RATHER THAN A DRIFT.** The house is placed at facing 30, so its walls run at
+# 30 to the walk; `walk_to` slides along a surface it cannot cross, and the corridor
+# follows the slide. It is stable, and it is what a person walking into an angled wall
+# with the toggle down actually gets.
+rate 0
+at 0 0 0
+verb raise
+wait rebuilt
+
+at -6 -6 30
+verb place
+
+# Inside the house, facing +x. The press arms; the walk drives the corridor.
+at -3 2 0
+verb push
+keys 1
+step 120
+keys 0
+# …and the second press disarms it, which is the other edge of the toggle.
+verb push
