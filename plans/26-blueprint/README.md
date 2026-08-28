@@ -271,6 +271,23 @@ every `B4t` and `B4s` case must be **unmoved**, the domino included; and a wall 
 a rim shares corners with it, so the peel must draw **one** run and count the rest rather
 than describing the arcs its own claim broke the rim into.
 
+**`B4v`** — **expected result**: a window holding a tower whose rim a wall MEETS draws
+**two** descriptions with nothing unexplained, and two towers whose rims meet draw **two
+circles** — where `B4u` draws one description and counts 52, or refuses with 106 counted.
+**Invariant**: *a component no single reader explains is partitioned by what a candidate
+ACCOUNTS FOR, and `FORMAL_CORE` §6's R1 is restored at the UNION* — each shape's own
+boundary lies **within** the component's marks, and the set is accepted only when it
+claims every one of them and nothing else, which is one integer measured in both
+directions. **Negative controls**: a component the pass cannot close must draw exactly
+what it draws today — two walls crossing at a vertex, refused with their marks counted —
+or the relaxation has bought a chain that answers for anything; a trial that explains its
+component while also claiming a NEIGHBOUR's marks must be refused, which a count of the
+component alone cannot see; the relaxed reader must be asked only where the strict one
+refused, so every `B4u` and `B4t` fixture and the whole corpus are unmoved; a candidate
+that claims nothing NEW must not be taken, since that is the pass's only termination
+argument; and the LARGEST fitting shell must be taken first, because a smaller rim can
+lie inside a larger one's field and a greedy pass that took it would never close.
+
 **`B4g`** — **expected result**: a gesture rings the author with a rim whose cells are
 exactly `hex_shape::arc_fill`'s disk — every edge between a member and a non-member
 stamped, no interior edge stamped — and the disk recovers to the author's own cell and
@@ -312,6 +329,7 @@ as a byte.
 | **`B4s`** — every structure in the window, by peeling | M | `peel.loft` — a house, a tower and a wall answering `house; run; disc;` with **nothing** left over; the floor channel measured to be what ends the loop and the edge channel measured not to be; a claim idempotent and reporting only what was new; each shape accounting for the marks it was recovered from; **two of a kind refused, with the counts as the next step's baseline**; `planview.loft` — the village drawn and tallied as three with no `unexplained`, and one structure still one description; `tools/scripts/b4s.keys`; five faults seen red | ✅ **SHIPPED** `7842187` |
 | **`B4t`** — two of a kind: the field split before any reader is asked | M | `peel.loft` — two houses answering `house;house;` and two walls `run;run;` with nothing left over, the village's order now the scan's, and **a component no reader explains still refused**; `planview.loft` — a house and two towers drawn as three with two circles, one structure still one description, and the `refused` caption state kept on a fixture that refuses structurally; `tools/scripts/b4t.keys` — five structures, five descriptions; five faults seen red, **one of them green** | ✅ **SHIPPED** `f982255` |
 | **`B4u`** — structures that TOUCH: the field split at the vertices its marks share | M | `peel.loft` — five touching pairs each drawn apart with nothing left over and each first measured to be ONE cell component; the flood pinned against the corner identity partition for partition; a lone house still one piece; a piece never crossing a cell component; and a wall MEETING a rim answering one run and a count, with the pair a cell further out as the control, and the house's residual unmoved by a tower ONE cell away where `B4o` measured that control at eight; `planview.loft` — two runs, a house and a disc with **no run over the rim**, and the interlocked pair's single description beside its own control; `tools/scripts/b4u.keys`; six faults seen red, **one of them green** | ✅ **SHIPPED** `e888590` |
+| **`B4v`** — a component no reader explains, partitioned by what a candidate accounts for | M | `peel.loft` — a wall MEETING a rim and two rims that meet each answering two descriptions with nothing over; two walls crossing still refused; a trial that reaches outside its component refused by the same one number; a candidate claiming nothing new refused; the largest shell taken first; `planview.loft` — the two pictures drawn and tallied, the crossed pair still `refused`, and a set that explains only PART of its component not drawn; `tools/scripts/b4v.keys`; eight faults swept, five red and **three green** | ✅ **SHIPPED** `67dba5a` |
 
 ### Why `B0` is one phase and not two
 
@@ -2776,6 +2794,133 @@ the picture draws one description and counts the rest. ⚠ **That is one step na
 flood: it is deciding whether a component that no single reader explains may be
 **partitioned by what a candidate accounts for**, which is a search with a both-ways
 acceptance test rather than a connectivity rule.
+
+## What `B4v` turned up
+
+**Shipped `67dba5a`.** `hex_editor::disc_within` + `oct_within` + `claims_copy`, the four
+description builders lifted out of `plan_describe`, `plan_describe_within`, `plan_trial`
+and its union test in `plan_panel`; `tools/scripts/b4v.keys`. 7 rows in `peel.loft` and 4
+in `planview.loft`.
+
+![two rims that meet, and a wall meeting one of them](../../doc/claude/img-shared-vertex-b4v.png)
+
+*`b4v.keys` — `desc run d6 p25 + disc 0,0 shell 156 + disc 8,0 shell 156`, with **nothing
+unexplained** and all three out of **one** component. `make plan-view WORLD=b4v Q0=-12
+Q1=26 R0=-16 R1=14 REF=2.0`.*
+
+### R1 is not softened — it moves up one level, to the UNION
+
+`B4u` split the field at the vertices its marks share and named what that leaves: a wall
+that MEETS a rim, two rims that meet. No flood cuts those, because the marks genuinely are
+one chain.
+
+| the window holds | `B4u` | `B4v` |
+|---|---|---|
+| a wall meeting a rim | `run`, **52 counted** | `run + disc` **0** |
+| two rims that meet | *refused*, 106 counted | `disc + disc` **0** |
+| two walls crossing | *refused*, 28 counted | *refused*, 28 — **unchanged** |
+
+⚠ **THE READERS STILL COMPARE IN BOTH DIRECTIONS; THE COMPARISON JUST HAS A NEW SUBJECT.**
+Each candidate's own boundary must lie **within** the component's marks — one direction —
+and the SET is accepted only when it claims every one of them and **no mark outside**.
+That is `FORMAL_CORE` §6's R1 over the union rather than over one shape, and it is one
+integer: `after == before - mine`. Too few claims and the number is high; too many and it
+is low, which is `B4o`'s defect and which a count of the component alone cannot see.
+
+⚠ **AND THE TRIAL RUNS ON A COPY.** A rejected one must leave nothing behind, or its
+claims silence the very marks the refusal exists to count — `claims_copy`, and two rows
+measure that the refused fixtures still report every mark.
+
+⚠ **THE RUN AND HOUSE READERS NEEDED NO RELAXING AT ALL.** *Does my own boundary lie
+within these marks* is `rr_missing == 0`, the number `RunRead` has carried since `B4q`, and
+`hs_missing` is its twin; only the two round readers, whose fit is an equality over the
+whole component, needed a second door. And *is this component fully explained* is
+`rr_stray` / `hs_other`, which is what decides whether a trial is worth running — asking it
+by CLAIMING into a copy instead cost a window-sized copy per component on the path every
+clean picture takes.
+
+### ⛔ Within-ness reaches shapes an equality never could, and one of them is a circle of no radius
+
+Measured, not feared: a shell-**0** disc — one cell's six edges — lies inside the marks of
+a wall meeting a rim. `disc_recover` can never reach it, because an equality over the
+whole component can only be satisfied by a shape the field actually **is**; a
+one-directional fit has no such protection.
+
+✅ **The bound is the gesture's own predicate, not a number invented here.** `fit_shell`
+refuses anything below 12 — *"no pair of cells is that far apart"* — which is R1's first
+half said out loud: *the shape is in the ADMITTED SET*. `oct_within` has the same line as
+`oct_is_disc`, for `oct_recover`'s own reason.
+
+⚠ **AND THE ORDER IS A CORRECTNESS SURFACE TOO.** The shells are walked **largest first**,
+because a smaller rim can lie inside a larger one's field and a greedy pass that took it
+would claim marks belonging to nothing — the union could then never close.
+
+### ⛔ Walking the shells the other way reintroduced a cost this plan had already paid
+
+`disc_recover`'s own comment records it: `continue` past every too-wide shell calls
+`disc_span`, which allocates and fills a set up to 87×87, and it cost **16.3 s against
+2.0 s** on one panel. Descending, the too-wide shells come **first** — so the naive walk
+paid for all of them, and `planview` went to **178 s**. One ascending scan with the same
+`break` finds the last admissible index and the descent starts there: **106 s**.
+⚠ **A measured optimisation is a fact about a LOOP, not about a function**, and reversing
+the loop is enough to lose it.
+
+⚠ **AND THE TREE'S OWN NUMBER WAS READ WRONG ONCE BEFORE IT WAS READ RIGHT.** `make fast`
+came back at **264.7 s** against `B4u`'s 109 and looked like the trial's bill; re-run on a
+quiet box it is **125.9 s**. The difference was the sibling's `cargo nextest` — the same
+shared box `CLAUDE.md` warns about for the native cdylibs, costing a wrong attribution
+rather than a red run. **A wall clock measures the machine**, which is why `w_tau` is the
+unit here and a timing taken once is not a measurement.
+
+### The sabotage sweep, and the two rows it asked for
+
+Eight faults, restored from copies, with the within readers, the copy, the relaxed chain
+and the trial asserted present before row 0, and every row's package proved to build by a
+neighbourhood row that had to stay green.
+
+| # | the fault | what went red |
+|---|---|---|
+| 0 | *(control — nothing sabotaged)* | **nothing**, as it must |
+| 1 | the trial is never asked — `B4u`'s behaviour restored | `planview` |
+| 2 | the union test passes whatever the trial found | ⚠ **nothing** → `planview` |
+| 3 | the within fit is two-directional again, so nothing is ever found | `peel` · `planview` |
+| 4 | a candidate already claimed is offered again | `peel` · `planview` |
+| 5 | the shells are walked ascending, so the smallest fit wins | ⚠ **nothing** |
+| 6 | the admitted set is dropped — a shell no tower can be is offered | `peel` |
+| 7 | a REFUSED trial is adopted anyway | ⚠ **nothing** → `planview` |
+
+⚠ **ROWS 1 AND 3 ARE THE TRIAL FROM BOTH SIDES**: never asked, and asked but unable to
+find anything. Rows 4 and 6 are its two termination and admission bounds.
+
+⛔ **ROWS 2 AND 7 WERE GREEN FOR ONE REASON, AND IT IS A MISSING FIXTURE RATHER THAN A
+PASSING CHECK.** Every scene the picture held was one the trial either **closes** or
+**never starts on** — so dropping the acceptance changed nothing, because nothing was ever
+accepted wrongly. A component the trial *reaches into and cannot finish* is a third state,
+and `test_a_set_that_explains_only_part_is_not_drawn` — a tower whose rim a **T** of two
+walls meets — is it. Both rows go red on it.
+
+⛔ **AND ROW 7's FIRST SPELLING WAS NOT A SABOTAGE AT ALL.** *Make the trial write into the
+real claims* was written as `sc = base`, which in loft **copies the struct** — so the
+subject was untouched and the row could only ever be green, in `peel.loft` as well. The
+property has to be attacked where the trial is ADOPTED, not where it is copied. ⚠ That is
+`CLAUDE.md`'s own rule from the other side: *a sabotage has to BE the defect*, and a green
+row is a claim about the sabotage before it is a claim about the code.
+
+⛔ **ROW 5 IS GREEN AND STAYS.** With `fit_shell` in place no smaller admitted disc lies
+inside any fixture's marks, so the descent is not load-bearing **for the shapes this suite
+can draw** — `disc_recover`'s two-cell margin and `B4t`'s far-cell row, both kept for the
+same reason. A field holding both a small rim's boundary and a large one's would make it
+matter, and ascending would then draw the small one as well.
+
+### What it deliberately does not do
+
+⛔ **A CROSSING IS STILL REFUSED, AND THAT IS THE POINT OF NOT SOFTENING R1.** Two walls
+crossing at a vertex are one component with four chain ends and no rim in them; no set of
+shapes closes over them, so nothing is drawn and every mark is counted. ⚠ **The next
+narrowing is the RUN reader**, which would have to enumerate the chain's ends and pair
+them — `hex_shape::wall_chain_ends` builds exactly that incidence and returns a **count**,
+which is the third time this plan has found the answer it needs inside a function that
+discards it (`set_connected` at `B4t`, the same function's degrees at `B4u`).
 
 ## Open questions
 

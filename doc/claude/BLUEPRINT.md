@@ -125,9 +125,22 @@ said so except a picture; every suite was green. ⚠ And the caption carried a s
 house reported `11 stray` where its mitre is four marks, because `B4o` bounded a house's
 residual to one cell and measured that bound with the next structure **eight hexes away**.
 
-⚠ **THE RESIDUAL IS NOW ONE STEP NARROWER AND STILL REAL**: a wall that MEETS a rim shares
-corners with it, and no flood separates those. The picture draws the wall and COUNTS what it
-cannot explain.
+✅ **AND `B4v` CLOSED THAT ONE TOO, BY CHANGING WHAT R1 COMPARES RATHER THAN HOW.** A
+component no single reader explains is partitioned by what a candidate ACCOUNTS FOR: each
+shape's boundary must lie **within** the component's marks, and the set is accepted only
+when it claims every one of them and no mark outside — one integer, measured in both
+directions. A wall meeting a rim draws both; two rims that meet draw two circles.
+
+![two rims that meet, and a wall meeting one of them](img-shared-vertex-b4v.png)
+
+⚠ **WITHIN-NESS REACHES SHAPES AN EQUALITY NEVER COULD**, and the first picture found one: a
+shell-**0** disc — a circle of no radius over one cell's six edges — lies inside the marks of
+a wall meeting a rim. The bound is `fit_shell`, the tower gesture's own predicate, which is
+R1's first half said out loud: *the shape is in the admitted set*.
+
+⛔ **THE RESIDUAL IS A CROSSING.** Two walls meeting at a vertex have four chain ends and no
+rim in them, so no set of shapes closes over them and every mark is counted. Narrowing that
+needs the run reader to enumerate the chain's ends and pair them.
 
 ⚠ **THE SPLIT IS STILL ONE LEVEL DEEP, AND THAT IS TWO BEHAVIOURS RATHER THAN ONE GAP** —
 measured, not assumed. Two towers beside a house offer no ends at all, so the leftover is
