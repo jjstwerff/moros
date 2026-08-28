@@ -48,12 +48,19 @@ fn boundary(w: VoxelWorld, mat: integer) -> integer {
 
 // Everything the window holds, so a locality claim can be made over the whole of it.
 //
-// ⛔ **THE EDGE BYTES ARE IN IT, AND LEAVING THEM OUT WAS AN INSTRUMENT THAT COULD NOT SEE
-// THE FEATURE ABOUT TO BE BUILT.** Before L1 a push wrote only `h_material` and `h_height`,
-// so a digest over those two was a complete reading of it. The moment the boundary follows
-// the cell, a digest blind to `h_wall_*` answers *nothing moved* to a gesture scribbling
-// edges across the window — and the two rows that would report it, L4 and L5, are the two
-// rows whose whole job is to say what a push does NOT touch.
+// **THE EDGE BYTES ARE IN IT.** Before L1 a push wrote only `h_material` and `h_height`, so a
+// digest over those two was a complete reading of it; the moment the boundary follows the
+// cell it is not, and L4 and L5 are the two rows whose whole job is to say what a push does
+// NOT touch.
+//
+// ⚠ **AND THE SWEEP REFUTED THE REASON THIS COMMENT FIRST GAVE.** It claimed a blind digest
+// *could not see a scribble* — so `probe/wp/sweep-l1.sh` row 8 removed these three terms and
+// went **green**, and row 9 (a sabotage that writes the wrong id, WITH the blind digest)
+// went red anyway, through `pu_id` and the per-edge loop rather than through the digest.
+// **No row in this file is currently carried by them.** They stay for `run_normal`'s reason
+// — the failure mode they cover is a byte wrong while the materials and the carried id are
+// both right, which is silent — and this note is here because the sweep says so and the
+// first version of the comment did not.
 fn digest(w: VoxelWorld) -> integer {
   h = 0;
   for r in Q0..Q0 + W {

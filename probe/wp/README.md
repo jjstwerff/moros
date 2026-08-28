@@ -101,3 +101,53 @@ probes 1–3 would have been a fact about the mistake.
 - **It does not reach the editor's stamper**, which is where `B4q`'s mirroring lives.
 - **It does not test the concave cases of L3** (`k ≥ 4`) — a convex house has no such cell,
   and a fixture with a notch is what those rows need.
+
+---
+
+# The sabotage sweep for law `L1` — `sh probe/wp/sweep-l1.sh`
+
+**Run 2026-08-28, against a COMMITTED subject.** Ten rows over
+`lib/hex_editor/tests/push.loft`, restoring from copies rather than `git checkout` — the
+subject of a sweep is the step just built, so a checkout between rows deletes it and every
+row reads as a miss. ⚠ Each sabotage **asserts that it applied**: a `str.replace` that
+matches nothing is silent, and a row that cut nothing reports *green* in exactly the words a
+row that cut something and was not caught would use.
+
+| row | what was cut | what went red |
+|---|---|---|
+| **0** | nothing — the control | green, and `boundary_follow` asserted present first |
+| 1 | `boundary_follow` returns immediately (the feature absent) | **7** rows |
+| 2 | the never-repaint guard | **1** — the fence row, and only it |
+| 3 | the `R6` refusal | **1** — the doorway row, and only it |
+| 4 | it never creates a wall, only clears | **7** rows |
+| 5 | it never clears a wall, only creates | **7** rows |
+| 6 | it creates a `FENCE` instead of the id it carried | **2** rows |
+| **7** | CONTROL — the six directions walked in the other order | green |
+| **8** | CONTROL — the digest's `h_wall_*` terms removed | green |
+| **9** | CONTROL PAIR — row 6's fence **and** row 8's blind digest together | ⛔ **red, where green was predicted** |
+
+✅ **Rows 2 and 3 are the two that make the table worth reading.** Each cuts one clause and
+takes down exactly one row: the guards are not load-bearing by accident, and the rows that
+name them are not passing for some other reason.
+
+⛔ **AND ROW 9 REFUTED THIS SWEEP'S OWN PREDICTION, WHICH WAS ALSO A COMMENT IN THE CODE.**
+The digest gained `h_wall_nw/ne/e` when L1 landed, under a comment saying a blind digest
+*"answers nothing moved to a gesture scribbling edges"*. Row 8 removed the three terms and
+went **green**; row 9 put the wrong-id sabotage back beside the blind digest and went **red
+anyway** — through `pu_id` and the per-edge byte loop, never through the digest. **So no row
+in the file is currently carried by those terms.** They stay for `run_normal`'s reason — the
+case they cover is a byte wrong while the materials and the carried id are both right, which
+is silent — and the comment now says that instead of the claim the sweep refuted.
+
+⚠ **Rows 1, 4 and 5 take down seven rows each and are therefore the weakest evidence in the
+table**, not the strongest: *L1 is absent* answers every question the same way. What they
+establish is only that the feature is reached at all. The narrow rows are the measurement.
+
+## What the suite says beside it
+
+`make suite P=hex_editor` with `SUITE_NATIVE=1`: **126 files, 1543 tests, 3 red** — and all
+three (`wall.loft`, `wall_type.loft`, `water.loft`, native only, `1 failed; 0 passed; 1
+total`, which is the shape of a file that never ran) pass when re-run one at a time. Four
+parallel `rustc` jobs on a box at load 26. ⚠ `make lib-test L=hex_editor` cannot be used
+here at all and the Makefile says so: one `loft test` per package, one 300-second deadline,
+63 files — it stopped inside `peel.loft` and reported the wall, correctly.

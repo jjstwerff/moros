@@ -373,6 +373,21 @@ that makes it worth having: **every line below is a measurement in
 | **the filed `WallRun` records** | ⛔ **not maintained, and this is the one to read before looking at a pushed house.** `place_house` files four runs and [EDITOR_DEFECTS](EDITOR_DEFECTS.md) 4 measured that **every wall is drawn twice** — once round the hex edges from the store, once straight from the run. A push moves the store's marks and leaves the run where it was, so the two drawings come apart. The defect is not this document's; the consequence is |
 | **the ground** | §6's second bullet, untouched: a grown footprint does not extend the pad, and *push-then-hill* is still an unmeasured order in [TERRAIN_EDITS](TERRAIN_EDITS.md)'s divergence table |
 
+### ✅ The sabotage sweep, and the row that refuted its own prediction
+
+`sh probe/wp/sweep-l1.sh` — ten rows, restoring from copies, each sabotage asserting that it
+applied. ✅ **Rows 2 and 3 are what make it worth reading**: cutting the never-repaint guard
+takes down the fence row *and only it*, and cutting `R6` takes down the doorway row *and only
+it*. Rows 1, 4 and 5 take down seven rows each and are therefore the **weakest** evidence in
+the table — *L1 is absent* answers every question the same way.
+
+⛔ **AND ROW 9 REFUTED THE PREDICTION.** The window digest gained the edge bytes with L1,
+under a comment saying a blind digest could not see a gesture scribbling edges. Row 8 removed
+them and went green; row 9 put a wrong-id sabotage back beside the blind digest and went red
+**anyway**, through `pu_id` and the per-edge loop. **No row is currently carried by those
+terms** — they stay because the case they cover is silent, and the comment now says so.
+[probe/wp](../../probe/wp/README.md).
+
 ### ⚠ And the precondition that fails on the editor's own house
 
 `place_house` stamps its walls from four run **lines**, so the store it leaves is not `∂I` —
