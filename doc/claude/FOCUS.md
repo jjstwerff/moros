@@ -96,6 +96,47 @@ built and green** — fourteen fixtures of two walls at gaps 0.2 … 2.6, collin
 corners report four. ⚠ The instrument was checked against a fixture that has the thing, after
 the first version of the control passed for the wrong reason.
 
+### ⛔ What the decision costs, measured — and the two goals are ONE requirement
+
+**Efficient meshes and accurate blueprints are not two asks.** The fitted render needs a wall's
+**surface**; the surface is the **recovered description**. So recovery accuracy is upstream of
+both.
+
+| measured here, 2026-08-29 | |
+|---|---|
+| what a wall costs in the mesh today | **exactly 4 triangles per stored edge** — 14 marks → 56, 13 → 52, 50 → 200, 70 → 280, linear on four fixtures |
+| the control | a bare world emits **0** triangles in the wall slot |
+| ⚠ the first instrument was blind | `chunk_mesh_mat(…, WALL_MAT)` answers the identical mesh with or without walls — walls live on **edges**, not cells. Slot 5 of `chunk_meshes_all` is the one that sees them |
+| what `@HB-X61` gates upstream | one **fitted quad per side**, *"38 stored edges → 38 strip quads, or 4 fitted quads"* |
+| so a four-wall room | **200 triangles today, 8 fitted — 25×**, and the ratio GROWS with wall length: more edges, still one quad |
+
+⛔ **AND THE SAME ROOMS FAIL BOTH WAYS.** A rectangle authored as four `wall` runs is described
+as its four walls in **8 of 25** positions, and **7 of 25 have a hole a flood escapes through**.
+A room that recovers as six runs is six quads instead of four; one whose chain is broken has no
+fitted surface at all. **The rooms that draw wrong are the rooms that cost most.**
+
+### ⚠ So the decision, with what each option buys
+
+| | enclosure | recovery | mesh |
+|---|---|---|---|
+| **leave it** | ⛔ 7 of 25 leak | ⛔ 8 of 25 exact | ⛔ 200 tri/room |
+| **a doorstep on `wall`** — refuse a run that misses the previous corner | ✅ closed | ⚠ still domain B, so `@HB-X36`/`@HB-X45`/`@HB-X62` do **not** apply | ⛔ unchanged |
+| **rooms are stencils** — `place` only, `wall` stays linework | ✅ `place_house` already refuses an unmitred facing | ✅ R1, exact from the CELLS | ✅ 4 quads, mitred |
+| ✅ **promote on close** — a closed wall loop acquires a FLOOR | ✅ | ✅ recovery reads the floor | ✅ |
+
+✅ **AND THE DOORSTEP FOR THE LAST ONE ALREADY EXISTS.** `hex_editor::field_fill` floods an
+enclosure and **refuses an unbounded one by name** — *"the boundary is open, or the enclosure is
+larger than this tool will claim"*. That refusal is exactly the leak detector these 25 rectangles
+were measured with. A closed loop gets a floor and becomes recoverable; an open one gets told
+where it leaks.
+
+⚠ **WHAT THAT DOES NOT BUY**: `@HB-X62`'s exact mitre is a property of adjacent **fitted
+surfaces of a form** differing by heading `3` or `9`. Four linework walls at arbitrary `D`
+headings do not satisfy it, so a promoted room mitres when its corners are square and not
+otherwise. ⛔ **And a rectangle is not a `Form`** (`@HB-X24`: no square sublattice), so the floor
+is a `Plan`/`Box` rasterisation — which is what `place_house` already builds and
+`house_recover` already reads.
+
 ### The order of work
 
 | # | what | why it is here | state |
