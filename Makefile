@@ -915,15 +915,10 @@ probe-b2p:
 # all 50 of a closed room's. ⛔ Its own first version had ONE seed per fixture and drew
 # conclusions about cut rules from it; a loop can be walked from any of its vertices, so the
 # sweep over every seed is the control that separates the rule from the starting point.
-# ⚠ THE SECOND `--lib` IS LOAD-BEARING, NOT A CONVENIENCE. `wall_chain_walk` ships in
-# hex_shape 0.1.2, but the INSTALLED hex_shape is 0.1.1 until loft-lang/registry#26 merges
-# and is re-signed. Drop it once `loft install hex_shape@0.1.2` resolves.
 # ⚠ Takes minutes. Not in `make fast`; it ships nothing, and its subject is a design
 # decision rather than a guard.
-LIBSWORLD ?= $(HOME)/workspace/loft-libs-world
 probe-b4x:
-	@loft --interpret --lib $(LIBSWORLD)/ --lib lib/ probe/b4x/b4x.loft 2>/dev/null \
-	  | sed -n '/^B4x/,$$p'
+	@loft --interpret --lib lib/ probe/b4x/b4x.loft 2>/dev/null | sed -n '/^B4x/,$$p'
 
 # B3p (BLUEPRINT §3.1) — DOES THE WALKER MOVE WITH NO COLLISION `EdgeSet`? ✅ The
 # LIBRARY can: `walk_to` with an empty set covers 42.67773189849706, the no-fence

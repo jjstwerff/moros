@@ -58,9 +58,9 @@ deps = ["hex_field"]
 
 [[package]]
 name = "hex_shape"
-version = "0.1.1"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_shape-v0.1.1/hex_shape-0.1.1.tar.gz"
-sha256 = "1c766b87ebce27ea32786ef21bb4eae828477b06958fa97ddb2e838a70b5f93c"
+version = "0.1.2"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_shape-v0.1.2/hex_shape-0.1.2.tar.gz"
+sha256 = "48178c8fa71a403d25f543f9701c2665c801425b4c50206a50afc4b2d932261f"
 source = "registry"
 deps = ["hex_field", "hex_form", "hex_grid"]
 

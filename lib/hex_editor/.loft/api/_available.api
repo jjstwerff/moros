@@ -21,7 +21,7 @@ hex_grid 0.1.0 — Hex-grid geometry — axial/pixel conversion, neighbours, dis
 hex_place 0.1.0 — Place, seat and combine — the operations a model survives.
 hex_recover 0.1.0 — Rebuild a model from the field — exactly, or with a reported residual.
 hex_roof 0.1.1 — Roof profiles as a height field, and the fit that recovers them.
-hex_shape 0.1.1 — The line primitive, the box and the arc — the shape vocabulary of the hex_* family.
+hex_shape 0.1.2 — The line primitive, the box and the arc — the shape vocabulary of the hex_* family.
 hex_terrain 0.1.1 — The OVERLAND terrain layer of the `hex_*` family: a coarse overland hex lattice
 hex_way 0.1.1 — A way is an exact centreline plus offsets, never a rasterised band.
 hex_world 0.2.0 — Sparse 32x32-chunk hex-grid world data model — Cell / Chunk / World with binary save/load.

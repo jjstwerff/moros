@@ -1,5 +1,5 @@
-# hex_shape 0.1.1 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_shape-0.1.1
+# hex_shape 0.1.2 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_shape-0.1.2
 # use it with: use hex_shape;
 
 ## src/hexarc.loft
@@ -283,6 +283,10 @@ pub fn wall_along_max(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
 // chain from a comb with no tolerance.  Returns the number of degree-1 vertices (2 for a single
 // chain, 0 for empty, 4 after a break, 2k for a comb).
 // 
+// ⚠ TWO WALLS MEETING AT A CORNER USUALLY DO NOT FUSE, so this is 4 and not 2 for an L — each
+// wall keeps its own two ends.  That is a fact about the marking and not a defect: a consumer
+// reading it as *the marking is broken* will refuse a shape somebody drew on purpose.
+// 
 // Example: @HXS-004
 pub fn wall_chain_ends(edges: EdgeSet, q0: integer, r0: integer,
 
@@ -291,6 +295,41 @@ pub fn wall_chain_ends(edges: EdgeSet, q0: integer, r0: integer,
 // 
 // Example: @HXS-004
 pub fn wall_chain_branches(edges: EdgeSet, q0: integer, r0: integer,
+
+// ── THE CHAIN IN READING ORDER ─────────────────────────────────────────────
+// 
+// The two counters above answer *how many ends* and *how many branches* and throw the walk
+// itself away, so a consumer holding a marking has the numbers and not the chain.  This
+// returns it: an unordered set of marked edges in, the vertices in the order a walk meets
+// them out — which is what `wall_read_run` and `surface_of` already consume, and what a scan
+// of the store can never give, because a scan has no order at all.
+// 
+// A CONSUMER WANTS THIS TO CUT A MARKING INTO RUNS.  `wall_read_run` reads a chain's two
+// ends and answers for one run; a marking with a CORNER in it has no such pair, and a closed
+// room has no free end at all.  With the chain ordered, the question becomes *where along it
+// does one run stop and the next begin*, which is a decision about spans rather than a search
+// over the plane.
+// 
+// ⚠ ONE CALL IS ONE CHAIN, AND A MARKING IS OFTEN SEVERAL.  Two walls meeting at a corner do
+// not necessarily fuse — an L has FOUR degree-1 vertices, so each wall keeps its own two ends
+// and the marking is two chains.  `wc_n` is how many there are and `nth` picks one; a consumer
+// that walks one and stops describes half an L and calls the rest a residual.
+// 
+// ⚠ A CLOSED LOOP HAS NO CANONICAL START.  With no degree-1 vertex the seed is the first
+// endpoint in scan order, which lands wherever the scan lands — so a room of four walls comes
+// back as one chain that begins and ends in the middle of the same wall.  `wc_loop` says so;
+// what to do about it belongs to the consumer, because only the consumer knows whether the
+// first and last spans it cut are one run.
+// 
+// ⚠ AND AT A BRANCH THE ORDER IS ONE OF SEVERAL.  Where three or more marks meet, the walk
+// continues along the first unused one in scan order — deterministic, and *a* traversal rather
+// than *the* traversal.  `wc_branch` counts the vertices this chain passes through where that
+// choice was made, so a consumer needing a simple path can refuse rather than believe.
+pub struct WallChain
+
+// The `nth` chain of this marking, in the order a walk meets its vertices.  `nth = 0` is the
+// first; `wc_n` is how many there are, and is filled in whether or not `nth` names one.
+pub fn wall_chain_walk(edges: EdgeSet, q0: integer, r0: integer, wq: integer,
 
 // The primitive triangle-lattice vector of direction `d24`.
 pub fn tri_a(d24: integer) -> integer
