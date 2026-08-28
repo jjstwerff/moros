@@ -57,25 +57,44 @@ unmerged, and the maintainer landed it their own way, which is how it should go.
 `loft-libs-*` is shared and consumed from the **working tree**, so a new public name can turn
 a sibling's build red with no local edit — grep the sibling before adding one. Kill only processes you can identify as yours; this box runs other agents' work.
 
-⛔ **AND THIS RULE SAID `/usr/local/bin/loft` FOR MONTHS, WHICH CANNOT BUILD THIS TREE AT ALL.**
-Measured 2026-08-28: that binary is root-owned from **2026-08-16 23:08** and fails on every
-package here with `Library 'self' not found` at each `use self::` site. The `use self::<x>;`
-form is the fix for [loft#976](https://github.com/loft-lang/loft/issues/976) — the rule further
-down that `make fast`'s `tools/basenames.sh` **enforces** — so following the old sentence
-meant a toolchain that refuses the tree's own required idiom. It was never what anything ran:
-`LOFT ?= loft`, and `~/.local/bin` sits ahead of `/usr/local/bin` on `PATH`.
+⛔ **AND THIS RULE NAMED `/usr/local/bin/loft` FOR MONTHS WHILE NOTHING RAN IT.** `LOFT ?= loft`,
+and `~/.local/bin` sits ahead of `/usr/local/bin` on `PATH` — so every gate, suite and probe in
+this tree has always used the user-level binary, and the sentence described a file no check
+consulted. That half is durable and is why the rule now says *`loft` on `PATH`*.
 
-⚠ **AND A VERSION CHECK CANNOT TELL THE TWO APART — BOTH SAY `loft 2026.8.0`.** Different
-binaries, different sizes, different behaviour, one version string. **`sha256sum` is the only
-instrument that answers**, which is this tree's own *a grep over a log is an instrument* one
-layer down: `loft --version` agreeing is not evidence that two boxes, two sessions or two
-agents ran the same compiler.
+✅ **AND THE USER-LEVEL COPY IS PRIMARY BY CHOICE, NOT BY ACCIDENT OF `PATH` ORDER** — the
+project owner's own words, 2026-08-29: *"I want to primarily update the user installed version
+as it is easier to keep that in sync."* `/usr/local/bin/loft` is a **spare**, refreshed
+occasionally so it at least runs; it may lag the user copy or lead it. ⚠ **So `~/.local/bin/loft`
+is the one to keep current and the one a green run should be attributed to**, and a divergence
+between the two is expected rather than a fault to chase.
 
-⛔ **AND THE TOOLCHAIN ON `PATH` IS A COPY OF THE SIBLING'S RELEASE BUILD, SO IT MOVES WHEN
-THEY REBUILD.** `~/.local/bin/loft` is byte-identical to `../loft/target/release/loft`
-(same sha256, separate inode — a copy, not a link). **Measured: it was replaced mid-session on
-2026-08-28 at 23:44, six minutes after a commit whose every suite, sweep and probe had run on
-the previous copy.** Nothing was invalidated and nothing had been re-checked either, which is
+⛔ **THE OTHER HALF EXPIRED IN NINETY MINUTES, WHICH IS THE MORE USEFUL FINDING.** Measured
+2026-08-28 23:5x: the system binary was root-owned from **2026-08-16** and failed on every
+package here with `Library 'self' not found` at each `use self::` site — loft#976's fix, the
+rule further down that `make fast`'s `tools/basenames.sh` **enforces**. That was written into
+this file as *cannot build this tree at all*. **Rebuilt 2026-08-29 00:06, it runs
+`tests/push.loft` 24 of 24.** ⚠ **So do not read a capability claim about a named binary as a
+standing fact** — including this one. Run it.
+
+⛔ **AND THREE DISTINCT BINARIES IN ONE DAY ALL SAID `loft 2026.8.0`.** `3c7a117f…` (system,
+08-16), `7f2bae7f…` (user, 08-28 23:44), `a2c3faed…` (system, 08-29 00:06) — different sizes,
+different behaviour, **one version string**. **`sha256sum` is the only instrument that
+answers**, which is this tree's own *a grep over a log is an instrument* one layer down:
+`loft --version` agreeing is not evidence that two boxes, two sessions or two agents ran the
+same compiler.
+
+⚠ **AND WHICH ONE IS AHEAD IS NOT SOMETHING TO ASSUME EITHER.** For most of 2026-08-28 the
+user-level copy was the newer of the two; at 00:06 the next morning the **system** one was, and
+`PATH` still pointed at the older. *Newer* and *installed* and *what ran* are three different
+questions.
+
+⛔ **AND BOTH INSTALLS ARE COPIES OF THE SIBLING'S RELEASE BUILD, SO THEY MOVE WHEN IT DOES.**
+Each has at some point been byte-identical to `../loft/target/release/loft` (same sha256,
+separate inode — a copy, not a link). **Measured: the user-level one was replaced mid-session
+on 2026-08-28 at 23:44, six minutes after a commit whose every suite, sweep and probe had run
+on the previous copy — and the sibling's build moved AGAIN by 00:06, twice inside twenty
+minutes.** Nothing was invalidated and nothing had been re-checked either, which is
 the honest reading of any green in this tree: **a passing run is a statement about the binary
 that was on `PATH` when it ran**, and `sha256sum $(which loft)` is how you say which one that
 was. ⚠ That is also why the path prohibition survives its own byte-identity: the file under
