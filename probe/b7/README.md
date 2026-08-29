@@ -38,7 +38,37 @@ keeping this gesture's own minimum of 12 and clamping the offer to it — becaus
 other half is that **every offer is itself admissible**, which
 `test_every_offer_is_itself_admissible` sweeps over 188 refusals.
 
-## ⛔ The ticket this leaves upstream
+## ✅ THE LIBRARY IS FIXED — it was not a ticket, it was an edit
+
+⛔ **THIS SECTION SAID *ticket* AND THAT WAS THE WRONG POSTURE.** `CLAUDE.md` already says
+*fixing and republishing a shared library is allowed*, and the project owner said it plainly:
+**"you are as much as anyone the editor of libraries — fix the ones that need fixing even if
+you did not create it."** A measured defect in a dependency is work, not correspondence.
+
+✅ **`loft-libs-world` branch `hex-fit-quantum-is-the-callers`** — the height quantum is now a
+parameter:
+
+    height_units_at(z, scale)        seat_fits_at(z, scale)        seat_fit_z_at(z, scale)
+    height_from_units_at(u, scale)   seat_fit_residual_at(z, scale)
+
+The five existing names are these at `HEIGHT_SCALE`, so **every caller is unaffected** and
+`api_compatible_with = 0.1.0` still holds. ⛔ A non-positive quantum is refused by name —
+new `FIT_BAD_SCALE`, because loft's `÷0` yields null and keeps running, so an unchecked
+`z / scale` would answer *on the grid* for `z = 0` and *off it* for everything else.
+
+⚠ **Both tests were seen RED** (sabotaging `seat_fits_at` to ignore its scale), 14 pass on the
+interpreter **and** on `--native`, and coverage is all 42 functions — `seat_is_integral_at` was
+written, flagged by coverage as entered by nothing, and **dropped** rather than shipped as
+surface with no caller.
+
+⛔ **AND IT IS NOT LIVE HERE YET, WHICH THE LOCK SAYS OUT LOUD.** `lib/hex_editor/loft.lock`
+pins `hex_fit 0.1.0` with `source = "registry"`, so this tree compiles against the published
+tarball and not the checkout — `probe/way/drift.sh` already reports `hex_fit` differing, which
+is exactly the instrument that watches for this. **Using `seat_fits_at` here needs `hex_fit
+0.1.1` published and the lock moved**, and a publish is one of the three things `CLAUDE.md`
+says to ask about first.
+
+## ⛔ What the ticket would have said
 
 `hex_fit::HEIGHT_SCALE` is a constant where this tree needs a parameter. hexbody's own note
 grades it **T4** — *"it is moros's constant, read off untested code; hexbody cannot verify it

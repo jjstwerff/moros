@@ -151,6 +151,22 @@ loop.
 float-free, order-free primitive that does the whole job has zero callers in this tree."*
 Still true, and it is the primitive a room-plus-room needs.
 
+## ⚠ And a library that needs fixing is EDITED, not ticketed
+
+**"You are as much as anyone the editor of libraries — fix the ones that need fixing even if
+you did not create it."** (project owner, 2026-08-29.) `CLAUDE.md` already said the same in
+other words — *fixing and republishing a shared library is allowed too* — and the first
+instinct here was still to file a ticket against a defect this tree had **measured**.
+
+✅ **First one done**: `hex_fit`'s height quantum is a parameter now, on
+`loft-libs-world` branch `hex-fit-quantum-is-the-callers`, purely additive, tested on both
+backends, both tests seen red. ⛔ It is not live in this tree until `hex_fit 0.1.1` is
+published and `lib/hex_editor/loft.lock` moves — a publish is one of the three things to ask
+about first.
+
+⚠ **`../loft` remains READ + FILE TICKETS**, and `../hexbody` remains read-only. The editable
+ones are the `loft-libs-*` repos.
+
 ## The order of work this suggests
 
 0. ✅ **`hex_recover` — DONE.** `region_recover_claimed` in `hex_editor`, asked by
