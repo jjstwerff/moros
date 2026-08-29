@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -957,6 +957,16 @@ probe-b4y:
 # reader saying yes to everything. Seconds.
 probe-b5:
 	@loft --interpret --lib lib/ probe/b5/b5.loft 2>/dev/null | sed -n '/^B5/,$$p'
+
+# B7 (plan 26) — OUR DOORSTEPS AGAINST `hex_fit`'S, measured before any was replaced, because
+# a doorstep that refuses more than the field distinguishes is worse than none (`@HB-X66`).
+# ✅ The shell PREDICATES agree on 200 of 201 — the one difference is this gesture's own
+# minimum. ⛔ The shell OFFERS differed on 89 of 192, and upstream's rule won: `fit_shell`
+# offered the shell BELOW where `@HB-X65` and `fit_ordinal`'s own contract both say NEAREST.
+# ⛔ The height doorstep cannot be adopted: `hex_fit::HEIGHT_SCALE` is a constant 0.25 and this
+# tree's scale is per world — 40 and 30 disagreements at the two other units it uses. Seconds.
+probe-b7:
+	@loft --interpret --lib lib/ probe/b7/b7.loft 2>/dev/null | sed -n '/^B7/,$$p'
 
 # WP (WALL_PUSH) — the four probes of the wall-push design. ⛔ Two of the first draft's rules
 # are REFUTED: a diagonal wall moves 3.6x FURTHER per step, not 6.25x less (the line spacing

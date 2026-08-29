@@ -161,7 +161,11 @@ fn test_a_built_floor_is_flat_and_the_reference_chooses_it() {
        + "on_the_ground={on_the_ground(w, 0, 0, low)}, high is "
        + "{on_the_ground(w, 0, 0, high)}");
 
-  floor_y = (low.sf_units as float) * HEIGHT_SCALE;
+  // ⚠ **QUALIFIED SINCE plan 26 `B7`.** `hex_fit` became a dependency of `hex_editor`, so
+  // this package's graph now holds TWO `HEIGHT_SCALE` — `hex_proj`'s and `hex_fit`'s — and
+  // a bare one is refused outright, by name, with both sites in the message. That is the
+  // ambiguity check working; the name this test means is the projection's.
+  floor_y = (low.sf_units as float) * hex_proj::HEIGHT_SCALE;
   at_floor = ground_under(w, cx, cz, 0.0);
   at_terrain = ground_under(w, cx, cz, 1000.0);
 

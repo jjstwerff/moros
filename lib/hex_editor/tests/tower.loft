@@ -284,3 +284,42 @@ fn test_the_material_rule_is_the_rings_own_and_a_window_is_still_refused() {
   assert(!session_select_wall(EditSession {}, 0).ak_ok,
          "the SELECTION accepts 0 too, so the asymmetry this row records is gone");
 }
+
+// ── ⛔ THE OFFER IS THE NEAREST SHELL — plan 26 `B7` ───────────────────────
+//
+// `@HB-X65`: *the offer is the nearest shell and its residual, deliberately NOT the shell an
+// unrefused value would silently have drawn.* This function offered the one BELOW until
+// `B7`, and `fit_ordinal`'s own contract had said *nearest* the whole time.
+// [`probe/b7`](../../../probe/b7/README.md) measured the two: the predicates agree on 200 of
+// 201, the offers differed on 89 of 192.
+fn test_a_refused_shell_offers_the_nearest_not_the_one_below() {
+  // 13 is not a shell; 12 is below it and 16 is the next one up, so the nearest is 12 — the
+  // control is a value on the other side of the midpoint.
+  a = fit_shell(13);
+  assert(!a.ft_ok, "13 is not a shell");
+  assert(a.ft_offer == 12, "13 is offered {a.ft_offer}");
+  assert(a.ft_residual == 1, "…with residual {a.ft_residual}");
+  // ⛔ **THE ROW THE OLD CODE FAILED.** The shells to 80 are `0 12 36 48`, so 30 sits 18 above
+  // the one below it and 6 below the one above: the nearest is 36, and offering 12 there is
+  // the *quietly rounded down* answer `@HB-X65` names.
+  b = fit_shell(30);
+  assert(!b.ft_ok, "30 is not a shell");
+  assert(b.ft_offer == 36,
+         "30 must be offered 36, the nearest — got {b.ft_offer}, and the one below is 12");
+  assert(b.ft_residual == 6, "…and the residual is 6, got {b.ft_residual}");
+}
+
+fn test_every_offer_is_itself_admissible() {
+  // ⚠ **`@HB-X65`'s OTHER HALF**, and the reason for the clamp: the nearest shell to a small
+  // value can be below this gesture's own minimum of 12, and an offer that is itself refused
+  // is a doorstep that does not terminate — `probe/adopt`'s row `C`, one gesture over.
+  n = 0;
+  for v in 12..200 {
+    f = fit_shell(v);
+    if f.ft_ok { continue; }
+    n = n + 1;
+    assert(fit_shell(f.ft_offer).ft_ok,
+           "shell {v} is offered {f.ft_offer}, which is itself refused");
+  }
+  assert(n > 100, "the sweep refused {n} values — too few to mean anything");
+}

@@ -1,0 +1,130 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `B7` — OUR DOORSTEPS AGAINST `hex_fit`'S, BEFORE ANY OF THEM IS REPLACED.
+//
+//   loft --interpret --lib lib/ probe/b7/b7.loft        (or `make probe-b7`)
+//
+// ⛔ **A DOORSTEP PACKAGE CHANGES REFUSALS, SO IT IS MEASURED BEFORE IT IS WIRED.**
+// `@HB-X66`: *a doorstep that refuses more than the field distinguishes is **worse than
+// none** — it makes legal models unauthorable.* Two of hexbody's own four predicates turned
+// out to have nothing to refuse, which is the result rather than an omission.
+//
+// ⛔ **AND THE SHELL OFFER IS AN ARGUED DISAGREEMENT, NOT AN OVERSIGHT.** Both sides state
+// the SAME premise — `arc_fill` silently draws the shell BELOW an off-grid value — and draw
+// opposite conclusions:
+//
+//   ours     `fit_shell` offers the shell BELOW, "because the library draws that one
+//            silently", so the offer is what the author would actually have got
+//   `@HB-X65` offers the NEAREST, "deliberately not the shell an unrefused value would
+//            silently have drawn … the author sees both candidates' cost instead of being
+//            quietly rounded down"
+//
+// Predictions are in `PREDICTION.md` and were written before this ran.
+use hex_editor;
+use hex_fit;
+use hex_shape;
+
+const NMAX = 200;
+
+fn shells() {
+  agree_v = 0;
+  differ_v = 0;
+  agree_o = 0;
+  differ_o = 0;
+  ok_us = 0;
+  ok_them = 0;
+  worst = 0;
+  up = 0;
+  down = 0;
+  for n in 0..NMAX + 1 {
+    f = fit_shell(n);
+    theirs_ok = hex_fit::arc_fits(n) == hex_fit::FIT_OK;
+    if f.ft_ok { ok_us = ok_us + 1; }
+    if theirs_ok { ok_them = ok_them + 1; }
+    if f.ft_ok == theirs_ok { agree_v = agree_v + 1; } else {
+      differ_v = differ_v + 1;
+      println("    ⛔ shell {n}: ours {f.ft_ok}, theirs {theirs_ok}");
+    }
+    if f.ft_ok { continue; }
+    if !theirs_ok {
+      their_offer = hex_fit::arc_fit_n(n);
+      if f.ft_offer == their_offer { agree_o = agree_o + 1; } else {
+        differ_o = differ_o + 1;
+        d = their_offer - f.ft_offer;
+        if d < 0 { d = 0 - d; }
+        if d > worst { worst = d; }
+        if their_offer > n { up = up + 1; } else { down = down + 1; }
+      }
+    }
+  }
+  println("  SHELLS over 0..{NMAX}");
+  println("    admitted: ours {ok_us}, theirs {ok_them} — neither sweep is vacuous");
+  println("    VERDICTS agree on {agree_v}, differ on {differ_v}");
+  println("    OFFERS   agree on {agree_o}, differ on {differ_o}"
+        + " (their offer is ABOVE the asked value {up} times, below {down});"
+        + " furthest apart {worst} shells");
+}
+
+// ⛔ **THE HEIGHT DOORSTEP CANNOT BE ADOPTED AS PUBLISHED, AND THE REASON IS EXACT.**
+// `hex_fit::HEIGHT_SCALE` is a compile-time `0.25`; this tree's height scale is PER WORLD
+// (`w.w_unit`), and `gesture.loft` says so in bold. This sweeps the three units this tree
+// actually builds worlds at and counts where the two verdicts part company.
+fn heights(unit: float, tag: text) {
+  agree = 0;
+  differ = 0;
+  ok_us = 0;
+  ok_them = 0;
+  for i in 0 - 40..41 {
+    z = (i as float) * 0.125;
+    res = 0.0;
+    freeze_grade(z / unit ?? 0.0, res);
+    ours_ok = res < 0.0000001;
+    theirs_ok = hex_fit::seat_fits(z) == hex_fit::FIT_OK;
+    if ours_ok { ok_us = ok_us + 1; }
+    if theirs_ok { ok_them = ok_them + 1; }
+    if ours_ok == theirs_ok { agree = agree + 1; } else { differ = differ + 1; }
+  }
+  println("    unit {tag}: admitted ours {ok_us}, theirs {ok_them}"
+        + " — agree {agree}, ⛔ DIFFER {differ}");
+}
+
+fn materials() {
+  agree = 0;
+  differ = 0;
+  ok_us = 0;
+  ok_them = 0;
+  for m in 0 - 4..300 {
+    ours_ok = fit_nominal(m, EDGE_MAT_LAST, "material").ft_ok;
+    theirs_ok = hex_fit::mat_fits(m) == hex_fit::FIT_OK;
+    if ours_ok { ok_us = ok_us + 1; }
+    if theirs_ok { ok_them = ok_them + 1; }
+    if ours_ok == theirs_ok { agree = agree + 1; } else { differ = differ + 1; }
+  }
+  println("  MATERIALS over -4..299: admitted ours {ok_us}, theirs {ok_them}"
+        + " — agree {agree}, differ {differ}");
+  println("    ⚠ ours is the EDGE slot's range and theirs is the byte's ({hex_fit::MAT_MAX}),"
+        + " so these are two different questions wearing one name");
+}
+
+fn levels() {
+  ok = 0;
+  for lv in 0 - 3..10 { if hex_fit::level_fits(lv) == hex_fit::FIT_OK { ok = ok + 1; } }
+  println("  LEVELS over -3..9: {ok} of 13 admitted — `@HB-X66` says all of them, as a"
+        + " measured result, and the control is that the SAME doorstep refuses a shell");
+}
+
+fn main() {
+  println("B7 — our doorsteps against `hex_fit`'s (plan 26)");
+  println("");
+  shells();
+  println("");
+  println("  HEIGHTS — the three units this tree builds worlds at");
+  heights(0.25, "0.25 (176 worlds)");
+  heights(0.125, "0.125 (2 worlds)");
+  heights(1.0, "1.0   (6 worlds)");
+  println("");
+  materials();
+  println("");
+  levels();
+}

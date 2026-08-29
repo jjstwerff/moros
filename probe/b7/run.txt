@@ -1,0 +1,17 @@
+B7 — our doorsteps against `hex_fit`'s (plan 26)
+
+    ⛔ shell 0: ours false, theirs true
+  SHELLS over 0..200
+    admitted: ours 8, theirs 9 — neither sweep is vacuous
+    VERDICTS agree on 200, differ on 1
+    OFFERS   agree on 103, differ on 89 (their offer is ABOVE the asked value 83 times, below 6); furthest apart 36 shells
+
+  HEIGHTS — the three units this tree builds worlds at
+    unit 0.25 (176 worlds): admitted ours 41, theirs 41 — agree 81, ⛔ DIFFER 0
+    unit 0.125 (2 worlds): admitted ours 81, theirs 41 — agree 41, ⛔ DIFFER 40
+    unit 1.0   (6 worlds): admitted ours 11, theirs 41 — agree 51, ⛔ DIFFER 30
+
+  MATERIALS over -4..299: admitted ours 5, theirs 255 — agree 52, differ 252
+    ⚠ ours is the EDGE slot's range and theirs is the byte's (255), so these are two different questions wearing one name
+
+  LEVELS over -3..9: 13 of 13 admitted — `@HB-X66` says all of them, as a measured result, and the control is that the SAME doorstep refuses a shell

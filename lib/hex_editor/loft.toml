@@ -72,6 +72,13 @@ hex_place = ">=0.1"
 # published and unused for months while a cut rule was designed, built and costed against
 # the question it answers — see CLAUDE.md, *search before you design*.
 hex_recover = ">=0.1"
+# ⛔ THE DOORSTEP PACKAGE — `@HB-X65`/`@HB-X66`, refuse at authoring time what would not
+# round-trip. `tools/dups.tsv`'s own `@HB-X68` row asked for exactly this: *"a shared type
+# needs a package below both"*, of `hex_editor::Fit` and `hex_part::SocketFit`. ⚠ It is
+# adopted family by family and MEASURED first (`probe/b7`), because a doorstep that refuses
+# more than the field distinguishes is worse than none — `@HB-X66` says so, and two of its
+# own four predicates turned out to have nothing to refuse.
+hex_fit = ">=0.1"
 hex_grid  = ">=0.1"
 # ⚠ OURS, BY PATH. A gesture edits a world, so this package cannot stay world-free
 # once it holds gestures. The path is because `hex_voxel` is UNPUBLISHED and lives in

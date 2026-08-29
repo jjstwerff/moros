@@ -78,3 +78,11 @@ url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_recove
 sha256 = "e60c77bd8d15de12cc7e3ef1a0b549f5449fb80e925257246325f874a0836b7e"
 source = "registry"
 deps = ["hex_field", "hex_form"]
+
+[[package]]
+name = "hex_fit"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_fit-v0.1.0/hex_fit-0.1.0.tar.gz"
+sha256 = "080315ef3e149bb2008af1ec438b31d1e9cb4433c1e374b40ffd7ad559462ae0"
+source = "registry"
+deps = ["hex_draw", "hex_field", "hex_form", "hex_grid", "hex_recover", "hex_shape"]

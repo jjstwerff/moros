@@ -1,0 +1,184 @@
+# hex_fit 0.1.0 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_fit-0.1.0
+# use it with: use hex_fit;
+
+## src/hexdraft.loft
+
+pub struct Draft
+
+pub fn draft_new(f: Form, d: integer, a: integer, b: integer, p: integer) -> Draft
+
+pub fn draft_has_run(s: Draft) -> boolean
+
+// The canonical text: the form's spelling, then — if there is one — a single `wall` line.
+// One line, one record, same shape as `side`: the reader refuses anything else rather than
+// repairing it (`X39`).
+pub fn draft_write(s: Draft, name: text) -> text
+
+// Parse.  The `side` lines go to `form_read` unchanged; a trailing `wall` line is this layer's.
+// A malformed record yields a stencil with an empty form — REFUSED, never repaired.
+pub fn draft_read(t: text) -> Draft
+
+// Draw the whole stencil into one field: the fill, its own boundary walls, and the embedded run as
+// material on INTERIOR edges only.  Returns the number of interior edges the run marked.
+pub fn draft_draw(s: Draft, cq: integer, cr: integer, cells: HexSet, edges: EdgeSet,
+
+// The INTERIOR edges carrying `embedmat`, isolated — what the run reader consumes.  Boundary edges
+// (one cell out) are the stencil's own walls and are never part of a run.
+pub fn draft_interior(cells: HexSet, edges: EdgeSet, embedmat: integer) -> EdgeSet
+
+// REBUILD, INCLUDING THE RUN.  The form comes from the cells (constructive recovery, `X45`); the
+// run comes from the interior edges (`wall_read_run`, `X60`) — two recoveries reading disjoint
+// slots.  An unreadable run is REFUSED, so it is dropped loudly by a text diff rather than silently.
+pub fn draft_rebuild_text(cells: HexSet, edges: EdgeSet, name: text, embedmat: integer) -> text
+
+// ── THE DOORSTEP (`fits?`, law C₁ / `K-FIT`) ───────────────────────────────
+// 
+// `X50`/`I-QUANT`: a value off the grid the field distinguishes is **silently snapped, not
+// rejected** — so the refusal has to happen at authoring time or the round trip reports success on
+// a model nobody wrote.  `K-FIT` also fixes the FORM of a refusal: it **names its restriction** and
+// **offers the nearest fitting alternative**; never a silent snap, never a blank no.
+// 
+// An embedded run inherits the line doorstep (§10.10: anchor on a hex VERTEX, a whole number of
+// periods, endpoint also a vertex — `wall_run_ok`) and adds one requirement world linework does not
+// have: **it must lie wholly INSIDE the footprint**.  A run that pokes out is not an embedded wall
+// at all — part of it lands on boundary edges, which belong to the stencil's own outline, and the
+// reader would recover something the author did not write.
+pub const FIT_OK        = 0
+
+pub const FIT_NO_FORM   = 1
+
+pub const FIT_BAD_DIR   = 2
+
+pub const FIT_BAD_P     = 3
+
+pub const FIT_NO_VERTEX = 4
+
+pub const FIT_NOT_LEGAL = 5
+
+pub const FIT_OUTSIDE   = 6
+
+pub fn draft_fit_reason(code: integer) -> text
+
+// THE DOORSTEP.  `cells` is the form's own footprint.  Returns a reason code — `FIT_OK` or the
+// specific restriction, never a bare false.
+pub fn draft_fits(s: Draft, cells: HexSet) -> integer
+
+// AND THE ALTERNATIVE THE REFUSAL OWES (`K-FIT`): the longest run from this anchor, in this
+// direction, that IS admissible and fits — searching downward so the offer is never longer than
+// what was asked for.  0 when nothing fits, which is itself a usable answer: move the anchor.
+pub fn draft_fit_p(s: Draft, cells: HexSet) -> integer
+
+## src/hexfit.loft
+
+// Continuing `hexdraft`'s codes (0..6), so one `fit_reason` covers the whole doorstep.
+pub const FIT_NO_SIDE    = 7
+
+pub const FIT_BAD_T      = 8
+
+pub const FIT_BAD_SPAN   = 9
+
+pub const FIT_BAD_SHELL  = 10
+
+pub const FIT_BAD_HEIGHT = 11
+
+pub const FIT_BAD_MAT    = 12
+
+// One reason table for the whole doorstep — `hexdraft`'s codes and these.
+pub fn fit_reason(code: integer) -> text
+
+// The admissible positions on a side, in the order the run stores them — which is NOT t order
+// (`A5`: index a feature by its exact `t`, never by its position in the `SideRun`).
+pub fn feature_grid(p: Plan, cells: HexSet, side: integer) -> vector<float>
+
+// THE DOORSTEP.  `t` must be exactly an edge centre of this side — no tolerance (`P4`), because in
+// regime R1 an epsilon is a defect signal and not a knob.
+pub fn feature_fits(p: Plan, cells: HexSet, side: integer, t: float, nedges: integer) -> integer
+
+// AND THE ALTERNATIVE THE REFUSAL OWES: the nearest admissible `t`.  This is what an editor calls
+// with a raw mouse position — the snap is EXPLICIT and returns a value the author can see, rather
+// than happening silently inside `place_opening`.
+pub fn feature_fit_t(p: Plan, cells: HexSet, side: integer, t: float) -> float
+
+// The residual the editor must SHOW (`K-FIT`): how far the offer is from what was asked.
+pub fn feature_fit_residual(p: Plan, cells: HexSet, side: integer, t: float) -> float
+
+pub fn arc_is_shell(n24: integer) -> boolean
+
+pub fn arc_fits(n24: integer) -> integer
+
+// The nearest realisable shell — `K-FIT` says *nearest*, so this can offer a LARGER disk than the
+// author asked for (N = 11 is offered 12, not 0).  That is deliberate and differs from what the
+// unrefused value would have drawn: an off-grid N silently draws the shell BELOW it, so `arc_fill`
+// would have given 0.  Offering the nearest and showing the residual is the point — the author sees
+// both candidates' cost instead of being quietly rounded down.  Ties go DOWN, to the smaller shell.
+pub fn arc_fit_n(n24: integer) -> integer
+
+pub fn arc_fit_residual(n24: integer) -> integer
+
+// ── LEVELS — MEASURED TO HAVE NOTHING TO REFUSE ─────────────────────────────
+// 
+// A level is the topological SHEET (`X58`), stored as an integer (`ha_cy` / `ck_cy`) and used as a
+// FILTER BEFORE THE CUT.  There is no continuous parameter here, so `I-QUANT` has nothing to say:
+// nothing exists *between* two levels to be snapped to one of them.  Measured over the full range
+// an integer holds — the behaviour at ±10^6 is identical to the behaviour at 0.
+// 
+// This returns `FIT_OK` unconditionally, and that is a RESULT, not an omission.  `tests/fit.loft`
+// keeps it honest the only way an always-true predicate can be kept honest: by showing that the
+// SAME doorstep refuses the other parameters, so "accepts every level" is not "accepts everything".
+pub fn level_fits(lv: integer) -> integer
+
+// ── MATERIAL IDS — hexbody's OWN slot is narrower than moros's ──────────────
+// 
+// moros's `h_wall_n/ne/se` are full integers.  hexbody's `EdgeSet.eg_mat` is a **`u8`**, and the
+// HXF `EDGE` section is one byte per slot — so a wall material of 256 does not merely quantise, it
+// becomes **0, which means NO WALL**.  Measured: `edge_set_mat(e, .., 256)` reads back `0` in
+// memory, before storage is involved at all.  Silent deletion, not a snap.
+// 
+// Being NARROWER than moros is allowed — the rule is never to carry MORE world information than the
+// voxel holds — but silently dropping a wall is not, so the doorstep names the bound.
+pub const MAT_MAX = 255
+
+// ⚠ NO OFFER, AND THAT IS THE POINT.  `K-FIT` says a refusal offers *the nearest fitting
+// alternative* — which presumes an ORDINAL parameter, where "nearest" means "almost what you
+// asked for".  A material id is NOMINAL: it is a name, not a magnitude.  The nearest admissible id
+// to 256 is 255, and 255 is a *different material* — offering it would be worse than a blank no,
+// because it looks like a small correction and is not.  So this refusal names its restriction and
+// stops there.  The author must pick a material, not accept a rounding.
+pub fn mat_fits(m: integer) -> integer
+
+// ── TERRAIN — THE GRID moros FIXES, and the fork it closes ──────────────────
+// 
+// **THE FORK IS CLOSED** (user, 2026-07-24): *"I will never want to add more world information than
+// in the limited moros voxels."*  So moros's `Hex` is the storage of record, and there
+// `h_height` is an **integer** — hexbody's f64 is the wider slot, and the narrower one binds.
+// 
+// moros already fixes the unit, so this is not a choice hexbody gets to make:
+// `moros_render::HEIGHT_SCALE = 0.25` world units per height unit, used as
+// `h_height as float * HEIGHT_SCALE` in `moros_sim::collide`.  With `SPEC` **L8** (1 wu = 0.866 m)
+// that is **0.2165 m** per unit, and moros's own comment puts a storey at 12 units = 3.0 wu.
+// 
+// ⚠ **TIER.** The *mechanism* below is T1 — gated in `tests/fit.loft`, where a height off the grid
+// is shown NOT to survive a voxel round trip while an on-grid one does.  The *value* `0.25` is
+// **T4**: it is moros's constant, read off untested code.  hexbody cannot verify it is the right
+// quantum, only that it is the one moros uses — so it lives here, named once, and a change to it is
+// a one-line change with a gate behind it.
+pub const HEIGHT_SCALE = 0.25
+
+// The voxel's own value for a height: what `h_height` would hold.
+pub fn height_units(z: float) -> integer
+
+pub fn height_from_units(u: integer) -> float
+
+// THE DOORSTEP.  A height must land exactly on the voxel's grid; off it, the store truncates and
+// `X59`'s returned residual would be wrong by the truncation — which is the one thing `SPEC` **G5**
+// says must never happen silently.
+pub fn seat_fits(z: float) -> integer
+
+// The offer, and the residual the editor must show — in world units.
+pub fn seat_fit_z(z: float) -> float
+
+pub fn seat_fit_residual(z: float) -> float
+
+// Kept from before the fork closed, now meaning exactly "on the voxel's grid".
+pub fn seat_is_integral(z: float) -> boolean

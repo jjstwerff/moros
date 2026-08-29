@@ -39,6 +39,7 @@ use hex_shape;
 // `hex_shape::arc_fill` is built from. Plan 26 `B4h`.
 use hex_form;
 use hex_recover;
+use hex_fit;
 // The octagonal tower's shape — plan 26 `B4l`. The SHAPE lives there and has no
 // world; the GESTURE lives here and has one.
 use self::octagon;
@@ -3183,14 +3184,36 @@ pub fn shell_below(n24: integer) -> integer {
 // `K-FIT`'s doorstep, and here it is load-bearing rather than polite: the library
 // draws the shell below *without a word*, so a gesture that did not check would
 // build a smaller tower than it was asked for and report success.
+// ⛔ **THE OFFER IS THE NEAREST SHELL, AND IT USED TO BE THE ONE BELOW — plan 26 `B7`.**
+// This function offered `shell_below(n24)` with the reason written at it: *"the library draws
+// that one silently"*, so the offer was what the author would actually have got.
+// **`@HB-X65` gates the opposite**, from the SAME premise: *"the offer being the nearest shell
+// and its residual, deliberately **not** the shell an unrefused value would silently have
+// drawn … the author sees both candidates' cost instead of being quietly rounded down."*
+//
+// ⚠ **AND `fit_ordinal`'S OWN CONTRACT, FOUR SCREENS UP, ALREADY SAID *NEAREST*** — *"an
+// ordinal parameter: it has a nearest admissible value"* — so the code disagreed with the
+// doorstep rule it is an instance of, as well as with upstream.
+//
+// ⚠ **MEASURED BEFORE IT WAS SWAPPED** ([`probe/b7`](../../../probe/b7/README.md)): over
+// `0…200` the two PREDICATES agree on 200 of 201 — the one difference is this gesture's own
+// minimum of 12, which is ours and stays — while the OFFERS differed on **89 of 192**
+// refusals, the nearest being ABOVE the asked value 83 times and as far as 36 shells away.
+//
+// ⚠ **THE OFFER MUST ITSELF BE ADMISSIBLE**, which is the other half of `@HB-X65`: the
+// nearest shell to a small value can be below this gesture's minimum, and 12 is a shell, so
+// that is what a clamped offer names.
 pub fn fit_shell(n24: integer) -> Fit {
   rng = fit_ordinal(n24, 12, TOWER_SHELL_MAX, "shell");
   if !rng.ft_ok { return rng; }
-  near = shell_below(n24);
-  if near == n24 { return fit_ok(); }
+  if hex_fit::arc_fits(n24) == hex_fit::FIT_OK { return fit_ok(); }
+  fs_near = hex_fit::arc_fit_n(n24);
+  if fs_near < 12 { fs_near = 12; }
+  fs_res = fs_near - n24;
+  if fs_res < 0 { fs_res = 0 - fs_res; }
   Fit { ft_ok: false,
         ft_reason: "shell {n24} is not a shell — no pair of cells is that far apart",
-        ft_offer: near, ft_residual: n24 - near, ft_ordinal: true }
+        ft_offer: fs_near, ft_residual: fs_res, ft_ordinal: true }
 }
 
 // The same question for an OCTAGON, and it has one more answer — plan 26 `B4l`.
