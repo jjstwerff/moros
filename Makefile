@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -995,6 +995,15 @@ probe-b9:
 # ⛔ Wiring it today would answer hexbody's hall-vs-room question as "fuse". Seconds.
 probe-c1:
 	@loft --interpret --lib lib/ probe/c1/c1.loft 2>/dev/null | sed -n '/^C1/,$$p'
+
+# C2 (plan 26) — A ROOM IS THE HOUSE AGAIN, ADJACENT. The union cut ONCE by
+# `hex_place::combine_cut`, with the seam the structure already had CLEARED — `shared_marked`
+# 0 and `leak_count` 0 on every adjacency, against a non-touching control where
+# `set_connected` says false. ⛔ Its sweep found a hole in its own tests: with the boundary
+# never written every row passed, because `leak_count` floods the CELL set and says nothing
+# about walls. Seconds.
+probe-c2:
+	@loft --interpret --lib lib/ probe/c2/c2.loft 2>/dev/null | sed -n '/^C2/,$$p'
 
 # WP (WALL_PUSH) — the four probes of the wall-push design. ⛔ Two of the first draft's rules
 # are REFUTED: a diagonal wall moves 3.6x FURTHER per step, not 6.25x less (the line spacing

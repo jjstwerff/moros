@@ -1,0 +1,13 @@
+C2 — adding a box to a house (plan 26)
+
+  a house at the origin, and a box placed against it:
+    adjacent, same size : touching 52 · walls 42 -> 52 (wrote 19, cleared 9)
+        ⛔ seam edges 0 · leaks 0 · one space true · union 40 cells
+    adjacent, smaller   : touching 17 · walls 42 -> 51 (wrote 15, cleared 6)
+        ⛔ seam edges 0 · leaks 0 · one space true · union 35 cells
+    further along       : touching 9 · walls 42 -> 60 (wrote 27, cleared 9)
+        ⛔ seam edges 0 · leaks 0 · one space true · union 50 cells
+    off to one side     : touching 17 · walls 42 -> 51 (wrote 15, cleared 6)
+        ⛔ seam edges 0 · leaks 0 · one space true · union 35 cells
+    not touching at all : touching 0 · walls 42 -> 80 (wrote 38, cleared 0)
+        ⛔ seam edges 0 · leaks 0 · one space false · union 50 cells

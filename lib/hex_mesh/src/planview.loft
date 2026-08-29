@@ -550,6 +550,12 @@ fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integ
   // constructive recovery, which takes the region's convex hull, builds the form and
   // verifies it by re-drawing. ⚠ **It is asked LAST for the reason every reader here is
   // ordered**: a rectangle is the more specific answer and keeps its own caption.
+  // ⚠ **AND IT IS NOT ASKED WHERE THE ANSWER IS ALREADY KNOWN.** `house_recover_claimed` has
+  // just scanned this window for `FLOOR_MAT`; `hs_cells == 0` means there is no floor here, and
+  // the region reader would spend the same scan to reach the same silence. ⛔ Measured: asking
+  // it unconditionally cost **45s of a 145s test** — `probe/b5`'s wiring took `planview.loft`
+  // from comfortably inside `loft test`'s 300-second file deadline to over it.
+  if hh.hs_cells == 0 { return desc_no(false); }
   rg = hex_editor::region_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
   if !rg.rg_ok { return desc_no(false); }
   desc_of_region(rg)
@@ -595,8 +601,10 @@ fn plan_describe_within(w: VoxelWorld, q0: integer, r0: integer, q1: integer,
   if dw.dc_ok { return desc_of_disc(dw); }
   hh = hex_editor::house_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
   if hh.hs_ok { return desc_of_house(w, hh, q0, r0, dwq, dhr); }
-  rgw = hex_editor::region_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
-  if rgw.rg_ok { return desc_of_region(rgw); }
+  if hh.hs_cells > 0 {
+    rgw = hex_editor::region_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
+    if rgw.rg_ok { return desc_of_region(rgw); }
+  }
   // ⛔ **AND LAST, A RUN FROM THE COMPONENT'S OWN ENDS AND JUNCTIONS — plan 26 `B4w`.**
   // `B4v` refused two walls that CROSS because the trial had no candidate generator for a
   // run: its endpoints are continuous world points rather than a grid. A wall can only

@@ -343,3 +343,102 @@ fn test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing() {
   // tells `shelter_at` the author is indoors under it.
   assert(len(roofs.items) == 0, "and no roof plan was filed for a house that is not there");
 }
+
+// ── ⛔ A ROOM IS THE HOUSE AGAIN, ADJACENT — plan 26 `C2` ──────────────────
+//
+// *"Just multiple houses of different sizes added together as a floor plan."* The shared edge
+// FUSES — `@HB-X52` — so two boxes make one space, and the seam wall the structure already had
+// is taken away rather than left standing inside the plan.
+fn room_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 1.5707963267948966);
+  assert(press_verb(s, w, s.es_author, VB_PLACE, "").ak_ok, "the fixture's house was refused");
+  w
+}
+
+fn floors_of(w: VoxelWorld) -> HexSet {
+  c = hexset_chunk(0 - 20, 0 - 20, 41, 41);
+  for r in 0 - 20..21 {
+    for q in 0 - 20..21 {
+      if world_ground_cell(w, q, r).h_material == FLOOR_MAT { hexset_set(c, q, r, true); }
+    }
+  }
+  c
+}
+
+fn test_a_room_fuses_with_the_house_it_is_added_to() {
+  w = room_world();
+  before = floors_of(w);
+  a = room_add(w, author_at(6.0, 0.0, 1.5707963267948966, 2.0), 4, 5);
+  assert(a.ak_ok, "the room was refused: {a.ak_why}");
+  after = floors_of(w);
+  assert(hexset_count(after) > hexset_count(before),
+         "the plan did not grow: {hexset_count(before)} -> {hexset_count(after)}");
+
+  // ⛔ **THE SEAM IS GONE, AND THAT IS THE WHOLE CLAIM.** `shared_marked` is the library's own
+  // instrument for it: zero after a combine, non-zero after a per-body overlay.
+  e = edgeset_new(0 - 20, 0 - 20, 41, 41);
+  for r in 0 - 20..21 {
+    for q in 0 - 20..21 {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        edge_set_mat(e, q, r, nq, nr, 1);
+      }
+    }
+  }
+  assert(hex_place::shared_marked(before, after, e) == 0,
+         "a seam wall stands inside the plan: {hex_place::shared_marked(before, after, e)}");
+
+  // …and the plan is ONE sealed space, which is what makes the fusion a floor plan rather
+  // than a hole knocked in a wall.
+  out = hexset_chunk(0 - 20, 0 - 20, 41, 41);
+  hex_shape::flood_outside(after, out);
+  assert(hex_shape::leak_count(after, out) == 0,
+         "the plan leaks: {hex_shape::leak_count(after, out)} cells reached from outside");
+  assert(hex_shape::set_connected(after), "the plan is not one connected space");
+
+  // ⛔ **AND THE PLAN IS WALLED ALL THE WAY ROUND.** Its own sabotage found this missing: with
+  // the boundary never written the rows above ALL PASSED, because `leak_count` floods the CELL
+  // set and says nothing about whether an edge carries a wall. `∂` of the union is the thing
+  // that must be marked, and `hex_draw::draw_walls` is the definition of it.
+  bd = edgeset_new(0 - 20, 0 - 20, 41, 41);
+  hex_draw::draw_walls(after, bd, 1);
+  unwalled = 0;
+  for r in 0 - 20..21 {
+    for q in 0 - 20..21 {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(bd, q, r, nq, nr) == 0 { continue; }
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { unwalled = unwalled + 1; }
+      }
+    }
+  }
+  assert(unwalled == 0, "{unwalled} edges of the plan's boundary carry no wall");
+}
+
+fn test_a_room_with_nothing_to_join_is_refused() {
+  // ⚠ **THE CONTROL.** A gesture that placed a box anywhere would pass the row above and be
+  // `place` under another name. What separates them is that this one grows a structure.
+  w = room_world();
+  a = room_add(w, author_at(20.0, 20.0, 1.5707963267948966, 2.0), 4, 5);
+  assert(!a.ak_ok, "a room with nothing to join was accepted");
+  assert(a.ak_why.find("nothing here") != null, "…and says why: {a.ak_why}");
+  // ⚠ AND IT WROTE NOTHING — plan 22 `D2b`'s lesson, where a refusal arrived after 55 cells.
+  assert(hexset_count(floors_of(w)) == 27, "a refusal left floor behind: {hexset_count(floors_of(w))}");
+}
+
+fn test_a_room_files_no_roof_and_never_meets_the_house_guard() {
+  // ⚠ Roofs are out of scope by the requirement — *"for now I want to focus on rooms"* — and
+  // one roof over a union is exactly what `D2b` protects. Filing none is why a second BOX is
+  // allowed where a second HOUSE is refused.
+  w = room_world();
+  s = EditSession {};
+  session_at(s, w, 6.0, 0.0, 1.5707963267948966);
+  h = press_verb(s, w, s.es_author, VB_PLACE, "");
+  assert(!h.ak_ok, "the control: a second HOUSE here is still refused");
+  r = press_verb(s, w, s.es_author, VB_ROOM, "");
+  assert(r.ak_ok, "…and a second BOX is not: {r.ak_why}");
+}

@@ -2743,6 +2743,12 @@ fn region_no(why: text, n: integer) -> RegionRead {
                rg_set: hexset_chunk(0, 0, 1, 1) }
 }
 
+// `hex_recover::rebuild_construct` verifies into `hexset_chunk(-12, -12, 25, 25)`, so an R1
+// verdict is a proof the recovered form fits here. Mirrored, not chosen — @HB-X45.
+const RG_Q0 = 0 - 12;
+const RG_R0 = 0 - 12;
+const RG_W = 25;
+
 pub fn region_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                       hr: integer, ref: float) -> RegionRead {
   region_recover_claimed(wld, q0, r0, wq, hr, ref, claims_new(q0, r0, wq, hr))
@@ -2751,7 +2757,7 @@ pub fn region_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
 pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
                               hr: integer, ref: float, cl: Claims) -> RegionRead {
   rg_floor = hexset_chunk(q0, r0, wq, hr);
-  rg_lq = 0; rg_lr = 0;
+  rg_bk = 0; rg_bm = 0;
   rg_n = 0;
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
@@ -2762,9 +2768,11 @@ pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: int
         continue;
       }
       hexset_set(rg_floor, q, r, true);
-      if rg_n == 0 { rg_lq = q; rg_lr = r; }
-      if q < rg_lq { rg_lq = q; }
-      if r < rg_lr { rg_lr = r; }
+      rg_k1 = hex_field::lattice_k(q, r);
+      rg_m1 = hex_field::lattice_m(q, r);
+      if rg_n == 0 { rg_bk = rg_k1; rg_bm = rg_m1; }
+      if rg_k1 < rg_bk { rg_bk = rg_k1; }
+      if rg_m1 < rg_bm { rg_bm = rg_m1; }
       rg_n = rg_n + 1;
     }
   }
@@ -2787,21 +2795,31 @@ pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: int
   // translation at all. `hex_field::lattice_k/lattice_m` is the frame where it is one, and
   // `lattice_to_cell` comes back.
   //
-  // ⚠ **The anchor is the lexicographic minimum by `(m, k)`** — any canonical cell of the
-  // shape does, because a translation moves them all by the same vector; what makes it safe
-  // is the comparison below, not the choice.
-  rg_a = hexset_chunk(0 - 40, 0 - 40, 81, 81);
+  // ⚠ **THE ANCHOR RULE AND THE CHUNK SIZE ARE THE LIBRARY'S, AND BOTH WERE INVENTED HERE
+  // FIRST.** The anchor is the **componentwise** lattice minimum `(min k, min m)` — which is
+  // not a cell of the shape at all, and is exactly what `hex_recover`'s own `oriented_keys`
+  // subtracts to build the digest `rebuild_construct` just matched on. The first version used
+  // a lexicographic minimum by `(m, k)`; it was consistent with itself and so it was correct,
+  // but it was a second canonicalisation of the same quantity, and the separable one costs a
+  // scan we were doing anyway rather than one of its own.
+  //
+  // ⚠ **AND `25 × 25` IS A PROOF, NOT A GUESS.** `rebuild_construct` earns `REGIME_R1` by
+  // re-drawing the form into `hexset_chunk(-12, -12, 25, 25)` and finding a zero symmetric
+  // difference — so a form that reached this line **has already been shown to fit there**.
+  // The first version filled `81 × 81` for the same answer: 6561 cells scanned twice where
+  // 625 is proven sufficient.
+  rg_a = hexset_chunk(RG_Q0, RG_R0, RG_W, RG_W);
   hex_form::form_fill(rb.rb_form, 0, 0, rg_a);
   rg_ak = 0; rg_am = 0;
   rg_m = 0;
-  for r in 0 - 40..41 {
-    for q in 0 - 40..41 {
+  for r in RG_R0..RG_R0 + RG_W {
+    for q in RG_Q0..RG_Q0 + RG_W {
       if !hexset_get(rg_a, q, r) { continue; }
       rg_k = hex_field::lattice_k(q, r);
       rg_mm = hex_field::lattice_m(q, r);
-      if rg_m == 0 || rg_mm < rg_am || (rg_mm == rg_am && rg_k < rg_ak) {
-        rg_ak = rg_k; rg_am = rg_mm;
-      }
+      if rg_m == 0 { rg_ak = rg_k; rg_am = rg_mm; }
+      if rg_k < rg_ak { rg_ak = rg_k; }
+      if rg_mm < rg_am { rg_am = rg_mm; }
       rg_m = rg_m + 1;
     }
   }
@@ -2810,24 +2828,11 @@ pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: int
     return region_no("{rg_n} floor cells against a form of {rg_m} — the redraw is a "
                    + "different size", rg_n);
   }
-  rg_bk = 0; rg_bm = 0;
-  rg_seen = 0;
-  for r in r0..r0 + hr {
-    for q in q0..q0 + wq {
-      if !hexset_get(rg_floor, q, r) { continue; }
-      rg_k2 = hex_field::lattice_k(q, r);
-      rg_m2 = hex_field::lattice_m(q, r);
-      if rg_seen == 0 || rg_m2 < rg_bm || (rg_m2 == rg_bm && rg_k2 < rg_bk) {
-        rg_bk = rg_k2; rg_bm = rg_m2;
-      }
-      rg_seen = rg_seen + 1;
-    }
-  }
   rg_dk = rg_bk - rg_ak;
   rg_dm = rg_bm - rg_am;
   // …and now every cell of the redraw, translated, must be one of the region's own.
-  for r in 0 - 40..41 {
-    for q in 0 - 40..41 {
+  for r in RG_R0..RG_R0 + RG_W {
+    for q in RG_Q0..RG_Q0 + RG_W {
       if !hexset_get(rg_a, q, r) { continue; }
       (rg_tq, rg_tr) = hex_field::lattice_to_cell(hex_field::lattice_k(q, r) + rg_dk,
                                                   hex_field::lattice_m(q, r) + rg_dm);

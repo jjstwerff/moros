@@ -932,6 +932,134 @@ pub fn roof_read_box(wld: VoxelWorld, b: Box, q0: integer, r0: integer, wq: inte
              rr_slope: rk_m.rf_slope, rr_res: rk_m.rf_res, rr_cells: rk_n }
 }
 
+// ── ⛔ A ROOM IS THE HOUSE AGAIN, ADJACENT — plan 26 `C2` ──────────────────
+//
+// The requirement, in the project owner's words: *"Rooms should just follow from the current
+// house with doors. **Just multiple houses of different sizes added together as a floor
+// plan.**"* So a room is not a new primitive — it is a BOX added to a structure that is
+// already there, and the floor plan is their union.
+//
+// ⛔ **THE SHARED EDGE FUSES, AND THAT IS `@HB-X52` RATHER THAN A CHOICE MADE HERE.** Between
+// two adjacent stencils the shared edge is INTERIOR to the union, so cutting the union's
+// boundary never marks it: two boxes make ONE space.
+// [HOUSE_ROOMS](../../../doc/claude/HOUSE_ROOMS.md) says the *default* — hall or room — is
+// hexbody's to change and *"do not guess this one"*, so this builds the library's behaviour
+// and changes nothing. A partition is then a second, deliberate gesture on the interior edge.
+//
+// ⛔ **THE HARD PART IS THE RE-CUT, NOT THE UNION.** The structure already HAS walls, and
+// adding a box makes one of them interior — so the seam is CLEARED as well as the new boundary
+// written. Measured in [`probe/c2`](../../../probe/c2/README.md): `shared_marked` is **0** and
+// `leak_count` **0** on every adjacency tried, against a non-touching control where
+// `set_connected` correctly says the two are not one space.
+//
+// ⚠ **NO ROOF, DELIBERATELY.** *"For now I want to focus on rooms / passages / doors"* — and
+// one roof over a union of boxes is the thing `D2b` exists to protect. This gesture files no
+// roof plan, so it never reaches that guard.
+//
+// ⚠ **AND NO `WallRun` IS FILED.** A run is a straight line the mesher draws from; the union's
+// boundary is not one, and filing four sides of a box whose seam has just been removed would
+// draw the wall this gesture exists to take away — [EDITOR_DEFECTS 4](../../../doc/claude/EDITOR_DEFECTS.md).
+pub fn room_add(w: VoxelWorld, a: Author, wid: integer, dep: integer) -> Ack {
+  ra_f = pose_footprint(a.au_x, a.au_z, a.au_yaw, wid, dep);
+  if !ra_f.fp_ok {
+    return ack_no("a box at this facing has no mitred corners; turn one step");
+  }
+  // ⚠ **A WINDOW BIG ENOUGH FOR THE STRUCTURE, AND A REFUSAL IF IT IS NOT.** A window that
+  // clipped the floor would make `combine_cut` cut a boundary at the clip, and this function
+  // would stamp that as a wall — inventing one across the middle of somebody's house.
+  ra_pad = wid + dep + 16;
+  ra_q0 = ra_f.fp_cq - ra_pad;
+  ra_r0 = ra_f.fp_cr - ra_pad;
+  ra_wq = 2 * ra_pad + 1;
+  ra_hr = 2 * ra_pad + 1;
+
+  ra_nb = hexset_chunk(ra_q0, ra_r0, ra_wq, ra_hr);
+  footprint_fill(ra_f, ra_nb);
+
+  ra_old = hexset_chunk(ra_q0, ra_r0, ra_wq, ra_hr);
+  ra_edge = 0;
+  ra_n = 0;
+  for r in ra_r0..ra_r0 + ra_hr {
+    for q in ra_q0..ra_q0 + ra_wq {
+      if world_ground_cell(w, q, r).h_material != FLOOR_MAT { continue; }
+      hexset_set(ra_old, q, r, true);
+      ra_n = ra_n + 1;
+      if q == ra_q0 || r == ra_r0 || q == ra_q0 + ra_wq - 1 || r == ra_r0 + ra_hr - 1 {
+        ra_edge = ra_edge + 1;
+      }
+    }
+  }
+  if ra_edge > 0 {
+    return ack_no("the building reaches past what this gesture can see — stand nearer to "
+                + "the side you are adding to");
+  }
+
+  // Does the new box actually MEET the structure?  Overlapping counts: a box half inside is
+  // still one plan.  ⚠ Asked before any write — plan 22 `D2b`'s lesson, where a refusal
+  // arrived after 55 cells had been stamped.
+  ra_meets = 0;
+  ra_seat = 0;
+  ra_got = false;
+  for r in ra_r0..ra_r0 + ra_hr {
+    for q in ra_q0..ra_q0 + ra_wq {
+      if !hexset_get(ra_nb, q, r) { continue; }
+      if hexset_get(ra_old, q, r) {
+        ra_meets = ra_meets + 1;
+        if !ra_got { ra_seat = ground_h(w, q, r); ra_got = true; }
+      }
+      for ra_d in 0..6 {
+        (ra_nq, ra_nr) = hex_grid::hex_neighbor(q, r, ra_d);
+        if hexset_get(ra_old, ra_nq, ra_nr) {
+          ra_meets = ra_meets + 1;
+          if !ra_got { ra_seat = ground_h(w, ra_nq, ra_nr); ra_got = true; }
+        }
+      }
+    }
+  }
+  if ra_meets == 0 {
+    return ack_no("there is nothing here to add a room to — place a house first, or step "
+                + "closer to the one you mean");
+  }
+
+  // ── the union, cut ONCE — `hex_place::combine_cut`, never a boundary of ours ──
+  ra_un = hex_place::field_union(ra_old, ra_nb);
+  ra_cut = edgeset_new(ra_q0, ra_r0, ra_wq, ra_hr);
+  hex_place::combine_cut(ra_old, WALL_MAT, ra_nb, WALL_MAT, ra_cut);
+
+  ra_wrote = 0;
+  ra_cleared = 0;
+  ra_ref = (ra_seat as float) * w.w_unit;
+  for r in ra_r0..ra_r0 + ra_hr {
+    for q in ra_q0..ra_q0 + ra_wq {
+      for ra_e in [4, 5, 0] {
+        (ra_eq, ra_er) = hex_grid::hex_neighbor(q, r, ra_e);
+        ra_want = edge_mat(ra_cut, q, r, ra_eq, ra_er) != 0;
+        ra_has = edge_is_wall(wall_of(w, q, r, ra_e, ra_ref));
+        if ra_want && !ra_has {
+          wall_set(w, q, r, ra_e, WALL_MAT, ra_seat, ra_ref);
+          ra_wrote = ra_wrote + 1;
+        }
+        // ⚠ **ONLY WHAT THE UNION MAKES INTERIOR.** Both cells inside it, or the clause would
+        // rub out a neighbour's wall that merely stands nearby.
+        if !ra_want && ra_has && hexset_get(ra_un, q, r) && hexset_get(ra_un, ra_eq, ra_er) {
+          wall_set(w, q, r, ra_e, 0, ra_seat, ra_ref);
+          ra_cleared = ra_cleared + 1;
+        }
+      }
+    }
+  }
+  for r in ra_r0..ra_r0 + ra_hr {
+    for q in ra_q0..ra_q0 + ra_wq {
+      if hexset_get(ra_nb, q, r) { ground_set(w, q, r, ra_seat, FLOOR_MAT); }
+    }
+  }
+  // ⚠ `ack_about`, not `ack_ok`: the count is the WRITE and the sentence is what happened, so
+  // a driver that prints only the number still says something true.
+  ack_about(ra_wrote, "room added {wid}x{dep} — {hexset_count(ra_un)} cells in the plan, "
+          + "{ra_wrote} wall edges written and {ra_cleared} taken away where it fused",
+            ra_cleared)
+}
+
 pub fn roof_eave_y(floor_h: integer, eave_up: integer, unit: float) -> float {
   ((floor_h + eave_up) as float) * unit
 }
@@ -1925,6 +2053,10 @@ pub const VB_STAIR_DOWN = "stair_down";
 // here"*. The guard caught it. So push takes a DIGIT, following `tower`'s `1` and its note —
 // the editor has run out of letters, the binding is data, and a person remaps it from inside.
 pub const VB_PUSH = "push";
+// ⛔ **A ROOM IS THE HOUSE AGAIN, ADJACENT — plan 26 `C2`.** `place` puts a NEW building
+// down and `D2b` correctly refuses a second one under an existing roof; this adds a box
+// TO the structure already there, so it never reaches that guard.
+pub const VB_ROOM = "room";
 pub const VB_HOLE = "hole";
 pub const VB_SLAB = "slab";
 
@@ -2008,6 +2140,12 @@ pub fn keymap_default() -> KeyMap {
     bind_of("B", VB_STOREY),
     bind_of("C", VB_CELLAR),
     bind_of("2", VB_PUSH),
+    // ⚠ **A DIGIT, AND NOT ONE OF THE FREED LETTERS.** `K` and `V` look free and are not:
+    // `verb.loft` guards them as the ANNEX family's aliases, because a second key there is
+    // what a lost selection looks like from the keymap — and `P I U N M` are the OPENING
+    // family's for the same reason. The digits are the editor's actual spare capacity, which
+    // `B4i` already spent `1` from and `WALL_PUSH` `2`.
+    bind_of("3", VB_ROOM),
   ])
 }
 
@@ -2032,6 +2170,7 @@ pub fn verb_short(verb: text) -> text {
   if verb == VB_WALL       { return "wall"; }
   if verb == VB_RUN        { return "run"; }
   if verb == VB_PUSH       { return "push"; }
+  if verb == VB_ROOM       { return "room"; }
   if verb == VB_AIM        { return "aim"; }
   if verb == VB_SEAT       { return "seat"; }
   if verb == VB_ANNEX      { return "anex"; }
@@ -2152,6 +2291,16 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // collapse one family over. Nothing chosen builds the procedural house it always
   // did, so every existing driver and every baseline is untouched; a chosen part is
   // placed instead. One verb, one key, and the catalogue says which thing it makes.
+  // ⛔ **A ROOM IS ADDED TO WHAT IS THERE — plan 26 `C2`.** `place` is the verb that puts a
+  // building down; this is the one that grows it, and the difference is the whole reason
+  // `D2b` can go on refusing a second house without refusing a second ROOM.
+  //
+  // ⚠ **THE SIZE IS THE HOUSE'S OWN**, so a plan is boxes of one size until a selection says
+  // otherwise — `place` takes its `4 x 5` from the same place, and a second source for it
+  // would be the divergence the catalogue exists to prevent.
+  if verb == VB_ROOM {
+    return room_add(w, a, HOUSE_W, HOUSE_D);
+  }
   if verb == VB_PLACE {
     if sess.es_part == "" {
       // ⚠ **THE TYPE IS DATA NOW — plan 22 `T1a.1`, and this is its ONE consumer.**

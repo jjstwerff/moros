@@ -1,0 +1,163 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `C2` — ADDING A BOX TO A HOUSE, PROTOTYPED BEFORE THE GESTURE. Plan 26.
+//
+//   loft --interpret --lib lib/ probe/c2/c2.loft        (or `make probe-c2`)
+//
+// The requirement, in the project owner's words: *"Rooms should just follow from the current
+// house with doors. Just multiple houses of different sizes added together as a floor plan."*
+//
+// ⚠ **THE DEFAULT IS `@HB-X52`'s AND NOT A CHOICE MADE HERE**: between two adjacent stencils
+// the shared edge is INTERIOR to the union, so cutting the union's boundary never marks it —
+// two boxes make ONE space. [HOUSE_ROOMS](../../doc/claude/HOUSE_ROOMS.md) says the default is
+// hexbody's to change, so this builds the library's behaviour and changes nothing.
+//
+// ⛔ **THE HARD PART IS NOT THE UNION, IT IS THE RE-CUT.** The house already HAS walls; adding
+// a box makes one of them interior, so the seam must be CLEARED as well as the new boundary
+// written. This measures whether that leaves the store correct — `shared_marked` for the seam,
+// `leak_count` for the enclosure.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_place;
+use hex_shape;
+use hex_grid;
+
+const Q0 = 0 - 20;
+const R0 = 0 - 20;
+const WQ = 41;
+const HR = 41;
+const YAW = 1.5707963267948966;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn floor_cells(w: VoxelWorld) -> HexSet {
+  c = hexset_chunk(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if world_ground_cell(w, q, r).h_material == FLOOR_MAT { hexset_set(c, q, r, true); }
+    }
+  }
+  c
+}
+
+fn marks_of(w: VoxelWorld) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        edge_set_mat(e, q, r, nq, nr, 1);
+      }
+    }
+  }
+  e
+}
+
+fn edges_in(e: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(e, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// ⚠ **THE PROTOTYPE OF THE GESTURE**: union, cut once, then reconcile the store against that
+// cut — write what the union's boundary wants, clear what is now INTERIOR to it.
+fn add_box(w: VoxelWorld, old: HexSet, nb: HexSet, seat: integer,
+           wrote: &integer, cleared: &integer) -> EdgeSet {
+  un = hex_place::field_union(old, nb);
+  cut = edgeset_new(Q0, R0, WQ, HR);
+  hex_place::combine_cut(old, WALL_MAT, nb, WALL_MAT, cut);
+  nw = 0;
+  nc = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        want = edge_mat(cut, q, r, nq, nr) != 0;
+        got = edge_is_wall(wall_of(w, q, r, d, 0.0));
+        if want && !got {
+          wall_set(w, q, r, d, WALL_MAT, seat, (seat as float) * w.w_unit);
+          nw = nw + 1;
+        }
+        // ⚠ **ONLY WHAT THE UNION MAKES INTERIOR** — both cells inside it. Anything else is
+        // somebody's wall and not this gesture's business.
+        if !want && got && hexset_get(un, q, r) && hexset_get(un, nq, nr) {
+          wall_set(w, q, r, d, 0, seat, (seat as float) * w.w_unit);
+          nc = nc + 1;
+        }
+      }
+    }
+  }
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if hexset_get(nb, q, r) { ground_set(w, q, r, seat, FLOOR_MAT); }
+    }
+  }
+  wrote = nw;
+  cleared = nc;
+  cut
+}
+
+fn run(tag: text, dx: float, dz: float, wid: integer, dep: integer) {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  a = press_verb(s, w, s.es_author, VB_PLACE, "");
+  if !a.ak_ok { println("    {tag}: the house was refused: {a.ak_why}"); return; }
+  old = floor_cells(w);
+  before = edges_in(marks_of(w));
+
+  f = pose_footprint(dx, dz, YAW, wid, dep);
+  if !f.fp_ok { println("    {tag}: the box's facing has no plan"); return; }
+  nb = hexset_chunk(Q0, R0, WQ, HR);
+  footprint_fill(f, nb);
+  touch = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if !hexset_get(nb, q, r) { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if hexset_get(old, nq, nr) { touch = touch + 1; }
+      }
+    }
+  }
+  nw = 0;
+  nc = 0;
+  add_box(w, old, nb, 8, nw, nc);
+
+  after = marks_of(w);
+  seam = hex_place::shared_marked(old, nb, after);
+  un = hex_place::field_union(old, nb);
+  outside = hexset_chunk(Q0, R0, WQ, HR);
+  hex_shape::flood_outside(un, outside);
+  leak = hex_shape::leak_count(un, outside);
+  conn = hex_shape::set_connected(un);
+  println("    {tag}: touching {touch} · walls {before} -> {edges_in(after)}"
+        + " (wrote {nw}, cleared {nc})");
+  println("        ⛔ seam edges {seam} · leaks {leak} · one space {conn}"
+        + " · union {hexset_count(un)} cells");
+}
+
+fn main() {
+  println("C2 — adding a box to a house (plan 26)");
+  println("");
+  println("  a house at the origin, and a box placed against it:");
+  run("adjacent, same size ", 6.0, 0.0, 4, 5);
+  run("adjacent, smaller   ", 6.0, 0.0, 3, 3);
+  run("further along       ", 8.0, 0.0, 4, 5);
+  run("off to one side     ", 6.0, 4.0, 3, 3);
+  run("not touching at all ", 14.0, 0.0, 4, 5);
+}

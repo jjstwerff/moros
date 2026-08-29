@@ -1,5 +1,4 @@
 hex_edge 9
 hex_field 148
-hex_fit 44
 hex_form 15
 hex_recover 38

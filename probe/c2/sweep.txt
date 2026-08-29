@@ -1,0 +1,13 @@
+row 0 — control, nothing cut
+  green
+row 1 — the seam is never cleared (the fuse becomes an overlay)
+  RED: test_a_room_fuses_with_the_house_it_is_added_to 
+row 2 — the union boundary is never written (the new box has no walls)
+  RED: test_a_room_fuses_with_the_house_it_is_added_to 
+row 3 — a box with nothing to join is accepted (the gesture becomes place)
+  RED: test_a_room_with_nothing_to_join_is_refused 
+row 4 — the clear is not limited to what the union makes interior
+  green
+row 5 — ✅ THE GREEN CONTROL: the edge scan runs in a different order
+  green
+restored

@@ -198,3 +198,57 @@ ones are the `loft-libs-*` repos.
 3. **`hex_roof`'s recovery half** — already a transitive dep, and the blueprint wants it.
 4. Read **`@HB-X35`**, **`@HB-X50`**, **`@HB-X34`** before the next geometry step.
 5. `input`, `gridmesh`, `hex_terrain` — real overlaps, none of them blocking.
+
+## ⛔ Measured 2026-08-29 — the duplicate was not where it was looked for
+
+`region_recover_claimed` was slow enough to push `hex_mesh/planview` through `loft test`'s
+300 s wall, and the first fix was a skip. Asked *why*, the split is:
+
+| | share of the region reader |
+|---|---|
+| `hex_recover::rebuild_construct` — **the library** | **~1 %** |
+| the 37×37 window scan (`edge_layer` + `world_cell`) | ~17 % |
+| **placement recovery — ours** | **~82 %** |
+
+⚠ **THE LIBRARY CALL WAS NEVER THE COST.** What cost was the code around it, and both
+halves of that code were **a second version of something the library already fixes**:
+
+- **The chunk was `81 × 81` where `25 × 25` is PROVEN sufficient.** `rebuild_construct`
+  earns `REGIME_R1` by re-drawing the form into `hexset_chunk(-12, -12, 25, 25)` and finding
+  a zero symmetric difference — so a form that reaches the placement code **has already been
+  shown to fit there**. 6561 cells scanned twice, for an answer 625 holds.
+- **The anchor was a lexicographic minimum by `(m, k)`; the library's is the COMPONENTWISE
+  minimum `(min k, min m)`.** `hex_recover`'s own `oriented_keys` subtracts exactly that to
+  build the digest `rebuild_construct` had just matched on. Ours was self-consistent and so it
+  was correct — but it was a second canonicalisation of one quantity, and being separable the
+  library's rule folds into the window scan we were already doing, which **deleted a second
+  full pass over the window**.
+
+**Exact, and box-independent because it is the loop bounds and not a clock: 15 860 set-lookups
+→ 2 619, `6.06×`.** ⚠ The wall clock could not have told us this — the same binary on the same
+code timed **8× apart** between two runs while the sibling's `cargo` held the load average at
+24. [CLAUDE.md](../../CLAUDE.md)'s *cost is measured in `w_tau`* does not reach here either:
+`w_tau` counts **writes**, and a reader writes nothing. **For a read path the instrument is the
+op count**, derived from the bounds.
+
+### ⚠ And the real duplicate is older than the new code
+
+`region_recover_claimed` is the **only** caller of `hex_recover::rebuild_construct` in this
+tree. The two readers beside it recover *convex* shapes **by searching**:
+
+| reader | shape | how |
+|---|---|---|
+| `house_recover_claimed` | a box | **5-deep search** — anchor × `wid` × `dep` × `rot`, a `box_fits` scan at each |
+| `disc_recover_at` | a disc | 3-deep search |
+| `region_recover_claimed` | any form | **constructive** — hull → form → one verify |
+
+⛔ **`@HB-X45` says a convex form's recovery is exact and CONSTRUCTIVE — the convex hull of the
+cells *is* the polygon, 119/119 at `ρ = 0`.** A box and a disc are convex. So the search-based
+pair are the *pre-library* algorithm, still live, and every peel round pays for one: measured in
+the same run, `house_recover_claimed` costs **~2.3×** what the constructive reader costs while
+answering strictly less (it recovers no placement and no polygon).
+
+⚠ **Not changed here** — that is a rewrite of a load-bearing reader with its own gate, not a
+consequence of this measurement. What is recorded is that **the question "is this already in the
+stack?" was asked of the wrong file**: the new code was suspected, and it turned out to be the
+one place where the library *is* called.
