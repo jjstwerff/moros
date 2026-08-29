@@ -11,6 +11,30 @@
 //
 // ⚠ **THE DOORSTEP IS THE FLOOD'S OWN REFUSAL** — `enclosure_fill` already answers
 // *bounded, and by how much*, or refuses by name. Nothing new decides anything here.
+// ── THE SABOTAGE SWEEP, AND THE ROW THAT REFUTED ITS OWN PREDICTION ────────
+//
+// Subject committed first, sources copied aside and restored from the copies (never
+// `git checkout`), the subject asserted present before row 0, and every row checked for
+// BUILD before its count was read — a row that will not compile goes red everywhere and
+// is worth nothing.
+//
+//   0  control, unsabotaged                          ✅ 9 passed
+//   1  a bounded neighbour never floors              ⛔ 1 failed — the OUTSIDE seed; the
+//                                                       inside one still floors via the
+//                                                       seed cell, which is why it is 1
+//   2  the seed cell itself is not asked             ⛔ 2 failed — the one-sided bug
+//   3  the flood ignores the material asked for      ⛔ 2 failed
+//   4  the aim gesture stops calling `promote_close` ⛔ 1 failed — the caller test alone
+//   5  `PM_ALREADY` loses to `PM_OPEN`               ⛔ 1 failed — **predicted GREEN**
+//   6  a refusal is reworded                         ✅ 9 passed  (the control)
+//
+// ⚠ **ROW 5 WAS PREDICTED GREEN AND IS RED, WHICH IS THE ROW WORTH HAVING.** The guess
+// was that no fixture holds a wall with a floored space on one side and open ground on
+// the other. `test_promoting_twice…` is exactly that world, and with the precedence
+// flipped it answers *"the wall does not close — the boundary is open"* about a room
+// that is already there. That is `B4j`'s own defect one gesture over — telling an author
+// to look for a gap that is not there — and the clause defending it is now measured
+// rather than argued.
 use hex_editor;
 use hex_voxel;
 use hex_grid;
