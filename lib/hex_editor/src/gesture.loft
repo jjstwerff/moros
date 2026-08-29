@@ -6591,14 +6591,21 @@ pub struct DoorLeaves { items: vector<DoorLeaf> }
 // jumped the character 2.22 -> 3.25 wu the instant levelling came on, because the
 // feet stand on the INTERPOLATED surface and that equals the cell height only at
 // its centre.
+// ⛔ **AND THE ROUNDING IS `hex_fit`'S NOW — plan 26 `B7`.** This function was the tree's own
+// copy of the doorstep's quantiser: round half away from zero, and report what was thrown away.
+// `hex_fit::height_units_at` / `seat_fit_residual_at` are that, published, with the doorstep's
+// own gate behind them.
+//
+// ⚠ **THE QUANTUM IS `1.0` HERE BECAUSE THE ARGUMENT IS ALREADY IN UNITS.** The callers divide
+// by `w.w_unit` before this — the world's own height scale, which is the right one and is why
+// `hex_fit 0.1.1` had to make the quantum a parameter at all (its `HEIGHT_SCALE` is a constant
+// `0.25`, and this tree builds worlds at 0.125 and 1.0 too). ⚠ **A caller holding WORLD units
+// should ask `seat_fits_at(z, w.w_unit)` directly** rather than divide and come here; that is
+// the shape [EDITOR_DEFECTS 3](../../../doc/claude/EDITOR_DEFECTS.md) needs, and it is not
+// this step.
 pub fn freeze_grade(feet_units: float, residual: &float) -> integer {
-  g = 0;
-  if feet_units >= 0.0 { g = (feet_units + 0.5) as integer; }
-  else { g = (feet_units - 0.5) as integer; }
-  d = feet_units - (g as float);
-  if d < 0.0 { d = 0.0 - d; }
-  residual = d;
-  g
+  residual = hex_fit::seat_fit_residual_at(feet_units, 1.0);
+  hex_fit::height_units_at(feet_units, 1.0)
 }
 
 // ── ROADS (rung W1, moros#9) ─────────────────────────────────────────────────

@@ -1,5 +1,5 @@
-# hex_fit 0.1.0 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_fit-0.1.0
+# hex_fit 0.1.1 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_fit-0.1.1
 # use it with: use hex_fit;
 
 ## src/hexdraft.loft
@@ -10,13 +10,33 @@ pub fn draft_new(f: Form, d: integer, a: integer, b: integer, p: integer) -> Dra
 
 pub fn draft_has_run(s: Draft) -> boolean
 
-// The canonical text: the form's spelling, then — if there is one — a single `wall` line.
+// The text of a stencil: the form's spelling, then — if there is one — a single `wall` line.
 // One line, one record, same shape as `side`: the reader refuses anything else rather than
 // repairing it (`X39`).
+// 
+// ⚠ THIS IS NOT THE CANONICAL TEXT.  It writes the spelling it is GIVEN, and both the form's
+// start corner and the run's direction are choices the model does not fix — so two calls can
+// spell one stencil two ways.  A round trip diffs against `draft_canon_text`.
+// 
+// Example: @HXI-001
 pub fn draft_write(s: Draft, name: text) -> text
 
 // Parse.  The `side` lines go to `form_read` unchanged; a trailing `wall` line is this layer's.
 // A malformed record yields a stencil with an empty form — REFUSED, never repaired.
+// 
+// THAT WAS A CLAIM BEFORE IT WAS A TEST, and it was wrong the same way `hex_form`'s reader was
+// (that one was measured first; this line inherited both the `word_int(…) ?? 0` helper and the
+// gap).  A nineteen-cell acceptance matrix admitted ten texts `draft_write` cannot emit and
+// re-wrote each of them differently: a trailing space, an extra field, `+3`, `003`, a `wall`
+// line placed between two `side` lines — and, sharper than any spelling, a field that is not a
+// number at all.  `wall d x a -6 b 9 p 1` became `d 0`: not a wall that is missing, A WALL
+// POINTING SOMEWHERE ELSE, admitted into the model without a word.  `a x` moved it instead.
+// 
+// What pins it now is the same RE-SPELLING IDENTITY: a field is an integer only if printing the
+// parse reproduces the original characters, a line is a record only if it carries exactly the
+// fields the writer emits, and the `wall` line is LAST because that is where the writer puts it.
+// 
+// Example: @HXI-003
 pub fn draft_read(t: text) -> Draft
 
 // Draw the whole stencil into one field: the fill, its own boundary walls, and the embedded run as
@@ -30,7 +50,40 @@ pub fn draft_interior(cells: HexSet, edges: EdgeSet, embedmat: integer) -> EdgeS
 // REBUILD, INCLUDING THE RUN.  The form comes from the cells (constructive recovery, `X45`); the
 // run comes from the interior edges (`wall_read_run`, `X60`) — two recoveries reading disjoint
 // slots.  An unreadable run is REFUSED, so it is dropped loudly by a text diff rather than silently.
+// 
+// ⚠ DIFF THIS AGAINST `draft_canon_text`, NOT against `draft_write`.  What comes back is the
+// spelling the FIELD answers with, and for the run half that is one of two — see the note there.
+// 
+// Example: @HXI-002
 pub fn draft_rebuild_text(cells: HexSet, edges: EdgeSet, name: text, embedmat: integer) -> text
+
+// ── ONE MODEL, ONE TEXT — the canonical spelling ───────────────────────────
+// 
+// The format's premise is that a `diff` means *the model changed*, which needs every model to
+// have exactly ONE text.  The form half has that: a shape has n cyclic spellings and `form_canon`
+// picks the smallest, which is why `rebuild_construct_text` and `form_canon_text` agree.
+// 
+// THE RUN HALF HAD NO SUCH RULE, and a run has exactly TWO spellings — `(d, A, p)` and
+// `(d + 12, B, p)` — because A-to-B and B-to-A mark the identical edges and the field stores no
+// orientation (`wall_read_run`'s own note).  Measured over all 24 directions: the two spellings
+// draw fields that differ in ZERO edges, and **exactly one of them survives a text round trip**,
+// never both and never neither.  So an author who wrote the wall from the other end got *the
+// model changed* out of a byte diff on a model that had not changed at all.
+// 
+// The canonical spelling is therefore READ OFF THE FIELD rather than chosen by a rule — the same
+// discipline `hexfit`'s feature grid is built on (`SPEC` **L11**: consult the table that owns the
+// answer), and the only definition that cannot drift from what `draft_rebuild_text` will answer,
+// since it is that same reader.
+// 
+// Example: @HXI-001
+pub fn draft_canon(s: Draft, cells: HexSet) -> Draft
+
+// The one text a round trip can be diffed against.  A run that does not FIT is left as written —
+// the canon is a spelling rule, not a doorstep, and refusing here would hide which of the two is
+// wrong.
+// 
+// Example: @HXI-001
+pub fn draft_canon_text(s: Draft, cells: HexSet, name: text) -> text
 
 // ── THE DOORSTEP (`fits?`, law C₁ / `K-FIT`) ───────────────────────────────
 // 
@@ -62,11 +115,15 @@ pub fn draft_fit_reason(code: integer) -> text
 
 // THE DOORSTEP.  `cells` is the form's own footprint.  Returns a reason code — `FIT_OK` or the
 // specific restriction, never a bare false.
+// 
+// Example: @HXI-004
 pub fn draft_fits(s: Draft, cells: HexSet) -> integer
 
 // AND THE ALTERNATIVE THE REFUSAL OWES (`K-FIT`): the longest run from this anchor, in this
 // direction, that IS admissible and fits — searching downward so the offer is never longer than
 // what was asked for.  0 when nothing fits, which is itself a usable answer: move the anchor.
+// 
+// Example: @HXI-004
 pub fn draft_fit_p(s: Draft, cells: HexSet) -> integer
 
 ## src/hexfit.loft
@@ -84,15 +141,21 @@ pub const FIT_BAD_HEIGHT = 11
 
 pub const FIT_BAD_MAT    = 12
 
+pub const FIT_BAD_SCALE  = 13
+
 // One reason table for the whole doorstep — `hexdraft`'s codes and these.
 pub fn fit_reason(code: integer) -> text
 
 // The admissible positions on a side, in the order the run stores them — which is NOT t order
 // (`A5`: index a feature by its exact `t`, never by its position in the `SideRun`).
+// 
+// Example: @HXI-005
 pub fn feature_grid(p: Plan, cells: HexSet, side: integer) -> vector<float>
 
 // THE DOORSTEP.  `t` must be exactly an edge centre of this side — no tolerance (`P4`), because in
 // regime R1 an epsilon is a defect signal and not a knob.
+// 
+// Example: @HXI-005
 pub fn feature_fits(p: Plan, cells: HexSet, side: integer, t: float, nedges: integer) -> integer
 
 // AND THE ALTERNATIVE THE REFUSAL OWES: the nearest admissible `t`.  This is what an editor calls
@@ -111,10 +174,25 @@ pub fn arc_fits(n24: integer) -> integer
 // author asked for (N = 11 is offered 12, not 0).  That is deliberate and differs from what the
 // unrefused value would have drawn: an off-grid N silently draws the shell BELOW it, so `arc_fill`
 // would have given 0.  Offering the nearest and showing the residual is the point — the author sees
-// both candidates' cost instead of being quietly rounded down.  Ties go DOWN, to the smaller shell.
+// both candidates' cost — `arc_snap_n` is the other one — instead of being quietly rounded down.
+// Ties go DOWN, to the smaller shell.
+// 
+// Example: @HXI-006
 pub fn arc_fit_n(n24: integer) -> integer
 
 pub fn arc_fit_residual(n24: integer) -> integer
+
+// THE OTHER CANDIDATE, and the reason the comment above can say *both*.  This is the shell an
+// UNREFUSED radius actually draws — the largest realisable one at or below `n24` — so an editor
+// can show the author what the silent snap would have cost beside what the offer costs.  The two
+// are not close: `N = 35` is offered 36 at a residual of 1 and would have drawn **12**, an error
+// of 23 in the same units, because 12 and 36 are neighbouring shells.  Verified against
+// `arc_fill` over every radius 0..64 rather than against the formula it shares with `arc_fits`.
+// 
+// Example: @HXI-006
+pub fn arc_snap_n(n24: integer) -> integer
+
+pub fn arc_snap_residual(n24: integer) -> integer
 
 // ── LEVELS — MEASURED TO HAVE NOTHING TO REFUSE ─────────────────────────────
 // 
@@ -126,6 +204,8 @@ pub fn arc_fit_residual(n24: integer) -> integer
 // This returns `FIT_OK` unconditionally, and that is a RESULT, not an omission.  `tests/fit.loft`
 // keeps it honest the only way an always-true predicate can be kept honest: by showing that the
 // SAME doorstep refuses the other parameters, so "accepts every level" is not "accepts everything".
+// 
+// Example: @HXI-008
 pub fn level_fits(lv: integer) -> integer
 
 // ── MATERIAL IDS — hexbody's OWN slot is narrower than moros's ──────────────
@@ -145,6 +225,8 @@ pub const MAT_MAX = 255
 // to 256 is 255, and 255 is a *different material* — offering it would be worse than a blank no,
 // because it looks like a small correction and is not.  So this refusal names its restriction and
 // stops there.  The author must pick a material, not accept a rounding.
+// 
+// Example: @HXI-007
 pub fn mat_fits(m: integer) -> integer
 
 // ── TERRAIN — THE GRID moros FIXES, and the fork it closes ──────────────────
@@ -165,17 +247,33 @@ pub fn mat_fits(m: integer) -> integer
 // a one-line change with a gate behind it.
 pub const HEIGHT_SCALE = 0.25
 
-// The voxel's own value for a height: what `h_height` would hold.
+// The voxel's own value for a height, at a given quantum: what `h_height` would hold.
+pub fn height_units_at(z: float, scale: float) -> integer
+
+pub fn height_from_units_at(u: integer, scale: float) -> float
+
+// THE DOORSTEP, at the caller's quantum.  A height must land exactly on the voxel's grid; off
+// it, the store truncates and `X59`'s returned residual would be wrong by the truncation —
+// which is the one thing `SPEC` **G5** says must never happen silently.
+// 
+// ⚠ **A NON-POSITIVE QUANTUM IS REFUSED BY NAME RATHER THAN DIVIDED BY.** loft's division by
+// zero yields null and keeps running, so an unchecked `z / scale` would discharge to `0.0` and
+// this would answer *on the grid* for `z = 0` and *off it* for everything else — a wrong verdict
+// dressed as a real one, which is exactly what a doorstep exists not to produce.
+pub fn seat_fits_at(z: float, scale: float) -> integer
+
+// The offer, and the residual the editor must show — in world units.
+pub fn seat_fit_z_at(z: float, scale: float) -> float
+
+pub fn seat_fit_residual_at(z: float, scale: float) -> float
+
 pub fn height_units(z: float) -> integer
 
 pub fn height_from_units(u: integer) -> float
 
-// THE DOORSTEP.  A height must land exactly on the voxel's grid; off it, the store truncates and
-// `X59`'s returned residual would be wrong by the truncation — which is the one thing `SPEC` **G5**
-// says must never happen silently.
+// Example: @HXI-008
 pub fn seat_fits(z: float) -> integer
 
-// The offer, and the residual the editor must show — in world units.
 pub fn seat_fit_z(z: float) -> float
 
 pub fn seat_fit_residual(z: float) -> float

@@ -15,7 +15,7 @@ hex_body 0.3.1 — The moving body — rigs, revolute joints with computed limit
 hex_draw 0.1.0 — Draw a model into the field, and read its wall surface back.
 hex_edge 0.1.0 — Collision as an edge set, and the analytic surfaces behind it.
 hex_field 0.1.0 — Exact-integer hex cell sets and their outlines — the base of the hex_* family.
-hex_fit 0.1.0 — The doorstep — refuse at authoring time what would not round-trip.
+hex_fit 0.1.1 — The doorstep — refuse at authoring time what would not round-trip.
 hex_form 0.1.0 — The exact turtle form on the hex lattice, and its canonical text.
 hex_grid 0.1.0 — Hex-grid geometry — axial/pixel conversion, neighbours, distance, and corner offsets.
 hex_place 0.1.0 — Place, seat and combine — the operations a model survives.

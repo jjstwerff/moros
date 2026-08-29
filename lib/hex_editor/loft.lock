@@ -81,8 +81,8 @@ deps = ["hex_field", "hex_form"]
 
 [[package]]
 name = "hex_fit"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_fit-v0.1.0/hex_fit-0.1.0.tar.gz"
-sha256 = "080315ef3e149bb2008af1ec438b31d1e9cb4433c1e374b40ffd7ad559462ae0"
+version = "0.1.1"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_fit-v0.1.1/hex_fit-0.1.1.tar.gz"
+sha256 = "7947435671ef142962c0c577642a73ede8b99d05338f86d0776507a0c48dce82"
 source = "registry"
 deps = ["hex_draw", "hex_field", "hex_form", "hex_grid", "hex_recover", "hex_shape"]

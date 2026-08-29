@@ -136,3 +136,29 @@ fn test_lowering_past_the_floor_reports_what_it_lost() {
   assert(ack.ak_residual > 0, "reporting what it could not do: {ack.ak_residual}");
   assert(ack.ak_why != "", "in words as well as a number");
 }
+
+// ── ⛔ THE GRADE QUANTISER IS `hex_fit`'S — plan 26 `B7` ───────────────────
+//
+// `freeze_grade` was this tree's own copy of the doorstep's rounding. It delegates now, so what
+// these pin is that the delegation is EXACT — the same integer and the same residual across the
+// sign change and at the half-unit boundary, which is where a rounding rule differs from
+// another rounding rule.
+fn test_freeze_grade_is_the_doorstep_quantiser() {
+  r = 0.0;
+  assert(freeze_grade(2.0, r) == 2, "a whole unit is itself");
+  assert(r == 0.0, "…with nothing thrown away, got {r}");
+
+  assert(freeze_grade(2.4, r) == 2, "2.4 rounds down");
+  assert(abs(r - 0.4) < 1e-12, "…and owes 0.4, got {r}");
+
+  // ⚠ HALF AWAY FROM ZERO, BOTH WAYS — the one place two rounding rules part company.
+  assert(freeze_grade(2.5, r) == 3, "2.5 rounds AWAY from zero");
+  assert(freeze_grade(0.0 - 2.5, r) == 0 - 3, "…and so does -2.5");
+  assert(abs(r - 0.5) < 1e-12, "…each owing half a unit, got {r}");
+
+  assert(freeze_grade(0.0 - 2.4, r) == 0 - 2, "-2.4 rounds toward zero");
+  assert(abs(r - 0.4) < 1e-12, "…owing 0.4, got {r}");
+
+  // The residual is never negative — it is a cost, not an offset.
+  assert(freeze_grade(0.0 - 0.3, r) == 0 && r > 0.0, "a residual is a magnitude, got {r}");
+}

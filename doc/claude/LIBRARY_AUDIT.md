@@ -123,7 +123,8 @@ plan 19 `L6.2` renamed the store so the two no longer answer to one name.
 | `hex_draw` | 23 | **3** | 3 | ⛔ **`draw_walls`** `draw_floor` `draw_roof` `feature_find` |
 | `hex_place` | 17 | **3** | 3 | ⛔ **`combine_cut`** `combine_cut_level` `arb_owner` |
 | `hex_recover` | 33 | **1** | 1 | `rebuild` `hull_keys` `field_digest` `index_build` |
-| `hex_roof` · `hex_fit` · `hex_terrain` | 62 | **0** | 0 | all of them |
+| `hex_fit` | 27 | **3** | 4 | ✅ adopted at `B7` — `arc_fits` `arc_fit_n` for the shell offer, `height_units_at` for the grade |
+| `hex_roof` · `hex_terrain` | 35 | **0** | 0 | all of them |
 
 ⛔ **AND THE FIRST VERSION OF THIS TABLE WAS BLIND.** It grepped `hex_x::name` and reported
 `hex_field` at **9** routines and `hex_place` at **0**. A wildcard `use hex_field;` imports
@@ -158,11 +159,16 @@ you did not create it."** (project owner, 2026-08-29.) `CLAUDE.md` already said 
 other words — *fixing and republishing a shared library is allowed too* — and the first
 instinct here was still to file a ticket against a defect this tree had **measured**.
 
-✅ **First one done**: `hex_fit`'s height quantum is a parameter now, on
-`loft-libs-world` branch `hex-fit-quantum-is-the-callers`, purely additive, tested on both
-backends, both tests seen red. ⛔ It is not live in this tree until `hex_fit 0.1.1` is
-published and `lib/hex_editor/loft.lock` moves — a publish is one of the three things to ask
-about first.
+✅ **First one done, end to end**: `hex_fit`'s height quantum is a parameter — published as
+**0.1.1**, [registry#27](https://github.com/loft-lang/registry/pull/27) merged, index
+re-signed, and the lock moved. `hex_editor::freeze_grade` delegates to it and `probe/k3d`'s 46
+scripts are byte-identical.
+
+⛔ **AND THE MERGE BROKE THE REGISTRY UNTIL IT WAS RE-SIGNED.** The signature covers
+`index.json`; changing it without `index.json.sig` makes every `loft install` fail,
+un-bypassably. The re-sign is `scripts/registry-sign.sh --expect <pkg>@<ver>` — **the
+agent-safe path, which checks the diff rather than accepting a typed yes.** Publishing is four
+steps, not three: release, registry PR, merge, **re-sign**.
 
 ⚠ **`../loft` remains READ + FILE TICKETS**, and `../hexbody` remains read-only. The editable
 ones are the `loft-libs-*` repos.
