@@ -122,7 +122,23 @@ fitted surface at all. **The rooms that draw wrong are the rooms that cost most.
 | **leave it** | ⛔ 7 of 25 leak | ⛔ 8 of 25 exact | ⛔ 200 tri/room |
 | **a doorstep on `wall`** — refuse a run that misses the previous corner | ✅ closed | ⚠ still domain B, so `@HB-X36`/`@HB-X45`/`@HB-X62` do **not** apply | ⛔ unchanged |
 | **rooms are stencils** — `place` only, `wall` stays linework | ✅ `place_house` already refuses an unmitred facing | ✅ R1, exact from the CELLS | ✅ 4 quads, mitred |
-| ✅ **promote on close** — a closed wall loop acquires a FLOOR | ✅ | ✅ recovery reads the floor | ✅ |
+| ⛔ **promote on close** — a closed wall loop acquires a FLOOR | ⚠ detects, does not create | ⛔ **no** | ⛔ **no** |
+
+⛔ **THE PROMOTE-ON-CLOSE ROW WAS WRONG AND IT WAS MINE — built, then measured
+([`probe/pc`](../../probe/pc/README.md)).** Over the same 25 rectangles: 18 gain a floor, 7
+refuse, **0 descriptions change**, **0 wall triangles are saved**, and the floor ADDS 5 082
+triangles. ⚠ **And the reason is exact rather than a shrug**: asked directly, off the peel,
+`house_recover` **refuses all 18 floors** — it recovers a `Box` rasterisation and
+`@HB-X24` says a lattice polygon cannot be a rectangle, so a flood's region and a rectangle
+never meet. It is not the peel's ordering.
+
+⚠ **What the row above should have said**: *recovers exactly* needs a reader for a REGION
+(`@HB-X33`'s exact families, or `@HB-X45`'s convex-hull recovery) and *four quads* needs the
+fitted renderer `@HB-X61` gates upstream, which this tree does not have at all. Promotion is
+plumbing that positions the world for two things that do not exist yet. ⛔ **And the one
+benefit it could deliver today is not wired**: `press_verb` appends the sentence only on
+`PM_FLOORED`, so an author whose room leaks is told nothing — *"an open one gets told where
+it leaks"* is unbuilt, and it is the cheapest item on the list.
 
 ✅ **AND THE DOORSTEP FOR THE LAST ONE ALREADY EXISTS.** `hex_editor::field_fill` floods an
 enclosure and **refuses an unbounded one by name** — *"the boundary is open, or the enclosure is
