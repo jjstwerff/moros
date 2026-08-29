@@ -207,9 +207,19 @@ fn a_walled_cell(w: VoxelWorld, oq: &integer, orr: &integer) -> boolean {
   false
 }
 
+// ⛔ **THE RAW FIELD, WHICH `wall_stamp` NO LONGER PRODUCES.** Once `wall_corner_close`
+// shipped, four `wall_at` calls stopped being the thing this table measures — so the four
+// runs are unioned here with no corner rule at all. ⚠ Without this the probe would quietly
+// re-measure the fix and report it as the defect's absence.
+fn rect_raw(a: float, b: float) -> VoxelWorld {
+  nd = 0;
+  na = 0;
+  rect_fixed(a, b, nd, na, false, false)
+}
+
 fn row(a: float, b: float, n_gap: &integer, n_fork: &integer, n_leak: &integer,
        leak_gap: &integer, n_over: &integer, over_fork: &integer) {
-  w = rect(a, b);
+  w = rect_raw(a, b);
   marks = marks_of(w);
   total = edges_in(marks);
   nf = 0; ng = 0; nk = 0; nm = 0; ns = 0;
@@ -249,6 +259,50 @@ fn row(a: float, b: float, n_gap: &integer, n_fork: &integer, n_leak: &integer,
         + "  drawn {t.pt_marks}  flood {code} {cells}");
 }
 
+// ✅ **AND THE SHIPPED RULE, THROUGH `wall_stamp` ITSELF.** The prototype above is a second
+// implementation by construction; this row is the consumer check that says the function that
+// ships reproduces it. Anything but *equal to the add-only table* is a divergence between
+// what was measured and what was built.
+fn shipped_row(a: float, b: float, leaks: &integer, over: &integer, exact: &integer) {
+  w = rect(a, b);
+  marks = marks_of(w);
+  total = edges_in(marks);
+  nf = 0; ng = 0; nk = 0; nm = 0; ns = 0;
+  shape = corner_kinds(marks, a, b, nf, ng, nk, nm, ns);
+  ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0);
+  svg = hex_mesh::plan_svg(w, Q0, R0, Q0 + WQ, R0 + HR, 0.0, "{a}x{b}");
+  t = hex_mesh::plan_tally(svg);
+  sq = 0; sr = 0;
+  code = "no wall";
+  cells = 0;
+  if a_walled_cell(w, sq, sr) {
+    p = hex_editor::promote_close(w, sq, sr, hex_editor::FLOOR_MAT);
+    cells = p.pm_cells;
+    if p.pm_code == hex_editor::PM_FLOORED { code = "closed"; }
+    if p.pm_code == hex_editor::PM_OPEN { code = "⛔LEAK"; }
+    if p.pm_code == hex_editor::PM_ALREADY { code = "already"; }
+  }
+  if code == "⛔LEAK" { leaks = leaks + 1; }
+  if t.pt_descs > 4 { over = over + 1; }
+  if t.pt_descs == 4 && code == "closed" { exact = exact + 1; }
+  println("    {a} x {b}: corners {shape}  marks {total}  chains {ch.wc_n}"
+        + "  descriptions {t.pt_descs}  drawn {t.pt_marks}  flood {code} {cells}");
+}
+
+fn shipped_sweep() {
+  nl = 0;
+  no = 0;
+  ne = 0;
+  for ia in 0..5 {
+    for ib in 0..5 {
+      shipped_row(4.0 + (ia as float), 3.0 + (ib as float), nl, no, ne);
+    }
+  }
+  println("");
+  println("  {nl} of 25 leak, {no} of 25 described over four,"
+        + " {ne} of 25 are four walls round a closed room");
+}
+
 fn main() {
   println("B4y — which end owes the corner? (plan 26)");
   println("");
@@ -280,6 +334,9 @@ fn main() {
   println("");
   println("  ADD ONLY — the missing corner edge, and the spur left where it is:");
   fixed_sweep(false);
+  println("");
+  println("  ✅ THE SHIPPED RULE — `wall_corner_close`, through `wall_stamp` itself:");
+  shipped_sweep();
 }
 
 // ── ⛔ THE RULE THE STAMP WOULD APPLY, PROTOTYPED BEFORE IT IS BUILT ────────
@@ -394,7 +451,7 @@ fn write_field(w: VoxelWorld, u: EdgeSet) {
 }
 
 fn rect_fixed(a: float, b: float, dropped: &integer, added: &integer,
-              do_drop: boolean) -> VoxelWorld {
+              do_drop: boolean, do_add: boolean) -> VoxelWorld {
   w = flat_world();
   e0 = run_field(0.0 - a, 0.0 - b, a, 0.0 - b);
   e1 = run_field(a, 0.0 - b, a, b);
@@ -412,10 +469,13 @@ fn rect_fixed(a: float, b: float, dropped: &integer, added: &integer,
     nd = nd + drop_twice(u, e2, e3, 0.0 - a, b);
     nd = nd + drop_twice(u, e3, e0, 0.0 - a, 0.0 - b);
   }
-  na = add_missing(u, a, 0.0 - b);
-  na = na + add_missing(u, a, b);
-  na = na + add_missing(u, 0.0 - a, b);
-  na = na + add_missing(u, 0.0 - a, 0.0 - b);
+  na = 0;
+  if do_add {
+    na = add_missing(u, a, 0.0 - b);
+    na = na + add_missing(u, a, b);
+    na = na + add_missing(u, 0.0 - a, b);
+    na = na + add_missing(u, 0.0 - a, 0.0 - b);
+  }
   dropped = nd;
   added = na;
   write_field(w, u);
@@ -426,7 +486,7 @@ fn fixed_row(a: float, b: float, leaks: &integer, over: &integer, exact: &intege
              do_drop: boolean) {
   nd = 0;
   na = 0;
-  w = rect_fixed(a, b, nd, na, do_drop);
+  w = rect_fixed(a, b, nd, na, do_drop, true);
   marks = marks_of(w);
   total = edges_in(marks);
   nf = 0; ng = 0; nk = 0; nm = 0; ns = 0;

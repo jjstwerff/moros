@@ -89,12 +89,41 @@ another break exactly one hex edge away (two edges for the other four). The step
 `(0,3) (3,0) (3,-3) (0,-3) (-3,0) (-3,3)` and nothing else, which is `hex_edge_corners`'
 own `d = 0…5`, so *one edge* is an integer fact and a join rule needs no threshold.
 
-⛔ **So `B1` is now a decision, not a search**: join chain ends across a one-edge break in
-the reader, or make `wall_stamp` leave the corner closed. ✅ **And the control for the join is
-built and green** — fourteen fixtures of two walls at gaps 0.2 … 2.6, collinear and parallel:
-**no unrelated pair has ends one hex edge apart** (nearest √3), while `8 × 3`'s four broken
-corners report four. ⚠ The instrument was checked against a fixture that has the thing, after
-the first version of the control passed for the wrong reason.
+✅ **AND THE DECISION IS TAKEN AND HALF-BUILT — `B4y`, 2026-08-29.** The choice was between
+the reader and the stamp, and it needed no new rule: one cross-tabulation nobody had made
+([`probe/b4y`](../../probe/b4y/README.md)) put the two columns in one table.
+
+| | |
+|---|---|
+| **LEAK ⟺ a GAP corner** | **7 of 7**, and **0 of 18** leak without one |
+| **OVER-4 ⟺ a FORK corner** | **17 of 17**, and **0 of 8** are over without one |
+| the reader | `drawn` equals `marks` on **all 25** — it is faithful in every case |
+
+⛔ **So it is the STAMP, and it was never really a choice**: a gap is an enclosure with a
+hole in it, and joining chain ends in the READER would draw a closed room over a world you
+can walk out of. ⚠ **[FORMAL_CORE](FORMAL_CORE.md) §7 said so in advance** — *"the wall verb
+has no such doorstep, which is the asymmetry to fix — not the reader"*.
+
+⛔ **AND THE MECHANISM IS `@HB-X36` BROKEN BOTH WAYS.** *A corner edge is claimed exactly
+once*: two runs meeting at a corner each decide their marks by projecting onto their **own**
+segment, so it is claimed **twice** at 30 of 100 corners and **never** at 10. ✅
+**`twice-claimed` equals `spurs` in every one of the 25 rows** — the doubly-claimed edge IS
+the spur, its far vertex the free end and its near vertex the junction.
+
+⛔ **AND HALF THE SYMMETRIC REPAIR IS REFUTED.** Dropping the edge two runs both claim closes
+the topology and **destroys the description**: a run's marking is what `run_edges` generates
+from its line, so with one edge taken out no run generates that field and the acceptance
+refuses the wall it was cut from — 5 or 6 descriptions become 6, 7 or 8. ✅ **The ADD alone
+is what shipped** (`hex_editor::wall_corner_close`, called from `wall_stamp`): **7 of 25 leak
+→ 0**, and **7 markings that are one closed chain → 23**, with `drawn` still equal to
+`marks`. ⚠ Two corners do not close — `6 × 3` and `6 × 6`, whose partner is **two** hex edges
+away, which is the four of 80 measured above.
+
+✅ **And the control for the join was built before the rule** — fourteen fixtures of two walls
+at gaps 0.2 … 2.6, collinear and parallel: **no unrelated pair has ends one hex edge apart**
+(nearest √3), while `8 × 3`'s four broken corners report four. ⚠ The instrument was checked
+against a fixture that has the thing, after the first version of the control passed for the
+wrong reason — and it is restated as a test beside `wall_corner_close` for the same reason.
 
 ### ⛔ What the decision costs, measured — and the two goals are ONE requirement
 
@@ -119,7 +148,8 @@ fitted surface at all. **The rooms that draw wrong are the rooms that cost most.
 
 | | enclosure | recovery | mesh |
 |---|---|---|---|
-| **leave it** | ⛔ 7 of 25 leak | ⛔ 8 of 25 exact | ⛔ 200 tri/room |
+| ~~**leave it**~~ | ⛔ 7 of 25 leak | ⛔ 8 of 25 exact | ⛔ 200 tri/room |
+| ✅ **the corner closed in the stamp** — `B4y`, **BUILT** | ✅ **0 of 25 leak** | ⚠ unmoved at 8 of 25, and 23 of 25 are now ONE CLOSED CHAIN | ⛔ unchanged |
 | **a doorstep on `wall`** — refuse a run that misses the previous corner | ✅ closed | ⚠ still domain B, so `@HB-X36`/`@HB-X45`/`@HB-X62` do **not** apply | ⛔ unchanged |
 | **rooms are stencils** — `place` only, `wall` stays linework | ✅ `place_house` already refuses an unmitred facing | ✅ R1, exact from the CELLS | ✅ 4 quads, mitred |
 | ⛔ **promote on close** — a closed wall loop acquires a FLOOR | ⚠ detects, does not create | ⛔ **no** | ⛔ **no** |
@@ -162,7 +192,7 @@ is a `Plan`/`Box` rasterisation — which is what `place_house` already builds a
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is measured and answered (`B4x` third measurement); ⛔ the CORNER that breaks the chain in 18 of 25 rooms is not |
+| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is answered (`B4x`) and ✅ **the CORNER is CLOSED** (`B4y`, built): 7 of 25 leak → **0**, and 7 closed chains → **23**. ⛔ What is left is the CUT — 17 of 25 still describe four walls as 5 or 6, which is the peel's seed and not the corner. `B4x`'s rotation-invariant cycle minimum is the measured answer and now has 23 loops to prove itself on instead of 7 |
 | B2 | the plan view **inside a renderer** | an instrument nobody can open while editing is an instrument nobody reads | not started |
 | B3 | **authoring in the plan** — `pick` from a pointer, not from a script | this is the editor half of "blueprint editor" | `pick` exists headless (`B4b`) |
 | B4 | **the block vocabulary authored here** — wall types, house types, parts, saved to the world's palette | the project owner's actual requirement; see §2 | the storage exists (`PAL_HTYPE`), the authoring does not |

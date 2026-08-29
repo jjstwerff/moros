@@ -362,6 +362,7 @@ as a byte.
 | **`B4v`** — a component no reader explains, partitioned by what a candidate accounts for | M | `peel.loft` — a wall MEETING a rim and two rims that meet each answering two descriptions with nothing over; two walls crossing still refused; a trial that reaches outside its component refused by the same one number; a candidate claiming nothing new refused; the largest shell taken first; `planview.loft` — the two pictures drawn and tallied, the crossed pair still `refused`, and a set that explains only PART of its component not drawn; `tools/scripts/b4v.keys`; eight faults swept, five red and **three green** | ✅ **SHIPPED** `67dba5a` |
 | **`B4w`** — a CROSSING: a run begins where the chain does | M | `peel.loft` — four crossing geometries each measured to be ONE component and each closing as two runs; three T stems with both outcomes asserted per stem and both required to occur; a sub-run never taken from the middle of a chain; a candidate already claimed not offered again; `planview.loft` — a crossing drawn as two runs, and a T that the trial reaches into and cannot close still `refused`; `tools/scripts/b4w.keys`; seven faults swept, six red | ✅ **SHIPPED** 04eaf12 |
 | **`B4x`** — a wall that TURNS: the chain cut at its corners | M | `peel.loft` — a zigzag of three walls and a closed room of four each drawn run by run with nothing unexplained, against a straight wall that stays one run and a plus that stays two; the L, the Y, the crossings and every prior fixture unmoved; a sub-run still never taken from the middle; `planview.loft` — the room drawn as four runs and tallied; the corpus as the control | ✅ **SHIPPED** `13db614` — ⚠ and this row said *designed, not built* for a day, because that commit touched three code files and no document |
+| **`B4y`** — the corner two runs leave open: claimed exactly once | M | `corner_close.loft` — a lone wall closes nothing and keeps two free ends, two unrelated walls ending near each other are left alone, a gapped corner is joined with the join inside the second run's own count, and a four-run room has no free end, one closed chain and a flood that is BOUNDED where it escaped before; `peel.loft` — the zigzag at 17 marks instead of 16 and still three runs with nothing over; [`probe/b4y`](../../probe/b4y/README.md) — the cross-tabulation and the refuted drop half; eight faults swept, **three red and one green control**, and the four green ones are named as defensive | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 
@@ -3483,3 +3484,114 @@ fixtures in one family is a green, not a theorem.
 
 ⚠ **The whole 25-rectangle sweep is three seconds and no `run_edges`**, because degrees,
 positions and chain counts do not need the acceptance test at all.
+
+## What `B4y` turned up
+
+**`make probe-b4y` · [`probe/b4y`](../../probe/b4y/README.md) · `lib/hex_editor/tests/corner_close.loft`**
+
+`B4x` ended with one sentence for the next session — *close the corner, and decide at which
+end* — and left two candidates with nothing to choose between them.
+
+### ✅ The decision needed no new rule, only a cross-tabulation nobody had made
+
+Two numbers about the same 25 rectangles were measured in two different runs and never
+joined: `B4x` had the descriptions and [`probe/pc`](../../probe/pc/README.md) had the leaks.
+
+| | |
+|---|---|
+| **LEAK ⟺ a GAP corner** | **7 of 7**, and **0 of 18** leak without one |
+| **OVER-4 ⟺ a FORK corner** | **17 of 17**, and **0 of 8** are over without one |
+| the reader | `drawn` equals `marks` on **all 25**, before and after |
+
+**40 of 100 corners break** — `B4x`'s 80 break *vertices* are two per corner: **30 forks, 10
+gaps, no third kind.** ⚠ **Not one corner is a fork ALONE**, which is what turns the
+classification into a mechanism.
+
+### ⛔ And the mechanism is `@HB-X36` broken in both directions
+
+*The side runs partition the boundary — a corner edge is claimed exactly once.* Two runs
+meeting at a corner each decide their marks by projecting onto their **own** segment, so the
+corner edge is claimed **twice** at 30 corners and **never** at 10. ✅ **`twice-claimed`
+equals `spurs` in every one of the 25 rows**: the doubly-claimed edge **is** the spur — its
+far vertex the free end, its near vertex the junction — so a fork is not a topology
+accident, it is one edge two runs both wanted.
+
+### ⛔ THE PREDICTION THAT FAILED, AND IT IS THE HALF WORTH KEEPING
+
+*Exactly once* reads as two symmetric repairs. Both were prototyped **at the corner** — which
+is what a gesture knows and a marking does not; a rule that pruned every pendant back to the
+nearest junction would eat a `T`'s stem whole.
+
+| over the same 25 | leak | described over four | four walls round a closed room |
+|---|---|---|---|
+| before | ⛔ **7** | ⛔ 17 | 7 |
+| **drop + add** | ✅ 0 | ⛔ **17**, and now **6, 7 or 8** where it was 5 or 6 | 8 |
+| ✅ **add only** | ✅ **0** | ⛔ 17, **unmoved** | 8 |
+
+⛔ **The drop closes the topology and destroys the description.** A run's marking is what
+`run_edges` generates from its line; take one edge out and **no run generates that field any
+more**, so `run_span`'s acceptance — every edge the candidate generates is a mark — refuses
+the wall the edge was taken from. ⚠ **A repair that satisfies the rule and breaks the thing
+the rule exists for** is the reason the two halves were measured apart instead of shipped
+together.
+
+### ✅ What shipped, and what it is worth
+
+`hex_editor::wall_corner_close`, called from `wall_stamp` on every run that marked anything.
+**One rule: a free end of this run's own field, and a free end one hex edge from it, are one
+chain** — so the edge between them is written.
+
+- **7 of 25 leak → 0 of 25.** An author who walks four walls round a room gets a room.
+- **7 markings that are ONE CLOSED CHAIN → 23.** That is the number that matters next: `B4x`
+  measured a rotation-invariant cycle minimum returning a room's four walls *uniquely* and
+  recorded that it **beat the shipped peel on no fixture**, because its only loops were the
+  7 greedy already got right. There are 23 now, and greedy gives 6 or 7 on most of them.
+- **`drawn` still equals `marks`**, so the added edge is described rather than left over.
+
+⚠ **AND *ONE HEX EDGE* IS AN INTEGER, NOT A RADIUS** — the six steps `hex_edge_corners`
+returns for `d = 0…5`, so the rule carries no threshold at all. ⚠ **Its control was built
+before it** (`B4x`'s `join_control`, fourteen fixtures of two unrelated walls at gaps
+0.2 … 2.6: **no** pair of ends one hex edge apart, nearest √3) and is restated as a test
+here beside a fixture that HAS the thing — a control whose silence has never been checked is
+not a control.
+
+⚠ **Two corners still do not close** — `6 × 3` and `6 × 6`, whose partner is **two** hex
+edges away, which is `B4x`'s own four of 80. Reported rather than reached for with a wider
+radius.
+
+### ⚠ And the first sweep had one red row and four blind ones
+
+| row | what was cut | |
+|---|---|---|
+| 0 | control | green |
+| **1** | the corner close is never called | ⛔ **RED**, 3 |
+| 2–5 | the integer step test · the run scope · one vertex order · a vertex spent twice | ⚠ green |
+| **6** | `corner_write` writes the first unmarked edge it finds | ⛔ **RED**, 3 |
+| **7** | a free end becomes a mid-chain vertex | ⛔ **RED**, 4 |
+| 8 | ✅ the corner pair spelled the other way round | ✅ green |
+
+⛔ **ROWS 6 AND 7 EXIST BECAUSE THE FIRST TABLE COULD ONLY SEE THE FEATURE ABSENT.** Every
+guard rows 2–5 cut is defensive, so a sweep of them says nothing about whether the tests can
+see the rule **computed wrong**. Both new rows are red, row 7 on a `peel.loft` fixture the
+other two never touch.
+
+⚠ **AND ROW 7 PRICES THE FREE-END FILTER WHILE IT IS AT IT** — taking minutes where every
+other row takes seconds, because a mid-chain vertex offers hundreds of pairs and each one
+costs a window scan. That is also why the integer step test stays: `corner_write` is the
+correctness gate, the step test is what stops it being asked.
+
+### ⚠ What it does NOT buy, stated so nobody looks for it
+
+- **The description column is untouched**: 17 of 25 over four before and after. That is the
+  peel's seed, not the corner.
+- **The mesh is untouched**: still four triangles per stored edge.
+- **The domain is untouched**: a closed loop of linework is still domain B. `@HB-X36`,
+  `@HB-X45` and `@HB-X62` are about a **form**, and this makes a room that closes, not a
+  room that is a stencil.
+
+### ⚠ And the counter it had to be honest about
+
+`marked` has always been in **half-edges** — `wall_stamp` visits every edge from both of its
+cells and `wall_set` resolves them to one owner slot, so a 16-unit wall of 18 stored edges
+reports **36**. The join is counted the same way rather than once, because two units in one
+number is worse than a doubling that was already there.

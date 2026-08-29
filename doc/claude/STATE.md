@@ -45,7 +45,7 @@ a verb arrive without.
 | | |
 |---|---|
 | the ground | `raise` · `lower` · `level` (freeze a grade and cut it as you walk) |
-| runs | `run` — open, walk, close; a road or a wall along the path taken · `aim` — one press, from the facing |
+| runs | `run` — open, walk, close; a road or a wall along the path taken · `aim` — one press, from the facing. ✅ **And a wall run CLOSES ITS CORNER now** — plan 26 `B4y`: two runs meeting at a corner used to leave the corner edge claimed twice (a one-edge spur) or never (a hole you could walk through), so a room walked as four walls leaked in **7 of 25** positions; `wall_corner_close` writes the edge two runs both missed and that is **0 of 25**, with 23 of 25 markings now ONE CLOSED CHAIN where 7 were |
 | enclosure | `fence` · `wall` (both hexagonal) · `tower` — ROUND at a chosen shell, or **OCTAGONAL** when the chosen wall type's body says `THICK_OCT` (plan 26 `B4l`) |
 | buildings | `place` (a procedural house, or the chosen PART instead) · `storey` above · `cellar` below · `opening` (door or window, profile from the selection) |
 | fittings | `seat` · `annex` · `slab` · `hole` · `stair_up` · `stair_down` |

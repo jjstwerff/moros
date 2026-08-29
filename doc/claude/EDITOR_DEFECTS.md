@@ -500,6 +500,46 @@ a behaviour change no row can see red is not a fix. The reading is recorded at t
 
 ---
 
+## ✅ 10. A room walked as four walls had a hole you could walk through — fixed 2026-08-29
+
+⚠ **THE NUMBERING HAS GAPS AND ONE OF THEM IS A DANGLING CITATION.** There is no 6, 8 or 9
+here, and [FOCUS](FOCUS.md) §4 cites *"EDITOR_DEFECTS 8 and 9"* for the two defects the
+adopter's first program found on 2026-08-28 — a refused house leaving 27 floor cells behind,
+and a refusal offering a facing that is itself refused. Both are real and both were fixed;
+neither was ever written into this file. This one takes **10** rather than quietly occupying
+a number somebody else's sentence points at.
+
+⛔ **7 OF 25 POSITIONS, AND EVERY WALL THE AUTHOR ASKED FOR WAS THERE.** Two runs meeting at a
+corner each decide their marks by projecting onto their **own** segment, so the corner edge
+was claimed **twice** at 30 of 100 corners (a one-edge **spur** sticking out of the corner)
+and **never** at 10 (a **gap** — the enclosure open). Measured over 25 rectangles, plan 26
+`B4y`, [`probe/b4y`](../../probe/b4y/README.md).
+
+**It is `@HB-X36` broken in both directions** — *a corner edge is claimed exactly once* — and
+the two shapes are one fact: `twice-claimed` equals `spurs` in every one of the 25 rows,
+because the doubly-claimed edge **is** the spur, its far vertex the free end and its near
+vertex the junction.
+
+⚠ **THE READER WAS BLAMED FOR THIS FOR A WEEK.** `drawn` equals `marks` on all 25, before and
+after — the plan view draws every mark it is given. What the cross-tabulation settled is that
+a rectangle **leaks exactly when a corner is a gap** (7 of 7, 0 of the other 18) and is
+**described as more than four walls exactly when a corner is a fork** (17 of 17), so the two
+failures have different causes and both are in the field.
+
+✅ **Fixed at the stamp** — `hex_editor::wall_corner_close`, from `wall_stamp`: a free end of
+this run's own field and a free end one hex edge from it are one chain, so the edge between
+them is written. **7 of 25 leak → 0**, and 7 markings that are one closed chain → **23**.
+
+⛔ **THE SYMMETRIC REPAIR IS REFUTED AND MUST NOT BE BUILT.** Dropping the edge two runs both
+claim also closes the topology and **makes the two walls unrecoverable**: `run_edges`
+generates a run's whole field, so with one edge taken out no run generates it and the
+acceptance refuses the wall the edge came from — 5 or 6 descriptions become 6, 7 or 8.
+
+⚠ **What it does not fix**: 17 of 25 still describe four walls as five or six. That is the
+peel's seed, not the corner.
+
+---
+
 ## What to do, in the order the facts force
 
 1. ✅ **Decided — see above.** The store is the authority; the mesher recovers the straight

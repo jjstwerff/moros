@@ -1046,7 +1046,10 @@ fn test_a_zigzag_of_three_walls_is_read_as_three() {
   q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
   cl = claims_new(q0, r0, wq, hr);
   all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
-  assert(all == 16, "the zigzag is {all} marks, not the 16 this row was measured on");
+  // ⚠ **17 AND NOT 16 SINCE plan 26 `B4y`.** One of the two bends was a GAP — the corner
+  // edge neither run's segment reached — and `wall_corner_close` writes it now, so the
+  // fixture this row was first measured on had a hole in it at one bend.
+  assert(all == 17, "the zigzag is {all} marks, not the 17 this row was measured on");
   got = peel(w, q0, r0, wq, hr, cl);
   assert(got == "run;run;run;", "a zigzag of three walls describes `{got}`");
   assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,

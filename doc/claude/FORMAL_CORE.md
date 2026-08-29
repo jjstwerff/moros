@@ -181,6 +181,25 @@ corner**."*
 facing has no mitred corners; turn one step"* with a facing to use. **The wall verb has no such
 doorstep**, which is the asymmetry to fix — not the reader that has to make sense of the result.
 
+✅ **AND THE MEASUREMENT UNDER THAT SENTENCE WAS TAKEN — plan 26 `B4y`,
+[`probe/b4y`](../../probe/b4y/README.md).** A rectangle **leaks exactly when a corner is a
+GAP** (7 of 7, and 0 of the other 18) and is **described as more than four walls exactly when
+a corner is a FORK** (17 of 17), with `drawn` equal to `marks` on all 25 — so the reader is
+faithful in every case and the failure is in the field.
+
+⛔ **`@HB-X36` IS BROKEN IN BOTH DIRECTIONS HERE, AND THE TWO ARE ONE FACT.** Two runs meeting
+at a corner each decide their marks by projecting onto their **own** segment, so the corner
+edge is claimed **twice** at 30 of 100 corners and **never** at 10 — and `twice-claimed`
+equals `spurs` in every row, because the doubly-claimed edge **is** the spur.
+
+✅ **The ADD half is built** — `hex_editor::wall_corner_close`, from `wall_stamp`: **7 of 25
+leak → 0**, and 7 markings that are one closed chain → **23**. ⛔ **The DROP half is refuted
+and must not be built**: removing the edge two runs both claim closes the topology and makes
+the walls unrecoverable, because `run_edges` generates a run's whole field and no run
+generates one with an edge taken out. ⚠ **None of this changes the domain** — a closed loop of
+linework is still domain B, and `@HB-X36`, `@HB-X45` and `@HB-X62` remain rules about a
+**form**. It makes a room that closes, not a room that is a stencil.
+
 ## How to re-sync this file
 
 ```sh

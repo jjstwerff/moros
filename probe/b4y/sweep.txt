@@ -1,0 +1,19 @@
+row 0 — control, nothing cut
+  green
+row 1 — the corner close is never called (the feature absent)
+  RED: test_a_four_run_room_no_longer_leaks test_a_gapped_corner_is_closed test_a_zigzag_of_three_walls_is_read_as_three 
+row 2 — ONE HEX EDGE becomes ANY distance (the join loses its integer)
+  green
+row 3 — the join is not scoped to this run's own field
+  green
+row 4 — corner_write matches only one vertex ORDER
+  green
+row 5 — a vertex may be spent twice (the guard removed)
+  green
+row 6 — corner_write writes the first unmarked edge it finds (the match ignored)
+  RED: test_a_four_run_room_no_longer_leaks test_a_gapped_corner_is_closed test_a_zigzag_of_three_walls_is_read_as_three 
+row 7 — a FREE END becomes a mid-chain vertex (degree 2 instead of 1)
+  RED: test_a_four_run_room_no_longer_leaks test_a_gapped_corner_is_closed test_a_wall_meeting_a_rim_is_a_run_and_a_disc test_a_zigzag_of_three_walls_is_read_as_three 
+row 8 — ✅ THE GREEN CONTROL: the corner pair is spelled the other way round
+  green
+restored

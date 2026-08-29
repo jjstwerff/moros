@@ -1,0 +1,190 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE CORNER TWO RUNS LEAVE OPEN — plan 26 `B4y`.
+//
+// ⛔ **A ROOM BUILT AS FOUR RUNS HAD A HOLE YOU COULD WALK THROUGH IN 7 OF 25 POSITIONS.**
+// Two runs meeting at a corner each decide their own marks by projecting onto their own
+// segment, so the corner edge is claimed twice (a spur) or never (a gap) — `@HB-X36`'s
+// *a corner edge is claimed exactly once*, broken in both directions.
+// [`probe/b4y`](../../../probe/b4y/README.md) cross-tabulates it: a rectangle leaks exactly
+// when a corner is a gap, 7 of 7, and 0 of the other 18 leak.
+//
+// ⚠ **THE CONTROL IS IN THIS FILE AND IT IS NOT DECORATION.** A rule that joins two free
+// ends one hex edge apart would also fuse two strangers' walls that happen to end near each
+// other, so `test_two_unrelated_walls_are_left_alone` asks the same question of a fixture
+// that must answer no — and it is only worth anything because
+// `test_a_gapped_corner_is_closed` proves the instrument can say yes.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_grid;
+use hex_shape;
+
+const Q0 = 0 - 18;
+const R0 = 0 - 18;
+const WQ = 37;
+const HR = 37;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// ⚠ **AIMED AT THE NOMINAL CORNER**, which is `probe/b4x`'s fixture and not a detail:
+// chaining the next wall onto the previous one's SNAPPED end gives a different field.
+fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) -> integer {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  m
+}
+
+fn marks_of(w: VoxelWorld) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        edge_set_mat(e, q, r, nq, nr, 1);
+      }
+    }
+  }
+  e
+}
+
+fn edges_in(e: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(e, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn free_ends(w: VoxelWorld) -> integer {
+  m = marks_of(w);
+  va: vector<integer> = [];
+  vb: vector<integer> = [];
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(m, q, r, nq, nr) == 0 { continue; }
+        (c1, c2) = hex_grid::hex_edge_corners(d);
+        va += [hex_shape::hex_corner_tri_a(q, r, c1)];
+        vb += [hex_shape::hex_corner_tri_b(q, r, c1)];
+        va += [hex_shape::hex_corner_tri_a(q, r, c2)];
+        vb += [hex_shape::hex_corner_tri_b(q, r, c2)];
+      }
+    }
+  }
+  n = 0;
+  for i in 0..len(va) {
+    first = true;
+    for k in 0..i {
+      if (va[k] ?? 0) == (va[i] ?? 0) && (vb[k] ?? 0) == (vb[i] ?? 0) { first = false; }
+    }
+    if !first { continue; }
+    deg = 0;
+    for j in 0..len(va) {
+      if (va[j] ?? 0) == (va[i] ?? 0) && (vb[j] ?? 0) == (vb[i] ?? 0) { deg = deg + 1; }
+    }
+    if deg == 1 { n = n + 1; }
+  }
+  n
+}
+
+// ⚠ **`promote_close` NEEDS A WALLED CELL** — its seed is *across the wall*, so a cell in
+// the middle of the room has no walled side and answers `PM_NONE`. This is `probe/pc`'s own
+// seed rule, so the verdict here is the one that probe reported.
+fn a_walled_cell(w: VoxelWorld, oq: &integer, orr: &integer) -> boolean {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in 0..6 {
+        if wall_of(w, q, r, d, (terrain_h(q, r, w) as float) * w.w_unit) != 0 {
+          oq = q; orr = r; return true;
+        }
+      }
+    }
+  }
+  false
+}
+
+// ── the rule is a NO-OP where there is nothing to correct ──────────────────
+
+fn test_one_wall_alone_closes_nothing() {
+  // ⚠ **THE FIRST THING TO GET WRONG WOULD BE A RULE THAT ALWAYS FIRES.** A lone wall has
+  // two free ends and no partner, so the count it reports is its own edges and no more.
+  w = flat_world();
+  n = wall_at(w, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  // ⚠ `marked` is in HALF-EDGES — the stamper visits every edge from both of its cells —
+  // so the number to compare against is twice the field, and a join would add two more.
+  assert(n == 2 * edges_in(marks_of(w)),
+         "a lone wall reported {n} against a field of {edges_in(marks_of(w))} edges");
+  assert(free_ends(w) == 2, "a lone wall has two free ends, got {free_ends(w)}");
+}
+
+fn test_two_unrelated_walls_are_left_alone() {
+  // ⚠ **THE CONTROL, AND IT WAS BUILT BEFORE THE RULE** — `probe/b4x`'s `join_control`
+  // swept fourteen fixtures of two walls at gaps 0.2 … 2.6 and found NO pair of ends one
+  // hex edge apart, the nearest being √3. This is one of them, and it must stay four free
+  // ends: two walls end near each other and are still two walls.
+  w = flat_world();
+  a = wall_at(w, 0.0 - 8.0, 0.0, 0.0 - 1.0, 0.0);
+  b = wall_at(w, 1.0, 1.0, 8.0, 1.0);
+  assert(free_ends(w) == 4, "two unrelated walls keep four free ends, got {free_ends(w)}");
+  assert(a + b == 2 * edges_in(marks_of(w)),
+         "and nothing was written beyond their own {a + b} half-edges");
+}
+
+// ── and it FIRES where the corner is a gap ─────────────────────────────────
+
+fn test_a_gapped_corner_is_closed() {
+  // ⛔ **THE FIXTURE THAT HAS THE THING.** `8 x 3` is `probe/b4y`'s pure-gap rectangle —
+  // all four corners a gap, four separate chains, a flood that escapes. Two of its walls
+  // are enough to see the rule fire: the second run reports ONE edge more than its own
+  // field, and the two chains meet.
+  w = flat_world();
+  a = wall_at(w, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  before = edges_in(marks_of(w));
+  assert(a == 2 * before, "the first wall stands alone at {a} half-edges over {before}");
+  b = wall_at(w, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  after = edges_in(marks_of(w));
+  // ⛔ **THE JOIN IS IN THE SECOND WALL'S OWN COUNT.** `b` accounts for every edge the
+  // field gained, which is its own run PLUS the one corner edge neither run reached.
+  assert(a + b == 2 * after,
+         "the two counts {a}+{b} cover the field's {after} edges");
+  assert(b > 2 * (after - before) - 3 && b == 2 * (after - before),
+         "and the second wall's {b} is exactly what the field gained");
+  assert(free_ends(w) == 2,
+         "two walls joined at their corner leave two free ends, got {free_ends(w)}");
+}
+
+fn test_a_four_run_room_no_longer_leaks() {
+  // ⛔ **THE CLAIM AN AUTHOR CAN SEE.** Before this rule `8 x 3` answered `PM_OPEN` — the
+  // flood walked out through a corner — while every wall the author asked for was there.
+  w = flat_world();
+  wall_at(w, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  wall_at(w, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  wall_at(w, 8.0, 3.0, 0.0 - 8.0, 3.0);
+  wall_at(w, 0.0 - 8.0, 3.0, 0.0 - 8.0, 0.0 - 3.0);
+  assert(free_ends(w) == 0, "a closed room has no free end, got {free_ends(w)}");
+  ch = hex_shape::wall_chain_walk(marks_of(w), Q0, R0, WQ, HR, 0);
+  assert(ch.wc_n == 1 && ch.wc_loop,
+         "and its marking is one closed chain, got {ch.wc_n} chains loop {ch.wc_loop}");
+  sq = 0;
+  sr = 0;
+  assert(a_walled_cell(w, sq, sr), "the fixture has a walled cell to seed from");
+  p = promote_close(w, sq, sr, FLOOR_MAT);
+  assert(p.pm_code == PM_FLOORED,
+         "the flood is bounded now: {p.pm_code} — {p.pm_why}");
+}

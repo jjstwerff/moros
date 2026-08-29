@@ -91,3 +91,32 @@ B4y — which end owes the corner? (plan 26)
     8 x 7: dropped 0 added 0  corners ....  marks 70  chains 1  descriptions 4  drawn 70  flood closed 81
 
   0 of 25 leak, 17 of 25 described over four, 8 of 25 are four walls round a closed room
+
+  ✅ THE SHIPPED RULE — `wall_corner_close`, through `wall_stamp` itself:
+    4 x 3: corners ..?.  marks 35  chains 1  descriptions 7  drawn 35  flood closed 20
+    4 x 4: corners ..??  marks 36  chains 2  descriptions 5  drawn 36  flood closed 20
+    4 x 5: corners ....  marks 42  chains 1  descriptions 4  drawn 42  flood closed 28
+    4 x 6: corners ..?.  marks 51  chains 1  descriptions 7  drawn 51  flood closed 40
+    4 x 7: corners ..??  marks 52  chains 2  descriptions 5  drawn 52  flood closed 36
+    5 x 3: corners ..?.  marks 35  chains 1  descriptions 7  drawn 35  flood closed 20
+    5 x 4: corners ..??  marks 44  chains 2  descriptions 6  drawn 44  flood closed 30
+    5 x 5: corners ....  marks 50  chains 1  descriptions 4  drawn 50  flood closed 42
+    5 x 6: corners ..?.  marks 51  chains 1  descriptions 7  drawn 51  flood closed 40
+    5 x 7: corners ..??  marks 60  chains 2  descriptions 6  drawn 60  flood closed 54
+    6 x 3: corners .???  marks 42  chains 3  descriptions 6  drawn 42  flood closed 21
+    6 x 4: corners ....  marks 46  chains 1  descriptions 4  drawn 46  flood closed 35
+    6 x 5: corners ..??  marks 56  chains 2  descriptions 5  drawn 56  flood closed 49
+    6 x 6: corners .???  marks 58  chains 3  descriptions 6  drawn 58  flood closed 49
+    6 x 7: corners ....  marks 62  chains 1  descriptions 4  drawn 62  flood closed 63
+    7 x 3: corners ..?.  marks 51  chains 1  descriptions 7  drawn 51  flood closed 36
+    7 x 4: corners ..??  marks 52  chains 2  descriptions 6  drawn 52  flood closed 40
+    7 x 5: corners ....  marks 58  chains 1  descriptions 4  drawn 58  flood closed 56
+    7 x 6: corners ..?.  marks 67  chains 1  descriptions 7  drawn 67  flood closed 72
+    7 x 7: corners ..??  marks 68  chains 2  descriptions 6  drawn 68  flood closed 72
+    8 x 3: corners ....  marks 54  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 4: corners ....  marks 54  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 5: corners ..??  marks 64  chains 2  descriptions 6  drawn 64  flood closed 63
+    8 x 6: corners ..??  marks 64  chains 2  descriptions 6  drawn 64  flood closed 63
+    8 x 7: corners ....  marks 70  chains 1  descriptions 4  drawn 70  flood closed 81
+
+  0 of 25 leak, 17 of 25 described over four, 8 of 25 are four walls round a closed room

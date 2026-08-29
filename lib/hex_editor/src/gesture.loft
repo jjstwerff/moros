@@ -4956,6 +4956,151 @@ pub fn run_edges(run: WallRun, q0: integer, r0: integer, wq: integer, hr: intege
   re_out
 }
 
+// ── ⛔ THE CORNER TWO RUNS LEAVE OPEN — plan 26 `B4y` ──────────────────────
+//
+// ⛔ **A ROOM BUILT AS FOUR RUNS HAS A HOLE YOU CAN WALK THROUGH IN 7 OF 25 POSITIONS**,
+// and the reader is not to blame for it. Measured over 25 rectangles
+// ([`probe/b4y`](../../../probe/b4y/README.md)): a rectangle LEAKS exactly when a corner is
+// a GAP — 7 of 7, and 0 of the other 18 leak — and is described as more than four walls
+// exactly when a corner is a FORK, 17 of 17. `drawn` equals `marks` on all 25, so every
+// mark is accounted for both before and after; the failure is in the field, not in the
+// description of it.
+//
+// ⚠ **THE MECHANISM IS `@HB-X36` BROKEN IN BOTH DIRECTIONS** — *the side runs partition
+// the boundary, a corner edge is claimed exactly once*. Two runs meeting at a corner each
+// decide their own marks by projecting onto their own segment, so the corner edge is
+// claimed **twice** at 30 of 100 corners and **never** at 10.
+//
+// ⛔ **AND ONLY ONE HALF OF *EXACTLY ONCE* IS A REPAIR.** Dropping the doubly-claimed edge
+// closes the topology and makes the two walls UNRECOVERABLE: a run's marking is what
+// `run_edges` generates from its line, and with one edge taken out no run generates that
+// field, so `run_span`'s acceptance refuses the wall the edge was taken from. Measured:
+// 5 or 6 descriptions become 6, 7 or 8. **The add alone takes 7 leaks to 0 and leaves the
+// description exactly where it was.**
+//
+// ⚠ **AND *ONE HEX EDGE* IS AN INTEGER, NOT A RADIUS.** The steps between a break and its
+// partner are `(0,3) (3,0) (3,-3) (0,-3) (-3,0) (-3,3)` and nothing else — `hex_edge_corners`
+// for `d = 0…5`, measured against it directly — so this rule carries no threshold at all.
+// ⚠ **AND ITS CONTROL WAS BUILT BEFORE IT**: fourteen fixtures of two unrelated walls at
+// gaps 0.2 … 2.6, collinear and parallel, have **no** pair of ends one hex edge apart —
+// the nearest they come is √3 (`probe/b4x`'s `join_control`).
+//
+// ⚠ **SCOPED BY THE RUN, NOT BY A DISTANCE.** A pair is considered only when one of its two
+// free ends is a vertex of the field this run just wrote. A rule that closed any one-edge
+// break in the window would join two strangers' walls that happen to end near each other,
+// and one that pruned back to the nearest junction would eat a `T`'s stem whole.
+//
+// ⚠ **AND IT LOOKS IN THIS RUN'S OWN LAYER.** The marking is read at the grade this stamp
+// wrote at, so two runs meeting at a corner in DIFFERENT layers are out of scope. Every
+// fixture measured is flat; a sloped corner has not been measured either way.
+//
+// ⛔ **NOTHING IN THE CORPUS EXERCISES THIS, MEASURED RATHER THAN HOPED.** All 46 `probe/k3d`
+// scripts key their recorded world unchanged — no script lays two runs that meet, and
+// `place_house`'s four mitred sides never leave a one-edge break — so the corpus is the
+// control for *it fires on nothing else* and cannot be the check that it fires at all.
+// That is `probe/b4y` and `tests/corner_close.loft`, and it is the same shape as
+// promote-on-close: a gesture the corpus never performs cannot be caught by it.
+fn edge_step_one(da: integer, db: integer) -> boolean {
+  (da == 0 && db == 3) || (da == 3 && db == 0) || (da == 3 && db == 0 - 3)
+    || (da == 0 && db == 0 - 3) || (da == 0 - 3 && db == 0) || (da == 0 - 3 && db == 3)
+}
+
+// The unmarked edge whose two corners are exactly these two vertices, written.  There is
+// at most one — two adjacent lattice vertices name one edge — so a miss means the edge is
+// already there and nothing is owed.
+fn corner_write(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+                ref: float, a1: integer, b1: integer, a2: integer, b2: integer,
+                mat: integer, grade: integer) -> boolean {
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for cw_d in [4, 5, 0] {
+        if edge_is_wall(wall_of(wld, q, r, cw_d, ref)) { continue; }
+        (cw_c1, cw_c2) = hex_grid::hex_edge_corners(cw_d);
+        cw_pa = hex_shape::hex_corner_tri_a(q, r, cw_c1);
+        cw_pb = hex_shape::hex_corner_tri_b(q, r, cw_c1);
+        cw_qa = hex_shape::hex_corner_tri_a(q, r, cw_c2);
+        cw_qb = hex_shape::hex_corner_tri_b(q, r, cw_c2);
+        cw_hit = (cw_pa == a1 && cw_pb == b1 && cw_qa == a2 && cw_qb == b2)
+              || (cw_qa == a1 && cw_qb == b1 && cw_pa == a2 && cw_pb == b2);
+        if !cw_hit { continue; }
+        wall_set(wld, q, r, cw_d, mat, grade, ref);
+        return true;
+      }
+    }
+  }
+  false
+}
+
+// Close a one-hex-edge break between this run's field and a wall already standing, and
+// answer how many edges that took.  `0` is the usual answer and the one every straight
+// wall gives.
+pub fn wall_corner_close(wld: VoxelWorld, eg: EdgeSet, q0: integer, r0: integer,
+                         wq: integer, hr: integer, mat: integer,
+                         grade: integer) -> integer {
+  cc_ref = (grade as float) * wld.w_unit;
+  ta: vector<integer> = [];
+  tb: vector<integer> = [];
+  tm: vector<boolean> = [];
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for cc_d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(wld, q, r, cc_d, cc_ref)) { continue; }
+        (cc_nq, cc_nr) = hex_grid::hex_neighbor(q, r, cc_d);
+        cc_mine = edge_mat(eg, q, r, cc_nq, cc_nr) != 0;
+        (cc_e1, cc_e2) = hex_grid::hex_edge_corners(cc_d);
+        for cc_k in 0..2 {
+          cc_c = if cc_k == 0 { cc_e1 } else { cc_e2 };
+          ta += [hex_shape::hex_corner_tri_a(q, r, cc_c)];
+          tb += [hex_shape::hex_corner_tri_b(q, r, cc_c)];
+          tm += [cc_mine];
+        }
+      }
+    }
+  }
+  // the FREE ENDS, and whether this run's own field reaches each one
+  ca: vector<integer> = [];
+  cb: vector<integer> = [];
+  cm: vector<boolean> = [];
+  for i in 0..len(ta) {
+    cc_first = true;
+    for k in 0..i {
+      if (ta[k] ?? 0) == (ta[i] ?? 0) && (tb[k] ?? 0) == (tb[i] ?? 0) { cc_first = false; }
+    }
+    if !cc_first { continue; }
+    cc_deg = 0;
+    cc_own = false;
+    for j in 0..len(ta) {
+      if (ta[j] ?? 0) != (ta[i] ?? 0) || (tb[j] ?? 0) != (tb[i] ?? 0) { continue; }
+      cc_deg = cc_deg + 1;
+      if tm[j] ?? false { cc_own = true; }
+    }
+    if cc_deg != 1 { continue; }
+    ca += [ta[i] ?? 0];
+    cb += [tb[i] ?? 0];
+    cm += [cc_own];
+  }
+  // ⚠ **A VERTEX IS SPENT ONCE.** Writing the joining edge takes both ends to degree 2, so
+  // a list built before the first write would offer a closed end again to a later pair.
+  cu: vector<boolean> = [];
+  for _i in 0..len(ca) { cu += [false]; }
+  cc_n = 0;
+  for i in 0..len(ca) {
+    if cu[i] ?? false { continue; }
+    for j in i + 1..len(ca) {
+      if cu[i] ?? false { continue; }
+      if cu[j] ?? false { continue; }
+      if !(cm[i] ?? false) && !(cm[j] ?? false) { continue; }
+      if !edge_step_one((ca[j] ?? 0) - (ca[i] ?? 0), (cb[j] ?? 0) - (cb[i] ?? 0)) { continue; }
+      if !corner_write(wld, q0, r0, wq, hr, cc_ref, ca[i] ?? 0, cb[i] ?? 0,
+                       ca[j] ?? 0, cb[j] ?? 0, mat, grade) { continue; }
+      cu[i] = true;
+      cu[j] = true;
+      cc_n = cc_n + 1;
+    }
+  }
+  cc_n
+}
+
 pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
               runs: WallRuns, marked: &integer) {
   (a0q, a0r) = px_to_hex(run.wr_x0, run.wr_z0);
@@ -5012,7 +5157,20 @@ pub fn wall_stamp(wld: VoxelWorld, run: WallRun, mat: integer, grade: integer,
       }
     }
   }
+  // ⚠ **THE CORNER IS CLOSED BEFORE THE COUNT IS ANSWERED — plan 26 `B4y`.** The joining
+  // edge is one this stamp wrote, so it belongs in the number the gesture reports; a run
+  // that meets nothing adds nothing and every straight wall answers exactly as before.
+  //
+  // ⚠ **AND IT IS COUNTED TWICE BECAUSE `n` IS.** The loop above visits every edge from
+  // BOTH of its cells and `wall_set` resolves them to one owner slot, so this counter has
+  // always been in half-edges — a 16-unit wall of 18 stored edges reports 36. Adding the
+  // join once would put two units in one number; the doubling is the existing convention,
+  // not a second one introduced here.
   marked = n;
+  if n > 0 {
+    cc = wall_corner_close(wld, eg, q0, r0, w, h, mat, grade);
+    marked = n + cc + cc;
+  }
 
   // ── ⛔ THE RUN GOES ONTO THE WALL WHEN THE WALL HAS A LINE — plan 22 `D1a.3` ──
   //

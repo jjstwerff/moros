@@ -90,6 +90,58 @@ is why the two halves were measured apart instead of shipped together.
 partner **two** hex edges away, so neither branch fires. Reported rather than reached for
 with a second edge of radius — the rule is *one edge* because that is what was measured.
 
+## ✅ What shipped — `hex_editor::wall_corner_close`
+
+Called from `wall_stamp` on every run that marked anything. **One rule: a free end of this
+run's own field, and a free end one hex edge from it, are one chain**, so the edge between
+them is written. `lib/hex_editor/tests/corner_close.loft` is its gate.
+
+⚠ **AND `marked` IS IN HALF-EDGES, WHICH THIS HAD TO BE HONEST ABOUT.** `wall_stamp` visits
+every edge from both of its cells and `wall_set` resolves them to one owner slot, so a
+16-unit wall of 18 stored edges has always reported **36**. The join is counted the same way
+rather than once: two units in one number is worse than a doubling that was already there.
+
+⛔ **AND THE CORPUS EXERCISES NONE OF IT.** All 46 `probe/k3d` scripts key their recorded
+world **unchanged** — no script lays two runs that meet, and `place_house`'s four mitred
+sides never leave a one-edge break. So the corpus is the control for *it fires on nothing
+else* and cannot be the check that it fires at all. That is the same shape as
+promote-on-close: a gesture the corpus never performs cannot be caught by it.
+
+⚠ **AND THE FIRST TABLE ABOVE CANNOT BE TAKEN THROUGH `wall_stamp` ANY MORE.** Once the rule
+shipped, four `wall_at` calls stopped producing the field that table measures — so `rect_raw`
+unions the four runs with no corner rule at all, and a fourth sweep takes the same 25 through
+`wall_stamp` itself. ✅ **That last sweep is IDENTICAL to the add-only prototype, row for
+row** — same corners, same marks, same chains, same descriptions, same flood — which is the
+consumer check that what shipped is what was measured, and not a second answer wearing the
+same summary line.
+
+## The sabotage sweep — `sh probe/b4y/sweep.sh`
+
+| row | what was cut | |
+|---|---|---|
+| 0 | control, nothing cut | green |
+| **1** | the corner close is never called | ⛔ **RED**, 3 tests |
+| 2 | *one hex edge* becomes any distance | ⚠ green |
+| 3 | the join is not scoped to this run's own field | ⚠ green |
+| 4 | `corner_write` matches only one vertex ORDER | ⚠ green |
+| 5 | a vertex may be spent twice | ⚠ green |
+| **6** | `corner_write` writes the first unmarked edge it finds | ⛔ **RED**, 3 tests |
+| **7** | a free end becomes a mid-chain vertex (degree 2) | ⛔ **RED**, 4 tests |
+| 8 | ✅ the green control — the corner pair spelled the other way round | ✅ green |
+
+⛔ **THE FIRST VERSION OF THIS SWEEP HAD ONE RED ROW AND FOUR BLIND ONES**, which says only
+that the tests notice the feature being **absent**. Rows 6 and 7 are the question that was
+missing — can they see it **computed wrong** — and both are red, row 7 on a `peel.loft`
+fixture the other two do not touch.
+
+⚠ **AND ROWS 2 TO 5 ARE DEFENSIVE BRANCHES, WHICH IS WHY THEY STAY.** `corner_write` only
+writes when a hex edge genuinely joins the two vertices, so the integer step test is a
+**pre-filter for cost** and not the gate — row 7 shows what that cost is, taking minutes
+where every other row takes seconds. The run scope and the spent-vertex guard hold in a
+general world that no fixture here builds; `B4x`'s `join_control` went looking for the pair
+they would need to reject and found none in fourteen near misses, which is *a green, not a
+theorem* — its own words.
+
 ## ⚠ What this does NOT say
 
 - **Nothing about the description column.** 17 of 25 over four before and after; that is the
