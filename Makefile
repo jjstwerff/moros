@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -927,6 +927,18 @@ probe-b2p:
 # decision rather than a guard.
 probe-b4x:
 	@loft --interpret --lib lib/ probe/b4x/b4x.loft 2>/dev/null | sed -n '/^B4x/,$$p'
+
+# B4y (plan 26) — WHICH END OWES THE CORNER? The cross-tabulation `B4x` and `probe/pc`
+# never made between them: over the same 25 rectangles, a LEAK is a GAP corner (7 of 7, and
+# 0 of 18 leak without one) and an OVER-DESCRIPTION is a FORK corner (17 of 17). ⛔ The fork
+# is one edge two runs BOTH generate — `twice-claimed` equals `spurs` in every row — so
+# `@HB-X36`'s *claimed exactly once* is broken in both directions and the fix is the STAMP.
+# ⛔ And half the obvious repair is refuted here: dropping the doubly-claimed edge closes the
+# topology and makes the walls unrecoverable, because no run generates a field with an edge
+# taken out of it. ✅ The ADD alone takes 7 leaks to 0 and 7 closed chains to 23.
+# ⚠ Takes minutes. Not in `make fast`; its subject is a design decision.
+probe-b4y:
+	@loft --interpret --lib lib/ probe/b4y/b4y.loft 2>/dev/null | sed -n '/^B4y/,$$p'
 
 # WP (WALL_PUSH) — the four probes of the wall-push design. ⛔ Two of the first draft's rules
 # are REFUTED: a diagonal wall moves 3.6x FURTHER per step, not 6.25x less (the line spacing

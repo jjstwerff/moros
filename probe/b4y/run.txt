@@ -1,0 +1,93 @@
+B4y — which end owes the corner? (plan 26)
+
+  one row per rectangle. corners read SW SE NW NE:
+    `.` the runs meet · `G` a GAP, free ends only · `K` a FORK, a junction · `?` both
+
+    4 x 3: corners ..?G  spurs 1  marks 34 (alone 35, twice-claimed 1)  chains 2  descriptions 5  drawn 34  flood ⛔LEAK 0
+    4 x 4: corners ..??  spurs 2  marks 36 (alone 38, twice-claimed 2)  chains 2  descriptions 5  drawn 36  flood closed 20
+    4 x 5: corners ....  spurs 0  marks 42 (alone 42, twice-claimed 0)  chains 1  descriptions 4  drawn 42  flood closed 28
+    4 x 6: corners ..?G  spurs 1  marks 50 (alone 51, twice-claimed 1)  chains 2  descriptions 5  drawn 50  flood ⛔LEAK 0
+    4 x 7: corners ..??  spurs 2  marks 52 (alone 54, twice-claimed 2)  chains 2  descriptions 5  drawn 52  flood closed 36
+    5 x 3: corners ..?G  spurs 1  marks 34 (alone 35, twice-claimed 1)  chains 2  descriptions 5  drawn 34  flood ⛔LEAK 0
+    5 x 4: corners ..??  spurs 2  marks 44 (alone 46, twice-claimed 2)  chains 2  descriptions 6  drawn 44  flood closed 30
+    5 x 5: corners ....  spurs 0  marks 50 (alone 50, twice-claimed 0)  chains 1  descriptions 4  drawn 50  flood closed 42
+    5 x 6: corners ..?G  spurs 1  marks 50 (alone 51, twice-claimed 1)  chains 2  descriptions 5  drawn 50  flood ⛔LEAK 0
+    5 x 7: corners ..??  spurs 2  marks 60 (alone 62, twice-claimed 2)  chains 2  descriptions 6  drawn 60  flood closed 54
+    6 x 3: corners .???  spurs 2  marks 42 (alone 44, twice-claimed 2)  chains 3  descriptions 6  drawn 42  flood closed 21
+    6 x 4: corners ....  spurs 0  marks 46 (alone 46, twice-claimed 0)  chains 1  descriptions 4  drawn 46  flood closed 35
+    6 x 5: corners ..??  spurs 2  marks 56 (alone 58, twice-claimed 2)  chains 2  descriptions 5  drawn 56  flood closed 49
+    6 x 6: corners .???  spurs 2  marks 58 (alone 60, twice-claimed 2)  chains 3  descriptions 6  drawn 58  flood closed 49
+    6 x 7: corners ....  spurs 0  marks 62 (alone 62, twice-claimed 0)  chains 1  descriptions 4  drawn 62  flood closed 63
+    7 x 3: corners ..?G  spurs 1  marks 50 (alone 51, twice-claimed 1)  chains 2  descriptions 5  drawn 50  flood ⛔LEAK 0
+    7 x 4: corners ..??  spurs 2  marks 52 (alone 54, twice-claimed 2)  chains 2  descriptions 6  drawn 52  flood closed 40
+    7 x 5: corners ....  spurs 0  marks 58 (alone 58, twice-claimed 0)  chains 1  descriptions 4  drawn 58  flood closed 56
+    7 x 6: corners ..?G  spurs 1  marks 66 (alone 67, twice-claimed 1)  chains 2  descriptions 5  drawn 66  flood ⛔LEAK 0
+    7 x 7: corners ..??  spurs 2  marks 68 (alone 70, twice-claimed 2)  chains 2  descriptions 6  drawn 68  flood closed 72
+    8 x 3: corners GGGG  spurs 0  marks 50 (alone 50, twice-claimed 0)  chains 4  descriptions 4  drawn 50  flood ⛔LEAK 0
+    8 x 4: corners ....  spurs 0  marks 54 (alone 54, twice-claimed 0)  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 5: corners ..??  spurs 2  marks 64 (alone 66, twice-claimed 2)  chains 2  descriptions 6  drawn 64  flood closed 63
+    8 x 6: corners ..??  spurs 2  marks 64 (alone 66, twice-claimed 2)  chains 2  descriptions 6  drawn 64  flood closed 63
+    8 x 7: corners ....  spurs 0  marks 70 (alone 70, twice-claimed 0)  chains 1  descriptions 4  drawn 70  flood closed 81
+
+  CROSS-TABULATION — does a corner shape predict the failure?
+    of 25 rectangles: 18 carry a GAP, 17 carry a FORK
+    LEAK: 7 of 25 — and 7 of those 7 carry a gap (0 leak with NO gap)
+    OVER 4 descriptions: 17 of 25 — and 17 of those carry a fork (0 are over with NO fork)
+
+  BOTH HALVES — drop the doubly-claimed edge AND add the missing one:
+    4 x 3: dropped 1 added 1  corners ....  marks 34  chains 1  descriptions 6  drawn 34  flood closed 20
+    4 x 4: dropped 2 added 0  corners ....  marks 34  chains 1  descriptions 7  drawn 34  flood closed 20
+    4 x 5: dropped 0 added 0  corners ....  marks 42  chains 1  descriptions 4  drawn 42  flood closed 28
+    4 x 6: dropped 1 added 1  corners ....  marks 50  chains 1  descriptions 6  drawn 50  flood closed 40
+    4 x 7: dropped 2 added 0  corners ....  marks 50  chains 1  descriptions 7  drawn 50  flood closed 36
+    5 x 3: dropped 1 added 1  corners ....  marks 34  chains 1  descriptions 6  drawn 34  flood closed 20
+    5 x 4: dropped 2 added 0  corners ....  marks 42  chains 1  descriptions 7  drawn 42  flood closed 30
+    5 x 5: dropped 0 added 0  corners ....  marks 50  chains 1  descriptions 4  drawn 50  flood closed 42
+    5 x 6: dropped 1 added 1  corners ....  marks 50  chains 1  descriptions 6  drawn 50  flood closed 40
+    5 x 7: dropped 2 added 0  corners ....  marks 58  chains 1  descriptions 7  drawn 58  flood closed 54
+    6 x 3: dropped 2 added 0  corners .?G.  marks 40  chains 2  descriptions 8  drawn 40  flood closed 21
+    6 x 4: dropped 0 added 0  corners ....  marks 46  chains 1  descriptions 4  drawn 46  flood closed 35
+    6 x 5: dropped 2 added 0  corners ....  marks 54  chains 1  descriptions 7  drawn 54  flood closed 49
+    6 x 6: dropped 2 added 0  corners .?G.  marks 56  chains 2  descriptions 8  drawn 56  flood closed 49
+    6 x 7: dropped 0 added 0  corners ....  marks 62  chains 1  descriptions 4  drawn 62  flood closed 63
+    7 x 3: dropped 1 added 1  corners ....  marks 50  chains 1  descriptions 6  drawn 50  flood closed 36
+    7 x 4: dropped 2 added 0  corners ....  marks 50  chains 1  descriptions 7  drawn 50  flood closed 40
+    7 x 5: dropped 0 added 0  corners ....  marks 58  chains 1  descriptions 4  drawn 58  flood closed 56
+    7 x 6: dropped 1 added 1  corners ....  marks 66  chains 1  descriptions 6  drawn 66  flood closed 72
+    7 x 7: dropped 2 added 0  corners ....  marks 66  chains 1  descriptions 7  drawn 66  flood closed 72
+    8 x 3: dropped 0 added 4  corners ....  marks 54  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 4: dropped 0 added 0  corners ....  marks 54  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 5: dropped 2 added 0  corners ....  marks 62  chains 1  descriptions 7  drawn 62  flood closed 63
+    8 x 6: dropped 2 added 0  corners ....  marks 62  chains 1  descriptions 7  drawn 62  flood closed 63
+    8 x 7: dropped 0 added 0  corners ....  marks 70  chains 1  descriptions 4  drawn 70  flood closed 81
+
+  0 of 25 leak, 17 of 25 described over four, 8 of 25 are four walls round a closed room
+
+  ADD ONLY — the missing corner edge, and the spur left where it is:
+    4 x 3: dropped 0 added 1  corners ..?.  marks 35  chains 1  descriptions 7  drawn 35  flood closed 20
+    4 x 4: dropped 0 added 0  corners ..??  marks 36  chains 2  descriptions 5  drawn 36  flood closed 20
+    4 x 5: dropped 0 added 0  corners ....  marks 42  chains 1  descriptions 4  drawn 42  flood closed 28
+    4 x 6: dropped 0 added 1  corners ..?.  marks 51  chains 1  descriptions 7  drawn 51  flood closed 40
+    4 x 7: dropped 0 added 0  corners ..??  marks 52  chains 2  descriptions 5  drawn 52  flood closed 36
+    5 x 3: dropped 0 added 1  corners ..?.  marks 35  chains 1  descriptions 7  drawn 35  flood closed 20
+    5 x 4: dropped 0 added 0  corners ..??  marks 44  chains 2  descriptions 6  drawn 44  flood closed 30
+    5 x 5: dropped 0 added 0  corners ....  marks 50  chains 1  descriptions 4  drawn 50  flood closed 42
+    5 x 6: dropped 0 added 1  corners ..?.  marks 51  chains 1  descriptions 7  drawn 51  flood closed 40
+    5 x 7: dropped 0 added 0  corners ..??  marks 60  chains 2  descriptions 6  drawn 60  flood closed 54
+    6 x 3: dropped 0 added 0  corners .???  marks 42  chains 3  descriptions 6  drawn 42  flood closed 21
+    6 x 4: dropped 0 added 0  corners ....  marks 46  chains 1  descriptions 4  drawn 46  flood closed 35
+    6 x 5: dropped 0 added 0  corners ..??  marks 56  chains 2  descriptions 5  drawn 56  flood closed 49
+    6 x 6: dropped 0 added 0  corners .???  marks 58  chains 3  descriptions 6  drawn 58  flood closed 49
+    6 x 7: dropped 0 added 0  corners ....  marks 62  chains 1  descriptions 4  drawn 62  flood closed 63
+    7 x 3: dropped 0 added 1  corners ..?.  marks 51  chains 1  descriptions 7  drawn 51  flood closed 36
+    7 x 4: dropped 0 added 0  corners ..??  marks 52  chains 2  descriptions 6  drawn 52  flood closed 40
+    7 x 5: dropped 0 added 0  corners ....  marks 58  chains 1  descriptions 4  drawn 58  flood closed 56
+    7 x 6: dropped 0 added 1  corners ..?.  marks 67  chains 1  descriptions 7  drawn 67  flood closed 72
+    7 x 7: dropped 0 added 0  corners ..??  marks 68  chains 2  descriptions 6  drawn 68  flood closed 72
+    8 x 3: dropped 0 added 4  corners ....  marks 54  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 4: dropped 0 added 0  corners ....  marks 54  chains 1  descriptions 4  drawn 54  flood closed 45
+    8 x 5: dropped 0 added 0  corners ..??  marks 64  chains 2  descriptions 6  drawn 64  flood closed 63
+    8 x 6: dropped 0 added 0  corners ..??  marks 64  chains 2  descriptions 6  drawn 64  flood closed 63
+    8 x 7: dropped 0 added 0  corners ....  marks 70  chains 1  descriptions 4  drawn 70  flood closed 81
+
+  0 of 25 leak, 17 of 25 described over four, 8 of 25 are four walls round a closed room

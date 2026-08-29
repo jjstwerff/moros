@@ -1,0 +1,467 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `B4y` — WHICH END OWES THE CORNER?  Plan 26, the step `B4x` named and did not take.
+//
+//   loft --interpret --lib lib/ probe/b4y/b4y.loft      (or `make probe-b4y`)
+//
+// `B4x` measured two halves in two runs and never joined them.  One said a closed
+// rectangle is described as its four walls in **8 of 25** and as 5 or 6 in the other 17,
+// exactly the ones whose chain carries a junction.  The other — `probe/pc` — said **7 of
+// 25** have a hole a flood escapes through.  Neither says which rectangle is which, so
+// *close the corner, and decide at which end* has been a choice between two ends with no
+// number attached to either.
+//
+// ⚠ **THE DECISION NEEDS ONE CROSS-TABULATION, NOT A NEW RULE.**  A break is one hex edge
+// wide and comes in two shapes — falling short leaves two free ends, overshooting leaves a
+// fork.  If the two shapes fail in DIFFERENT columns the fix has two halves; if a fork
+// carries a one-edge SPUR then both shapes are the world being wrong and the reader is
+// reporting it faithfully, which puts the whole fix at the stamp.
+//
+// Predictions are in `PREDICTION.md` and were written before this ran.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+use hex_grid;
+use hex_mesh;
+
+const Q0 = 0 - 18;
+const R0 = 0 - 18;
+const WQ = 37;
+const HR = 37;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// ⚠ **EACH WALL IS AIMED AT THE NOMINAL CORNER** — `B4x`'s fixture, unchanged, because a
+// different fixture would answer a different question than the one that produced 8 of 25.
+fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  if !d.rd_ok { println("  ⛔ the fixture's wall was refused: {d.rd_why}"); return; }
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  if m == 0 { println("  ⛔ the fixture's wall stamped nothing"); }
+}
+
+fn marks_of(w: VoxelWorld) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        edge_set_mat(e, q, r, nq, nr, 1);
+      }
+    }
+  }
+  e
+}
+
+fn edges_in(e: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(e, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn rect(a: float, b: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - a, 0.0 - b, a, 0.0 - b);
+  wall_at(w, a, 0.0 - b, a, b);
+  wall_at(w, a, b, 0.0 - a, b);
+  wall_at(w, 0.0 - a, b, 0.0 - a, 0.0 - b);
+  w
+}
+
+fn one_wall(x0: float, z0: float, x1: float, z1: float) -> integer {
+  w = flat_world();
+  wall_at(w, x0, z0, x1, z1);
+  edges_in(marks_of(w))
+}
+
+// ✅ **ONE HEX EDGE IS EXACTLY THESE SIX STEPS** — `hex_edge_corners` for `d = 0…5` in
+// triangle-lattice coordinates, each of world length 1.  `B4x` measured them against the
+// library directly; this is the same predicate, so *one edge* stays an integer.
+fn one_edge(da: integer, db: integer) -> boolean {
+  (da == 0 && db == 3) || (da == 3 && db == 0) || (da == 3 && db == 0 - 3)
+    || (da == 0 && db == 0 - 3) || (da == 0 - 3 && db == 0) || (da == 0 - 3 && db == 3)
+}
+
+// Every vertex the marking touches, once, with the number of marks meeting there.
+fn verts(marks: EdgeSet, va: &vector<integer>, vb: &vector<integer>, vd: &vector<integer>) {
+  ta: vector<integer> = [];
+  tb: vector<integer> = [];
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(marks, q, r, nq, nr) == 0 { continue; }
+        (c1, c2) = hex_grid::hex_edge_corners(d);
+        ta += [hex_shape::hex_corner_tri_a(q, r, c1)];
+        tb += [hex_shape::hex_corner_tri_b(q, r, c1)];
+        ta += [hex_shape::hex_corner_tri_a(q, r, c2)];
+        tb += [hex_shape::hex_corner_tri_b(q, r, c2)];
+      }
+    }
+  }
+  for i in 0..len(ta) {
+    first = true;
+    for k in 0..i {
+      if (ta[k] ?? 0) == (ta[i] ?? 0) && (tb[k] ?? 0) == (tb[i] ?? 0) { first = false; }
+    }
+    if !first { continue; }
+    deg = 0;
+    for j in 0..len(ta) {
+      if (ta[j] ?? 0) == (ta[i] ?? 0) && (tb[j] ?? 0) == (tb[i] ?? 0) { deg = deg + 1; }
+    }
+    va += [ta[i] ?? 0];
+    vb += [tb[i] ?? 0];
+    vd += [deg];
+  }
+}
+
+// ⛔ **THE CLASSIFICATION IS PER CORNER, NOT PER RECTANGLE** — a rectangle with one gap and
+// one fork answers both columns, and a per-rectangle verdict would have to pick one.
+//   `.` the two runs meet — every vertex here has degree 2
+//   `G` a GAP — free ends only, so a mark is missing and the enclosure is open
+//   `K` a FORK — a junction, so a mark is present that no wall needed
+//   `?` both shapes at one corner
+fn corner_kinds(marks: EdgeSet, a: float, b: float, fused: &integer, gaps: &integer,
+                forks: &integer, mixed: &integer, spurs: &integer) -> text {
+  va: vector<integer> = [];
+  vb: vector<integer> = [];
+  vd: vector<integer> = [];
+  verts(marks, va, vb, vd);
+  out = "";
+  nf = 0;
+  ng = 0;
+  nk = 0;
+  nm = 0;
+  for sx in [0.0 - 1.0, 1.0] {
+    for sy in [0.0 - 1.0, 1.0] {
+      cx = sx * a;
+      cy = sy * b;
+      n1 = 0;
+      n3 = 0;
+      for i in 0..len(va) {
+        if (vd[i] ?? 0) == 2 { continue; }
+        x = hex_shape::tri_x(va[i] ?? 0, vb[i] ?? 0);
+        y = hex_shape::tri_y(va[i] ?? 0, vb[i] ?? 0);
+        dx = x - cx;
+        dy = y - cy;
+        if dx * dx + dy * dy > 4.0 { continue; }
+        if (vd[i] ?? 0) == 1 { n1 = n1 + 1; }
+        if (vd[i] ?? 0) >= 3 { n3 = n3 + 1; }
+      }
+      if n1 == 0 && n3 == 0 { nf = nf + 1; out = out + "."; }
+      if n1 > 0 && n3 == 0 { ng = ng + 1; out = out + "G"; }
+      if n1 == 0 && n3 > 0 { nk = nk + 1; out = out + "K"; }
+      if n1 > 0 && n3 > 0 { nm = nm + 1; out = out + "?"; }
+    }
+  }
+  // ⚠ **AND WHETHER A FORK IS A SPUR IS THE QUESTION THAT DECIDES THE END.**  A junction
+  // with a free end exactly one hex edge from it is a wall byte sticking out of the corner
+  // into nothing — a wall nobody built, which no reader can be blamed for describing.
+  ns = 0;
+  for i in 0..len(va) {
+    if (vd[i] ?? 0) < 3 { continue; }
+    for j in 0..len(va) {
+      if (vd[j] ?? 0) != 1 { continue; }
+      if one_edge((va[j] ?? 0) - (va[i] ?? 0), (vb[j] ?? 0) - (vb[i] ?? 0)) {
+        ns = ns + 1;
+      }
+    }
+  }
+  fused = nf;
+  gaps = ng;
+  forks = nk;
+  mixed = nm;
+  spurs = ns;
+  out
+}
+
+// The seed `promote_close` is given, found the way the gesture finds its own — a cell the
+// wall touches.  ⚠ Copied from `probe/pc` deliberately: the leak column has to be the same
+// number that probe reported, or the cross-tabulation is over two different measurements.
+fn a_walled_cell(w: VoxelWorld, oq: &integer, orr: &integer) -> boolean {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d,
+             (hex_editor::terrain_h(q, r, w) as float) * w.w_unit) != 0 {
+          oq = q; orr = r; return true;
+        }
+      }
+    }
+  }
+  false
+}
+
+fn row(a: float, b: float, n_gap: &integer, n_fork: &integer, n_leak: &integer,
+       leak_gap: &integer, n_over: &integer, over_fork: &integer) {
+  w = rect(a, b);
+  marks = marks_of(w);
+  total = edges_in(marks);
+  nf = 0; ng = 0; nk = 0; nm = 0; ns = 0;
+  shape = corner_kinds(marks, a, b, nf, ng, nk, nm, ns);
+  ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0);
+
+  // what the four walls cost when each is stamped ALONE — `@HB-X36`'s *claimed exactly
+  // once*, asked of linework: `alone - union` is how many edges two runs both claim.
+  alone = one_wall(0.0 - a, 0.0 - b, a, 0.0 - b) + one_wall(a, 0.0 - b, a, b)
+        + one_wall(a, b, 0.0 - a, b) + one_wall(0.0 - a, b, 0.0 - a, 0.0 - b);
+
+  svg = hex_mesh::plan_svg(w, Q0, R0, Q0 + WQ, R0 + HR, 0.0, "{a}x{b}");
+  t = hex_mesh::plan_tally(svg);
+
+  sq = 0; sr = 0;
+  code = "no wall";
+  cells = 0;
+  if a_walled_cell(w, sq, sr) {
+    p = hex_editor::promote_close(w, sq, sr, hex_editor::FLOOR_MAT);
+    cells = p.pm_cells;
+    if p.pm_code == hex_editor::PM_FLOORED { code = "closed"; }
+    if p.pm_code == hex_editor::PM_OPEN { code = "⛔LEAK"; }
+    if p.pm_code == hex_editor::PM_ALREADY { code = "already"; }
+  }
+  leaks = code == "⛔LEAK";
+  over = t.pt_descs > 4;
+  has_gap = ng + nm > 0;
+  has_fork = nk + nm > 0;
+  if has_gap { n_gap = n_gap + 1; }
+  if has_fork { n_fork = n_fork + 1; }
+  if leaks { n_leak = n_leak + 1; }
+  if leaks && has_gap { leak_gap = leak_gap + 1; }
+  if over { n_over = n_over + 1; }
+  if over && has_fork { over_fork = over_fork + 1; }
+  println("    {a} x {b}: corners {shape}  spurs {ns}  marks {total} (alone {alone},"
+        + " twice-claimed {alone - total})  chains {ch.wc_n}  descriptions {t.pt_descs}"
+        + "  drawn {t.pt_marks}  flood {code} {cells}");
+}
+
+fn main() {
+  println("B4y — which end owes the corner? (plan 26)");
+  println("");
+  println("  one row per rectangle. corners read SW SE NW NE:");
+  println("    `.` the runs meet · `G` a GAP, free ends only · `K` a FORK, a junction"
+        + " · `?` both");
+  println("");
+  ngap = 0;
+  nfork = 0;
+  nleak = 0;
+  lg = 0;
+  nover = 0;
+  of = 0;
+  for ia in 0..5 {
+    for ib in 0..5 {
+      row(4.0 + (ia as float), 3.0 + (ib as float), ngap, nfork, nleak, lg, nover, of);
+    }
+  }
+  println("");
+  println("  CROSS-TABULATION — does a corner shape predict the failure?");
+  println("    of 25 rectangles: {ngap} carry a GAP, {nfork} carry a FORK");
+  println("    LEAK: {nleak} of 25 — and {lg} of those {nleak} carry a gap"
+        + " ({nleak - lg} leak with NO gap)");
+  println("    OVER 4 descriptions: {nover} of 25 — and {of} of those carry a fork"
+        + " ({nover - of} are over with NO fork)");
+  println("");
+  println("  BOTH HALVES — drop the doubly-claimed edge AND add the missing one:");
+  fixed_sweep(true);
+  println("");
+  println("  ADD ONLY — the missing corner edge, and the spur left where it is:");
+  fixed_sweep(false);
+}
+
+// ── ⛔ THE RULE THE STAMP WOULD APPLY, PROTOTYPED BEFORE IT IS BUILT ────────
+//
+// The table above says the corner is claimed TWICE in 30 of 100 corners and ZERO times in
+// 10 — `@HB-X36`'s *exactly once* broken in both directions — so this is not a threshold to
+// pick, it is a count to correct.  ⚠ **AND IT IS APPLIED AT THE CORNER, NOT OVER THE
+// MARKING.** A rule that pruned every pendant back to the nearest junction would eat the
+// STEM of a `T` whole; what makes this safe is that a gesture knows where its corner is,
+// which a marking does not.
+//
+//   claimed twice  -> drop it.  The doubly-claimed edge IS the spur: its far vertex is the
+//                     free end and its near vertex the junction, so removing it leaves the
+//                     two chains meeting at one degree-2 vertex.
+//   claimed never  -> add it.   The two free ends are one hex edge apart, which is an
+//                     integer fact (`hex_edge_corners`, `d = 0…5`) and needs no radius.
+fn run_field(x0: float, z0: float, x1: float, z1: float) -> EdgeSet {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  if !d.rd_ok { return edgeset_new(Q0, R0, WQ, HR); }
+  run_edges(d.rd_run, Q0, R0, WQ, HR, WALL_MAT)
+}
+
+fn near_corner(q: integer, r: integer, d: integer, cx: float, cy: float) -> boolean {
+  (c1, c2) = hex_grid::hex_edge_corners(d);
+  for k in 0..2 {
+    c = if k == 0 { c1 } else { c2 };
+    x = hex_shape::hex_corner_x(q, r, c) - cx;
+    y = hex_shape::hex_corner_y(q, r, c) - cy;
+    if x * x + y * y <= 4.0 { return true; }
+  }
+  false
+}
+
+// Every edge both runs claim at this corner, dropped from the union.
+fn drop_twice(u: EdgeSet, ea: EdgeSet, eb: EdgeSet, cx: float, cy: float) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(ea, q, r, nq, nr) == 0 { continue; }
+        if edge_mat(eb, q, r, nq, nr) == 0 { continue; }
+        if !near_corner(q, r, d, cx, cy) { continue; }
+        edge_set_mat(u, q, r, nq, nr, 0);
+        n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+// The one edge joining two free ends one hex edge apart at this corner.
+fn add_missing(u: EdgeSet, cx: float, cy: float) -> integer {
+  va: vector<integer> = [];
+  vb: vector<integer> = [];
+  vd: vector<integer> = [];
+  verts(u, va, vb, vd);
+  fa: vector<integer> = [];
+  fb: vector<integer> = [];
+  for i in 0..len(va) {
+    if (vd[i] ?? 0) != 1 { continue; }
+    x = hex_shape::tri_x(va[i] ?? 0, vb[i] ?? 0) - cx;
+    y = hex_shape::tri_y(va[i] ?? 0, vb[i] ?? 0) - cy;
+    if x * x + y * y > 4.0 { continue; }
+    fa += [va[i] ?? 0];
+    fb += [vb[i] ?? 0];
+  }
+  if len(fa) != 2 { return 0; }
+  if !one_edge((fa[1] ?? 0) - (fa[0] ?? 0), (fb[1] ?? 0) - (fb[0] ?? 0)) { return 0; }
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(u, q, r, nq, nr) != 0 { continue; }
+        (c1, c2) = hex_grid::hex_edge_corners(d);
+        a1 = hex_shape::hex_corner_tri_a(q, r, c1);
+        b1 = hex_shape::hex_corner_tri_b(q, r, c1);
+        a2 = hex_shape::hex_corner_tri_a(q, r, c2);
+        b2 = hex_shape::hex_corner_tri_b(q, r, c2);
+        hit = (a1 == (fa[0] ?? 0) && b1 == (fb[0] ?? 0)
+            && a2 == (fa[1] ?? 0) && b2 == (fb[1] ?? 0))
+           || (a2 == (fa[0] ?? 0) && b2 == (fb[0] ?? 0)
+            && a1 == (fa[1] ?? 0) && b1 == (fb[1] ?? 0));
+        if hit { edge_set_mat(u, q, r, nq, nr, 1); return 1; }
+      }
+    }
+  }
+  0
+}
+
+fn union_into(u: EdgeSet, e: EdgeSet) {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(e, q, r, nq, nr) != 0 { edge_set_mat(u, q, r, nq, nr, 1); }
+      }
+    }
+  }
+}
+
+fn write_field(w: VoxelWorld, u: EdgeSet) {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(u, q, r, nq, nr) == 0 { continue; }
+        wall_set(w, q, r, d, WALL_MAT, 8, 8.0 * w.w_unit);
+      }
+    }
+  }
+}
+
+fn rect_fixed(a: float, b: float, dropped: &integer, added: &integer,
+              do_drop: boolean) -> VoxelWorld {
+  w = flat_world();
+  e0 = run_field(0.0 - a, 0.0 - b, a, 0.0 - b);
+  e1 = run_field(a, 0.0 - b, a, b);
+  e2 = run_field(a, b, 0.0 - a, b);
+  e3 = run_field(0.0 - a, b, 0.0 - a, 0.0 - b);
+  u = edgeset_new(Q0, R0, WQ, HR);
+  union_into(u, e0);
+  union_into(u, e1);
+  union_into(u, e2);
+  union_into(u, e3);
+  nd = 0;
+  if do_drop {
+    nd = drop_twice(u, e0, e1, a, 0.0 - b);
+    nd = nd + drop_twice(u, e1, e2, a, b);
+    nd = nd + drop_twice(u, e2, e3, 0.0 - a, b);
+    nd = nd + drop_twice(u, e3, e0, 0.0 - a, 0.0 - b);
+  }
+  na = add_missing(u, a, 0.0 - b);
+  na = na + add_missing(u, a, b);
+  na = na + add_missing(u, 0.0 - a, b);
+  na = na + add_missing(u, 0.0 - a, 0.0 - b);
+  dropped = nd;
+  added = na;
+  write_field(w, u);
+  w
+}
+
+fn fixed_row(a: float, b: float, leaks: &integer, over: &integer, exact: &integer,
+             do_drop: boolean) {
+  nd = 0;
+  na = 0;
+  w = rect_fixed(a, b, nd, na, do_drop);
+  marks = marks_of(w);
+  total = edges_in(marks);
+  nf = 0; ng = 0; nk = 0; nm = 0; ns = 0;
+  shape = corner_kinds(marks, a, b, nf, ng, nk, nm, ns);
+  ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0);
+  svg = hex_mesh::plan_svg(w, Q0, R0, Q0 + WQ, R0 + HR, 0.0, "{a}x{b}");
+  t = hex_mesh::plan_tally(svg);
+  sq = 0; sr = 0;
+  code = "no wall";
+  cells = 0;
+  if a_walled_cell(w, sq, sr) {
+    p = hex_editor::promote_close(w, sq, sr, hex_editor::FLOOR_MAT);
+    cells = p.pm_cells;
+    if p.pm_code == hex_editor::PM_FLOORED { code = "closed"; }
+    if p.pm_code == hex_editor::PM_OPEN { code = "⛔LEAK"; }
+    if p.pm_code == hex_editor::PM_ALREADY { code = "already"; }
+  }
+  if code == "⛔LEAK" { leaks = leaks + 1; }
+  if t.pt_descs > 4 { over = over + 1; }
+  if t.pt_descs == 4 && code == "closed" { exact = exact + 1; }
+  println("    {a} x {b}: dropped {nd} added {na}  corners {shape}  marks {total}"
+        + "  chains {ch.wc_n}  descriptions {t.pt_descs}  drawn {t.pt_marks}"
+        + "  flood {code} {cells}");
+}
+
+fn fixed_sweep(do_drop: boolean) {
+  nl = 0;
+  no = 0;
+  ne = 0;
+  for ia in 0..5 {
+    for ib in 0..5 {
+      fixed_row(4.0 + (ia as float), 3.0 + (ib as float), nl, no, ne, do_drop);
+    }
+  }
+  println("");
+  println("  {nl} of 25 leak, {no} of 25 described over four,"
+        + " {ne} of 25 are four walls round a closed room");
+}
