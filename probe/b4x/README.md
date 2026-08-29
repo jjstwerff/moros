@@ -295,3 +295,47 @@ does separate the two cases on everything measured.
   and which end should close it, are not.
 - **It does not build the join.** Its control exists and is green; the rule itself, and the
   decision of whether it belongs in the reader or in `wall_stamp`, do not.
+
+---
+
+# ⛔ RE-RUN 2026-08-29, AFTER `B4y` — and this probe's own headline claim is refuted
+
+**`make probe-b4x` · [`run-b4z.txt`](run-b4z.txt) · prediction in
+[`PREDICTION-b4z.md`](PREDICTION-b4z.md).**
+
+⚠ **EVERY NUMBER ABOVE WAS MEASURED BEFORE `hex_editor::wall_corner_close` EXISTED**, and
+`rect()` stamps through `wall_stamp`, so the fixtures moved under the record. Re-run today
+the same sweep says:
+
+| | recorded above | re-run |
+|---|---|---|
+| a closed rectangle is ONE closed chain | 7 of 25 | **8 of 25** |
+| carries a junction | 17 of 25 | 17 of 25 |
+| breaks | 80 | **60** |
+| a break away from a corner | 0 of 25 | 2 of 25 |
+
+## ⛔ *The cycle minimum beats the shipped peel on no fixture measured* — refuted
+
+That sentence came with its reason: the only closed chains it had were the 7 rectangles greedy
+already described as four walls. **Asked of all 25, both rules side by side:**
+
+| | |
+|---|---|
+| the shipped peel says *four walls* | **8 of 25** |
+| ✅ the minimum says *four walls* | **14 of 25** |
+| strictly fewer pieces | ✅ **14 of 25** |
+| equal | 11 of 25 |
+| ⛔ worse | **0 of 25** |
+| marks left over, either rule | **0** everywhere |
+| ✅ and where it says four, it is | **unique — all 14, `partitions 1`** |
+
+⚠ **AND IT IS NOT ABOUT LOOPS, WHICH IS WHY THE PREDICTION MISSED.** `PREDICTION-b4z.md`
+expected 23 loops and four walls on 23; there are **8** loops, because `B4y`'s add half closes
+the leak and leaves the fork's SPUR — so the marking keeps a junction. The minimum wins on
+broken chains too, by taking the linear minimum per chain rather than by having a cycle to
+work on.
+
+⛔ **THE BILL IS THE DECISION, NOT THE ANSWER.** **363 … 4834 `run_edges`** per window against
+the peel's ~128 — up to **38×** — and `loft test`'s 300-second deadline is what a previous
+`B4x` row was blown by. *Fewest runs* is now a measured, unique, never-worse answer with a
+price on it, which is a different question from whether it should ship.

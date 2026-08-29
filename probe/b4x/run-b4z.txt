@@ -1,0 +1,203 @@
+B4x — the ordered chain walk, cut by within-ness (plan 26)
+
+the CONTROL — prototype 3's own acceptance, exact set equality:
+  equal  a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 15  (n=14)[0-14:14/]
+  equal  an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 0  over 0  run_edges 15  (n=6)[0-6:6/](n=7)[0-7:7/]
+  equal  a zigzag       : marks 17  deg 1/2/3+ = 2/16/0  chains 1  pieces 3  merged 3  stubs 0  over 0  run_edges 38  (n=17)[0-2:2/2-14:12/14-17:3/]
+  equal  a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 128  loop(n=50)[0-13:13/13-25:12/25-38:13/38-50:12/]
+
+the SUBJECT — `run_span`'s within-ness, `run_within`'s strict `>` on a tie:
+  within a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 1  over 0  run_edges 16  (n=14)[0-13:14/]
+  within an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 2  over 0  run_edges 17  (n=6)[0-5:6/](n=7)[0-6:7/]
+  within a zigzag       : marks 17  deg 1/2/3+ = 2/16/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 42  (n=17)[0-2:2/2-13:12/13-15:2/15-17:2/]
+  within a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 128  loop(n=50)[0-13:13/13-25:12/25-38:13/38-50:12/]
+
+…and with the LONGEST vertex span taking a tie:
+  long   a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 15  (n=14)[0-14:14/]
+  long   an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 0  over 0  run_edges 15  (n=6)[0-6:6/](n=7)[0-7:7/]
+  long   a zigzag       : marks 17  deg 1/2/3+ = 2/16/0  chains 1  pieces 3  merged 3  stubs 0  over 3  run_edges 35  (n=17)[0-3:2/3-16:11/16-17:1/]
+  long   a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 5  run_edges 123  loop(n=50)[0-15:13/15-26:10/26-40:12/40-50:10/]
+
+R1 BOTH WAYS — within the marks AND covering the span it steps over:
+  cover  a straight wall: marks 14  deg 1/2/3+ = 2/13/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 15  (n=14)[0-14:14/]
+  cover  an L           : marks 13  deg 1/2/3+ = 4/11/0  chains 2  pieces 2  merged 2  stubs 0  over 0  run_edges 15  (n=6)[0-6:6/](n=7)[0-7:7/]
+  cover  a zigzag       : marks 17  deg 1/2/3+ = 2/16/0  chains 1  pieces 3  merged 3  stubs 0  over 0  run_edges 38  (n=17)[0-2:2/2-14:12/14-17:3/]
+  cover  a closed room  : marks 50  deg 1/2/3+ = 0/50/0  chains 1  pieces 4  merged 4  stubs 0  over 0  run_edges 128  loop(n=50)[0-13:13/13-25:12/25-38:13/38-50:12/]
+
+the CORNER CONTROL — each of the room's four walls alone in the window:
+  cover  south          : marks 12  deg 1/2/3+ = 2/11/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 13  (n=12)[0-12:12/]
+  cover  east           : marks 13  deg 1/2/3+ = 2/12/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 14  (n=13)[0-13:13/]
+  cover  north          : marks 12  deg 1/2/3+ = 2/11/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 13  (n=12)[0-12:12/]
+  cover  west           : marks 13  deg 1/2/3+ = 2/12/0  chains 1  pieces 1  merged 1  stubs 0  over 0  run_edges 14  (n=13)[0-13:13/]
+
+EVERY SEED OF THE ROOM — `!` marks a seed that left marks over:
+  cover  a closed room  : 50 seeds  pieces 4..9  clean 50/50  worst over 0  [45665576557664657575755564567557755957475858585667]
+  within a closed room  : 50 seeds  pieces 1..7  clean 12/50  worst over 45  [43!2!2!3!3!2!3!1!2!762!2!652!52!51!2!2!2!1!43!4!4!3!3!2!3!1!2!3!3!2!2!754!54!51!2!2!2!3!]
+  equal  a closed room  : 50 seeds  pieces 4..9  clean 50/50  worst over 0  [45675577557764657575756564567557755967475858585767]
+  fewest a closed room  : 8 seeds of 50  merged 4..7  clean 8/8  [45546746]
+
+THE FEWEST RUNS — the same feasibility test, over the whole chain at once:
+  fewest a straight wall: marks 14  chains 1  pieces 1  merged 1  gaps 0  over 0  run_edges 19  (n=14)[0-14/]
+  fewest an L           : marks 13  chains 2  pieces 2  merged 2  gaps 0  over 0  run_edges 19  (n=6)[0-6/](n=7)[0-7/]
+  fewest a zigzag       : marks 17  chains 1  pieces 3  merged 3  gaps 0  over 0  run_edges 97  (n=17)[0-2/2-14/14-17/]
+  fewest a closed room  : marks 50  chains 1  pieces 4  merged 4  gaps 0  over 0  run_edges 1012  loop(n=50)[0-13/13-25/25-38/38-50/]
+
+THE CYCLE, CUT WITHOUT A START — one table, every start asked against it:
+  cyclic a straight wall: marks 14  chains 1  pieces 1  partitions 1  over 0  run_edges 106  (n=14)x1[0-14:14/] 1..1
+      every start: [1]
+  cyclic an L           : marks 13  chains 2  pieces 2  partitions 1  over 0  run_edges 51  (n=6)x1[0-6:6/] 1..1(n=7)x1[0-7:7/] 1..1
+      every start: [11]
+  cyclic a zigzag       : marks 17  chains 1  pieces 3  partitions 1  over 0  run_edges 156  (n=17)x1[0-2:2/2-14:12/14-17:3/] 3..3
+      every start: [3]
+  cyclic a closed room  : marks 50  chains 1  pieces 4  partitions 1  over 0  run_edges 2454  loop(n=50)@0x1[0-13:13/13-25:12/25-38:13/38-0:12/] 4..7
+      every start: [45665576557554656575755564567557755755465657575556]
+      …and with `dp_once`'s merge clause replayed off the same table:
+      merged:      [45654465446444555464644464556446644744464646464446]  at stride 7: [45546746] — compare `fewest` above
+  cyclic a wider room   : marks 51  chains 1  pieces 4  partitions 1  over 0  run_edges 1329  (n=51)x1[0-8:8/8-26:18/26-33:7/33-51:18/] 4..4
+      every start: [4]
+  cyclic a triangle     : marks 39  chains 2  pieces 4  partitions 1  over 0  run_edges 424  (n=15)x1[0-1:1/1-15:14/] 2..2(n=24)x1[0-12:12/12-24:12/] 2..2
+      every start: [22]
+      chain 1: 4 partitions of 6 —  0·1·13·29·35·44·  0·9·13·29·35·44·  0·12·13·29·35·44·  0·14·16·29·35·44·
+  cyclic an L-shaped room: marks 59  chains 2  pieces 7  partitions 4  over 0  run_edges 1369  (n=8)x1[0-8:8/] 1..1(n=51)x4[0-1:1/1-13:12/13-29:16/29-35:6/35-44:9/44-51:7/] 6..6
+      every start: [16]
+
+WHAT THE SHIPPED PLAN VIEW DRAWS FOR THESE — `hex_mesh::plan_svg`, end to end:
+  the four walls of ONE room, moved around the world:
+    5x5 at +0      : marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP    drawn 50  descriptions 4
+    5x5 at +0.5      : marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  drawn 51  descriptions 6
+    5x5 at +1      : marks 49  deg 1/2/3+ = 3/43/3  chains 3  broken  drawn 49  descriptions 4
+    5x5 at +1.5      : marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP    drawn 50  descriptions 4
+    5x5 at +2      : marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP    drawn 50  descriptions 4
+    5x5 at +2.5      : marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  drawn 51  descriptions 7
+  a four-wall room is described in 4..7 pieces depending on WHERE it is
+  and the same 25 rectangles the fuse sweep measured:
+    4 x 3          : marks 35  deg 1/2/3+ = 1/33/1  chains 1  broken  drawn 35  descriptions 7
+    4 x 4          : marks 36  deg 1/2/3+ = 2/32/2  chains 2  broken  drawn 36  descriptions 5
+    4 x 5          : marks 42  deg 1/2/3+ = 0/42/0  chains 1  LOOP    drawn 42  descriptions 4
+    4 x 6          : marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  drawn 51  descriptions 7
+    4 x 7          : marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken  drawn 52  descriptions 5
+    5 x 3          : marks 35  deg 1/2/3+ = 1/33/1  chains 1  broken  drawn 35  descriptions 7
+    5 x 4          : marks 44  deg 1/2/3+ = 2/40/2  chains 2  broken  drawn 44  descriptions 6
+    5 x 5          : marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP    drawn 50  descriptions 4
+    5 x 6          : marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  drawn 51  descriptions 7
+    5 x 7          : marks 60  deg 1/2/3+ = 2/56/2  chains 2  broken  drawn 60  descriptions 6
+    6 x 3          : marks 42  deg 1/2/3+ = 3/36/3  chains 3  broken  drawn 42  descriptions 6
+    6 x 4          : marks 46  deg 1/2/3+ = 0/46/0  chains 1  LOOP    drawn 46  descriptions 4
+    6 x 5          : marks 56  deg 1/2/3+ = 2/52/2  chains 2  broken  drawn 56  descriptions 5
+    6 x 6          : marks 58  deg 1/2/3+ = 3/52/3  chains 3  broken  drawn 58  descriptions 6
+    6 x 7          : marks 62  deg 1/2/3+ = 0/62/0  chains 1  LOOP    drawn 62  descriptions 4
+    7 x 3          : marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  drawn 51  descriptions 7
+    7 x 4          : marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken  drawn 52  descriptions 6
+    7 x 5          : marks 58  deg 1/2/3+ = 0/58/0  chains 1  LOOP    drawn 58  descriptions 4
+    7 x 6          : marks 67  deg 1/2/3+ = 1/65/1  chains 1  broken  drawn 67  descriptions 7
+    7 x 7          : marks 68  deg 1/2/3+ = 2/64/2  chains 2  broken  drawn 68  descriptions 6
+    8 x 3          : marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP    drawn 54  descriptions 4
+    8 x 4          : marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP    drawn 54  descriptions 4
+    8 x 5          : marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken  drawn 64  descriptions 6
+    8 x 6          : marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken  drawn 64  descriptions 6
+    8 x 7          : marks 70  deg 1/2/3+ = 0/70/0  chains 1  LOOP    drawn 70  descriptions 4
+
+THE CONTROL FOR A JOIN RULE — does *one hex edge* separate the right things:
+    a broken corner — 8 x 3 : marks 54  chains 1  ends 0  nearest ends across chains 1000 at (0,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 0.2  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 0.2  : marks 18  chains 2  ends 4  nearest ends across chains 1.7320508075688772 at (3,3)  one-edge pairs 0  no one-edge pair
+    collinear, gap 0.6000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 1.7320508075688772 at (6,-3)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 0.6000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 1  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 1  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 1.4000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 1.9999999999999998 at (6,0)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 1.4000000000000001  : marks 16  chains 2  ends 4  nearest ends across chains 3 at (9,0)  one-edge pairs 0  no one-edge pair
+    collinear, gap 1.8  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 1.8  : marks 14  chains 2  ends 4  nearest ends across chains 4.58257569495584 at (15,-3)  one-edge pairs 0  no one-edge pair
+    collinear, gap 2.2  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 2.2  : marks 14  chains 2  ends 4  nearest ends across chains 4.58257569495584 at (15,-3)  one-edge pairs 0  no one-edge pair
+    collinear, gap 2.6000000000000005  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+    parallel,  gap 2.6000000000000005  : marks 12  chains 2  ends 4  nearest ends across chains 5.291502622129181 at (18,-6)  one-edge pairs 0  no one-edge pair
+
+HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:
+    4 x 3: marks 35  deg 1/2/3+ = 1/33/1  chains 1  broken  breaks at a corner 2, elsewhere 0, furthest 1.1345426738990312 — deg3@1.1345426738990312/(3,-3) deg1@0.5991526087921623/(-3,3)
+    4 x 4: marks 36  deg 1/2/3+ = 2/32/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4884187277689946 — deg3@1.4884187277689946/(3,-3) deg1@0.5358983848622456/(-3,3) deg3@1.4884187277689946/(3,0) deg1@0.5358983848622456/(-3,0)
+    4 x 5: marks 42  deg 1/2/3+ = 0/42/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    4 x 6: marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  breaks at a corner 2, elsewhere 0, furthest 1.1345426738990312 — deg3@1.1345426738990312/(3,-3) deg1@0.5991526087921623/(-3,3)
+    4 x 7: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4884187277689946 — deg3@1.4884187277689946/(3,-3) deg1@0.5358983848622456/(-3,3) deg3@1.4884187277689946/(3,0) deg1@0.5358983848622456/(-3,0)
+    5 x 3: marks 35  deg 1/2/3+ = 1/33/1  chains 1  broken  breaks at a corner 1, elsewhere 1, furthest 1.8327530790104964 — deg3@1.8327530790104964/(3,-3) deg1@0.8359005986228675/(-3,3)
+    5 x 4: marks 44  deg 1/2/3+ = 2/40/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 0.8359005986228675 — deg3@0.8359005986228675/(3,-3) deg1@0.19615242270663202/(-3,3) deg3@0.8359005986228675/(3,0) deg1@0.19615242270663202/(-3,0)
+    5 x 5: marks 50  deg 1/2/3+ = 0/50/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    5 x 6: marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  breaks at a corner 1, elsewhere 1, furthest 1.8327530790104964 — deg3@1.8327530790104964/(3,-3) deg1@0.8359005986228675/(-3,3)
+    5 x 7: marks 60  deg 1/2/3+ = 2/56/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 0.8359005986228675 — deg3@0.8359005986228675/(3,-3) deg1@0.19615242270663202/(-3,3) deg3@0.8359005986228675/(3,0) deg1@0.19615242270663202/(-3,0)
+    6 x 3: marks 42  deg 1/2/3+ = 3/36/3  chains 3  broken  breaks at a corner 6, elsewhere 0, furthest 1.2830319277089004 — deg3@1.2830319277089004/(3,-6) deg1@0.5038512499807395/(-3,6) deg3@0.5038512499807395/(0,3) deg3@1.2830319277089004/(3,0) deg1@0.5038512499807395/(-3,0) deg1@0.5038512499807395/(0,-3)
+    6 x 4: marks 46  deg 1/2/3+ = 0/46/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    6 x 5: marks 56  deg 1/2/3+ = 2/52/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 0.803847577293368 — deg3@0.803847577293368/(3,-3) deg1@0.5038512499807395/(-3,3) deg3@0.803847577293368/(3,0) deg1@0.5038512499807395/(-3,0)
+    6 x 6: marks 58  deg 1/2/3+ = 3/52/3  chains 3  broken  breaks at a corner 6, elsewhere 0, furthest 1.2830319277089004 — deg3@1.2830319277089004/(3,-6) deg1@0.5038512499807395/(-3,6) deg3@0.5038512499807395/(0,3) deg3@1.2830319277089004/(3,0) deg1@0.5038512499807395/(-3,0) deg1@0.5038512499807395/(0,-3)
+    6 x 7: marks 62  deg 1/2/3+ = 0/62/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    7 x 3: marks 51  deg 1/2/3+ = 1/49/1  chains 1  broken  breaks at a corner 2, elsewhere 0, furthest 1.0025740751400225 — deg3@1.0025740751400225/(3,-3) deg1@0.9385089893872778/(-3,3)
+    7 x 4: marks 52  deg 1/2/3+ = 2/48/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0627842815571809 — deg3@1.0627842815571809/(3,-3) deg1@0.07179676972449123/(-3,3) deg3@1.0627842815571809/(3,0) deg1@0.07179676972449123/(-3,0)
+    7 x 5: marks 58  deg 1/2/3+ = 0/58/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    7 x 6: marks 67  deg 1/2/3+ = 1/65/1  chains 1  broken  breaks at a corner 2, elsewhere 0, furthest 1.0025740751400225 — deg3@1.0025740751400225/(3,-3) deg1@0.9385089893872778/(-3,3)
+    7 x 7: marks 68  deg 1/2/3+ = 2/64/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0627842815571809 — deg3@1.0627842815571809/(3,-3) deg1@0.07179676972449123/(-3,3) deg3@1.0627842815571809/(3,0) deg1@0.07179676972449123/(-3,0)
+    8 x 3: marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    8 x 4: marks 54  deg 1/2/3+ = 0/54/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+    8 x 5: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.0717967697244912 — deg3@1.0717967697244912/(3,-3) deg1@0.5406864664857399/(-3,3) deg3@1.0717967697244912/(3,0) deg1@0.5406864664857399/(-3,0)
+    8 x 6: marks 64  deg 1/2/3+ = 2/60/2  chains 2  broken  breaks at a corner 4, elsewhere 0, furthest 1.4658609468813386 — deg3@1.4658609468813386/(3,-3) deg1@0.5406864664857399/(-3,3) deg3@1.4658609468813386/(3,0) deg1@0.5406864664857399/(-3,0)
+    8 x 7: marks 70  deg 1/2/3+ = 0/70/0  chains 1  LOOP  breaks at a corner 0, elsewhere 0, furthest 0 —
+  a closed rectangle is ONE closed chain in 8 of 25, and carries a JUNCTION in 17 of 25
+  a break away from any corner (> 1.5 units) in 2 of 25
+  and 56 of 60 breaks have another break exactly ONE HEX EDGE away
+
+⛔ THE CYCLE MINIMUM AGAINST THE SHIPPED PEEL, over the same 25 — re-run since `B4y`:
+    4 x 3: the shipped peel says 7
+         …and the cycle: chains 1  cyclic pieces 5  partitions 6  over 0  run_edges 634
+    4 x 4: the shipped peel says 5
+         …and the cycle: chains 2  cyclic pieces 5  partitions 6  over 0  run_edges 396
+    4 x 5: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 1726
+    4 x 6: the shipped peel says 7
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 1329
+    4 x 7: the shipped peel says 5
+         …and the cycle: chains 2  cyclic pieces 5  partitions 6  over 0  run_edges 756
+    5 x 3: the shipped peel says 7
+         …and the cycle: chains 1  cyclic pieces 5  partitions 6  over 0  run_edges 634
+    5 x 4: the shipped peel says 6
+         …and the cycle: chains 2  cyclic pieces 4  partitions 1  over 0  run_edges 631
+    5 x 5: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 2454
+    5 x 6: the shipped peel says 7
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 1329
+    5 x 7: the shipped peel says 6
+         …and the cycle: chains 2  cyclic pieces 4  partitions 1  over 0  run_edges 1055
+    6 x 3: the shipped peel says 6
+         …and the cycle: chains 3  cyclic pieces 5  partitions 4  over 0  run_edges 363
+    6 x 4: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 2074
+    6 x 5: the shipped peel says 5
+         …and the cycle: chains 2  cyclic pieces 5  partitions 8  over 0  run_edges 986
+    6 x 6: the shipped peel says 6
+         …and the cycle: chains 3  cyclic pieces 5  partitions 4  over 0  run_edges 667
+    6 x 7: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 3786
+    7 x 3: the shipped peel says 7
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 1329
+    7 x 4: the shipped peel says 6
+         …and the cycle: chains 2  cyclic pieces 5  partitions 5  over 0  run_edges 932
+    7 x 5: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 3310
+    7 x 6: the shipped peel says 7
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 2281
+    7 x 7: the shipped peel says 6
+         …and the cycle: chains 2  cyclic pieces 5  partitions 5  over 0  run_edges 1420
+    8 x 3: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 2866
+    8 x 4: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 2866
+    8 x 5: the shipped peel says 6
+         …and the cycle: chains 2  cyclic pieces 5  partitions 5  over 0  run_edges 1350
+    8 x 6: the shipped peel says 6
+         …and the cycle: chains 2  cyclic pieces 5  partitions 5  over 0  run_edges 1350
+    8 x 7: the shipped peel says 4
+         …and the cycle: chains 1  cyclic pieces 4  partitions 1  over 0  run_edges 4834
+  of 25: 8 are ONE CLOSED CHAIN · the shipped peel describes 8 as four walls · the cycle minimum describes 14
+
+…and what the cut rules above make of the two new closed shapes:
+  cover  a wider room   : marks 51  deg 1/2/3+ = 1/49/1  chains 1  pieces 5  merged 5  stubs 0  over 0  run_edges 142  (n=51)[0-8:8/8-26:18/26-34:8/34-50:16/50-51:1/]
+  cover  a triangle     : marks 39  deg 1/2/3+ = 2/35/2  chains 2  pieces 5  merged 5  stubs 0  over 0  run_edges 68  (n=15)[0-4:4/4-14:10/14-15:1/](n=24)[0-12:12/12-24:12/]
+  cover  an L-shaped room: marks 59  deg 1/2/3+ = 2/55/2  chains 2  pieces 7  merged 7  stubs 0  over 0  run_edges 183  (n=8)[0-8:8/](n=51)[0-14:14/14-16:2/16-29:13/29-35:6/35-44:9/44-51:7/]

@@ -192,7 +192,7 @@ is a `Plan`/`Box` rasterisation — which is what `place_house` already builds a
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is answered (`B4x`) and ✅ **the CORNER is CLOSED** (`B4y`, built): 7 of 25 leak → **0**, and 7 closed chains → **23**. ⛔ What is left is the CUT — 17 of 25 still describe four walls as 5 or 6, which is the peel's seed and not the corner. `B4x`'s rotation-invariant cycle minimum is the measured answer and now has 23 loops to prove itself on instead of 7 |
+| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is answered (`B4x`) and ✅ **the CORNER is CLOSED** (`B4y`, built): 7 of 25 leak → **0**; one chain 7 → 14, one CLOSED chain 7 → 8. ⛔ What is left is the CUT — the shipped peel describes four walls as four in **8 of 25**. ✅ **And `B4x`'s *beats the shipped peel on no fixture* is REFUTED, re-run 2026-08-29**: the rotation-invariant minimum is **strictly better on 14 of 25, equal on 11, never worse**, says *four walls* on **14** against the peel's 8, and is **unique every one of those 14 times**. ⛔ Its bill is **363 … 4834 `run_edges`** against the peel's ~128 |
 | B2 | the plan view **inside a renderer** | an instrument nobody can open while editing is an instrument nobody reads | not started |
 | B3 | **authoring in the plan** — `pick` from a pointer, not from a script | this is the editor half of "blueprint editor" | `pick` exists headless (`B4b`) |
 | B4 | **the block vocabulary authored here** — wall types, house types, parts, saved to the world's palette | the project owner's actual requirement; see §2 | the storage exists (`PAL_HTYPE`), the authoring does not |
@@ -326,3 +326,16 @@ whether a project stays.
 writes, in `make fast`, asserting that it places a house and that every refusal it meets
 names something the author can do next. It is the cheapest possible standing answer to *is
 picking this up still fun*, which is DoD clause 8 and the only one with no gate.
+
+✅ **AND IT WAS BUILT THE SAME DAY — [`probe/adopt`](../../probe/adopt/README.md), `make
+probe-adopt`.** Four rows (`A` can I place a house at all · `B` does a refusal tell me
+something to DO · `C` **and if I do it, does it work** · `D` does a refusal leave my world
+alone), two guards that refuse to pass on a run measuring nothing, and a six-row sabotage
+sweep. ⚠ Its own best line is why `B` and `C` are two rows: *"a refusal that names an action
+is not a doorstep until somebody performs the action."*
+
+⛔ **AND THE THREE WORDS *in `make fast`* WERE MISSING FOR A DAY.** The target existed and
+the fast loop did not call it, so the standing answer only stood when somebody remembered to
+ask — this tree's own *a check nobody runs drifts red in silence*, now found four times
+(`probe/k1`, four `k3d` scripts blessing a crash, `K3f`'s five camera scripts, and this).
+✅ **Wired in 2026-08-29**, ~30 s.

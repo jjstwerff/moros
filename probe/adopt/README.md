@@ -93,3 +93,22 @@ measurement predicted.
 ⛔ **SO THE TWO HALVES OF THE FIX ARE LOAD-BEARING TOGETHER**: the unwind is
 sufficient *because* `roof_over` is atomic. Anyone folding that two-pass loop back
 into one reintroduces a quieter half-house, and row 3 is what stands in the way.
+
+## ⛔ In `make fast` since 2026-08-29 — and wiring it in found a defect in its own target
+
+The target existed from the day the probe did and **the fast loop did not call it**, so the
+standing answer only stood when somebody remembered to ask. That is this tree's own *a check
+nobody runs drifts red in silence*, now found four times (`probe/k1`, four `k3d` baselines
+blessing a crash, `K3f`'s five camera scripts, and this one).
+
+⛔ **AND THE FIRST RUN INSIDE THE LOOP DESTROYED THE LOG.** The recipe ended
+`| tee /dev/stderr | grep -q …`, and when the build's output is redirected to a file
+(`make fast > log 2>&1`) **`/dev/stderr` IS that file** — `tee` opens it with `O_TRUNC`, so
+every earlier result vanishes. Measured: an 18-line log where the tests, `k3c`, `t3`, `t4`,
+`k1`, `k3d`, `headless` and `plan` had all reported, leaving a **green tail over an empty
+history**.
+
+⚠ **IT IS THE `| tail -N; echo rc=$?` FAMILY** — an instrument that quietly answers about
+something other than what was asked. The verdict itself was never wrong (`rc=0` was real);
+what was lost was every line that would have let anybody check it. Capture, print, then grep
+the capture, and the failure path is checked against a run that must fail.

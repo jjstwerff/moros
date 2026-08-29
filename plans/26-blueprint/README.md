@@ -3542,10 +3542,12 @@ together.
 chain** — so the edge between them is written.
 
 - **7 of 25 leak → 0 of 25.** An author who walks four walls round a room gets a room.
-- **7 markings that are ONE CLOSED CHAIN → 23.** That is the number that matters next: `B4x`
-  measured a rotation-invariant cycle minimum returning a room's four walls *uniquely* and
-  recorded that it **beat the shipped peel on no fixture**, because its only loops were the
-  7 greedy already got right. There are 23 now, and greedy gives 6 or 7 on most of them.
+- **7 markings that are ONE CHAIN → 14**, and one **closed** chain 7 → 8.
+
+⛔ **THAT SECOND NUMBER WAS WRITTEN AS *23* AND IT WAS WRONG.** `chains 1` is not *one closed
+chain*, and 23 was the **drop + add** table's corner column — the refuted half. The add leaves
+the fork's spur, so the marking keeps a junction and a free end. ⚠ **Closing the leak and
+closing the topology are two things, and only the first is safely achievable at the stamp.**
 - **`drawn` still equals `marks`**, so the added edge is described rather than left over.
 
 ⚠ **AND *ONE HEX EDGE* IS AN INTEGER, NOT A RADIUS** — the six steps `hex_edge_corners`
@@ -3595,3 +3597,48 @@ correctness gate, the step test is what stops it being asked.
 cells and `wall_set` resolves them to one owner slot, so a 16-unit wall of 18 stored edges
 reports **36**. The join is counted the same way rather than once, because two units in one
 number is worse than a doubling that was already there.
+
+## What re-running `B4x` after `B4y` turned up
+
+**`make probe-b4x` · [`probe/b4x/run-b4z.txt`](../../probe/b4x/run-b4z.txt) · prediction in
+`PREDICTION-b4z.md`.**
+
+`B4x` recorded that its rotation-invariant cycle minimum **beat the shipped peel on no fixture
+measured**, with the reason attached: its only closed chains were the 7 rectangles greedy
+already described as four walls. `B4y` moved the fixtures, so the claim was re-run against the
+world it is a claim about.
+
+### ⛔ The claim is refuted, and not for the predicted reason
+
+| over the 25 | |
+|---|---|
+| the shipped peel says *four walls* | **8 of 25** |
+| ✅ the minimum says *four walls* | **14 of 25** |
+| strictly fewer pieces | ✅ **14 of 25** · equal 11 · ⛔ **worse 0** |
+| where it says four, it is | ✅ **unique — all 14** |
+| marks left over, either rule | **0** everywhere |
+| the bill | ⛔ **363 … 4834 `run_edges`** against the peel's ~128 — up to **38×** |
+
+⚠ **THE PREDICTION SAID 23 LOOPS AND FOUR WALLS ON 23. THERE ARE 8 LOOPS.** `B4y`'s add half
+closes the leak and leaves the fork's **spur**, so the marking keeps a junction — one chain
+goes 7 → 14, one *closed* chain only 7 → 8. The minimum wins on **broken chains too**, by
+taking the linear minimum per chain, so the win never depended on having a cycle.
+
+### ⚠ And it also re-dates this probe's own record
+
+`rect()` stamps through `wall_stamp`, so every `fuse_sweep` number in `B4x`'s write-up was
+measured before `wall_corner_close` existed: *7 of 25 one closed chain* is **8** today, and
+*80 breaks* is **60**. Recorded rather than re-blessed — the same trap `probe/b4y` was
+restructured to avoid, one probe over.
+
+### ⛔ So the cut is a PRICED decision now, and it is not obviously worth taking
+
+`FORMAL_CORE`'s `@HB-X36` row says in bold: *recover the four walls of a room* is **already
+solved and gated upstream** — `hex_form::side_edges` partitions a `Plan`'s boundary from the
+CELLS, exactly, and the row ends *"read this row before writing a cut rule."* ⚠ **The reason
+this tree needs a cut rule at all is that a room walked as four linework runs is not a form**,
+and no better cut changes that: `@HB-X36`, `@HB-X45` and `@HB-X62` stay out of reach either
+way. So the choice is between paying up to 38× for *four descriptions instead of six* on a
+domain-B object, and making a room a **stencil**, which is the row that wins all three of
+[FOCUS](../../doc/claude/FOCUS.md)'s columns. ⚠ `hex_form::side_edges` has **no production
+caller in this tree** — only `probe/a0q` — which is where that second option starts.

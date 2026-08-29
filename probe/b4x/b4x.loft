@@ -785,7 +785,7 @@ fn dp_merged(tab: vector<integer>, n: integer, c: integer) -> integer {
 // the linear minimum at eight seeds from `run_between` calls made at that seed; the table's
 // own DP at those same starts must agree value for value, or the table is a different
 // question and nothing below it means anything. Printed as `stride7` for comparison.
-fn cyc_measure(tag: text, w: VoxelWorld) {
+fn cyc_measure(tag: text, w: VoxelWorld, verbose: boolean) -> integer {
   marks = marks_of(w);
   total = edges_in(marks);
   cov = edgeset_new(Q0, R0, WQ, HR);
@@ -846,7 +846,7 @@ fn cyc_measure(tag: text, w: VoxelWorld) {
       desc = desc + "{i}-{j}:{p1 - p0}/";
     }
     desc = desc + "] {lo}..{hi}";
-    if distinct > 1 {
+    if distinct > 1 && verbose {
       alts = dp_enum(tab, n, at, 32);
       show = "";
       for k in 0..len(alts) { show = show + "  {alts[k] ?? \"\"}"; }
@@ -863,13 +863,19 @@ fn cyc_measure(tag: text, w: VoxelWorld) {
       }
     }
   }
-  println("  cyclic {tag}: marks {total}  chains {chains}  pieces {pieces}"
-        + "  partitions {parts}  over {over}  run_edges {calls}  {desc}");
-  if hist != "" { println("      every start: [{hist}]"); }
-  if mist != "" {
-    println("      …and with `dp_once`'s merge clause replayed off the same table:");
-    println("      merged:      [{mist}]  at stride 7: [{stride7}] — compare `fewest` above");
+  if verbose {
+    println("  cyclic {tag}: marks {total}  chains {chains}  pieces {pieces}"
+          + "  partitions {parts}  over {over}  run_edges {calls}  {desc}");
+    if hist != "" { println("      every start: [{hist}]"); }
+    if mist != "" {
+      println("      …and with `dp_once`'s merge clause replayed off the same table:");
+      println("      merged:      [{mist}]  at stride 7: [{stride7}] — compare `fewest` above");
+    }
+  } else {
+    println("    {tag}: chains {chains}  cyclic pieces {pieces}  partitions {parts}"
+          + "  over {over}  run_edges {calls}");
   }
+  pieces
 }
 
 // ── THE FIXTURES — the `B4x` survey's own shapes ───────────────────────────
@@ -1169,7 +1175,7 @@ fn rect_at(a: float, b: float, dx: float, dz: float) -> VoxelWorld {
 // ⚠ **AND THE CHAIN SHAPE IS PRINTED BESIDE THE COUNT**, because moving a room changes its
 // FIELD as well as the seam the scan picks — 50, 51 and 49 marks at three positions — and
 // without the degree table a count of 6 cannot say which of the two it is.
-fn peel_says(tag: text, w: VoxelWorld) -> integer {
+fn peel_says(tag: text, w: VoxelWorld, verbose: boolean) -> integer {
   marks = marks_of(w);
   total = edges_in(marks);
   d1 = 0; d2 = 0; d3 = 0;
@@ -1178,8 +1184,10 @@ fn peel_says(tag: text, w: VoxelWorld) -> integer {
   shape = if ch.wc_loop && ch.wc_n == 1 { "LOOP  " } else { "broken" };
   svg = hex_mesh::plan_svg(w, Q0, R0, Q0 + WQ, R0 + HR, 0.0, "{tag}");
   t = hex_mesh::plan_tally(svg);
-  println("    {tag}: marks {total}  deg 1/2/3+ = {d1}/{d2}/{d3}  chains {ch.wc_n}"
-        + "  {shape}  drawn {t.pt_marks}  descriptions {t.pt_descs}");
+  if verbose {
+    println("    {tag}: marks {total}  deg 1/2/3+ = {d1}/{d2}/{d3}  chains {ch.wc_n}"
+          + "  {shape}  drawn {t.pt_marks}  descriptions {t.pt_descs}");
+  }
   t.pt_descs
 }
 
@@ -1189,7 +1197,7 @@ fn peel_sweep() {
   hi = 0;
   for k in 0..6 {
     d = (k as float) * 0.5;
-    n = peel_says("5x5 at +{d}      ", rect_at(5.0, 5.0, d, 0.0));
+    n = peel_says("5x5 at +{d}      ", rect_at(5.0, 5.0, d, 0.0), true);
     if n < lo { lo = n; }
     if n > hi { hi = n; }
   }
@@ -1199,9 +1207,44 @@ fn peel_sweep() {
     for ib in 0..5 {
       a = 4.0 + (ia as float);
       b = 3.0 + (ib as float);
-      peel_says("{a} x {b}          ", rect(a, b));
+      peel_says("{a} x {b}          ", rect(a, b), true);
     }
   }
+}
+
+// ── ⛔ AND THE CLAIM THIS PROBE RECORDED IS RE-RUN AGAINST THE WORLD THAT MOVED ───
+//
+// ⛔ **`B4x` WROTE *THE CYCLE MINIMUM BEATS THE SHIPPED PEEL ON NO FIXTURE MEASURED* AND
+// GAVE THE REASON: its only closed chains were the 7 rectangles greedy already described as
+// four walls.** `B4y` closed the corner, so the fixtures moved under the claim — and a claim
+// nobody re-runs stays stale in a document. This asks both rules the same question over the
+// same 25, side by side.
+//
+// ⚠ **AND EVERY NUMBER `fuse_sweep` AND `peel_sweep` PRINT IS NOW ABOUT THE FIXED WORLD**,
+// because `rect()` stamps through `wall_stamp`. The `7 of 25` and the `80 breaks` in this
+// file's own record were measured before `hex_editor::wall_corner_close` existed.
+fn cyc_sweep() {
+  loops = 0;
+  greedy4 = 0;
+  cyc4 = 0;
+  overs = 0;
+  for ia in 0..5 {
+    for ib in 0..5 {
+      a = 4.0 + (ia as float);
+      b = 3.0 + (ib as float);
+      w = rect(a, b);
+      g = peel_says("", w, false);
+      marks = marks_of(w);
+      ch = hex_shape::wall_chain_walk(marks, Q0, R0, WQ, HR, 0);
+      if ch.wc_loop && ch.wc_n == 1 { loops = loops + 1; }
+      if g == 4 { greedy4 = greedy4 + 1; }
+      println("    {a} x {b}: the shipped peel says {g}");
+      p = cyc_measure("     …and the cycle", w, false);
+      if p == 4 { cyc4 = cyc4 + 1; }
+    }
+  }
+  println("  of 25: {loops} are ONE CLOSED CHAIN · the shipped peel describes {greedy4}"
+        + " as four walls · the cycle minimum describes {cyc4}");
 }
 
 fn fuse_sweep() {
@@ -1288,13 +1331,13 @@ fn main() {
   measure_dp("a closed room  ", room());
   println("");
   println("THE CYCLE, CUT WITHOUT A START — one table, every start asked against it:");
-  cyc_measure("a straight wall", straight());
-  cyc_measure("an L           ", ell());
-  cyc_measure("a zigzag       ", zigzag());
-  cyc_measure("a closed room  ", room());
-  cyc_measure("a wider room   ", room2());
-  cyc_measure("a triangle     ", triangle());
-  cyc_measure("an L-shaped room", ell_room());
+  cyc_measure("a straight wall", straight(), true);
+  cyc_measure("an L           ", ell(), true);
+  cyc_measure("a zigzag       ", zigzag(), true);
+  cyc_measure("a closed room  ", room(), true);
+  cyc_measure("a wider room   ", room2(), true);
+  cyc_measure("a triangle     ", triangle(), true);
+  cyc_measure("an L-shaped room", ell_room(), true);
   println("");
   println("WHAT THE SHIPPED PLAN VIEW DRAWS FOR THESE — `hex_mesh::plan_svg`, end to end:");
   peel_sweep();
@@ -1304,6 +1347,9 @@ fn main() {
   println("");
   println("HOW OFTEN A CLOSED RECTANGLE IS A CLOSED CHAIN AT ALL:");
   fuse_sweep();
+  println("");
+  println("⛔ THE CYCLE MINIMUM AGAINST THE SHIPPED PEEL, over the same 25 — re-run since `B4y`:");
+  cyc_sweep();
   println("");
   println("…and what the cut rules above make of the two new closed shapes:");
   measure("a wider room   ", room2(), CUT_COVER);

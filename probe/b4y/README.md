@@ -79,11 +79,14 @@ is why the two halves were measured apart instead of shipped together.
 
 - **7 of 25 leak → 0 of 25.** `8 × 3` — the four walls that never meet, `GGGG` — closes with
   four added edges and stays at four descriptions.
-- **23 of 25 markings become ONE CLOSED CHAIN**, where **7** were before. That is the number
-  that matters next: `B4x` measured the rotation-invariant cycle minimum returning a room's
-  four walls *uniquely*, and recorded that it **beat the shipped peel on no fixture** —
-  because the only loops it had were the 7 that greedy already got right. **After the add
-  there are 23**, and greedy gives 6 or 7 on most of them.
+- **7 of 25 markings that are ONE CHAIN → 14**, and **one closed chain 7 → 8**.
+
+⛔ **AND THE SECOND BULLET SAID *23* FOR AN AFTERNOON, WHICH WAS MINE AND WRONG.** I read the
+probe's `chains 1` column as *one closed chain* and took the 23 from the **drop + add** table's
+corner column — the half that is refuted. The add leaves the fork's spur, so those markings
+carry a junction and a free end: **one chain, and open.** Only the drop makes a room a simple
+loop, and the drop is what breaks recovery. ⚠ **Closing the leak and closing the topology are
+different things, and only the first is safely achievable at the stamp.**
 - **`drawn` still equals `marks` on all 25**, so the added edge is described, not left over.
 
 ⚠ **Two corners do not close, and they are `B4x`'s own four**: `6 × 3` and `6 × 6` have their

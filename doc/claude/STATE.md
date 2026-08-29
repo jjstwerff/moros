@@ -45,7 +45,7 @@ a verb arrive without.
 | | |
 |---|---|
 | the ground | `raise` · `lower` · `level` (freeze a grade and cut it as you walk) |
-| runs | `run` — open, walk, close; a road or a wall along the path taken · `aim` — one press, from the facing. ✅ **And a wall run CLOSES ITS CORNER now** — plan 26 `B4y`: two runs meeting at a corner used to leave the corner edge claimed twice (a one-edge spur) or never (a hole you could walk through), so a room walked as four walls leaked in **7 of 25** positions; `wall_corner_close` writes the edge two runs both missed and that is **0 of 25**, with 23 of 25 markings now ONE CLOSED CHAIN where 7 were |
+| runs | `run` — open, walk, close; a road or a wall along the path taken · `aim` — one press, from the facing. ✅ **And a wall run CLOSES ITS CORNER now** — plan 26 `B4y`: two runs meeting at a corner used to leave the corner edge claimed twice (a one-edge spur) or never (a hole you could walk through), so a room walked as four walls leaked in **7 of 25** positions; `wall_corner_close` writes the edge two runs both missed and that is **0 of 25**. ⚠ **It does NOT make a room a simple loop** — one chain goes 7 → 14 and one CLOSED chain only 7 → 8, because the add leaves the fork's spur and only the refuted drop takes it away. *Closing the leak and closing the topology are different things* |
 | enclosure | `fence` · `wall` (both hexagonal) · `tower` — ROUND at a chosen shell, or **OCTAGONAL** when the chosen wall type's body says `THICK_OCT` (plan 26 `B4l`) |
 | buildings | `place` (a procedural house, or the chosen PART instead) · `storey` above · `cellar` below · `opening` (door or window, profile from the selection) |
 | fittings | `seat` · `annex` · `slab` · `hole` · `stair_up` · `stair_down` |
@@ -237,6 +237,14 @@ predated the defect. The second cell must **FAIL** on a pre-widening build; that
 three states readable instead of two, and it came from the loft side correcting the first
 attempt. ⚠ A state is a property of a BINARY — a reading cached across a swap is silently
 wrong.
+
+⛔ **AND `probe-s2c` GOES RED FOR THE SIBLING'S CI, WHICH READS AS *THE SERVER NEVER
+LISTENED*.** Seen again 2026-08-29: `the server EXITED without listening — it did not build`
+on one of four scripts, with `cargo nextest run --profile ci` live and loft's own
+`make rebuild-native-cdylibs` ahead of it in the same command line. Same toolchain sha as the
+green run twenty minutes earlier, same source. ✅ **`pgrep -f cargo-nextest` is the
+instrument** — CLAUDE.md's rule, and this is the confirmation that the symptom still presents
+as a listening failure rather than a link failure. Nothing to fix and nothing to kill.
 
 ⛔ **AND THE FIRST `make fast` AFTER A SWAP CAN BE RED FOR NOTHING.** `registry index signature
 INVALID — refusing to install`, un-bypassable, with the identical re-run green: the index and

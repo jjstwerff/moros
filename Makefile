@@ -546,6 +546,14 @@ fast:
 # against the walker at three stations, which is the only check in the tree that the
 # plan view draws the person the TICK moved rather than a pose it made up.
 	@$(MAKE) -s probe-plan
+# ⚠ **THE FIRST HOUR, AND IT IS THE ONLY GATE ON DoD CLAUSE 8.** `probe/adopt` is the twelve
+# lines a stranger writes before reading anything, and writing it by hand on 2026-08-28 found
+# two live defects that 775 library tests and 58 gates had never asked about — a refused house
+# that half-built itself, and a refusal whose advice could not be followed. ⛔ It had a target
+# and no caller until 2026-08-29, which is exactly the *a check nobody runs drifts red in
+# silence* this tree has now found four times (probe/k1, four `k3d` baselines blessing a crash,
+# `K3f`'s five camera scripts, and this). ~30s.
+	@$(MAKE) -s probe-adopt
 # ⚠ **AND THIS IS THE ONLY THING IN `fast` THAT COMPILES EITHER PROGRAM UNDER `src/`.**
 # The comment over `headless-same` records what that cost once: a name collision in
 # `editor_server.loft` presented as a thirty-minute HANG, with the compiler's own
@@ -1027,9 +1035,16 @@ probe-split:
 # by hand on 2026-08-28 found two live defects that 775 library tests and 58 gates
 # had never asked about — because our own fixtures always face a placeable way and
 # always place on open ground. probe/adopt/README.md has the four rows.
+# ⛔ **NOT `| tee /dev/stderr`, WHICH TRUNCATES A REDIRECTED LOG.** When the build's output
+# goes to a file (`make fast > log 2>&1`), `/dev/stderr` IS that file, and `tee` opens it with
+# O_TRUNC — so every earlier result vanishes and what is left is a green tail over an empty
+# history. Measured 2026-08-29, the first time this target ran inside `make fast`: an 18-line
+# log where the tests, k3c, t3, t4, k1, k3d, headless and plan had all reported. Capture, print,
+# then grep the capture.
 probe-adopt:
-	@$(LOFT) --interpret --lib lib/ probe/adopt/adopt.loft 2>/dev/null \
-	 | tee /dev/stderr | grep -q '^probe/adopt: the first hour holds' \
+	@out=$$($(LOFT) --interpret --lib lib/ probe/adopt/adopt.loft 2>/dev/null); \
+	 printf '%s\n' "$$out"; \
+	 printf '%s\n' "$$out" | grep -q '^probe/adopt: the first hour holds' \
 	 || { echo "probe-adopt: FAILED"; exit 1; }
 
 # K1 (plan 22) — CAN ANYTHING HERE SEE A WRONG PROFILE, and does a word neither
