@@ -29,6 +29,12 @@
 set -u
 
 self=$0
+# ⛔ **EVERY FILE'S FULL OUTPUT IS KEPT, BECAUSE `tail -12` IS NOT THE FAILURE.** This
+# printed the LAST twelve lines of a red run, which is loft's coverage dump — the
+# `FAIL …::` lines sit above it — so a red gate showed a list of uncovered functions and
+# the only way to see which assertion failed was to run the whole tier again. Minutes,
+# twice, for one line. The logs live here and the block below names the failing tests.
+LOGDIR=${LOGDIR:-$PWD/.test-logs/fast}
 
 if [ "${1:-}" = "--one" ]; then
   f=$2
@@ -70,11 +76,36 @@ if [ "${1:-}" = "--one" ]; then
 
   if [ "$verdict" != PASS ] || [ -n "${TEST_VERBOSE:-}" ]; then
     printf '%-4s %-28s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
-           "$(printf '%s' "$out" | grep -E 'test result:' | head -1 | cut -c1-60)"
+           "$(printf '%s' "$out" | grep -E 'test result:' | head -1 \
+              | sed 's/  *\[ran on.*//' | cut -c1-64)"
   fi
   if [ "$verdict" != PASS ]; then
-    printf '%s' "$out" | grep -vE '^ *Advice|^ *Warning|^warning|^ *\||^ *-->|^ *=|^advice|^note:' \
-      | tail -12 | sed 's/^/     /'
+    # ⚠ **THE DETAIL GOES TO A FILE AND THE TERMINAL GETS A REPORT.** Sixteen workers
+    # printing their own failure blocks interleave into something nobody can read, and
+    # the interesting question during a long run is *how many and which*, not the text
+    # of every assertion. Each worker leaves its full output and one machine-readable
+    # row; the parent sorts them and prints the offenders.
+    log="$LOGDIR/$(echo "$name" | tr / -).log"
+    printf '%s\n' "$out" > "$log"
+    nf=$(printf '%s' "$out" | sed -n 's/.*result: FAILED\. \([0-9]*\) failed.*/\1/p' | head -1)
+    np=$(printf '%s' "$out" | sed -n 's/.*result: FAILED\..*; \([0-9]*\) passed.*/\1/p' | head -1)
+    fname=$(printf '%s\n' "$out" \
+      | sed -n 's/^ *FAIL  tests\/[^:]*::\([a-z_0-9]*\).*/\1/p' | head -1)
+    first=$(printf '%s\n' "$out" \
+      | sed -n 's/^ *FAIL  tests\/[^:]*::\([a-z_0-9]*\)  *—  *\(.*\)/\1: \2/p' | head -1)
+    # ⚠ **THE TEST SOURCE, WITH A LINE — that is the path somebody actually opens.** The
+    # log says what happened; this says where to go and fix it. loft's `FAIL` line names
+    # the function and not its line, so the line comes from the file itself.
+    src="$f"
+    if [ -n "$fname" ]; then
+      ln=$(grep -n "^fn $fname(" "$f" 2>/dev/null | head -1 | cut -d: -f1)
+      [ -n "$ln" ] && src="$f:$ln"
+    fi
+    [ -n "$first" ] || first=$(printf '%s\n' "$out" \
+      | grep -E '^ *Error|^\[timeout\]|^error' | head -1 | sed 's/^ *//')
+    [ -n "$first" ] || first="no test result line at all — see the log"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "${nf:-1}" "${np:-0}" "$name" "${log#$PWD/}" "$src" "$first" \
+      > "$LOGDIR/rows/$(echo "$name" | tr / -)"
   fi
   [ "$verdict" = PASS ] || exit 1
   exit 0
@@ -91,10 +122,34 @@ fi
 [ "$#" -gt 0 ] || { echo "no test files found"; exit 2; }
 
 n=$#
+# ⚠ CLEARED AT THE START, so what is on disk is always the last run and never a mixture.
+rm -rf "$LOGDIR"
+mkdir -p "$LOGDIR/rows" || exit 2
 start=$(date +%s%N)
 printf '%s\n' "$@" | xargs -P "$jobs" -n1 sh -c 'exec "$0" --one "$1"' "$self"
 rc=$?
 end=$(date +%s%N)
 printf '%d test files, %d.%ds wall at %s jobs\n' \
   "$n" "$(( (end - start) / 1000000000 ))" "$(( ((end - start) / 100000000) % 10 ))" "$jobs"
-exit $rc
+
+nred=$(ls "$LOGDIR/rows" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$nred" -eq 0 ]; then
+  [ "$rc" -eq 0 ] && { echo "tests: ✅ ALL GREEN — $n files"; exit 0; }
+  echo "tests: ⛔ a worker failed without leaving a row — see $rc above"
+  exit "$rc"
+fi
+
+# ⛔ **THE REPORT IS THE POINT: how many, and which are worst.** Sorted by failures, so
+# the file to open first is the first line. Everything else is on disk.
+echo
+echo "tests: ⛔ $nred of $n files FAILED — full output in ${LOGDIR#$PWD/}/"
+echo
+cat "$LOGDIR"/rows/* | sort -rn -k1 | head -8 | while IFS="$(printf '\t')" read -r nf np name log src first; do
+  printf '  %-28s %2s failed, %3s passed\n' "$name" "$nf" "$np"
+  printf '      %s\n' "$first"
+  printf '      %s\n' "$src"
+  printf '      log: %s\n' "$log"
+done
+[ "$nred" -gt 8 ] && printf '  … and %d more (one row per file in %s/rows/)\n' \
+  "$((nred - 8))" "${LOGDIR#$PWD/}"
+exit 1

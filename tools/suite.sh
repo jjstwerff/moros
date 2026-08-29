@@ -84,9 +84,15 @@ JOBS=${SUITE_JOBS:-4}
 NATIVE=${SUITE_NATIVE:-0}
 DEADLINE=${SUITE_TIMEOUT:-300}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-OUT=${TMPDIR:-/tmp}/suite-$$
+# ⛔ **THE LOGS ARE KEPT, AND DELETING THEM COST A RERUN EVERY TIME.** This wrote each
+# file's full output to a temp dir and then `rm -rf`'d it on exit, so a red summary named
+# a failure whose detail no longer existed — the only way to read it was to run the whole
+# suite again. Minutes, twice, for one line. They live under `.test-logs/suite/` now and
+# are cleared at the START of a run, so what is on disk is always the last run and never a
+# mixture of two.
+OUT=$ROOT/.test-logs/suite
+rm -rf "$OUT"
 mkdir -p "$OUT" || exit 1
-trap 'rm -rf "$OUT"' EXIT
 
 packages=""
 if [ $# -gt 0 ]; then
@@ -108,12 +114,16 @@ run_one() {
   # ⚠ NO OUTER `timeout` — see the header. loft's own deadline is what reports.
   ( cd "$ROOT/lib/$pkg" && loft test --timeout "$DEADLINE" $args "tests/$base" ) > "$log" 2>&1
   rc=$?
-  line=$(grep -E '^test result:' "$log" | tail -1)
+  # ⚠ loft appends `[ran on the interpreter only — native not exercised: …]` to every
+  # result line. It is the same 90 characters on every row and it is what turns a
+  # failure block into something nobody reads; the mode is already a column here.
+  line=$(grep -E '^test result:' "$log" | tail -1 | sed 's/  *\[ran on.*//')
   if [ -z "$line" ]; then
     # ⛔ The timeout case, and the one this script exists for. `rc` is often 0 here.
     why=$(grep -E '^\[timeout\]' "$log" | tail -1)
     [ -z "$why" ] && why="no 'test result:' line and no [timeout] — see $log"
     printf 'RED  %-12s %-24s %-6s NO RESULT — %s\n' "$pkg" "$base" "$mode" "$why" > "$OUT/r$slot"
+    printf '%s\n' "$log" > "$OUT/l$slot"
     return
   fi
   case "$line" in
@@ -121,7 +131,8 @@ run_one() {
       n=$(printf '%s' "$line" | sed -n 's/.*ok\. \([0-9]*\) passed.*/\1/p')
       printf 'ok   %-12s %-24s %-6s %s passed\n' "$pkg" "$base" "$mode" "${n:-?}" > "$OUT/r$slot" ;;
     *)
-      printf 'RED  %-12s %-24s %-6s %s\n' "$pkg" "$base" "$mode" "$line" > "$OUT/r$slot" ;;
+      printf 'RED  %-12s %-24s %-6s %s\n' "$pkg" "$base" "$mode" "$line" > "$OUT/r$slot"
+      printf '%s\n' "$log" > "$OUT/l$slot" ;;
   esac
 }
 
@@ -146,8 +157,14 @@ for i in $(seq 1 "$slot"); do
   [ -f "$OUT/r$i" ] || { echo "RED  worker $i produced no row at all"; red=$((red + 1)); files=$((files+1)); continue; }
   cat "$OUT/r$i"
   files=$((files + 1))
+  # ⚠ **A RED FILE'S PASSING TESTS COUNT TOO, AND THEY WERE BEING DROPPED.** Only `ok`
+  # rows were totalled, so one planted failure in a 10-test file reported
+  # `1 RED — 0 tests passed` while its own row said `1 failed; 9 passed`. A total that
+  # disagrees with the rows above it is worse than no total.
+  n=$(sed -n 's/.*[; ]\([0-9][0-9]*\) passed.*/\1/p' "$OUT/r$i")
+  passed=$((passed + ${n:-0}))
   case "$(cat "$OUT/r$i")" in
-    ok*) n=$(sed -n 's/.* \([0-9]*\) passed/\1/p' "$OUT/r$i"); passed=$((passed + ${n:-0})) ;;
+    ok*) ;;
     *)   red=$((red + 1)) ;;
   esac
 done
@@ -159,5 +176,38 @@ if [ "$files" -eq 0 ]; then
   echo "suite: NO TEST FILES RAN — that is a failure, not a pass"
   exit 1
 fi
-echo "suite: $files files, $passed tests passed, $red red"
-[ "$red" -eq 0 ] || exit 1
+if [ "$red" -eq 0 ]; then
+  echo "suite: ✅ ALL GREEN — $files files, $passed tests passed"
+  echo "suite: full output kept in .test-logs/suite/ (one log per file)"
+  exit 0
+fi
+
+# ⛔ **THE DETAIL COMES OUT WITH THE VERDICT, NOT ON A SECOND RUN.** A summary that says
+# only *3 red* sends the reader back through the whole suite to find out which assertion
+# failed — which is the same wasted minutes twice, and it is exactly what happened before
+# this block existed.
+echo "suite: ⛔ $red RED of $files files — $passed tests passed"
+echo
+for i in $(seq 1 "$slot"); do
+  [ -f "$OUT/l$i" ] || continue
+  log=$(cat "$OUT/l$i")
+  # `RED  hex_cam  clearance.loft  interpret  test result: FAILED. 1 failed; 9 passed; …`
+  set -- $(cat "$OUT/r$i")
+  printf '  %s %s (%s)  %s\n' "$2" "$3" "$4" \
+    "$(sed -n 's/.*result: FAILED\. \(.*\); [0-9]* total.*/\1/p' "$OUT/r$i")"
+  # ⚠ ONE LINE PER FAILING TEST — the name and what it said, nothing else. The full
+  # output is on disk and named below; this block is for deciding WHERE to look.
+  sed -n 's/^ *FAIL  tests\/[^:]*::\([a-z_0-9]*\)  *—  *\(.*\)/    \1\n      \2/p' \
+    "$log" | head -12
+  # ⚠ **THE TEST SOURCE, WITH A LINE.** The log says what happened; this says where to go.
+  fn1=$(sed -n 's/^ *FAIL  tests\/[^:]*::\([a-z_0-9]*\).*/\1/p' "$log" | head -1)
+  src="lib/$2/tests/$3"
+  if [ -n "$fn1" ] && [ -f "$ROOT/$src" ]; then
+    n1=$(grep -n "^fn $fn1(" "$ROOT/$src" | head -1 | cut -d: -f1)
+    [ -n "$n1" ] && src="$src:$n1"
+  fi
+  printf '    %s\n' "$src"
+  grep -E '^ *Error|^\[timeout\]' "$log" | head -3 | sed 's/^ */    /'
+  printf '    log: %s\n\n' "${log#$ROOT/}"
+done
+exit 1
