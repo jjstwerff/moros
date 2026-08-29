@@ -204,10 +204,34 @@ wire_run() {
     kill -0 "$wsrv" 2>/dev/null || break
     sleep 1
   done
+  # ⛔ **TWO DIFFERENT FAILURES WORE ONE SENTENCE HERE, AND IT COST A SESSION.** This
+  # said `the server never listened` for both *it is still compiling* and *it exited
+  # without compiling at all* — and the first of those is verbatim the shape CLAUDE.md
+  # documents for the sibling's CI emptying `~/.loft/build-cache` under a `--lib lib/`
+  # link. On 2026-08-29 a real name collision in `editor_server.loft` wore that costume,
+  # was attributed to the sibling out loud, and was waited out; the diagnostic was one
+  # line further down the same log, below the `tail -5` this printed.
+  # ⚠ **THE PID IS WHAT SEPARATES THEM**, not the clock: a build failure kills the
+  # process in seconds, where a slow build holds it alive for minutes.
   if ! grep -q 'listening on port' "$OUT/$1.server"; then
-    bad "the server never listened for $1"
-    tail -5 "$OUT/$1.server"
-    kill "$wsrv" 2>/dev/null
+    if kill -0 "$wsrv" 2>/dev/null; then
+      bad "the server for $1 is STILL BUILDING after 240 s — it never got to listen"
+      tail -5 "$OUT/$1.server" | sed 's/^/       /'
+      kill "$wsrv" 2>/dev/null
+    else
+      bad "the server for $1 EXITED without listening — it did not build:"
+      if grep -qE '^error' "$OUT/$1.server"; then
+        grep -E '^error' -A6 "$OUT/$1.server" | head -20 | sed 's/^/       /'
+      else
+        # ⚠ A LINK FAILURE IS NOT A `^error` LINE, and it is the one the sibling causes:
+        # `rust-lld: error: unable to find library -lloft_graphics_native` while their
+        # `make rebuild-native-cdylibs` has the cache empty. Nothing to fix and nothing
+        # to kill — re-run when `pgrep -f cargo-nextest` is quiet.
+        say "       no loft diagnostic; the tail follows. A missing -lloft_* library is"
+        say "       the sibling's rebuild and clears on a re-run."
+        tail -20 "$OUT/$1.server" | sed 's/^/       /'
+      fi
+    fi
     return 1
   fi
   # ⚠ THE DRIVER'S EXIT CODE IS KEPT, NOT DISCARDED — plan 22 `K3b.1`. The check
@@ -252,63 +276,73 @@ wire_run() {
 
 say "E  …and the wire driver refuses one too, and fails"
 printf 'echo --- a verb nobody bound\nverb hoist\n' > probe/k1/typo-wire.keys
-wire_run typo-wire
-if grep -q "no verb 'hoist'" "$OUT/typo-wire.wire"; then
-  ok "the driver: $(grep -m1 "no verb 'hoist'" "$OUT/typo-wire.wire" | sed 's/^ *//')"
+# ⚠ **AND THE FOUR ROWS BELOW ARE GUARDED ON IT, BECAUSE A CASCADE BURIES A CAUSE.**
+# `wire_run` returned its status and nobody read it: against a server that did not
+# build, the one real failure was followed by four consequential ones reading captures
+# that were never written — plus two `grep: No such file` lines — so the diagnostic
+# scrolled out of view under its own consequences. That is this file's own finding one
+# turn further on: the message was not missing, it was buried.
+if wire_run typo-wire; then
+  if grep -q "no verb 'hoist'" "$OUT/typo-wire.wire"; then
+    ok "the driver: $(grep -m1 "no verb 'hoist'" "$OUT/typo-wire.wire" | sed 's/^ *//')"
+  else
+    bad "tools/script.mjs sent something for 'verb hoist'"
+    sed -n '1,10p' "$OUT/typo-wire.wire"
+  fi
+  # ⚠ THE SERVER IS THE NON-CIRCULAR HALF: the driver's own complaint proves only what
+  # the driver thinks.
+  #
+  # ⛔ **THIS ROW ASSERTED A DESIGN THAT WAS DELIBERATELY REPLACED, AND WENT RED FOR FOUR
+  # DAYS UNSEEN.** It read *"and the server was asked nothing"* — written 2026-08-12,
+  # when `script.mjs` held a constant verb table and refused an unknown word locally.
+  # `T1d` (2026-08-20) changed that on purpose: a house type declares verbs no compiler
+  # ever saw, so a table cannot have a row for them, and the word now travels verbatim on
+  # `55:` for the SERVER to resolve. The server then prints `no gesture for hoist` — its
+  # refusal — which this row read as *the server acted*.
+  #
+  # ⚠ **SO THE CLAIM IS REWRITTEN RATHER THAN THE FILTER WIDENED.** Being asked is no
+  # longer the fault; ACTING is. And the refusal must be PRESENT, because the old shape
+  # asked only whether a capture was empty — a question whose default answer is *pass*,
+  # so a server that silently swallowed an unknown verb would have satisfied it.
+  if [ -s "$OUT/typo-wire.said" ]; then
+    bad "the server ACTED on an unknown verb: $(head -1 "$OUT/typo-wire.said")"
+  else
+    ok "the server did not act on it"
+  fi
+  #
+  # ── THE SWEEP THAT CHECKED THESE TWO, 2026-08-24 ────────────────────────────
+  #
+  #   row 0  control                          all four ok
+  #   row 1  the server's refusal `println`   ONLY "refused BY NAME" red
+  #          deleted — a SILENT server
+  #   row 2  `hoist` routed to `raise` — a    all four red, incl.
+  #          server that genuinely ACTS       "the server ACTED: editor: hoist: 1"
+  #   control  restored                       all four ok
+  #
+  # ⚠ **ROW 1 IS WHY THE SECOND CHECK EXISTS.** A silent server passes every other row
+  # here — the driver still complains, the run still fails, nothing was acted on — and
+  # before this half was added it passed row E outright. The two checks are
+  # INDEPENDENTLY sensitive, which is what makes them two checks rather than one written
+  # twice.
+  if grep -q '^editor: no gesture for hoist$' "$OUT/typo-wire.server"; then
+    ok "…and refused it BY NAME: no gesture for hoist"
+  else
+    bad "the server never said it refused 'hoist' — silence is not a refusal, and this"
+    bad "  row cannot tell it apart from a server that quietly did nothing"
+  fi
+  # ⚠ `K3b.1`, and it is `K3a`'s finding rebuilt in JavaScript. Measured against a real
+  # server before the guard was written: `verb hoist` printed `!! no verb 'hoist'` and
+  # came back **rc=0**. A driver that says it does not know a word and then reports
+  # success is the one thing a script corpus cannot survive a vocabulary change with.
+  wrc=$(cat "$OUT/typo-wire.rc" 2>/dev/null)
+  if [ "${wrc:-0}" -ne 0 ] 2>/dev/null; then
+    ok "…and the wire driver FAILED the run too: rc=$wrc"
+  else
+    bad "tools/script.mjs printed its complaint and exited ${wrc:-0}"
+  fi
 else
-  bad "tools/script.mjs sent something for 'verb hoist'"
-  sed -n '1,10p' "$OUT/typo-wire.wire"
-fi
-# ⚠ THE SERVER IS THE NON-CIRCULAR HALF: the driver's own complaint proves only what
-# the driver thinks.
-#
-# ⛔ **THIS ROW ASSERTED A DESIGN THAT WAS DELIBERATELY REPLACED, AND WENT RED FOR FOUR
-# DAYS UNSEEN.** It read *"and the server was asked nothing"* — written 2026-08-12,
-# when `script.mjs` held a constant verb table and refused an unknown word locally.
-# `T1d` (2026-08-20) changed that on purpose: a house type declares verbs no compiler
-# ever saw, so a table cannot have a row for them, and the word now travels verbatim on
-# `55:` for the SERVER to resolve. The server then prints `no gesture for hoist` — its
-# refusal — which this row read as *the server acted*.
-#
-# ⚠ **SO THE CLAIM IS REWRITTEN RATHER THAN THE FILTER WIDENED.** Being asked is no
-# longer the fault; ACTING is. And the refusal must be PRESENT, because the old shape
-# asked only whether a capture was empty — a question whose default answer is *pass*,
-# so a server that silently swallowed an unknown verb would have satisfied it.
-if [ -s "$OUT/typo-wire.said" ]; then
-  bad "the server ACTED on an unknown verb: $(head -1 "$OUT/typo-wire.said")"
-else
-  ok "the server did not act on it"
-fi
-#
-# ── THE SWEEP THAT CHECKED THESE TWO, 2026-08-24 ────────────────────────────
-#
-#   row 0  control                          all four ok
-#   row 1  the server's refusal `println`   ONLY "refused BY NAME" red
-#          deleted — a SILENT server
-#   row 2  `hoist` routed to `raise` — a    all four red, incl.
-#          server that genuinely ACTS       "the server ACTED: editor: hoist: 1"
-#   control  restored                       all four ok
-#
-# ⚠ **ROW 1 IS WHY THE SECOND CHECK EXISTS.** A silent server passes every other row
-# here — the driver still complains, the run still fails, nothing was acted on — and
-# before this half was added it passed row E outright. The two checks are
-# INDEPENDENTLY sensitive, which is what makes them two checks rather than one written
-# twice.
-if grep -q '^editor: no gesture for hoist$' "$OUT/typo-wire.server"; then
-  ok "…and refused it BY NAME: no gesture for hoist"
-else
-  bad "the server never said it refused 'hoist' — silence is not a refusal, and this"
-  bad "  row cannot tell it apart from a server that quietly did nothing"
-fi
-# ⚠ `K3b.1`, and it is `K3a`'s finding rebuilt in JavaScript. Measured against a real
-# server before the guard was written: `verb hoist` printed `!! no verb 'hoist'` and
-# came back **rc=0**. A driver that says it does not know a word and then reports
-# success is the one thing a script corpus cannot survive a vocabulary change with.
-wrc=$(cat "$OUT/typo-wire.rc" 2>/dev/null)
-if [ "${wrc:-0}" -ne 0 ] 2>/dev/null; then
-  ok "…and the wire driver FAILED the run too: rc=$wrc"
-else
-  bad "tools/script.mjs printed its complaint and exited ${wrc:-0}"
+  say "  ⚠ the four rows E asks of a LISTENING server are SKIPPED. The failure above"
+  say "    is the one to read; each of them would only restate its consequence."
 fi
 rm -f probe/k1/typo-wire.keys
 

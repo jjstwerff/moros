@@ -447,19 +447,41 @@ separate them. Measured, filed as
 are now dropped. What outlives it: the check cost one suite run, and the report is what turned
 a blocked cleanup into a landed one.
 
-⛔ **`make fast` DOES NOT BUILD `src/`, AND A FULL GREEN SAYS NOTHING ABOUT THE SERVER.** The
-package suites compile `lib/` only; the single check that compiles `src/editor_server.loft` is
-**`probe-k1`**, and the browser editor is built by **`probe-demo`/`probe-auth`** — all three
-outside the fast loop. Measured 2026-08-29: adding a `hex_fit` dependency to `hex_editor` put a
-second `HEIGHT_SCALE` into the server's graph beside `hex_proj`'s, and **the server did not
-compile for a session** while 180 test files, `citations`, `basenames` and `drift` were all
-green. ⚠ **And the redness was mis-read for that whole session**: `probe-k1` says *"the server
-never listened"*, which is verbatim the shape this file documents for the sibling emptying
-`~/.loft/build-cache` — so it was attributed there and waited out, with the build error one line
-further down the same log under a caret with no message beside it. **A known-flaky failure is
-where a real one hides**: before blaming the sibling, read past the summary line to the
-diagnostic, and note that the same ambiguity was CAUGHT in `hex_mesh` at the time and missed in
-the consumer nobody compiles.
+⛔ **A LIBRARY CHANGE CAN BREAK A CONSUMER UNDER `src/`, AND THE PACKAGE SUITES CANNOT SEE IT.**
+`loft test` compiles `lib/` and stops there, so 180 test files plus `citations`, `basenames` and
+`drift` were all green on 2026-08-29 while `src/editor_server.loft` **did not compile for a
+session** — a `hex_fit` dependency added to `hex_editor` put a second `HEIGHT_SCALE` into the
+server's graph beside `hex_proj`'s, and the same ambiguity was CAUGHT in `hex_mesh` at the time
+and missed in the consumer nobody compiles. ✅ **`make fast` runs `tools/src-build.sh` now** —
+every program under `src/` compiled with `--dump`, ahead of the tests rather than four minutes
+in, printing loft's own diagnostic. 18–24 s; the sweep is `probe/srcb/sweep.sh`, five programs
+red one at a time and all five green for a valid function added to each. ⚠ **`editor_client.loft`
+is skipped on purpose and the list is EXPLICIT** — 169 s against 3–10 s for the rest, and
+`make page-check` builds it for the browser, which is the target that matters for it. A program
+not on that list is checked, which is `tools/layering.sh`'s pattern-shaped exemption paid forward.
+
+⛔ **AND THE PARAGRAPH THIS REPLACES WAS WRONG ABOUT ITS OWN TIER TABLE, HOURS AFTER IT WAS
+WRITTEN.** It said the checks that compile the server sit *"outside the fast loop"* and that
+`probe-k1` is the only one. Measured: `probe-k1` has been IN `fast` since 2026-08-24 — its own
+comment says why — and `headless-same` compiles the server too. **`probe-k1` was the check that
+went red**, so the fast loop was never green through this; `headless-same` never ran at all,
+because `make` stops at the first failing recipe line and k1 comes first. Only
+`probe-demo`/`probe-auth` are outside. ⚠ **What the loop genuinely never
+compiled was the other four programs**: `part_build`, `plan_view`, `prop_build` and
+`editor_client`, touched by nothing in it. *A claim about which tier runs what is a claim to
+re-run, not a fact* — this file says that about a binary, and it holds one level up.
+
+⚠ **SO THE FINDING WAS THE MIS-READ, NOT THE COVERAGE.** `probe-k1` printed *"the server never
+listened"*, verbatim the shape this file documents for the sibling emptying
+`~/.loft/build-cache` — so a real compile error wore a known-flaky costume, was attributed to the
+sibling out loud, and was waited out. ✅ **That one sentence is two now, told apart by the PID
+rather than the clock** — a build failure kills the process in seconds where a slow build holds
+it alive for minutes: *EXITED without listening — it did not build*, with the diagnostic under
+it, against *STILL BUILDING after 240 s*. ⚠ **And the four rows after it are guarded on it**,
+because the single real failure was followed by four consequential ones reading captures never
+written: the diagnostic was not missing, it was buried under its own cascade. **A known-flaky
+failure is where a real one hides** — before blaming the sibling, read past the summary line to
+the diagnostic.
 
 **A grep over a log is an instrument, and its default answer is "absent".** Three were blind in
 one session, each reading as a clean result rather than a miss: `^advice:` found nothing

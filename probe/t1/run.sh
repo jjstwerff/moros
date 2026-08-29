@@ -81,8 +81,16 @@ while [ "$i" -lt 240 ]; do
   kill -0 "$pid" 2>/dev/null || break
   sleep 0.25; i=$((i + 1))
 done
+# ⚠ TWO FAILURES, TOLD APART BY THE PID RATHER THAN THE CLOCK — `probe/k1`'s finding,
+# 2026-08-29. *Still starting* and *died on the way up* read identically in a log tail,
+# and one of them is a defect in the binary this probe just built.
 grep -q 'listening on port' "$log" 2>/dev/null || {
-  echo "t1: SERVER NEVER LISTENED"; tail -20 "$log"; exit 1; }
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "t1: the server is STILL STARTING after 60 s — it never listened"
+  else
+    echo "t1: the server EXITED without listening — the built binary died on the way up:"
+  fi
+  tail -20 "$log"; exit 1; }
 
 EDITOR_PORT="$port" node tools/script.mjs "$script" || echo "t1: script.mjs exit $?"
 kill "$pid" 2>/dev/null || true

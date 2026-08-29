@@ -529,6 +529,16 @@ fast:
 # fires when the sibling moves further OR when a republish lands. `probe/way/README.md`.
 	@DRIFT_ADVISORY=1 sh probe/way/drift.sh
 	@sh tools/walk-exact.sh
+# ⚠ **THE CONSUMERS UNDER `src/`, WHICH THE PACKAGE SUITES NEVER COMPILE.** `loft test`
+# builds `lib/` and stops there, so a library change can break a program under `src/`
+# with 180 test files green — measured 2026-08-29, when a `hex_fit` dependency put a
+# second `HEIGHT_SCALE` into the server's graph and it did not compile for a session.
+# ⚠ **THE LOOP DID GO RED; IT SAID THE WRONG WORDS.** `probe-k1` starts the server, so
+# it saw this — and printed `the server never listened`, verbatim the shape CLAUDE.md
+# documents for the sibling emptying `~/.loft/build-cache`, so it was read as that flake
+# and waited out. This says *it did not compile*, with loft's own diagnostic under it,
+# 18-24 s in and not at minute four. Sweep: `probe/srcb/sweep.sh`, every row as predicted.
+	@sh tools/src-build.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
 	@$(MAKE) -s probe-k3c
 	@$(MAKE) -s probe-t3
@@ -554,11 +564,15 @@ fast:
 # silence* this tree has now found four times (probe/k1, four `k3d` baselines blessing a crash,
 # `K3f`'s five camera scripts, and this). ~30s.
 	@$(MAKE) -s probe-adopt
-# ⚠ **AND THIS IS THE ONLY THING IN `fast` THAT COMPILES EITHER PROGRAM UNDER `src/`.**
-# The comment over `headless-same` records what that cost once: a name collision in
+# ⛔ **THIS SAID IT WAS THE ONLY THING IN `fast` THAT COMPILES A PROGRAM UNDER `src/`,
+# AND IT HAD NOT BEEN SINCE 2026-08-24.** `probe-k1` joined the loop that day and starts
+# the server too; `tools/src-build.sh` compiles all five non-client programs above. The
+# claim was true when written and nothing re-read it — which is the same shape as the
+# `probe-k1` note above one level up, a tier table going stale in a comment.
+# ⚠ **WHAT IT RECORDS IS STILL WHY IT RUNS A SERVER**: a name collision in
 # `editor_server.loft` presented as a thirty-minute HANG, with the compiler's own
 # two-line diagnostic sitting in `.editor.log`, and nothing in this tier noticed
-# because nothing in this tier builds it. It also carries `probe-s2c`, so the fast loop
+# because nothing in this tier built it. It also carries `probe-s2c`, so the fast loop
 # now sees a divergence between the two drivers instead of only the library's own view
 # of itself. ⚠ It starts FOUR servers, each stopped: one for the house sentence and one
 # per `probe-s2c` script. Measured — the sentence half alone was 11.8 s, and `make fast`

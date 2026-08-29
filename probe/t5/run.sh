@@ -121,8 +121,15 @@ drive() {                          # drive <tag>
     sleep 1
     i=$((i + 1))
   done
+  # ⚠ THE PID SEPARATES *still compiling* FROM *did not compile* — `probe/k1`'s finding,
+  # 2026-08-29. The second wore the first's sentence for a session there.
   if ! grep -q 'listening on port' "$OUT/$dr_tag.server"; then
-    say "t5 FAIL — the $dr_tag server never listened:"; tail -20 "$OUT/$dr_tag.server"
+    if kill -0 "$dr_pid" 2>/dev/null; then
+      say "t5 FAIL — the $dr_tag server is STILL BUILDING after 240 s:"
+    else
+      say "t5 FAIL — the $dr_tag server EXITED without listening — it did not build:"
+    fi
+    tail -20 "$OUT/$dr_tag.server"
     kill "$dr_pid" 2>/dev/null || true
     exit 1
   fi

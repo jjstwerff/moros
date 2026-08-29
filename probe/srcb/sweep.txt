@@ -1,0 +1,25 @@
+── the guard's own sweep ─────────────────────────────────────────────────
+row 0   control — nothing edited
+row 0    (none)                   want=green got=green ok
+         src-build: 5 program(s) under src/ compile
+
+rows 1-5  one program at a time calls a function nobody declares
+row 1    src/editor_run.loft      want=red   got=red   named=yes ok
+row 2    src/editor_server.loft   want=red   got=red   named=yes ok
+row 3    src/part_build.loft      want=red   got=red   named=yes ok
+row 4    src/plan_view.loft       want=red   got=red   named=yes ok
+row 5    src/prop_build.loft      want=red   got=red   named=yes ok
+
+row N   the neighbourhood — a valid function added to each
+row N    src/editor_run.loft      want=green got=green named=no  ok
+row N    src/editor_server.loft   want=green got=green named=no  ok
+row N    src/part_build.loft      want=green got=green named=no  ok
+row N    src/plan_view.loft       want=green got=green named=no  ok
+row N    src/prop_build.loft      want=green got=green named=no  ok
+
+row S   the skipped program is NOT checked (and the skip is deliberate)
+row S    src/editor_client.loft       want=green got=green  ok   (make page-check builds it)
+
+srcb: src/ restored, git-clean
+
+srcb: every row as predicted
