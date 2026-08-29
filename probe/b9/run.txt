@@ -1,0 +1,9 @@
+B9 — is our `∂` the library's? (plan 26)
+
+  every edge whose membership changes, ours against `hex_draw::draw_walls`:
+    a placed house's floor: 27 cells · ours 38 edges, theirs 38 · only ours 0, only theirs 0  ✅ IDENTICAL
+    a disc, shell 3       : 37 cells · ours 42 edges, theirs 42 · only ours 0, only theirs 0  ✅ IDENTICAL
+    a disc, shell 5       : 91 cells · ours 66 edges, theirs 66 · only ours 0, only theirs 0  ✅ IDENTICAL
+    a RING (a hole in it) : 89 cells · ours 76 edges, theirs 76 · only ours 0, only theirs 0  ✅ IDENTICAL
+    a single cell         : 1 cells · ours 6 edges, theirs 6 · only ours 0, only theirs 0  ✅ IDENTICAL
+    nothing at all        : 0 cells · ours 0 edges, theirs 0 · only ours 0, only theirs 0  ✅ IDENTICAL

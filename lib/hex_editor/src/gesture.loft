@@ -38,6 +38,7 @@ use hex_shape;
 // `vec_n2_4` — the lattice's own squared distance, which `disc_holds` asks and
 // `hex_shape::arc_fill` is built from. Plan 26 `B4h`.
 use hex_form;
+use hex_draw;
 use hex_recover;
 use hex_fit;
 // The octagonal tower's shape — plan 26 `B4l`. The SHAPE lives there and has no
@@ -977,6 +978,13 @@ pub fn marks_unclaimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
 // wall, on all 25 rooms.
 pub fn claim_region(cl: Claims, cells: HexSet, q0: integer, r0: integer, wq: integer,
                     hr: integer) -> integer {
+  // ⛔ **`∂` IS `hex_draw::draw_walls`, NOT A LOOP OF OURS.** [WALL_PUSH](../../../doc/claude/WALL_PUSH.md)
+  // says the definition stays that function's and is *"compared against, never copied"* — and
+  // this copied it. ✅ Measured identical edge for edge on a placed house's floor, three discs,
+  // a RING (where `∂` is two loops) and both degenerate cases, before the substitution:
+  // [`probe/b9`](../../../probe/b9/README.md).
+  cg_b = edgeset_new(q0, r0, wq, hr);
+  hex_draw::draw_walls(cells, cg_b, 1);
   cg_n = 0;
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
@@ -986,7 +994,7 @@ pub fn claim_region(cl: Claims, cells: HexSet, q0: integer, r0: integer, wq: int
       }
       for cg_d in [4, 5, 0] {
         (cg_nq, cg_nr) = hex_grid::hex_neighbor(q, r, cg_d);
-        if hexset_get(cells, q, r) != hexset_get(cells, cg_nq, cg_nr) {
+        if edge_mat(cg_b, q, r, cg_nq, cg_nr) != 0 {
           cg_n = cg_n + claim_edge(cl, q, r, cg_nq, cg_nr);
         }
       }
@@ -2855,11 +2863,15 @@ pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: int
   rg_miss = 0;
   rg_stray = 0;
   rg_other = 0;
+  // ⚠ **AND THE BOUNDARY IT IS MEASURED AGAINST IS THE LIBRARY'S** — `probe/b9` again: what a
+  // description OWES is `∂` of its region, and there is one definition of that.
+  rg_bd = edgeset_new(q0, r0, wq, hr);
+  hex_draw::draw_walls(rg_floor, rg_bd, 1);
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       for rg_d in [4, 5, 0] {
         (rg_nq, rg_nr) = hex_grid::hex_neighbor(q, r, rg_d);
-        rg_want = hexset_get(rg_floor, q, r) != hexset_get(rg_floor, rg_nq, rg_nr);
+        rg_want = edge_mat(rg_bd, q, r, rg_nq, rg_nr) != 0;
         rg_got = edge_is_wall(wall_of(wld, q, r, rg_d, ref));
         if rg_want && !rg_got { rg_miss = rg_miss + 1; }
         if !rg_got { continue; }

@@ -1,0 +1,119 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `B9` — IS OUR `∂` THE LIBRARY'S? Plan 26.
+//
+//   loft --interpret --lib lib/ probe/b9/b9.loft        (or `make probe-b9`)
+//
+// ⛔ **[WALL_PUSH](../../doc/claude/WALL_PUSH.md) SAYS THE DEFINITION IS
+// `hex_draw::draw_walls`' AND IS "COMPARED AGAINST, NEVER COPIED" — AND WE COPY IT.** Three
+// sites in `gesture.loft` walk the cells and take every edge whose membership changes:
+// `claim_region`, `region_recover_claimed`'s residual, and `house_recover_claimed`'s.
+//
+// ⚠ **A SUBSTITUTION IS ONLY SAFE IF THE SETS ARE THE SAME**, so this diffs them edge for edge
+// before anything is rewritten — on the shapes this editor actually builds, not on a fixture
+// invented for the comparison.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_draw;
+use hex_grid;
+
+const Q0 = 0 - 18;
+const R0 = 0 - 18;
+const WQ = 37;
+const HR = 37;
+const YAW = 1.5707963267948966;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// ⚠ OURS, LIFTED VERBATIM FROM `claim_region` — the three canonical directions a cell owns.
+fn ours(cells: HexSet) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if hexset_get(cells, q, r) != hexset_get(cells, nq, nr) {
+          edge_set_mat(e, q, r, nq, nr, 1);
+        }
+      }
+    }
+  }
+  e
+}
+
+fn theirs(cells: HexSet) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  hex_draw::draw_walls(cells, e, 1);
+  e
+}
+
+fn diff(tag: text, cells: HexSet) {
+  a = ours(cells);
+  b = theirs(cells);
+  na = 0; nb = 0; only_a = 0; only_b = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        ha = edge_mat(a, q, r, nq, nr) != 0;
+        hb = edge_mat(b, q, r, nq, nr) != 0;
+        if ha { na = na + 1; }
+        if hb { nb = nb + 1; }
+        if ha && !hb { only_a = only_a + 1; }
+        if hb && !ha { only_b = only_b + 1; }
+      }
+    }
+  }
+  verdict = if only_a == 0 && only_b == 0 { "✅ IDENTICAL" } else { "⛔ DIFFER" };
+  println("    {tag}: {hexset_count(cells)} cells · ours {na} edges, theirs {nb}"
+        + " · only ours {only_a}, only theirs {only_b}  {verdict}");
+}
+
+fn house_floor() -> HexSet {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  a = press_verb(s, w, s.es_author, VB_PLACE, "");
+  if !a.ak_ok { println("  ⛔ the house was refused: {a.ak_why}"); }
+  c = hexset_chunk(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if world_ground_cell(w, q, r).h_material == FLOOR_MAT { hexset_set(c, q, r, true); }
+    }
+  }
+  c
+}
+
+fn disc(n: integer) -> HexSet {
+  c = hexset_chunk(Q0, R0, WQ, HR);
+  hexdisk_into(c, 0, 0, n);
+  c
+}
+
+fn ring() -> HexSet {
+  // ⚠ **A REGION WITH A HOLE**, because `∂` is two loops there and a definition that only
+  // handles simply-connected shapes would agree on everything else.
+  c = disc(5);
+  hexset_set(c, 0, 0, false);
+  hexset_set(c, 1, 0, false);
+  c
+}
+
+fn main() {
+  println("B9 — is our `∂` the library's? (plan 26)");
+  println("");
+  println("  every edge whose membership changes, ours against `hex_draw::draw_walls`:");
+  diff("a placed house's floor", house_floor());
+  diff("a disc, shell 3       ", disc(3));
+  diff("a disc, shell 5       ", disc(5));
+  diff("a RING (a hole in it) ", ring());
+  diff("a single cell         ", disc(0));
+  empty = hexset_chunk(Q0, R0, WQ, HR);
+  diff("nothing at all        ", empty);
+}
