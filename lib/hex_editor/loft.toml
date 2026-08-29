@@ -79,6 +79,14 @@ hex_recover = ">=0.1"
 # more than the field distinguishes is worse than none — `@HB-X66` says so, and two of its
 # own four predicates turned out to have nothing to refuse.
 hex_fit = ">=0.1"
+# ⛔ THE ROOF RECOVERY, WHICH THIS TREE HAS NONE OF. Twelve `roof_*` functions here DRAW a
+# roof and not one reads one back. `roof_match` fits a plane, a cone, a dome or a ridge to a
+# height field and says `ROOF_UNKNOWN` when none of them is it. ⚠ 0.1.2 is required: 0.1.1
+# answered `ROOF_CONE` for a gable at residual 1.209, which is the shape this tree builds.
+# ⚠ It was ALREADY a transitive dependency through `hex_draw`; declaring it is what makes it
+# callable. Every public name was checked against ours first — the `HEIGHT_SCALE` collision
+# `hex_fit` caused is what that check exists for.
+hex_roof = ">=0.1.4"
 hex_grid  = ">=0.1"
 # ⚠ OURS, BY PATH. A gesture edits a world, so this package cannot stay world-free
 # once it holds gestures. The path is because `hex_voxel` is UNPUBLISHED and lives in

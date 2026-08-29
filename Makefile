@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -967,6 +967,16 @@ probe-b5:
 # tree's scale is per world — 40 and 30 disagreements at the two other units it uses. Seconds.
 probe-b7:
 	@loft --interpret --lib lib/ probe/b7/b7.loft 2>/dev/null | sed -n '/^B7/,$$p'
+
+# B8 (plan 26) — THE ROOF THIS EDITOR DRAWS, READ BACK. Twelve `roof_*` functions here draw a
+# roof and none recovered one. ✅ `hex_roof::roof_match` returns ROOF_RIDGE at residual 0 —
+# peak 7.75, slope 2/3, on the true ridge line spanning the footprint — so no tolerance is
+# needed at all, against a control (one column raised) at 0.649. ⛔ The adoption was the
+# instrument: it found three separate bugs in `hex_roof`'s ridge fit, none visible from inside
+# the library, because every hand-built fixture attains its maximum exactly and spans its own
+# footprint. Seconds.
+probe-b8:
+	@loft --interpret --lib lib/ probe/b8/b8.loft 2>/dev/null | sed -n '/^B8/,$$p'
 
 # WP (WALL_PUSH) — the four probes of the wall-push design. ⛔ Two of the first draft's rules
 # are REFUTED: a diagonal wall moves 3.6x FURTHER per step, not 6.25x less (the line spacing

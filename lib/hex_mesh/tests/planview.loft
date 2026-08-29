@@ -1997,3 +1997,28 @@ fn test_a_placed_house_is_still_a_house() {
   assert(tag_count(svg, "<polygon class='region'") == 0,
          "…and not also as a region");
 }
+
+// ── ⛔ THE HOUSE'S ROOF, NAMED — plan 26 `B8` ──────────────────────────────
+//
+// ⛔ **A HOUSE NAMED ITS RECTANGLE SINCE `B4n` AND SAID NOTHING ABOUT ITS ROOF**, because this
+// tree could not read one back: twelve `roof_*` functions draw one and none recovers one.
+// `hex_roof::roof_match` does, and [`probe/b8`](../../../probe/b8/README.md) measured a placed
+// house's gable coming back at **residual 0** — peak 7.75, slope 2/3, on a segment spanning the
+// footprint.
+//
+// ⚠ **THIS IS THE *IS IT CALLED* TEST.** `roof_read_box` was green in `hex_editor`'s own suite
+// before the picture asked it anything, which is this tree's commonest defect.
+fn test_a_house_caption_names_its_roof() {
+  w = flat_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, 1.5707963267948966);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "").ak_ok,
+         "the fixture's house was refused");
+  svg = hex_mesh::plan_svg(w, 0 - 10, 0 - 10, 14, 14, 0.0, "roofed");
+  assert(svg.find("gable roof") != null,
+         "the caption does not name the roof: {svg.find(\"desc \")}");
+  // ⚠ **AND THE PITCH, NOT JUST THE WORD** — a kind that is right about nothing else is a
+  // label. `ROOF_PITCH_DEFAULT` is 0.70 and the recovered slope is the gable's own 2/3.
+  assert(svg.find("pitch 0.6") != null, "…nor its pitch");
+  assert(svg.find("unknown roof") == null, "and it is not an unrecovered roof");
+}

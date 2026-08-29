@@ -36,6 +36,7 @@ use hex_shape;
 use hex_place;
 use hex_grid;
 use hex_part;
+use hex_roof;
 use self::names;
 // What a world DECLARES a house type to be — plan 22 `T1a.1`, its own module at
 // `T1b`. ⚠ It is below `session` in the arrow, not beside it: `session.loft` uses it
@@ -861,6 +862,76 @@ pub const ROOF_PITCH_DEFAULT = 0.70;
 // **13.0 against 6.5**, six and a half world units apart. That is the fourth time a
 // global has stood in for the world in this tree (`J`, `E`, `B` were the others),
 // and the first where the two answers describe the *same object*.
+// ── ⛔ WHAT ROOF IS THAT? — plan 26 `B8` ───────────────────────────────────
+//
+// ⛔ **TWELVE `roof_*` FUNCTIONS HERE DRAW A ROOF AND NOT ONE READ ONE BACK**, so a saved
+// world could say *house 4x5* and nothing at all about the thing on top of it.
+// `hex_roof::roof_match` fits a plane, a cone, a dome or a **ridge** to a height field and
+// answers `ROOF_UNKNOWN` when none of them is it — the recovery this tree never had.
+//
+// ⚠ **THE STORE HOLDS THE ROOF AS VOXELS, SO THE FIELD IS BUILT FROM IT**: one `ROOF_MAT`
+// cell per column, its `h_height` in world units by this world's own `w_unit`. That is the
+// same conversion every other reader here uses, and not `hex_proj::HEIGHT_SCALE`.
+//
+// ✅ **AND IT RECOVERS EXACTLY** — [`probe/b8`](../../../probe/b8/README.md): a placed
+// house's 27-cell gable comes back `ROOF_RIDGE` with **residual 0**, peak 7.75 and slope
+// 2/3, on a segment spanning the footprint. No tolerance is needed at all, which is the
+// opposite of what the store's integer heights suggested: the drawn roof lands exactly on
+// the ridge it claims.
+pub struct RoofRead {
+  rr_ok:    boolean,
+  rr_kind:  integer,       // `hex_roof`'s ROOF_* — RIDGE, PLANE, CONE, DOME or UNKNOWN
+  rr_peak:  float,
+  rr_slope: float,
+  rr_res:   float,
+  rr_cells: integer,
+}
+
+// The name a caption uses. ⚠ `unknown` is an answer, not a failure: it is what `roof_match`
+// says when the field is none of the four, and hiding it would be the fallback-as-recovery
+// this tree just fixed upstream.
+pub fn roof_kind_name(k: integer) -> text {
+  if k == hex_roof::ROOF_PLANE { return "flat"; }
+  if k == hex_roof::ROOF_CONE { return "cone"; }
+  if k == hex_roof::ROOF_DOME { return "dome"; }
+  if k == hex_roof::ROOF_RIDGE { return "gable"; }
+  "unknown"
+}
+
+pub fn roof_read_box(wld: VoxelWorld, b: Box, q0: integer, r0: integer, wq: integer,
+                     hr: integer, tol: float) -> RoofRead {
+  rk_cells = hexset_chunk(q0, r0, wq, hr);
+  rk_f = heights_new(q0, r0, wq, hr);
+  rk_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      // ⚠ the BARE name: `!hex_shape::box_holds(..)` does not parse — the `!` and the
+      // qualifier together give `missing argument for parameter 'v1' of OpNot`.
+      if !box_holds(b, q, r) { continue; }
+      rk_hi = 0 - 1;
+      for rk_c in hex_voxel::world_column(wld, q, r).co_cells {
+        if (rk_c.h_material as integer ?? 0) != ROOF_MAT { continue; }
+        rk_h = rk_c.h_height as integer ?? 0;
+        if rk_h > rk_hi { rk_hi = rk_h; }
+      }
+      if rk_hi < 0 { continue; }
+      hexset_set(rk_cells, q, r, true);
+      height_set(rk_f, q, r, (rk_hi as float) * wld.w_unit);
+      rk_n = rk_n + 1;
+    }
+  }
+  // ⚠ **THREE CELLS IS THE FLOOR FOR A FIT AT ALL** — `rebuild_construct`'s own bound one
+  // shape over: fewer than three points name no surface, and a fitter handed two would
+  // answer something rather than nothing.
+  if rk_n < 3 {
+    return RoofRead { rr_ok: false, rr_kind: hex_roof::ROOF_UNKNOWN, rr_peak: 0.0,
+                      rr_slope: 0.0, rr_res: 0.0, rr_cells: rk_n };
+  }
+  rk_m = hex_roof::roof_match(rk_cells, rk_f, tol);
+  RoofRead { rr_ok: true, rr_kind: rk_m.rf_kind, rr_peak: rk_m.rf_z,
+             rr_slope: rk_m.rf_slope, rr_res: rk_m.rf_res, rr_cells: rk_n }
+}
+
 pub fn roof_eave_y(floor_h: integer, eave_up: integer, unit: float) -> float {
   ((floor_h + eave_up) as float) * unit
 }

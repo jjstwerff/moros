@@ -1,0 +1,144 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `B8` — CAN `hex_roof::roof_match` READ BACK THE ROOF THIS EDITOR DRAWS?
+//
+//   loft --interpret --lib lib/ probe/b8/b8.loft        (or `make probe-b8`)
+//
+// ⛔ **TWELVE `roof_*` FUNCTIONS HERE DRAW A ROOF AND NOT ONE READS ONE.** `hex_roof 0.1.2`
+// recovers a plane, a cone, a dome or a **ridge**, and a ridge is exactly what `roof_plan_of`
+// builds — so the question is whether what `roof_over` WROTE is the gable the plan says it is.
+//
+// ⚠ **THE ROOF IS VOXELS, NOT A HEIGHT FIELD.** `roof_over` writes one `ROOF_MAT` cell per
+// column at an INTEGER `h_height`, so the field is a staircase of the ridge and the residual
+// cannot be smaller than the quantum. What tolerance that needs is the measurement.
+//
+// Predictions are in `PREDICTION.md` and were written before this ran.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_roof;
+use hex_grid;
+use hex_way;
+
+const Q0 = 0 - 20;
+const R0 = 0 - 20;
+const WQ = 41;
+const HR = 41;
+const YAW = 1.5707963267948966;
+
+fn housed() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  a = press_verb(s, w, s.es_author, VB_PLACE, "");
+  if !a.ak_ok { println("  ⛔ the fixture's house was refused: {a.ak_why}"); }
+  w
+}
+
+// The roof as the library wants it: the cells carrying `ROOF_MAT`, and their height in WORLD
+// units — `h_height * w_unit`, which is this tree's own conversion.
+fn roof_field(w: VoxelWorld, cells: HexSet, f: Heights, bump: integer) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      col = hex_voxel::world_column(w, q, r);
+      hi = 0 - 1;
+      for c in col.co_cells {
+        if (c.h_material as integer ?? 0) != ROOF_MAT { continue; }
+        hu = c.h_height as integer ?? 0;
+        if hu > hi { hi = hu; }
+      }
+      if hi < 0 { continue; }
+      hexset_set(cells, q, r, true);
+      // ⚠ the CONTROL's one raised column — see `main`
+      if bump != 0 && n == 3 { hi = hi + bump; }
+      height_set(f, q, r, (hi as float) * w.w_unit);
+      n = n + 1;
+    }
+  }
+  n
+}
+
+fn kind_name(k: integer) -> text {
+  if k == hex_roof::ROOF_PLANE { return "plane"; }
+  if k == hex_roof::ROOF_CONE { return "cone"; }
+  if k == hex_roof::ROOF_DOME { return "dome"; }
+  if k == hex_roof::ROOF_RIDGE { return "RIDGE"; }
+  "⛔ unknown"
+}
+
+fn ask(tag: text, cells: HexSet, f: Heights, tol: float) {
+  m = hex_roof::roof_match(cells, f, tol);
+  println("    tol {tol}: {kind_name(m.rf_kind)}  residual {m.rf_res}"
+        + "  peak {m.rf_z} slope {m.rf_slope}");
+}
+
+fn main() {
+  println("B8 — does the roof this editor draws read back? (plan 26)");
+  println("");
+  w = housed();
+  cells = hexset_chunk(Q0, R0, WQ, HR);
+  f = heights_new(Q0, R0, WQ, HR);
+  n = roof_field(w, cells, f, 0);
+  println("  the house's roof is {n} cells, at unit {w.w_unit}"
+        + " — the quantum is {w.w_unit}, half of it {w.w_unit * 0.5}");
+  println("");
+  // ⚠ LOOK AT THE FIELD BEFORE THEORISING ABOUT THE FIT.
+  println("  the field itself, cell by cell (world x, y -> height):");
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if !hexset_get(cells, q, r) { continue; }
+      (wx, wz) = hex_grid::hex_to_px(q, r);
+      println("      q{q} r{r}  ({wx},{wz}) -> {height_get(f, q, r)}");
+    }
+  }
+  println("");
+  println("  what `roof_match` makes of it, at four tolerances:");
+  ask("", cells, f, 0.001);
+  ask("", cells, f, w.w_unit * 0.5);
+  ask("", cells, f, w.w_unit);
+  ask("", cells, f, 1.0);
+  println("");
+  println("  the ridge fit asked directly, with its recovered segment:");
+  g = hex_roof::roof_ridge_fit(cells, f);
+  println("    residual {g.rf_res}  peak {g.rf_z} slope {g.rf_slope}"
+        + "  from {g.rf_x},{g.rf_y} to {g.rf_x2},{g.rf_y2}");
+  println("    (the house's pitch is {ROOF_PITCH_DEFAULT})");
+  println("");
+  // ⛔ **DOES THE MODEL DIFFER, OR DID THE SEARCH STOP SHORT?** Two explanations for a residual
+  // of 0.13 on a field that looks exactly fittable, and they want opposite fixes. `roof_ridge`
+  // clamps distance to the SEGMENT — "a full-length ridge gives a gable; shorten it and the
+  // ends hip in" — while our roof may be a gable with vertical ends, i.e. distance to the
+  // infinite LINE. Drawing the library's own ridge over the same cells answers it.
+  println("  ⚠ THE LIBRARY'S OWN RIDGE over the same cells, ridge line y=6 run LONG:");
+  fl = heights_new(Q0, R0, WQ, HR);
+  lt = hex_way::track_new();
+  hex_way::track_straight(lt, 0.0 - 12.0, 6.0, 12.0, 6.0);
+  hex_roof::roof_ridge(cells, fl, lt, 7.75, 0.6666666666666666, 1000.0);
+  worst = 0.0;
+  nsame = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if !hexset_get(cells, q, r) { continue; }
+      e = height_get(fl, q, r) - height_get(f, q, r);
+      if e < 0.0 { e = 0.0 - e; }
+      if e > worst { worst = e; }
+      if e < 0.000001 { nsame = nsame + 1; }
+    }
+  }
+  println("    a LONG ridge reproduces {nsame} of {n} cells exactly; worst difference {worst}");
+  gl = hex_roof::roof_ridge_fit(cells, fl);
+  println("    …and the fit of THAT field: residual {gl.rf_res}"
+        + " from {gl.rf_x},{gl.rf_y} to {gl.rf_x2},{gl.rf_y2}");
+  println("");
+
+  // ⛔ THE CONTROL — a tolerance loose enough to admit anything would pass every row above.
+  println("  ⛔ THE CONTROL — the same roof with ONE column raised four units:");
+  c2 = hexset_chunk(Q0, R0, WQ, HR);
+  f2 = heights_new(Q0, R0, WQ, HR);
+  roof_field(w, c2, f2, 4);
+  ask("", c2, f2, w.w_unit * 0.5);
+  ask("", c2, f2, 1.0);
+}

@@ -1,0 +1,50 @@
+B8 — does the roof this editor draws read back? (plan 26)
+
+  the house's roof is 27 cells, at unit 0.25 — the quantum is 0.25, half of it 0.125
+
+  the field itself, cell by cell (world x, y -> height):
+      q-2 r2  (-3.4641016151377544,3) -> 5.75
+      q-1 r2  (-1.7320508075688772,3) -> 5.75
+      q0 r2  (0,3) -> 5.75
+      q1 r2  (1.7320508075688772,3) -> 5.75
+      q2 r2  (3.4641016151377544,3) -> 5.75
+      q-3 r3  (-4.330127018922194,4.5) -> 6.75
+      q-2 r3  (-2.598076211353316,4.5) -> 6.75
+      q-1 r3  (-0.8660254037844386,4.5) -> 6.75
+      q0 r3  (0.8660254037844386,4.5) -> 6.75
+      q1 r3  (2.598076211353316,4.5) -> 6.75
+      q2 r3  (4.330127018922193,4.5) -> 6.75
+      q-2 r4  (-3.4641016151377544,6) -> 7.75
+      q-1 r4  (-1.7320508075688772,6) -> 7.75
+      q0 r4  (0,6) -> 7.75
+      q1 r4  (1.7320508075688772,6) -> 7.75
+      q2 r4  (3.4641016151377544,6) -> 7.75
+      q-3 r5  (-4.330127018922194,7.5) -> 6.75
+      q-2 r5  (-2.598076211353316,7.5) -> 6.75
+      q-1 r5  (-0.8660254037844386,7.5) -> 6.75
+      q0 r5  (0.8660254037844386,7.5) -> 6.75
+      q1 r5  (2.598076211353316,7.5) -> 6.75
+      q2 r5  (4.330127018922193,7.5) -> 6.75
+      q-2 r6  (-3.4641016151377544,9) -> 5.75
+      q-1 r6  (-1.7320508075688772,9) -> 5.75
+      q0 r6  (0,9) -> 5.75
+      q1 r6  (1.7320508075688772,9) -> 5.75
+      q2 r6  (3.4641016151377544,9) -> 5.75
+
+  what `roof_match` makes of it, at four tolerances:
+    tol 0.001: RIDGE  residual 0  peak 7.75 slope 0.6666666666666666
+    tol 0.125: RIDGE  residual 0  peak 7.75 slope 0.6666666666666666
+    tol 0.25: RIDGE  residual 0  peak 7.75 slope 0.6666666666666666
+    tol 1: RIDGE  residual 0  peak 7.75 slope 0.6666666666666666
+
+  the ridge fit asked directly, with its recovered segment:
+    residual 0  peak 7.75 slope 0.6666666666666666  from -4.330127018922193,6 to 4.330127018922193,6
+    (the house's pitch is 0.7)
+
+  ⚠ THE LIBRARY'S OWN RIDGE over the same cells, ridge line y=6 run LONG:
+    a LONG ridge reproduces 27 of 27 cells exactly; worst difference 0.0000000000000008881784197001252
+    …and the fit of THAT field: residual 0.0000000000000008881784197001252 from -4.330127018922193,6 to 4.330127018922193,6
+
+  ⛔ THE CONTROL — the same roof with ONE column raised four units:
+    tol 0.125: ⛔ unknown  residual 0.6494740881382217  peak 7.6956818302544825 slope 0.5867935414152489
+    tol 1: RIDGE  residual 0.6494740881382217  peak 7.6956818302544825 slope 0.5867935414152489

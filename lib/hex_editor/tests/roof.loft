@@ -230,3 +230,39 @@ fn test_the_drawn_ridge_and_the_stored_ridge_are_the_same_height() {
   if d < 0 { d = 0 - d; }
   assert(d <= 1, "stored ridge {stored}, drawn ridge {drawn} — one unit of rounding at most");
 }
+
+// ── ⛔ READING A ROOF BACK — plan 26 `B8` ──────────────────────────────────
+//
+// `hex_roof::roof_match` is the recovery this tree never had. These are the consumer checks:
+// that the field is built from the store correctly, and that a box with no roof over it is
+// REFUSED rather than fitted.
+fn test_a_roofless_box_is_refused_rather_than_fitted() {
+  // ⚠ **THE CONTROL, AND IT IS HALF THE VALUE.** A reader that answered for anything would
+  // make the caption's `gable roof` meaningless. Fewer than three cells name no surface, and a
+  // fitter handed two would answer something rather than nothing.
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 20, 0 - 20, 41, 41, 8, SURFACE_MAT);
+  b = hex_shape::box_new(0, 0, 4, 5, 0, false);
+  rr = roof_read_box(w, b, 0 - 12, 0 - 12, 25, 25, 0.125);
+  assert(!rr.rr_ok, "a box with no roof over it recovered {rr.rr_cells} cells");
+  assert(rr.rr_cells == 0, "…and there is nothing there to read: {rr.rr_cells}");
+}
+
+fn test_a_placed_houses_roof_reads_back_as_a_gable() {
+  // ⛔ **THE CLAIM THE STEP EXISTS FOR**, and `probe/b8` measured it at residual 0: the roof
+  // this editor draws IS the ridge it says it is, exactly, with no tolerance needed.
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 20, 0 - 20, 41, 41, 8, SURFACE_MAT);
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 1.5707963267948966);
+  assert(press_verb(s, w, s.es_author, VB_PLACE, "").ak_ok, "the fixture's house was refused");
+  hh = house_recover(w, 0 - 12, 0 - 12, 25, 25, 0.0);
+  assert(hh.hs_ok, "the fixture's house does not recover: {hh.hs_why}");
+  b = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
+  rr = roof_read_box(w, b, 0 - 12, 0 - 12, 25, 25, w.w_unit * 0.5);
+  assert(rr.rr_ok, "the roof did not read back at all");
+  assert(rr.rr_kind == hex_roof::ROOF_RIDGE,
+         "the house's roof is a gable, got {roof_kind_name(rr.rr_kind)}");
+  assert(rr.rr_res < 0.0001, "…and it is exact, residual {rr.rr_res}");
+  assert(rr.rr_slope > 0.5 && rr.rr_slope < 0.8, "at the pitch it was built with, got {rr.rr_slope}");
+}

@@ -34,10 +34,11 @@ source = "registry"
 
 [[package]]
 name = "hex_roof"
-version = "0.1.1"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_roof-v0.1.1/hex_roof-0.1.1.tar.gz"
-sha256 = "891c4b3a022c369e805860caf3600a350ef0bc00101a00f419738375cb939852"
+version = "0.1.4"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_roof-v0.1.4/hex_roof-0.1.4.tar.gz"
+sha256 = "b0a8fbb6e34b77dc43777950e8e2db4f170d010c18be7c02e0e62090f7711502"
 source = "registry"
+deps = ["hex_field", "hex_way"]
 
 [[package]]
 name = "hex_way"

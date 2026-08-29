@@ -35,6 +35,7 @@ use hex_grid;
 use hex_proj;
 use hex_voxel;
 use hex_editor;
+use hex_roof;
 // `Box` — plan 26 `B4n`. The rectangle a house's floor recovers to is the shape
 // family's own, and the picture places its corners through `hex_editor::box_px_*`
 // rather than deriving any of them here.
@@ -438,7 +439,8 @@ fn desc_of_region(rg: hex_editor::RegionRead) -> PlanDesc {
     pd_x0: 0.0, pd_z0: 0.0, pd_x1: 0.0, pd_z1: 0.0 }
 }
 
-fn desc_of_house(w: VoxelWorld, hh: hex_editor::HouseRead) -> PlanDesc {
+fn desc_of_house(w: VoxelWorld, hh: hex_editor::HouseRead, q0: integer, r0: integer,
+                 wq: integer, hr: integer) -> PlanDesc {
   hsay = "{hh.hs_cq},{hh.hs_cr} {hh.hs_wid}x{hh.hs_dep} rot {hh.hs_rot}";
   // ⚠ **THE AMBIGUITY IS REPORTED, NOT HIDDEN** — §6's R2 rule, and here the ambiguity
   // is the SIZE: raising one extent by a hex step can admit no new row of cell centres,
@@ -451,6 +453,28 @@ fn desc_of_house(w: VoxelWorld, hh: hex_editor::HouseRead) -> PlanDesc {
   if hh.hs_stray > 0 { hsay = hsay + " · {hh.hs_stray} stray"; }
   if hh.hs_missing > 0 { hsay = hsay + " · {hh.hs_missing} missing"; }
   hbox = hex_shape::box_new(hh.hs_cq, hh.hs_cr, hh.hs_wid, hh.hs_dep, hh.hs_rot, false);
+  // ── ⛔ …AND WHAT IS ON TOP OF IT — plan 26 `B8` ────────────────────────────
+  //
+  // ⛔ **A HOUSE HAS NAMED ITS RECTANGLE SINCE `B4n` AND SAID NOTHING ABOUT ITS ROOF**, which
+  // this tree could not read back at all: twelve `roof_*` functions draw one and none recovers
+  // one. `hex_roof::roof_match` does, and `roof_read_box` builds the field it wants out of the
+  // store's `ROOF_MAT` columns.
+  //
+  // ⚠ **THE TOLERANCE IS HALF THE STORE'S OWN QUANTUM, DERIVED RATHER THAN TUNED** — a height
+  // is an integer times `w_unit`, so nothing finer is representable and a residual below that
+  // is exact as far as this world can tell. ⚠ Measured, a placed house needs none of it: the
+  // gable comes back at residual **0** ([`probe/b8`](../../../probe/b8/README.md)).
+  //
+  // ⚠ **AND `unknown` IS PRINTED RATHER THAN SUPPRESSED.** `roof_match` says so when the field
+  // is none of the four it knows, and a caption that hid it would be the fallback-as-recovery
+  // this tree fixed upstream in `hex_roof 0.1.2`.
+  hrf = hex_editor::roof_read_box(w, hbox, q0, r0, wq, hr, w.w_unit * 0.5);
+  if hrf.rr_ok {
+    hsay = hsay + " · {hex_editor::roof_kind_name(hrf.rr_kind)} roof";
+    if hrf.rr_kind == hex_roof::ROOF_RIDGE || hrf.rr_kind == hex_roof::ROOF_CONE {
+      hsay = hsay + " pitch {fx(hrf.rr_slope)}";
+    }
+  }
   bx = hex_editor::box_px_x(hbox, w);
   bz = hex_editor::box_px_z(hbox, w);
   hpts = "";
@@ -518,7 +542,7 @@ fn plan_describe(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integ
   // ⚠ **IT IS LAST FOR THE REASON THE ROUND READERS ARE ORDERED AT ALL**: asked only
   // where every reader above gave up, so no two of them answer for one window.
   hh = hex_editor::house_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
-  if hh.hs_ok { return desc_of_house(w, hh); }
+  if hh.hs_ok { return desc_of_house(w, hh, q0, r0, dwq, dhr); }
   // ── ⛔ …AND IF IT IS NOT A RECTANGLE, IS IT A FORM AT ALL? — plan 26 `B5` ──
   //
   // ⛔ **THE BOX READER REFUSES EVERY ROOM WALKED AS FOUR WALL RUNS, AND THAT IS THE
@@ -570,7 +594,7 @@ fn plan_describe_within(w: VoxelWorld, q0: integer, r0: integer, q1: integer,
   dw = hex_editor::disc_within(w, q0, r0, dwq, dhr, ref, within, cl);
   if dw.dc_ok { return desc_of_disc(dw); }
   hh = hex_editor::house_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
-  if hh.hs_ok { return desc_of_house(w, hh); }
+  if hh.hs_ok { return desc_of_house(w, hh, q0, r0, dwq, dhr); }
   rgw = hex_editor::region_recover_claimed(w, q0, r0, dwq, dhr, ref, cl);
   if rgw.rg_ok { return desc_of_region(rgw); }
   // ⛔ **AND LAST, A RUN FROM THE COMPONENT'S OWN ENDS AND JUNCTIONS — plan 26 `B4w`.**

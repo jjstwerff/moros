@@ -27,6 +27,10 @@ entry = "src/hex_mesh.loft"
 hex_proj     = { path = "../hex_proj" }
 hex_voxel    = { path = "../hex_voxel" }
 hex_editor   = { path = "../hex_editor" }
+# ⛔ THE ROOF READER — plan 26 `B8`. The house caption names its roof now, and the recovery is
+# `hex_roof::roof_match`. ⚠ 0.1.4 is required: 0.1.2 answered `ROOF_CONE` for a gable and
+# 0.1.3 could not recover the ridge this very package draws.
+hex_roof  = ">=0.1.4"
 hex_grid     = ">=0.1"
 graphics     = ">=0.1"
 # ⚠ ARRIVED WITH THE PROPS MESHER — plan 22 `B1b.2c.3`. A wall run is a `hex_way`
