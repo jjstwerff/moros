@@ -10,30 +10,30 @@ chosen: opening 1 (unchosen) wall 1 shell 156 seat 0 annex 0 reach 3 part ''
   placed 0,0
   raise: 1
   placed -6,-6
-  wall aimed 12 edges, heading 0 of 24 (aimed, residual 0°), length 5.196152422706632, from -6.06217782649107,-5.5 to -0.8660254037844386,-5.5
+  wall aimed 12 edges, heading 0 of 24 (aimed, residual 0°), length 5.196152422706632, from -6.06217782649107,-5.5 to -0.8660254037844386,-5.5 · closes nothing
   placed -6,4
-  wall aimed 16 edges, heading 6 of 24 (aimed, residual 0°), length 6, from -6.06217782649107,3.5 to -6.06217782649107,9.5
+  wall aimed 16 edges, heading 6 of 24 (aimed, residual 0°), length 6, from -6.06217782649107,3.5 to -6.06217782649107,9.5 · closes nothing
   placed 6,-2
-  wall aimed 16 edges, heading 2 of 24 (aimed, residual 0°), length 6, from 6.06217782649107,-2.5 to 11.258330249197702,0.5
+  wall aimed 16 edges, heading 2 of 24 (aimed, residual 0°), length 6, from 6.06217782649107,-2.5 to 11.258330249197702,0.5 · closes nothing
   placed 0,8
   road started at 0,8
   placed 4,10
-  wall aimed 16 edges, heading 3 of 24 (aimed, residual 1.1021137519860247°), length 6.244997998398398, from 3.4641016151377544,10 to 7.794228634059947,14.5
+  wall aimed 16 edges, heading 3 of 24 (aimed, residual 1.1021137519860247°), length 6.244997998398398, from 3.4641016151377544,10 to 7.794228634059947,14.5 · closes nothing
   placed 10,8
-  wall laid 24 edges, heading 0 of 24 (snapped, residual 0°), length 10.392304845413264, from 0,8 to 10.392304845413264,8
+  wall laid 24 edges, heading 0 of 24 (snapped, residual 0°), length 10.392304845413264, from 0,8 to 10.392304845413264,8 · closes nothing
   placed 0,-10
-  wall aimed 16 edges, heading 1 of 24 (aimed, residual 1.102113751986014°), length 6.244997998398398, from 0,-10 to 6.06217782649107,-8.5
+  wall aimed 16 edges, heading 1 of 24 (aimed, residual 1.102113751986014°), length 6.244997998398398, from 0,-10 to 6.06217782649107,-8.5 · closes nothing
   placed 0,-14
   road started at 0,-14
   placed 5.796,-12.448
   wall laid 16 edges, heading 1 of 24 (snapped, residual 1.0925809675457276°), length 6.244997998398398, from 0,-14 to 6.06217782649107,-12.5
   reach 18 selected
   placed -12,12
-  wall aimed 40 edges, heading 0 of 24 (aimed, residual 0°), length 17.32050807568877, from -11.258330249197702,12.5 to 6.06217782649107,12.5
+  wall aimed 40 edges, heading 0 of 24 (aimed, residual 0°), length 17.32050807568877, from -11.258330249197702,12.5 to 6.06217782649107,12.5 · closes nothing
   reach 3 selected
   placed 12,12
   refused: aim refused — no wall of about 3 reaches that way from here; turn a little, or select a longer reach
   placed 12,16
-  wall aimed 8 edges, heading 0 of 24 (aimed, residual 0°), length 3.4641016151377544, from 12.12435565298214,16 to 15.588457268119894,16
+  wall aimed 8 edges, heading 0 of 24 (aimed, residual 0°), length 3.4641016151377544, from 12.12435565298214,16 to 15.588457268119894,16 · closes nothing
   selection refused — aim reach 40 is above the maximum 24 (offer 24, residual 16)
 --- what the runner refused

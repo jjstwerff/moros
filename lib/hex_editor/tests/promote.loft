@@ -181,3 +181,24 @@ fn test_the_aim_gesture_promotes_what_it_closes() {
          "the GESTURE floored the enclosure — nothing did, so `promote_close` has no "
        + "caller: {ack.ak_why}");
 }
+
+// ⚠ **AND A LEAK REACHES THE AUTHOR — the half `FOCUS` promised and the first build left
+// out.** A stroke that bounds nothing says so; only a stroke that put no wall anywhere
+// (`PM_NONE`) is silent, because there is nothing for it to be about.
+fn test_the_aim_gesture_says_so_when_nothing_closes() {
+  w = world();
+  a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
+  sess = hex_editor::session_new();
+  ack = hex_editor::press_verb(sess, w, a, hex_editor::VB_AIM);
+  assert(ack.ak_ok, "the aim was refused outright: {ack.ak_why}");
+  assert(floors(w) == 0, "open ground floored {floors(w)} cells");
+  assert(ack.ak_why.contains("closes nothing"),
+         "a wall that closes nothing told the author nothing: {ack.ak_why}");
+}
+
+// …and the silent case, so the row above cannot pass by saying it every time.
+fn test_a_gesture_that_bounds_nothing_stays_silent() {
+  p = hex_editor::promote_say(hex_editor::Promote { pm_code: hex_editor::PM_NONE,
+                                                    pm_cells: 0, pm_why: "no wall" });
+  assert(p == "", "a stroke that bounds nothing said `{p}`");
+}

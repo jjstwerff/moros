@@ -12,7 +12,7 @@ chosen: opening 1 (unchosen) wall 1 shell 156 seat 0 annex 0 reach 6 part ''
   placed 4,0
   road started at 4,0
   placed 12,0
-  wall laid 16 edges, heading 0 of 24 (snapped, residual 0°), length 6.928203230275509, from 4.330127018922193,0.5 to 11.258330249197702,0.5
+  wall laid 16 edges, heading 0 of 24 (snapped, residual 0°), length 6.928203230275509, from 4.330127018922193,0.5 to 11.258330249197702,0.5 · closes nothing
   placed 0,-7
   tower: 54
   placed -10,-3
@@ -22,5 +22,5 @@ chosen: opening 1 (unchosen) wall 1 shell 156 seat 0 annex 0 reach 6 part ''
   placed -12,-3
   road started at -12,-3
   placed -12,6
-  wall laid 22 edges, heading 6 of 24 (snapped, residual 0°), length 8, from -11.258330249197702,-2.5 to -11.258330249197702,5.5
+  wall laid 22 edges, heading 6 of 24 (snapped, residual 0°), length 8, from -11.258330249197702,-2.5 to -11.258330249197702,5.5 · closes nothing
 --- what the runner refused

@@ -135,10 +135,15 @@ never meet. It is not the peel's ordering.
 ⚠ **What the row above should have said**: *recovers exactly* needs a reader for a REGION
 (`@HB-X33`'s exact families, or `@HB-X45`'s convex-hull recovery) and *four quads* needs the
 fitted renderer `@HB-X61` gates upstream, which this tree does not have at all. Promotion is
-plumbing that positions the world for two things that do not exist yet. ⛔ **And the one
-benefit it could deliver today is not wired**: `press_verb` appends the sentence only on
-`PM_FLOORED`, so an author whose room leaks is told nothing — *"an open one gets told where
-it leaks"* is unbuilt, and it is the cheapest item on the list.
+plumbing that positions the world for two things that do not exist yet. ✅ **And the one
+benefit it can deliver today IS wired now**: every stroke that lays a wall says what that
+wall bounds — `closes nothing`, `closed — N cells floored`, or `closes onto a floor already
+there` — with only `PM_NONE` silent. ⚠ **A discriminator for *was the author closing
+something* was looked for and measured not to exist** (a lone wall's end cell has 2 walled
+sides; a rectangle's corner has 1 or 2), so it speaks on every stroke: **18 of 46 corpus
+records moved, 28 lines, 0 world keys**. ⛔ **And all 28 say `closes nothing`** — not one
+script in the corpus closes an enclosure with `run` or `aim`, which is why promotion never
+fired before it was measured.
 
 ✅ **AND THE DOORSTEP FOR THE LAST ONE ALREADY EXISTS.** `hex_editor::field_fill` floods an
 enclosure and **refuses an unbounded one by name** — *"the boundary is open, or the enclosure is

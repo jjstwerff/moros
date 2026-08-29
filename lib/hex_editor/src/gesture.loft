@@ -4282,6 +4282,36 @@ pub struct Promote {
 // room on one side and open ground on the other has a room; reporting *it does not
 // close* would send the author looking for a gap that is not there — `B4j`'s own
 // sentence, one gesture over.
+// What a gesture SAYS about a promotion, or `""` for *nothing worth saying*.
+//
+// ⛔ **A WALL THAT DOES NOT CLOSE IS THE NORMAL CASE, SO `PM_OPEN` IS NOT NEWS ON ITS
+// OWN.** Most strokes are a fence, a road edge or one side of a room still being built,
+// and a gesture that answered *"the wall does not close"* every time would be telling the
+// author about their own intention. ⚠ **A discriminator was looked for and MEASURED not to
+// exist**: the walled-side count of the run's end cell is 2 for a lone wall in open ground
+// and 1 or 2 at a rectangle's corner, so *how enclosed the end cell is* does not separate
+// them.
+//
+// ✅ **SO THE LEAK IS REPORTED ANYWAY, AND THE NOISE IS PRICED RATHER THAN GUESSED.** A
+// stroke that bounds nothing at all (`PM_NONE`, no wall on the seed cell) stays silent
+// because there is genuinely nothing to say; every stroke that DID put a wall somewhere
+// answers what that wall bounds — a room (`PM_FLOORED`), an existing one (`PM_ALREADY`),
+// or nothing closed (`PM_OPEN`). ⚠ The cost is measured, not assumed: see the corpus count
+// in [`probe/pc`](../../../probe/pc/README.md).
+// ⚠ **AND THE GESTURE'S FORM IS SHORT WHILE `pm_why` STAYS LONG.** `pm_why` is
+// `field_fill`'s wording — *"the boundary is open, or the enclosure is larger than this
+// tool will claim"* — which is the honest answer to somebody who ASKED to fill an
+// enclosure, and 90 characters on the end of every wall a person lays. ⛔ **The two-part
+// hedge is kept, not dropped**: `B4j` measured that a capped flood cannot tell *open* from
+// *bigger than the cap*, so the short form says only what happened — nothing closed — and
+// claims no gap that may not exist.
+pub fn promote_say(p: Promote) -> text {
+  if p.pm_code == PM_NONE { return ""; }
+  if p.pm_code == PM_OPEN { return "closes nothing"; }
+  if p.pm_code == PM_ALREADY { return "closes onto a floor already there"; }
+  "closed — {p.pm_cells} cells floored"
+}
+
 pub fn promote_close(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> Promote {
   pc_walls = 0;
   pc_open = 0;

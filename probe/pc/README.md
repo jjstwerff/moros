@@ -38,10 +38,37 @@ meet. Nothing about the peel's ordering is involved.
 
 - **The enclosure is now decided rather than assumed.** `PM_OPEN` versus `PM_FLOORED` is a
   real answer about whether a room closes, computed from the flood that already existed.
-- ⛔ **…and the gesture throws the refusal away.** `press_verb` appends the sentence only on
-  `PM_FLOORED`, so an author whose room leaks is told nothing — FOCUS's *"an open one gets
-  told where it leaks"* is **not built**. That was a deliberate choice to keep corpus
-  baselines still, and it is the cheapest thing on this list to fix.
+- ✅ **…and the refusal reaches the author now.** `promote_say` is the one place a gesture's
+  sentence is decided: `PM_NONE` (the stroke bounded nothing at all) is silent, and every
+  stroke that put a wall somewhere says what that wall bounds — `closes nothing`,
+  `closed — N cells floored`, or `closes onto a floor already there`.
+
+### ⚠ What that cost, priced rather than guessed
+
+**A discriminator was looked for first and MEASURED not to exist.** The idea was to speak
+only when the author was plausibly closing something — but the walled-side count of a run's
+end cell is **2 for a lone wall in open ground and 1 or 2 at a rectangle's corner**, so
+*how enclosed the end cell is* does not separate them. There is no local signal for intent.
+
+So the sentence goes on every stroke that lays a wall, and the corpus pays for it:
+
+| | |
+|---|---|
+| script records that moved | **18 of 46** |
+| lines changed | **28**, and **28 of 28 carry a promotion sentence** — nothing else moved |
+| world keys that moved | ✅ **0** — `PM_OPEN` writes nothing, so this is a message change and not a world change |
+| ⛔ strokes in the whole corpus that CLOSE something | **0** — every one of the 28 is `closes nothing` |
+
+⚠ **THE LAST ROW IS THE INTERESTING ONE.** Forty-six scripts, and not one of them builds an
+enclosure with `run` or `aim` — which is why promotion never fired before this and why the
+corpus could not have caught a defect in it.
+
+⚠ **AND THE GESTURE'S WORDING IS SHORT WHILE `pm_why` STAYS LONG.** `pm_why` is
+`field_fill`'s — *"the boundary is open, or the enclosure is larger than this tool will
+claim"* — which is right for somebody who ASKED to fill an enclosure and is 90 characters on
+the end of every wall a person lays. ⛔ **`B4j`'s two-part hedge is kept, not dropped**: a
+capped flood cannot tell *open* from *bigger than the cap*, so the short form says only what
+happened — nothing closed — and claims no gap that may not exist.
 - The floor is real geometry a renderer draws, so a promoted room has a floor to stand on
   where it had grass. That is a picture change, not a description change.
 

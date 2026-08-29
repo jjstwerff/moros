@@ -10,7 +10,7 @@ chosen: opening 1 (unchosen) wall 1 shell 156 seat 0 annex 0 reach 6 part ''
   placed 0,0
   road started at 0,0
   placed 0,9
-  wall laid 22 edges, heading 6 of 24 (snapped, residual 0°), length 8, from 0.8660254037844386,0.5 to 0.8660254037844386,8.5
+  wall laid 22 edges, heading 6 of 24 (snapped, residual 0°), length 8, from 0.8660254037844386,0.5 to 0.8660254037844386,8.5 · closes nothing
   placed 15,9
   road started at 15,9
   placed 15,0

@@ -12,7 +12,7 @@ chosen: opening 1 (unchosen) wall 1 shell 156 seat 0 annex 0 reach 6 part ''
   placed -4,0
   road started at -4,0
   placed 4,0
-  wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8.660254037844386, from -4.330127018922193,0.5 to 4.330127018922193,0.5
+  wall laid 20 edges, heading 0 of 24 (snapped, residual 0°), length 8.660254037844386, from -4.330127018922193,0.5 to 4.330127018922193,0.5 · closes nothing
   placed 0,6
   placed -8,-8
   house placed 27 cells, 84 wall edges, ridge at 23, seated at 0 (0 from your feet, cut and fill 0)
