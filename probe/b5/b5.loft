@@ -1,0 +1,187 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `B5` — RECOVER THE ROOM FROM ITS CELLS, ASKING THE FUNCTIONS THAT ALREADY EXIST.
+//
+//   loft --interpret --lib lib/ probe/b5/b5.loft        (or `make probe-b5`)
+//
+// ⚠ **NOT A NEW ALGORITHM.** Every step is a call: `promote_close` floods the space
+// (`enclosure_fill`), the floor cells are the region, and `hex_recover::rebuild_construct`
+// turns a region into a form — hull, side headings, lengths, turns, then **verify by
+// re-drawing**. That is `@HB-X45`, gated upstream at 119/119 with `ρ = 0`, and this tree has
+// never called it.
+//
+// ⛔ **THE PRIOR EVIDENCE POINTS BOTH WAYS, WHICH IS WHY IT IS MEASURED.** `probe/pc` found
+// `house_recover` refusing all 18 flooded regions — but that is a **Box** reader, and
+// `@HB-X24` says a lattice polygon cannot be a rectangle. `rebuild_construct` is a **form**
+// reader and was never asked. `octagon.loft` already records the other side: `rebuild` returns
+// turtle forms bound by law J, so a shape whose turns do not sum to twelve twelfths can never
+// come back.
+//
+// Predictions are in `PREDICTION.md` and were written before this ran.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_grid;
+use hex_shape;
+use hex_recover;
+
+const Q0 = 0 - 18;
+const R0 = 0 - 18;
+const WQ = 37;
+const HR = 37;
+const YAW = 1.5707963267948966;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  if !d.rd_ok { println("  ⛔ refused: {d.rd_why}"); return; }
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+}
+
+fn rect(a: float, b: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - a, 0.0 - b, a, 0.0 - b);
+  wall_at(w, a, 0.0 - b, a, b);
+  wall_at(w, a, b, 0.0 - a, b);
+  wall_at(w, 0.0 - a, b, 0.0 - a, 0.0 - b);
+  w
+}
+
+fn a_walled_cell(w: VoxelWorld, oq: &integer, orr: &integer) -> boolean {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in 0..6 {
+        if wall_of(w, q, r, d, (terrain_h(q, r, w) as float) * w.w_unit) != 0 {
+          oq = q; orr = r; return true;
+        }
+      }
+    }
+  }
+  false
+}
+
+// The cells carrying a given material, as the `HexSet` every region reader takes.
+fn cells_of(w: VoxelWorld, mat: integer) -> HexSet {
+  s = hexset_chunk(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if world_ground_cell(w, q, r).h_material == mat { hexset_set(s, q, r, true); }
+    }
+  }
+  s
+}
+
+fn marks_n(w: VoxelWorld) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if edge_is_wall(wall_of(w, q, r, d, 0.0)) { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// ⚠ **THE WALL IS WHERE INSIDE MEETS OUTSIDE** — `WALL_PUSH`'s own definition, asked of the
+// flooded region: every edge with one cell in and one out, against the marks that are there.
+fn boundary_vs_marks(w: VoxelWorld, reg: HexSet, missing: &integer, stray: &integer) -> integer {
+  n = 0;
+  nm = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if !hexset_get(reg, q, r) { continue; }
+        if hexset_get(reg, nq, nr) { continue; }
+        n = n + 1;
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { nm = nm + 1; }
+      }
+    }
+  }
+  missing = nm;
+  // marks that bound no region cell — counted over the canonical three directions
+  ns = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        a_in = hexset_get(reg, q, r);
+        b_in = hexset_get(reg, nq, nr);
+        if a_in == b_in { ns = ns + 1; }
+      }
+    }
+  }
+  stray = ns;
+  n
+}
+
+fn ask(tag: text, w: VoxelWorld, r1: &integer, tried: &integer) {
+  mk = marks_n(w);
+  sq = 0;
+  sr = 0;
+  if !a_walled_cell(w, sq, sr) { println("    {tag}: no wall at all"); return; }
+  p = promote_close(w, sq, sr, FLOOR_MAT);
+  code = if p.pm_code == PM_FLOORED { "floored" } else {
+           if p.pm_code == PM_OPEN { "⛔OPEN" } else {
+             if p.pm_code == PM_ALREADY { "already" } else { "no wall" } } };
+  reg = cells_of(w, FLOOR_MAT);
+  cells = hexset_count(reg);
+  tried = tried + 1;
+  if cells == 0 {
+    println("    {tag}: {code}, no region — marks {mk}");
+    return;
+  }
+  hk = hex_recover::hull_keys(reg);
+  rb = hex_recover::rebuild_construct(reg);
+  reg_ok = if rb.rb_regime == hex_recover::REGIME_R1 { "✅ R1" } else { "⛔ R2" };
+  if rb.rb_regime == hex_recover::REGIME_R1 { r1 = r1 + 1; }
+  miss = 0;
+  stry = 0;
+  bnd = boundary_vs_marks(w, reg, miss, stry);
+  hr2 = house_recover(w, Q0, R0, WQ, HR, 0.0);
+  hs = if hr2.hs_ok { "house {hr2.hs_wid}x{hr2.hs_dep}" } else { "⛔ refused" };
+  println("    {tag}: {code} {cells} cells · marks {mk} · hull {len(hk)} vertices"
+        + " · rebuild_construct {reg_ok} ρ {rb.rb_rho}"
+        + " · ∂ {bnd} edges, {miss} unwalled, {stry} marks bounding nothing"
+        + " · house_recover {hs}");
+}
+
+fn house_world() -> VoxelWorld {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  a = press_verb(s, w, s.es_author, VB_PLACE, "");
+  if !a.ak_ok { println("  ⛔ the control house was refused: {a.ak_why}"); }
+  w
+}
+
+fn main() {
+  println("B5 — recover the room from its CELLS, asking what already exists (plan 26)");
+  println("");
+  println("  ⚠ THE CONTROL FIRST — `place_house`'s own floor, which `house_recover` accepts:");
+  c1 = 0;
+  c2 = 0;
+  ask("a placed house  ", house_world(), c1, c2);
+  println("");
+  println("  the 25 rectangles, each walked as four wall runs:");
+  n1 = 0;
+  nt = 0;
+  for ia in 0..5 {
+    for ib in 0..5 {
+      ask("{4.0 + (ia as float)} x {3.0 + (ib as float)}", rect(4.0 + (ia as float),
+          3.0 + (ib as float)), n1, nt);
+    }
+  }
+  println("");
+  println("  of {nt} rooms, `hex_recover::rebuild_construct` answers R1 for {n1}");
+}

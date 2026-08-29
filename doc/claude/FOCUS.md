@@ -188,11 +188,42 @@ otherwise. ⛔ **And a rectangle is not a `Form`** (`@HB-X24`: no square sublatt
 is a `Plan`/`Box` rasterisation — which is what `place_house` already builds and
 `house_recover` already reads.
 
+### ⛔ AND THE CUT WAS THE WRONG QUESTION — measured 2026-08-29, [`probe/b5`](../../probe/b5/README.md)
+
+**The project owner's algorithm**: *"we know what hexes count as indoors, a wall, a road etc.
+So when we encounter that we just go a random direction to find an edge, then we walk hexes
+that are still inside the same space. This till all hexes in an area are encountered for
+(remainder is outside)."*
+
+⛔ **THAT IS `@HB-X45`, AND EVERY STEP OF IT WAS ALREADY BUILT.** `enclosure_fill` floods the
+space, `touched_cells`/`cells_label` walk it, `flood_outside`/`leak_count` answer *the
+remainder is outside*, and **`hex_recover::rebuild_construct`** turns the region into a form —
+hull, side headings, lengths, turns, then **verify by re-drawing**. Gated upstream at
+**119/119, `ρ = 0`**, published, and **called by nothing in this tree**; `hex_recover` is named
+here exactly once, in a comment.
+
+| over the same 25 rooms | exact | cost |
+|---|---|---|
+| the shipped peel, over the MARKS | 8 of 25 | ~128 `run_edges` a room |
+| `B4x`'s cyclic minimum, over the MARKS | 14 of 25 | 363 … 4834 |
+| ✅ **`rebuild_construct`, over the CELLS** | ✅ **25 of 25**, `ρ = 0` | ✅ **0** |
+
+✅ **And `∂(region)` carries a wall on every edge, in all 25** — *a wall is where inside meets
+outside*, exactly. ⚠ The hull is 5 or 6 vertices rather than 4, and that is the **right**
+answer: `@HB-X24` says there is no square sublattice, so a room is not a lattice rectangle, and
+the form recovered re-draws the cells exactly where *four walls* asks for a shape the lattice
+does not have.
+
+⚠ **The two readers split the problem where the cost does**: a wall that encloses nothing has
+no region, so linework still needs the run reader — and that is the cheap case. ⛔ What is
+missing is a **dependency**: `hex_recover` is not in any manifest here, and
+`hex_form::side_edges` (`@HB-X36`) has no production caller.
+
 ### The order of work
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is answered (`B4x`) and ✅ **the CORNER is CLOSED** (`B4y`, built): 7 of 25 leak → **0**; one chain 7 → 14, one CLOSED chain 7 → 8. ⛔ What is left is the CUT — the shipped peel describes four walls as four in **8 of 25**. ✅ **And `B4x`'s *beats the shipped peel on no fixture* is REFUTED, re-run 2026-08-29**: the rotation-invariant minimum is **strictly better on 14 of 25, equal on 11, never worse**, says *four walls* on **14** against the peel's 8, and is **unique every one of those 14 times**. ⛔ **Its bill, costed 2026-08-29**: like for like on the 5 × 5 room, greedy **128** against the cycle table's **2 454** — **19.2×**, `+2 326` calls at a measured **2.33 ms** each, so **+5.4 s per room**; the table is **~n² per chain**, so a 200-mark room is ~40 000 calls (**93 s**). ✅ **But today's bill is ZERO**: the peel's only production caller is the offline `make plan-view`, and one plan view of `worlds/b4s` makes **exactly 2** `run_edges` calls — the expensive branch needs a closed wall loop and no world in the corpus has one |
+| **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is answered (`B4x`) and ✅ **the CORNER is CLOSED** (`B4y`, built): 7 of 25 leak → **0**; one chain 7 → 14, one CLOSED chain 7 → 8. ⛔ What is left is the CUT — the shipped peel describes four walls as four in **8 of 25**. ✅ **And `B4x`'s *beats the shipped peel on no fixture* is REFUTED, re-run 2026-08-29**: the rotation-invariant minimum is **strictly better on 14 of 25, equal on 11, never worse**, says *four walls* on **14** against the peel's 8, and is **unique every one of those 14 times**. ⛔ **AND THEN THE CUT WAS REFUTED AS THE QUESTION — see below: the CELLS answer 25 of 25 for zero `run_edges`.** Its bill, costed 2026-08-29: like for like on the 5 × 5 room, greedy **128** against the cycle table's **2 454** — **19.2×**, `+2 326` calls at a measured **2.33 ms** each, so **+5.4 s per room**; the table is **~n² per chain**, so a 200-mark room is ~40 000 calls (**93 s**). ✅ **But today's bill is ZERO**: the peel's only production caller is the offline `make plan-view`, and one plan view of `worlds/b4s` makes **exactly 2** `run_edges` calls — the expensive branch needs a closed wall loop and no world in the corpus has one |
 | B2 | the plan view **inside a renderer** | an instrument nobody can open while editing is an instrument nobody reads | not started |
 | B3 | **authoring in the plan** — `pick` from a pointer, not from a script | this is the editor half of "blueprint editor" | `pick` exists headless (`B4b`) |
 | B4 | **the block vocabulary authored here** — wall types, house types, parts, saved to the world's palette | the project owner's actual requirement; see §2 | the storage exists (`PAL_HTYPE`), the authoring does not |

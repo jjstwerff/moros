@@ -3687,3 +3687,48 @@ bill today is two calls** for *four descriptions instead of six* on a domain-B o
 making a room a **stencil**, which is the row that wins all three of
 [FOCUS](../../doc/claude/FOCUS.md)'s columns. ⚠ `hex_form::side_edges` has **no production
 caller in this tree** — only `probe/a0q` — which is where that second option starts.
+
+## ⛔ What `B5` turned up — the cut was the wrong question, and the answer was already published
+
+**`make probe-b5` · [`probe/b5`](../../probe/b5/README.md).** The project owner, reading the
+costing: *"we know what hexes count as indoors, a wall, a road etc. So when we encounter that
+we just go a random direction to find an edge, then we walk hexes that are still inside the
+same space. This till all hexes in an area are encountered for (remainder is outside)."*
+
+⛔ **THAT IS `@HB-X45` AND EVERY STEP OF IT WAS BUILT.** `enclosure_fill` floods the space,
+`touched_cells`/`cells_label` walk it, `flood_outside`/`leak_count` answer *the remainder is
+outside*, and **`hex_recover::rebuild_construct`** turns the region into a form — hull, side
+headings, lengths, turns, then **verify by re-drawing**. Published, gated upstream at 119/119
+with `ρ = 0`, and **called by nothing here**.
+
+| over the same 25 rooms | exact | cost |
+|---|---|---|
+| the shipped peel, over the MARKS | 8 of 25 | ~128 `run_edges` a room |
+| the cyclic minimum, over the MARKS | 14 of 25 | 363 … 4834 |
+| ✅ **`rebuild_construct`, over the CELLS** | ✅ **25 of 25**, `ρ = 0` | ✅ **0**, whole sweep in 8.4 s |
+
+✅ **`∂(region)` carries a wall on every edge in all 25** — *a wall is where inside meets
+outside*, exactly, with 0 … 4 marks bounding nothing (the fork spurs `B4y` leaves).
+⚠ **The hull is 5 or 6 vertices, not 4, and that is the right answer**: `@HB-X24` says there is
+no square sublattice, so *four walls* asks for a shape the lattice does not have — the form
+recovered re-draws the cells exactly.
+
+⚠ **THE INSTRUMENT SEES BOTH ANSWERS**: the control is `place_house`'s own floor — hull 8, R1,
+`ρ = 0`, and `house_recover` **accepts** it as `house 4x5` while refusing all 25 rooms. A Box
+reader saying no to the rooms and yes to the house, on the same fields, is what stops *R1
+everywhere* reading as a reader that says yes to anything.
+
+⛔ **AND THE LESSON IS THE ORDER, WHICH IS NOW A WORKING RULE IN `CLAUDE.md`.** Three cut rules
+were refuted, a cyclic minimum was built and swept, and its bill was costed to the millisecond
+— all against a question two published functions already answered. `hex_recover` is named in
+this tree exactly once, in a comment; `hex_form::side_edges` has no production caller.
+**Search before you design, and before you cost.**
+
+### What it does not settle
+
+- **A room must be floored** — `promote_close` does it and is wired to the wall gesture, but a
+  wall enclosing nothing has no region, so linework still needs the run reader. The two split
+  exactly where the cost does: the expensive case is the one that has a region.
+- **`@HB-X45` is convex-only** — an L-shaped room needs decomposition, unmeasured.
+- **`hex_recover` is not a dependency**, which is a manifest and lock change.
+- **The mesh is unmeasured** — a 5-sided form is 5 fitted quads, still against 200 triangles.

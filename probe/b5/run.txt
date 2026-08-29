@@ -1,0 +1,33 @@
+B5 — recover the room from its CELLS, asking what already exists (plan 26)
+
+  ⚠ THE CONTROL FIRST — `place_house`'s own floor, which `house_recover` accepts:
+    a placed house  : already 27 cells · marks 42 · hull 8 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 38 edges, 0 unwalled, 4 marks bounding nothing · house_recover house 4x5
+
+  the 25 rectangles, each walked as four wall runs:
+    4 x 3: floored 20 cells · marks 35 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 34 edges, 0 unwalled, 1 marks bounding nothing · house_recover ⛔ refused
+    4 x 4: floored 20 cells · marks 36 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 34 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    4 x 5: floored 28 cells · marks 42 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 42 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    4 x 6: floored 40 cells · marks 51 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 50 edges, 0 unwalled, 1 marks bounding nothing · house_recover ⛔ refused
+    4 x 7: floored 36 cells · marks 52 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 50 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    5 x 3: floored 20 cells · marks 35 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 34 edges, 0 unwalled, 1 marks bounding nothing · house_recover ⛔ refused
+    5 x 4: floored 30 cells · marks 44 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 42 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    5 x 5: floored 42 cells · marks 50 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 50 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    5 x 6: floored 40 cells · marks 51 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 50 edges, 0 unwalled, 1 marks bounding nothing · house_recover ⛔ refused
+    5 x 7: floored 54 cells · marks 60 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 58 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    6 x 3: floored 21 cells · marks 42 · hull 5 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 38 edges, 0 unwalled, 4 marks bounding nothing · house_recover ⛔ refused
+    6 x 4: floored 35 cells · marks 46 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 46 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    6 x 5: floored 49 cells · marks 56 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 54 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    6 x 6: floored 49 cells · marks 58 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 54 edges, 0 unwalled, 4 marks bounding nothing · house_recover ⛔ refused
+    6 x 7: floored 63 cells · marks 62 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 62 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    7 x 3: floored 36 cells · marks 51 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 50 edges, 0 unwalled, 1 marks bounding nothing · house_recover ⛔ refused
+    7 x 4: floored 40 cells · marks 52 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 50 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    7 x 5: floored 56 cells · marks 58 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 58 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    7 x 6: floored 72 cells · marks 67 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 66 edges, 0 unwalled, 1 marks bounding nothing · house_recover ⛔ refused
+    7 x 7: floored 72 cells · marks 68 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 66 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    8 x 3: floored 45 cells · marks 54 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 54 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    8 x 4: floored 45 cells · marks 54 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 54 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+    8 x 5: floored 63 cells · marks 64 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 62 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    8 x 6: floored 63 cells · marks 64 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 62 edges, 0 unwalled, 2 marks bounding nothing · house_recover ⛔ refused
+    8 x 7: floored 81 cells · marks 70 · hull 6 vertices · rebuild_construct ✅ R1 ρ 0 · ∂ 70 edges, 0 unwalled, 0 marks bounding nothing · house_recover ⛔ refused
+
+  of 25 rooms, `hex_recover::rebuild_construct` answers R1 for 25

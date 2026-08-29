@@ -214,6 +214,36 @@ renamed (`lavition_ui`, `hex_mesh`) and the skip is now an explicit `CONSUMERS` 
 package is checked unless somebody names it on purpose.** When a guard has an exemption rule,
 ask what the rule exempts *by accident*.
 
+⛔ **YOU ARE NOT WORKING IN A VACUUM. SEARCH BEFORE YOU DESIGN — THE SEARCH COMES FIRST,
+NOT AFTER.** This tree stands on a family of published libraries, a formal core in
+`../hexbody`, and a registry of packages somebody else has already built and gated. **Look
+there before writing anything**, and before *costing* anything: a design priced against an
+alternative that was never searched for is a decision made in ignorance, however carefully the
+numbers were taken.
+
+⚠ **THE SEARCH IS FOUR COMMANDS AND IT TAKES A MINUTE**: `.loft/api/<name>.api` (the public
+surface of every locked dependency, with doc comments), **`.loft/api/_available.api`** (the
+whole installable catalogue — what EXISTS, not just what is installed), `loft api <name>`, and
+`loft search <query>` / `loft info <name>`. Then read the real source under
+`~/.loft/registry/<name>-<version>/`.
+
+⛔ **MEASURED 2026-08-29, AND IT COST MOST OF A SESSION.** *Recover the four walls of a room*
+was taken as an open problem: three cut rules over the MARKS were refuted, a rotation-invariant
+cyclic minimum was built and swept, and its bill was costed exactly — **19.2×**, `~n²` per
+chain, 363 … 4834 `run_edges` a room. **The answer was one call.**
+`hex_recover::rebuild_construct` floods nothing and searches nothing: it takes the region's
+convex hull, reads the side headings, builds the form and **verifies it by re-drawing** —
+`@HB-X45`, gated upstream at **119/119 with `ρ = 0`**, published, sitting in the registry
+unused. Asked of the same 25 rooms it answers **R1 on all 25 for ZERO `run_edges`**, where the
+best mark-side rule is exact on 14 ([`probe/b5`](probe/b5/README.md)).
+
+⚠ **AND THE TELL WAS THE ORDER, NOT THE OMISSION.** The library WAS searched — after the
+alternative had been designed, built and priced. `hex_recover` is named in this tree exactly
+once, in a comment, and `hex_form::side_edges` — `@HB-X36`'s *a corner edge is claimed exactly
+once* — has no production caller at all. **Two published answers to the question being
+re-derived were one grep away the whole time.** When something looks like an open problem,
+that feeling is the cue to go looking, not to start building.
+
 ⛔ **THE ALGORITHMS ARE NEVER OURS. This is the ground rule, and it outranks the ones
 below it.** lavition is a universal editor; the `hex_*` family is where geometry lives. The
 editor **consumes** those algorithms and never re-derives one — not in `src/`, not in

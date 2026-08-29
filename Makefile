@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -947,6 +947,16 @@ probe-b4x:
 # ⚠ Takes minutes. Not in `make fast`; its subject is a design decision.
 probe-b4y:
 	@loft --interpret --lib lib/ probe/b4y/b4y.loft 2>/dev/null | sed -n '/^B4y/,$$p'
+
+# B5 (plan 26) — THE ROOM FROM ITS CELLS. The project owner's algorithm, which turned out to
+# be `@HB-X45` and already built: flood the space, hand the region to
+# `hex_recover::rebuild_construct`, which proposes a form from the hull and VERIFIES it by
+# re-drawing. ✅ 25 of 25 rooms answer R1 with rho 0 and ZERO `run_edges`, where the best
+# mark-side cut is exact on 14 of 25 at 363..4834 calls each. ⚠ The control is `place_house`'s
+# own floor, which the Box reader accepts and which refuses all 25 rooms — so the run is not a
+# reader saying yes to everything. Seconds.
+probe-b5:
+	@loft --interpret --lib lib/ probe/b5/b5.loft 2>/dev/null | sed -n '/^B5/,$$p'
 
 # WP (WALL_PUSH) — the four probes of the wall-push design. ⛔ Two of the first draft's rules
 # are REFUTED: a diagonal wall moves 3.6x FURTHER per step, not 6.25x less (the line spacing
