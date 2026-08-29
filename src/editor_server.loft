@@ -1801,14 +1801,14 @@ fn cart_send(srv: Server, casm: hex_rig::Assembly, cx: float, cz: float,
 // vanishes and the fit separates into two independent one-dimensional ones.
 fn cell_normal(cq: integer, cr: integer, wld: VoxelWorld) -> Vec3 {
   c0 = hex_to_world(cq, cr, 0);
-  h0 = (terrain_h(cq, cr, wld) as float) * HEIGHT_SCALE;
+  h0 = (terrain_h(cq, cr, wld) as float) * hex_proj::HEIGHT_SCALE;
   sxx = 0.0; szz = 0.0; sxy = 0.0; szy = 0.0;
   for nd in 0..6 {
     (nnq, nnr) = hex_grid::hex_neighbor(cq, cr, nd);
     nw = hex_to_world(nnq, nnr, 0);
     dx = nw.x - c0.x;
     dz = nw.z - c0.z;
-    dy = (terrain_h(nnq, nnr, wld) as float) * HEIGHT_SCALE - h0;
+    dy = (terrain_h(nnq, nnr, wld) as float) * hex_proj::HEIGHT_SCALE - h0;
     sxx = sxx + dx * dx;
     szz = szz + dz * dz;
     sxy = sxy + dx * dy;
@@ -2520,7 +2520,7 @@ fn skin_check(sc_w: VoxelWorld) -> hex_part::SkinCheck {
   }
   sc_box = mesh_aabb(sc_gl.gr_mesh);
   hex_part::skin_covers(
-    hex_part::part_box(sc_w, hex_grid::SQRT3 * hex_grid::HEX_SIZE, HEIGHT_SCALE, W_UNIT),
+    hex_part::part_box(sc_w, hex_grid::SQRT3 * hex_grid::HEX_SIZE, hex_proj::HEIGHT_SCALE, W_UNIT),
     hex_part::PartBox {
       pb_x0: sc_box.aabb_min.x, pb_y0: sc_box.aabb_min.y, pb_z0: sc_box.aabb_min.z,
       pb_x1: sc_box.aabb_max.x, pb_y1: sc_box.aabb_max.y, pb_z1: sc_box.aabb_max.z },
@@ -2863,14 +2863,14 @@ fn cam_clear_here(x: float, z: float, eye: float, wld: VoxelWorld) -> float {
 // its smooth interpolation, because a gradient over the cell ring does not want a
 // within-cell interpolation at each sample.
 fn surface_h_at(q: integer, r: integer, ref: float, wld: VoxelWorld) -> float {
-  sf = hex_voxel::world_surface(wld, q, r, ref / HEIGHT_SCALE ?? 0.0);
+  sf = hex_voxel::world_surface(wld, q, r, ref / hex_proj::HEIGHT_SCALE ?? 0.0);
   // The same correction as `ground_under`'s, and it must be the same one: the camera
   // sampling a different surface from the feet is the disagreement this file's
   // ground sampler exists to avoid.
   if sf.sf_units < 0 || hex_mesh::on_the_ground(wld, q, r, sf) {
-    return (terrain_h(q, r, wld) as float) * HEIGHT_SCALE;
+    return (terrain_h(q, r, wld) as float) * hex_proj::HEIGHT_SCALE;
   }
-  (sf.sf_units as float) * HEIGHT_SCALE
+  (sf.sf_units as float) * hex_proj::HEIGHT_SCALE
 }
 
 // How far the eye may travel along the boom before it is inside the ground — or
@@ -2931,7 +2931,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
     (wnq, wnr) = hex_grid::hex_neighbor(wq, wr, wd);
     wh = terrain_h(wq, wr, wld);
     if terrain_h(wnq, wnr, wld) > wh { wh = terrain_h(wnq, wnr, wld); }
-    if oy + want * wt * sp < ((wh + hex_editor::STOREY_H) as float) * HEIGHT_SCALE {
+    if oy + want * wt * sp < ((wh + hex_editor::STOREY_H) as float) * hex_proj::HEIGHT_SCALE {
       // ⚠ THE WALKER'S SKIN, BORROWED BY THE CAMERA ON PURPOSE. This is the boom's
       // sweep, not a walk — but the clearance it wants off a wall is the same 1 cm,
       // and a camera-local copy would be a second constant nobody could keep equal.
@@ -4885,7 +4885,7 @@ fn main() {
                 // chunks holding the mesh they had before the cut.
                 mark_dirty(dirty, rhx_q, rhx_r,
                            hex_editor::ROAD_HALF + hex_editor::PEAK_R);
-                wk.wk_y = (road_h as float) * HEIGHT_SCALE;
+                wk.wk_y = (road_h as float) * hex_proj::HEIGHT_SCALE;
                 // ⚠ AND WHETHER THE RUN COULD BE HELD TO ITS LIMIT AT ALL — `A4`'s
                 // refusal, on the gesture that can now reach it.
                 rd_owed = hex_editor::slope_owed(wld, rhx_q, rhx_r);
@@ -4897,7 +4897,7 @@ fn main() {
                 }
               }
               if wk.wk_levelling {
-                wk.wk_y = (wk.wk_level_h as float) * HEIGHT_SCALE;
+                wk.wk_y = (wk.wk_level_h as float) * hex_proj::HEIGHT_SCALE;
               } else {
                 wk.wk_y = hex_mesh::ground_under(wld, wk.wk_x, wk.wk_z, wk.wk_y);
               }
@@ -4982,13 +4982,13 @@ fn main() {
           // pose from a later tick, which is the whole failure this replaces.
           sn_n = sn_n + 1;
           (sn_hx_q, sn_hx_r) = px_to_hex(wk.wk_x, wk.wk_z);
-          sn_ref = hex_editor::walk_h(sn_hx_q, sn_hx_r, wld, wk.wk_y / HEIGHT_SCALE ?? 0.0);
+          sn_ref = hex_editor::walk_h(sn_hx_q, sn_hx_r, wld, wk.wk_y / hex_proj::HEIGHT_SCALE ?? 0.0);
           sn_sf = hex_voxel::world_surface(wld, sn_hx_q, sn_hx_r,
-                                           wk.wk_y / HEIGHT_SCALE ?? 0.0);
+                                           wk.wk_y / hex_proj::HEIGHT_SCALE ?? 0.0);
           sn_txt = "snapshot {sn_n}\n"
             + "character  x {wk.wk_x}  z {wk.wk_z}  y {wk.wk_y}  yaw {wk.wk_yaw}\n"
             + "cell       {sn_hx_q},{sn_hx_r}\n"
-            + "surface    height {sn_sf.sf_units} units ({(sn_sf.sf_units as float) * HEIGHT_SCALE} wu)"
+            + "surface    height {sn_sf.sf_units} units ({(sn_sf.sf_units as float) * hex_proj::HEIGHT_SCALE} wu)"
             + "  layer {sn_sf.sf_layer}  occupied {sn_sf.sf_occ}  smooth {sn_sf.sf_smooth}\n"
             + "reference  {sn_ref} units — what every 'which layer' question is asked with\n"
             + "outdoors   {terrain_h(sn_hx_q, sn_hx_r, wld)} units (the GROUND label)\n"
@@ -6078,7 +6078,7 @@ fn main() {
             println("editor: stencil refused — {fit_why(rfit)}");
           } else {
           (shx2_q, shx2_r) = px_to_hex(wk.wk_x, wk.wk_z);
-          anch = (wk.wk_y / HEIGHT_SCALE + 0.5) as integer ?? 0;
+          anch = (wk.wk_y / hex_proj::HEIGHT_SCALE + 0.5) as integer ?? 0;
           if stamp_part != "" && in_part {
             // ── THE GESTURE THAT MAKES A REFERENCE — plan 17 `A7.3f` ────────
             //
@@ -6254,7 +6254,7 @@ fn main() {
             // as levelling freezes its floor: a road laid while walking uphill
             // should CUT into the hill rather than ride up it, which is what
             // makes it a road and not a painted stripe.
-            rvf = wk.wk_y / HEIGHT_SCALE ?? 0.0;
+            rvf = wk.wk_y / hex_proj::HEIGHT_SCALE ?? 0.0;
             rres0 = 0.0;
             road_h = hex_editor::freeze_grade(rvf, rres0);
             road_stalled = false;
@@ -6296,7 +6296,7 @@ fn main() {
           // moves of the level STATE MACHINE, and the page has the same key with no
           // machine behind it at all. What is left here is the sentence, which is
           // this driver's: `level_on` answers the residual it quantised away.
-          lvf = wk.wk_y / HEIGHT_SCALE ?? 0.0;
+          lvf = wk.wk_y / hex_proj::HEIGHT_SCALE ?? 0.0;
           if (ev.payload as integer ?? 0) != 0 {
             level_warned = false;
             lres0 = 0.0;
@@ -6536,8 +6536,8 @@ fn main() {
       // ease and the rate cap below are untouched, which is what makes walking
       // through a doorway a drift rather than a snap.
       cam_shelter = hex_editor::shelter_at(wld, sess.es_roofs, cpx, cpz,
-                                           (cpy / HEIGHT_SCALE ?? 0.0) as integer,
-                                           HEIGHT_SCALE);
+                                           (cpy / hex_proj::HEIGHT_SCALE ?? 0.0) as integer,
+                                           hex_proj::HEIGHT_SCALE);
       // ── ⚠ THE ROOM ALL ROUND, WHICH IS NOT THE RAY THE BOOM IS ON ────────────
       //
       // `cam_free` answers *"how far back can the eye go from here"*, and a boom
