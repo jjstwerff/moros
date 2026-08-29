@@ -335,7 +335,18 @@ the leak and leaves the fork's SPUR — so the marking keeps a junction. The min
 broken chains too, by taking the linear minimum per chain rather than by having a cycle to
 work on.
 
-⛔ **THE BILL IS THE DECISION, NOT THE ANSWER.** **363 … 4834 `run_edges`** per window against
-the peel's ~128 — up to **38×** — and `loft test`'s 300-second deadline is what a previous
-`B4x` row was blown by. *Fewest runs* is now a measured, unique, never-worse answer with a
-price on it, which is a different question from whether it should ship.
+⛔ **THE BILL IS THE DECISION, NOT THE ANSWER — and the first ratio quoted here was wrong.**
+*Up to 38×* divided the cycle's cost on the **largest** rectangle by the greedy's on a
+**different, smaller** one. Measured like for like on the 5 × 5 closed room: greedy **128**,
+cycle **2 454** — **19.2×**, `+2 326` calls, and at a measured **2.33 ms** a call that is
+**+5.4 s per room**. The table is **~n² per chain** (50 marks → 2 454, 70 → 4 834) against the
+greedy's ~n · d, so a 200-mark room would be ~40 000 calls — **93 s in one window**.
+
+✅ **AND TODAY'S BILL IS ZERO.** The peel has two production call sites, both in `plan_svg`,
+whose only production caller is the offline `make plan-view`. One plan view of `worlds/b4s`
+(107 marks, a house, a tower and a wall) makes **exactly 2** `run_edges` calls — the expensive
+branch needs a closed wall loop, and no world in the corpus has one.
+
+⛔ **AND THE WALL CLOCK IS THE WRONG INSTRUMENT HERE.** The identical `make plan-view` took
+**133 s** then **5.0 s** — cold compile against warm — and a differential built on the cold
+number blamed 94 % of the command on the peel, which is wrong by three orders of magnitude.

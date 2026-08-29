@@ -3617,7 +3617,7 @@ world it is a claim about.
 | strictly fewer pieces | ✅ **14 of 25** · equal 11 · ⛔ **worse 0** |
 | where it says four, it is | ✅ **unique — all 14** |
 | marks left over, either rule | **0** everywhere |
-| the bill | ⛔ **363 … 4834 `run_edges`** against the peel's ~128 — up to **38×** |
+| the bill | ⛔ **363 … 4834 `run_edges`** for the cycle table · see the costing below — the *up to 38×* first written here was **not like-for-like** |
 
 ⚠ **THE PREDICTION SAID 23 LOOPS AND FOUR WALLS ON 23. THERE ARE 8 LOOPS.** `B4y`'s add half
 closes the leak and leaves the fork's **spur**, so the marking keeps a junction — one chain
@@ -3631,6 +3631,50 @@ measured before `wall_corner_close` existed: *7 of 25 one closed chain* is **8**
 *80 breaks* is **60**. Recorded rather than re-blessed — the same trap `probe/b4y` was
 restructured to avoid, one probe over.
 
+### ⚠ What the cut would actually cost — measured 2026-08-29, and the first ratio was wrong
+
+⛔ **`up to 38×` WAS NOT A LIKE-FOR-LIKE RATIO.** It divided the cycle table's cost on the
+**largest** rectangle (8 × 7, 70 marks → 4 834) by the greedy's cost on a **different, smaller**
+one (5 × 5, 50 marks → 128). The greedy's per-rectangle cost over the 25 was never measured.
+The one pair measured by one instrument on one fixture is the 5 × 5 closed room:
+
+| on the 5 × 5 closed room, 50 marks | `run_edges` | at 2.33 ms a call |
+|---|---|---|
+| greedy longest-first, two-way, one seed | **128** | 0.30 s |
+| fewest runs, shortest path, one seed | 1 012 | 2.4 s |
+| the rotation-invariant cycle table | **2 454** | 5.7 s |
+
+→ **19.2×**, or **+2 326 calls ≈ +5.4 s per room**.
+
+**The unit.** One `run_edges` builds a `hex_way` track and a halfplane surface, then scans the
+window — `wq × hr × 6` edge tests, 8 214 on a 37 × 37 — each doing a neighbour lookup, a
+blocked test, two projections and two distances. **Measured at 2.33 ms** (1 000 calls in
+3.77 s against a 1.44 s baseline, interpreter, box under load).
+
+**The scaling law is exact enough to state.** The table is one entry per `(start, span)` pair,
+so it is **~n² per chain** in that chain's marks — 50 marks → 2 454 (50² = 2 500), 70 marks →
+4 834 (70² = 4 900). The greedy descends once per description, so it is **~n · d**. For a room
+of 200 marks that is ~800 calls against ~40 000: **1.9 s against 93 s**, in one window.
+
+### ✅ And where it lands makes today's bill ZERO
+
+`run_within` and `run_chain_within` have exactly **two** production call sites, both inside
+`plan_svg`; `plan_svg` has exactly **one** production caller, `src/plan_view.loft` — the
+offline `make plan-view`. **Not the mesher, not a chunk re-mesh, not the server, not the
+browser client.**
+
+✅ **AND THE BASE RATE ON A REAL WORLD IS TWO CALLS.** One plan view of `worlds/b4s` — 1 089
+cells, 107 marks, a house and a tower and a wall — makes **exactly 2** `run_edges` calls,
+counted directly. The peel is about 5 ms of a 5 s command. **The expensive branch is only
+reached by a closed wall loop, and no world in the corpus contains one** — the same fact as
+*not one of the 46 scripts closes an enclosure with `run` or `aim`*.
+
+⛔ **AND THE WALL CLOCK IS THE WRONG INSTRUMENT, DEMONSTRATED ON MYSELF.** The same
+`make plan-view WORLD=b4s` took **133 s** and then **5.0 s** — cold compile against warm — and
+a differential built on the cold number attributed 94 % of the command to the peel, which is
+false by three orders of magnitude. `run_edges` counts are machine-independent; seconds are
+not.
+
 ### ⛔ So the cut is a PRICED decision now, and it is not obviously worth taking
 
 `FORMAL_CORE`'s `@HB-X36` row says in bold: *recover the four walls of a room* is **already
@@ -3638,7 +3682,8 @@ solved and gated upstream** — `hex_form::side_edges` partitions a `Plan`'s bou
 CELLS, exactly, and the row ends *"read this row before writing a cut rule."* ⚠ **The reason
 this tree needs a cut rule at all is that a room walked as four linework runs is not a form**,
 and no better cut changes that: `@HB-X36`, `@HB-X45` and `@HB-X62` stay out of reach either
-way. So the choice is between paying up to 38× for *four descriptions instead of six* on a
-domain-B object, and making a room a **stencil**, which is the row that wins all three of
+way. So the choice is between paying **19× on a closed room, in an offline command whose
+bill today is two calls** for *four descriptions instead of six* on a domain-B object, and
+making a room a **stencil**, which is the row that wins all three of
 [FOCUS](../../doc/claude/FOCUS.md)'s columns. ⚠ `hex_form::side_edges` has **no production
 caller in this tree** — only `probe/a0q` — which is where that second option starts.
