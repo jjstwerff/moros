@@ -38,6 +38,7 @@ use hex_shape;
 // `vec_n2_4` — the lattice's own squared distance, which `disc_holds` asks and
 // `hex_shape::arc_fill` is built from. Plan 26 `B4h`.
 use hex_form;
+use hex_recover;
 // The octagonal tower's shape — plan 26 `B4l`. The SHAPE lives there and has no
 // world; the GESTURE lives here and has one.
 use self::octagon;
@@ -966,6 +967,33 @@ pub fn marks_unclaimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
 // which is why the peel is this step and not that one.
 
 // A house owns its boundary, the mitre one cell past it, and its own floor.
+// What a REGION description accounts for — its cells, and the boundary edges between a
+// cell of it and one outside — plan 26 `B5`.
+//
+// ⚠ **`∂` IS THE DEFINITION, NOT A CHOICE.** `WALL_PUSH`'s law: a wall is where inside meets
+// outside, so the marks a region explains are exactly the edges its membership changes
+// across. Measured in [`probe/b5`](../../../probe/b5/README.md): every one of them carries a
+// wall, on all 25 rooms.
+pub fn claim_region(cl: Claims, cells: HexSet, q0: integer, r0: integer, wq: integer,
+                    hr: integer) -> integer {
+  cg_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if hexset_get(cells, q, r) && !hexset_get(cl.cl_cells, q, r) {
+        hexset_set(cl.cl_cells, q, r, true);
+        cg_n = cg_n + 1;
+      }
+      for cg_d in [4, 5, 0] {
+        (cg_nq, cg_nr) = hex_grid::hex_neighbor(q, r, cg_d);
+        if hexset_get(cells, q, r) != hexset_get(cells, cg_nq, cg_nr) {
+          cg_n = cg_n + claim_edge(cl, q, r, cg_nq, cg_nr);
+        }
+      }
+    }
+  }
+  cg_n
+}
+
 pub fn claim_house(cl: Claims, b: Box, q0: integer, r0: integer, wq: integer,
                    hr: integer) -> integer {
   ch_n = 0;
@@ -2656,6 +2684,196 @@ pub fn house_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: inte
   HouseRead { hs_ok: true, hs_why: "", hs_cq: bcq, hs_cr: bcr, hs_wid: bwid,
               hs_dep: bdep, hs_rot: brot, hs_class: klass, hs_cells: ncell,
               hs_stray: stray, hs_missing: missing, hs_other: other }
+}
+
+// ── ⛔ THE ROOM, RECOVERED FROM ITS CELLS — plan 26 `B5` ───────────────────
+//
+// ⛔ **THE DESCRIPTION OF A ROOM COMES FROM ITS CELLS, NOT FROM ITS MARKS**, and that is
+// `@HB-X45` rather than anything of ours: `hex_recover::rebuild_construct` takes the
+// region, reads its convex hull, builds the form from the side headings and **verifies it
+// by re-drawing**. Gated upstream at 119/119 with `ρ = 0`, published, and unused here for
+// months while a cut over the MARKS was designed, built and costed against the same
+// question. [`probe/b5`](../../../probe/b5/README.md).
+//
+// | over 25 rooms walked as four wall runs | exact | cost |
+// |---|---|---|
+// | the shipped peel, over the marks | 8 of 25 | ~128 `run_edges` a room |
+// | the cyclic minimum, over the marks | 14 of 25 | 363 … 4834 |
+// | **this**, over the cells | **25 of 25**, `ρ = 0` | **0** |
+//
+// ⚠ **IT IS ASKED AFTER THE HOUSE READER AND ANSWERS WHERE THAT ONE CANNOT.**
+// `house_recover` recovers a `Box` rasterisation and refuses all 25 — `@HB-X24`, there is
+// no square sublattice, so a flood's region is not a rectangle. The form reader accepts
+// every one of them, at **5 or 6 sides**, which is the shape the lattice actually has.
+//
+// ⚠ **AND A ROOM MUST BE FLOORED FIRST.** `promote_close` does it and is wired to the wall
+// gesture; a wall that encloses nothing has no region at all, so linework still falls
+// through to the run readers — which is the cheap case.
+pub struct RegionRead {
+  rg_ok:      boolean,
+  rg_why:     text,
+  rg_cells:   integer,      // the region's own cell count
+  rg_sides:   integer,      // the recovered form's sides
+  rg_rho:     integer,      // 0 in R1 — the residual the reader reports
+  rg_stray:   integer,      // marks touching the region its boundary does not want
+  rg_missing: integer,      // boundary edges carrying no wall
+  rg_other:   integer,      // marks nowhere near it — somebody else's
+  rg_px:      vector<float>,
+  rg_pz:      vector<float>,
+  // ⚠ **THE REGION ITSELF, BECAUSE A CLAIM CANNOT BE REBUILT FROM PARAMETERS.** A run has
+  // two endpoints and a house a `Box`; an arbitrary form has neither, so the caller that
+  // claims what this description accounts for is handed the set rather than asked to
+  // re-derive it — *two derivations of one quantity* is the shape this tree has been bitten
+  // by four times.
+  rg_set:     HexSet,
+}
+
+fn region_no(why: text, n: integer) -> RegionRead {
+  RegionRead { rg_ok: false, rg_why: why, rg_cells: n, rg_sides: 0, rg_rho: 0,
+               rg_stray: 0, rg_missing: 0, rg_other: 0, rg_px: [], rg_pz: [],
+               rg_set: hexset_chunk(0, 0, 1, 1) }
+}
+
+pub fn region_recover(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                      hr: integer, ref: float) -> RegionRead {
+  region_recover_claimed(wld, q0, r0, wq, hr, ref, claims_new(q0, r0, wq, hr))
+}
+
+pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                              hr: integer, ref: float, cl: Claims) -> RegionRead {
+  rg_floor = hexset_chunk(q0, r0, wq, hr);
+  rg_lq = 0; rg_lr = 0;
+  rg_n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if hexset_get(cl.cl_cells, q, r) { continue; }
+      rg_li = edge_layer(wld, q, r, ref);
+      if rg_li < 0 { continue; }
+      if (hex_voxel::world_cell(wld, q, r, rg_li).h_material as integer ?? 0) != FLOOR_MAT {
+        continue;
+      }
+      hexset_set(rg_floor, q, r, true);
+      if rg_n == 0 { rg_lq = q; rg_lr = r; }
+      if q < rg_lq { rg_lq = q; }
+      if r < rg_lr { rg_lr = r; }
+      rg_n = rg_n + 1;
+    }
+  }
+  if rg_n == 0 { return region_no("no floor cells in this window", 0); }
+
+  rb = hex_recover::rebuild_construct(rg_floor);
+  if rb.rb_regime != hex_recover::REGIME_R1 {
+    return region_no("{rg_n} floor cells, and no form re-draws them (residual {rb.rb_rho})",
+                     rg_n);
+  }
+
+  // ⚠ **THE FORM COMES BACK CANONICAL, SO ITS PLACEMENT HAS TO BE RECOVERED AND CHECKED.**
+  // `rebuild_construct` compares translation-normalised digests, so *where* it stood is not
+  // in the answer.
+  //
+  // ⛔ **AND THE OFFSET IS A LATTICE VECTOR, NOT AN AXIAL ONE.** The first version of this
+  // aligned bounding-box minima in `(q, r)` and every room came back *"the form re-draws
+  // them, and not where they stand"* — because the grid is **odd-r**, so shifting `r` by an
+  // odd number moves the row half a cell sideways and `(q + dq, r + dr)` is not a
+  // translation at all. `hex_field::lattice_k/lattice_m` is the frame where it is one, and
+  // `lattice_to_cell` comes back.
+  //
+  // ⚠ **The anchor is the lexicographic minimum by `(m, k)`** — any canonical cell of the
+  // shape does, because a translation moves them all by the same vector; what makes it safe
+  // is the comparison below, not the choice.
+  rg_a = hexset_chunk(0 - 40, 0 - 40, 81, 81);
+  hex_form::form_fill(rb.rb_form, 0, 0, rg_a);
+  rg_ak = 0; rg_am = 0;
+  rg_m = 0;
+  for r in 0 - 40..41 {
+    for q in 0 - 40..41 {
+      if !hexset_get(rg_a, q, r) { continue; }
+      rg_k = hex_field::lattice_k(q, r);
+      rg_mm = hex_field::lattice_m(q, r);
+      if rg_m == 0 || rg_mm < rg_am || (rg_mm == rg_am && rg_k < rg_ak) {
+        rg_ak = rg_k; rg_am = rg_mm;
+      }
+      rg_m = rg_m + 1;
+    }
+  }
+  if rg_m == 0 { return region_no("the recovered form draws nothing", rg_n); }
+  if rg_m != rg_n {
+    return region_no("{rg_n} floor cells against a form of {rg_m} — the redraw is a "
+                   + "different size", rg_n);
+  }
+  rg_bk = 0; rg_bm = 0;
+  rg_seen = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      if !hexset_get(rg_floor, q, r) { continue; }
+      rg_k2 = hex_field::lattice_k(q, r);
+      rg_m2 = hex_field::lattice_m(q, r);
+      if rg_seen == 0 || rg_m2 < rg_bm || (rg_m2 == rg_bm && rg_k2 < rg_bk) {
+        rg_bk = rg_k2; rg_bm = rg_m2;
+      }
+      rg_seen = rg_seen + 1;
+    }
+  }
+  rg_dk = rg_bk - rg_ak;
+  rg_dm = rg_bm - rg_am;
+  // …and now every cell of the redraw, translated, must be one of the region's own.
+  for r in 0 - 40..41 {
+    for q in 0 - 40..41 {
+      if !hexset_get(rg_a, q, r) { continue; }
+      (rg_tq, rg_tr) = hex_field::lattice_to_cell(hex_field::lattice_k(q, r) + rg_dk,
+                                                  hex_field::lattice_m(q, r) + rg_dm);
+      if !hexset_get(rg_floor, rg_tq, rg_tr) {
+        return region_no("{rg_n} floor cells: the form re-draws them, and not where they "
+                       + "stand", rg_n);
+      }
+    }
+  }
+
+  // the outline, in world units — `@HB-X45`'s *every polygon vertex is a hex centre*, so a
+  // vertex IS a cell, and one that is not the region's is a frame this code does not hold.
+  rg_pk = hex_form::form_poly_k(rb.rb_form);
+  rg_pm = hex_form::form_poly_m(rb.rb_form);
+  rg_px: vector<float> = [];
+  rg_pz: vector<float> = [];
+  for i in 0..len(rg_pk) {
+    (rg_cq, rg_cr) = hex_field::lattice_to_cell((rg_pk[i] ?? 0) + rg_dk,
+                                                (rg_pm[i] ?? 0) + rg_dm);
+    if !hexset_get(rg_floor, rg_cq, rg_cr) {
+      return region_no("{rg_n} floor cells: a corner of the recovered form is not one of "
+                     + "them", rg_n);
+    }
+    (rg_x, rg_z) = hex_grid::hex_to_px(rg_cq, rg_cr);
+    rg_px += [rg_x];
+    rg_pz += [rg_z];
+  }
+
+  // ⚠ **AND WHAT THE REGION'S OWN BOUNDARY MAKES OF THE MARKS** — the house reader's
+  // grammar, one shape over: `missing` is a boundary edge with no wall on it (the
+  // description's own property), `stray` a mark touching the region that its boundary does
+  // not want, and `other` a mark nowhere near it, which is somebody else's business.
+  rg_miss = 0;
+  rg_stray = 0;
+  rg_other = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for rg_d in [4, 5, 0] {
+        (rg_nq, rg_nr) = hex_grid::hex_neighbor(q, r, rg_d);
+        rg_want = hexset_get(rg_floor, q, r) != hexset_get(rg_floor, rg_nq, rg_nr);
+        rg_got = edge_is_wall(wall_of(wld, q, r, rg_d, ref));
+        if rg_want && !rg_got { rg_miss = rg_miss + 1; }
+        if !rg_got { continue; }
+        if rg_want { continue; }
+        if edge_mat(cl.cl_edges, q, r, rg_nq, rg_nr) != 0 { continue; }
+        if hexset_get(rg_floor, q, r) || hexset_get(rg_floor, rg_nq, rg_nr) {
+          rg_stray = rg_stray + 1;
+        } else { rg_other = rg_other + 1; }
+      }
+    }
+  }
+  RegionRead { rg_ok: true, rg_why: "", rg_cells: rg_n,
+               rg_sides: hex_form::form_sides(rb.rb_form), rg_rho: rb.rb_rho,
+               rg_stray: rg_stray, rg_missing: rg_miss, rg_other: rg_other,
+               rg_px: rg_px, rg_pz: rg_pz, rg_set: rg_floor }
 }
 
 // The one BODY every mark in this window declares, or `""` when they do not agree.

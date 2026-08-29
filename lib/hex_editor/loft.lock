@@ -34,11 +34,10 @@ source = "registry"
 
 [[package]]
 name = "hex_roof"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_roof-v0.1.0/hex_roof-0.1.0.tar.gz"
-sha256 = "88119b2e3922993c1c8f21282024c695c5ecfef2e16d076042b2f89df830fde3"
+version = "0.1.1"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_roof-v0.1.1/hex_roof-0.1.1.tar.gz"
+sha256 = "891c4b3a022c369e805860caf3600a350ef0bc00101a00f419738375cb939852"
 source = "registry"
-deps = ["hex_field", "hex_way"]
 
 [[package]]
 name = "hex_way"
@@ -69,5 +68,13 @@ name = "hex_place"
 version = "0.1.0"
 url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_place-v0.1.0/hex_place-0.1.0.tar.gz"
 sha256 = "f56ebeed07e81c6f7702ab867c72494c19ee5ddfeaf639343f12f4cf68a5fd67"
+source = "registry"
+deps = ["hex_field", "hex_form"]
+
+[[package]]
+name = "hex_recover"
+version = "0.1.0"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_recover-v0.1.0/hex_recover-0.1.0.tar.gz"
+sha256 = "e60c77bd8d15de12cc7e3ef1a0b549f5449fb80e925257246325f874a0836b7e"
 source = "registry"
 deps = ["hex_field", "hex_form"]

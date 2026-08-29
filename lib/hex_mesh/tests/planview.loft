@@ -1914,3 +1914,86 @@ fn test_a_set_that_explains_only_part_is_not_drawn() {
   assert(cap.contains("({plan_tally(svg).pt_marks} marks)"),
          "the refusal does not count every mark in the field: {cap}");
 }
+
+// ── ⛔ A ROOM WALKED AS FOUR WALL RUNS — plan 26 `B5` ──────────────────────
+//
+// ⛔ **THE BOX READER REFUSES EVERY ONE OF THESE AND THE FORM READER ANSWERS THEM ALL.**
+// `@HB-X24` — there is no square sublattice, so a flood's region is not a rectangle. The
+// description comes from the CELLS via `hex_recover::rebuild_construct`, which is
+// `@HB-X45`, gated upstream at 119/119. [`probe/b5`](../../../probe/b5/README.md) is the
+// measurement: 25 of 25 at `ρ = 0` for zero `run_edges`.
+//
+// ⚠ **THIS IS THE *IS IT CALLED* TEST.** The reader was green in `hex_editor`'s own suite
+// before the picture asked it anything — this tree's commonest defect — so what is asserted
+// here is that the PICTURE carries it.
+fn room_world(a: float, b: float) -> VoxelWorld {
+  w = flat_world();
+  for x in 0..4 {
+    x0 = if x == 0 { 0.0 - a } else { if x == 1 { a } else { if x == 2 { a } else { 0.0 - a } } };
+    z0 = if x == 0 { 0.0 - b } else { if x == 1 { 0.0 - b } else { if x == 2 { b } else { b } } };
+    x1 = if x == 0 { a } else { if x == 1 { a } else { if x == 2 { 0.0 - a } else { 0.0 - a } } };
+    z1 = if x == 0 { 0.0 - b } else { if x == 1 { b } else { if x == 2 { b } else { 0.0 - b } } };
+    d = hex_editor::run_between(x0, z0, x1, z1, hex_editor::WALL_MAT);
+    assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+    rs = hex_editor::WallRuns { items: [] };
+    m = 0;
+    hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  }
+  sq = 0;
+  sr = 0;
+  for r in 0 - 10..14 {
+    for q in 0 - 10..14 {
+      for wd in 0..6 {
+        if hex_editor::wall_of(w, q, r, wd,
+             (hex_editor::terrain_h(q, r, w) as float) * w.w_unit) != 0 && sq == 0 && sr == 0 {
+          sq = q; sr = r;
+        }
+      }
+    }
+  }
+  p = hex_editor::promote_close(w, sq, sr, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_FLOORED, "the fixture did not floor: {p.pm_why}");
+  w
+}
+
+fn test_a_walked_room_is_drawn_as_a_region() {
+  w = room_world(3.0, 3.0);
+  svg = hex_mesh::plan_svg(w, 0 - 10, 0 - 10, 14, 14, 0.0, "room");
+  assert(tag_count(svg, "<polygon class='region'") == 1,
+         "the picture draws one region, got {tag_count(svg, \"<polygon class='region'\")}");
+  t = hex_mesh::plan_tally(svg);
+  // ⚠ **TWO DESCRIPTIONS, AND THE SECOND ONE IS HONEST.** The region explains the room; the
+  // run is the SPUR that `B4y` leaves at a fork corner — a mark bounding nothing, which the
+  // region's boundary correctly does not want and which the run reader then names for what
+  // it is. Measured 0…4 of them per room in `probe/b5`.
+  assert(t.pt_descs == 2, "the picture holds a region and the spur: {t.pt_descs}");
+  assert(tag_count(svg, DESCR) == 1, "…and the spur is drawn as a run");
+  assert(t.pt_marks > 0, "the fixture has marks to explain: {t.pt_marks}");
+  // ⚠ **AND THE CAPTION NAMES IT**, so a reader of the picture is told which reader answered.
+  assert(svg.find("region ") != null, "the caption does not name the region");
+}
+
+fn test_the_region_claims_what_it_explains() {
+  // ⛔ **A DESCRIPTION THAT CLAIMS NOTHING WOULD LOOP FOR EVER** — the peel breaks on a
+  // zero claim, so this asserts the picture came out with nothing left over instead.
+  w = room_world(3.0, 3.0);
+  svg = hex_mesh::plan_svg(w, 0 - 10, 0 - 10, 14, 14, 0.0, "room");
+  assert(svg.find("unexplained") == null,
+         "the room left marks unexplained: {svg}");
+}
+
+fn test_a_placed_house_is_still_a_house() {
+  // ⚠ **THE CONTROL: THE MORE SPECIFIC READER KEEPS ITS ANSWER.** The region reader is asked
+  // last, so a field the Box reader can name must still be captioned `house` — otherwise
+  // this step would have replaced a description rather than added one.
+  w = flat_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, 1.5707963267948966);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "").ak_ok,
+         "the control house was refused");
+  svg = hex_mesh::plan_svg(w, 0 - 10, 0 - 10, 14, 14, 0.0, "house");
+  assert(tag_count(svg, "<polygon class='house'") == 1,
+         "the house is still drawn as a house");
+  assert(tag_count(svg, "<polygon class='region'") == 0,
+         "…and not also as a region");
+}

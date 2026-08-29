@@ -1,0 +1,151 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE ROOM RECOVERED FROM ITS CELLS — plan 26 `B5`.
+//
+// ⛔ **THE DESCRIPTION COMES FROM THE CELLS, AND THE IMPLEMENTATION IS UPSTREAM'S.**
+// `hex_recover::rebuild_construct` is `@HB-X45` — hull, side headings, lengths, turns, then
+// verify by re-drawing. These tests are the CONSUMER check: that this tree calls it
+// correctly, places the answer where the region stands, and reports what the marks make of
+// it. [`probe/b5`](../../../probe/b5/README.md) is the measurement, 25 of 25 at `ρ = 0`.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_grid;
+use hex_form;
+
+const Q0 = 0 - 18;
+const R0 = 0 - 18;
+const WQ = 37;
+const HR = 37;
+const YAW = 1.5707963267948966;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn wall_at(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+}
+
+fn a_walled_cell(w: VoxelWorld, oq: &integer, orr: &integer) -> boolean {
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in 0..6 {
+        if wall_of(w, q, r, d, (terrain_h(q, r, w) as float) * w.w_unit) != 0 {
+          oq = q; orr = r; return true;
+        }
+      }
+    }
+  }
+  false
+}
+
+fn room(a: float, b: float) -> VoxelWorld {
+  w = flat_world();
+  wall_at(w, 0.0 - a, 0.0 - b, a, 0.0 - b);
+  wall_at(w, a, 0.0 - b, a, b);
+  wall_at(w, a, b, 0.0 - a, b);
+  wall_at(w, 0.0 - a, b, 0.0 - a, 0.0 - b);
+  sq = 0;
+  sr = 0;
+  assert(a_walled_cell(w, sq, sr), "the fixture has a walled cell to seed from");
+  p = promote_close(w, sq, sr, FLOOR_MAT);
+  assert(p.pm_code == PM_FLOORED, "the fixture's room did not floor: {p.pm_why}");
+  w
+}
+
+fn test_a_bare_window_has_no_region() {
+  // ⚠ **THE TWO SILENCES ARE DIFFERENT** — `B0`'s rule, and this reader takes it too: no
+  // floor is not the same answer as a floor no form draws.
+  w = flat_world();
+  rg = region_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(!rg.rg_ok, "a bare window recovered a region of {rg.rg_cells} cells");
+  assert(rg.rg_why == "no floor cells in this window", "…and it says so: {rg.rg_why}");
+}
+
+fn test_a_walked_room_recovers_from_its_cells() {
+  // ⛔ **THE CLAIM THE WHOLE STEP EXISTS FOR.** `house_recover` refuses this field —
+  // `@HB-X24`, a flood's region is not a rectangle — and the form reader answers it exactly.
+  w = room(5.0, 5.0);
+  hh = house_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(!hh.hs_ok, "the control: the Box reader still refuses a walked room, got {hh.hs_wid}x{hh.hs_dep}");
+  rg = region_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(rg.rg_ok, "the form reader refused it: {rg.rg_why}");
+  assert(rg.rg_rho == 0, "…and it is exact: residual {rg.rg_rho}");
+  assert(rg.rg_cells == 42, "the room is 42 cells, got {rg.rg_cells}");
+  assert(rg.rg_sides >= 3, "a form has sides, got {rg.rg_sides}");
+}
+
+fn test_the_outline_is_placed_where_the_room_stands() {
+  // ⛔ **THE FORM COMES BACK CANONICAL, SO THE PLACEMENT IS RECOVERED HERE AND CAN BE
+  // WRONG.** Every corner must be one of the region's own cells, and the outline must
+  // straddle the room rather than sit at the origin.
+  w = room(5.0, 5.0);
+  rg = region_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(rg.rg_ok, "the form reader refused it: {rg.rg_why}");
+  assert(len(rg.rg_px) == len(rg.rg_pz), "the outline is pairs of coordinates");
+  assert(len(rg.rg_px) >= 3, "an outline has at least three corners, got {len(rg.rg_px)}");
+  lo = 1000.0;
+  hi = 0.0 - 1000.0;
+  for i in 0..len(rg.rg_px) {
+    x = rg.rg_px[i] ?? 0.0;
+    if x < lo { lo = x; }
+    if x > hi { hi = x; }
+  }
+  // the room spans x -5 .. 5, so an outline placed at the origin would fail this
+  assert(lo < 0.0 - 2.0 && hi > 2.0,
+         "the outline spans {lo} .. {hi}, which is not where the room stands");
+}
+
+fn test_the_boundary_is_all_walled() {
+  // ✅ **A WALL IS WHERE INSIDE MEETS OUTSIDE** — `WALL_PUSH`'s definition, asked of the
+  // recovered region. `probe/b5` measured 0 unwalled boundary edges on all 25 rooms.
+  w = room(6.0, 4.0);
+  rg = region_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(rg.rg_ok, "the form reader refused it: {rg.rg_why}");
+  assert(rg.rg_missing == 0,
+         "{rg.rg_missing} of the region's boundary edges carry no wall");
+}
+
+fn test_a_placed_house_is_a_region_too() {
+  // ⚠ **THE INSTRUMENT IS CHECKED AGAINST WHAT THE OTHER READER ACCEPTS.** A reader that
+  // said yes to every field would pass every row above; this is the field the Box reader
+  // takes, and both must answer.
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  assert(press_verb(s, w, s.es_author, VB_PLACE, "").ak_ok, "the control house was refused");
+  hh = house_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(hh.hs_ok, "the Box reader refuses the house it is built for: {hh.hs_why}");
+  rg = region_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(rg.rg_ok, "…and the form reader refuses it: {rg.rg_why}");
+  assert(rg.rg_cells == hh.hs_cells,
+         "the two readers disagree about the floor: {rg.rg_cells} against {hh.hs_cells}");
+}
+
+fn test_the_region_is_one_closed_loop() {
+  // ⛔ **`@HB-X35`, CHECKED WITH THE LIBRARY'S OWN FUNCTIONS RATHER THAN A DEGREE COUNT OF
+  // OURS.** *A hex region's boundary is one closed loop and never pinches* — `ends = 0`,
+  // `branches = 0`, `loops = 1`. `hex_form::boundary_ends`/`boundary_branches`/
+  // `boundary_loops` were published and uncalled here while `probe/b4x`, `probe/b4y` and
+  // `probe/b5` each hand-rolled their own vertex-degree tally.
+  //
+  // ⚠ **AND `loops == 2` IS A HOLE**, which is a room this reader would otherwise describe
+  // without noticing. That is the value of asking the rule rather than assuming it.
+  w = room(5.0, 5.0);
+  rg = region_recover(w, Q0, R0, WQ, HR, 0.0);
+  assert(rg.rg_ok, "the form reader refused it: {rg.rg_why}");
+  assert(hex_form::boundary_ends(rg.rg_set) == 0,
+         "the region's boundary has {hex_form::boundary_ends(rg.rg_set)} dangling ends");
+  assert(hex_form::boundary_branches(rg.rg_set) == 0,
+         "…and {hex_form::boundary_branches(rg.rg_set)} pinches");
+  assert(hex_form::boundary_loops(rg.rg_set) == 1,
+         "…and {hex_form::boundary_loops(rg.rg_set)} loops — 2 would be a hole");
+}

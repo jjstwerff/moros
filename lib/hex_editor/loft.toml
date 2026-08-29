@@ -64,6 +64,14 @@ hex_edge  = ">=0.1"
 # measured) and a gesture must use exactly one.
 hex_shape = ">=0.1.1"
 hex_place = ">=0.1"
+# ⛔ THE REGION READER, AND IT IS `@HB-X45` RATHER THAN ANYTHING OF OURS.
+# `rebuild_construct` takes a filled region, reads its convex hull, builds the form and
+# VERIFIES it by re-drawing — gated upstream at 119/119 with `rho = 0`. Measured here in
+# `probe/b5`: it describes 25 of 25 rooms exactly for ZERO `run_edges`, where the best rule
+# this tree built over the MARKS is exact on 14 of 25 at 363..4834 calls each. ⚠ It was
+# published and unused for months while a cut rule was designed, built and costed against
+# the question it answers — see CLAUDE.md, *search before you design*.
+hex_recover = ">=0.1"
 hex_grid  = ">=0.1"
 # ⚠ OURS, BY PATH. A gesture edits a world, so this package cannot stay world-free
 # once it holds gestures. The path is because `hex_voxel` is UNPUBLISHED and lives in

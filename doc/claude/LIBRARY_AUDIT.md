@@ -106,9 +106,59 @@ plan 19 `L6.2` renamed the store so the two no longer answer to one name.
 | **`@HB-X66`** | a doorstep that refuses more than the field distinguishes is **worse than none** | every refusal we have written |
 | **`@HB-X23`** | props are **derived** from the architecture plus a seed — *a village furnishes itself* | our `Props` and the `furnish` script |
 
+## What we actually call, routine by routine — measured 2026-08-29
+
+`tools/callmap.py` — public routines per library against the ones our production sources
+(`lib/*/src`, `src/`) call, counting **qualified and bare names alike**.
+
+| library | public | used | call sites | notable unused |
+|---|---:|---:|---:|---|
+| `hex_field` | 79 | **34** | 330 | `cell_rot` `cell_mirror` `corner_k` `corner_m` |
+| `hex_grid` | 19 | **9** | 257 | `cell_canon_edge` `cell_corner_px` `cell_distance` |
+| `hex_shape` | 71 | **28** | 97 | `arc_recover_centre` `arc_door_edges` `arc_shell_max` |
+| `hex_form` | 53 | **12** | 75 | ⛔ **`boundary_ends` `boundary_branches` `boundary_loops`** |
+| `hex_way` | 20 | **12** | 61 | `cut_arb` `track_arc` `seg_curvature` |
+| `hex_edge` | 39 | **9** | 25 | `apply_features` `edge_block_arb` `edge_block_full` |
+| `hex_body` | 28 | **10** | 20 | `bone_obb` `bone_planar` `frame_point` |
+| `hex_draw` | 23 | **3** | 3 | ⛔ **`draw_walls`** `draw_floor` `draw_roof` `feature_find` |
+| `hex_place` | 17 | **3** | 3 | ⛔ **`combine_cut`** `combine_cut_level` `arb_owner` |
+| `hex_recover` | 33 | **1** | 1 | `rebuild` `hull_keys` `field_digest` `index_build` |
+| `hex_roof` · `hex_fit` · `hex_terrain` | 62 | **0** | 0 | all of them |
+
+⛔ **AND THE FIRST VERSION OF THIS TABLE WAS BLIND.** It grepped `hex_x::name` and reported
+`hex_field` at **9** routines and `hex_place` at **0**. A wildcard `use hex_field;` imports
+every public name **bare**, so a qualified grep sees none of them — `hex_field` is really 34
+routines over 330 sites, and `hex_place` really is called, three times. ⚠ **This tree already
+knew**: `CLAUDE.md` records the identical miss for `moros_render` — *"unaliased, so its 42
+sites are bare names and no `moros_render::` grep sees one of them"*. The instrument has to
+match a name it knows is there before its zero is believed.
+
+### ⛔ The three rows worth acting on
+
+**`hex_form::boundary_ends` / `boundary_branches` / `boundary_loops`** — this is **`@HB-X35`**
+as three callable functions over a `HexSet`: *a hex region's boundary is one closed loop and
+never pinches*. `probe/b4x`, `probe/b4y` and `probe/b5` each hand-rolled their own
+vertex-degree tally to ask a piece of it. ✅ **Now called** — `region.loft`'s
+`test_the_region_is_one_closed_loop`. ⚠ **`loops == 2` is a HOLE**, which the region reader
+would otherwise describe without noticing.
+
+**`hex_draw::draw_walls`** — [WALL_PUSH](WALL_PUSH.md) names it as the definition of `∂`:
+*"the definition stays `hex_draw::draw_walls`' and is compared against, never copied."* We
+cite it and do not call it; `push_cell` and now `claim_region` each write their own boundary
+loop.
+
+**`hex_place::combine_cut`** — [HOUSE_ROOMS](HOUSE_ROOMS.md) already found this: *"the exact,
+float-free, order-free primitive that does the whole job has zero callers in this tree."*
+Still true, and it is the primitive a room-plus-room needs.
+
 ## The order of work this suggests
 
-1. ⛔ **`hex_recover`** — measured, decided, in progress.
+0. ✅ **`hex_recover` — DONE.** `region_recover_claimed` in `hex_editor`, asked by
+   `plan_describe` after the Box reader gives up, drawn as `<polygon class='region'>` and
+   claimed by `claim_region`. `lib/hex_editor/tests/region.loft` (6) +
+   `lib/hex_mesh/tests/planview.loft` (3, including *is it called*).
+1. ⛔ **`hex_form`'s boundary trio** — `@HB-X35`, one test now; the reader itself should
+   refuse a region whose boundary is not one loop.
 2. ⛔ **`hex_fit`** — resolves the `@HB-X68` docket row, pays `@HB-X67`/EDITOR_DEFECTS 3, and
    replaces four hand-rolled refusals. It is a *doorstep* package, so adopting it changes
    messages and baselines: expect the corpus to move and read `@HB-X66` first.
