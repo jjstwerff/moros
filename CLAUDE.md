@@ -829,6 +829,7 @@ lattice convention and nothing else.
 ## Data
 
 - [Data](doc/claude/DATA.md) — all data structures and where they live
+- [Library audit](doc/claude/LIBRARY_AUDIT.md) — ⛔ **what the registry holds, what we use, and what we are re-deriving.** 42 packages, 14 in the `hex_*` family, **9 used**; 70 upstream rules, **27 cited**. Written after a session was spent costing a cut rule against a question `hex_recover` already answered for free. Its top rows: `hex_fit` is the doorstep package `tools/dups.tsv`'s own `@HB-X68` row asks for, and `@HB-X35` — *a hex region's boundary is one closed loop* — is `B4x`/`B4y` in a single sentence
 - [Loft libraries](doc/claude/LOFT_LIBRARIES.md) — third-party libs in use
 
 ## Process
