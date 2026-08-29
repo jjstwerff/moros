@@ -214,9 +214,9 @@ on the morning of 08-21 alone, two of them eleven minutes apart. **The sha is th
 **Installed now: `eb4581d9…` (2026-08-21 10:38).** Everything current is measured on it —
 `make fast`, the browser tier, `lavition_ui`'s gate.
 
-⛔ **AND IT MOVED UNDER A RUNNING SESSION AGAIN — 2026-08-29.** `~/.local/bin/loft` was
-`7f2bae7f…` at the start of the session and `2a6739b1…` by the end of it, with no action
-from this tree. Everything measured before the swap — an 813-test suite, a 58-test file, a
+⛔ **AND IT MOVED UNDER A RUNNING SESSION THREE TIMES — 2026-08-29.** `~/.local/bin/loft`
+was `7f2bae7f…` at the start of the session, `2a6739b1…` in the middle and `a44c94d9…`
+(09:40) by the end, with no action from this tree. Everything measured before the swap — an 813-test suite, a 58-test file, a
 sabotage sweep — is a statement about `7f2bae7f…` and nothing else. ⚠ **The swap is also
 what turned `make fast` red**: 25 files in the three `moros_*` packages, one signature,
 [#1162](https://github.com/loft-lang/loft/issues/1162). `sha256sum $(which loft)` before
@@ -254,7 +254,7 @@ a tampered index produces, so the wrong next move is trust roots.
 | [#1042](https://github.com/loft-lang/loft/issues/1042) | admission printed `allowed libraries: []` for a profile that was never defined | ✅ fixed |
 | [#1043](https://github.com/loft-lang/loft/issues/1043) | no qualified spelling for a `self::`-bound module | ✅ fixed |
 | [#1045](https://github.com/loft-lang/loft/issues/1045) | the registry index and its `.sig` are not swapped atomically | ⛔ fix unmerged — **re-run is the workaround**, see [LOFT_HANDOFF.md](LOFT_HANDOFF.md) |
-| [#1162](https://github.com/loft-lang/loft/issues/1162) | ⛔ **25 test files in `moros_sim` / `moros_editor` / `moros_render` fail with `index out of bounds: the len is N but the index is 65535`** | ⛔ open — the install `2a6739b1…` is red where `a2c3faed…` (`/usr/local/bin/loft`) is green, **same source and identically resolved dependencies**. `hex_editor` (813 tests) and `hex_mesh` (133) are green on the failing binary, so it is not everything |
+| [#1162](https://github.com/loft-lang/loft/issues/1162) | **25 test files in `moros_sim` / `moros_editor` / `moros_render` failed with `index out of bounds: the len is N but the index is 65535`** | ✅ **fixed by the next install** — red on `2a6739b1…`, green on both `a2c3faed…` before it and `a44c94d9…` after, **same source and identically resolved dependencies**. Closed. ⚠ The lesson outlives it: `2a6739b1…` was a short-lived intermediate that a whole tier of green was measured against |
 
 ## ⏭ THE SESSIONS THAT WERE HERE ARE IN THE JOURNAL — thinned 2026-08-21
 
