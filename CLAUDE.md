@@ -447,6 +447,20 @@ separate them. Measured, filed as
 are now dropped. What outlives it: the check cost one suite run, and the report is what turned
 a blocked cleanup into a landed one.
 
+⛔ **`make fast` DOES NOT BUILD `src/`, AND A FULL GREEN SAYS NOTHING ABOUT THE SERVER.** The
+package suites compile `lib/` only; the single check that compiles `src/editor_server.loft` is
+**`probe-k1`**, and the browser editor is built by **`probe-demo`/`probe-auth`** — all three
+outside the fast loop. Measured 2026-08-29: adding a `hex_fit` dependency to `hex_editor` put a
+second `HEIGHT_SCALE` into the server's graph beside `hex_proj`'s, and **the server did not
+compile for a session** while 180 test files, `citations`, `basenames` and `drift` were all
+green. ⚠ **And the redness was mis-read for that whole session**: `probe-k1` says *"the server
+never listened"*, which is verbatim the shape this file documents for the sibling emptying
+`~/.loft/build-cache` — so it was attributed there and waited out, with the build error one line
+further down the same log under a caret with no message beside it. **A known-flaky failure is
+where a real one hides**: before blaming the sibling, read past the summary line to the
+diagnostic, and note that the same ambiguity was CAUGHT in `hex_mesh` at the time and missed in
+the consumer nobody compiles.
+
 **A grep over a log is an instrument, and its default answer is "absent".** Three were blind in
 one session, each reading as a clean result rather than a miss: `^advice:` found nothing
 because `loft test` indents diagnostics as `  Advice:`; `test result: .*total` scored four
