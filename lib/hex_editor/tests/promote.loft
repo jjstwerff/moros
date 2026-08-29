@@ -1,0 +1,159 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// PROMOTE ON CLOSE — a wall loop that closed becomes a ROOM.
+//
+// ⛔ **THE DEFECT IT PAYS.** Four wall runs are domain B linework, and `@HB-X29` says
+// that is *"where nothing has to close or meet a corner"*. Measured over 25 rectangles
+// laid that way: only 7 present as one closed chain, and **7 have a hole a flood escapes
+// through**. A room's description is recovered from its CELLS (`@HB-X45`), so a closed
+// loop with no floor is a room nothing can read.
+//
+// ⚠ **THE DOORSTEP IS THE FLOOD'S OWN REFUSAL** — `enclosure_fill` already answers
+// *bounded, and by how much*, or refuses by name. Nothing new decides anything here.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+fn world() -> VoxelWorld {
+  w = world_new(0.25, 0, 8, 3).wn_world;
+  hex_editor::ground_fill(w, 0 - 16, 0 - 16, 17, 17, 40, hex_editor::SURFACE_MAT);
+  w
+}
+
+// A closed ring of WALL edges at `rad` — `field.loft`'s own fixture, one material over.
+fn walled(rad: integer) -> VoxelWorld {
+  w = world();
+  hex_editor::fence_ring(w, hex_editor::author_on(w, 0.0, 0.0, 0.0),
+                         hex_editor::WALL_MAT, rad, 10.0, WallRuns { items: [] });
+  w
+}
+
+fn floors(w: VoxelWorld) -> integer {
+  n = 0;
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      if hex_voxel::world_ground_cell(w, q, r).h_material == hex_editor::FLOOR_MAT {
+        n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+fn marks(w: VoxelWorld) -> integer {
+  n = 0;
+  for r in 0 - 12..13 {
+    for q in 0 - 12..13 {
+      for d in [4, 5, 0] {
+        if hex_editor::edge_is_wall(hex_editor::wall_of(w, q, r, d, 0.0)) { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// ⚠ **THE SEED IS A CELL THE WALL TOUCHES, AND THAT IS THE CONTRACT RATHER THAN A
+// LIMITATION.** `(0, 0)` is the centre of a radius-2 ring and has no wall on any of its
+// six sides, so it answers `PM_NONE` — measured, and it is right: the question is *what
+// does THIS wall bound*, and a cell with no wall on it names no wall. The gesture seeds
+// from the run's own end cell, which always carries one.
+fn test_a_closed_wall_ring_becomes_a_floor() {
+  w = walled(2);
+  p = hex_editor::promote_close(w, 2, 0, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_FLOORED, "a closed ring promoted: {p.pm_why}");
+  // ⚠ 19 IS `field.loft`'S OWN NUMBER for a radius-2 disc, so this is the same flood
+  // answering the same question with a different material — not a second count.
+  assert(p.pm_cells == 19, "a radius-2 disc is 19 cells, got {p.pm_cells}");
+  assert(floors(w) == 19, "19 cells carry FLOOR_MAT, got {floors(w)}");
+}
+
+fn test_it_answers_the_same_from_outside_the_ring() {
+  // ⚠ **THE ONE-DIRECTIONAL GUARD, ASKED FROM BOTH ENDS.** The first version seeded
+  // only ACROSS each walled side, so a cell inside the ring asked about the outside and
+  // answered *open* — the identical world, opposite answers.
+  w = walled(2);
+  p = hex_editor::promote_close(w, 3, 0, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_FLOORED, "from outside the ring: {p.pm_why}");
+  assert(p.pm_cells == 19, "the same 19 cells from outside, got {p.pm_cells}");
+}
+
+fn test_open_ground_has_no_wall_to_promote() {
+  w = world();
+  p = hex_editor::promote_close(w, 0, 0, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_NONE, "no wall, no promotion: {p.pm_why}");
+  assert(floors(w) == 0, "nothing was floored, got {floors(w)}");
+}
+
+// …and the same answer INSIDE a closed ring, which is the control that keeps the row
+// above from passing for the wrong reason: `PM_NONE` is *this cell names no wall*, not
+// *there is no enclosure anywhere*.
+fn test_a_cell_the_wall_does_not_touch_names_no_wall() {
+  w = walled(2);
+  p = hex_editor::promote_close(w, 0, 0, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_NONE,
+         "the ring's centre touches no wall: {p.pm_why}");
+  assert(floors(w) == 0, "and it floored nothing, got {floors(w)}");
+}
+
+fn test_a_wall_that_closes_nothing_is_refused_and_writes_nothing() {
+  // A single straight run bounds no space on either side.
+  w = world();
+  a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
+  d = hex_editor::run_between(0.0 - 6.0, 0.0, 6.0, 0.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 40, WallRuns { items: [] }, m);
+  before = w.w_tau;
+  p = hex_editor::promote_close(w, 0, 1, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_OPEN, "an open wall is refused, got {p.pm_why}");
+  assert(floors(w) == 0, "nothing was floored, got {floors(w)}");
+  assert(w.w_tau == before, "a refusal writes nothing: τ {before} -> {w.w_tau}");
+}
+
+fn test_promoting_twice_says_already_rather_than_doing_it_again() {
+  w = walled(2);
+  hex_editor::promote_close(w, 2, 0, hex_editor::FLOOR_MAT);
+  before = w.w_tau;
+  p = hex_editor::promote_close(w, 2, 0, hex_editor::FLOOR_MAT);
+  assert(p.pm_code == hex_editor::PM_ALREADY, "the second promotion: {p.pm_why}");
+  assert(w.w_tau == before, "it wrote nothing the second time: τ {before} -> {w.w_tau}");
+}
+
+fn test_promotion_touches_the_ground_and_never_the_marks() {
+  // ⚠ THE UPPER BOUND OF THE STEP: the old path and the new one compared exactly. A
+  // promotion may only add floor cells — every wall byte must be where it was, or this
+  // is a gesture that edits the boundary while claiming to fill inside it.
+  w = walled(2);
+  before = marks(w);
+  hex_editor::promote_close(w, 2, 0, hex_editor::FLOOR_MAT);
+  assert(marks(w) == before, "the marks are untouched: {before} -> {marks(w)}");
+}
+
+fn test_the_flood_is_one_flood_with_two_materials() {
+  // `field_fill` and a promotion ask the identical question of the identical world and
+  // differ only in what they paint. If these two counts ever disagree there are two
+  // floods, which is what `tools/citations.py dups` exists to catch.
+  a = walled(2);
+  b = walled(2);
+  n_field = hex_editor::field_fill(a, 0, 0);
+  n_floor = hex_editor::enclosure_fill(b, 0, 0, hex_editor::FLOOR_MAT);
+  assert(n_field == n_floor,
+         "one flood, two materials: field {n_field} vs floor {n_floor}");
+}
+
+// ⚠ **AND THE GESTURE MUST CALL IT** — this tree's commonest defect is a function
+// tested green and wired to nothing. The author stands inside a closed wall ring and
+// aims; the stroke lands inside, so the space the ring bounds is promoted by the
+// GESTURE rather than by this test.
+fn test_the_aim_gesture_promotes_what_it_closes() {
+  w = walled(3);
+  a = hex_editor::author_on(w, 0.0, 0.0, 0.0);
+  sess = hex_editor::session_new();
+  assert(floors(w) == 0, "the fixture starts unfloored, got {floors(w)}");
+  ack = hex_editor::press_verb(sess, w, a, hex_editor::VB_AIM);
+  assert(ack.ak_ok, "the aim was refused: {ack.ak_why}");
+  assert(floors(w) > 0,
+         "the GESTURE floored the enclosure — nothing did, so `promote_close` has no "
+       + "caller: {ack.ak_why}");
+}

@@ -2137,10 +2137,25 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   // selection, and the three wall verbs read it from one place so they cannot come to
   // disagree. `25:3` still reaches `session_run` from the wire with no key of its own,
   // and now carries whatever type is chosen.
+  // ⚠ **AND A STROKE THAT CLOSED A LOOP MAKES A ROOM — `promote_close`.** Four wall
+  // runs are domain B linework, which `@HB-X29` says need not close or meet a corner;
+  // a room is domain A and its description is recovered from its CELLS (`@HB-X45`).
+  // So the moment a stroke bounds something, the space it bounds gets a floor and
+  // becomes readable. ⚠ **ONLY ON `RL_LAID`** — a draft that has just recorded its near
+  // end has stamped nothing to bound anything with.
+  //
+  // ⚠ **AND THE SENTENCE IS APPENDED ONLY WHEN IT FIRES**, so a stroke that closes
+  // nothing says exactly what it said before and no baseline moves for a gesture that
+  // did not change.
   if verb == VB_RUN {
     vr_laid = session_run(sess, w, a, session_wall_mat(sess));
     if vr_laid.rl_code == RL_REFUSED { return ack_no(vr_laid.rl_say); }
-    return ack_at(ack_about(vr_laid.rl_n, vr_laid.rl_say, vr_laid.rl_resid as integer),
+    vr_say = vr_laid.rl_say;
+    if vr_laid.rl_code == RL_LAID {
+      vr_pm = promote_close(w, vr_laid.rl_q1, vr_laid.rl_r1, FLOOR_MAT);
+      if vr_pm.pm_code == PM_FLOORED { vr_say = vr_say + " · " + vr_pm.pm_why; }
+    }
+    return ack_at(ack_about(vr_laid.rl_n, vr_say, vr_laid.rl_resid as integer),
                   vr_laid.rl_q1, vr_laid.rl_r1);
   }
   // ⚠ **ONE PRESS, AND THERE IS NO `RL_STARTED` BRANCH BECAUSE THERE IS NO DRAFT.**
@@ -2157,7 +2172,12 @@ pub fn press_verb(sess: EditSession, w: VoxelWorld, a: Author, verb: text,
   if verb == VB_AIM {
     va_laid = session_aim(sess, w, a, session_wall_mat(sess));
     if va_laid.rl_code == RL_REFUSED { return ack_no(va_laid.rl_say); }
-    return ack_at(ack_about(va_laid.rl_n, va_laid.rl_say, va_laid.rl_resid as integer),
+    va_say = va_laid.rl_say;
+    if va_laid.rl_code == RL_LAID {
+      va_pm = promote_close(w, va_laid.rl_q1, va_laid.rl_r1, FLOOR_MAT);
+      if va_pm.pm_code == PM_FLOORED { va_say = va_say + " · " + va_pm.pm_why; }
+    }
+    return ack_at(ack_about(va_laid.rl_n, va_say, va_laid.rl_resid as integer),
                   va_laid.rl_q1, va_laid.rl_r1);
   }
   // ⚠ THE KIND COMES FROM THE SELECTION AND FROM NOWHERE ELSE — `VB_OPENING`'s note

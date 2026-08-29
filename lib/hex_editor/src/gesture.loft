@@ -4140,7 +4140,25 @@ pub fn age_like_key(q: integer, r: integer) -> integer {
 // allowed to spend.
 //
 // Returns the number of cells filled, or 0 if it refused.
+//
+// ⚠ **THE FLOOD IS `enclosure_fill`'S AND THIS IS ONE OF ITS TWO CALLERS** — plan 26
+// `B5`. A field and a promoted room ask the identical question (*is the ground I am
+// standing on bounded, and by how much*) and differ only in the material they paint, so
+// a second flood here would be one algorithm written twice — the thing
+// `tools/citations.py dups` exists to name.
 pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
+  enclosure_fill(wld, sq, sr, FIELD_MAT)
+}
+
+// The flood itself: every open-ground cell reachable from `(sq, sr)` without crossing a
+// boundary, painted `mat`.
+//
+// ⛔ **THE CAP IS `FIELD_CAP` AND IT IS NOT A PARAMETER, WHICH IS `B4j`'s FINDING
+// DEFENDED.** A promotion cap tuned to "a room is small" would report a large CLOSED
+// enclosure as open — *"a false diagnosis, worse than none"* — because a bound below the
+// cap fires before it and a bound above it never fires. One cap, one refusal, both
+// callers.
+pub fn enclosure_fill(wld: VoxelWorld, sq: integer, sr: integer, mat: integer) -> integer {
   if world_ground_cell(wld, sq, sr).h_material != SURFACE_MAT
      && world_ground_cell(wld, sq, sr).h_material != 0 {
     return 0;                       // standing on something that is not open ground
@@ -4223,9 +4241,94 @@ pub fn field_fill(wld: VoxelWorld, sq: integer, sr: integer) -> integer {
   if capped { return 0 - 2; }
   for k in 0..len(seen_q) {
     h = world_ground_cell(wld, seen_q[k], seen_r[k]).h_height;
-    hex_editor::ground_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, FIELD_MAT);
+    hex_editor::ground_set(wld, seen_q[k], seen_r[k], h as integer ?? 0, mat);
   }
   len(seen_q)
+}
+
+// ── PROMOTE ON CLOSE — a wall loop that closed becomes a ROOM ──────────────
+//
+// ⛔ **A ROOM IS DOMAIN A AND FOUR WALL RUNS ARE DOMAIN B, WHICH IS THE WHOLE REASON
+// THIS EXISTS.** `@HB-X29` says world linework is *"where nothing has to close or meet
+// a corner"* — and it does not. Measured over 25 rectangles laid as four runs: only 7
+// present as one closed chain, 17 carry a junction, and **7 have a hole a flood escapes
+// through**. A room's description is recovered from its CELLS (`@HB-X45`: the convex
+// hull of the filled cells IS the polygon, exact and constructive), so a closed loop
+// with no floor is a room nothing can read — and one that draws as 200 triangles where
+// four fitted quads would be 8.
+//
+// ✅ **AND THE DOORSTEP IS THE FLOOD'S OWN REFUSAL RATHER THAN A NEW RULE.**
+// `enclosure_fill` already answers *bounded, and by how much* or refuses by name. This
+// asks it of the space the new wall bounds and paints `FLOOR_MAT` when the answer is
+// yes — so a closed loop becomes recoverable, and an open one is told it is open.
+pub const PM_NONE    = 0;   // no wall bounds this cell — nothing to promote
+pub const PM_FLOORED = 1;
+pub const PM_OPEN    = 2;   // the boundary is open, or larger than this tool will claim
+pub const PM_ALREADY = 3;   // the space this wall bounds is not open ground
+
+pub struct Promote {
+  pm_code:  integer,
+  pm_cells: integer,
+  pm_why:   text,
+}
+
+// ⚠ **THE SEED IS ACROSS THE WALL, NOT UNDER THE AUTHOR.** A person laying the fourth
+// wall of a room stands ON the line or just outside it, so their own cell answers about
+// the OUTSIDE — an unbounded flood, the full cap paid for the wrong question. The space
+// a wall bounds is on the other side of that wall, which is `∂` being a function: only
+// the sides of `(q, r)` that carry a mark can bound anything.
+//
+// ⚠ **AND `PM_ALREADY` OUTRANKS `PM_OPEN` WHEN BOTH ARE SEEN.** A wall with a floored
+// room on one side and open ground on the other has a room; reporting *it does not
+// close* would send the author looking for a gap that is not there — `B4j`'s own
+// sentence, one gesture over.
+pub fn promote_close(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> Promote {
+  pc_walls = 0;
+  pc_open = 0;
+  pc_already = 0;
+  // ⚠ **BOTH SIDES, AND THE FIRST VERSION ASKED ONLY ONE.** A wall bounds the space on
+  // either side of it, so a seed cell INSIDE a ring answered *open* — its walled sides
+  // all face outwards — while the identical ring seeded from outside answered
+  // *floored*. One gesture giving opposite answers for the same world is the shape a
+  // one-directional guard always has here (`faced_between`, `stroke_over_limit`), and
+  // the fix is the same: ask from both ends.
+  for pc_d in 0..7 {
+    if pc_d == 6 {
+      // the seed's own cell, asked last so a bounded neighbour wins first
+      if pc_walls == 0 { break; }
+      pc_n6 = enclosure_fill(wld, q, r, mat);
+      if pc_n6 > 0 {
+        return Promote { pm_code: PM_FLOORED, pm_cells: pc_n6,
+                         pm_why: "the wall closed — {pc_n6} cells floored" };
+      }
+      if pc_n6 == 0 - 2 { pc_open = pc_open + 1; }
+      if pc_n6 == 0 { pc_already = pc_already + 1; }
+      break;
+    }
+    if wall_of(wld, q, r, pc_d, (terrain_h(q, r, wld) as float) * wld.w_unit) == 0 {
+      continue;
+    }
+    pc_walls = pc_walls + 1;
+    (pc_aq, pc_ar) = hex_grid::hex_neighbor(q, r, pc_d);
+    pc_n = enclosure_fill(wld, pc_aq, pc_ar, mat);
+    if pc_n > 0 {
+      return Promote { pm_code: PM_FLOORED, pm_cells: pc_n,
+                       pm_why: "the wall closed — {pc_n} cells floored" };
+    }
+    if pc_n == 0 - 2 { pc_open = pc_open + 1; }
+    if pc_n == 0 { pc_already = pc_already + 1; }
+  }
+  if pc_walls == 0 {
+    return Promote { pm_code: PM_NONE, pm_cells: 0,
+                     pm_why: "no wall bounds this cell" };
+  }
+  if pc_already > 0 {
+    return Promote { pm_code: PM_ALREADY, pm_cells: 0,
+                     pm_why: "the space this wall bounds is not open ground" };
+  }
+  Promote { pm_code: PM_OPEN, pm_cells: 0,
+            pm_why: "the wall does not close — the boundary is open, or the enclosure "
+                  + "is larger than this tool will claim" }
 }
 
 // ── STENCILS (rung W4, moros#12) — `P1`, a band and not a column ────────────
