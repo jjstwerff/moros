@@ -619,7 +619,13 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
     yaw = 0.0;
     if p2 != null {
       zs = tail[..p2];
-      yaw = (tail[p2 + 1..].trim() as float ?? 0.0) * PI / 180.0 ?? 0.0;
+      // ⚠ **THE SLICE IS HOISTED BECAUSE A PARENTHESISED ONE WITH AN ARITHMETIC INDEX
+      // DOES NOT COMPILE** — `(s[i + 1..])` is refused with a spurious *missing argument
+      // for parameter 'v2' of `OpAddInt`*, while the identical slice outside the
+      // parentheses is fine. Long-standing rather than a regression: both installs on
+      // this box refuse it. [loft#1164](https://github.com/loft-lang/loft/issues/1164).
+      ytail = tail[p2 + 1..];
+      yaw = (ytail.trim() as float ?? 0.0) * PI / 180.0 ?? 0.0;
     }
     walk_place(w, wk, xs as float ?? 0.0, zs as float ?? 0.0, yaw);
     said = "placed {wk.wk_x},{wk.wk_z}";
