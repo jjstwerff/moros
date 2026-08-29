@@ -148,9 +148,19 @@ would otherwise describe without noticing.
 cite it and do not call it; `push_cell` and now `claim_region` each write their own boundary
 loop.
 
-**`hex_place::combine_cut`** — [HOUSE_ROOMS](HOUSE_ROOMS.md) already found this: *"the exact,
-float-free, order-free primitive that does the whole job has zero callers in this tree."*
-Still true, and it is the primitive a room-plus-room needs.
+⛔ **`hex_place::combine_cut` — AND THIS ROW WAS THE WRONG SHAPE.** It sat here beside
+`draw_walls` as if both were duplications. They are not:
+[`probe/c1`](../../probe/c1/README.md) measured it, and **the primitive has no caller because
+the CAPABILITY is missing**, not because we re-derive it. Nothing in this tree adds a
+same-level box to a structure — `storey` is a different LEVEL (and `combine_cut_level` exists
+so two levels never fuse), an `annex` is a balcony off a wall run — and the gesture **refuses a
+second house whose footprint overlaps zero cells**, which is `D2b` over-refusing exactly as
+HOUSE_ROOMS predicted.
+
+⚠ **AND WIRING IT WOULD ANSWER A QUESTION THAT IS NOT OURS**: `@HB-X52` makes two adjacent
+boxes **fuse**, so *hall or room* belongs upstream. For two houses a person means as two
+buildings, the seam our stamping leaves is **correct**. The measurement stands either way —
+apart, the two agree exactly at 76 edges; touching, `combine_cut` fuses an 18-edge seam.
 
 ## ⚠ And a library that needs fixing is EDITED, not ticketed
 

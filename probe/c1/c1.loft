@@ -1,0 +1,166 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// `C1` — WHAT DOES A SHARED WALL COST TODAY? Plan 26.
+//
+//   loft --interpret --lib lib/ probe/c1/c1.loft        (or `make probe-c1`)
+//
+// ⛔ **[HOUSE_ROOMS](../../doc/claude/HOUSE_ROOMS.md) NAMES `hex_place::combine_cut` AS "THE
+// EXACT, FLOAT-FREE, ORDER-FREE PRIMITIVE THAT DOES THE WHOLE JOB" AND SAYS IT HAS ZERO
+// CALLERS HERE.** It unions two footprints, cuts the boundary of the union ONCE, and never
+// cuts the shared interior edge — so adjacent stencils FUSE, which is `@HB-X52`'s rule.
+//
+// ⚠ **AND THE LIBRARY SHIPS THE INSTRUMENT FOR ITS OWN CLAIM**: `shared_marked(a, b, e)` is
+// *"zero after `combine_cut` (the seam fuses); non-zero after a per-body overlay (a spurious
+// seam wall)"*. So *who owns the shared edge* is measurable rather than arguable, and this
+// asks it of the walls `place_house` actually stamps.
+use hex_editor;
+use hex_voxel;
+use hex_field;
+use hex_place;
+use hex_shape;
+use hex_grid;
+
+const Q0 = 0 - 20;
+const R0 = 0 - 20;
+const WQ = 41;
+const HR = 41;
+const YAW = 1.5707963267948966;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(0.25, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+// The two footprints, side by side and TOUCHING — `pose_footprint`'s own geometry, so these
+// are the boxes `place_house` would build.
+fn foot(px: float, pz: float) -> Footprint {
+  pose_footprint(px, pz, YAW, 4, 5)
+}
+
+fn cells_of(f: Footprint) -> HexSet {
+  c = hexset_chunk(Q0, R0, WQ, HR);
+  if f.fp_ok { box_fill(footprint_box(f), c); }
+  c
+}
+
+// Exactly what `place_house` does for one house: the four mitred sides, stamped as runs.
+fn stamp_house(w: VoxelWorld, f: Footprint, cells: HexSet) -> integer {
+  qs = footprint_walls(f, cells);
+  runs = WallRuns { items: [] };
+  n = 0;
+  for i in 0..PLAN_SIDES {
+    side = qs[i] ?? WallQuad {};
+    m = 0;
+    wall_stamp(w, WallRun { wr_base: 0, wr_up: 0, wr_x0: side.wq_x0, wr_z0: side.wq_y0,
+                            wr_x1: side.wq_x1, wr_z1: side.wq_y1,
+                            wr_mat: WALL_MAT, wr_step: 0 }, WALL_MAT, 8, runs, m);
+    n = n + m;
+  }
+  n
+}
+
+fn marks_of(w: VoxelWorld) -> EdgeSet {
+  e = edgeset_new(Q0, R0, WQ, HR);
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        if !edge_is_wall(wall_of(w, q, r, d, 0.0)) { continue; }
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        edge_set_mat(e, q, r, nq, nr, 1);
+      }
+    }
+  }
+  e
+}
+
+fn edges_in(e: EdgeSet) -> integer {
+  n = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(e, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn pair(tag: text, dx: float) {
+  fa = foot(0.0, 0.0);
+  fb = foot(dx, 0.0);
+  if !fa.fp_ok || !fb.fp_ok { println("    {tag}: a footprint was refused"); return; }
+  ca = cells_of(fa);
+  cb = cells_of(fb);
+  // do the two footprints even touch, and do they overlap?
+  touch = 0;
+  over = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if hexset_get(ca, q, r) && hexset_get(cb, q, r) { over = over + 1; }
+      if !hexset_get(ca, q, r) { continue; }
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if hexset_get(cb, nq, nr) && !hexset_get(ca, nq, nr) { touch = touch + 1; }
+      }
+    }
+  }
+
+  // ── what THIS TREE stamps: each house's own four runs, one after the other ──
+  w = flat_world();
+  stamp_house(w, fa, ca);
+  stamp_house(w, fb, cb);
+  ours = marks_of(w);
+  seam_ours = hex_place::shared_marked(ca, cb, ours);
+
+  // ── what the library's primitive does: one cut over the union ──────────────
+  lib = edgeset_new(Q0, R0, WQ, HR);
+  cut = hex_place::combine_cut(ca, WALL_MAT, cb, WALL_MAT, lib);
+  seam_lib = hex_place::shared_marked(ca, cb, lib);
+
+  println("    {tag}: {hexset_count(ca)}+{hexset_count(cb)} cells, {touch} touching pairs,"
+        + " {over} overlapping");
+  println("        ours (two houses stamped): {edges_in(ours)} edges,"
+        + " ⛔ shared-wall edges {seam_ours}");
+  println("        `combine_cut`:             {cut} edges cut,"
+        + " shared-wall edges {seam_lib}");
+}
+
+// ⛔ **AND CAN THE GESTURE EVEN DO IT?** The rows above stamp footprints directly, which is
+// what `place_house` does INSIDE its guards. `D2b` asks *does this footprint overlap a filed
+// plan*, so whether two houses can stand side by side at all is a separate question from what
+// their walls look like — and it decides whether any of this is reachable.
+fn two_by_gesture(tag: text, dx: float) {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  a1 = press_verb(s, w, s.es_author, VB_PLACE, "");
+  session_at(s, w, dx, 0.0, YAW);
+  a2 = press_verb(s, w, s.es_author, VB_PLACE, "");
+  ca = hexset_chunk(Q0, R0, WQ, HR);
+  fa = foot(0.0, 0.0);
+  fb = foot(dx, 0.0);
+  cb = hexset_chunk(Q0, R0, WQ, HR);
+  if fa.fp_ok { box_fill(footprint_box(fa), ca); }
+  if fb.fp_ok { box_fill(footprint_box(fb), cb); }
+  seam = hex_place::shared_marked(ca, cb, marks_of(w));
+  println("    {tag}: first {a1.ak_ok}, second {a2.ak_ok} — shared-wall edges {seam}");
+  if !a2.ak_ok { println("        the second was refused: {a2.ak_why}"); }
+}
+
+fn main() {
+  println("C1 — what does a shared wall cost today? (plan 26)");
+  println("");
+  println("  two houses side by side, at four separations:");
+  pair("apart  (dx 12) ", 12.0);
+  pair("close  (dx 8)  ", 8.0);
+  pair("TOUCHING (dx 6)", 6.0);
+  pair("overlapping (4)", 4.0);
+  println("");
+  println("  …and what the GESTURE allows, which is what decides whether any of it is reachable:");
+  two_by_gesture("apart  (dx 12) ", 12.0);
+  two_by_gesture("close  (dx 8)  ", 8.0);
+  two_by_gesture("TOUCHING (dx 6)", 6.0);
+}

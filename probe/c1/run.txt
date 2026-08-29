@@ -1,0 +1,22 @@
+C1 — what does a shared wall cost today? (plan 26)
+
+  two houses side by side, at four separations:
+    apart  (dx 12) : 23+23 cells, 0 touching pairs, 0 overlapping
+        ours (two houses stamped): 76 edges, ⛔ shared-wall edges 0
+        `combine_cut`:             76 edges cut, shared-wall edges 0
+    close  (dx 8)  : 23+23 cells, 3 touching pairs, 0 overlapping
+        ours (two houses stamped): 73 edges, ⛔ shared-wall edges 3
+        `combine_cut`:             70 edges cut, shared-wall edges 0
+    TOUCHING (dx 6): 23+23 cells, 9 touching pairs, 8 overlapping
+        ours (two houses stamped): 68 edges, ⛔ shared-wall edges 18
+        `combine_cut`:             50 edges cut, shared-wall edges 0
+    overlapping (4): 23+23 cells, 9 touching pairs, 13 overlapping
+        ours (two houses stamped): 64 edges, ⛔ shared-wall edges 18
+        `combine_cut`:             46 edges cut, shared-wall edges 0
+
+  …and what the GESTURE allows, which is what decides whether any of it is reachable:
+    apart  (dx 12) : first true, second true — shared-wall edges 0
+    close  (dx 8)  : first true, second false — shared-wall edges 3
+        the second was refused: there is already a building here — step outside it, or turn so the footprint lands clear
+    TOUCHING (dx 6): first true, second false — shared-wall edges 3
+        the second was refused: there is already a building here — step outside it, or turn so the footprint lands clear

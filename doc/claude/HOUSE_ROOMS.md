@@ -115,3 +115,28 @@ is a **level** as the formal model means one.
 ⚠ **Roofs are explicitly out of scope for now** — *"for now I want to focus on rooms / passages /
 doors"* — but note that one roof over a union of boxes is the thing `D2b`'s guard is really
 protecting, so the two meet at exactly that guard.
+
+## ⛔ Measured 2026-08-29 — `probe/c1`, and both of this document's claims hold
+
+**`D2b` over-refuses, and by how much is now exact.** Two houses at `dx 8` overlap in **zero
+cells** and the second is still refused — *"there is already a building here"* — for a
+footprint entirely clear of the other building. This document predicted it (*it asks "does the
+footprint overlap a filed plan" where it means "would two ROOFS cover one cell"*); the number
+is 0 overlapping cells against 3 touching pairs.
+
+**And `combine_cut` is the right primitive with nowhere to go.** Over two footprints:
+
+| separation | touching | overlap | our stamping: edges / seam | `combine_cut`: edges / seam |
+|---|---|---|---|---|
+| dx 12 | 0 | 0 | 76 / **0** | 76 / 0 |
+| dx 8 | 3 | **0** | 73 / **3** | 70 / 0 |
+| dx 6 | 9 | 8 | 68 / **18** | 50 / 0 |
+
+✅ Apart the two agree exactly, which is what makes the fused rows mean something, and
+`shared_marked` is **0 after `combine_cut` in every case** — the library's own instrument for
+its own claim.
+
+⛔ **THE ORDER OF WORK IS THEREFORE FIXED**: `D2b` must ask what it means, then a gesture must
+add a box **to a structure** rather than place a new one, and only then does the hall-vs-room
+default — which `@HB-X52` makes hexbody's — actually bind. Wiring the primitive before that
+answers it as *fuse*, for two buildings a person means as two.
