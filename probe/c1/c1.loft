@@ -150,6 +150,56 @@ fn two_by_gesture(tag: text, dx: float) {
   if !a2.ak_ok { println("        the second was refused: {a2.ak_why}"); }
 }
 
+// ⛔ **AND WHAT DOES `D2b` ACTUALLY ASK?** Its comment says it *"refuses exactly the cells
+// that would end up under two roofs"* — but it tests the NEW FOOTPRINT against the OLD ROOF,
+// and a roof OVERHANGS its footprint. The symmetric question is new ROOF against old ROOF, and
+// the two differ in a band: where the new house's eaves reach an existing roof while its floor
+// does not. This measures both, side by side, at every separation.
+// ⛔ **NOTHING HERE IS RECONSTRUCTED — THE GESTURE COMPUTES BOTH ROOFS.** Two earlier versions
+// of this rebuilt the second house's footprint and roof by hand and BOTH disagreed with
+// `press_verb`: one said dx 8 was allowed where the gesture refused it, the other said the
+// guard tested 0 at dx 10 while the guard was the thing refusing. `roof_plan_of`'s eave is not
+// the one `place_house` files, and `footprint_fill` is not `box_fill(footprint_box(..))`.
+//
+// ✅ So each house is placed ALONE in its own world and its filed plan read out of the
+// session. A house placed alone is never refused for a neighbour, so both plans are the real
+// ones — and the verdict comes from a third world where both are placed in order.
+fn plan_alone(dx: float, ok: &boolean) -> RoofPlan {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, dx, 0.0, YAW);
+  a = press_verb(s, w, s.es_author, VB_PLACE, "");
+  ok = a.ak_ok && len(s.es_roofs.items) > 0;
+  if !ok { return RoofPlan {}; }
+  s.es_roofs.items[0] ?? RoofPlan {}
+}
+
+fn d2b_asks(tag: text, dx: float) {
+  oka = false;
+  okb = false;
+  ra = plan_alone(0.0, oka);
+  rb = plan_alone(dx, okb);
+  if !oka || !okb { println("    {tag}: a house alone was refused — nothing to compare"); return; }
+  two = 0;
+  for r in R0..R0 + HR {
+    for q in Q0..Q0 + WQ {
+      if roof_plan_covers(ra, q, r) && roof_plan_covers(rb, q, r) { two = two + 1; }
+    }
+  }
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  press_verb(s, w, s.es_author, VB_PLACE, "");
+  session_at(s, w, dx, 0.0, YAW);
+  a2 = press_verb(s, w, s.es_author, VB_PLACE, "");
+  verdict = if a2.ak_ok {
+      if two > 0 { "⛔ ALLOWED with {two} cells under TWO roofs" } else { "✅ allowed, and clear" }
+    } else {
+      if two > 0 { "refused, and two roofs would have met" }
+      else { "⛔ REFUSED, and the roofs would NOT have met" } };
+  println("    {tag}: cells under both roofs {two} · {verdict}");
+}
+
 fn main() {
   println("C1 — what does a shared wall cost today? (plan 26)");
   println("");
@@ -163,4 +213,11 @@ fn main() {
   two_by_gesture("apart  (dx 12) ", 12.0);
   two_by_gesture("close  (dx 8)  ", 8.0);
   two_by_gesture("TOUCHING (dx 6)", 6.0);
+  println("");
+  println("  ⛔ AND WHAT `D2b` ASKS AGAINST WHAT IT MEANS — the new FOOTPRINT under the old");
+  println("     ROOF, against cells under BOTH roofs:");
+  for k in 0..9 {
+    d = 6.0 + (k as float);
+    d2b_asks("dx {d}   ", d);
+  }
 }

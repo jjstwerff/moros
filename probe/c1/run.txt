@@ -20,3 +20,15 @@ C1 — what does a shared wall cost today? (plan 26)
         the second was refused: there is already a building here — step outside it, or turn so the footprint lands clear
     TOUCHING (dx 6): first true, second false — shared-wall edges 3
         the second was refused: there is already a building here — step outside it, or turn so the footprint lands clear
+
+  ⛔ AND WHAT `D2b` ASKS AGAINST WHAT IT MEANS — the new FOOTPRINT under the old
+     ROOF, against cells under BOTH roofs:
+    dx 6   : cells under both roofs 18 · refused, and two roofs would have met
+    dx 7   : cells under both roofs 17 · refused, and two roofs would have met
+    dx 8   : cells under both roofs 12 · refused, and two roofs would have met
+    dx 9   : cells under both roofs 6 · refused, and two roofs would have met
+    dx 10   : cells under both roofs 6 · refused, and two roofs would have met
+    dx 11   : cells under both roofs 0 · ✅ allowed, and clear
+    dx 12   : cells under both roofs 0 · ✅ allowed, and clear
+    dx 13   : cells under both roofs 0 · ✅ allowed, and clear
+    dx 14   : cells under both roofs 0 · ✅ allowed, and clear

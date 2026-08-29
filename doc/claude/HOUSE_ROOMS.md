@@ -118,11 +118,22 @@ protecting, so the two meet at exactly that guard.
 
 ## ⛔ Measured 2026-08-29 — `probe/c1`, and both of this document's claims hold
 
-**`D2b` over-refuses, and by how much is now exact.** Two houses at `dx 8` overlap in **zero
-cells** and the second is still refused — *"there is already a building here"* — for a
-footprint entirely clear of the other building. This document predicted it (*it asks "does the
-footprint overlap a filed plan" where it means "would two ROOFS cover one cell"*); the number
-is 0 overlapping cells against 3 touching pairs.
+⛔ **`D2b` DOES NOT OVER-REFUSE, AND THIS DOCUMENT'S CLAIM ABOUT IT IS WITHDRAWN.** The line
+above said it *"asks does the footprint overlap a filed plan where it means would two ROOFS
+cover one cell"*, and the first version of `probe/c1` reported that as measured: *two houses at
+dx 8 overlap in zero cells and the second is still refused.* **That compared FOOTPRINT overlap
+against a guard that is about ROOFS**, and a roof overhangs its footprint by 16 cells here.
+
+Asked properly — each house placed **alone** so the gesture files its own roof plan, then both
+placed in order for the verdict:
+
+| separation | cells under **both** roofs | the gesture |
+|---|---|---|
+| dx 6 · 7 · 8 · 9 · 10 | 18 · 17 · 12 · 6 · 6 | refused ✅ |
+| dx 11 … 14 | **0** | allowed ✅ |
+
+✅ **It refuses exactly when two roofs would meet and allows exactly when they would not.** The
+guard's own comment is accurate; the criticism was not.
 
 **And `combine_cut` is the right primitive with nowhere to go.** Over two footprints:
 
@@ -136,7 +147,12 @@ is 0 overlapping cells against 3 touching pairs.
 `shared_marked` is **0 after `combine_cut` in every case** — the library's own instrument for
 its own claim.
 
-⛔ **THE ORDER OF WORK IS THEREFORE FIXED**: `D2b` must ask what it means, then a gesture must
-add a box **to a structure** rather than place a new one, and only then does the hall-vs-room
-default — which `@HB-X52` makes hexbody's — actually bind. Wiring the primitive before that
-answers it as *fuse*, for two buildings a person means as two.
+⛔ **SO THE ORDER OF WORK IS SHORTER THAN THIS DOCUMENT THOUGHT**: there is no guard to fix.
+What is missing is **a gesture that adds a box TO a structure** rather than placing a new one —
+two adjacent houses are correctly refused *as two buildings*, and nothing here expresses *one
+building of two boxes*. Only then does the hall-vs-room default, which `@HB-X52` makes
+hexbody's, actually bind.
+
+⚠ **AND `D2b` WOULD NEED A SECOND ANSWER, NOT A DIFFERENT ONE.** It is right to refuse a second
+*house* under an existing roof; a second *box of the same house* is a different gesture and
+would not pass through it at all.

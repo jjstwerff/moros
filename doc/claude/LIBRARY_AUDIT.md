@@ -153,9 +153,10 @@ loop.
 [`probe/c1`](../../probe/c1/README.md) measured it, and **the primitive has no caller because
 the CAPABILITY is missing**, not because we re-derive it. Nothing in this tree adds a
 same-level box to a structure — `storey` is a different LEVEL (and `combine_cut_level` exists
-so two levels never fuse), an `annex` is a balcony off a wall run — and the gesture **refuses a
-second house whose footprint overlaps zero cells**, which is `D2b` over-refusing exactly as
-HOUSE_ROOMS predicted.
+so two levels never fuse), an `annex` is a balcony off a wall run — ⚠ **and the guard is NOT the problem**: `D2b` refuses
+exactly when two roofs would meet and allows exactly when they would not, measured at nine
+separations. An earlier version of this row said it over-refused, from a probe that compared
+FOOTPRINT overlap against a guard about ROOFS.
 
 ⚠ **AND WIRING IT WOULD ANSWER A QUESTION THAT IS NOT OURS**: `@HB-X52` makes two adjacent
 boxes **fuse**, so *hall or room* belongs upstream. For two houses a person means as two
