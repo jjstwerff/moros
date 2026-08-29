@@ -1,4 +1,4 @@
-.PHONY: client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: help names probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -14,25 +14,79 @@ LOFT ?= loft
 # cores idle; above it the wall is the slowest single file and nothing else moves.
 TEST_JOBS ?= 16
 
-# The loft packages under lib/. ⚠ **NOT in dependency order, whatever this line said
-# before** — measured 2026-08-18, four edges contradict it: `moros_render` precedes
-# `hex_proj`, `hex_editor` precedes `hex_part`, and `hex_part` and `hex_mesh` both
-# precede `glb_read`. It costs nothing, because each `loft test` resolves its own
-# dependencies — which is exactly why the claim went unchallenged for so long.
-# `tools/rdeps.sh` sorts topologically rather than trusting this order.
+# The loft packages under lib/ — **every directory with a manifest, computed, never a
+# list kept here.**
 #
-# ⚠ THIS LIST IS THE TEST TARGET, so a package missing from it is a package whose
-# tests never run. `hex_voxel` and `glb_read` sat outside it for months — 66 tests
-# that only ever passed because someone ran them by hand. They are lavition
-# packages and take no brand prefix (see CLAUDE.md), which is exactly why a
-# `moros_*`-shaped list skipped them.
-LIB_PACKAGES = moros_map moros_editor moros_render moros_sim lavition_ui \
-               hex_voxel hex_editor hex_part hex_proj hex_mesh glb_read hex_cam
+# ⛔ **IT WAS A HAND-WRITTEN LIST AND IT WAS SHORT AGAIN.** `hex_rig` — 6 files, 89
+# tests — was missing, so `lib-test` (the BOTH-BACKENDS pre-commit proof) has never run
+# it. `make fast` did, because `tools/run-tests.sh` globs `lib/*/tests/*.loft`, so it
+# ran on one backend and the omission never showed as red. Measured 2026-08-29 while
+# closing it: 89 pass interpreted **and** 89 native, so nothing was hiding — but nobody
+# knew that, and a proof that skips a package silently is claiming something it did not
+# check. ⚠ The list's own comment had warned about exactly this, naming `hex_voxel` and
+# `glb_read` as *"66 tests that only ever passed because someone ran them by hand"*.
+# **A warning written above a hand-maintained list does not maintain it.**
+#
+# ⚠ `tools/rdeps.sh` had already drawn this conclusion for the dependency map — *"a
+# hand-written map is right the day it is written and wrong the first time somebody adds
+# a dependency"* — and this line is the same lesson one row up.
+#
+# ⚠ **NOT in dependency order, and it never was** — measured 2026-08-18, four edges
+# contradicted the claim. It costs nothing, because each `loft test` resolves its own
+# dependencies, which is why the claim went unchallenged for so long. `tools/rdeps.sh`
+# sorts topologically rather than trusting any order here; `$(sort)` here is
+# alphabetical and says so.
+LIB_PACKAGES = $(sort $(patsubst lib/%/loft.toml,%,$(wildcard lib/*/loft.toml)))
+
+# ⛔ **BARE `make` STARTED A WEB SERVER, AND SO DID `make -p`.** `serve:` was the first
+# target in this file, which is how GNU make picks its default goal — so a bare `make`,
+# and any `make -p` reading the database without `-n`, left an `http.server` on port
+# $(PORT) that nobody was tracking. Measured 2026-08-29 by tripping it. A default goal
+# that starts a process is the *stop any server you start* rule losing before anybody
+# has typed a target name.
+.DEFAULT_GOAL := help
+
+help:
+	@echo 'moros / lavition — the targets you want first:'
+	@echo '  make fast                 layering, basenames, citations, src/ compile,'
+	@echo '                            180 test files, the probes — after EVERY step'
+	@echo '  make fast P=hex_part      one package (or several, quoted)'
+	@echo '  make check P=hex_part     one package the old way, interpreter only'
+	@echo '  make lib-test             BOTH backends, every package — the pre-commit proof'
+	@echo '  make gate                 the browser gates (starts servers, stops them)'
+	@echo '  make page-check           the --html client: the only tier that drives a browser'
+	@echo '  make editor / stop-editor the editor server, and how to stop it'
+	@echo '  make serve / stop         the static html/ pages on port $(PORT)'
+	@echo
+	@echo 'doc/claude/QUICK_START.md is the map; CLAUDE.md holds the working rules.'
 
 serve:
-	$(PY) -m http.server $(PORT) --directory html &
+	@$(PY) -m http.server $(PORT) --directory html & \
+	 echo "serve: http.server on port $(PORT), pid $$! — stop it with 'make stop'"
+
+# ⛔ **THIS WAS `killall python3`, ON A BOX THAT RUNS OTHER AGENTS' WORK.** CLAUDE.md's
+# rule is *kill only processes you can identify as yours*, and `killall` cannot: it would
+# have taken out a sibling's tooling, a gate driver and this session's own helpers along
+# with the one server meant. It does what `port-free` does below instead — find who holds
+# the port, check the command line is ours, kill THAT pid, and leave a stranger alone out
+# loud.
+# ⚠ **AND THE COMMAND LINE ALONE IS NOT AN IDENTITY ON THIS BOX.** `http.server` is what
+# every tree's static server says, so a sibling agent serving their own `html/` on this
+# port would match a cmdline test exactly. The CWD is what separates them: `serve` above
+# runs from this tree, so `/proc/<pid>/cwd` resolving here is the check, and a stranger
+# is named and left alone.
 stop:
-	killall $(PY)
+	@pid=$$(ss -lptn 'sport = :$(PORT)' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -1); \
+	if [ -z "$$pid" ]; then echo "stop: nothing is listening on port $(PORT)"; exit 0; fi; \
+	cmd=$$(tr '\0' ' ' < /proc/$$pid/cmdline 2>/dev/null); \
+	cwd=$$(readlink -f /proc/$$pid/cwd 2>/dev/null); \
+	if echo "$$cmd" | grep -qE 'http\.server' && [ "$$cwd" = "$(CURDIR)" ]; then \
+	  kill $$pid 2>/dev/null && echo "stop: killed pid $$pid on port $(PORT)"; \
+	else \
+	  echo "port $(PORT) is held by pid $$pid, which is not this tree's http.server:"; \
+	  echo "  cwd: $$cwd"; \
+	  echo "  cmd: $$cmd"; echo "leaving it alone"; exit 1; \
+	fi
 creator:
 	firefox http://localhost:8000/character-creator.html
 upload:
@@ -495,9 +549,19 @@ gate-rep:
 # 114 on the same source. This is the fast loop, not the proof.
 #
 #   make fast                     the whole tree
-#   make fast P=hex_part          one package (or several, quoted)
+#   make fast P=hex_part          one package (or several, quoted) — GUARDS ONLY, no probes
 #   TEST_JOBS=8 make fast         fewer jobs, for a loaded box
 #   TEST_VERBOSE=1 make fast      per-file seconds
+#
+# ⛔ **`P=` NARROWED THE TESTS AND NOTHING ELSE, WHICH MADE THE PER-PACKAGE LOOP THE
+# SLOWEST THING IT COULD BE.** `$(P)` reached `run-tests.sh` alone, so
+# `make fast P=hex_part` ran one package's files in under a second and then nine probes
+# and six servers for ten minutes — a loop documented as *one package* and priced as the
+# whole tree. STATE.md called it *"under a second"* the entire time. The probe tier is
+# skipped under `P=` now, and the run SAYS SO at the end: a narrowed green that reads
+# like a whole-tree green is this tree's most repeated defect, and it must not be the
+# reward for narrowing.
+FAST_PROBES = $(if $(P),:,$(MAKE) -s)
 fast:
 	@sh tools/layering.sh
 # ⚠ **A SECOND STRUCTURAL GUARD, AND IT IS NOT WHAT `layering.sh` CHECKS.** That one
@@ -507,6 +571,19 @@ fast:
 # own file, and **the consumer's `use` line order decides which**. Measured on
 # `moros_sim` + `hex_part`, 2026-08-18 — see `probe/skin/README.md`.
 	@sh tools/basenames.sh
+# ⚠ **AND THE THIRD NAME QUESTION: WHO ELSE DECLARES THIS PUBLIC NAME.** `layering.sh`
+# reads the arrows and `basenames.sh` the module file names; this reads the exported
+# names — across a program's whole import graph (LIVE) and against the registry a
+# lavition package will publish into (LATENT). ⛔ It was run by NOTHING until today and
+# was red. Advisory against `tools/names.txt`, so a NEW collision shows and the ten
+# recorded ones do not reprint every loop; `make names` is the gate. ~1 s.
+	@NAMES_ADVISORY=1 sh tools/names.sh
+# ⚠ **AND THE CLAIM THE CHECK ABOVE RESTS ON, RE-MEASURED EVERY LOOP — 2 s.**
+# `tools/names.sh` was built because a colliding bare name bound SILENTLY by import order
+# (loft#788); that is fixed, and this tree carried the old sentence in the tool's head for
+# three weeks. `probe/names/run.sh` is the claim as a command, with a control, so it
+# cannot rot in either direction: the day the silence returns, row A goes red here.
+	@sh probe/names/run.sh > /dev/null
 # ⚠ THE CITATIONS INTO THE FORMAL CORE, WHICH LIVES IN ANOTHER REPO. 98 sites here
 # cite `X<n>` rows in `../hexbody/ROUNDTRIP.md`, and a citation rots SILENTLY — the
 # prose goes on reading correctly while the number names something else. ⚠ It SKIPS
@@ -540,22 +617,22 @@ fast:
 # 18-24 s in and not at minute four. Sweep: `probe/srcb/sweep.sh`, every row as predicted.
 	@sh tools/src-build.sh
 	@TEST_JOBS=$(TEST_JOBS) sh tools/run-tests.sh $(P)
-	@$(MAKE) -s probe-k3c
-	@$(MAKE) -s probe-t3
-	@$(MAKE) -s probe-t4
+	@$(FAST_PROBES) probe-k3c
+	@$(FAST_PROBES) probe-t3
+	@$(FAST_PROBES) probe-t4
 # ⚠ **IN THE LOOP BECAUSE A TARGET ALONE FIXES NOTHING.** `probe/k1` had no target at
 # all and was red for four days: `T1d` changed how an unknown verb travels and row E
 # read the server's refusal as the server ACTING. A check nobody runs drifts red in
 # silence, and this tree has now found that three times — k1, four `k3d` scripts whose
 # baselines blessed a crash, and `K3f`'s five camera scripts. 42s, against the 100s
 # `headless-same` already costs here.
-	@$(MAKE) -s probe-k1
-	@$(MAKE) -s probe-k3d
-	@$(MAKE) -s probe-headless
+	@$(FAST_PROBES) probe-k1
+	@$(FAST_PROBES) probe-k3d
+	@$(FAST_PROBES) probe-headless
 # ⚠ THE AUTHOR ON THE PLAN — plan 26 `B3`. It runs one script and compares the picture
 # against the walker at three stations, which is the only check in the tree that the
 # plan view draws the person the TICK moved rather than a pose it made up.
-	@$(MAKE) -s probe-plan
+	@$(FAST_PROBES) probe-plan
 # ⚠ **THE FIRST HOUR, AND IT IS THE ONLY GATE ON DoD CLAUSE 8.** `probe/adopt` is the twelve
 # lines a stranger writes before reading anything, and writing it by hand on 2026-08-28 found
 # two live defects that 775 library tests and 58 gates had never asked about — a refused house
@@ -563,7 +640,7 @@ fast:
 # and no caller until 2026-08-29, which is exactly the *a check nobody runs drifts red in
 # silence* this tree has now found four times (probe/k1, four `k3d` baselines blessing a crash,
 # `K3f`'s five camera scripts, and this). ~30s.
-	@$(MAKE) -s probe-adopt
+	@$(FAST_PROBES) probe-adopt
 # ⛔ **THIS SAID IT WAS THE ONLY THING IN `fast` THAT COMPILES A PROGRAM UNDER `src/`,
 # AND IT HAD NOT BEEN SINCE 2026-08-24.** `probe-k1` joined the loop that day and starts
 # the server too; `tools/src-build.sh` compiles all five non-client programs above. The
@@ -574,8 +651,10 @@ fast:
 # two-line diagnostic sitting in `.editor.log`, and nothing in this tier noticed
 # because nothing in this tier built it. It also carries `probe-s2c`, so the fast loop
 # now sees a divergence between the two drivers instead of only the library's own view
-# of itself. ⚠ It starts FOUR servers, each stopped: one for the house sentence and one
-# per `probe-s2c` script. Measured — the sentence half alone was 11.8 s, and `make fast`
+# of itself. ⚠ It starts FIVE servers, each stopped: one for the house sentence and one
+# per `probe-s2c` script, of which `S=` names four. **It said FOUR while naming both
+# halves of five** — written when `S` had three scripts, and `tower` made it four below
+# without this line moving. `probe-k1` starts a sixth earlier in the loop. Measured — the sentence half alone was 11.8 s, and `make fast`
 # end to end is 5m04 with the pair in it.
 # ⚠ **`tower` IS THE FOURTH — plan 26 `B4g`.** `59:` is a brand-new wire message, and
 # the runner's line and the server's handler print sentences that differ by nothing a
@@ -589,11 +668,19 @@ fast:
 # `tools/script.mjs` sent `25:1` and a material on the wire outranked the choice behind
 # it. Runner 0 wall bytes against served 12 — and **both drivers printed the identical
 # sentence**, so nothing but the saved world could have said so.
-	@$(MAKE) -s headless-same
+	@$(FAST_PROBES) headless-same
 	@echo "fast: ⚠ NOT run here — the browser. Nothing above builds or drives the"
 	@echo "      --html page; \`make page-check\` is the tier that does. A green fast"
 	@echo "      loop cleared a toolchain swap on 2026-08-16 while the browser editor"
 	@echo "      was broken the whole time (loft#950)."
+# ⚠ A SHELL `if`, NOT `$(if …)`: make splits that on the FIRST COMMA, and this text has
+# three — measured, the recipe died with *unexpected EOF while looking for matching `"`*.
+	@if [ -n "$(P)" ]; then \
+	  echo "fast: ⚠ P=$(P) — THE PROBE TIER WAS SKIPPED. This green is one"; \
+	  echo "      package's test files plus the guards, and says NOTHING about the"; \
+	  echo "      server, the drivers or the scripts. Run a bare \`make fast\` before"; \
+	  echo "      you commit."; \
+	fi
 
 # ── THE TWO CHECKS THAT DRIVE A BROWSER ─────────────────────────────────────
 #
@@ -792,6 +879,25 @@ probe-text:
 # `fast` to clear a new toolchain.
 drift:
 	@sh probe/way/drift.sh
+
+# THE GATING FORM OF THE NAME CHECK, `drift`'s shape for the same reason. `fast` runs it
+# ADVISORY against `tools/names.txt`; this prints every row and fails on any of them.
+#
+# ⛔ **IT HAD NO TARGET AT ALL UNTIL 2026-08-29 AND WAS RED.** Nothing ran `tools/names.sh`
+# — not `fast`, not `gate`, not a probe — and its one LIVE row and ten LATENT ones had been
+# sitting unread. Its own list was short by two packages, and adding them found a row
+# nobody had ever seen (`hex_rig::seg_len`, taken twice in the registry). ⚠ Advisory rather
+# than gating because the latent rows are **naming decisions about a public surface**, not a
+# build failure to clear this afternoon — see LAVITION_SPLIT.md. Blessing them into `KNOWN`
+# for a green would be silencing the check, which its own head tells you not to do.
+names:
+	@sh tools/names.sh
+
+# THE TOOLCHAIN CLAIM UNDER `names`, printed rather than swallowed. `fast` runs it quiet.
+probe-names:
+	@sh probe/names/run.sh
+
+# NAMES_BLESS=1 sh tools/names.sh re-records the baseline the advisory line compares to.
 
 # THE PRE-FLIGHT FOR STARTING A PLAN — are its steps small AND validated?
 #   make plan-check P=22-pages-client

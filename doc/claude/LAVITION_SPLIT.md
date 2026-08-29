@@ -265,6 +265,42 @@ this plan's **open question 5** — *does `moros_sim` split too?* — which is c
 
 ---
 
+### ⛔ Nine public names are already taken, and nobody had looked since 2026-08-06
+
+`tools/names.sh` asks the LATENT question this plan turns on — *is a name lavition will
+publish already in the registry?* — and **it was run by nothing**: no target, no tier, no
+caller. Run on 2026-08-29 it was red, and it had been.
+
+| package | name | already in |
+|---|---|---|
+| `hex_voxel` | `Layer` | `stage` |
+| `hex_editor` | `Prop` | `stage` |
+| `lavition_ui` | `DrawRect`, `DrawText`, `UiRect` | `stage` |
+| `lavition_ui` | `Metrics`, `metrics_measured`, `text_width` | `text2d` |
+| `hex_rig` | `seg_len` | `gridmesh`, `hex_way` |
+
+⚠ **`hex_rig`'s row was invisible because the script's own list was short** — it named
+seven lavition packages and `hex_rig` and `hex_cam` had been added since. *Named, not
+matched* was this tree's fix for `layering.sh`'s pattern skip, and a named list goes stale
+the same way; what saves one is being derived, or being run often enough to be noticed.
+It is in `make fast` now, advisory, against a recorded baseline (`tools/names.txt`).
+
+⛔ **THE DEADLINE IS THE PUBLISH, WHICH IS WHY THIS IS A BLOCKER AND NOT A CHORE.** A
+published name cannot be renamed. `lavition_ui` is the sharp end — six of the nine, and
+`text2d`'s three (`Metrics`, `metrics_measured`, `text_width`) are the same three concepts
+under the same three spellings — so anyone importing both packages plainly **cannot write
+either name bare**, and a published surface that has to be qualified everywhere is a
+surface that was named badly. ⚠ That is the cost after the compiler fix below, not before
+it: the old cost was a silent wrong binding, the new one is a permanent qualifier.
+
+⚠ **AND THE LIVE HALF IS SMALLER THAN IT LOOKS, MEASURED THE SAME DAY.** `seg_len` is
+declared by `hex_rig` and `hex_way`, both imported plainly by `editor_server.loft` — and a
+bare call is **refused by the compiler**, naming both declarations and the fix, so
+loft#788's silent binding is fixed. Every call site in this tree is already qualified. The
+live row costs a qualifier; the latent rows cost a rename, and only before publish.
+
+---
+
 ## The target shape
 
 ```

@@ -16,6 +16,8 @@
 #   TEST_JOBS=8 tools/run-tests.sh      fewer jobs, for a loaded box
 #   TEST_VERBOSE=1 tools/run-tests.sh   per-file seconds, for profiling
 #   TEST_NATIVE=1 tools/run-tests.sh    the OTHER backend, per file
+#   TEST_TIMEOUT=600 tools/run-tests.sh  a longer per-FILE deadline (default 300,
+#                                        loft's own) — for a box under a sibling's CI
 #
 # ⚠ THE INTERPRETER BY DEFAULT, DELIBERATELY. `make lib-test` is what runs both backends
 # in one command, and it stays the pre-commit gate — the two are two implementations of one language
@@ -35,6 +37,12 @@ self=$0
 # the only way to see which assertion failed was to run the whole tier again. Minutes,
 # twice, for one line. The logs live here and the block below names the failing tests.
 LOGDIR=${LOGDIR:-$PWD/.test-logs/fast}
+# ⚠ **SET BEFORE THE `--one` BRANCH, WHICH EXITS ABOVE THE PARENT'S SETUP.** A worker is
+# this same script re-invoked, so anything it reads has to be defined here or exported —
+# and under `set -u` a variable defined only in the parent's tail makes a standalone
+# `--one` run die on an unbound name rather than run one file.
+DEADLINE=${TEST_TIMEOUT:-300}
+export DEADLINE TEST_TIMEOUT
 
 if [ "${1:-}" = "--one" ]; then
   f=$2
@@ -54,10 +62,16 @@ if [ "${1:-}" = "--one" ]; then
   # `make` catches but which a bare `loft test` reports by **printing no result line and
   # exiting 0**. Per file the budget is per file, and the wall clock is the slowest
   # single file rather than the sum.
+  # ⚠ **THE DEADLINE IS A KNOB, AND IT IS `--timeout` RATHER THAN AN OUTER `timeout`** —
+  # `tools/suite.sh` measured why: an outer kill leaves no result line and no location, so
+  # an overrun reports as *nothing happened*, while loft's own deadline names the phase,
+  # the function and the file. Per file, so raising it bounds one file rather than a
+  # package. Default 300, which is loft's own; `TEST_TIMEOUT=600 make fast` on a box a
+  # sibling's CI has at load 74.
   if [ -n "${TEST_NATIVE:-}" ]; then
-    out=$(cd "lib/$pkg" && loft --lib ../ --tests "$rel" --native 2>&1)
+    out=$(cd "lib/$pkg" && loft --timeout "$DEADLINE" --lib ../ --tests "$rel" --native 2>&1)
   else
-    out=$(cd "lib/$pkg" && loft --lib ../ --tests "$rel" 2>&1)
+    out=$(cd "lib/$pkg" && loft --timeout "$DEADLINE" --lib ../ --tests "$rel" 2>&1)
   fi
   rc=$?
   end=$(date +%s%N)
@@ -73,6 +87,15 @@ if [ "${1:-}" = "--one" ]; then
   # prints diagnostics and never reaches a `test result:` line, and treating a missing
   # line as green is how a package that will not build reports as healthy.
   case "$out" in *'test result:'*) ;; *) verdict=FAIL ;; esac
+  # ⛔ **A DEADLINE IS NOT AN ASSERTION, AND ONE WORD FOR BOTH IS HOW A REAL ONE HIDES.**
+  # `FAIL hex_mesh/planview 300.0s` reads as *this test is wrong*; it means *this file did
+  # not finish*, and the action is different — re-run when `pgrep -f cargo-nextest` is
+  # quiet, raise `TEST_TIMEOUT`, or cut what the file costs. Measured 2026-08-29: two files
+  # went red at load **74** with a sibling's `cargo-nextest` running, and `hex_editor/aim`
+  # passes standalone in **261 s**, 39 s under the wall. ⚠ This is `probe/k1`'s finding in
+  # another tier — *the server never listened* for two different failures — and it is kept
+  # RED, because a file that cannot finish inside its budget is not a pass.
+  case "$out" in *'[timeout] deadline reached'*|*'[timeout] hard-kill'*) verdict=WALL ;; esac
 
   if [ "$verdict" != PASS ] || [ -n "${TEST_VERBOSE:-}" ]; then
     printf '%-4s %-28s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
@@ -104,7 +127,7 @@ if [ "${1:-}" = "--one" ]; then
     [ -n "$first" ] || first=$(printf '%s\n' "$out" \
       | grep -E '^ *Error|^\[timeout\]|^error' | head -1 | sed 's/^ *//')
     [ -n "$first" ] || first="no test result line at all — see the log"
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "${nf:-1}" "${np:-0}" "$name" "${log#$PWD/}" "$src" "$first" \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "${nf:-1}" "${np:-0}" "$name" "${log#$PWD/}" "$src" "$first" "$verdict" \
       > "$LOGDIR/rows/$(echo "$name" | tr / -)"
   fi
   [ "$verdict" = PASS ] || exit 1
@@ -141,11 +164,26 @@ fi
 
 # ⛔ **THE REPORT IS THE POINT: how many, and which are worst.** Sorted by failures, so
 # the file to open first is the first line. Everything else is on disk.
+nwall=$(cat "$LOGDIR"/rows/* 2>/dev/null | awk -F'\t' '$7=="WALL"' | wc -l | tr -d ' ')
 echo
-echo "tests: ⛔ $nred of $n files FAILED — full output in ${LOGDIR#$PWD/}/"
+# ⚠ THE TWO KINDS ARE COUNTED APART. A run that is red only at the wall is a run to
+# repeat on a quiet box; a run with one assertion in it is not, however many wall rows
+# sit beside it.
+if [ "$nwall" -eq "$nred" ]; then
+  echo "tests: ⛔ $nred of $n files did not FINISH — every one at the ${DEADLINE}s wall, none"
+  echo "       failed an assertion. Load now: $(cut -d' ' -f1 /proc/loadavg 2>/dev/null). Re-run when"
+  echo "       \`pgrep -f cargo-nextest\` is quiet, or TEST_TIMEOUT=600 make fast."
+else
+  echo "tests: ⛔ $nred of $n files FAILED — $((nred - nwall)) on an assertion, $nwall at the ${DEADLINE}s wall"
+fi
+echo "       full output in ${LOGDIR#$PWD/}/"
 echo
-cat "$LOGDIR"/rows/* | sort -rn -k1 | head -8 | while IFS="$(printf '\t')" read -r nf np name log src first; do
-  printf '  %-28s %2s failed, %3s passed\n' "$name" "$nf" "$np"
+cat "$LOGDIR"/rows/* | sort -rn -k1 | head -8 | while IFS="$(printf '\t')" read -r nf np name log src first kind; do
+  if [ "$kind" = WALL ]; then
+    printf '  %-28s did not finish inside %ss\n' "$name" "$DEADLINE"
+  else
+    printf '  %-28s %2s failed, %3s passed\n' "$name" "$nf" "$np"
+  fi
   printf '      %s\n' "$first"
   printf '      %s\n' "$src"
   printf '      log: %s\n' "$log"

@@ -1,12 +1,33 @@
 #!/bin/sh
 # ONE NAME, ONE THING — a public name is GLOBAL, and nothing else in the build says so.
 #
-# loft has no per-package namespace for a *bare* name. Two packages in one dependency
-# graph may each declare `Chunk`, and a bare `Chunk { … }` binds to whichever was
-# `use`d FIRST — the same file with its two imports swapped compiles something
-# different, at either order, with no ambiguity error
-# ([loft#788](https://github.com/loft-lang/loft/issues/788)). So a collision is not a
-# build failure that finds itself; it is a silence.
+# loft has no per-package namespace for a *bare* name: two packages in one dependency
+# graph may each declare `Chunk`, and nothing in `loft test` looks across a graph.
+#
+# ✅ **THE SILENCE IS FIXED, AND THAT CHANGES WHAT THIS SCRIPT IS FOR — measured
+# 2026-08-29 against the installed toolchain.** This file was written when a bare name
+# bound to whichever package was `use`d FIRST, so the same file with its imports swapped
+# compiled something different with no error
+# ([loft#788](https://github.com/loft-lang/loft/issues/788)). It no longer does. A
+# two-package repro over the very pair this reports — `use hex_rig; use hex_way;` then a
+# bare `seg_len()` — is REFUSED, naming both declarations and the fix:
+#
+#     error: `seg_len` is declared by more than one module here — hex_rig::frames::seg_len
+#     and hex_way::seg_len. … alias yours (`use self::frames as m;` then `m::seg_len`), or
+#     import the other one by name so only one `seg_len` is in scope
+#
+# ⚠ **AND THAT MEASUREMENT IS A COMMAND, NOT A QUOTE — `probe/names/run.sh`, in
+# `make fast`, 2 s.** This file carried loft#788's behaviour in its head for three weeks
+# after it was fixed and would have gone on carrying it; the probe is what makes the
+# reverse impossible too, because the day the silence returns row A goes red.
+#
+# ⚠ **SO A LIVE ROW IS NO LONGER A SILENT WRONG ANSWER — IT IS A NAME YOU CANNOT WRITE
+# BARE IN THAT PROGRAM.** Loud, at compile time, with the fix in the message. That is a
+# smaller defect than this file was built for, and it is worth saying out loud rather
+# than leaving the reader to over-rate a row. ⛔ **The LATENT half did not change at
+# all**, and it is now the greater share of the value: a name a package will PUBLISH,
+# already taken in the registry, is unfixable the day it ships — no compiler sees it,
+# because the two packages are not in one graph yet.
 #
 # ⚠ IT IS NOT HYPOTHETICAL, AND EVERY CASE BELOW WAS FOUND BY RUNNING THIS.
 #
@@ -31,9 +52,10 @@
 #
 # ── the two questions, which are different ────────────────────────────────────
 #
-# LIVE     two packages that a program ALREADY imports both declare a name. One of
-#          them is unreachable from that file, and which one is decided by the order
-#          of the `use` block. This is a defect now.
+# LIVE     two packages that a program ALREADY imports both declare a name. Neither is
+#          reachable BARE from that file — the compiler refuses the call and names both
+#          (see the ✅ above; it used to pick one silently). Qualify, or alias one
+#          import, which is what `use gridmesh as gm;` in `editor_server.loft` does.
 # LATENT   a name lavition will PUBLISH is already taken in the registry. Nothing is
 #          broken today; it becomes unfixable the day the package is published,
 #          because a published name cannot be renamed.
@@ -43,10 +65,20 @@ set -u
 # The packages that travel to lavition and will be published under their own names.
 # ⚠ Named, not matched — the pattern skip is what let `moros_ui` and `moros_terrain`
 # out from under `tools/layering.sh` for months.
-LAVITION="hex_voxel hex_editor hex_part hex_mesh hex_proj lavition_ui glb_read"
+#
+# ⛔ **AND THE NAMED LIST WENT STALE ANYWAY, WHICH IS THE OTHER HALF OF THAT LESSON.**
+# `hex_rig` and `hex_cam` were missing — both lavition packages, both taking no brand
+# prefix, both added after this line was written. Found 2026-08-29 by running a script
+# nothing runs. **A list is exempt from the check it feeds**, whether it exempts by
+# pattern or by omission; what saves it is being DERIVED or being run often enough to
+# be noticed. This one is now in `make fast`, which is the second of those.
+LAVITION="hex_voxel hex_editor hex_part hex_mesh hex_proj lavition_ui glb_read hex_rig hex_cam"
 
 # The programs whose import lists are checked for LIVE shadowing.
-PROGRAMS="src/editor_server.loft src/editor_client.loft src/editor_run.loft src/part_build.loft src/prop_build.loft"
+# ⚠ `src/plan_view.loft` was missing here and from `tools/layering.sh`'s copy of this
+# list, whose comment says the two are *"the same one … one place to add a program"* —
+# they were the same, and both short.
+PROGRAMS="src/editor_server.loft src/editor_client.loft src/editor_run.loft src/part_build.loft src/prop_build.loft src/plan_view.loft"
 
 # ⚠ COLLISIONS THAT ARE TRACKED RATHER THAN INVISIBLE, as `layering.sh` tracks a
 # layering debt: `name:pkg:pkg` for a LIVE pair, `name:pkg` for a LATENT one. Each
@@ -103,17 +135,24 @@ for prog in $PROGRAMS; do
   for n in $dups; do
     owners=$(grep -E "^$n " "$tmp/all" | awk '{print $2}' | sort | tr '\n' ':' | sed 's/:$//')
     tracked "$n:$owners" && continue
-    # Which `use` wins is the FIRST one in the file — say so, because that is the
-    # thing a reader cannot see and the thing an innocent reorder changes.
+    # The first `use` is still named, because it is the one an alias should go on —
+    # not because it "wins" any more. It does not; the compiler refuses the bare call.
     first=$(for o in $(echo "$owners" | tr ':' ' '); do
               ln=$(grep -nE "^use $o *;" "$prog" | head -1 | cut -d: -f1)
               printf '%s %s\n' "${ln:-999999}" "$o"
             done | sort -n | head -1 | awk '{print $2}')
-    hits="$hits\n     $n — declared by $(echo "$owners" | tr ':' ' '); \`$first\` wins, by import order"
+    hits="$hits\n     $n — declared by $(echo "$owners" | tr ':' ' '); bare use is refused, \`$first\` is first"
+    echo "live $prog $n $owners" >> "$tmp/found"
   done
   if [ -n "$hits" ]; then
-    echo "NAMES (live): $prog imports two packages that declare the same name:"
-    printf '%b\n' "$hits"
+    # ⚠ ADVISORY MODE PRINTS ONE LINE AND NOT THE ROWS. A `fast` loop that reprints the
+    # same eleven findings every run teaches the reader to scroll past the place where a
+    # NEW one would appear — `run-tests.sh`'s *silent when green* rule, applied to a
+    # check that is not green and is not going to be this week.
+    if [ "${NAMES_ADVISORY:-0}" != "1" ]; then
+      echo "NAMES (live): $prog imports two packages that declare the same name:"
+      printf '%b\n' "$hits"
+    fi
     fail=1
   fi
 done
@@ -132,18 +171,63 @@ for pkg in $LAVITION; do
     for n in $shared; do
       tracked "$n:$pkg" && continue
       hits="$hits\n     $n — also in the registry's \`$other\`"
+      echo "latent $pkg $n $other" >> "$tmp/found"
     done
   done
   if [ -n "$hits" ]; then
-    echo "NAMES (latent): \`$pkg\` exports a name the registry already has:"
-    printf '%b\n' "$hits"
+    if [ "${NAMES_ADVISORY:-0}" != "1" ]; then
+      echo "NAMES (latent): \`$pkg\` exports a name the registry already has:"
+      printf '%b\n' "$hits"
+    fi
     fail=1
   fi
 done
 
 # ⚠ TRACKED, NOT SILENT — printed every run so the list cannot quietly become
 # permanent. This is `layering.sh`'s rule and it is here for the same reason.
-[ -n "$KNOWN" ] && echo "names: tracked, not fixed — $KNOWN  (see the head of this script)"
+[ -n "$KNOWN" ] && [ "${NAMES_ADVISORY:-0}" != "1" ] \
+  && echo "names: tracked, not fixed — $KNOWN  (see the head of this script)"
+
+# ── THE BASELINE, AND WHY THIS IS ADVISORY IN `make fast` ─────────────────────
+#
+# ⛔ **THIS SCRIPT WAS RUN BY NOTHING AND WAS RED — found 2026-08-29.** No target, no
+# tier, no caller: `make fast` never ran it, `make gate` never ran it, and its LIVE row
+# and eight LATENT ones had been sitting there unread. That is *a check nobody runs
+# drifts red in silence*, the fifth time this tree has found it.
+#
+# ⚠ **IT GOES IN `fast` ADVISORY, NOT AS A GATE, AND THE REASON IS THE LATENT HALF.**
+# Those rows are naming decisions about a public surface — `hex_voxel::Layer` against the
+# registry's `stage`, and `lavition_ui`'s six against `text2d` — and they are somebody's
+# call to make before publishing, not a build failure to clear this afternoon. Blessing
+# them into `KNOWN` to get a green would be silencing the check, which is the one thing
+# its own head tells you not to do. So `fast` runs it every loop and never fails on it,
+# `sh tools/names.sh` is the gate, and the BASELINE below is what makes the advisory line
+# worth reading: it says *as recorded* or it says a name is NEW. `probe/way/drift.sh`
+# drew this same line for the same reason.
+BASE=tools/names.txt
+sort -o "$tmp/found" "$tmp/found" 2>/dev/null || : > "$tmp/found"
+
+if [ "${NAMES_BLESS:-0}" = "1" ]; then
+  cp "$tmp/found" "$BASE"
+  echo "names: baseline re-recorded — $(wc -l < "$BASE") row(s) in $BASE"
+  exit 0
+fi
+
+if [ "${NAMES_ADVISORY:-0}" = "1" ]; then
+  # ⚠ `grep -c` PRINTS 0 *AND* EXITS 1, so `$(grep -c … || echo 0)` yields "0 0" on the
+  # one day this matters — the day every collision is fixed and the line should read
+  # cleanest. Counted with `wc` instead.
+  live=$(awk '$1=="live"' "$tmp/found" 2>/dev/null | wc -l | tr -d ' ')
+  lat=$(awk '$1=="latent"' "$tmp/found" 2>/dev/null | wc -l | tr -d ' ')
+  if [ -f "$BASE" ] && diff -q "$BASE" "$tmp/found" >/dev/null 2>&1; then
+    echo "names: $live live, $lat latent — as recorded"
+  else
+    echo "names: ⚠ THE COLLISIONS MOVED — $live live, $lat latent, against $BASE:"
+    diff "$BASE" "$tmp/found" 2>/dev/null | grep '^[<>]' | sed 's/^/       /'
+    echo "       sh tools/names.sh shows them; NAMES_BLESS=1 sh tools/names.sh re-records."
+  fi
+  exit 0
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo

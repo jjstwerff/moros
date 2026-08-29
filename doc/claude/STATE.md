@@ -475,27 +475,58 @@ second authority on where the author is.
 
 ## How to run things
 
-### ⚠ THE HOT PATH IS `make fast`, AND IT STARTS NO SERVERS
+### ⛔ THE HOT PATH IS `make fast` — AND IT IS MINUTES NOW, AND IT STARTS SERVERS
+
+⛔ **THIS SECTION SAID "16 s" AND "IT STARTS NO SERVERS", AND BOTH WERE TRUE WHEN THEY
+WERE WRITTEN.** Measured 2026-08-29: **692 s** end to end, and **six** servers, each
+stopped — one in `probe-k1`, one in `headless-same`, and one per `probe-s2c` script under
+it. ⚠ **The 16 s was never wrong about the half it described** — 180 test files at 16
+jobs is still seconds. What grew around it is `src-build`, `probe-k3c t3 t4 k1 k3d
+headless plan adopt` and `headless-same`, each added for a reason and none of them
+cheap. ✅ **`P=` NARROWS IT PROPERLY NOW — 24 s, and it was ~11 minutes**: `$(P)` used to
+reach `run-tests.sh` alone, so narrowing to one package still paid nine probes and six
+servers. The probe tier is skipped under `P=`, and the run says so at the end, because a
+narrowed green that reads like a whole-tree green is the defect this tree keeps finding.
+The 24 s is `src-build`, which stays in deliberately: a library change breaking a consumer
+under `src/` is exactly what the per-package loop should catch.
+⚠ **AND 692 s IS A NUMBER ABOUT THE DAY**: load 12–28 with a sibling's `cargo`
+running, against **5m04** recorded in the Makefile on a quieter box. A wall clock
+measures the machine — which is this tree's own rule, and the reason the per-step
+instrument is `w_tau` and not seconds.
 
 ```sh
-make fast                        # layering + ALL 113 test files in parallel — 16 s
-make fast P=hex_part             # one package (or several, quoted) — under a second
+make fast                        # every guard, 180 test files, the probes — ~11 min
+make fast P=hex_part             # one package + the guards, NO probes — 24 s
+TEST_TIMEOUT=600 make fast       # a longer per-FILE deadline, for a box under a sibling's CI
 make check P=hex_part            # layering + one package the old way, interpreter only
 make check P=hex_part G=part_bind   # …and the gates that cover it
 make gate-one G="cache walk"     # just those gates, by bare name, either directory
 make gate-rep  G="cache walk hipskin" N=5   # the SAME set, N times — the FLAKE HUNT
 ```
 
-⚠ **`make fast` IS WHAT YOU RUN AFTER EVERY STEP.** 113 test files, one job per file:
+⚠ **`make fast` IS WHAT YOU RUN AFTER EVERY STEP.** 180 test files, one job per file:
 **16.5 s** at 16 jobs (22.9 s at 8, 15.9 s at 24) against ~140 s for the same tests
-serially. The parallelism costs nothing to buy — `loft test` over `hex_part` and the sum
+serially — measured at 113 files and still the shape at 180. The parallelism costs nothing to buy — `loft test` over `hex_part` and the sum
 of its sixteen files run one at a time agree at 35–39 s, so there is no per-file penalty.
 
-⚠ **IT DELIBERATELY RUNS NO GATES AND ONE BACKEND.** A gate starts a server, waits for a
-port and drives a world; a check you run after each step must not, and a check that takes
-minutes is one you stop running. `make lib-test` stays the pre-commit proof across both
+⚠ **IT RUNS NO GATES AND ONE BACKEND — AND IT NO LONGER AVOIDS SERVERS.** The `.mjs`
+gates are still out; what came in are probes that start a server themselves, because the
+questions they answer (does the server build, does it build the same world as the runner,
+does it refuse an unknown verb) cannot be asked without one. ⚠ **The sentence this
+replaces — *a check you run after each step must not start a server* — lost to the fact
+that the only alternative was not asking.** `make fast P=hex_part` is the sub-second loop
+now; the whole-tree one is a coffee. `make lib-test` stays the pre-commit proof across both
 backends — loft#760 took `hex_voxel` from 114 green to 96 failed while `--native` passed
 all 114 on the same source, so a one-backend green is a fast loop and not a proof.
+
+⛔ **AND A DEADLINE IS NOT AN ASSERTION — `WALL`, NOT `FAIL`, SINCE 2026-08-29.** `loft
+test` bounds a run at 300 s, and a file that runs out of clock reported the same word as a
+file whose test is wrong. Measured the day it was split: two files went red at load **74**
+with the sibling's `cargo-nextest` running, and `hex_editor/aim` passes standalone in
+**261 s** — 39 s under the wall. The summary now says *did not FINISH … none failed an
+assertion*, prints the load, and names the two remedies (`TEST_TIMEOUT=600`, or wait for
+`pgrep -f cargo-nextest` to go quiet). ⚠ **It stays RED**: a file that cannot finish inside
+its budget is not a pass. This is `probe/k1`'s *two failures, one sentence* in another tier.
 
 ⚠ **THE RUNNER WAS CHECKED AGAINST TWO THINGS IT MUST FIND**, because its default answer
 is silence: a seeded failing assert, and a seeded compile error — which prints no
