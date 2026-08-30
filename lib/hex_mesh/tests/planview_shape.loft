@@ -1,0 +1,653 @@
+// THE PLAN VIEW — ONE structure's description — plan 26 `B4g`–`B4r`.
+//
+// What a reader makes of a single shape: a round rim recovered to its own centre and
+// shell, an octagon to its eight corners, a house to the rectangle its FLOOR determines,
+// and a run measured against the field it came from. The palette decides which round
+// reader is asked; the caption carries what the description does not explain.
+//
+// ── ⛔ WHY THIS IS THREE FILES AND NOT ONE — plan 26, 2026-08-30 ───────────
+//
+// `planview.loft` was **62 tests and 210 s on an IDLE box**, against `loft test`'s
+// **300-second per-FILE deadline**. Not near the wall — at it, using 70% of the budget
+// with nothing else running; `make fast`'s whole test phase is 325 s over 181 files at
+// 16 jobs, so this one file WAS the critical path, and on a box a sibling's CI was
+// loading it went over and took the loop red.
+//
+// ⚠ **THE DEADLINE IS PER FILE, WHICH IS WHY SPLITTING IS THE FIX AND TRIMMING IS NOT.**
+// `tools/suite.sh` exists for this reason — *"one file per process, so the deadline
+// bounds the slowest file instead of the sum"* — and three files also run in PARALLEL
+// where one cannot. ⚠ **The cost is not spread evenly**: measured at low load, 31 of the
+// old tests ran in **34 s** and the other 31 in **~176 s**, all of it in the
+// multi-structure peel.
+//
+// ⚠ **NO ASSERTION MOVED, AND THE SPLIT WAS CHECKED BY ROUND TRIP** — the extracted
+// ranges tile the original file exactly, line for line, before anything was written out.
+// Each file takes a copy of the fixture helpers its own tests reach, which is this
+// tree's convention rather than a new debt: thirteen files in `hex_editor/tests/` define
+// their own `flat_world`, because a loft test file is its own compilation unit.
+//
+// THE PLAN VIEW DRAWS WHAT THE STORE HOLDS — plan 26 `B0`.
+//
+// ⚠ EVERY ASSERTION BELOW READS THE EMITTED TEXT. Not a count the emitter
+// returned, not a field it filled in: `CLAUDE.md` — *measure what was actually
+// emitted, never a number the producer re-derives*. `plan_svg` returns text and
+// nothing else for exactly this reason, and the parser here is the test's own.
+//
+// ⚠ AND THE PARSER IS CHECKED AGAINST SOMETHING IT SHOULD FIND BEFORE IT IS
+// TRUSTED TO REPORT AN ABSENCE. A grep over a picture has the same default answer
+// as a grep over a log — *absent* — so the first test below counts a world with
+// walls in it, and only then a world without.
+//
+// ⚠ THE ORACLE FOR EVERY POSITION IS THE MESHER'S OWN THREE CALLS, written out
+// here rather than taken from `plan_slot_seg`: `hex_edge_corners`, the `(6 - c) % 6`
+// join, `hex_corner_world`. A test that asked the helper what the helper says
+// could not be surprised by any of the four faults this file exists to catch.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+use hex_grid;
+use hex_proj;
+use hex_way;
+
+const U = 0.25;
+
+// ⚠ THE PICTURE NOW HOLDS TWO KINDS OF LINE — plan 26 `B1` — so every count has to
+// name which. `<line class='edge'>` is a stored wall byte (the FIELD) and
+// `<line class='run'>` is what the reader made of them (the DESCRIPTION). A count of
+// `<line` alone read 2 for one wall the moment the description arrived, which is what
+// these tests caught on the step that added it.
+const FIELD = "<line class='edge'";
+
+const DESCR = "<line class='run'";
+
+// ── `B4n` — A HOUSE, AT LAST ───────────────────────────────────────────────
+//
+// ⛔ **A HOUSE HAS DRAWN NO DESCRIPTION SINCE `B1`, AND IT IS WHAT A BLUEPRINT IS
+// FOR.** The reader does not look at the marks at all: `place_house` fills its
+// footprint with `box_fill`, so the FLOOR is the rectangle, and the marks are what the
+// recovered rectangle is then measured against.
+
+const HOUSE_YAW = 1.5707963267948966;   // 90° — the only orbit `place_house` accepts
+
+fn about(a: float, b: float) -> boolean { a - b < 0.0001 && b - a < 0.0001 }
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// ── The test's own reader ───────────────────────────────────────────────────
+
+fn attr(ln: text, name: text) -> text {
+  at = ln.find("{name}='");
+  if at == null { return ""; }
+  rest = ln[(((at ?? 0) + name.size() + 2) as i32)..];
+  cut = rest.find("'");
+  if cut == null { return ""; }
+  rest[0..(cut ?? 0)]
+}
+
+fn tag_count(svg: text, head: text) -> integer {
+  n = 0;
+  for ln in svg.split('\n') {
+    if ln.size() < head.size() { continue; }
+    if ln[0..(head.size() as i32)] == head { n = n + 1; }
+  }
+  n
+}
+
+// ── `B1` — THE DESCRIPTION, DRAWN OVER THE FIELD IT CAME FROM ────────────────
+//
+// ⚠ THE TWO TESTS BELOW ARE A PAIR AND NEITHER IS WORTH ANYTHING ALONE. The first
+// says the instrument draws a true description when there is one; the second says it
+// draws a FALSE one when the library returns a false one — which is the whole reason
+// the picture exists, because `wall_read_run` reads a chain's two ends and is blind
+// to the path between them (`probe/l1` `P4`, refuted).
+
+fn desc_line(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < (DESCR.size() as i32) { continue; }
+    if ln[0..(DESCR.size() as i32)] == DESCR { return ln; }
+  }
+  ""
+}
+
+// ⚠ THE CAPTION IS A CLAIM THE PICTURE MAKES ABOUT ITSELF, so it is checked like
+// one. `B0`'s lesson was that two silences must not read alike — *no marks at all*
+// and *marks the reader refused* are different facts — and the caption is the only
+// place a reader can tell them apart.
+fn caption(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 6 { continue; }
+    if ln[0..6] == "<text " { return ln; }
+  }
+  ""
+}
+
+// ── `B4m` — AND WHICH ROUND READER? THE PALETTE SAYS ───────────────────────
+//
+// ⛔ **§2.5: *an octagon tower is never deduced; it is stored*, and the reason is
+// measured rather than argued.** A disk and an octagon are the SAME FIELD at four
+// sizes — `disc 156 == octagon 192` among them — so no reader looking only at cells
+// can tell them apart there. `hex_editor::marks_body` is what picks the model, and
+// `oct_recover` only offers shells the gesture can actually build.
+
+fn oct_typed_world(shell: integer, body: text) -> VoxelWorld {
+  w = flat_world();
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+           [hex_voxel::PalEntry { pl_slot: 5, pl_name: "tower body={body}" }]);
+  assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, 0.0);
+  assert(hex_editor::session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  assert(hex_editor::session_select_shell(s, shell).ak_ok, "shell {shell} refused");
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the tower was refused");
+  w
+}
+
+fn test_an_octagon_is_drawn_as_an_octagon() {
+  w = oct_typed_world(156, hex_editor::WALL_BODY_OCT);
+  svg = plan_svg(w, 0 - 10, 0 - 10, 21, 21, 8.0, "oct");
+
+  cap = caption(svg);
+  assert(cap.contains("octagon 0,0 shell 156"),
+         "the caption does not name the octagon it drew: {cap}");
+  assert(tag_count(svg, "<polygon class='oct'") == 1,
+         "{tag_count(svg, \"<polygon class='oct'\")} octagon outlines drawn, not one");
+  // ⚠ **THE OUTLINE IS EIGHT POINTS, READ OUT OF THE PICTURE** — a `<polygon>` with
+  // seven would draw a septagon that measures as a description all the same.
+  pts = "";
+  for ln in svg.split('\n') {
+    if ln.contains("<polygon class='oct'") { pts = ln; }
+  }
+  assert(pts != "", "the octagon line did not come back out of the picture");
+  // ⚠ **THE POINTS ATTRIBUTE, NOT THE LINE** — the line also carries `rgb(30,90,220)`,
+  // whose two commas made the first version of this row report ten points for eight.
+  pa = pts.find("points='");
+  assert(pa != null, "the outline carries no points at all: {pts}");
+  prest = pts[(((pa ?? 0) + 8) as i32)..];
+  pe = prest.find("'");
+  assert(pe != null, "the points attribute is not closed: {pts}");
+  plist = prest[0..(pe ?? 0)];
+  npt = 0;
+  for pc in plist.split(',') { npt = npt + 1; }
+  assert(npt == 9,
+         "the outline carries {npt - 1} points, not eight: {plist}");
+}
+
+// ⛔ **THE SAME FIELD, A DIFFERENT PALETTE, A DIFFERENT PICTURE.** This is the row
+// that says the shape came from the declaration and not from the cells.
+fn test_the_palette_decides_which_description_is_drawn() {
+  ow = oct_typed_world(156, hex_editor::WALL_BODY_OCT);
+  cw = oct_typed_world(156, "THICK_CURVED");
+
+  osvg = plan_svg(ow, 0 - 10, 0 - 10, 21, 21, 8.0, "o");
+  csvg = plan_svg(cw, 0 - 10, 0 - 10, 21, 21, 8.0, "c");
+  assert(caption(osvg).contains("octagon"), "the octagon world drew no octagon");
+  assert(caption(csvg).contains("disc"), "the round world drew no disc");
+  // …and it is the OUTLINE that changed, not only the sentence.
+  assert(tag_count(osvg, "<polygon class='oct'") == 1
+         && tag_count(osvg, "<circle class='disc'") == 0,
+         "the octagon world drew a circle or no polygon");
+  assert(tag_count(csvg, "<circle class='disc'") == 1
+         && tag_count(csvg, "<polygon class='oct'") == 0,
+         "the round world drew a polygon or no circle");
+
+  // ⛔ **AND THE OBVIOUS CONTROL HERE IS BLIND, WHICH IS PLAN 26 `B4l`'s OWN FINDING
+  // BITING A SECOND TIME.** *"…and the two FIELDS differ, so this is not one field
+  // described two ways"* was written as a mark COUNT and went red: at shell 156 the
+  // octagon is 51 cells with a **54**-edge rim and the disk is 55 cells with a
+  // **54**-edge rim. `hex_editor/tests/octagon.loft` is where that claim belongs and
+  // where it is made byte for byte over the field — a picture cannot add to it, and a
+  // count here could only mislead.
+  assert(tag_count(osvg, FIELD) == tag_count(csvg, FIELD),
+         "the two rims are {tag_count(osvg, FIELD)} and {tag_count(csvg, FIELD)} marks "
+       + "— they no longer coincide at shell 156, so the note above is stale and wants "
+       + "re-measuring rather than deleting");
+}
+
+// ⚠ **A BODY THIS TREE DOES NOT KNOW FALLS THROUGH TO THE ROUND READER**, which is
+// the open vocabulary again: `@HB-X69`'s extension point must not be a list the
+// picture closes.
+fn test_an_unknown_body_still_draws_the_round_description() {
+  w = oct_typed_world(156, "THICK_MYSTERY");
+  cap = caption(plan_svg(w, 0 - 10, 0 - 10, 21, 21, 8.0, "u"));
+  assert(cap.contains("disc 0,0 shell 156"),
+         "an unknown body did not fall through to the disc reader: {cap}");
+}
+
+// ── `B4m` — THE TALLY THE DRIVER PRINTS ────────────────────────────────────
+//
+// ⛔ **THIS COUNTER HAS BEEN WRONG THREE TIMES, EACH TIME IN A DRIVER WITH NO TEST.**
+// `B1`: 11 edges for 10 marks and one run. `B4h`: *description refused* for a disc
+// whose description was three lines above. `B4m`: **325 cells and refused** for a
+// picture captioned *cells 324 … desc octagon 0,0 shell 468*. All three are one shape
+// — a tally matched on the ELEMENT name, in a program the suite could not see. These
+// rows are the instrument that landing needed.
+
+fn tally_world_run() -> VoxelWorld {
+  w = flat_world();
+  d = hex_editor::run_between(0.0, 0.0, 6.0, 0.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the run was refused: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  tm = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, tm);
+  w
+}
+
+fn test_a_description_is_counted_once_whichever_shape_it_is() {
+  // a run, a disc and an octagon: three different elements, one description each
+  rt = plan_tally(plan_svg(tally_world_run(), 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
+  assert(rt.pt_descs == 1, "a run tallied {rt.pt_descs} descriptions");
+
+  ct = plan_tally(plan_svg(oct_typed_world(156, "THICK_CURVED"),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "c"));
+  assert(ct.pt_descs == 1, "a disc tallied {ct.pt_descs} descriptions");
+
+  ot = plan_tally(plan_svg(oct_typed_world(156, hex_editor::WALL_BODY_OCT),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "o"));
+  assert(ot.pt_descs == 1, "an octagon tallied {ot.pt_descs} descriptions");
+
+  // …and a picture with no marks has no description, or the rows above would pass for
+  // a counter that answers 1 to everything.
+  bt = plan_tally(plan_svg(flat_world(), 0 - 8, 0 - 8, 9, 9, 2.0, "bare"));
+  assert(bt.pt_descs == 0 && bt.pt_marks == 0,
+         "a bare window tallied {bt.pt_descs} descriptions and {bt.pt_marks} marks");
+}
+
+// ⛔ **THE ROW THAT WOULD HAVE CAUGHT `B4m`'s OWN DEFECT.** An octagon is drawn as a
+// `<polygon>`, which is also what a CELL is drawn as — so a tally keyed on the element
+// counts the description as a cell and reports one more cell than the window holds.
+fn test_a_description_never_lands_in_the_cell_count() {
+  bare = plan_tally(plan_svg(flat_world(), 0 - 10, 0 - 10, 21, 21, 8.0, "bare"));
+  ot = plan_tally(plan_svg(oct_typed_world(156, hex_editor::WALL_BODY_OCT),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "o"));
+  assert(ot.pt_descs == 1, "the fixture drew no octagon to be miscounted");
+  assert(ot.pt_cells == bare.pt_cells,
+         "a window with an octagon in it tallies {ot.pt_cells} cells against the same "
+       + "window's {bare.pt_cells} — the description landed in the cell count");
+  // …and the same for the disc, which is a `<circle>` and could equally be claimed by
+  // some future counter.
+  ct = plan_tally(plan_svg(oct_typed_world(156, "THICK_CURVED"),
+                           0 - 10, 0 - 10, 21, 21, 8.0, "c"));
+  assert(ct.pt_cells == bare.pt_cells,
+         "a window with a disc in it tallies {ct.pt_cells} cells against {bare.pt_cells}");
+}
+
+// ⚠ **THE MARKS ARE THE FIELD'S AND NOT THE DESCRIPTION'S**, which is `B1`'s own
+// eleven-for-ten: a run is a `<line>` too.
+fn test_the_mark_count_is_the_field_alone() {
+  w = tally_world_run();
+  t = plan_tally(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
+  assert(t.pt_descs == 1, "the fixture drew no run");
+  assert(t.pt_marks == tag_count(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "run"), FIELD),
+         "the tally counts {t.pt_marks} marks against the picture's own "
+       + "{tag_count(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, \"run\"), FIELD)} — the "
+       + "description is being counted as field");
+}
+
+fn test_the_level_count_is_what_reached_the_file() {
+  one = plan_tally(plan_levels(flat_world(), 0, 0, 5, 5, [2.0], plan_bare(), "one"));
+  two = plan_tally(plan_levels(flat_world(), 0, 0, 5, 5, [2.0, 5.0], plan_bare(), "two"));
+  assert(one.pt_levels == 1 && two.pt_levels == 2,
+         "the tally reports {one.pt_levels} and {two.pt_levels} levels, not 1 and 2");
+}
+
+fn housed_world() -> VoxelWorld {
+  w = flat_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, HOUSE_YAW);
+  ak = hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "");
+  assert(ak.ak_ok, "the house was refused: {ak.ak_why}");
+  w
+}
+
+fn test_a_house_is_drawn_as_a_rectangle() {
+  svg = plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house");
+  cap = caption(svg);
+  assert(cap.contains("house "),
+         "a placed house still draws no description: {cap}");
+  assert(tag_count(svg, "<polygon class='house'") == 1,
+         "{tag_count(svg, \"<polygon class='house'\")} rectangles drawn, not one");
+  // ⚠ **FOUR POINTS, READ OUT OF THE PICTURE** — a rectangle with three would draw a
+  // triangle that measures as a description all the same.
+  ln = "";
+  for l in svg.split('\n') { if l.contains("<polygon class='house'") { ln = l; } }
+  assert(ln != "", "the rectangle did not come back out of the picture");
+  pa = ln.find("points='");
+  assert(pa != null, "the rectangle carries no points: {ln}");
+  rest = ln[(((pa ?? 0) + 8) as i32)..];
+  pe = rest.find("'");
+  assert(pe != null, "the points attribute is not closed");
+  npt = 0;
+  for pc in rest[0..(pe ?? 0)].split(',') { npt = npt + 1; }
+  assert(npt == 5, "the rectangle carries {npt - 1} points, not four");
+}
+
+// ⛔ **THE CAPTION CARRIES `B0`'s ANSWER.** Four wall marks lie outside the rectangle —
+// one per corner — and the picture says so rather than leaving a reader to count black
+// stubs. ⚠ It also says how many rectangles fit, because the SIZE is quantised and a
+// single number would be a claim the field does not support.
+fn test_the_caption_reports_the_marks_the_rectangle_does_not_explain() {
+  cap = caption(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house"));
+  assert(cap.contains("stray"),
+         "the caption hides the marks the rectangle leaves over: {cap}");
+  assert(cap.contains("fit"),
+         "the caption hides how many rectangles the field admits: {cap}");
+}
+
+// ⚠ **THE READER IS ASKED LAST**, so no two descriptions can answer for one window: a
+// straight run still reads as a run even though its window holds no floor at all.
+fn test_a_run_is_still_a_run() {
+  cap = caption(plan_svg(tally_world_run(), 0 - 8, 0 - 8, 9, 9, 2.0, "run"));
+  assert(cap.contains("run d"),
+         "the house reader took a window the run reader had answered: {cap}");
+}
+
+fn test_a_house_is_one_description_in_the_tally() {
+  t = plan_tally(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house"));
+  assert(t.pt_descs == 1, "a house tallied {t.pt_descs} descriptions");
+  // …and the rectangle does not land in the cell count, which is the defect `B4m`
+  // recorded and this is the third element to test it against.
+  bare = plan_tally(plan_svg(flat_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "bare"));
+  assert(t.pt_cells == bare.pt_cells,
+         "a window with a house tallies {t.pt_cells} cells against {bare.pt_cells}");
+}
+
+// ── `B4o` — TWO DESCRIPTIONS IN ONE WINDOW ─────────────────────────────────
+//
+// ⛔ **A WINDOW HAS HELD ONE DESCRIPTION SINCE `B1`, AND EVERY REAL SCENE HOLDS MORE
+// THAN ONE THING.** `B1` measured the cost from the other side: a house eight hexes away
+// cost an unrelated wall its description, because one of the house's mitre stubs met the
+// wall's chain at a vertex. Saying which structure each mark belongs to is what lets both
+// be described.
+
+fn housed_and_walled_world() -> VoxelWorld {
+  w = housed_world();
+  d = hex_editor::run_between(0.0 - 12.0, 0.0 - 12.0, 0.0 - 2.0, 0.0 - 12.0,
+                              hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+  w
+}
+
+// ⚠ **ONE WORLD AND ONE PICTURE PER ROW, AND THE DEADLINE IS WHY.** The first version
+// of these three rows built five worlds and rendered five pictures between them, each
+// running the whole reader chain; `planview.loft` went past `loft test`'s 300-second
+// budget under load. The claims are unchanged — the mitre count is **pinned to 4 on
+// both** worlds, which is stronger than asserting the two are equal.
+fn test_a_house_and_a_wall_are_both_described() {
+  svg = plan_svg(housed_and_walled_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "both");
+  cap = caption(svg);
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("run d"),
+         "the wall beside the house is still undescribed: {cap}");
+  assert(tag_count(svg, "<polygon class='house'") == 1
+         && tag_count(svg, "<line class='run'") == 1,
+         "the picture draws {tag_count(svg, \"<polygon class='house'\")} rectangles and "
+       + "{tag_count(svg, \"<line class='run'\")} runs, not one of each");
+  // ⛔ **AND THE CAPTION MUST NOT CALL THE WALL THE HOUSE'S OVER-RUN** — `B4n` counted
+  // every mark the rectangle did not want, anywhere in the window, which with a wall
+  // present is the wall.
+  assert(cap.contains("4 stray"),
+         "with a wall in the window the mitre count is not 4: {cap}");
+  // …and the tally sees two descriptions, or the driver's line would understate what it
+  // drew, which is the defect `B4m` recorded one shape earlier.
+  assert(plan_tally(svg).pt_descs == 2,
+         "two descriptions tallied as {plan_tally(svg).pt_descs}");
+}
+
+// The control for every row above: the same house ALONE reports the same mitre count and
+// exactly one description.
+fn test_a_house_alone_is_unmoved_by_any_of_it() {
+  svg = plan_svg(housed_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "one");
+  cap = caption(svg);
+  assert(cap.contains("4 stray"),
+         "a house standing alone no longer reports its four mitre marks: {cap}");
+  assert(!cap.contains("+ run"),
+         "a house standing alone was given a second description: {cap}");
+  assert(plan_tally(svg).pt_descs == 1,
+         "a house alone tallied {plan_tally(svg).pt_descs} descriptions");
+}
+
+
+// ── `B4p` — THE LEFTOVER RUNS THE WHOLE CHAIN ──────────────────────────────
+//
+// ⛔ **`B4o` DREW ONE DESCRIPTION BESIDE A HOUSE AND IT WAS ALWAYS A RUN.** Its own note
+// said so — *"the leftover reader is the run reader alone"* — so a house with a TOWER
+// beside it captioned `+ 54 unexplained` about a rim this editor had stamped itself. The
+// chain is one function now, asked of the window and then of what one rectangle does not
+// own, so the second asking cannot be a smaller version of the first.
+
+// ⚠ **A WIDER GROUND, BECAUSE THE TOWER STANDS OFF THE END OF `flat_world`'s.** That
+// fixture reaches `r = -10` and a shell-156 rim about `(0, -8)` marks down to `r = -13`;
+// a gesture with no ground under it writes nothing, and the picture of it is a picture
+// of an empty window rather than a failing row.
+fn wide_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 20..21 {
+    for r in 0 - 20..21 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// A house at the origin and a tower six clear cells south of it — the distance
+// `house_box.loft` measures rather than assumes.
+fn housed_and_towered_world(body: text) -> VoxelWorld {
+  w = wide_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, HOUSE_YAW);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "").ak_ok,
+         "the fixture's house was refused");
+  if body != "" {
+    code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+             [hex_voxel::PalEntry { pl_slot: 5, pl_name: "tower body={body}" }]);
+    assert(code == hex_voxel::PAL_OK, "the fixture's palette was refused: code {code}");
+  }
+  hex_editor::session_at(s, w, 0.0, 0.0 - 12.0, 0.0);
+  if body != "" {
+    assert(hex_editor::session_select_wall(s, 5).ak_ok, "slot 5 refused");
+  }
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the fixture's tower was refused");
+  w
+}
+
+// ⛔ **THE PICTURE `B4o` COULD NOT DRAW.** Two descriptions, and the second is round.
+fn test_a_house_and_a_tower_are_both_described() {
+  svg = plan_svg(housed_and_towered_world(""), 0 - 7, 0 - 15, 8, 9, 2.0, "tower");
+  cap = caption(svg);
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("disc 0,-8 shell 156"),
+         "the tower beside the house is still undescribed: {cap}");
+  // …and it is the OUTLINE that arrived, not only the sentence.
+  assert(tag_count(svg, "<polygon class='house'") == 1
+         && tag_count(svg, "<circle class='disc'") == 1,
+         "the picture draws {tag_count(svg, \"<polygon class='house'\")} rectangles and "
+       + "{tag_count(svg, \"<circle class='disc'\")} circles, not one of each");
+  // ⛔ **AND THE HOUSE MUST NOT CLAIM THE RIM** — `B4n`'s defect, at a round neighbour.
+  assert(cap.contains("4 stray"),
+         "with a tower in the window the mitre count is not 4: {cap}");
+  assert(plan_tally(svg).pt_descs == 2,
+         "two descriptions tallied as {plan_tally(svg).pt_descs}");
+}
+
+// ⛔ **AND WHICH ROUND READER THE LEFTOVER GETS IS THE LEFTOVER'S OWN PALETTE.** The
+// WINDOW's marks disagree about the body here — a house of `WALL_MAT` and a tower of
+// slot 5 — so a chain asking `marks_body` of the window would reach the disc reader,
+// which refuses an octagon correctly, having been asked the wrong question.
+fn test_an_octagonal_tower_beside_a_house_is_drawn_as_an_octagon() {
+  svg = plan_svg(housed_and_towered_world(hex_editor::WALL_BODY_OCT),
+                 0 - 7, 0 - 15, 8, 9, 2.0, "oct");
+  cap = caption(svg);
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(cap.contains("octagon 0,-8 shell 156"),
+         "the octagonal tower beside the house is not named as one: {cap}");
+  assert(tag_count(svg, "<polygon class='oct'") == 1
+         && tag_count(svg, "<circle class='disc'") == 0,
+         "the picture drew {tag_count(svg, \"<polygon class='oct'\")} octagons and "
+       + "{tag_count(svg, \"<circle class='disc'\")} circles");
+  assert(plan_tally(svg).pt_descs == 2,
+         "two descriptions tallied as {plan_tally(svg).pt_descs}");
+}
+
+// ── ✅ AND TWO OF A KIND ARE DESCRIBED NOW — plan 26 `B4t` ────────────────
+//
+// ⛔ **`B4s` PINNED THIS SCENE AS THE LIMITATION**: a house and two towers described the
+// house and left 108 marks over. The peel subtracts what has been DESCRIBED, and neither
+// rim had been — `disc_fits` compares over the whole field in both directions, which is
+// what stops a disc being accepted with a wall across it, so a field holding two rims is
+// a field no single disc reproduces.
+//
+// ✅ **THE FIELD IS SPLIT BEFORE ANY READER IS ASKED NOW**, so each rim is a field of its
+// own and R1 is untouched. ⚠ The readers did not change at all.
+fn test_a_house_and_two_towers_are_all_three_described() {
+  w = housed_and_towered_world("");
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0 - 14.0, 0.0, 0.0);
+  assert(hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_TOWER, "").ak_ok,
+         "the second tower was refused");
+  svg = plan_svg(w, 0 - 15, 0 - 15, 8, 9, 2.0, "two");
+  cap = caption(svg);
+  assert(cap.contains("house "), "the house lost its description: {cap}");
+  assert(tag_count(svg, "<circle class='disc'") == 2,
+         "{tag_count(svg, \"<circle class='disc'\")} circles drawn, not two");
+  assert(plan_tally(svg).pt_descs == 3,
+         "three descriptions tallied as {plan_tally(svg).pt_descs}");
+  assert(!cap.contains("unexplained"),
+         "two towers and a house leave marks nothing explains: {cap}");
+}
+
+// The `n`th element of a class, read out of the picture — so two pictures can be
+// compared as TEXT rather than by a count.
+fn nth_tag(svg: text, head: text, n: integer) -> text {
+  i = 0;
+  for ln in svg.split('\n') {
+    if ln.size() < head.size() { continue; }
+    if ln[0..(head.size() as i32)] != head { continue; }
+    if i == n { return ln; }
+    i = i + 1;
+  }
+  ""
+}
+
+fn walled_world(x0: float, z0: float, x1: float, z1: float) -> VoxelWorld {
+  w = flat_world();
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, hex_editor::wall_run_new(x0, z0, x1, z1,
+                              hex_editor::WALL_MAT),
+                         hex_editor::WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture stamped nothing");
+  w
+}
+
+// ⚠ **THE CLEAN CASE FIRST, SO THE LOUD ONE MEANS SOMETHING.** A caption that said
+// `stray` about every wall would be as useless as one that never did.
+fn test_a_wall_that_reproduces_its_field_says_nothing_extra() {
+  d = hex_editor::run_between(0.0, 0.0, 9.0, 0.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's run was refused");
+  svg = plan_svg(walled_world(d.rd_run.wr_x0, d.rd_run.wr_z0,
+                              d.rd_run.wr_x1, d.rd_run.wr_z1),
+                 0 - 10, 0 - 10, 11, 11, 2.0, "clean");
+  cap = caption(svg);
+  assert(cap.contains("run d0 p"), "the wall lost its description: {cap}");
+  assert(!cap.contains("stray") && !cap.contains("missing"),
+         "a wall that reproduces its own field is reported as broken: {cap}");
+  ln = desc_line(svg);
+  assert(attr(ln, "data-stray") == "0" && attr(ln, "data-missing") == "0",
+         "the picture carries stray {attr(ln, "data-stray")} missing "
+       + "{attr(ln, "data-missing")} for a clean wall");
+  assert(attr(ln, "data-marks") != "" && attr(ln, "data-marks") != "0",
+         "the description carries no mark count at all");
+}
+
+// ── ✅ AND THE SAME RUN WALKED THE OTHER WAY IS ONE PICTURE — plan 26 `B4r` ─
+//
+// ⛔ **IT WAS TWO.** `B4q` drew this pair as the defect: both walls recovered a `d6`
+// description, the marks zigzagged to opposite sides of it, and the captions read
+// `desc d6 p8` against `desc d6 p9 · 9 stray · 9 missing`. `run_normal` settles the
+// halfplane's tie-break on the LINE rather than on the direction of travel — a canonical
+// normal and an offset anchored at the midpoint — and the two pictures are now one.
+fn test_a_wall_walked_either_way_draws_one_clean_description() {
+  d = hex_editor::run_between(0.0, 0.0, 0.0, 9.0, hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's run was refused");
+  f = d.rd_run;
+  fwd = plan_svg(walled_world(f.wr_x0, f.wr_z0, f.wr_x1, f.wr_z1),
+                 0 - 10, 0 - 10, 11, 11, 2.0, "fwd");
+  back = plan_svg(walled_world(f.wr_x1, f.wr_z1, f.wr_x0, f.wr_z0),
+                  0 - 10, 0 - 10, 11, 11, 2.0, "back");
+  fcap = caption(fwd);
+  bcap = caption(back);
+  assert(fcap.contains("run d6 p") && bcap.contains("run d6 p"),
+         "the two directions do not recover one description: {fcap} / {bcap}");
+  assert(!fcap.contains("stray") && !bcap.contains("stray")
+         && !fcap.contains("missing") && !bcap.contains("missing"),
+         "a wall still fails to reproduce its own field from one of the two "
+       + "directions: {fcap} / {bcap}");
+  // ⚠ **AND THE FIELDS ARE THE SAME FIELD, NOT TWO THAT DESCRIBE ALIKE.** The mark
+  // COUNT is not enough — `B4q` measured two fields of 12 sharing 3 — so the whole
+  // picture is compared, which for one wall in one window is the field itself.
+  assert(tag_count(fwd, FIELD) == tag_count(back, FIELD),
+         "the two walls hold {tag_count(fwd, FIELD)} and {tag_count(back, FIELD)} marks");
+  for i in 0..tag_count(fwd, FIELD) {
+    assert(nth_tag(fwd, FIELD, i) == nth_tag(back, FIELD, i),
+           "mark {i} differs between the two directions:\n  {nth_tag(fwd, FIELD, i)}\n"
+         + "  {nth_tag(back, FIELD, i)}");
+  }
+}
+
+// ⚠ **AND THE CAPTION IS STILL ABLE TO BE LOUD**, which is what keeps the row above
+// from passing on a residual that has stopped being computed at all. The wandering
+// chain is the case that is genuinely not the wall its description names — its own
+// row asserts the counts; this one asserts a person can SEE it.
+fn test_a_description_that_does_not_reproduce_its_field_still_says_so() {
+  w = flat_world();
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  ang = 15.0 / 57.29577951308232;
+  hex_editor::wall_stamp(w, hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                              wr_x0: 0.4, wr_z0: 0.3,
+                              wr_x1: 0.4 + cos(ang) * 6.0, wr_z1: 0.3 + sin(ang) * 6.0,
+                              wr_mat: hex_editor::WALL_MAT, wr_step: 1 },
+                         hex_editor::WALL_MAT, 8, rs, m);
+  cap = caption(plan_svg(w, 0 - 8, 0 - 8, 9, 9, 2.0, "wander"));
+  // ⛔ **THIS ROW USED TO ASSERT `missing` HERE, AND `B4x` MADE THE CHAIN EXACT.** A wall
+  // at 15° is not a lattice direction at all (`@HB-X31`), so its stamped chain wanders —
+  // and the chain cut now covers it as `run d0 p3 + run d4 p1`, reproducing the field
+  // edge for edge. An exact cover with `missing 0` is the right answer to *what is in
+  // this window*, whatever the author was aiming at, so what the caption must carry here
+  // is a DESCRIPTION rather than a shortfall.
+  assert(cap.contains("run d"),
+         "a wandering chain is covered by runs now, and the caption says nothing: {cap}");
+
+  // ⚠ **AND THE `missing` CLAIM MOVES RATHER THAN GOING AWAY — *move before you
+  // remove*.** `stray` counts marks the reader was HANDED and did not want, which in a
+  // window holding more than one structure are somebody else's; `missing` is the
+  // description's own. A house with one wall byte cleared still reports it, which is
+  // `@HB-X70` in the caption: an opening is never absence, and a cleared edge is a
+  // BROKEN wall the description notices.
+  hb = housed_world();
+  hb_n = 0;
+  for hb_r in 0 - 10..11 {
+    for hb_q in 0 - 10..11 {
+      for hb_d in [4, 5, 0] {
+        if hb_n < 2 && hex_editor::edge_is_wall(hex_editor::wall_of(hb, hb_q, hb_r, hb_d, 0.0)) {
+          hex_editor::wall_set(hb, hb_q, hb_r, hb_d, 0, 8, 2.0);
+          hb_n = hb_n + 1;
+        }
+      }
+    }
+  }
+  hb_cap = caption(plan_svg(hb, 0 - 10, 0 - 10, 21, 21, 2.0, "bitten"));
+  assert(hb_cap.contains("missing"),
+         "a house with a cleared wall byte draws a description that does not "
+       + "reproduce its field and does not say so: {hb_cap}");
+}
