@@ -10,6 +10,26 @@
 // `house_owns`. The RUN could not be asked at all until `B4q` extracted the stamper's
 // rule, and its answer was not stable until `B4r` — a peel built before either would
 // have subtracted the wrong edges on five headings in ten.
+//
+// ── ⚠ THIS FILE IS 173 s OF `loft test`'s 300-SECOND PER-FILE DEADLINE ──────
+//
+// **Measured 2026-08-30 at three loads and the answer barely moves: 173 s idle, 174 s at
+// load 25, 180 s at load 52.** Not failing, and not comfortable either — 58% of the
+// budget, which is the zone `hex_mesh/tests/planview.loft` was in at 70% on the day a
+// sibling's CI took it over the wall and the fast loop red.
+//
+// ⚠ **WHAT IS NOT YET KNOWN IS WHETHER IT IS ONE TEST OR THIRTY-ONE**, and that decides
+// the fix rather than being a detail of it: `planview.loft` looked like a file that
+// needed splitting and was **88% one test** whose window was 36 × 36 over a field of 36
+// marks. The windows here are the same shape of suspect — 29 uses of `-10,-10 21x21`
+// (441 cells), twelve of `-14,-14 44x30` (1320) and six of `-18,-18 37x37` (1369) — but
+// a window is only worth tightening where the time actually is.
+//
+// ⚠ **THE INSTRUMENT IS `loft test tests/peel.loft::<name>` PER TEST, ON A QUIET BOX**,
+// and [`probe/tw`](../../../probe/tw/README.md) is the method: measure the field's own
+// extent from the STORE, move the window to it, and assert the mark count exactly so a
+// clip cannot be silent. ⛔ Do not shrink a window without that assertion — `pt_marks > 0`
+// passes over a field that has lost a third of itself.
 use hex_editor;
 use hex_voxel;
 use hex_shape;
