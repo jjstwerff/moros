@@ -1,0 +1,119 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHERE THE TEE TEST'S 84 SECONDS GO — one phase per run, timed from the shell.
+//
+//   PHASE=svg1 Q0=-16 R0=-16 Q1=20 R1=20 loft --interpret --lib lib/ probe/tw/win.loft
+//
+// ⚠ **ONE PHASE PER PROCESS, BECAUSE THERE IS NO CLOCK IN HERE.** This tree measures
+// cost in `w_tau`, which is the right instrument for a gesture and the wrong one for a
+// test's WALL time — the question is how long `loft test` sits on this file. So the
+// clock is the shell's, each phase is a whole run, and the phases NEST: every one does
+// everything the one before it did plus one more thing, so a difference is attributable
+// to exactly the step that was added.
+//
+// ⚠ **TIME THEM ONE AT A TIME.** Five of these in parallel report 109 s for a row that
+// takes 3.2 s alone, which is how the first version of the README's table was wrong.
+//
+// ⛔ **AND WHAT THIS PROBE MEASURES IS NOT WHAT `loft test` PAYS.** A program links each
+// library's native cdylib; `loft test` INTERPRETS the package under test, because the
+// point is to run *that source*. Same body, big window: **15.1 s here, 86.9 s under
+// `loft test` in `hex_mesh`, 288.8 s with `LOFT_NO_NATIVE_LIBS=1`.** So read a phase
+// difference as a RATIO and never as the seconds a suite will save — and note that the
+// gap was checked before it was called a defect, because it is not one.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+
+const U = 0.25;
+
+fn env_int(name: text, fallback: integer) -> integer {
+  v = env_variable(name);
+  if v == "" { return fallback; }
+  neg = false;
+  if v[0..1] == "-" { neg = true; v = v[1..(v.size() as i32)]; }
+  n = v as integer ?? fallback;
+  if neg { return 0 - n; }
+  n
+}
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// The tee fixture, copied from `hex_mesh/tests/planview_region.loft` — seven hexagonal
+// cell outlines in a row, 36 marks, which no reader explains.
+fn row_world() -> VoxelWorld {
+  w = flat_world();
+  for k in 0..7 {
+    for d in 0..6 {
+      hex_editor::wall_set(w, k - 3, 0, d, hex_editor::WALL_MAT, 8, 2.0);
+    }
+  }
+  w
+}
+
+fn caption(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 6 { continue; }
+    if ln[0..6] == "<text " { return ln; }
+  }
+  ""
+}
+
+fn main() {
+  phase = env_variable("PHASE");
+  q0 = env_int("Q0", 0 - 16);
+  r0 = env_int("R0", 0 - 16);
+  q1 = env_int("Q1", 20);
+  r1 = env_int("R1", 20);
+  println("phase {phase} window {q0},{r0}..{q1},{r1}");
+
+  // 0 — the fixture alone, built twice, exactly as the test builds it.
+  a = row_world();
+  b = row_world();
+  println("world marks-set {hex_editor::wall_of(a, 0, 0, 0, 2.0) != 0} {hex_editor::wall_of(b, 0, 0, 0, 2.0) != 0}");
+  if phase == "world" { return; }
+
+  // 1 — one emit.
+  svg = plan_svg(a, q0, r0, q1, r1, 2.0, "tee");
+  println("svg1 chars {svg.size()}");
+  if phase == "svg1" { return; }
+
+  // 2 — the second emit the test makes for its stability check.
+  bare = plan_svg(b, q0, r0, q1, r1, 2.0, "tee2");
+  println("svg2 chars {bare.size()}");
+  if phase == "svg2" { return; }
+
+  // 3 — every reader the test runs over the two pictures. The test writes seven
+  // `plan_tally` calls, counting the ones inside assert messages, plus one caption.
+  if phase == "verbatim" {
+    // 4 — THE TEST'S BODY AS IT STOOD AT THE 36 × 36 WINDOW, kept deliberately: this is
+    // the row the interpret-vs-cdylib comparison above was taken on, and it is a record
+    // of a measurement rather than a copy of the live test. It asserts nothing the test
+    // owns — `planview_region.loft` is where those claims live, and it asserts the mark
+    // count exactly now, which this does not.
+    vsvg = plan_svg(row_world(), q0, r0, q1, r1, 2.0, "tee");
+    vcap = caption(vsvg);
+    assert(plan_tally(vsvg).pt_descs == 0,
+           "a component the trial explains only part of drew "
+         + "{plan_tally(vsvg).pt_descs} descriptions: {vcap}");
+    assert(vcap.contains("refused"), "not refused: {vcap}");
+    assert(plan_tally(vsvg).pt_marks > 0, "no marks: {vcap}");
+    vbare = plan_svg(row_world(), q0, r0, q1, r1, 2.0, "tee2");
+    assert(plan_tally(vsvg).pt_marks == plan_tally(vbare).pt_marks, "moved");
+    assert(vcap.contains("({plan_tally(vsvg).pt_marks} marks)"), "not every mark: {vcap}");
+    println("verbatim marks {plan_tally(vsvg).pt_marks}");
+    return;
+  }
+
+  cap = caption(svg);
+  n = 0;
+  for _i in 0..7 { n = n + plan_tally(svg).pt_marks; }
+  m = plan_tally(bare).pt_marks;
+  println("tally {n} {m} descs {plan_tally(svg).pt_descs} cap-refused {cap.contains(\"refused\")}");
+}

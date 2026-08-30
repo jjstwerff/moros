@@ -34,6 +34,13 @@
 // old tests ran in **34 s** and the other 31 in **~176 s**, all of it in the
 // multi-structure peel.
 //
+// ⛔ **AND THE SPLIT WAS NOT THE END OF IT: THIS FILE WAS 95 s AND ONE TEST WAS 84 OF
+// THEM** — 88%, against 3.3 … 4.0 s for the other four, for a field of 36 marks read
+// through a **36 × 36** window. The window is the field's extent now and the file is
+// **23 s**; the whole measurement, including what a CLIPPED window does instead, is
+// [`probe/tw`](../../../probe/tw/README.md) and
+// [EDITOR_DEFECTS 11](../../../doc/claude/EDITOR_DEFECTS.md).
+//
 // ⚠ **NO ASSERTION MOVED, AND THE SPLIT WAS CHECKED BY ROUND TRIP** — the extracted
 // ranges tile the original file exactly, line for line, before anything was written out.
 // Each file takes a copy of the fixture helpers its own tests reach, which is this
@@ -109,6 +116,9 @@ fn caption(svg: text) -> text {
 // cell outlines in a row: 36 marks, no chain end for the pool, no disc that reproduces
 // them, no floor for the house reader, and no cut of the chain that covers them. Measured
 // — `desc refused (36 marks)`.
+//
+// ⚠ **ITS MARKS SPAN `q −4..4, r −1..1`, ASKED OF THE STORE** — which is where the window
+// below comes from, rather than from a round number. [`probe/tw`](../../../probe/tw/README.md).
 fn row_world() -> VoxelWorld {
   w = flat_world();
   for k in 0..7 {
@@ -124,7 +134,7 @@ fn row_world() -> VoxelWorld {
 // component the trial explains only part of. The guard is unchanged and needs a field that
 // still defeats every reader — `row_world`, measured at `desc refused (36 marks)`.
 fn test_a_set_that_explains_only_part_is_not_drawn() {
-  svg = plan_svg(row_world(), 0 - 16, 0 - 16, 20, 20, 2.0, "tee");
+  svg = plan_svg(row_world(), 0 - 6, 0 - 6, 7, 7, 2.0, "tee");
   cap = caption(svg);
   assert(plan_tally(svg).pt_descs == 0,
          "a component the trial explains only part of drew "
@@ -132,11 +142,20 @@ fn test_a_set_that_explains_only_part_is_not_drawn() {
   assert(cap.contains("refused"),
          "it was not refused, so a set that does not account for its component was "
        + "accepted: {cap}");
-  // ⛔ **AND THE REFUSAL COUNTS EVERY MARK.** A trial that wrote into the real claims
-  // would silence the ones it managed to explain, and the caption would then under-report
-  // the field it just gave up on.
-  assert(plan_tally(svg).pt_marks > 0, "the picture reports no marks at all: {cap}");
-  bare = plan_svg(row_world(), 0 - 16, 0 - 16, 20, 20, 2.0, "tee2");
+  // ⛔ **AND THE REFUSAL COUNTS EVERY MARK — ALL 36, NOT MERELY SOME.** A trial that
+  // wrote into the real claims would silence the ones it managed to explain, and the
+  // caption would then under-report the field it just gave up on.
+  //
+  // ⛔ **AND THE EXACT COUNT IS WHAT MAKES THE SMALL WINDOW SAFE.** This read
+  // `pt_marks > 0` over a 36 × 36 window, which is the same assertion for a field of 36
+  // marks and for a field of 4 — so nothing here could see the window clip its own
+  // fixture. Measured: at `-6,-6..3,7` the picture is **32 marks, 0 descriptions,
+  // refused**, and every assertion in this test passes over a field that has lost four
+  // of its marks. The count is what goes red there.
+  assert(plan_tally(svg).pt_marks == 36,
+         "the picture does not hold the fixture's 36 marks — the window has clipped "
+       + "the field: {plan_tally(svg).pt_marks} marks: {cap}");
+  bare = plan_svg(row_world(), 0 - 6, 0 - 6, 7, 7, 2.0, "tee2");
   assert(plan_tally(svg).pt_marks == plan_tally(bare).pt_marks,
          "the mark count moved between two emits of one world");
   assert(cap.contains("({plan_tally(svg).pt_marks} marks)"),

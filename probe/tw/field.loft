@@ -1,0 +1,117 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// IS A PLAN-VIEW ASSERTION WINDOW-INDEPENDENT? — one fixture, one window, one line.
+//
+//   FIX=tee Q0=-16 R0=-16 Q1=20 R1=20 loft --interpret --lib lib/ probe/tw/field.loft
+//
+// ⚠ **THE QUESTION IS NOT `DOES THE TEST STILL PASS`.** A test whose only mark
+// assertion is `> 0` passes over a field that has lost a third of itself, so a green
+// run after a window is shrunk says nothing. What is compared here is the PICTURE —
+// the cell, mark and description counts and the caption — between the window a test
+// uses and the one it is being moved to. Identical on all four is the claim; the
+// counts then go into the test so a later clip cannot be silent.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+
+const U = 0.25;
+const HOUSE_YAW = 1.5707963267948966;
+
+fn env_int(name: text, fallback: integer) -> integer {
+  v = env_variable(name);
+  if v == "" { return fallback; }
+  neg = false;
+  if v[0..1] == "-" { neg = true; v = v[1..(v.size() as i32)]; }
+  n = v as integer ?? fallback;
+  if neg { return 0 - n; }
+  n
+}
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+// `planview_region.loft` — seven hexagonal cell outlines in a row; 36 marks no reader
+// explains.
+fn row_world() -> VoxelWorld {
+  w = flat_world();
+  for k in 0..7 {
+    for d in 0..6 { hex_editor::wall_set(w, k - 3, 0, d, hex_editor::WALL_MAT, 8, 2.0); }
+  }
+  w
+}
+
+// `planview_shape.loft` — a placed house, and the same house with a wall beside it.
+fn housed_world() -> VoxelWorld {
+  w = flat_world();
+  s = hex_editor::EditSession {};
+  hex_editor::session_at(s, w, 0.0, 0.0, HOUSE_YAW);
+  ak = hex_editor::press_verb(s, w, s.es_author, hex_editor::VB_PLACE, "");
+  assert(ak.ak_ok, "the house was refused: {ak.ak_why}");
+  w
+}
+
+fn housed_and_walled_world() -> VoxelWorld {
+  w = housed_world();
+  d = hex_editor::run_between(0.0 - 12.0, 0.0 - 12.0, 0.0 - 2.0, 0.0 - 12.0,
+                              hex_editor::WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = hex_editor::WallRuns { items: [] };
+  m = 0;
+  hex_editor::wall_stamp(w, d.rd_run, hex_editor::WALL_MAT, 8, rs, m);
+  assert(m > 0, "the fixture's wall stamped nothing");
+  w
+}
+
+fn caption(svg: text) -> text {
+  for ln in svg.split('\n') {
+    if ln.size() < 6 { continue; }
+    if ln[0..6] == "<text " { return ln; }
+  }
+  ""
+}
+
+fn main() {
+  fix = env_variable("FIX");
+  q0 = env_int("Q0", 0 - 16);
+  r0 = env_int("R0", 0 - 16);
+  q1 = env_int("Q1", 20);
+  r1 = env_int("R1", 20);
+
+  w = flat_world();
+  if fix == "tee" { w = row_world(); }
+  if fix == "housed" { w = housed_world(); }
+  if fix == "housed_walled" { w = housed_and_walled_world(); }
+
+  // ⚠ **WHERE THE MARKS ACTUALLY ARE, ASKED OF THE STORE** — so a window is chosen as
+  // the field's own extent plus a stated margin, rather than by shrinking until
+  // something goes red. A clipped field is not a smaller picture: measured twice here,
+  // it sends the reader into a search that does not finish in 200 seconds.
+  lq = 999; hq = 0 - 999; lr = 999; hr = 0 - 999; nm = 0;
+  for q in 0 - 24..25 {
+    for r in 0 - 24..25 {
+      for d in 0..6 {
+        if hex_editor::wall_of(w, q, r, d,
+             (hex_editor::terrain_h(q, r, w) as float) * w.w_unit) != 0 {
+          nm = nm + 1;
+          if q < lq { lq = q; }
+          if q > hq { hq = q; }
+          if r < lr { lr = r; }
+          if r > hr { hr = r; }
+        }
+      }
+    }
+  }
+  println("{fix} field q {lq}..{hq} r {lr}..{hr} ({nm} wall bytes)");
+
+  svg = plan_svg(w, q0, r0, q1, r1, 2.0, fix);
+  t = plan_tally(svg);
+  println("{fix} {q0},{r0}..{q1},{r1} cells {t.pt_cells} marks {t.pt_marks} "
+        + "descs {t.pt_descs} levels {t.pt_levels}");
+  println("  cap {caption(svg)}");
+}

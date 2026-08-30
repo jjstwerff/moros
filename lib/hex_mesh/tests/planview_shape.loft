@@ -69,6 +69,32 @@ const DESCR = "<line class='run'";
 
 const HOUSE_YAW = 1.5707963267948966;   // 90° — the only orbit `place_house` accepts
 
+// ── ⛔ THE HOUSE WINDOW, AND WHY IT IS THE FIELD'S EXTENT AND NOT A ROUND NUMBER ──
+//
+// Every row below that photographs the house shares this window. It read
+// `-10,-10..21,21` or `-16,-16..33,33` — 961 and 2401 cells over a fixture whose
+// ground is 24 × 24 and whose marks span **q −7..3, r −8..7** with the wall present,
+// **q −4..3, r 1..7** without it. This is that extent with three hexes of margin, 374
+// cells, and it is what the two slowest tests in the file were paying for.
+//
+// ⚠ **THE COST IS REAL WORK, NOT HARNESS OVERHEAD.** `loft test` INTERPRETS the package
+// under test while a probe linking it gets the native cdylib — measured at ~13× on one
+// body, and 19× with `LOFT_NO_NATIVE_LIBS=1` — so a cell emitted here costs what a cell
+// emitted in `plan_view` does not. [`probe/tw`](../../../probe/tw/README.md).
+//
+// ⚠ **MEASURED IDENTICAL, NOT ASSUMED**: at `-16,-16..33,33`, at `-10,-10..21,21` and
+// here, the house is **42 marks, 1 description** and the walled house **52 marks, 2** —
+// one caption each, to the character.
+//
+// ⛔ **AND EVERY ROW THAT USES IT ASSERTS THE MARK COUNT, BECAUSE A CLIP IS SILENT.**
+// A window that cuts a structure in half does not draw a smaller picture: it either
+// changes the answer or it never comes back — two fixtures measured, both still running
+// at 200 s.
+const HQ0 = 0 - 10;
+const HR0 = 0 - 11;
+const HQ1 = 7;
+const HR1 = 11;
+
 fn about(a: float, b: float) -> boolean { a - b < 0.0001 && b - a < 0.0001 }
 
 fn flat_world() -> VoxelWorld {
@@ -307,8 +333,10 @@ fn housed_world() -> VoxelWorld {
 }
 
 fn test_a_house_is_drawn_as_a_rectangle() {
-  svg = plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house");
+  svg = plan_svg(housed_world(), HQ0, HR0, HQ1, HR1, 2.0, "house");
   cap = caption(svg);
+  assert(plan_tally(svg).pt_marks == 42,
+         "the window has clipped the field — {plan_tally(svg).pt_marks} marks, not 42");
   assert(cap.contains("house "),
          "a placed house still draws no description: {cap}");
   assert(tag_count(svg, "<polygon class='house'") == 1,
@@ -333,7 +361,10 @@ fn test_a_house_is_drawn_as_a_rectangle() {
 // stubs. ⚠ It also says how many rectangles fit, because the SIZE is quantised and a
 // single number would be a claim the field does not support.
 fn test_the_caption_reports_the_marks_the_rectangle_does_not_explain() {
-  cap = caption(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house"));
+  svg = plan_svg(housed_world(), HQ0, HR0, HQ1, HR1, 2.0, "house");
+  cap = caption(svg);
+  assert(plan_tally(svg).pt_marks == 42,
+         "the window has clipped the field — {plan_tally(svg).pt_marks} marks, not 42");
   assert(cap.contains("stray"),
          "the caption hides the marks the rectangle leaves over: {cap}");
   assert(cap.contains("fit"),
@@ -349,11 +380,13 @@ fn test_a_run_is_still_a_run() {
 }
 
 fn test_a_house_is_one_description_in_the_tally() {
-  t = plan_tally(plan_svg(housed_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "house"));
+  t = plan_tally(plan_svg(housed_world(), HQ0, HR0, HQ1, HR1, 2.0, "house"));
   assert(t.pt_descs == 1, "a house tallied {t.pt_descs} descriptions");
+  assert(t.pt_marks == 42,
+         "the window has clipped the field — {t.pt_marks} marks, not 42");
   // …and the rectangle does not land in the cell count, which is the defect `B4m`
   // recorded and this is the third element to test it against.
-  bare = plan_tally(plan_svg(flat_world(), 0 - 10, 0 - 10, 21, 21, 2.0, "bare"));
+  bare = plan_tally(plan_svg(flat_world(), HQ0, HR0, HQ1, HR1, 2.0, "bare"));
   assert(t.pt_cells == bare.pt_cells,
          "a window with a house tallies {t.pt_cells} cells against {bare.pt_cells}");
 }
@@ -383,9 +416,16 @@ fn housed_and_walled_world() -> VoxelWorld {
 // running the whole reader chain; `planview.loft` went past `loft test`'s 300-second
 // budget under load. The claims are unchanged — the mitre count is **pinned to 4 on
 // both** worlds, which is stronger than asserting the two are equal.
+//
+// ⚠ **AND THESE TWO WERE THE FILE'S SLOWEST**, at 49 × 49 over a field living in 374
+// cells — `HQ0`'s note above. The control keeps the same window as the row it controls,
+// because *only the wall differs* is what makes it a control.
 fn test_a_house_and_a_wall_are_both_described() {
-  svg = plan_svg(housed_and_walled_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "both");
+  svg = plan_svg(housed_and_walled_world(), HQ0, HR0, HQ1, HR1, 2.0, "both");
   cap = caption(svg);
+  assert(plan_tally(svg).pt_marks == 52,
+         "the window has clipped the field — {plan_tally(svg).pt_marks} marks, not 52: "
+       + "{cap}");
   assert(cap.contains("house "), "the house lost its description: {cap}");
   assert(cap.contains("run d"),
          "the wall beside the house is still undescribed: {cap}");
@@ -407,8 +447,11 @@ fn test_a_house_and_a_wall_are_both_described() {
 // The control for every row above: the same house ALONE reports the same mitre count and
 // exactly one description.
 fn test_a_house_alone_is_unmoved_by_any_of_it() {
-  svg = plan_svg(housed_world(), 0 - 16, 0 - 16, 33, 33, 2.0, "one");
+  svg = plan_svg(housed_world(), HQ0, HR0, HQ1, HR1, 2.0, "one");
   cap = caption(svg);
+  assert(plan_tally(svg).pt_marks == 42,
+         "the window has clipped the field — {plan_tally(svg).pt_marks} marks, not 42: "
+       + "{cap}");
   assert(cap.contains("4 stray"),
          "a house standing alone no longer reports its four mitre marks: {cap}");
   assert(!cap.contains("+ run"),

@@ -3732,3 +3732,47 @@ this tree exactly once, in a comment; `hex_form::side_edges` has no production c
 - **`@HB-X45` is convex-only** — an L-shaped room needs decomposition, unmeasured.
 - **`hex_recover` is not a dependency**, which is a manifest and lock change.
 - **The mesh is unmeasured** — a 5-sided form is 5 fitted quads, still against 200 triangles.
+
+## ⛔ What `probe/tw` turned up — the window is the cost, and a clipped one is a cliff
+
+**`make probe-tw` · [`probe/tw`](../../probe/tw/README.md).** The split that made
+`planview.loft` four files named what it had not done: *"planview_region is the hot file
+because it holds the tee fixture, whose window is far larger than the field needs… that 6.2×
+is the remaining lever, and it wants per-test proof that each assertion is
+window-independent."* Both halves came back bigger than that sentence expected.
+
+| the file, idle box, interleaved A/B against `git show HEAD:` | before | after |
+|---|---|---|
+| `planview_region.loft` — 5 tests | 90.4 s | ✅ **23.1 s** |
+| `planview_shape.loft` — 19 tests | 57.3 s | ✅ **41.9 s** |
+| the four together | 210 s | ✅ **127 s** |
+
+One test was **83.7 s of its file's 95.4 s** — 88%, against 3.3 … 4.0 s for the other four —
+and its field spans `q −4..4, r −1..1` inside a **36 × 36** window.
+
+### ⚠ The 13× that made it worth doing is not harness overhead, and that was checked
+
+The same body as a program is 6.5 s where the test is 85. That reads as a `loft test` defect
+and is not: **`loft test` interprets the package under test** while a probe linking it gets
+the native cdylib — `LOFT_NO_NATIVE_LIBS=1` reproduces the whole gap at **288.8 s**. So a
+cell emitted inside a package's own suite costs ~13× what the same cell costs in
+`plan_view`, and a window a driver would not notice is what puts a file against the wall.
+⚠ **A ticket would have gone upstream and been wrong.**
+
+### ⛔ AND THE FINDING IS NOT ABOUT TESTS — [EDITOR_DEFECTS 11](../../doc/claude/EDITOR_DEFECTS.md)
+
+Clipping a structure does not draw a smaller picture. Over the tee fixture, moving the window
+in **one column at a time**, `q0 = −6 … −3` answers in 2.6 … 3.2 s and `q0 = −2` and `−1` —
+*smaller* windows, 117 and 104 cells — have not answered in 180 s. A cliff, not a curve, and
+the same shape on the house fixture. `plan_describe_within` ends at `run_within` /
+`run_chain_within`, whose candidates are the chain's ENDS and JUNCTIONS (`B4w`), and **every
+cut a clip makes adds two more ends** — the pool grows as the field is damaged.
+
+### ⚠ Which is why every window that moved took an exact mark count with it
+
+⛔ **`pt_marks > 0` cannot see a clip**, and that is what these tests asserted. Measured: at
+`-6,-6..3,7` the tee is **32 marks, 0 descriptions, refused**, and *every assertion in that
+test passes* about a field that has lost four of its marks. The windows now come from the
+field's own extent, asked of the store, with the count asserted exactly — 36 for the tee, 42
+for the house, 52 for the house with a wall — and the house's control keeps the same window
+as the row it controls, because *only the wall differs* is what makes it a control.

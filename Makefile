@@ -1,4 +1,4 @@
-.PHONY: help names roles probe-roles probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: help names roles probe-roles probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-tw probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -1136,6 +1136,29 @@ probe-b8:
 # not a `HexSet`. Seconds.
 probe-b9:
 	@loft --interpret --lib lib/ probe/b9/b9.loft 2>/dev/null | sed -n '/^B9/,$$p'
+
+# TW (plan 26) — WHAT A PLAN-VIEW TEST'S WINDOW COSTS, AND WHAT A CLIPPED ONE DOES.
+# ⛔ The second half is the finding and it is NOT about tests: `src/plan_view.loft` takes
+# its window from the environment, and one hex of clip turns a 2.6-second picture into one
+# that has not come back in 180 seconds. The rows below are the cliff, either side of it.
+# ⚠ NOT IN `fast`: the last row is a deliberate non-answer and costs its whole timeout.
+# ⚠ AND ONE AT A TIME — five of these in parallel report 109 s for a 3.2-second row.
+probe-tw:
+	@echo "TW  the window is the cost, and a clip is a cliff"
+	@for w in "-6 -6 7 7" "-4 -6 7 7" "-3 -6 7 7"; do \
+	  set -- $$w; \
+	  s=$$(date +%s%N); \
+	  out=$$(FIX=tee Q0=$$1 R0=$$2 Q1=$$3 R1=$$4 timeout 90 loft --interpret --lib lib/ \
+	         probe/tw/field.loft 2>/dev/null | sed -n '2p'); \
+	  e=$$(date +%s%N); \
+	  printf "  %7dms  %s\n" $$(( (e-s)/1000000 )) "$${out:-NO ANSWER IN 90s}"; \
+	done
+	@s=$$(date +%s%N); \
+	 out=$$(FIX=tee Q0=-2 R0=-6 Q1=7 R1=7 timeout 90 loft --interpret --lib lib/ \
+	        probe/tw/field.loft 2>/dev/null | sed -n '2p'); \
+	 e=$$(date +%s%N); \
+	 printf "  %7dms  %s\n" $$(( (e-s)/1000000 )) \
+	        "$${out:-tee -2,-6..7,7 NO ANSWER IN 90s — the clip cliff}"
 
 # C1 (plan 26) — WHY `hex_place::combine_cut` HAS NO CALLER. Not because we copy it, the way
 # `draw_walls` was copied, but because the CAPABILITY is missing: nothing here adds a
