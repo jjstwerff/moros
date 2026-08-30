@@ -600,6 +600,102 @@ fn test_a_lone_house_is_one_piece() {
   assert(np == 1, "a house's marks are {np} pieces, so its mitre stubs are their own runs");
 }
 
+// ── ⛔ A MARKING THE WINDOW CLIPS — plan 26, [`probe/tw`](../../../probe/tw/README.md) ──
+//
+// ⛔ **THE FLOOD READ THE WORLD AND WROTE INTO THE WINDOW, AND THOSE ARE NOT THE SAME
+// PLACE.** `mark_piece_grow` enqueues a neighbouring mark when `mark_left` says the WORLD
+// holds one and `edge_mat(out, …)` says this piece has not recorded it — but an edge
+// outside the window's grid cannot be recorded at all: `edge_set_mat` drops the write and
+// `edge_mat` reads back 0, measured with an inside control that reads back 7. So a mark
+// the window clips is enqueued **every time it is reached and never marked**, and the
+// queue never empties.
+//
+// ⛔ **IT IS NOT SLOW, IT IS ENDLESS**, which is why this is a correctness test and not a
+// budget: `segments_of` on the clipped window below had not returned after 190 s with RSS
+// climbing 106 → 238 MB, while the same fixture one column wider answers in 2.6 s.
+// ⚠ **So its failure mode on the defect is the FILE DEADLINE, not an assertion** — a
+// reader seeing `[timeout] … fn=…` here is seeing this defect, restored.
+//
+// ⚠ **AND `src/plan_view.loft` TAKES ITS WINDOW FROM THE ENVIRONMENT**, so this is a
+// picture an author asks for and never gets back — [EDITOR_DEFECTS
+// 11](../../../doc/claude/EDITOR_DEFECTS.md), not a test-suite matter.
+fn tee_row(w: VoxelWorld) {
+  for k in 0..7 {
+    for d in 0..6 { wall_set(w, k - 3, 0, d, WALL_MAT, 8, 2.0); }
+  }
+}
+
+fn labelled_edges(ed: EdgeSet, q0: integer, r0: integer, wq: integer,
+                  hr: integer) -> integer {
+  n = 0;
+  for r in r0..r0 + hr {
+    for q in q0..q0 + wq {
+      for d in [4, 5, 0] {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if edge_mat(ed, q, r, nq, nr) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+// ⚠ **THE INVARIANT IS THE WINDOW'S OWN SCAN**: every unclaimed mark the window holds
+// gets a piece, and nothing else does. That is what `marks_unclaimed` counts, and asking
+// the two to agree is what makes this more than *it came back*.
+fn test_a_marking_the_window_clips_still_terminates() {
+  w = flat_world();
+  tee_row(w);
+  // ⚠ **THE CONTROL FIRST — a window that holds the whole marking.** The tee's marks span
+  // `q -4..4`; this holds all of them and has always answered.
+  cw = claims_new(0 - 6, 0 - 6, 13, 13);
+  ce = edgeset_new(0 - 6, 0 - 6, 13, 13);
+  cn = marks_label(w, 0 - 6, 0 - 6, 13, 13, 2.0, cw, ce);
+  assert(cn == 1, "the whole tee is {cn} pieces, not one");
+  assert(labelled_edges(ce, 0 - 6, 0 - 6, 13, 13)
+         == marks_unclaimed(w, 0 - 6, 0 - 6, 13, 13, 2.0,
+                            claims_new(0 - 6, 0 - 6, 13, 13)),
+         "the control labelled {labelled_edges(ce, 0 - 6, 0 - 6, 13, 13)} of "
+       + "{marks_unclaimed(w, 0 - 6, 0 - 6, 13, 13, 2.0, claims_new(0 - 6, 0 - 6, 13, 13))} marks");
+  // …and now one that cuts the low-q end off, which is where it looped.
+  kw = claims_new(0 - 2, 0 - 6, 9, 13);
+  ke = edgeset_new(0 - 2, 0 - 6, 9, 13);
+  kn = marks_label(w, 0 - 2, 0 - 6, 9, 13, 2.0, kw, ke);
+  assert(kn >= 1, "a clipped marking came back as {kn} pieces");
+  assert(labelled_edges(ke, 0 - 2, 0 - 6, 9, 13)
+         == marks_unclaimed(w, 0 - 2, 0 - 6, 9, 13, 2.0,
+                            claims_new(0 - 2, 0 - 6, 9, 13)),
+         "the clipped window labelled {labelled_edges(ke, 0 - 2, 0 - 6, 9, 13)} of "
+       + "{marks_unclaimed(w, 0 - 2, 0 - 6, 9, 13, 2.0, claims_new(0 - 2, 0 - 6, 9, 13))} "
+       + "marks — the flood does not cover the window's own field");
+}
+
+// ⚠ **AND THE OTHER THREE SIDES, BECAUSE THE STORAGE IS NOT SYMMETRIC.** `eg_index`
+// canonicalises three of the six directions onto the NEIGHBOUR cell, so which clipped
+// edges are addressable depends on which side the window cuts — the first prediction from
+// the mechanism was *two cells outside on any side* and the `q1` and `r0` sides both
+// refuted it by answering. A test that clipped one side would have been green on three
+// quarters of the defect.
+fn test_a_marking_clipped_on_any_side_terminates() {
+  w = flat_world();
+  tee_row(w);
+  for side in 0..4 {
+    q0 = if side == 0 { 0 - 2 } else { 0 - 6 };
+    r0 = if side == 2 { 1 } else { 0 - 6 };
+    wq = if side == 1 { 9 } else { if side == 0 { 9 } else { 13 } };
+    hr = if side == 3 { 6 } else { if side == 2 { 6 } else { 13 } };
+    ed = edgeset_new(q0, r0, wq, hr);
+    n = marks_label(w, q0, r0, wq, hr, 2.0, claims_new(q0, r0, wq, hr), ed);
+    left = marks_unclaimed(w, q0, r0, wq, hr, 2.0, claims_new(q0, r0, wq, hr));
+    // ⚠ **A PIECE COUNT AND A MARK COUNT HAVE TO AGREE ABOUT EMPTINESS**, or the row
+    // would be green for a window the flood simply refused to enter.
+    assert((left > 0) == (n > 0),
+           "side {side} ({q0},{r0} {wq}x{hr}) has {left} marks and {n} pieces");
+    assert(labelled_edges(ed, q0, r0, wq, hr) == left,
+           "side {side} ({q0},{r0} {wq}x{hr}) labelled "
+         + "{labelled_edges(ed, q0, r0, wq, hr)} of {left} marks");
+  }
+}
+
 // ⚠ **A PIECE NEVER CROSSES A CELL COMPONENT**, which is what lets a component be a piece
 // plus the cell component it stands in. Two marks meeting at a vertex have cells that
 // touch, and `touched_cells` takes BOTH cells of every mark — so the pieces refine the

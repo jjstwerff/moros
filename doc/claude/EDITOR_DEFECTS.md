@@ -61,7 +61,7 @@ its axles and rolling wheels. A character is that, with different joints.
 | 8 | **a REFUSED house leaves 27 floor cells and 84 wall bytes behind** | ✅ **FIXED 2026-08-28** (found by an adopter's 12-line program) | `place_house` writes the floor and stamps all four walls, *then* calls `roof_over` — and on a roof refusal returns `ack_no` without unwinding. ⛔ The source comment three lines above that return says the opposite in bold: *"A refusal here refuses the HOUSE — half a house is not an answer"*. ⚠ **And the test that reads as the general claim covers the other branch**: `test_a_house_at_an_unplaceable_facing_is_refused_and_writes_nothing` asserts `w.w_tau == before` for the FACING refusal, which happens before any write — so the one refusal path that can leave a half-house is the one path it does not visit. `hex_editor.loft:499` |
 | 9 | **every refused house facing offered a facing that is itself refused** | ✅ **FIXED 2026-08-28** | `fp_offer` is a Box ROTATION and an author turns in FACINGS — 90° apart by construction, because `pose_footprint` sets `rot = fdir - 3`. The refusal handed out the rotation, so hour 0 was told *offer 8*, hour 8 answered *offer 4*, hour 4 answered *offer 0*: **three refused facings offering each other in a cycle**, and the K-FIT doorstep's *reason, offer, residual* promise never terminated. ⚠ **Every individual number was correct** — the arithmetic was never wrong, only the FRAME — which is why a test asserting the offer is an even rotation would have passed on the defect. `footprint_offer_facing` is the conversion; the gate takes the offer and places there |
 | 10 | a room walked as four walls had a **hole you could walk through** | ✅ **FIXED 2026-08-29**, plan 26 `B4y` | two runs meeting at a corner each project onto their **own** segment, so the corner edge was claimed twice at 30 of 100 corners and never at 10 — `@HB-X36` broken in both directions |
-| 11 | ⛔ **a window that CLIPS a structure can stop the plan view returning** | ⛔ **OPEN**, measured 2026-08-30, [`probe/tw`](../../probe/tw/README.md) · `make probe-tw` | the peel's last readers take their candidates from the chain's ENDS and JUNCTIONS (`B4w`), and clipping a structure cuts its chains — every cut makes two more ends, so the pool grows as the field is damaged. **A cliff, not a curve**: over the tee fixture at `q0 = −6 … −3` the picture comes back in 2.6 … 3.2 s, and at `q0 = −2` and `−1` — *smaller* windows, 117 and 104 cells — it has not come back in 180 s. `src/plan_view.loft` takes `Q0 R0 Q1 R1` from the environment |
+| 11 | **a window that CLIPS a structure never returned** | ✅ **FIXED 2026-08-30**, [`probe/tw`](../../probe/tw/README.md) · `make probe-tw` | `mark_piece_grow` reads the WORLD and writes into the WINDOW, and an edge outside the window's grid cannot be recorded — `edge_set_mat` drops the write and `edge_mat` reads back 0 — so a clipped mark was enqueued **every time it was reached and never marked**, and the queue never emptied. ⛔ **Not slow, endless**: RSS climbed 106 → 238 MB over 96 s. ⚠ **And the first mechanism published for it was wrong** — *the candidate pool grows with the chain's ends* — which is why the fix waited for the measurement that attributes it: `segments_of`'s two floods are both public, and `marks_label` is the one that does not return |
 
 ✅ **1, 4 and 5 are ONE defect, and it is decided — see [the decision](#-the-decision--2026-08-21-there-is-no-session-record-only-a-mesh-cache).**
 
@@ -542,41 +542,86 @@ peel's seed, not the corner.
 
 ---
 
-## ⛔ 11. A window that clips a structure can stop the plan view returning — 2026-08-30
+## ✅ 11. A window that clips a structure never returned — fixed 2026-08-30
 
 **[`probe/tw`](../../probe/tw/README.md), `make probe-tw`.** Found while cutting
 `planview_region.loft`'s runtime, which is why it reads as a test-suite matter and is not:
 `src/plan_view.loft` takes `Q0 R0 Q1 R1` from the environment, so **an author choosing a
-window is one hex away from a picture that never comes back.**
+window was one hex from a picture that never came back.**
 
 The tee fixture — seven hexagonal cell outlines, marks spanning `q −4..4` — with the window
-moved in one column at a time, one process, idle box:
+moved in one column at a time, one process:
 
-| `q0` | cells | what the picture says | time |
+| `q0` | cells | before | after |
 |---|---|---|---|
-| −6 | 169 | 36 marks, 0 desc, refused | 3.2 s |
-| −5 | 156 | 36 marks, 0 desc, refused | 3.0 s |
-| −4 | 143 | 36 marks, 0 desc, refused | 2.9 s |
-| −3 | 130 | **34 marks, 8 desc** — the clipped field becomes explicable | 2.6 s |
-| ⛔ **−2** | 117 | — | ⛔ **> 180 s, no answer** |
-| ⛔ **−1** | 104 | — | ⛔ **> 180 s, no answer** |
+| −6 | 169 | 36 marks, 0 desc, refused · 3.2 s | unchanged |
+| −4 | 143 | 36 marks, 0 desc, refused · 2.9 s | unchanged |
+| −3 | 130 | 34 marks, 8 desc · 2.6 s | unchanged |
+| ⛔ **−2** | 117 | ⛔ **> 180 s, no answer** | ✅ **29 marks, 8 desc · 3.1 s** |
+| ⛔ **−1** | 104 | ⛔ **> 180 s, no answer** | ✅ **24 marks, 8 desc · 5.5 s** |
 
-⛔ **THE WINDOW IS GETTING SMALLER ACROSS THE CLIFF**, which is what rules out *a big window
-is slow* as the reading. The house fixture does the same thing: `-10,-11..7,11` answers in
-seconds, `-8,-8..6,6` and `-6,-6..6,6` were both still running at 200 s.
+⛔ **THE WINDOW WAS GETTING SMALLER ACROSS THE CLIFF**, which is what ruled out *a big
+window is slow*.
 
-⚠ **The mechanism, not diagnosed further than this.** `plan_describe_within` ends at
-`run_within` / `run_chain_within`, whose candidates are the chain's ENDS and JUNCTIONS —
-`B4w`'s *a wall can only begin where the chain does*, which is what makes the pool a handful
-of exact corners rather than a search over the plane. Clipping a structure cuts its chains,
-and **every cut makes two more ends**, so the pool grows exactly as the field is damaged.
+### ⛔ The mechanism — the flood read the world and wrote into the window
 
-⚠ **AND IT IS WHY A SMALLER TEST WINDOW NEEDS AN EXACT MARK COUNT.** `pt_marks > 0` — the
-assertion every plan-view test carried — passes over a field that has lost a third of itself:
-measured, at `-6,-6..3,7` the tee is 32 marks, 0 descriptions and refused, and every
-assertion in that test is green about a field that is not the fixture. The windows that moved
-took the field's own extent and an exact count with them; where the count cannot see a clip,
-the deadline does.
+`marks_label` seeds from the window's own scan and hands each seed to `mark_piece_grow`,
+which floods the marking through shared vertices. Its enqueue rule is *the WORLD holds a
+mark here* (`mark_left`) **and** *this piece has not recorded it* (`edge_mat(out, …) == 0`).
+For an edge outside `out`'s grid **both are permanently true**:
+
+| asked of an edge outside the window | measured |
+|---|---|
+| `edge_set_mat(e, …, 7)` then `edge_mat(e, …)` | ⛔ **0** — the write is dropped |
+| …the same pair inside, as a control | ✅ **7** |
+| `wall_of(world, q = ±4, …)` for a cell the window does not hold | **1 wall byte** — the window is not consulted |
+
+So the mark is enqueued every time it is reached, from every neighbour that reaches it.
+✅ **It is endless, not slow, and RSS is what says so** — 106 → 238 MB over 96 s, climbing
+monotonically, where a fixed computation that is merely slow does not grow.
+
+### ⚠ Two wrong answers on the way, and both are worth keeping
+
+⛔ **The first published mechanism was the peel's candidate pool** — *`run_within` is
+quadratic in the chain's ends, and clipping makes more ends*. Coherent, and **wrong**: the
+readers are never reached. `segments_of` is two floods and both are public, so which one
+hangs is a question that can be **asked** — `touched_cells` returns, `cells_label` returns
+1, `marks_label` does not return. ⚠ *A coherent explanation is a hypothesis*, and this one
+cost nothing to check because the library had already exported the two halves.
+
+⛔ **And the first prediction from the RIGHT mechanism failed too.** *A mark two cells
+outside the window on any side* predicts the `q0` cliff exactly — and the `q1` and `r0`
+sides both **answer**, in under 3 s, with marks two cells out. `eg_index` canonicalises
+three of the six directions onto the neighbour cell, so which clipped edges are addressable
+depends on which side the window cuts. ⚠ **A test that clipped one side would have been
+green on three quarters of the defect**, which is why
+`test_a_marking_clipped_on_any_side_terminates` walks all four.
+
+### ✅ And the class has one member, checked rather than assumed
+
+`segments_of` runs **two** floods of this shape. `cells_label` enqueues a cell that is in the
+set and unlabelled, and `touched_cells` sets both cells of every mark — so a boundary mark's
+outside cell would be the same trap. It is not: **`HexSet` has no halo where `EdgeSet` has
+one**, so the outside `hexset_set` is dropped, `hexset_get` is false, and the flood's own set
+guard stops it. ⚠ One flood was exposed and the other was not, and the difference is a
+storage detail neither function mentions — which is why it was measured (`make probe-tw`,
+`PHASE=halo`) rather than reasoned about.
+
+### ✅ The fix — a piece grows only within the field it is recorded into
+
+`mark_in_field` in `hex_editor::gesture`, one condition in the flood, no new parameter:
+`out` already carries its own window (`edgeset_q0/r0/w/h`).
+
+⚠ **The bound is the window's own SCAN, not the storage.** `edgeset_*` addresses a one-cell
+halo too, and bounding by what can be written would admit edges no other reader counts —
+`marks_unclaimed`, `edges_mat_claimed`, `corner_pool` and `run_span` all walk
+`q0..q0+wq, r0..r0+hr` with `d` in `[4, 5, 0]`. ⚠ **That the three unused directions name
+the same edge from the neighbour is measured**, over every cell and direction of a 7 × 7
+patch, because a bound written the other way round clips the wrong side.
+
+✅ **Seen red first**: `[timeout] deadline reached after 70s … entry=test_a_marking_the_window_clips_still_terminates`, and 2.4 s green after.
+⚠ **Its failure mode on the defect is the FILE DEADLINE rather than an assertion**, which
+the test says at its head so a later reader knows what a timeout there means.
 
 ---
 

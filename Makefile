@@ -1138,13 +1138,15 @@ probe-b9:
 	@loft --interpret --lib lib/ probe/b9/b9.loft 2>/dev/null | sed -n '/^B9/,$$p'
 
 # TW (plan 26) — WHAT A PLAN-VIEW TEST'S WINDOW COSTS, AND WHAT A CLIPPED ONE DOES.
-# ⛔ The second half is the finding and it is NOT about tests: `src/plan_view.loft` takes
-# its window from the environment, and one hex of clip turns a 2.6-second picture into one
-# that has not come back in 180 seconds. The rows below are the cliff, either side of it.
-# ⚠ NOT IN `fast`: the last row is a deliberate non-answer and costs its whole timeout.
+# ⛔ The second half was the finding and it is NOT about tests: `src/plan_view.loft` takes
+# its window from the environment, and one hex of clip turned a 2.6-second picture into one
+# that never came back. ✅ FIXED — `mark_in_field`, EDITOR_DEFECTS 11 — and the last row
+# below is kept BECAUSE it passes now: it prints a time and a picture where it printed
+# `NO ANSWER IN 90s`, which is what makes this a regression check rather than a record.
 # ⚠ AND ONE AT A TIME — five of these in parallel report 109 s for a 3.2-second row.
 probe-tw:
-	@echo "TW  the window is the cost, and a clip is a cliff"
+	@echo "TW  every row answers now — the last one never did.  ANSWERS are the claim;"
+	@echo "    the times are this box, and a sibling's CI moves them by 6x."
 	@for w in "-6 -6 7 7" "-4 -6 7 7" "-3 -6 7 7"; do \
 	  set -- $$w; \
 	  s=$$(date +%s%N); \
@@ -1158,7 +1160,7 @@ probe-tw:
 	        probe/tw/field.loft 2>/dev/null | sed -n '2p'); \
 	 e=$$(date +%s%N); \
 	 printf "  %7dms  %s\n" $$(( (e-s)/1000000 )) \
-	        "$${out:-tee -2,-6..7,7 NO ANSWER IN 90s — the clip cliff}"
+	        "$${out:-tee -2,-6..7,7 NO ANSWER IN 90s — EDITOR_DEFECTS 11 is back}"
 
 # C1 (plan 26) — WHY `hex_place::combine_cut` HAS NO CALLER. Not because we copy it, the way
 # `draw_walls` was copied, but because the CAPABILITY is missing: nothing here adds a

@@ -1,0 +1,211 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// WHY A CLIPPED WINDOW NEVER CAME BACK — asked one layer at a time.
+//
+//   PHASE=halves Q0=-2 R0=-6 Q1=7 R1=7 loft --interpret --lib lib/ probe/tw/pool.loft
+//
+// ⛔ **THE FINDING** ([EDITOR_DEFECTS 11](../../doc/claude/EDITOR_DEFECTS.md), FIXED
+// 2026-08-30): over the tee fixture `q0 = -3` drew its picture in 2.6 s and `q0 = -2` — a
+// SMALLER window — never answered at all. `probe/tw`'s README has the cliff; this is how
+// it was attributed.
+//
+// ⚠ **THE PHASES ARE THE DIAGNOSIS IN ORDER, AND EACH ONE REFUTED THE STEP BEFORE IT.**
+// `seg` was written first, for a hypothesis that turned out to be wrong — that the peel's
+// candidate pool grows with the chain's ends. It is kept, because *the pool is 12 and 14*
+// is what took the pool off the list. `halves` is the one that answered: `segments_of`
+// runs two floods, both are public, and `marks_label` is the one that does not return.
+// `why` then asks the two ingredients directly, and `halo` asks whether the sibling flood
+// has the same exposure (it does not).
+//
+// ⚠ **EVERY NUMBER HERE IS THE LIBRARY'S OWN.** The component split is `segments_of`,
+// which is what the peel uses; the pool's size is `wall_chain_ends` +
+// `wall_chain_branches`, which is the identity `corner_pool` admits a vertex on
+// (degree 1 or degree >= 3). Nothing is re-derived — this tree's own rule, and the pool
+// is private so counting it any other way would be inventing a second answer.
+//
+// ⚠ **ONE PHASE PER PROCESS AND ONE PROCESS AT A TIME**: the phases below are separate
+// so the shell's clock attributes cost to one reader, and five of these in parallel
+// report 109 s for a 3.2-second row.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+use hex_shape;
+use hex_field;
+use hex_grid;
+
+const U = 0.25;
+
+fn env_int(name: text, fallback: integer) -> integer {
+  v = env_variable(name);
+  if v == "" { return fallback; }
+  neg = false;
+  if v[0..1] == "-" { neg = true; v = v[1..(v.size() as i32)]; }
+  n = v as integer ?? fallback;
+  if neg { return 0 - n; }
+  n
+}
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn row_world() -> VoxelWorld {
+  w = flat_world();
+  for k in 0..7 {
+    for d in 0..6 { hex_editor::wall_set(w, k - 3, 0, d, hex_editor::WALL_MAT, 8, 2.0); }
+  }
+  w
+}
+
+fn main() {
+  phase = env_variable("PHASE");
+  q0 = env_int("Q0", 0 - 6);
+  r0 = env_int("R0", 0 - 6);
+  q1 = env_int("Q1", 7);
+  r1 = env_int("R1", 7);
+  wq = q1 - q0;
+  hr = r1 - r0;
+  ref = 2.0;
+
+  // ── ⛔ THE SAME SHAPE ONE FLOOD OVER — IS `cells_label` EXPOSED TOO? ──────
+  //
+  // `segments_of` runs two floods and only one of them looped. The other,
+  // `cells_label`, has the same shape — it enqueues a cell that is IN the set and whose
+  // LABEL is unset — so it is endless in exactly the case where a cell can be in the set
+  // and unlabelable. `touched_cells` sets both cells of every mark, and a mark on the
+  // window boundary has one cell OUTSIDE, so the case is reachable if `HexSet` addresses
+  // a halo that `Labels` does not. Asked rather than assumed.
+  if phase == "halo" {
+    hs = hexset_chunk(q0, r0, wq, hr);
+    lb2 = labels_new(q0, r0, wq, hr);
+    for off in [0, 1, 2] {
+      cq = q0 - off;
+      hexset_set(hs, cq, r0, true);
+      label_set(lb2, cq, r0, 5);
+      println("{off} cell(s) outside: in-set {hexset_get(hs, cq, r0)}  "
+            + "label {label_get(lb2, cq, r0)}");
+    }
+    return;
+  }
+
+  // ── ⛔ THE TWO INGREDIENTS OF THE LOOP, EACH ASKED DIRECTLY ───────────────
+  //
+  // `mark_piece_grow` enqueues a neighbouring mark exactly when `mark_left` says the
+  // WORLD has one and `edge_mat(out, …)` says this piece has not recorded it. Both are
+  // asked below of an edge OUTSIDE the window, because that is the pair that cannot
+  // both be false — and a queue whose entries can never be recorded is not slow, it is
+  // endless.
+  if phase == "why" {
+    ww = row_world();
+    e = edgeset_new(q0, r0, wq, hr);
+    // Far outside the window and its one-cell halo, and a real mark in the world.
+    ox = q0 - 40;
+    oy = r0 - 40;
+    (onq, onr) = hex_grid::hex_neighbor(ox, oy, 4);
+    edge_set_mat(e, ox, oy, onq, onr, 7);
+    println("outside: write 7, read back {edge_mat(e, ox, oy, onq, onr)}");
+    // …and the control, so the reader is not simply blind everywhere.
+    (inq, inr) = hex_grid::hex_neighbor(q0 + 2, r0 + 2, 4);
+    edge_set_mat(e, q0 + 2, r0 + 2, inq, inr, 7);
+    println("inside:  write 7, read back {edge_mat(e, q0 + 2, r0 + 2, inq, inr)}");
+    // ⚠ **AND THE IDENTITY THE FIX RESTS ON, MEASURED RATHER THAN ASSUMED.** The window's
+    // own scan names an edge from `d` in `[4, 5, 0]`; the other three name the same edge
+    // from the NEIGHBOUR, so `d` and `(d + 3) % 6` must be opposite on this lattice. If
+    // they are not, a bound written that way clips the wrong side.
+    opp = true;
+    for oq2 in 0 - 3..4 {
+      for or2 in 0 - 3..4 {
+        for od2 in 0..6 {
+          (na, nb) = hex_grid::hex_neighbor(oq2, or2, od2);
+          (ba, bb) = hex_grid::hex_neighbor(na, nb, (od2 + 3) % 6);
+          if ba != oq2 || bb != or2 { opp = false; }
+        }
+      }
+    }
+    println("d and (d+3)%6 are opposite everywhere tested: {opp}");
+
+    // …and the world half: `wall_of` answers for a cell no window has to hold, which is
+    // what makes the pair reachable at all. The tee's marks reach q = -4 and q = +4.
+    for oq in [0 - 5, 0 - 4, 4, 5] {
+      nb = 0;
+      for od in 0..6 { if hex_editor::wall_of(ww, oq, 0, od, ref) != 0 { nb = nb + 1; } }
+      println("world at q={oq}: {nb} wall byte(s) — the window is not consulted");
+    }
+    return;
+  }
+
+  // ⚠ **THE PHASES NEST AND EACH ONE PRINTS BEFORE THE NEXT BEGINS.** The first version
+  // did the whole set-up and printed once, and at the cliff window it printed NOTHING —
+  // which says only *somewhere above the first println*. A phase that returns before the
+  // step it is asking about is what turns that into an answer.
+  w = row_world();
+  println("world built");
+  if phase == "w0" { return; }
+
+  base = hex_editor::claims_new(q0, r0, wq, hr);
+  println("window {q0},{r0}..{q1},{r1}  cells {wq * hr}  "
+        + "marks {hex_editor::marks_unclaimed(w, q0, r0, wq, hr, ref, base)}");
+  if phase == "cl" { return; }
+
+  // ⚠ **`segments_of` IS TWO FLOODS AND THE HANG WAS ATTRIBUTED TO ONE BY READING.**
+  // Both halves are public, so which one it is can be asked rather than inferred.
+  if phase == "halves" {
+    tc = hex_editor::touched_cells(w, q0, r0, wq, hr, ref, base);
+    println("touched_cells returned");
+    lb = labels_new(q0, r0, wq, hr);
+    nc = hex_editor::cells_label(tc, lb);
+    println("cells_label returned {nc}");
+    ed = edgeset_new(q0, r0, wq, hr);
+    np = hex_editor::marks_label(w, q0, r0, wq, hr, ref, base, ed);
+    println("marks_label returned {np}");
+    return;
+  }
+
+  sg = hex_editor::segments_of(w, q0, r0, wq, hr, ref, base);
+  n = hex_editor::segment_count(sg);
+  println("components {n}");
+  if phase == "sg" { return; }
+
+  pool_total = 0;
+  pairs_total = 0;
+  for cid in 0..n {
+    within = hex_editor::segment_claims(base, w, q0, r0, wq, hr, ref, sg, cid);
+    g = hex_editor::edges_mat_claimed(w, q0, r0, wq, hr, ref, within);
+    ends = hex_shape::wall_chain_ends(g, q0, r0, wq, hr);
+    br = hex_shape::wall_chain_branches(g, q0, r0, wq, hr);
+    ml = hex_editor::segment_marks_left(w, q0, r0, wq, hr, ref, base, sg, cid);
+    // ⚠ `corner_pool` admits degree 1 and degree >= 3, which is exactly these two
+    // counters — so this is its SIZE, and the pairs below are what `run_within` walks.
+    pool = ends + br;
+    pool_total = pool_total + pool;
+    pairs_total = pairs_total + pool * (pool - 1) / 2;
+    println("  c{cid}  marks {ml}  ends {ends}  branches {br}  pool {pool}  "
+          + "pairs {pool * (pool - 1) / 2}");
+  }
+  println("POOL total {pool_total}  PAIRS total {pairs_total}");
+  if phase == "seg" { return; }
+
+  // Each reader on its own, so the clock says which one.
+  for cid in 0..n {
+    within = hex_editor::segment_claims(base, w, q0, r0, wq, hr, ref, sg, cid);
+    cl = hex_editor::segment_claims(base, w, q0, r0, wq, hr, ref, sg, cid);
+    if phase == "rw" {
+      rr = hex_editor::run_within(w, q0, r0, wq, hr, ref, within, cl);
+      println("  rw c{cid} ok {rr.rr_ok}");
+    }
+    if phase == "rc" {
+      rc = hex_editor::run_chain_within(w, q0, r0, wq, hr, ref, within, cl);
+      println("  rc c{cid} ok {rc.rr_ok}");
+    }
+    if phase == "disc" {
+      dw = hex_editor::disc_within(w, q0, r0, wq, hr, ref, within, cl);
+      println("  disc c{cid} ok {dw.dc_ok}");
+    }
+  }
+  println("done {phase}");
+}

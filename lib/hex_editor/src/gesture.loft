@@ -1178,6 +1178,36 @@ pub fn cells_label(cells: HexSet, lb: Labels) -> integer {
   cl_n
 }
 
+// ⛔ **A PIECE GROWS ONLY WITHIN THE FIELD IT IS RECORDED INTO** — plan 26,
+// [`probe/tw`](../../../probe/tw/README.md), [EDITOR_DEFECTS
+// 11](../../../doc/claude/EDITOR_DEFECTS.md).
+//
+// `mark_piece_grow` below reads the WORLD and writes into the WINDOW, and those are not
+// the same place: `mark_left` answers for any cell the world has, while an edge outside
+// `out`'s grid cannot be recorded at all — `edge_set_mat` drops the write and `edge_mat`
+// reads back **0**, measured, with an inside control reading back 7. Without this bound a
+// mark the window clips is enqueued every time it is reached and never marked, so the queue
+// never empties: `segments_of` on a clipped tee had not returned after 190 s with RSS
+// climbing 106 → 238 MB, where the same fixture one column wider answers in 2.6 s.
+//
+// ⚠ **THE BOUND IS THE WINDOW'S OWN SCAN, NOT THE STORAGE.** `edgeset_*` addresses a
+// one-cell halo as well, so bounding by what can be written would admit edges no other
+// reader here counts — `marks_unclaimed`, `edges_mat_claimed`, `corner_pool` and
+// `run_span` all walk `q0..q0+wq, r0..r0+hr` with `d` in `[4, 5, 0]`. This is that same
+// set, so a piece holds exactly the marks the window has.
+//
+// ⚠ **AND `d` AND `(d + 3) % 6` BEING OPPOSITE IS WHAT MAKES THAT ONE TEST**: the three
+// directions the scan does not use name the same edge from the neighbour. Measured over
+// every cell and direction of a 7 × 7 patch rather than assumed, because a bound written
+// the other way round would clip the wrong side of the window.
+fn mark_in_field(out: EdgeSet, q: integer, r: integer, d: integer) -> boolean {
+  mf_q = q;
+  mf_r = r;
+  if d != 4 && d != 5 && d != 0 { (mf_q, mf_r) = hex_grid::hex_neighbor(q, r, d); }
+  mf_q >= edgeset_q0(out) && mf_q < edgeset_q0(out) + edgeset_w(out)
+    && mf_r >= edgeset_r0(out) && mf_r < edgeset_r0(out) + edgeset_h(out)
+}
+
 // ── AND THE MARKS ARE FLOODED THROUGH THEIR VERTICES — plan 26 `B4u` ──────
 //
 // ⛔ **A COMPONENT WAS SPATIAL, SO TWO STRUCTURES A CELL APART WERE ONE FIELD.** `B4t`
@@ -1227,6 +1257,10 @@ fn mark_piece_grow(wld: VoxelWorld, ref: float, cl: Claims, out: EdgeSet, id: in
         xr = if mg_which == 0 { ar } else { br };
         xd = if mg_which == 0 { ac } else { bc };
         if !mark_left(wld, xq, xr, xd, ref, cl) { continue; }
+        // ⛔ **AND IS IT THIS WINDOW'S MARK AT ALL** — see `mark_in_field`. Without this
+        // the queue never empties, because what cannot be recorded is enqueued again
+        // every time it is reached.
+        if !mark_in_field(out, xq, xr, xd) { continue; }
         (xnq, xnr) = hex_grid::hex_neighbor(xq, xr, xd);
         if edge_mat(out, xq, xr, xnq, xnr) != 0 { continue; }
         edge_set_mat(out, xq, xr, xnq, xnr, id + 1);

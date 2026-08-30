@@ -3776,3 +3776,44 @@ test passes* about a field that has lost four of its marks. The windows now come
 field's own extent, asked of the store, with the count asserted exactly — 36 for the tee, 42
 for the house, 52 for the house with a wall — and the house's control keeps the same window
 as the row it controls, because *only the wall differs* is what makes it a control.
+
+### ✅ AND THE FINDING IS FIXED — the flood read the WORLD and wrote into the WINDOW
+
+`marks_label` seeds from the window's own scan and hands each seed to `mark_piece_grow`,
+whose enqueue rule is *the world holds a mark here* **and** *this piece has not recorded
+it*. For an edge outside the window's grid **both stay true for ever**: `edge_set_mat`
+drops the write and `edge_mat` reads back `0` — measured, with an inside control reading
+back `7` — while `wall_of` answers happily for a cell no window has to hold. So the mark
+was enqueued every time it was reached, from every neighbour that reached it.
+
+⛔ **ENDLESS, NOT SLOW, AND RSS IS THE INSTRUMENT THAT SAYS SO** — 106 → 238 MB over 96 s,
+climbing monotonically, where a fixed computation that is merely slow does not grow.
+
+✅ **The fix is one condition and no new parameter** — `mark_in_field`: a piece grows only
+within the field it is recorded into, and `out` already carries its own window. The bound
+is the window's **scan** rather than its storage, because `edgeset_*` addresses a one-cell
+halo too and every other reader here walks `q0..q0+wq, r0..r0+hr` with `d` in `[4, 5, 0]`.
+
+| the tee, window `q0,−6..7,7` | before | after |
+|---|---|---|
+| `q0 = −6 … −3` | 2.6 … 3.2 s | unchanged, same pictures |
+| ⛔ `q0 = −2`, `−1` | ⛔ **> 180 s, no answer** | ✅ **3.1 s / 5.5 s** |
+
+### ⚠ Two wrong answers on the way, and they are the part worth keeping
+
+⛔ **The mechanism published with the previous commit was the peel's candidate pool** —
+*`run_within` is quadratic in the chain's ends and clipping makes more ends*. Coherent, and
+**refuted**: the readers are never reached. `segments_of` is two floods and **both are
+public**, so which one hangs is a question that can be *asked* — `touched_cells` returns,
+`cells_label` returns 1, `marks_label` does not. One probe phase, and it moved the fix from
+the wrong function to the right one.
+
+⛔ **And the first prediction from the RIGHT mechanism failed too.** *A mark two cells
+outside on any side* predicts the `q0` cliff exactly — and the `q1` and `r0` sides both
+answer in under 3 s with marks two cells out, because `eg_index` canonicalises three of the
+six directions onto the NEIGHBOUR cell. ⚠ **A test that clipped one side would have been
+green on three quarters of the defect**, which is why the second test walks all four.
+
+✅ **Seen red first, and the red is a DEADLINE**: `[timeout] deadline reached after 70s …
+entry=test_a_marking_the_window_clips_still_terminates`, 2.4 s green after. The test says
+so at its head, so a later reader knows what a timeout there means.
