@@ -151,3 +151,39 @@ fn test_the_region_reader_reads_a_renumbered_floor_too() {
          "{rg.rg_cells} cells / {rg.rg_sides} sides against {base.rg_cells} / "
        + "{base.rg_sides}");
 }
+
+// ── ⛔ THE TWO DOORS ARE ONE RULE, AND THAT IS A TEST — plan 21 `R5a` ───────
+//
+// `ground_role_at` exists because `ground_kind_at` costs 180× the comparison it
+// replaced (`probe/roles/cost.loft`), and it is a SECOND statement of the same
+// resolution: the palette first, the table by byte second, `grass` last. Folding them
+// into one is not available — the struct path's final fallback returns a row wearing
+// the CALLER's byte, and a name cannot carry *and it came from the fallback*.
+//
+// ⚠ So the equality is asserted rather than asserted-in-a-comment, over every byte a
+// `u8` can hold and in both palette states. A drift between them would make a rule and
+// a reader disagree about the same cell, silently.
+fn test_the_name_door_and_the_row_door_agree_on_every_byte() {
+  w = flat_world();
+  for m in 0..256 {
+    assert(ground_role_at(w, 0, 0, m) == ground_kind_at(w, 0, 0, m).tr_name,
+           "byte {m}: the name door says '{ground_role_at(w, 0, 0, m)}' and the row "
+         + "door says '{ground_kind_at(w, 0, 0, m).tr_name}'");
+  }
+}
+
+fn test_they_agree_when_the_world_has_renamed_bytes_too() {
+  w = flat_world();
+  name_it(w, ALIEN, "floor");
+  name_it(w, FLOOR_MAT, "grass");
+  name_it(w, 21, "a name no row of the table has");
+  for m in 0..256 {
+    assert(ground_role_at(w, 0, 0, m) == ground_kind_at(w, 0, 0, m).tr_name,
+           "byte {m} under a palette: '{ground_role_at(w, 0, 0, m)}' against "
+         + "'{ground_kind_at(w, 0, 0, m).tr_name}'");
+  }
+  // ⚠ AND THE CONTROL: the palette is actually being read, or the loop above compares
+  // two fallbacks and proves nothing.
+  assert(ground_role_at(w, 0, 0, ALIEN) == "floor", "byte {ALIEN} did not resolve");
+  assert(ground_role_at(w, 0, 0, FLOOR_MAT) == "grass", "byte 4 did not resolve");
+}

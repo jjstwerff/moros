@@ -326,3 +326,58 @@ accident, which is how `moros_ui` stayed outside the layering check for months.
 ⚠ **And the row is keyed on the enclosing FUNCTION**, because a file is not fine enough to
 carry a verdict: `gesture.loft` holds four `== SURFACE_MAT` and one of them is
 `ground_kind_default` reading the grass row out of the table it is the home of.
+
+### ⛔ And it cost 180×, which `planview` said out loud before any probe did
+
+**`probe/roles/cost.loft` — 40 000 calls an arm, timed A-B-B-A in one process.** The five
+moved sites are all window scans inside `O(window² × peel rounds)`, so the per-call constant
+is the whole question.
+
+⚠ **THE FIRST SIGN WAS A TEST AT THE 300-SECOND WALL, AND IT WORE THE COSTUME THIS TREE HAS
+WRITTEN DOWN.** `make fast` came back with `hex_mesh/planview did not finish inside 300s` while
+a sibling's CI held the load average between 24 and 76 and `pgrep -f cargo-nextest` was loud —
+which is exactly the known-flaky failure `CLAUDE.md` says a real one hides behind. It was green
+before this change and it is the file whose readers this change makes heavier, so it was **not**
+attributable to the sibling, whatever the load said.
+
+⛔ **AND A 300-SECOND TEST COULD NOT SETTLE IT ON THAT BOX.** The interleaved old-vs-new run was
+started and abandoned: at load 51 this tree has measured the same binary on the same code timing
+**8× apart**, so the reading would have been worth nothing. What answers under load is a **tight
+loop timed A-B-B-A in one process** — a ramp then shows as `A1 ≠ A2` instead of hiding inside
+whichever arm it landed on. `probe/perf/place_phases.loft`'s rule, borrowed.
+
+| 40 000 calls | |
+|---|---|
+| `mat == FLOOR_MAT` | **2 ms** |
+| ⛔ `ground_is` as first written | **365 ms — 180×** |
+| the region lookup alone | 19 ms |
+| the palette lookup alone | 23 ms |
+| **the table walk + row copy** | **75 ms** |
+| …and the rest | the SECOND copy: `ground_kind_of` returns a row, `ground_kind_at` returns it again |
+
+✅ **`ground_role_at` returns the NAME, and that is 179 → 77 ms — 2.3×.** It is now cheaper than
+the `ground_kind_of(m).tr_name` sub-arm beside it (113 ms), which still copies, so the copies
+were the cost and not the lookups.
+
+⛔ **IT IS A SECOND STATEMENT OF ONE RULE AND THAT IS GATED, NOT DENIED.** Folding it into
+`ground_kind_at` was tried and does not work: the struct path's last fallback is
+`ground_kind_default(mat, nm)` — a row *wearing the caller's byte* — and **a name cannot carry
+"and it came from the fallback"**. So `tests/role_mat.loft` pins the two doors equal for **every
+byte a `u8` can hold, in both palette states**, with a control that the palette is actually
+being read.
+
+### ⚠ What `R5c` inherits, measured rather than left to be rediscovered
+
+**Per-cell resolution has a floor of about 2 µs** — a region lookup, a palette lookup and a
+table walk — against **0.025 µs** for an integer compare. Removing the copies got 2.3× of it and
+there is no more to get that way: **the only way back to an integer compare is for the CALLER to
+hoist**, resolving *which byte does this region call `floor`* once per scan.
+
+⛔ **And that inverse is the design `R5a` deliberately refused**, for a reason that has not
+changed: nothing forbids a region naming two bytes `floor`, and an inverse has to answer with
+one. `R5c` has to settle it — a lowest-slot rule, a refusal, or a per-region memo the scan
+carries — and it now has the number that says whether the trouble is worth it.
+
+⚠ **AND THE MESHER HAS BEEN PAYING THIS SINCE `R1`, UNMEASURED.** `hex_mesh` calls
+`ground_kind_at` per cell at **five** sites (`chunk_mesh_*`), each **2.8 µs** with the row copy
+this step just measured. Nobody had timed it, and it is the same constant in a hotter loop.

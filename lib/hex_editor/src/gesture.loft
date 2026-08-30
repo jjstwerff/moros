@@ -8511,7 +8511,41 @@ pub fn ground_kind_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> Gr
 // every world written before palettes existed go on reading correctly.
 pub fn ground_is(w: VoxelWorld, q: integer, r: integer, mat: integer,
                  role: text) -> boolean {
-  ground_kind_at(w, q, r, mat).tr_name == role
+  ground_role_at(w, q, r, mat) == role
+}
+
+// …and the NAME on its own, because a `GroundKind` is an expensive thing to build for
+// a question that wants six characters of it.
+//
+// ⛔ **MEASURED, AND THE FIRST VERSION OF `ground_is` COST 180× THE COMPARISON IT
+// REPLACED** — `probe/roles/cost.loft`, 40 000 calls an arm, A-B-B-A in one process:
+// **2 ms against 365 ms**. Split by layer: the region lookup **19 ms**, the palette
+// lookup **23 ms**, the table walk and row copy **75 ms**, and the remaining ~60 ms the
+// SECOND copy — `ground_kind_of` returns a row and `ground_kind_at` returns it again.
+// ⚠ **That constant multiplies `O(window² × peel rounds)`**, and it pushed
+// `hex_mesh/tests/planview.loft` through `loft test`'s 300 s wall.
+//
+// ⛔ **AND IT IS A SECOND STATEMENT OF `ground_kind_at`'s RULE, WHICH IS A DEBT AND IS
+// GATED RATHER THAN DENIED.** Folding the two was tried and does not work: the struct
+// path's last fallback is `ground_kind_default(mat, nm)`, a row *wearing the caller's
+// byte*, and a byte this table has never heard of is exactly the case where the two
+// differ — `tr_mat` would come back `SURFACE_MAT` instead of `mat`. **A name cannot
+// carry "and it came from the fallback"**, so one resolution with two return shapes is
+// not available without a second return value.
+// ⚠ **So `tests/role_mat.loft` pins them equal for every byte in both palette states.**
+// *Two derivations of one quantity* is the shape this tree has been bitten by; what
+// makes it safe is that the equality is a test, not a comment.
+pub fn ground_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> text {
+  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL,
+                                     hex_voxel::world_region_at(w, q, r), mat);
+  if nm != "" && nm != hex_voxel::PAL_ABSENT { return nm; }
+  // ⚠ THE TABLE IS WALKED FOR ITS NAME, NOT COPIED FOR ITS ROW — `ground_kind_of`'s
+  // answer without `ground_kind_of`'s allocation, and its fallback spelled the same
+  // way: a byte this table has never heard of draws as something, so it is ground.
+  for gr in GROUND_KINDS {
+    if gr.tr_mat == mat { return gr.tr_name; }
+  }
+  ROLE_GRASS
 }
 
 // ── AND THE SAME FOR AN EDGE — plan 20 `A2c` ───────────────────────────────

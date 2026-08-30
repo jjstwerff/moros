@@ -1,0 +1,128 @@
+// WHAT `ground_is` COSTS A READER, PER CELL — plan 21 `R5a`.
+//
+//   cd probe/roles && loft run --lib ../../lib cost.loft
+//
+// ⛔ **THE QUESTION IS NOT ACADEMIC.** `R5a` moved five window scans off
+// `mat == FLOOR_MAT` onto `ground_is`, and one of them is `region_recover_claimed` —
+// the reader that pushed `hex_mesh/tests/planview.loft` through `loft test`'s 300 s
+// wall once already. So the constant factor here multiplies a loop that is
+// `O(window² × peel rounds)`.
+//
+// ⚠ **A 300-SECOND TEST CANNOT ANSWER IT ON THIS BOX.** A sibling's CI holds the load
+// average between 20 and 76, and this tree has measured the same binary on the same
+// code timing **8× apart** between two runs under it. What survives that is a TIGHT
+// LOOP, timed **A-B-B-A in one process**: a load ramp shows up as `A1 ≠ A2` instead of
+// hiding inside the arm it landed on. `probe/perf/place_phases.loft`'s rule, and its
+// reason — *"a measurement whose value depends on how much the process has already
+// allocated is not a measurement of the call"*.
+//
+// ⚠ **AND THE WORLD HERE CARRIES NO PALETTE, WHICH IS THE CASE THAT MATTERS.** Every
+// world in this corpus is one, so this is what the change actually costs today: a
+// `world_region_at` and a `world_palette_name` that each find no section and return,
+// then `ground_kind_of`'s table walk and a `GroundKind` copy. The palette-bearing case
+// is `R5c`'s to measure, when there is a world that has one.
+use hex_editor;
+use hex_voxel;
+
+const U = 0.25;
+const N = 40000;
+
+fn bench_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 40, 0 - 40, 81, 81, 8, SURFACE_MAT);
+  w
+}
+
+// ⚠ **THE MATERIAL VARIES AND THE ANSWER IS USED**, so neither arm can be folded away
+// and both take the true branch equally often. A benchmark whose result is discarded
+// is a benchmark of the optimiser.
+fn arm_const(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = FLOOR_MAT;
+    if i % 2 == 1 { m = SURFACE_MAT; }
+    if m == FLOOR_MAT { hit = hit + 1; }
+  }
+  hit
+}
+
+fn arm_role(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = FLOOR_MAT;
+    if i % 2 == 1 { m = SURFACE_MAT; }
+    if ground_is(w, q, r, m, ROLE_FLOOR) { hit = hit + 1; }
+  }
+  hit
+}
+
+// ── AND WHERE THE COST IS, because "it is slower" is not actionable ────────
+//
+// Three sub-arms over the same loop, each adding one layer of what `ground_is` does:
+// the region lookup alone, the palette lookup alone, and the table walk + row copy
+// alone. Whichever dominates is the one to fix, and guessing has been wrong three
+// times running in this tree.
+fn arm_region(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    if hex_voxel::world_region_at(w, q, r) == 0 { hit = hit + 1; }
+  }
+  hit
+}
+
+fn arm_palette(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = FLOOR_MAT;
+    if i % 2 == 1 { m = SURFACE_MAT; }
+    if hex_voxel::world_palette_name(w, hex_voxel::PAL_MATERIAL, 0, m) == "" {
+      hit = hit + 1;
+    }
+  }
+  hit
+}
+
+fn arm_table(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    m = FLOOR_MAT;
+    if i % 2 == 1 { m = SURFACE_MAT; }
+    if ground_kind_of(m).tr_name == ROLE_FLOOR { hit = hit + 1; }
+  }
+  hit
+}
+
+fn main() {
+  w = bench_world();
+
+  a1s = now(); ha1 = arm_const(w); a1 = now() - a1s;
+  b1s = now(); hb1 = arm_role(w);  b1 = now() - b1s;
+  b2s = now(); hb2 = arm_role(w);  b2 = now() - b2s;
+  a2s = now(); ha2 = arm_const(w); a2 = now() - a2s;
+
+  // ⚠ **THE CONTROL: BOTH ARMS MUST ANSWER THE SAME.** A palette-free world resolves
+  // byte 4 to `floor` through the table, so the two are the same predicate — and if
+  // they ever disagree the timing is a comparison of two different questions.
+  println("hits   const {ha1}/{ha2}   role {hb1}/{hb2}"
+        + "   (equal: {ha1 == hb1 && ha1 == hb2 && ha1 == ha2})");
+  println("const  A1 {a1} ms   A2 {a2} ms");
+  println("role   B1 {b1} ms   B2 {b2} ms");
+  rs = now(); hr = arm_region(w);  rg = now() - rs;
+  ps = now(); hp = arm_palette(w); pl = now() - ps;
+  ts = now(); ht = arm_table(w);   tb = now() - ts;
+  println("  of which: region {rg} ms · palette {pl} ms · table+copy {tb} ms"
+        + "   (hits {hr}/{hp}/{ht})");
+  println("N = {N} calls an arm");
+  if a1 > 0 {
+    println("ratio  B1/A1 {(b1 * 100) / a1 ?? 0}%  ·  B2/A2 {(b2 * 100) / a2 ?? 0}%");
+  }
+  println("⚠ believe the FIRST of each pair; the spread A1 vs A2 is the error bar.");
+}
