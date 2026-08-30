@@ -381,3 +381,42 @@ carries — and it now has the number that says whether the trouble is worth it.
 ⚠ **AND THE MESHER HAS BEEN PAYING THIS SINCE `R1`, UNMEASURED.** `hex_mesh` calls
 `ground_kind_at` per cell at **five** sites (`chunk_mesh_*`), each **2.8 µs** with the row copy
 this step just measured. Nobody had timed it, and it is the same constant in a hotter loop.
+
+### ⛔ THE CORRECTION — I attributed the timeout to my change, and the baseline refutes it
+
+**Measured 2026-08-30, and it overturns the previous section's headline** (and commit
+`dc611bd`'s subject line, which says *"The timeout was mine, not the sibling's"*).
+
+| `hex_mesh/tests/planview.loft`, one run each | | load |
+|---|---|---|
+| ⛔ **pre-`R5a` — no `ground_is` in the tree at all** | **342 s** | 31 · 40 · 40 |
+| ✅ with `ground_role_at` | **266 s** | 30 · 42 · 40 |
+| the first `ground_is`, in `make fast` | did not finish inside 300 s | 33 → 76 |
+
+**The code that predates this plan's step ALSO exceeds the 300-second wall at this load.** So
+the `make fast` timeout is **not** attributable to `R5a`; the sibling's CI is sufficient on its
+own, and the earlier commit (`92ae1cb`) was right to say *not yet attributable* where the later
+one claimed it.
+
+⛔ **AND THE TWO NUMBERS ARE IN THE WRONG ORDER, WHICH IS THE POINT.** The load-independent
+measurement says the new code does strictly *more* work per cell, and the wall clock says it is
+**76 seconds faster**. Both cannot be true, and the clock is the one lying: it is measuring the
+sibling's `cargo` as much as ours.
+
+⚠ **THE LESSON IS NOT *CLOCKS ARE NOISY* — IT IS THAT ONE INSTRUMENT ANSWERED A DIFFERENT
+QUESTION THAN THE ONE I ASKED OF IT.** `probe/roles/cost.loft` measures a **per-call cost** and
+it is sound: 40 000 calls, A-B-B-A, one process, 365 → 77 ms. It never measured **what made one
+test file exceed one deadline on one afternoon**, and I read a cost measurement as an
+attribution. *An instrument gets checked against something it should find* — this one was, and
+then it was pointed at a claim it was not built for.
+
+✅ **WHAT SURVIVES, AND IT IS MOST OF IT.** The 180× per-call regression was real, was found by
+the right instrument, and the 2.3× fix stands on its own evidence — a `GroundKind` with three
+text fields built twice per cell to read six characters of it. Nothing about that depended on
+the timeout.
+
+⛔ **AND THE TIMEOUT IS A REAL STANDING FRAGILITY THAT IS NOBODY'S CHANGE.** `planview.loft`
+takes **266–342 s against a 300 s deadline** on a shared box. It is not near the wall, it is *at*
+it, either side of this step, and the next agent to touch any reader will meet it wearing
+whatever costume the load is wearing that hour. That belongs to `tools/suite.sh`'s per-file
+deadline or to splitting the file — not to `R5`.
