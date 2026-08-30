@@ -28,6 +28,25 @@
 # ⚠ SILENT WHEN GREEN, which is `run-gates.sh`'s rule and loft's own Goal F: a tool
 # that reports its good health teaches the reader to skip the line where it eventually
 # reports the opposite.
+#
+# ── ⛔ WITH ONE EXCEPTION: A FILE CREEPING UP ON THE WALL SAYS SO WHILE GREEN ──
+#
+# **A PASS carries no information about how close it came, and that is exactly how both of
+# this tree's deadline failures arrived.** `hex_mesh/tests/planview.loft` was at 70% of the
+# budget on the day a sibling's CI pushed it over and took the fast loop red;
+# `hex_editor/tests/peel.loft` sat at 58% for a week and was found by timing it by hand.
+# Every run in between said `✅ ALL GREEN`, truthfully, and the number that would have
+# predicted both was measured on every one of them and thrown away.
+#
+# So a green run names any file past `TEST_WARN_PCT` percent (default 50) of the deadline. ⚠ **It
+# is a REPORT, never a failure** — a slow file is not a broken one, and a check that went
+# red on a budget is one people raise the budget to silence.
+#
+# ⚠ **AND THE CLOCK MEASURES THE BOX AS MUCH AS THE FILE, SO THE LOAD IS PRINTED BESIDE
+# IT.** `peel.loft` came in at 173 / 174 / 180 s at loads 8 / 25 / 52 — flat enough that the
+# session which measured it wrote down *"the answer barely moves with the machine"* — and at
+# loads 64 and 79 the same file is **211 s**. The flat region ends where this box normally
+# lives, so a single row is never read on its own.
 set -u
 
 self=$0
@@ -97,6 +116,9 @@ if [ "${1:-}" = "--one" ]; then
   # RED, because a file that cannot finish inside its budget is not a pass.
   case "$out" in *'[timeout] deadline reached'*|*'[timeout] hard-kill'*) verdict=WALL ;; esac
 
+  # ⚠ **RECORDED FOR EVERY FILE, INCLUDING THE GREEN ONES** — the whole point is a number
+  # from a run where nothing went wrong. `$secs` is tenths.
+  printf '%s %s\n' "$secs" "$name" > "$LOGDIR/times/$(echo "$name" | tr / -)"
   if [ "$verdict" != PASS ] || [ -n "${TEST_VERBOSE:-}" ]; then
     printf '%-4s %-28s %3d.%ds  %s\n' "$verdict" "$name" "$((secs / 10))" "$((secs % 10))" \
            "$(printf '%s' "$out" | grep -E 'test result:' | head -1 \
@@ -147,7 +169,7 @@ fi
 n=$#
 # ⚠ CLEARED AT THE START, so what is on disk is always the last run and never a mixture.
 rm -rf "$LOGDIR"
-mkdir -p "$LOGDIR/rows" || exit 2
+mkdir -p "$LOGDIR/rows" "$LOGDIR/times" || exit 2
 start=$(date +%s%N)
 printf '%s\n' "$@" | xargs -P "$jobs" -n1 sh -c 'exec "$0" --one "$1"' "$self"
 rc=$?
@@ -155,11 +177,33 @@ end=$(date +%s%N)
 printf '%d test files, %d.%ds wall at %s jobs\n' \
   "$n" "$(( (end - start) / 1000000000 ))" "$(( ((end - start) / 100000000) % 10 ))" "$jobs"
 
+# ⛔ **THE ONE LINE A GREEN RUN IS ALLOWED TO PRINT — see the header.** Reported whether
+# the run is green or red, because a file near the wall is worth knowing about either way.
+# ⚠ **IN TENTHS, AND `* 10 / 100` IS NOT THE SAME AS `/ 10` HERE** — shell arithmetic is
+# integer, so `DEADLINE * PCT / 100 * 10` truncates to ZERO for any deadline under 100 and
+# reports every file as near the wall. Caught by running the tripwire against a short
+# deadline, which is the only way that division order shows itself.
+warn_at=$(( DEADLINE * ${TEST_WARN_PCT:-50} / 10 ))
+near=$(cat "$LOGDIR"/times/* 2>/dev/null | sort -rn | awk -v w="$warn_at" -v d="$DEADLINE" \
+  '$1 >= w { printf "       %-28s %d.%ds — %d%% of the %ss deadline\n", $2, $1/10, $1%10, $1*10/d, d }')
+
 nred=$(ls "$LOGDIR/rows" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$nred" -eq 0 ]; then
-  [ "$rc" -eq 0 ] && { echo "tests: ✅ ALL GREEN — $n files"; exit 0; }
+  if [ "$rc" -eq 0 ]; then
+    echo "tests: ✅ ALL GREEN — $n files"
+    if [ -n "$near" ]; then
+      echo "tests: ⚠ and these are past ${TEST_WARN_PCT:-50}% of the ${DEADLINE}s per-file deadline (load $(cut -d' ' -f1 /proc/loadavg 2>/dev/null)):"
+      printf '%s\n' "$near"
+    fi
+    exit 0
+  fi
   echo "tests: ⛔ a worker failed without leaving a row — see $rc above"
   exit "$rc"
+fi
+if [ -n "$near" ]; then
+  echo
+  echo "tests: ⚠ past ${TEST_WARN_PCT:-50}% of the ${DEADLINE}s per-file deadline (load $(cut -d' ' -f1 /proc/loadavg 2>/dev/null)):"
+  printf '%s\n' "$near"
 fi
 
 # ⛔ **THE REPORT IS THE POINT: how many, and which are worst.** Sorted by failures, so

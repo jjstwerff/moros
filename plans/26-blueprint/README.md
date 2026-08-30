@@ -3817,3 +3817,110 @@ green on three quarters of the defect**, which is why the second test walks all 
 ✅ **Seen red first, and the red is a DEADLINE**: `[timeout] deadline reached after 70s …
 entry=test_a_marking_the_window_clips_still_terminates`, 2.4 s green after. The test says
 so at its head, so a later reader knows what a timeout there means.
+
+## ✅ What the `peel.loft` per-test sweep turned up — it was thirty-one tests, and the windows
+
+**The previous commit wrote its own open question into the file it measured**: `peel.loft`
+is 173 s of `loft test`'s 300-second per-file deadline, *"and what is not known is whether
+it is one test or thirty-one, and that decides the fix rather than being a detail of it."*
+Measured 2026-08-30/31. **It is thirty-one.**
+
+### ⛔ The `planview` analogy is refuted, which is why the fix is not a split
+
+`hex_mesh/tests/planview.loft` looked like a file that wanted splitting and was **88% one
+test**. One process per test, `loft test tests/peel.loft::<name>` for each of the 31,
+overhead measured rather than assumed — a run naming a test that does not exist compiles
+everything and runs nothing, **1.8 s**:
+
+| the worst five, body seconds | |
+|---|---|
+| `test_two_walls_that_cross_are_two_runs` | **32.0** — 21% of the file |
+| `test_every_tee_stem_closes_now_and_the_crossbar_is_what_pays` | 13.6 |
+| `test_two_of_a_kind_are_each_described` | 12.6 |
+| `test_a_closed_room_leaves_nothing_over` | 11.5 |
+| `test_two_rims_that_meet_are_two_discs` | 9.6 |
+| **the whole file** | **155.8 over 31** — the top five are 51% |
+
+**No single cut is worth taking**, so the answer had to be something every test shared.
+
+### ⛔ AND IT WAS THE WINDOW — a ratio worse than the one that made `planview` worth fixing
+
+Asked of the **store** rather than of the test, every fixture's marks sit in a box far
+smaller than the window scanned around it:
+
+| fixture | window | the field's own box | ratio |
+|---|---|---|---|
+| a crossing (four of them) | 37 × 37 = **1369** | 72 … 99 | **14 … 19×** |
+| two rims that meet | 44 × 30 = 1320 | 198 | 6.7× |
+| a wall meeting a rim | 34 × 30 = 1020 | 121 | 8.4× |
+| a lone house | 21 × 21 = 441 | 56 | 7.9× |
+
+`claims_new`, `marks_unclaimed`, `segments_of`, `touched_cells` and `claims_adopt` are each
+`O(window)`, and the peel calls them **per component per round** — so the empty margin was
+most of the file. ⚠ **`loft test` interprets the package under test** (`probe/tw`), so a
+cell costs ~13× there what the same cell costs in `plan_view`: a window a driver would not
+notice is what puts a test file against the wall.
+
+### ✅ The control came first, and it is what makes the numbers mean anything
+
+⛔ **A green suite after a window is shrunk is not evidence** — `marks_unclaimed(…) == 0`
+after a peel passes just as well over a field that has lost a third of itself. So the
+instrument is two windows over **one** field, compared in one process on four counts: the
+mark total, the cell components, the mark components, and the description string.
+
+**Twenty-seven fixtures, all four counts identical on every one.** The control ran against
+the real `peel` — added to the test file itself rather than copied into a probe, because a
+copy of the harness would have been measuring something else.
+
+✅ **AND THE PERMANENT GUARD IS THE EXACT COUNT, NOT THE CONTROL.** `field_is(w, q0, r0, wq,
+hr, marks)` asserts the total **before** the peel at all 19 sites; the description is
+asserted after. A clipped window is a different field, not a smaller picture, and only the
+count before can see it.
+
+### ✅ What it bought, interleaved on one machine state
+
+**A-B-B-A, `loft test` on the whole file, only the test file changing between phases.**
+
+| | seconds | load |
+|---|---|---|
+| the 37 × 37 windows | 211.5 · 210.2 | 79 · 64 |
+| ✅ the field's own extent plus two | **71.7 · 82.1** | 55 · 32 |
+
+**2.7×** — 70% of the 300-second per-file deadline down to **26%**, 31 of 31 green in every
+phase. ⚠ **The two WIDE rows agree to 0.6% across a fifteen-point load swing**, which is
+what says the clock is answering about the file rather than about the box.
+
+⛔ **AND THAT CORRECTS THE PREVIOUS COMMIT'S OWN HEADLINE.** It measured 173 s / 174 s /
+180 s at loads 8 / 25 / 52 and concluded *"the answer barely moves with the machine"* —
+true over the range it sampled, and false past it: at loads 64 and 79 the same file is
+**211 s**. *58% of the budget* was a quiet-afternoon number for a box that is routinely at
+load 60. ⚠ **An extrapolation is not a measurement even when every point in it was.**
+
+### ⚠ And the shape afterwards, which says there is no second cut of this kind
+
+The same per-test sweep re-run on the tightened file: the worst test is
+`test_two_walls_that_cross_are_two_runs` at **10%** of the file where it was 21%, and the
+distribution is flat under it. **The biggest single lever is spent.** ⚠ **Its absolute
+seconds are NOT comparable to the first sweep's** — that run went from load 84 to 115 and
+its own measured overhead was 4.7 s against 1.8 s, so what it can say is the *shape*, and
+the A-B-B-A above is the number. If this file ever needs more, the remaining answer is a
+split, and it is a split of a 77-second file rather than a 211-second one.
+
+### ✅ And the systemic half: both runners measured this and threw it away
+
+⛔ **`tools/run-tests.sh` has timed every file since it was written and prints the number
+only on a FAILURE or under `TEST_VERBOSE=1`.** `tools/suite.sh` did not time at all. So the
+one number that would have predicted **both** of this tree's deadline failures —
+`planview.loft` at 70% the day a sibling's CI pushed it over, `peel.loft` at 58% for a week
+— was computed on every green run and discarded.
+
+✅ **A green run now names any file past `TEST_WARN_PCT` percent (default 50) of the
+deadline**, with `/proc/loadavg` beside it; `suite.sh` grows a seconds column and the same
+line. ⚠ **A REPORT, NEVER A FAILURE** — a check that went red on a budget is one people
+raise the budget to silence.
+
+⚠ **AND CHECKING THE INSTRUMENT IS WHAT FOUND THE BUG IN IT.** Run against a short deadline
+so a real file would trip it, the threshold reported **every** file as near the wall:
+`DEADLINE * PCT / 100 * 10` is shell integer arithmetic, and `300 * 50 / 100` is fine while
+`60 * 5 / 100` is **zero**. The silent direction had passed. ✅ Checked both ways since —
+silent below the line, and every named file's seconds matching its `TEST_VERBOSE` row.

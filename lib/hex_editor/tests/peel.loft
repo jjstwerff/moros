@@ -11,25 +11,46 @@
 // rule, and its answer was not stable until `B4r` — a peel built before either would
 // have subtracted the wrong edges on five headings in ten.
 //
-// ── ⚠ THIS FILE IS 173 s OF `loft test`'s 300-SECOND PER-FILE DEADLINE ──────
+// ── ✅ IT WAS THIRTY-ONE TESTS AND NOT ONE, AND THE WINDOWS WERE PAYING FOR IT ──
 //
-// **Measured 2026-08-30 at three loads and the answer barely moves: 173 s idle, 174 s at
-// load 25, 180 s at load 52.** Not failing, and not comfortable either — 58% of the
-// budget, which is the zone `hex_mesh/tests/planview.loft` was in at 70% on the day a
-// sibling's CI took it over the wall and the fast loop red.
+// **The question this header used to carry is answered — measured 2026-08-31, one process
+// per test, `loft test tests/peel.loft::<name>` for each of the 31, with the overhead taken
+// rather than assumed (a run naming a test that does not exist compiles everything and runs
+// nothing: 1.8 s).** It is NOT `planview.loft`'s shape. That file was **88% one test**;
+// here the worst is `test_two_walls_that_cross_are_two_runs` at **32 s — 21%**, and the top
+// five are 51%. **No single cut was worth taking**, so the answer had to be something every
+// test shared.
 //
-// ⚠ **WHAT IS NOT YET KNOWN IS WHETHER IT IS ONE TEST OR THIRTY-ONE**, and that decides
-// the fix rather than being a detail of it: `planview.loft` looked like a file that
-// needed splitting and was **88% one test** whose window was 36 × 36 over a field of 36
-// marks. The windows here are the same shape of suspect — 29 uses of `-10,-10 21x21`
-// (441 cells), twelve of `-14,-14 44x30` (1320) and six of `-18,-18 37x37` (1369) — but
-// a window is only worth tightening where the time actually is.
+// ⚠ **IT WAS THE WINDOW, AND THE RATIO IS WORSE THAN THE ONE THAT MADE `planview` WORTH
+// FIXING.** Asked of the STORE rather than of the test, every fixture's marks sat inside a
+// box **8 … 19× smaller than the window scanned around it** — 1369 cells around a field of
+// 72. `claims_new`, `marks_unclaimed`, `segments_of`, `touched_cells` and `claims_adopt`
+// are each `O(window)` and the peel calls them per component per round, so the empty margin
+// was most of the file.
 //
-// ⚠ **THE INSTRUMENT IS `loft test tests/peel.loft::<name>` PER TEST, ON A QUIET BOX**,
-// and [`probe/tw`](../../../probe/tw/README.md) is the method: measure the field's own
-// extent from the STORE, move the window to it, and assert the mark count exactly so a
-// clip cannot be silent. ⛔ Do not shrink a window without that assertion — `pt_marks > 0`
-// passes over a field that has lost a third of itself.
+// | interleaved A-B-B-A, one machine state | | load |
+// |---|---|---|
+// | the 37 × 37 windows | 211.5 s · 210.2 s | 79 · 64 |
+// | ✅ the field's own extent plus two | **71.7 s · 82.1 s** | 55 · 32 |
+//
+// **2.7×, and 70% of the deadline down to 26%.** ⚠ The two WIDE rows agree to 0.6% across a
+// fifteen-point load swing, which is what says the clock is answering about the file here.
+// ⛔ **And they also correct this header's own previous claim.** It read *"173 s idle, 174 s
+// at load 25, 180 s at load 52 — the answer barely moves with the machine"*, true over the
+// range it sampled and **not** past it: at the loads this shared box actually reaches the
+// same file was 211 s. *58% of the budget* was the quiet-afternoon number.
+//
+// ✅ **EVERY WINDOW IS THE FIELD'S OWN EXTENT PLUS TWO NOW**, taken from the store, and
+// `field_is` asserts the mark total exactly beside each one. ⛔ **That assertion is not
+// decoration**: a clipped window is a DIFFERENT FIELD, not a smaller picture, and
+// `marks_unclaimed(…) == 0` after a peel passes just as well over a field that has lost a
+// third of itself — [`probe/tw`](../../../probe/tw/README.md) measured exactly that.
+//
+// ⚠ **AND THE CONTROL CAME BEFORE THE CHANGE, WHICH IS WHAT MAKES THE NUMBERS MEAN
+// ANYTHING.** Twenty-seven fixtures were peeled at BOTH windows in one process and compared
+// on four counts — the mark total, the cell components, the mark components and the
+// description string. **All twenty-seven identical.** A green suite after a window is shrunk
+// is not evidence of anything; two windows agreeing about one field is.
 use hex_editor;
 use hex_voxel;
 use hex_shape;
@@ -150,6 +171,23 @@ fn claims_adopt(dst: Claims, src: Claims, q0: integer, r0: integer, wq: integer,
   }
 }
 
+// ── ⚠ A TIGHT WINDOW NEEDS AN EXACT COUNT, OR IT CLIPS IN SILENCE ─────────
+//
+// Every window in this file is the field's own extent plus a margin of two, measured from
+// the STORE rather than chosen by shrinking until something goes red — `probe/tw`'s
+// method, and the reason it is not optional here: **`marks_unclaimed(…) == 0` after a peel
+// passes just as well over a field that has lost a third of itself.** A clipped window is
+// a different field, not a smaller picture, so the total is asserted BEFORE the peel and
+// the description is asserted after. Both, or neither says anything.
+fn field_is(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
+            marks: integer) -> integer {
+  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+  assert(all == marks,
+         "the window {q0},{r0} {wq}x{hr} holds {all} marks, not the {marks} this row was "
+       + "measured on — it clips the field");
+  all
+}
+
 fn peel(w: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
         cl: Claims) -> text {
   out = "";
@@ -224,8 +262,9 @@ fn test_a_house_a_tower_and_a_wall_are_all_three_described() {
   house_at(w, 0.0, 0.0);
   tower_at(w, 0.0, 0.0 - 12.0);
   wall_at(w, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
-  cl = claims_new(0 - 12, 0 - 16, 25, 26);
-  got = peel(w, 0 - 12, 0 - 16, 25, 26, cl);
+  cl = claims_new(0 - 9, 0 - 15, 16, 25);
+  field_is(w, 0 - 9, 0 - 15, 16, 25, 107);
+  got = peel(w, 0 - 9, 0 - 15, 16, 25, cl);
   // ⚠ **THE ORDER IS THE LABEL SCAN'S, NOT THE CHAIN'S — plan 26 `B4t`.** Components are
   // visited as the window is read, row by row, so the tower at `r = -8` comes before the
   // house at `r = 4`. Deterministic either way, and a row asserting the chain's order
@@ -234,7 +273,7 @@ fn test_a_house_a_tower_and_a_wall_are_all_three_described() {
          "the peel described `{got}`, not a disc, a run and a house");
   // ⚠ **AND NOTHING IS LEFT OVER**, which is the claim that says the three descriptions
   // account for the field rather than merely being three answers.
-  left = marks_unclaimed(w, 0 - 12, 0 - 16, 25, 26, 0.0, cl);
+  left = marks_unclaimed(w, 0 - 9, 0 - 15, 16, 25, 0.0, cl);
   assert(left == 0, "{left} marks are explained by none of the three");
 }
 
@@ -343,20 +382,22 @@ fn test_two_of_a_kind_are_each_described() {
   hw = flat_world();
   house_at(hw, 0.0, 0.0);
   house_at(hw, 0.0 - 16.0, 0.0);
-  hcl = claims_new(0 - 18, 0 - 8, 26, 20);
-  assert(peel(hw, 0 - 18, 0 - 8, 26, 20, hcl) == "house;house;",
-         "two houses describe `{peel(hw, 0 - 18, 0 - 8, 26, 20, claims_new(0 - 18, 0 - 8, 26, 20))}`");
-  assert(marks_unclaimed(hw, 0 - 18, 0 - 8, 26, 20, 0.0, hcl) == 0,
+  hcl = claims_new(0 - 15, 0 - 2, 21, 12);
+  field_is(hw, 0 - 15, 0 - 2, 21, 12, 84);
+  assert(peel(hw, 0 - 15, 0 - 2, 21, 12, hcl) == "house;house;",
+         "two houses describe `{peel(hw, 0 - 15, 0 - 2, 21, 12, claims_new(0 - 15, 0 - 2, 21, 12))}`");
+  assert(marks_unclaimed(hw, 0 - 15, 0 - 2, 21, 12, 0.0, hcl) == 0,
          "two described houses leave "
-       + "{marks_unclaimed(hw, 0 - 18, 0 - 8, 26, 20, 0.0, hcl)} marks over");
+       + "{marks_unclaimed(hw, 0 - 15, 0 - 2, 21, 12, 0.0, hcl)} marks over");
 
   ww = flat_world();
   wall_at(ww, 0.0 - 9.0, 0.0 - 3.0, 0.0 - 9.0, 6.0);
   wall_at(ww, 6.0, 0.0 - 3.0, 6.0, 6.0);
-  wcl = claims_new(0 - 14, 0 - 8, 26, 18);
-  assert(peel(ww, 0 - 14, 0 - 8, 26, 18, wcl) == "run;run;",
-         "two walls describe `{peel(ww, 0 - 14, 0 - 8, 26, 18, claims_new(0 - 14, 0 - 8, 26, 18))}`");
-  assert(marks_unclaimed(ww, 0 - 14, 0 - 8, 26, 18, 0.0, wcl) == 0,
+  wcl = claims_new(0 - 9, 0 - 4, 16, 11);
+  field_is(ww, 0 - 9, 0 - 4, 16, 11, 23);
+  assert(peel(ww, 0 - 9, 0 - 4, 16, 11, wcl) == "run;run;",
+         "two walls describe `{peel(ww, 0 - 9, 0 - 4, 16, 11, claims_new(0 - 9, 0 - 4, 16, 11))}`");
+  assert(marks_unclaimed(ww, 0 - 9, 0 - 4, 16, 11, 0.0, wcl) == 0,
          "two described walls leave marks over");
 }
 
@@ -401,17 +442,19 @@ fn test_a_closed_outline_no_round_reader_explains_is_cut_into_runs() {
 fn test_the_chain_reader_does_not_steal_a_shape_a_round_reader_explains() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
-  cl = claims_new(0 - 18, 0 - 18, 37, 37);
-  all = marks_unclaimed(w, 0 - 18, 0 - 18, 37, 37, 0.0, cl);
+  cl = claims_new(0 - 7, 0 - 7, 14, 15);
+  all = marks_unclaimed(w, 0 - 7, 0 - 7, 14, 15, 0.0, cl);
   assert(all > 40, "the rim is {all} marks — too small to be the curve this row is about");
-  got = peel(w, 0 - 18, 0 - 18, 37, 37, cl);
+  assert(all == 54, "the rim is {all} marks, not the 54 this row was measured on");
+  got = peel(w, 0 - 7, 0 - 7, 14, 15, cl);
   assert(got == "disc;", "a whole tower rim describes `{got}`, not one disc");
-  assert(marks_unclaimed(w, 0 - 18, 0 - 18, 37, 37, 0.0, cl) == 0,
+  assert(marks_unclaimed(w, 0 - 7, 0 - 7, 14, 15, 0.0, cl) == 0,
          "the rim left marks over");
   h = flat_world();
   house_at(h, 0.0, 0.0);
-  hc = claims_new(0 - 18, 0 - 18, 37, 37);
-  hgot = peel(h, 0 - 18, 0 - 18, 37, 37, hc);
+  hc = claims_new(0 - 6, 0 - 1, 12, 11);
+  field_is(h, 0 - 6, 0 - 1, 12, 11, 42);
+  hgot = peel(h, 0 - 6, 0 - 1, 12, 11, hc);
   assert(hgot == "house;", "a house describes `{hgot}`, not one house");
 }
 
@@ -436,27 +479,29 @@ fn test_two_walls_two_cells_apart_are_two_runs() {
   w = flat_world();
   wall_at(w, 0.0 - 2.0, 0.0 - 3.0, 0.0 - 2.0, 6.0);
   wall_at(w, 0.0, 0.0 - 3.0, 0.0, 6.0);
-  assert(touching(w, 0 - 14, 0 - 8, 26, 18) == 1,
-         "the two walls are {touching(w, 0 - 14, 0 - 8, 26, 18)} cell components, so they "
+  assert(touching(w, 0 - 5, 0 - 4, 9, 11) == 1,
+         "the two walls are {touching(w, 0 - 5, 0 - 4, 9, 11)} cell components, so they "
        + "do not touch and this row is about nothing");
-  cl = claims_new(0 - 14, 0 - 8, 26, 18);
-  assert(peel(w, 0 - 14, 0 - 8, 26, 18, cl) == "run;run;",
+  cl = claims_new(0 - 5, 0 - 4, 9, 11);
+  field_is(w, 0 - 5, 0 - 4, 9, 11, 22);
+  assert(peel(w, 0 - 5, 0 - 4, 9, 11, cl) == "run;run;",
          "two walls two cells apart describe "
-       + "`{peel(w, 0 - 14, 0 - 8, 26, 18, claims_new(0 - 14, 0 - 8, 26, 18))}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 8, 26, 18, 0.0, cl) == 0,
-         "{marks_unclaimed(w, 0 - 14, 0 - 8, 26, 18, 0.0, cl)} marks over");
+       + "`{peel(w, 0 - 5, 0 - 4, 9, 11, claims_new(0 - 5, 0 - 4, 9, 11))}`");
+  assert(marks_unclaimed(w, 0 - 5, 0 - 4, 9, 11, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 5, 0 - 4, 9, 11, 0.0, cl)} marks over");
 }
 
 fn test_two_walls_meeting_at_a_corner_are_two_runs() {
   w = flat_world();
   wall_at(w, 0.0 - 6.0, 0.0, 0.0, 0.0);
   wall_at(w, 0.0, 0.0, 0.0, 6.0);
-  assert(touching(w, 0 - 14, 0 - 8, 26, 18) == 1, "the L is not one cell component");
-  cl = claims_new(0 - 14, 0 - 8, 26, 18);
-  assert(peel(w, 0 - 14, 0 - 8, 26, 18, cl) == "run;run;",
+  assert(touching(w, 0 - 6, 0 - 2, 10, 9) == 1, "the L is not one cell component");
+  cl = claims_new(0 - 6, 0 - 2, 10, 9);
+  field_is(w, 0 - 6, 0 - 2, 10, 9, 13);
+  assert(peel(w, 0 - 6, 0 - 2, 10, 9, cl) == "run;run;",
          "an L of two walls describes "
-       + "`{peel(w, 0 - 14, 0 - 8, 26, 18, claims_new(0 - 14, 0 - 8, 26, 18))}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 8, 26, 18, 0.0, cl) == 0, "marks over");
+       + "`{peel(w, 0 - 6, 0 - 2, 10, 9, claims_new(0 - 6, 0 - 2, 10, 9))}`");
+  assert(marks_unclaimed(w, 0 - 6, 0 - 2, 10, 9, 0.0, cl) == 0, "marks over");
 }
 
 // ⛔ **THE HOUSE ATE PART OF THE WALL.** `claim_house` owns the mitre one cell past the
@@ -467,15 +512,16 @@ fn test_a_house_with_a_wall_running_off_it_is_both() {
   w = flat_world();
   house_at(w, 0.0, 0.0);
   wall_at(w, 4.0, 0.0, 12.0, 0.0);
-  assert(touching(w, 0 - 12, 0 - 12, 30, 26) == 1,
-         "the house and its wall are {touching(w, 0 - 12, 0 - 12, 30, 26)} cell "
+  assert(touching(w, 0 - 6, 0 - 2, 15, 12) == 1,
+         "the house and its wall are {touching(w, 0 - 6, 0 - 2, 15, 12)} cell "
        + "components, so they do not touch");
-  cl = claims_new(0 - 12, 0 - 12, 30, 26);
-  assert(peel(w, 0 - 12, 0 - 12, 30, 26, cl) == "run;house;",
+  cl = claims_new(0 - 6, 0 - 2, 15, 12);
+  field_is(w, 0 - 6, 0 - 2, 15, 12, 50);
+  assert(peel(w, 0 - 6, 0 - 2, 15, 12, cl) == "run;house;",
          "a house with a wall running off it describes "
-       + "`{peel(w, 0 - 12, 0 - 12, 30, 26, claims_new(0 - 12, 0 - 12, 30, 26))}`");
-  assert(marks_unclaimed(w, 0 - 12, 0 - 12, 30, 26, 0.0, cl) == 0,
-         "{marks_unclaimed(w, 0 - 12, 0 - 12, 30, 26, 0.0, cl)} marks over — `B4t` left 7");
+       + "`{peel(w, 0 - 6, 0 - 2, 15, 12, claims_new(0 - 6, 0 - 2, 15, 12))}`");
+  assert(marks_unclaimed(w, 0 - 6, 0 - 2, 15, 12, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 6, 0 - 2, 15, 12, 0.0, cl)} marks over — `B4t` left 7");
 }
 
 // ⛔ **AND THIS ONE DREW A WALL THAT IS NOT THERE.** With the two in one field the house
@@ -485,28 +531,30 @@ fn test_a_house_beside_a_tower_is_a_disc_and_a_house() {
   w = flat_world();
   house_at(w, 0.0, 0.0);
   tower_at(w, 0.0, 0.0 - 7.0);
-  assert(touching(w, 0 - 14, 0 - 16, 30, 30) == 1,
-         "the house and the tower are {touching(w, 0 - 14, 0 - 16, 30, 30)} cell "
+  assert(touching(w, 0 - 7, 0 - 11, 14, 21) == 1,
+         "the house and the tower are {touching(w, 0 - 7, 0 - 11, 14, 21)} cell "
        + "components, so they do not touch");
-  cl = claims_new(0 - 14, 0 - 16, 30, 30);
-  got = peel(w, 0 - 14, 0 - 16, 30, 30, cl);
+  field_is(w, 0 - 7, 0 - 11, 14, 21, 96);
+  cl = claims_new(0 - 7, 0 - 11, 14, 21);
+  got = peel(w, 0 - 7, 0 - 11, 14, 21, cl);
   assert(got == "disc;house;", "a house beside a tower describes `{got}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, cl) == 0,
-         "{marks_unclaimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, cl)} marks over");
+  assert(marks_unclaimed(w, 0 - 7, 0 - 11, 14, 21, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 7, 0 - 11, 14, 21, 0.0, cl)} marks over");
 }
 
 fn test_two_towers_a_cell_apart_are_two_discs() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
   tower_at(w, 15.0, 0.0);
-  assert(touching(w, 0 - 14, 0 - 14, 44, 30) == 1,
-         "the two towers are {touching(w, 0 - 14, 0 - 14, 44, 30)} cell components, so "
+  assert(touching(w, 0 - 7, 0 - 7, 23, 15) == 1,
+         "the two towers are {touching(w, 0 - 7, 0 - 7, 23, 15)} cell components, so "
        + "they do not touch");
-  cl = claims_new(0 - 14, 0 - 14, 44, 30);
-  assert(peel(w, 0 - 14, 0 - 14, 44, 30, cl) == "disc;disc;",
+  cl = claims_new(0 - 7, 0 - 7, 23, 15);
+  field_is(w, 0 - 7, 0 - 7, 23, 15, 108);
+  assert(peel(w, 0 - 7, 0 - 7, 23, 15, cl) == "disc;disc;",
          "two towers a cell apart describe "
-       + "`{peel(w, 0 - 14, 0 - 14, 44, 30, claims_new(0 - 14, 0 - 14, 44, 30))}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl) == 0, "marks over");
+       + "`{peel(w, 0 - 7, 0 - 7, 23, 15, claims_new(0 - 7, 0 - 7, 23, 15))}`");
+  assert(marks_unclaimed(w, 0 - 7, 0 - 7, 23, 15, 0.0, cl) == 0, "marks over");
 }
 
 // ── ⚠ THE INSTRUMENT, CHECKED BEFORE IT IS BELIEVED ───────────────────────
@@ -615,8 +663,9 @@ fn test_the_vertex_flood_is_the_corner_identity() {
 fn test_a_lone_house_is_one_piece() {
   w = flat_world();
   house_at(w, 0.0, 0.0);
-  ed = edgeset_new(0 - 10, 0 - 10, 21, 21);
-  np = marks_label(w, 0 - 10, 0 - 10, 21, 21, 0.0, claims_new(0 - 10, 0 - 10, 21, 21), ed);
+  ed = edgeset_new(0 - 6, 0 - 1, 12, 11);
+  field_is(w, 0 - 6, 0 - 1, 12, 11, 42);
+  np = marks_label(w, 0 - 6, 0 - 1, 12, 11, 0.0, claims_new(0 - 6, 0 - 1, 12, 11), ed);
   assert(np == 1, "a house's marks are {np} pieces, so its mitre stubs are their own runs");
 }
 
@@ -768,26 +817,28 @@ fn test_a_wall_meeting_a_rim_is_a_run_and_a_disc() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
   wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
-  ed = edgeset_new(0 - 14, 0 - 14, 34, 30);
-  np = marks_label(w, 0 - 14, 0 - 14, 34, 30, 0.0, claims_new(0 - 14, 0 - 14, 34, 30), ed);
+  ed = edgeset_new(0 - 7, 0 - 7, 16, 15);
+  np = marks_label(w, 0 - 7, 0 - 7, 16, 15, 0.0, claims_new(0 - 7, 0 - 7, 16, 15), ed);
   assert(np == 1,
          "the wall and the rim are {np} pieces, so they do not share a vertex and this "
        + "row is about nothing");
-  cl = claims_new(0 - 14, 0 - 14, 34, 30);
-  got = peel(w, 0 - 14, 0 - 14, 34, 30, cl);
+  cl = claims_new(0 - 7, 0 - 7, 16, 15);
+  field_is(w, 0 - 7, 0 - 7, 16, 15, 67);
+  got = peel(w, 0 - 7, 0 - 7, 16, 15, cl);
   assert(got == "run;disc;", "a wall meeting a rim describes `{got}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 34, 30, 0.0, cl) == 0,
-         "{marks_unclaimed(w, 0 - 14, 0 - 14, 34, 30, 0.0, cl)} marks over — `B4u` left 52");
+  assert(marks_unclaimed(w, 0 - 7, 0 - 7, 16, 15, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 7, 0 - 7, 16, 15, 0.0, cl)} marks over — `B4u` left 52");
 
   // …and the control, one cell further out: no shared vertex, both described
   c = flat_world();
   tower_at(c, 0.0, 0.0);
   wall_at(c, 10.0, 0.0 - 6.0, 10.0, 6.0);
-  ccl = claims_new(0 - 14, 0 - 14, 34, 30);
-  assert(peel(c, 0 - 14, 0 - 14, 34, 30, ccl) == "disc;run;",
+  ccl = claims_new(0 - 7, 0 - 7, 16, 15);
+  field_is(c, 0 - 7, 0 - 7, 16, 15, 69);
+  assert(peel(c, 0 - 7, 0 - 7, 16, 15, ccl) == "disc;run;",
          "the same pair clear of each other describes "
-       + "`{peel(c, 0 - 14, 0 - 14, 34, 30, claims_new(0 - 14, 0 - 14, 34, 30))}`");
-  assert(marks_unclaimed(c, 0 - 14, 0 - 14, 34, 30, 0.0, ccl) == 0, "marks over");
+       + "`{peel(c, 0 - 7, 0 - 7, 16, 15, claims_new(0 - 7, 0 - 7, 16, 15))}`");
+  assert(marks_unclaimed(c, 0 - 7, 0 - 7, 16, 15, 0.0, ccl) == 0, "marks over");
 }
 
 // ⛔ **AND THE HOUSE'S OWN RESIDUAL STOPS COUNTING ITS NEIGHBOUR'S MARKS — plan 26
@@ -799,23 +850,24 @@ fn test_a_wall_meeting_a_rim_is_a_run_and_a_disc() {
 fn test_the_mitre_count_is_unmoved_by_a_tower_one_cell_away() {
   lone = flat_world();
   house_at(lone, 0.0, 0.0);
-  alone = house_recover(lone, 0 - 14, 0 - 16, 30, 30, 0.0);
+  alone = house_recover(lone, 0 - 7, 0 - 11, 14, 21, 0.0);
   assert(alone.hs_ok, "the lone house did not recover: {alone.hs_why}");
 
   w = flat_world();
   house_at(w, 0.0, 0.0);
   tower_at(w, 0.0, 0.0 - 7.0);
-  assert(touching(w, 0 - 14, 0 - 16, 30, 30) == 1,
+  assert(touching(w, 0 - 7, 0 - 11, 14, 21) == 1,
          "the pair is not one cell component, so this row is about nothing");
-  sg = segments_of(w, 0 - 14, 0 - 16, 30, 30, 0.0, claims_new(0 - 14, 0 - 16, 30, 30));
+  field_is(w, 0 - 7, 0 - 11, 14, 21, 96);
+  sg = segments_of(w, 0 - 7, 0 - 11, 14, 21, 0.0, claims_new(0 - 7, 0 - 11, 14, 21));
   // ⚠ **EVERY COMPONENT THE HOUSE READER ANSWERS FOR, NOT ONE THAT MATCHES.** An
   // existence check would pass on a chain that got it right somewhere and wrong here.
   asked = 0;
   for id in 0..segment_count(sg) {
-    only = segment_claims(claims_new(0 - 14, 0 - 16, 30, 30), w, 0 - 14, 0 - 16, 30, 30,
+    only = segment_claims(claims_new(0 - 7, 0 - 11, 14, 21), w, 0 - 7, 0 - 11, 14, 21,
                           0.0, sg, id);
-    if disc_recover_claimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, only).dc_ok { continue; }
-    h = house_recover_claimed(w, 0 - 14, 0 - 16, 30, 30, 0.0, only);
+    if disc_recover_claimed(w, 0 - 7, 0 - 11, 14, 21, 0.0, only).dc_ok { continue; }
+    h = house_recover_claimed(w, 0 - 7, 0 - 11, 14, 21, 0.0, only);
     if !h.hs_ok { continue; }
     asked = asked + 1;
     assert(h.hs_stray == alone.hs_stray,
@@ -845,7 +897,8 @@ fn test_a_component_is_handed_only_its_own_floor() {
     (mq, mr) = hex_grid::hex_neighbor(0 - 13, 0 - 10, d1);
     if !(mq == 0 - 14 && mr == 0 - 10) { wall_set(w, 0 - 13, 0 - 10, d1, WALL_MAT, 8, 2.0); }
   }
-  q0 = 0 - 20; r0 = 0 - 16; wq = 34; hr = 30;
+  q0 = 0 - 17; r0 = 0 - 13; wq = 23; hr = 23;
+  field_is(w, q0, r0, wq, hr, 52);
   assert(touching(w, q0, r0, wq, hr) == 2,
          "the house and the domino are {touching(w, q0, r0, wq, hr)} cell components, "
        + "not two — this row needs them apart");
@@ -870,16 +923,17 @@ fn test_two_rims_that_meet_are_two_discs() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
   tower_at(w, 13.0, 0.0);
-  ed = edgeset_new(0 - 14, 0 - 14, 44, 30);
-  np = marks_label(w, 0 - 14, 0 - 14, 44, 30, 0.0, claims_new(0 - 14, 0 - 14, 44, 30), ed);
+  ed = edgeset_new(0 - 7, 0 - 7, 22, 15);
+  np = marks_label(w, 0 - 7, 0 - 7, 22, 15, 0.0, claims_new(0 - 7, 0 - 7, 22, 15), ed);
   assert(np == 1,
          "the two rims are {np} pieces, so they do not share a vertex and `B4u` already "
        + "describes them — this row is about nothing");
-  cl = claims_new(0 - 14, 0 - 14, 44, 30);
-  got = peel(w, 0 - 14, 0 - 14, 44, 30, cl);
+  cl = claims_new(0 - 7, 0 - 7, 22, 15);
+  field_is(w, 0 - 7, 0 - 7, 22, 15, 106);
+  got = peel(w, 0 - 7, 0 - 7, 22, 15, cl);
   assert(got == "disc;disc;", "two rims that meet describe `{got}`");
-  assert(marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl) == 0,
-         "{marks_unclaimed(w, 0 - 14, 0 - 14, 44, 30, 0.0, cl)} marks over");
+  assert(marks_unclaimed(w, 0 - 7, 0 - 7, 22, 15, 0.0, cl) == 0,
+         "{marks_unclaimed(w, 0 - 7, 0 - 7, 22, 15, 0.0, cl)} marks over");
 }
 
 // ── ✅ AND A CROSSING IS TWO RUNS — plan 26 `B4w` ─────────────────────────
@@ -899,12 +953,19 @@ fn crossing(ax0: float, az0: float, ax1: float, az1: float,
   w
 }
 
-fn crossing_closes(tag: text, w: VoxelWorld) {
-  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+// ⚠ **THE WINDOW AND THE MARK TOTAL ARE THE CALLER'S, BECAUSE THE FOUR GEOMETRIES ARE
+// NOT THE SAME SIZE.** One shared 37 × 37 covered every one of them and was 14 … 19× the
+// field it held; the extent of each is measured from the STORE and `marks` is asserted
+// exactly, so a window that clips one of them cannot pass quietly.
+fn crossing_closes(tag: text, w: VoxelWorld, q0: integer, r0: integer, wq: integer,
+                   hr: integer, marks: integer) {
   assert(touching(w, q0, r0, wq, hr) == 1,
          "{tag} is {touching(w, q0, r0, wq, hr)} components, so `B4u` already separates "
        + "it and this row is about nothing");
   all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+  assert(all == marks,
+         "{tag} is {all} marks in this window, not the {marks} it was measured on — the "
+       + "window clips its field");
   cl = claims_new(q0, r0, wq, hr);
   got = peel(w, q0, r0, wq, hr, cl);
   assert(got == "run;run;", "{tag} describes `{got}`, not two runs");
@@ -914,13 +975,14 @@ fn crossing_closes(tag: text, w: VoxelWorld) {
 
 fn test_two_walls_that_cross_are_two_runs() {
   crossing_closes("a plus",
-    crossing(0.0 - 6.0, 0.0, 6.0, 0.0, 0.0, 0.0 - 6.0, 0.0, 6.0));
+    crossing(0.0 - 6.0, 0.0, 6.0, 0.0, 0.0, 0.0 - 6.0, 0.0, 6.0), 0 - 6, 0 - 6, 12, 13, 28);
   crossing_closes("a diagonal X",
-    crossing(0.0 - 6.0, 0.0 - 6.0, 6.0, 6.0, 0.0 - 6.0, 6.0, 6.0, 0.0 - 6.0));
+    crossing(0.0 - 6.0, 0.0 - 6.0, 6.0, 6.0, 0.0 - 6.0, 6.0, 6.0, 0.0 - 6.0),
+    0 - 6, 0 - 7, 13, 15, 47);
   crossing_closes("an offset pair",
-    crossing(0.0 - 7.0, 1.0, 5.0, 1.0, 1.0, 0.0 - 5.0, 1.0, 7.0));
+    crossing(0.0 - 7.0, 1.0, 5.0, 1.0, 1.0, 0.0 - 5.0, 1.0, 7.0), 0 - 6, 0 - 6, 12, 13, 29);
   crossing_closes("a long and a short",
-    crossing(0.0 - 10.0, 0.0, 10.0, 0.0, 0.0, 0.0 - 4.0, 0.0, 4.0));
+    crossing(0.0 - 10.0, 0.0, 10.0, 0.0, 0.0, 0.0 - 4.0, 0.0, 4.0), 0 - 8, 0 - 5, 16, 11, 32);
 }
 
 // ── ⚠ THE ACCEPTANCE IS ONE NUMBER AND IT IS TWO-DIRECTIONAL ──────────────
@@ -932,8 +994,9 @@ fn test_the_union_test_refuses_a_trial_that_reaches_outside() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
   wall_at(w, 0.0 - 20.0, 0.0 - 6.0, 0.0 - 20.0, 6.0);
-  q0 = 0 - 26; r0 = 0 - 16; wq = 44; hr = 34;
+  q0 = 0 - 15; r0 = 0 - 7; wq = 22; hr = 15;
   cl = claims_new(q0, r0, wq, hr);
+  field_is(w, q0, r0, wq, hr, 70);
   sg = segments_of(w, q0, r0, wq, hr, 0.0, cl);
   assert(segment_count(sg) == 2,
          "the tower and the far wall are {segment_count(sg)} components, not two");
@@ -992,8 +1055,9 @@ fn test_the_relaxed_reader_admits_only_shells_a_tower_can_be() {
   w = flat_world();
   tower_at(w, 0.0, 0.0);
   wall_at(w, 8.0, 0.0 - 6.0, 8.0, 6.0);
-  q0 = 0 - 14; r0 = 0 - 14; wq = 34; hr = 30;
+  q0 = 0 - 7; r0 = 0 - 7; wq = 15; hr = 15;
   base = claims_new(q0, r0, wq, hr);
+  field_is(w, q0, r0, wq, hr, 67);
   cl = claims_new(q0, r0, wq, hr);
   // walk every disc the reader will offer, and none may be a shell no tower can be
   for i in 0..6 {
@@ -1028,11 +1092,11 @@ fn test_a_tee_whose_stem_meets_no_corner_now_closes_by_splitting_the_crossbar() 
   w = flat_world();
   wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
   wall_at(w, 0.0, 0.0, 0.0, 8.0);
-  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+  q0 = 0 - 6; r0 = 0 - 2; wq = 12; hr = 11;
   ed = edgeset_new(q0, r0, wq, hr);
   assert(marks_label(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr), ed) == 1,
          "the T is not one component, so this row is about nothing");
-  all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+  all = field_is(w, q0, r0, wq, hr, 24);
   cl = claims_new(q0, r0, wq, hr);
   got = peel(w, q0, r0, wq, hr, cl);
   assert(marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl) == 0,
@@ -1066,7 +1130,7 @@ fn test_every_tee_stem_closes_now_and_the_crossbar_is_what_pays() {
   //
   // ⚠ **THE WINDOW IS THE T's OWN EXTENT AND THE STEMS ARE THREE.** Each stem is a whole
   // peel over every reader, so this row is among the most expensive in the file.
-  q0 = 0 - 12; r0 = 0 - 12; wq = 25; hr = 25;
+  q0 = 0 - 6; r0 = 0 - 2; wq = 12; hr = 11;
   closed = 0;
   whole = 0;
   split = 0;
@@ -1076,7 +1140,8 @@ fn test_every_tee_stem_closes_now_and_the_crossbar_is_what_pays() {
     wall_at(w, 0.0 - 6.0, 0.0, 6.0, 0.0);
     wall_at(w, x, 0.0, x, 8.0);
     assert(touching(w, q0, r0, wq, hr) == 1, "the T at x={x} is not one component");
-    all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, claims_new(q0, r0, wq, hr));
+    // ⚠ 25 where the stem stands off the crossbar's own corner, 24 where it meets one.
+    all = field_is(w, q0, r0, wq, hr, if i == 0 { 25 } else { 24 });
     cl = claims_new(q0, r0, wq, hr);
     got = peel(w, q0, r0, wq, hr, cl);
     left = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
@@ -1159,7 +1224,7 @@ fn test_a_zigzag_of_three_walls_is_read_as_three() {
   wall_at(w, 0.0 - 6.0, 0.0, 0.0 - 4.0, 0.0);
   wall_at(w, 0.0 - 4.0, 0.0, 4.0, 4.0);
   wall_at(w, 4.0, 4.0, 6.0, 4.0);
-  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+  q0 = 0 - 6; r0 = 0 - 2; wq = 12; hr = 9;
   cl = claims_new(q0, r0, wq, hr);
   all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
   // ⚠ **17 AND NOT 16 SINCE plan 26 `B4y`.** One of the two bends was a GAP — the corner
@@ -1178,7 +1243,7 @@ fn test_a_closed_room_leaves_nothing_over() {
   wall_at(w, 5.0, 0.0 - 5.0, 5.0, 5.0);
   wall_at(w, 5.0, 5.0, 0.0 - 5.0, 5.0);
   wall_at(w, 0.0 - 5.0, 5.0, 0.0 - 5.0, 0.0 - 5.0);
-  q0 = 0 - 18; r0 = 0 - 18; wq = 37; hr = 37;
+  q0 = 0 - 6; r0 = 0 - 6; wq = 12; hr = 13;
   cl = claims_new(q0, r0, wq, hr);
   all = marks_unclaimed(w, q0, r0, wq, hr, 0.0, cl);
   assert(all == 50, "the room is {all} marks, not the 50 this row was measured on");

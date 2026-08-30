@@ -78,6 +78,24 @@
 # ⚠ AND IT IS PER FILE, so raising it is cheap and safe: `SUITE_TIMEOUT` bounds one
 # file rather than a package, which is exactly the property a whole-package run did
 # not have.
+#
+# ── ⛔ AND EVERY ROW CARRIES ITS SECONDS, BECAUSE THE WALL ARRIVES UNANNOUNCED ──
+#
+# **A green row said nothing about how close it came.** `hex_mesh/tests/planview.loft` was
+# at 70% of the deadline on the day a sibling's CI pushed it over and took the fast loop
+# red with it; `hex_editor/tests/peel.loft` sat at 58% for a week, and the only way anyone
+# found out was by timing it by hand. Both were `ok` on every run until they were not.
+#
+# So the seconds are a column, the slowest file is named in the verdict, and any file past
+# `SUITE_WARN_PCT` (default 50) of the deadline gets a ⚠ line of its own. ⚠ **That is a
+# report, never a failure** — a slow file is not a broken one, and a gate that went red on
+# a budget would be routed around within a week. What it buys is that the next file to
+# creep up is visible while there is still time to do something about it.
+#
+# ⚠ **AND THE CLOCK MEASURES THE BOX AS MUCH AS THE FILE** — this tree is shared with
+# sibling CI, and `peel.loft` has been timed at 173 s at load 8 and **211 s**
+# at load 79 on the same source. The column is a tripwire, not a benchmark; `/proc/loadavg` is printed with the verdict so a
+# row is never read without it.
 set -u
 
 JOBS=${SUITE_JOBS:-4}
@@ -112,8 +130,11 @@ run_one() {
   args=""; [ "$mode" = native ] && args="--native"
   log="$OUT/$pkg-$base-$mode.log"
   # ⚠ NO OUTER `timeout` — see the header. loft's own deadline is what reports.
+  t0=$(date +%s)
   ( cd "$ROOT/lib/$pkg" && loft test --timeout "$DEADLINE" $args "tests/$base" ) > "$log" 2>&1
   rc=$?
+  secs=$(( $(date +%s) - t0 ))
+  printf '%s\n' "$secs $pkg $base $mode" > "$OUT/t$slot"
   # ⚠ loft appends `[ran on the interpreter only — native not exercised: …]` to every
   # result line. It is the same 90 characters on every row and it is what turns a
   # failure block into something nobody reads; the mode is already a column here.
@@ -122,16 +143,16 @@ run_one() {
     # ⛔ The timeout case, and the one this script exists for. `rc` is often 0 here.
     why=$(grep -E '^\[timeout\]' "$log" | tail -1)
     [ -z "$why" ] && why="no 'test result:' line and no [timeout] — see $log"
-    printf 'RED  %-12s %-24s %-6s NO RESULT — %s\n' "$pkg" "$base" "$mode" "$why" > "$OUT/r$slot"
+    printf 'RED  %-12s %-24s %-6s %4ss  NO RESULT — %s\n' "$pkg" "$base" "$mode" "$secs" "$why" > "$OUT/r$slot"
     printf '%s\n' "$log" > "$OUT/l$slot"
     return
   fi
   case "$line" in
     *"result: ok."*)
       n=$(printf '%s' "$line" | sed -n 's/.*ok\. \([0-9]*\) passed.*/\1/p')
-      printf 'ok   %-12s %-24s %-6s %s passed\n' "$pkg" "$base" "$mode" "${n:-?}" > "$OUT/r$slot" ;;
+      printf 'ok   %-12s %-24s %-6s %4ss  %s passed\n' "$pkg" "$base" "$mode" "$secs" "${n:-?}" > "$OUT/r$slot" ;;
     *)
-      printf 'RED  %-12s %-24s %-6s %s\n' "$pkg" "$base" "$mode" "$line" > "$OUT/r$slot"
+      printf 'RED  %-12s %-24s %-6s %4ss  %s\n' "$pkg" "$base" "$mode" "$secs" "$line" > "$OUT/r$slot"
       printf '%s\n' "$log" > "$OUT/l$slot" ;;
   esac
 }
@@ -169,7 +190,28 @@ for i in $(seq 1 "$slot"); do
   esac
 done
 
+# ⚠ **THE SECONDS ARE REPORTED WHERE THEY CAN BE ACTED ON, NOT ONLY IN A COLUMN.** A
+# number in a 60-row table is a number nobody reads; the one file closest to the wall is
+# what a reader needs, and it is named whether the run is green or red.
+WARN_PCT=${SUITE_WARN_PCT:-50}
+warn_at=$(( DEADLINE * WARN_PCT / 100 ))
+# ⚠ Integer arithmetic: a short deadline truncates the threshold to zero, which would warn
+# on every row. Floor it at a second — the safe direction, and it keeps a `SUITE_TIMEOUT=10`
+# debugging run readable.
+[ "$warn_at" -lt 1 ] && warn_at=1
 echo
+if ls "$OUT"/t* >/dev/null 2>&1; then
+  cat "$OUT"/t* | sort -rn > "$OUT/times"
+  set -- $(head -1 "$OUT/times")
+  printf 'suite: slowest %s %s (%s) at %ss of the %ss deadline — %d%%, load %s\n' \
+    "$2" "$3" "$4" "$1" "$DEADLINE" "$(( $1 * 100 / DEADLINE ))" \
+    "$(cut -d" " -f1 /proc/loadavg)"
+  # ⚠ A REPORT, NOT A FAILURE — see the header. A slow file is not a broken one.
+  awk -v w="$warn_at" -v d="$DEADLINE" '$1 >= w {
+    printf "suite: ⚠ %s %s (%s) is %ss — %d%% of the %ss deadline\n", $2, $3, $4, $1, $1*100/d, d
+  }' "$OUT/times"
+fi
+
 # ⚠ THE FILE COUNT IS PART OF THE VERDICT. A run that found no files would otherwise
 # print `0 red` and read exactly like a clean sweep.
 if [ "$files" -eq 0 ]; then
