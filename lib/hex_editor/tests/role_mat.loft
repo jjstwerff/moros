@@ -1,0 +1,153 @@
+// WHAT A BYTE MEANS IS THE WORLD'S ANSWER, NOT THIS FILE'S — plan 21 `R5`.
+//
+// ⛔ **`R1` AND `R2` BUILT THE RESOLVER AND 22 SITES STILL BYPASS IT.**
+// `ground_kind_at` asks the cell's own region what its byte is called and has been
+// shipped since `R1`; meanwhile `house_recover_claimed`, `region_recover_claimed`,
+// `house_fits_at`, `touched_cells` and the room's re-fill each ask `== FLOOR_MAT`
+// — a compile-time integer out of this package. So a world that numbers its own
+// floor differently is read correctly by the slope rules and **not seen at all** by
+// the readers a blueprint is made of. That is the *check that what you built is
+// called* defect at the one place plan 21 exists to fix.
+//
+// ⚠ **THE FIXTURE RENUMBERS A REAL HOUSE RATHER THAN BUILDING A FAKE ONE.** The
+// house is placed by the gesture, so its floor is whatever `place_house` writes;
+// only the BYTE is moved afterwards. A recovery that came back different would be
+// a statement about the numbering and nothing else, which is the whole claim.
+//
+// ⚠ **BYTE 20 IS UNUSED BY THE BUILT-IN TABLE ON PURPOSE.** An unnamed byte falls
+// back to `grass` (`ground_kind_default`), so the control is sharp: without the
+// palette the house's floor reads as ordinary ground and no rectangle is found.
+use hex_editor;
+use hex_voxel;
+use hex_shape;
+
+const YAW = 1.5707963267948966;
+const U = 0.25;
+
+// The byte this world will call `floor`. Not in `GROUND_KINDS`, so the built-in
+// reading of it is `grass` and the control below can fail for a real reason.
+const ALIEN = 20;
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn house_world() -> VoxelWorld {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  ack = press_verb(s, w, s.es_author, VB_PLACE, "");
+  assert(ack.ak_ok, "the house was refused: {ack.ak_why}");
+  w
+}
+
+// Move every cell carrying `from` onto `to`, keeping height, item and all three
+// edges — the cell edited, never the cell replaced.
+fn renumber(w: VoxelWorld, from: integer, to: integer) -> integer {
+  n = 0;
+  for r in (0 - 16)..17 {
+    for q in (0 - 16)..17 {
+      col = hex_voxel::world_column(w, q, r);
+      for li in 0..len(col.co_cells) {
+        c = col.co_cells[li] ?? hex_voxel::Hex {};
+        if (c.h_material as integer ?? 0) != from { continue; }
+        layer_write(w, q, r, li,
+          hex_voxel::Hex { h_height: c.h_height,
+                           h_material: to as u8? ?? 0,
+                           h_item: c.h_item,
+                           h_item_rotation: c.h_item_rotation,
+                           h_wall_nw: c.h_wall_nw,
+                           h_wall_ne: c.h_wall_ne,
+                           h_wall_e: c.h_wall_e });
+        n = n + 1;
+      }
+    }
+  }
+  n
+}
+
+fn name_it(w: VoxelWorld, slot: integer, name: text) {
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_MATERIAL, 0, slot, name)
+         == hex_voxel::PAL_OK,
+         "the palette refused {slot}={name}");
+}
+
+// ── THE CONTROL COMES FIRST, because it is what makes the claim mean anything ─
+
+// ⚠ **A RENUMBERED HOUSE WITH NO PALETTE MUST NOT BE FOUND.** If this passes, the
+// fixture is not moving the thing the claim is about and every row below is green
+// for free.
+fn test_a_renumbered_floor_with_no_palette_is_not_a_house() {
+  w = house_world();
+  moved = renumber(w, FLOOR_MAT, ALIEN);
+  assert(moved > 0, "the fixture moved no floor cells — there is no house here");
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(!h.hs_ok,
+         "byte {ALIEN} is named by nothing and a house was still recovered — the "
+       + "fixture is not testing the numbering");
+}
+
+// ── AND THE CLAIM ──────────────────────────────────────────────────────────
+
+// ⛔ **THE SAME HOUSE, NUMBERED DIFFERENTLY, IS THE SAME HOUSE.** Every field of
+// the recovery is compared, not just `hs_ok`: a reader that found *a* rectangle
+// somewhere else would pass a bare success check.
+fn test_a_world_that_numbers_its_floor_differently_still_has_its_house() {
+  base = house_recover(house_world(), 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(base.hs_ok, "the built-in numbering recovered no house: {base.hs_why}");
+
+  w = house_world();
+  renumber(w, FLOOR_MAT, ALIEN);
+  name_it(w, ALIEN, "floor");
+
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "the world calls byte {ALIEN} 'floor' and no house was "
+                + "recovered: {h.hs_why}");
+  assert(h.hs_cq == base.hs_cq && h.hs_cr == base.hs_cr,
+         "the anchor moved with the numbering: {h.hs_cq},{h.hs_cr} against "
+       + "{base.hs_cq},{base.hs_cr}");
+  assert(h.hs_wid == base.hs_wid && h.hs_dep == base.hs_dep
+         && h.hs_rot == base.hs_rot,
+         "the rectangle changed with the numbering: {h.hs_wid}x{h.hs_dep} rot "
+       + "{h.hs_rot} against {base.hs_wid}x{base.hs_dep} rot {base.hs_rot}");
+  assert(h.hs_cells == base.hs_cells,
+         "{h.hs_cells} floor cells against {base.hs_cells}");
+  assert(h.hs_stray == base.hs_stray && h.hs_missing == base.hs_missing,
+         "the residuals moved: {h.hs_stray}/{h.hs_missing} against "
+       + "{base.hs_stray}/{base.hs_missing}");
+}
+
+// ⚠ **AND THE OTHER DIRECTION, which is the half a fallback cannot fake.** Byte 4
+// is `FLOOR_MAT` in this package; a world that calls it `grass` must stop having a
+// house there, or the palette is being read and then ignored.
+fn test_the_built_in_floor_byte_named_grass_is_no_longer_a_house() {
+  w = house_world();
+  before = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(before.hs_ok, "no house to un-name: {before.hs_why}");
+  name_it(w, FLOOR_MAT, "grass");
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(!h.hs_ok,
+         "byte {FLOOR_MAT} was named 'grass' and a {h.hs_wid}x{h.hs_dep} house was "
+       + "still recovered from it");
+}
+
+// ⚠ **THE REGION READER TAKES THE SAME FLOOR AND MUST MOVE WITH IT.** It is the
+// second of the two readers a blueprint's descriptions come out of, so a fix that
+// reached only the house reader would leave the plan view half decoupled.
+fn test_the_region_reader_reads_a_renumbered_floor_too() {
+  w = house_world();
+  base = region_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(base.rg_ok, "the built-in numbering recovered no region: {base.rg_why}");
+
+  w2 = house_world();
+  renumber(w2, FLOOR_MAT, ALIEN);
+  name_it(w2, ALIEN, "floor");
+  rg = region_recover(w2, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(rg.rg_ok, "the world calls byte {ALIEN} 'floor' and the region reader "
+                 + "found nothing: {rg.rg_why}");
+  assert(rg.rg_cells == base.rg_cells && rg.rg_sides == base.rg_sides,
+         "{rg.rg_cells} cells / {rg.rg_sides} sides against {base.rg_cells} / "
+       + "{base.rg_sides}");
+}

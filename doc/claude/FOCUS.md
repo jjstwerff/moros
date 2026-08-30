@@ -279,8 +279,22 @@ draw is a hardcoded table in `hex_mesh/src/surfaces.loft` **whose order is the w
 space** ("Add at the END"). [Plan 21](../../plans/21-region-mappings/README.md) counted it
 exactly — **329 hardcoded uses, 22 of them identity comparisons** — and shipped the mechanism
 that fixes it: per-region palettes in the world file (`PAL_MATERIAL`, `PAL_EDGE`, `PAL_ITEM`,
-`PAL_HTYPE`), with slot 0 as absence. `R1`/`R2` are built. **`R3`–`R5` are designed and not
-built, and `R5` is the one that moves the 22.**
+`PAL_HTYPE`), with slot 0 as absence. `R1`/`R2` are built, and **`R5a` is built — 2026-08-30**:
+the FLOOR role goes through the mapping, and `tools/roles.sh` counts what still does not.
+
+⛔ **AND THE COUNT WAS THE SMALLER HALF OF THAT FINDING.** `R1` shipped the resolver
+(`ground_kind_at` — *the identity comes from the world, the policy from here*) and **twenty-six
+sites walked straight past it** (this plan had said 22 since it was written — hand-counted, and
+nothing re-ran it), five of them the readers a blueprint is made of:
+`house_recover_claimed`, `region_recover_claimed`, `house_fits_at`, `touched_cells` and the
+room's re-fill each scanned a window for `== FLOOR_MAT`. So a world that numbers its own floor
+was read correctly by every slope rule and was **invisible to every structure reader** — the
+plan view drew its field and described nothing on it. ⛔ **No suite here could ever have seen
+it**: no world in this corpus carries a material palette, so a bypass and the resolver answer
+identically on every fixture we own. It is a defect that exists only in a stranger's world,
+which is this section's whole subject. **`R5b`** (the edge roles — `edge_kind_of` has no
+region-aware sibling at all, so `PAL_EDGE` reaches nothing) and **`R5c`** (the remaining 21)
+are next; `R3` and `R4` are still designed and not built.
 
 ⚠ **`PAL_HTYPE` is the shape the whole thing should take, and it already works.** A world
 *declares* a house type and `press_verb` performs it, with `htype.loft` stating the limit
@@ -312,7 +326,7 @@ in `press_verb`. [EDITING_MODES](EDITING_MODES.md) already says the verb table m
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **I1** | **`R5`** — the 22 identity comparisons through the mapping, with the grep gate that keeps them there | this is what makes "my game's materials" configuration instead of a fork | ⛔ designed |
+| **I1** | **`R5`** — the 22 identity comparisons through the mapping, with the grep gate that keeps them there | this is what makes "my game's materials" configuration instead of a fork | ✅ **`R5a` built** — the FLOOR role, and `tools/roles.sh` in `fast` advisory at **21 debt / 5 definition**, down from 26 debt. ⛔ `R5b` (edges) and `R5c` (the rest) open |
 | I2 | **`R4`** — a level's own total mapping | a project ships a level, not a patch to our palette | ⛔ designed |
 | I3 | **publish `hex_voxel` + `hex_editor`** with `description`, `categories`, a README and one `examples/` scene each | the example **is** DoD clause 4 | not started |
 | I4 | the verb table as **data** | so a project's own verbs are a declaration | designed ([EDITING_MODES](EDITING_MODES.md)) |

@@ -109,6 +109,24 @@ against its baseline in `make fast`.
 **This tree's commonest defect gets a standing list, because it passes CI.** A function
 written, tested green and wired to no consumer is a claim about nothing.
 
+⛔ **AND IT HAS A THIRD FORM THE LIST COULD NOT SEE — measured 2026-08-30, plan 21 `R5a`.**
+Not *called by nobody*, and not *called by a test only*: **called by thirteen sites with
+twenty-six more walking past it.** `hex_editor::ground_kind_at` resolves a stored byte through
+its cell's own region — *the identity comes from the world, the policy from here* — and beside
+its callers sat twenty-two `mat == FLOOR_MAT` sites answering a different question out of a
+compile-time integer. ⚠ **Five of them are the readers a blueprint is made of**
+(`house_recover_claimed`, `region_recover_claimed`, `house_fits_at`, `touched_cells`, the room
+re-fill), so a world numbering its own floor was read correctly by every slope rule and was
+**invisible to every structure reader**. ⛔ **And no suite here could ever have gone red on
+it** — no world in this corpus carries a material palette, so the bypass and the resolver
+return the same byte on every fixture we own. ✅ The FLOOR role is through the mapping now and
+`tools/roles.sh` (in `make fast`, advisory) counts the rest: **31 comparisons before, 26
+after — 21 debt and 5 definition** (`edge_is_wall`, `is_opening` ×2, `is_water`,
+`ground_kind_default`: sites that ARE the role). ⚠ **Plan 21 had said 22 since it was
+written**, hand-counted and never re-run.
+**A partly-called resolver needs a COUNT, not a checklist** — a grep is what sees the bypasses,
+because each one reads perfectly well on its own line.
+
 ⛔ **`hex_editor::names` — all EIGHT public functions have ZERO production callers.**
 `names_new` `name_generated` `label_named` `name_taken` `name_of` `name_free` `name_set`
 `name_refusal`. Tested at `B4`, invoked by nothing. It gets a consumer when catalogue entries

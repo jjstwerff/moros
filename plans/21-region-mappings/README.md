@@ -5,7 +5,8 @@
 
 ## Status
 
-**`R1` and `R2` are shipped; `R3`–`R5` are designed, not built.** ⚠ `R1` was **reshaped before any code** — and ⚠ `R1` was **reshaped before any code**
+**`R1`, `R2` and `R5a` are shipped; `R3`, `R4` and `R5b`–`R5c` are designed, not built.**
+⚠ `R1` was **reshaped before any code**
 by finding that the palette already exists in the predecessor model (see below). What stopped
 the build is worth more than the build would have been: a fresh palette in `hex_editor` would
 have been the third implementation of one idea, and the third list in three days. It is filed now because every day it waits,
@@ -196,6 +197,7 @@ target and a negative control.
 | `R3` | a cell in the blend band resolves to one region's identity or the other's, never to a third | *a blend chooses; it does not invent* | a band with no overlap in its two palettes must refuse rather than produce a hole |
 | `R4` | a level's mapping is total and self-contained: nothing in it refers to a world palette | *a level has no border problem because it has no border* | a level that references a region identity must be refused |
 | `R5` | every one of the 22 identity comparisons goes through the mapping | *no identity is decided in code* | ⚠ a grep-based gate: any new `== *_MAT` outside the mapping fails the check — the same shape as `tools/names.sh` |
+| `R5a` | a house whose floor is byte 20, named `floor` by its region, recovers **identically** to the same house on byte 4 — anchor, extent, rotation, cell count and both residuals | *a reader sees the floor its WORLD names, not the one this package numbers* | ⛔ **two, and the second is the one that matters.** Byte 20 named by nothing must recover NO house (or the fixture is not moving the thing under test), **and** byte 4 named `grass` must stop being a house — a fallback can fake the first and not the second |
 
 ## Phases
 
@@ -205,7 +207,9 @@ target and a negative control.
 | **`R2`** — many regions, and a cell knows which it is in | MH | `hex_voxel/tests/palette.loft`'s six region claims + a gesture reading its own region | ✅ shipped |
 | **`R3`** — the in-between band: two palettes blending, then switching | H | a structure carrying across a seam; the no-overlap refusal | Blocked on `R2` |
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |
-| **`R5`** — the 22 comparisons move to the mapping, and a check keeps them there | MH | `tools/` check, seeded with a violation | Blocked on `R1` |
+| **`R5a`** — the FLOOR role, and the docket that counts the rest | M | `hex_editor/tests/role_mat.loft` (4) — a renumbered house recovers identically, an un-named byte recovers nothing, and byte 4 called `grass` stops being a house; `tools/roles.sh` checked against a seeded bypass AND against two on one line | ✅ **SHIPPED** |
+| **`R5b`** — the EDGE roles: `wall`, `door`, `fence` through a region-aware `edge_kind_at` | M | `hex_editor/tests/role_mat.loft` — a world that numbers its own door has it cut and walked through; `edge_kind_of` has no `_at` sibling today, so `PAL_EDGE` reaches nothing. ⚠ **And one of its four sites argues the opposite in its own comment**: `session_select_wall` refuses `DOOR_MAT`/`FENCE_MAT`/`WINDOW_MAT` *"deliberately"* — *"whether a slot is a legal wall type is a fact about the NUMBER … a selection is the author's and outlives the world they load next."* That is a real tension, not an oversight: a SELECTION has no cell and therefore no region, so there is nothing to resolve it against. `R5b` has to settle whether the reserved edge bytes are vocabulary (world-independent, and the row becomes a `definition`) or palette (and the refusal needs a world). It is docketed `debt` until then, because the answer is not yet taken | Blocked on `R5a` |
+| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b` |
 
 ## Open questions
 
@@ -234,3 +238,91 @@ target and a negative control.
 ⚠ **`0 = nothing` stays universal**, on all three axes. It is the one identity the store
 itself depends on: absence is how an unwritten cell, an unmarked edge and an empty item slot
 are all told apart from a written one, and `E1`/`@HB-X70` are built on it.
+
+## What `R5a` turned up
+
+**`make fast` runs `tools/roles.sh` advisory; `sh tools/roles.sh` is the gate.**
+`lib/hex_editor/tests/role_mat.loft`, four tests, seen red before the change: **3 failed,
+1 passed**, and the one that passed was the control.
+
+### ⛔ The resolver had shipped and twenty-two sites walked past it
+
+`R1` built `ground_kind_at(w, q, r, mat)` — *the identity comes from the world, the policy
+from here* — and `R2` made it read the cell's own region. It has **thirteen** production call
+sites. **Beside them, twenty-six more asked `mat == FLOOR_MAT` and friends**, which is a
+compile-time integer out of `hex_editor` answering a different question: *what does Moros
+number a floor.*
+
+⛔ **AND THIS PLAN'S OWN FIGURE WAS 22, WHICH IS THE SMALLER FINDING AND THE MORE DURABLE
+ONE.** That number was counted by hand when the plan was written and nothing re-ran it. Taken
+with one scanner over both arms — `HEAD` and the working tree — the counts are **31 before and
+26 after**, of which **5 are the role DEFINITIONS** and were never the work. *A hand count is a
+number that only goes stale*, which is this tree's *a check nobody runs drifts red in silence*
+one level down, and it is the argument for the docket rather than for a paragraph.
+
+⚠ **THE FIVE THAT MATTERED MOST WERE THE READERS A BLUEPRINT IS MADE OF.**
+`house_recover_claimed`, `region_recover_claimed`, `house_fits_at`, `touched_cells` and the
+room's re-fill each scan a window for `FLOOR_MAT`. So a world that numbers its own floor is
+read correctly by every slope rule and is **invisible to every structure reader** — the plan
+view draws its field and describes nothing on it.
+
+⛔ **AND NO SUITE COULD EVER HAVE CAUGHT IT.** No world in this corpus carries a material
+palette, so a bypass and the resolver return the same byte on every fixture we own. The defect
+exists only in somebody else's world, which is exactly the class [FOCUS](../../doc/claude/FOCUS.md)
+§2 says a stranger hits first and nothing here tests.
+
+### ✅ What the fix is, and what it is not
+
+`ground_is(w, q, r, mat, ROLE_FLOOR)` — `ground_kind_at` asked the one question a rule may
+have. **No new mechanism**: the resolver, the region lookup and the fallback are `R1`/`R2`'s,
+untouched.
+
+⚠ **IT IS A PREDICATE AND NOT A BYTE LOOKUP, AND THE DIRECTION WAS A DECISION.** *Which byte
+does this region call `floor`* reads better at a call site, hoists out of a loop, and is
+**wrong**: nothing forbids a region naming two bytes `floor`, and an inverse has to answer
+with one. Asking the cell keeps the answer total.
+
+⚠ **AND THE ROLE NAMES ARE CONSTANTS IN THE TABLE THAT DEFINES THEM** — `ROLE_GRASS` …
+`ROLE_WATER`, referenced by `GROUND_KINDS`' own rows, so the name a caller compares against
+and the name the resolver returns are one string. ⚠ The water rows keep their literals:
+`water-e` … `water-ne` are one name per direction and a rule asking about a *flow* would be
+reading geometry out of a string.
+
+### ⚠ The control is the half that made the claim mean anything
+
+The fixture places a real house with the gesture and then **moves only the byte** — 4 → 20,
+every cell edited rather than replaced. Byte 20 is in no row of `GROUND_KINDS` on purpose, so
+an unnamed byte falls back to `grass` and:
+
+| | |
+|---|---|
+| byte 20, no palette | ⛔ **no house recovered** — so the fixture is moving the thing under test |
+| byte 20, region names it `floor` | ✅ recovered, and **every field equal** to the byte-4 house |
+| byte 4, region names it `grass` | ⛔ **no house** — the half a fallback cannot fake |
+| the region reader, byte 20 named `floor` | ✅ same cells, same sides |
+
+⚠ **`hs_ok` ALONE WOULD HAVE PASSED ON A READER THAT FOUND A DIFFERENT RECTANGLE SOMEWHERE
+ELSE**, so the anchor, the extent, the rotation, the cell count and both residuals are all
+compared against the byte-4 run.
+
+### ⛔ And the docket's own instrument was blind twice, in one afternoon
+
+`tools/roles.sh` counts what still decides an identity in code — 24 rows, **21 `debt` and 5
+`definition`** (`edge_is_wall`, `is_opening` ×2, `is_water`, `ground_kind_default`: sites that
+ARE the role rather than a use of it). It was wrong twice before it was believed:
+
+| | |
+|---|---|
+| ⛔ a greedy `sed` took the LAST constant on a line | `slot == DOOR_MAT \|\| slot == WINDOW_MAT` reported **`WINDOW_MAT` only** — the docket's answer for a real bypass was *nothing here* |
+| ⛔ awk has no `\b`, so a pattern ending `_MAT` matched **`PAL_MATERIAL`** as `PAL_MAT` | a palette AXIS constant entered the docket as a material identity |
+
+✅ **Both found by reading the first baseline against the grep it came from**, and the fix is
+checked against a case it should find rather than trusted: a seeded bypass is reported, and
+**two on one line are reported as two**.
+
+⚠ **NOTHING IS PATTERN-SKIPPED AND EVERY ROW CARRIES A VERDICT** — `tools/dups.tsv`'s shape,
+for `tools/layering.sh`'s reason: a guard with a rule-shaped exemption exempts things by
+accident, which is how `moros_ui` stayed outside the layering check for months.
+⚠ **And the row is keyed on the enclosing FUNCTION**, because a file is not fine enough to
+carry a verdict: `gesture.loft` holds four `== SURFACE_MAT` and one of them is
+`ground_kind_default` reading the grass row out of the table it is the home of.

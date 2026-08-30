@@ -981,7 +981,9 @@ pub fn room_add(w: VoxelWorld, a: Author, wid: integer, dep: integer) -> Ack {
   ra_n = 0;
   for r in ra_r0..ra_r0 + ra_hr {
     for q in ra_q0..ra_q0 + ra_wq {
-      if world_ground_cell(w, q, r).h_material != FLOOR_MAT { continue; }
+      if !ground_is(w, q, r,
+                    world_ground_cell(w, q, r).h_material as integer ?? 0,
+                    ROLE_FLOOR) { continue; }
       hexset_set(ra_old, q, r, true);
       ra_n = ra_n + 1;
       if q == ra_q0 || r == ra_r0 || q == ra_q0 + ra_wq - 1 || r == ra_r0 + ra_hr - 1 {

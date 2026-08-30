@@ -1,0 +1,28 @@
+// A FIXTURE, NOT A PACKAGE. `tools/roles.sh` never compiles what it scans — it reads
+// text — so these functions exist only to be found, and each row below is a shape the
+// docket has to report exactly once.
+//
+// ⚠ THE FILE IS NOT UNDER `lib/*/src/`, so the real docket does not see it and this
+// probe's fixtures can never leak into `tools/roles.tsv`.
+
+// one comparison, one row
+pub fn one_site(m: integer) -> boolean { m == FLOOR_MAT }
+
+// ⛔ TWO ON ONE LINE — the shape the first `sed`-based scan reported as ONE, taking the
+// last constant and losing `DOOR_MAT` entirely.
+pub fn two_on_one_line(m: integer) -> boolean { m == DOOR_MAT || m == WINDOW_MAT }
+
+// ⛔ A PREFIX THAT IS NOT THE CONSTANT — awk has no `\b`, so a pattern ending `_MAT`
+// matched `PAL_MATERIAL` as `PAL_MAT` and put a palette AXIS constant in the docket.
+pub fn axis_not_material(k: integer) -> boolean { k == PAL_MATERIAL }
+
+// ⚠ PROSE ABOUT THE RULE, IN THE SHAPE THE RULE FORBIDS. This tree writes exactly this
+// in its own source; counting it would grow the docket every time somebody documents
+// the rule correctly.
+// if mat == ROOF_MAT { … }  ← ask ground_is instead
+
+// the same function, two comparisons of the SAME constant — one row, count 2
+pub fn twice_the_same(a: integer, b: integer) -> boolean {
+  if a == ROAD_MAT { return true; }
+  b == ROAD_MAT
+}

@@ -1,4 +1,4 @@
-.PHONY: help names probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: help names roles probe-roles probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -578,6 +578,17 @@ fast:
 # was red. Advisory against `tools/names.txt`, so a NEW collision shows and the ten
 # recorded ones do not reprint every loop; `make names` is the gate. ~1 s.
 	@NAMES_ADVISORY=1 sh tools/names.sh
+# ⚠ **AND THE FOURTH NAME QUESTION: WHO STILL DECIDES AN IDENTITY FROM A CONSTANT.**
+# `names.sh` asks who else declares a name; this asks who reads a stored byte as one.
+# Advisory against `tools/roles.tsv` — the 21 open sites are plan 21 `R5b`/`R5c`'s work, and
+# a loop that failed on them every time is a loop people stop reading. A NEW one shows.
+	@ROLES_ADVISORY=1 sh tools/roles.sh
+# ⚠ AND THE CLAIM THE ADVISORY ABOVE RESTS ON, RE-MEASURED EVERY LOOP — under a second.
+# `roles.sh` reports an ABSENCE, and its scanner was wrong TWICE on the afternoon it was
+# written with both mistakes reading as a clean pass. `probe/roles` is those two shapes
+# plus three more as fixtures, so the day the scan goes blind again a row goes red here
+# instead of the docket going quietly empty. `probe/names/run.sh`'s reason, one tool over.
+	@sh probe/roles/run.sh > /dev/null
 # ⚠ **AND THE CLAIM THE CHECK ABOVE RESTS ON, RE-MEASURED EVERY LOOP — 2 s.**
 # `tools/names.sh` was built because a colliding bare name bound SILENTLY by import order
 # (loft#788); that is fixed, and this tree carried the old sentence in the tool's head for
@@ -892,6 +903,25 @@ drift:
 # for a green would be silencing the check, which its own head tells you not to do.
 names:
 	@sh tools/names.sh
+
+# WHO STILL DECIDES AN IDENTITY IN CODE — plan 21 `R5`. `fast` runs it ADVISORY against
+# `tools/roles.tsv`; this fails on any row that moved.
+#
+# ⛔ **A STORED BYTE MEANS WHAT ITS REGION SAYS IT MEANS, AND `R1` SHIPPED THE RESOLVER
+# TWENTY-TWO SITES WALK PAST.** `ground_is(w, q, r, mat, ROLE_*)` is the question a rule may
+# ask; `mat == FLOOR_MAT` is a compile-time byte answering *what does MOROS number a floor*.
+# ⚠ **No suite here can see the difference** — no world in the corpus carries a material
+# palette — which is why it needs a check rather than a test.
+#
+# ⚠ ADVISORY in `fast` while `debt` is non-zero, GATING once `R5c` lands: a check that fails
+# every loop on work already docketed is one people route around.
+roles:
+	@sh tools/roles.sh
+
+# CAN THE DOCKET SEE WHAT IT COUNTS — the claim `tools/roles.sh` rests on, as a command.
+# `fast` runs it quiet; this prints every row. Sabotaged three ways and red each time.
+probe-roles:
+	@sh probe/roles/run.sh
 
 # THE TOOLCHAIN CLAIM UNDER `names`, printed rather than swallowed. `fast` runs it quiet.
 probe-names:
