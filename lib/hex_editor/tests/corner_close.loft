@@ -188,3 +188,75 @@ fn test_a_four_run_room_no_longer_leaks() {
   assert(p.pm_code == PM_FLOORED,
          "the flood is bounded now: {p.pm_code} — {p.pm_why}");
 }
+
+// ── ⛔ AND THE RULE USED TO DELETE A DOOR — plan 21 `R5b.2`, measured ───────
+//
+// `corner_write`'s header has always said *"the unmarked edge …"*, and its test was
+// `edge_is_wall`, which is **false for a DOOR**. So a doorway standing exactly on the
+// join edge was not skipped and the second run wrote masonry over it:
+// [`probe/r5b/door_corner.loft`](../../../probe/r5b/door_corner.loft) plants byte 2 on
+// `8 × 3`'s own join edge and measured **1 door before, 0 after**, the edge reading `1`.
+//
+// ⚠ **THE FIXTURE FINDS THE JOIN EDGE RATHER THAN NAMING IT**, because a coordinate
+// written down here would go stale the first time the corner rule moved — and the test
+// would then plant its door somewhere harmless and pass for ever.
+fn join_edge_of(a: VoxelWorld) -> (integer, integer, integer) {
+  // Every edge the pair leaves behind that NEITHER run lays on its own is the join.
+  c = flat_world();
+  wall_at(c, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  d = flat_world();
+  wall_at(d, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  jq = 0;
+  jr = 0;
+  jd = 0 - 1;
+  for r in R0..R0 + HR {
+    for q in R0..R0 + WQ {
+      for e in [4, 5, 0] {
+        if wall_of(a, q, r, e, 0.0) == 0 { continue; }
+        if wall_of(c, q, r, e, 0.0) != 0 { continue; }
+        if wall_of(d, q, r, e, 0.0) != 0 { continue; }
+        jq = q;
+        jr = r;
+        jd = e;
+      }
+    }
+  }
+  (jq, jr, jd)
+}
+
+fn test_a_door_standing_in_the_corner_is_not_overwritten() {
+  both = flat_world();
+  wall_at(both, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  wall_at(both, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  (jq, jr, jd) = join_edge_of(both);
+  assert(jd >= 0, "the fixture found no join edge, so it is not testing the rule");
+
+  w = flat_world();
+  wall_at(w, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  wall_set(w, jq, jr, jd, DOOR_MAT, 8, 0.0);
+  assert(wall_of(w, jq, jr, jd, 0.0) == DOOR_MAT,
+         "the door was not planted — the edge holds {wall_of(w, jq, jr, jd, 0.0)}");
+
+  wall_at(w, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  assert(wall_of(w, jq, jr, jd, 0.0) == DOOR_MAT,
+         "the corner rule wrote {wall_of(w, jq, jr, jd, 0.0)} over the author's door at "
+       + "({jq},{jr}) dir {jd} — `corner_write` owes nothing at an edge that is already "
+       + "a boundary (`@HB-X70`)");
+  // …and nothing was written INSTEAD, or the fix traded a deletion for a stray edge.
+  // ⚠ **THE MASONRY CHAIN IS LEFT WITH FOUR FREE ENDS AND THAT IS CORRECT**, not a
+  // hole: `marks_of` collects masonry, a door is not masonry (`edge_is_wall` is false
+  // for it, by design), so the two runs are two chains in that channel while the
+  // BOUNDARY is continuous through the doorway — `@HB-X70`, *an opening is a material
+  // on a wall that continues*. Asserting `2` here measured the wrong channel, and it
+  // is written down because the first version of this test did exactly that.
+  assert(free_ends(w) == 4,
+         "the masonry chain reads {free_ends(w)} free ends where a door in the corner "
+       + "leaves four");
+  plain = flat_world();
+  wall_at(plain, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  wall_at(plain, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  assert(edges_in(marks_of(w)) == edges_in(marks_of(plain)) - 1,
+         "the door's world holds {edges_in(marks_of(w))} masonry edges against the "
+       + "plain pair's {edges_in(marks_of(plain))} — the rule wrote something else "
+       + "instead of the join it declined");
+}

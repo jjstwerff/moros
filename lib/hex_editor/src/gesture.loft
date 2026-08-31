@@ -44,6 +44,7 @@ use hex_fit;
 // The octagonal tower's shape — plan 26 `B4l`. The SHAPE lives there and has no
 // world; the GESTURE lives here and has one.
 use self::octagon;
+use self::palfield;
 
 // Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
 //
@@ -590,6 +591,25 @@ pub const EDGE_MAT_LAST = WINDOW_MAT;   // the last byte this vocabulary names
 // drawn loudly, because a plan view exists to show what it cannot explain.
 pub fn edge_is_wall(mat: integer) -> boolean { mat == WALL_MAT || mat > EDGE_MAT_LAST }
 
+// …and the same question asked of the WORLD — plan 21 `R5b.2`.
+//
+// ⛔ **THE LINE ABOVE IS A DEFINITION AND ITS TEN CALLERS WERE NOT.** `edge_is_wall`
+// says what `wall` MEANS in the built-in numbering, which is the fallback
+// `edge_role_at` uses and could not be moved without circularity. Its consumers are a
+// different matter: each holds a world and a cell and each asked *what does MOROS
+// number a wall*, so a world that declares its own DOOR at a high slot had that
+// doorway counted as masonry by the house reader, the region reader, the corner pool
+// and the room-add — while `R5b` had already let a walker through it.
+//
+// ⚠ **THE ABSENCE GUARD IS `wall_stops_walk_at`'s, and here it is load-bearing rather
+// than tidy**: every one of these sites sits inside a `for r … for q … for d in
+// [4, 5, 0]` window scan, and a window is overwhelmingly unwritten edges.
+pub fn edge_is_wall_at(w: VoxelWorld, q: integer, r: integer,
+                       mat: integer) -> boolean {
+  if mat == 0 { return false; }
+  edge_role_at(w, q, r, mat) == ROLE_WALL
+}
+
 // A material a wall-or-fence gesture may stamp.
 //
 // ⚠ **IT IS A WIDENING OF `fit_nominal(mat, FENCE_MAT, …)` AND NOTHING ELSE**, which
@@ -939,7 +959,7 @@ fn claim_edge(cl: Claims, q: integer, r: integer, nq: integer, nr: integer) -> i
 
 fn mark_left(wld: VoxelWorld, q: integer, r: integer, d: integer, ref: float,
              cl: Claims) -> boolean {
-  if !edge_is_wall(wall_of(wld, q, r, d, ref)) { return false; }
+  if !edge_is_wall_at(wld, q, r, wall_of(wld, q, r, d, ref)) { return false; }
   (ml_nq, ml_nr) = hex_grid::hex_neighbor(q, r, d);
   edge_mat(cl.cl_edges, q, r, ml_nq, ml_nr) == 0
 }
@@ -2350,7 +2370,7 @@ pub fn oct_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       for d in [4, 5, 0] {
-        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }
+        if !edge_is_wall_at(wld, q, r, wall_of(wld, q, r, d, ref)) { continue; }
         if fa_n == 0 { fa_lo_q = q; fa_hi_q = q; fa_lo_r = r; fa_hi_r = r; }
         if q < fa_lo_q { fa_lo_q = q; }
         if q > fa_hi_q { fa_hi_q = q; }
@@ -2713,7 +2733,7 @@ pub fn house_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: inte
       for d in [4, 5, 0] {
         (nq, nr) = hex_grid::hex_neighbor(q, r, d);
         want = box_holds(best, q, r) != box_holds(best, nq, nr);
-        got = edge_is_wall(wall_of(wld, q, r, d, ref));
+        got = edge_is_wall_at(wld, q, r, wall_of(wld, q, r, d, ref));
         if want && !got { missing = missing + 1; }
         if !got { continue; }
         if want { continue; }
@@ -2918,7 +2938,7 @@ pub fn region_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: int
       for rg_d in [4, 5, 0] {
         (rg_nq, rg_nr) = hex_grid::hex_neighbor(q, r, rg_d);
         rg_want = edge_mat(rg_bd, q, r, rg_nq, rg_nr) != 0;
-        rg_got = edge_is_wall(wall_of(wld, q, r, rg_d, ref));
+        rg_got = edge_is_wall_at(wld, q, r, wall_of(wld, q, r, rg_d, ref));
         if rg_want && !rg_got { rg_miss = rg_miss + 1; }
         if !rg_got { continue; }
         if rg_want { continue; }
@@ -5339,13 +5359,31 @@ fn edge_step_one(da: integer, db: integer) -> boolean {
 // The unmarked edge whose two corners are exactly these two vertices, written.  There is
 // at most one — two adjacent lattice vertices name one edge — so a miss means the edge is
 // already there and nothing is owed.
+//
+// ⛔ **AND *UNMARKED* IS WHAT THIS SENTENCE SAID WHILE THE CODE TESTED *NOT MASONRY* —
+// found by `R5b.2`, measured, and it destroyed a door.** `edge_is_wall` is false for a
+// DOOR, so a doorway standing exactly in the corner two runs leave open was not skipped:
+// `probe/r5b/door_corner.loft` plants byte 2 on the join edge of `probe/b4y`'s `8 × 3`
+// gap corner and the second run **overwrites it with masonry** — 1 door before, 0 after,
+// the edge reading `1`. That is `B4y`'s rule silently deleting what an author put there,
+// and it predates `R5b` entirely.
+//
+// ⚠ **THE FIX IS THE HEADER, NOT A NEW RULE**: an edge that carries ANYTHING is already
+// a boundary, so nothing is owed at it — `@HB-X70`, *an opening is a material on a wall
+// that continues*. It also takes an `edge_is_wall` site off the docket rather than
+// resolving it, because the question here was never *is it masonry*.
+//
+// ⚠ **AND IT IS WHY `R5b.2` DID NOT SIMPLY RESOLVE THIS SITE.** Resolved, a world's own
+// door at a high slot would have started being overwritten too — the byte predicate had
+// been protecting it by accident, answering *masonry* to every undeclared high byte. A
+// consistency fix that spread a defect is not a fix.
 fn corner_write(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: integer,
                 ref: float, a1: integer, b1: integer, a2: integer, b2: integer,
                 mat: integer, grade: integer) -> boolean {
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       for cw_d in [4, 5, 0] {
-        if edge_is_wall(wall_of(wld, q, r, cw_d, ref)) { continue; }
+        if wall_of(wld, q, r, cw_d, ref) != 0 { continue; }
         (cw_c1, cw_c2) = hex_grid::hex_edge_corners(cw_d);
         cw_pa = hex_shape::hex_corner_tri_a(q, r, cw_c1);
         cw_pb = hex_shape::hex_corner_tri_b(q, r, cw_c1);
@@ -5375,7 +5413,7 @@ pub fn wall_corner_close(wld: VoxelWorld, eg: EdgeSet, q0: integer, r0: integer,
   for r in r0..r0 + hr {
     for q in q0..q0 + wq {
       for cc_d in [4, 5, 0] {
-        if !edge_is_wall(wall_of(wld, q, r, cc_d, cc_ref)) { continue; }
+        if !edge_is_wall_at(wld, q, r, wall_of(wld, q, r, cc_d, cc_ref)) { continue; }
         (cc_nq, cc_nr) = hex_grid::hex_neighbor(q, r, cc_d);
         cc_mine = edge_mat(eg, q, r, cc_nq, cc_nr) != 0;
         (cc_e1, cc_e2) = hex_grid::hex_edge_corners(cc_d);
@@ -8723,11 +8761,29 @@ pub fn edge_kind_of(mat: integer) -> EdgeKind {
 // answers `PAL_ABSENT` for slot 0 — but only AFTER `world_region_at` has been
 // evaluated as its argument, which is the lookup this skips. Measured in
 // `probe/roles/cost.loft`.
+// ⛔ **THE EDGE PALETTE HAS TWO NAMESPACES AND `R5b` CONFLATED THEM — caught by the
+// suite, 2026-08-31.** A slot's first word is a ROLE when it is one of the four reserved
+// words, and a wall **TYPE's own name** otherwise: `wall_type` reads
+// `"octtower body=THICK_OCT"` and `pal_word` takes `octtower` off the front (`B4d`).
+// Returning the raw string as a role made a **declared wall type stop being a wall** —
+// `hex_editor/house_box`, `hex_editor/octagon` and `hex_mesh/planview_shape` all went
+// red, and they are the only three fixtures in this tree that carry an edge palette at
+// all. ⚠ **The fixtures that HAVE the thing are what caught it**, which is the reason
+// this tree writes that rule down.
+//
+// ⚠ **AND A TYPE IS A WALL, which is `edge_is_wall`'s own doctrine restated**: an
+// undeclared high byte is *a wall whose type is missing*, so a DECLARED one is a wall
+// whose type is known. The four role words are reserved; everything else names a type.
+fn edge_role_of(nm: text) -> text {
+  if nm == ROLE_DOOR || nm == ROLE_FENCE || nm == ROLE_WINDOW { return nm; }
+  ROLE_WALL
+}
+
 pub fn edge_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> text {
   if mat == 0 { return hex_voxel::PAL_ABSENT; }
-  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
-                                     hex_voxel::world_region_at(w, q, r), mat);
-  if nm != "" && nm != hex_voxel::PAL_ABSENT { return nm; }
+  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
+                                      hex_voxel::world_region_at(w, q, r), mat);
+  if raw != "" && raw != hex_voxel::PAL_ABSENT { return edge_role_of(pal_word(raw)); }
   for e in edge_kinds() {
     if e.ek_mat == mat { return e.ek_name; }
   }
@@ -8753,17 +8809,18 @@ pub fn edge_is(w: VoxelWorld, q: integer, r: integer, mat: integer,
 // pinned equal on every byte in both palette states by `tests/role_mat.loft`, because
 // two derivations of one quantity is the shape this tree has been bitten by.
 pub fn edge_kind_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> EdgeKind {
-  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
-                                     hex_voxel::world_region_at(w, q, r), mat);
-  if nm == "" || nm == hex_voxel::PAL_ABSENT { return edge_kind_of(mat); }
+  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
+                                      hex_voxel::world_region_at(w, q, r), mat);
+  if raw == "" || raw == hex_voxel::PAL_ABSENT { return edge_kind_of(mat); }
+  // ⚠ **THE ROLE, NOT THE DECLARED NAME** — `edge_role_at`'s two namespaces, and the
+  // reason the pair is pinned equal on every byte: a wall TYPE called `octtower` slopes
+  // like the masonry it is, and a reader that kept its own name here would make the two
+  // doors disagree about the same slot.
+  rl = edge_role_of(pal_word(raw));
   for e in edge_kinds() {
-    if e.ek_name == nm { return EdgeKind { ek_mat: mat, ek_name: nm, ek_slope: e.ek_slope }; }
+    if e.ek_name == rl { return EdgeKind { ek_mat: mat, ek_name: rl, ek_slope: e.ek_slope }; }
   }
-  // ⚠ NAMED BUT UNKNOWN IS A WALL'S SLOPE, for `ground_kind_at`'s reason one axis
-  // over: a world may call slot 7 `battlement` and this table has no policy for it,
-  // and refusing would make an unmapped NAME fatal to a gesture where
-  // `world_palette_check` is the place that refuses an unmapped BYTE at load.
-  EdgeKind { ek_mat: mat, ek_name: nm, ek_slope: 1 }
+  EdgeKind { ek_mat: mat, ek_name: rl, ek_slope: 1 }
 }
 
 // The steepest step the run through this cell may take — the STRICTEST of the edges

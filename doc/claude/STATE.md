@@ -143,6 +143,27 @@ window scan, which is the surface `R5a` itself blew a 300-second deadline on.
 ⚠ **So the standing question this list asks has a second half**: not only *who calls what I
 built*, but **what does the STORE already accept that nothing reads.**
 
+⛔ **AND WIRING IT UP — `R5b.2`, the eight `edge_is_wall` readers — FOUND A THIRD QUESTION AND
+A DEFECT OLDER THAN EITHER.** ✅ The eight are wired and measured (**2 725 ns per mark, an
+unwritten edge free**, the resolution under `LOFT_PROFILE`'s own 3.1% floor on `peel.loft`).
+What it turned up is worth more than the wiring:
+- ⛔ **The edge palette has TWO namespaces and `R5b` shipped them conflated.** A slot's first
+  word is a **role** (`door`, `fence`, `window`, `wall`) or a wall **TYPE's own name**
+  (`octtower body=THICK_OCT`, `B4d`). Reading the raw string as a role made a **declared type
+  stop being a wall**. Caught by `house_box`, `octagon` and `planview_shape` — **the only three
+  files in the tree whose fixtures carry an edge palette**, which is *a defect that exists only
+  in somebody else's world is found only by a fixture that is somebody else's world.*
+- ⛔ **`corner_write` had been deleting a door since `B4y`.** Its header says *"the **unmarked**
+  edge"*; its test was `edge_is_wall`, which is false for a door — measured, a doorway on the
+  join edge is overwritten with masonry (`probe/r5b/door_corner.loft`, 1 door → 0). ⚠ **The
+  byte predicate had been protecting a DECLARED door by accident**, so resolving that site would
+  have spread the defect: **a consistency fix that spreads a defect is not a fix.** The site is
+  removed rather than resolved.
+- ⛔ **And the sweep's real answer was COVERAGE: 2 of 8.** Six rewired sites had no test that
+  could see them go wrong, guaranteed rather than accidental. Five tests later it is 7 of 8, and
+  the eighth (`oct_fits_at`'s extent scan) is **provably unobservable** — it sizes a window for
+  a second scan asking the same question — which is stated rather than forced.
+
 ⛔ **`hex_editor::names` — all EIGHT public functions have ZERO production callers.**
 `names_new` `name_generated` `label_named` `name_taken` `name_of` `name_free` `name_set`
 `name_refusal`. Tested at `B4`, invoked by nothing. It gets a consumer when catalogue entries

@@ -366,7 +366,7 @@ fn test_they_agree_when_the_world_has_renamed_edge_bytes_too() {
   w = edge_world(WALL_MAT);
   name_edge(w, ALIEN_EDGE, "door");
   name_edge(w, DOOR_MAT, "wall");
-  name_edge(w, 8, "battlement");
+  name_edge(w, 8, "octtower body={WALL_BODY_OCT}");
   for m in 1..256 {
     assert(edge_role_at(w, 0, 0, m) == edge_kind_at(w, 0, 0, m).ek_name,
            "byte {m} under a palette: '{edge_role_at(w, 0, 0, m)}' against "
@@ -374,9 +374,41 @@ fn test_they_agree_when_the_world_has_renamed_edge_bytes_too() {
   }
   // ⚠ AND THE CONTROL: the palette is actually being read, or the loop above compares
   // two fallbacks and proves nothing.
-  assert(edge_role_at(w, 0, 0, ALIEN_EDGE) == "door", "slot {ALIEN_EDGE} did not resolve");
-  assert(edge_role_at(w, 0, 0, DOOR_MAT) == "wall", "slot {DOOR_MAT} did not resolve");
-  assert(edge_role_at(w, 0, 0, 8) == "battlement", "slot 8 did not resolve");
+  assert(edge_role_at(w, 0, 0, ALIEN_EDGE) == ROLE_DOOR, "slot {ALIEN_EDGE} did not resolve");
+  assert(edge_role_at(w, 0, 0, DOOR_MAT) == ROLE_WALL, "slot {DOOR_MAT} did not resolve");
+}
+
+// ⛔ **THE EDGE PALETTE HAS TWO NAMESPACES, AND `R5b` CONFLATED THEM — the suite caught
+// it, which is worth a test of its own so it cannot come back.**
+//
+// A slot's first word is a ROLE when it is one of the reserved words and a wall TYPE's
+// own NAME otherwise: `wall_type` reads `"octtower body=THICK_OCT"` and `pal_word` takes
+// `octtower` off the front (`B4d`). Returning the raw string as a role made a **declared
+// wall type stop being a wall** — `hex_editor/house_box`, `hex_editor/octagon` and
+// `hex_mesh/planview_shape` all went red, and those are the only three files in this
+// tree whose fixtures carry an edge palette at all.
+//
+// ⚠ **A TYPE IS A WALL**, which is `edge_is_wall`'s own doctrine restated: an undeclared
+// high byte is *a wall whose type is missing*, so a declared one is a wall whose type is
+// known.
+fn test_a_declared_wall_type_is_a_wall_and_not_a_role_of_its_own() {
+  w = flat_world();
+  name_edge(w, 5, "octtower body={WALL_BODY_OCT}");
+  assert(edge_role_at(w, 0, 0, 5) == ROLE_WALL,
+         "a declared wall type reads as role '{edge_role_at(w, 0, 0, 5)}'");
+  assert(edge_is_wall_at(w, 0, 0, 5), "and it must be masonry to every reader");
+  assert(edge_kind_at(w, 0, 0, 5).ek_slope == edge_kind_of(WALL_MAT).ek_slope,
+         "and it must climb like masonry");
+  // ⚠ **AND THE TYPE ITSELF IS STILL READABLE** — the role reading must not have eaten
+  // the declaration `B4d` puts there.
+  wt = wall_type(w, 0, 5);
+  assert(wt.wt_ok && wt.wt_name == "octtower" && wt.wt_body == WALL_BODY_OCT,
+         "the wall type no longer reads: ok={wt.wt_ok} name='{wt.wt_name}' "
+       + "body='{wt.wt_body}'");
+  // …and the reserved words still win, or a world could not override a role at all.
+  name_edge(w, 6, "door");
+  assert(edge_role_at(w, 0, 0, 6) == ROLE_DOOR, "a slot named 'door' is not a door");
+  assert(!edge_is_wall_at(w, 0, 0, 6), "and it is not masonry");
 }
 
 // ⚠ **A NAMED-BUT-UNKNOWN EDGE ROLE IS A WALL'S SLOPE AND KEEPS ITS OWN NAME** —
@@ -429,4 +461,258 @@ fn test_an_unwritten_edge_is_absence_and_not_masonry() {
   ground_fill(w, 0 - REACH, 0 - REACH, NW, NW, 8, SURFACE_MAT);
   assert(run_slope(w, 0, 0) == SLOPE_FREE,
          "open ground limits a run to {run_slope(w, 0, 0)}");
+}
+
+// ══ THE READERS — plan 21 `R5b.2` ═══════════════════════════════════════════
+//
+// ⛔ **`R5b` LET A WALKER THROUGH A WORLD'S OWN DOOR AND LEFT TEN READERS COUNTING IT
+// AS MASONRY.** `edge_is_wall` is a definition and stays one; its consumers each hold a
+// world and a cell and each asked this package's numbering — `mark_left`, `face_at`'s
+// extent, the house and region acceptance readers, `corner_write`, `corner_pool`, the
+// room-add union and the run gesture's own material.
+//
+// ⚠ **THE FALLBACK IS WHY THE OBVIOUS FIXTURE PROVES NOTHING.** A world that declares
+// its masonry at slot 7 was ALREADY read correctly, because `edge_is_wall` answers
+// *wall* to every byte past the vocabulary. So the discriminating direction is the
+// other one: **byte 1 named something else must stop being a wall.**
+
+fn walled_house() -> VoxelWorld {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, YAW);
+  ack = press_verb(s, w, s.es_author, VB_PLACE, "");
+  assert(ack.ak_ok, "the house was refused: {ack.ak_why}");
+  w
+}
+
+fn name_edge_of(w: VoxelWorld, slot: integer, name: text) {
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_EDGE, 0, slot, name)
+         == hex_voxel::PAL_OK, "the edge palette refused {slot}={name}");
+}
+
+// ⚠ **THE CONTROL FIRST**: with no palette the readers must find the house's walls, or
+// every row below is green for free.
+fn test_the_house_readers_find_a_plain_walled_house() {
+  h = house_recover(walled_house(), 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_ok, "no house recovered at all: {h.hs_why}");
+  assert(h.hs_missing == 0,
+         "the plain house is already {h.hs_missing} walls short — the fixture is not "
+       + "a clean baseline");
+}
+
+// ⛔ **AND THE CLAIM.** A world that calls edge byte 1 `door` has no masonry anywhere,
+// so the house's boundary is a boundary of openings and the reader must SAY so. Before
+// `R5b.2` the reader asked the byte and answered *masonry* on every one of them.
+fn test_a_world_that_calls_the_wall_byte_a_door_has_no_walls_to_recover() {
+  w = walled_house();
+  base = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(base.hs_ok && base.hs_missing == 0, "no clean house to un-name");
+
+  name_edge_of(w, WALL_MAT, "door");
+  h = house_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(h.hs_missing > 0,
+         "edge byte {WALL_MAT} was named 'door' and the reader still found every wall "
+       + "of the house ({h.hs_missing} missing)");
+  // …and the FLOOR is untouched, so this is the edge axis moving and not the house
+  // disappearing for some other reason.
+  assert(h.hs_cells == base.hs_cells,
+         "the floor moved too — {h.hs_cells} cells against {base.hs_cells}, so the "
+       + "edge palette is not what changed the answer");
+}
+
+// ⚠ **AND THE REGION READER TAKES THE SAME EDGES**, for `R5a`'s reason one axis over:
+// a fix that reached only the house reader would leave the plan view half decoupled.
+fn test_the_region_reader_reads_a_renamed_wall_byte_too() {
+  w = walled_house();
+  base = region_recover(w, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(base.rg_ok, "no region recovered: {base.rg_why}");
+
+  w2 = walled_house();
+  name_edge_of(w2, WALL_MAT, "door");
+  rg = region_recover(w2, 0 - 16, 0 - 16, 33, 33, 0.0);
+  assert(rg.rg_missing > base.rg_missing,
+         "byte {WALL_MAT} named 'door' and the region reader still sees "
+       + "{rg.rg_missing} missing against {base.rg_missing}");
+}
+
+// ⛔ **AND THE UPPER BOUND OF THE STEP: with no palette the two predicates agree on
+// every byte a `u8` can hold.** Every world in this corpus is such a world, so this is
+// what says the eight rewired sites moved nothing.
+fn test_with_no_palette_edge_is_wall_at_is_edge_is_wall_on_every_byte() {
+  w = flat_world();
+  for m in 0..256 {
+    assert(edge_is_wall_at(w, 0, 0, m) == edge_is_wall(m),
+           "byte {m}: resolved says {edge_is_wall_at(w, 0, 0, m)} and the byte says "
+         + "{edge_is_wall(m)}");
+  }
+}
+
+// ⚠ **AND A DECLARED WALL TYPE IS STILL A WALL** — the direction the fallback already
+// got right, asserted so a future narrowing of `edge_role_at` cannot break it quietly.
+fn test_a_world_that_declares_its_masonry_at_slot_seven_still_has_walls() {
+  w = flat_world();
+  name_edge_of(w, ALIEN_EDGE, "wall");
+  assert(edge_is_wall_at(w, 0, 0, ALIEN_EDGE), "a declared wall type is not a wall");
+  assert(edge_is_wall_at(w, 0, 0, WALL_MAT), "plain masonry is not a wall");
+  assert(!edge_is_wall_at(w, 0, 0, 0), "absence is a wall");
+  assert(!edge_is_wall_at(w, 0, 0, FENCE_MAT), "a fence is masonry");
+}
+
+// ── ⛔ AND THE SIX SITES THE SWEEP FOUND NOTHING COULD SEE — `R5b.2` ────────
+//
+// The first sweep of this step rewired eight readers and **only two of them went red**:
+// `house_recover_claimed` and `region_recover_claimed`. The other six were green, which
+// does not mean they are right — it means nothing in the tree can tell. ⚠ **No world in
+// this corpus carries an edge palette**, so that is guaranteed rather than accidental,
+// and a row left green is a wiring nobody has to keep.
+
+// ⛔ **`session_run`'s material — the one an AUTHOR sees.** A wall is the line you
+// walked; a fence is a road and two offsets. The gesture asked this package's numbering,
+// so a world that declares its own fence at slot 7 got the WALL's shape for it.
+fn test_a_world_that_declares_its_fence_at_slot_seven_lays_a_fence() {
+  base = flat_world();
+  s0 = session_new();
+  session_at(s0, base, 2.0, 0.0, 0.0);
+  session_run(s0, base, s0.es_author, ALIEN_EDGE);
+  session_at(s0, base, 6.0, 0.0, 0.0);
+  plain = session_run(s0, base, s0.es_author, ALIEN_EDGE);
+  assert(plain.rl_code == RL_LAID, "the control run was not laid: {plain.rl_say}");
+  assert(plain.rl_wall,
+         "an UNDECLARED slot {ALIEN_EDGE} did not lay a wall — the row below would "
+       + "pass for free");
+
+  w = flat_world();
+  name_edge_of(w, ALIEN_EDGE, "fence");
+  s = session_new();
+  session_at(s, w, 2.0, 0.0, 0.0);
+  session_run(s, w, s.es_author, ALIEN_EDGE);
+  session_at(s, w, 6.0, 0.0, 0.0);
+  got = session_run(s, w, s.es_author, ALIEN_EDGE);
+  assert(got.rl_code == RL_LAID, "the declared-fence run was not laid: {got.rl_say}");
+  assert(!got.rl_wall,
+         "the world calls slot {ALIEN_EDGE} 'fence' and the gesture still gave it the "
+       + "wall's shape");
+}
+
+// ⛔ **`wall_corner_close` and `corner_write` — `B4y`'s rule, which scans for MASONRY.**
+// A world whose byte-1 edges are `door` has no wall corner to close, and the join must
+// stop firing. The fixture is `probe/b4y`'s pure-gap `8 × 3`, two of whose walls are
+// enough: the second run reports one edge MORE than its own field when the rule fires.
+fn corner_marks(w: VoxelWorld) -> integer {
+  n = 0;
+  for r in (0 - 18)..19 {
+    for q in (0 - 18)..19 {
+      for d in [4, 5, 0] {
+        if wall_of(w, q, r, d, 0.0) != 0 { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn stamp_wall(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) -> integer {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  assert(d.rd_ok, "the fixture's wall was refused: {d.rd_why}");
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  m
+}
+
+fn test_a_world_with_no_masonry_has_no_corner_to_close() {
+  // The control: with no palette the corner closes, and the join shows as the second
+  // wall accounting for one edge more than its own run laid down.
+  a = flat_world();
+  stamp_wall(a, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  a_before = corner_marks(a);
+  stamp_wall(a, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  a_gain = corner_marks(a) - a_before;
+
+  b = flat_world();
+  name_edge_of(b, WALL_MAT, "door");
+  stamp_wall(b, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  b_before = corner_marks(b);
+  stamp_wall(b, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  b_gain = corner_marks(b) - b_before;
+
+  assert(a_before == b_before,
+         "the two fixtures' first walls differ ({a_before} against {b_before}) — the "
+       + "palette is changing what is STAMPED, not what is joined");
+  assert(a_gain > b_gain,
+         "byte {WALL_MAT} named 'door' and the corner still closed: the second wall "
+       + "gained {b_gain} edges against the plain world's {a_gain}");
+}
+
+// ⛔ **THE OCTAGON READER AS A WHOLE — and its extent scan is UNOBSERVABLE, which the
+// sweep found and this comment records rather than papering over.**
+//
+// `oct_fits_at` scans the window for masonry to size a box, then hands that box to
+// `disc_marks`, which scans it again for the same thing. So the extent scan's answer
+// cannot show through the return: when it is right the marks decide, and when it is
+// wrong the marks are empty and the answer is `false` either way. **Sweep row 11 cuts
+// it alone and stays green**, and no fixture can change that while the two agree.
+//
+// ⚠ **WHICH IS EXACTLY WHY IT WAS WIRED.** The failure mode of an extent scan that
+// disagrees with the marks it sizes a window for is a window NARROWER than the field —
+// [`probe/tw`](../../../probe/tw/README.md)'s cliff, where clipping a structure does
+// not draw a smaller picture, it stops answering. Leaving the two asking different
+// questions is that defect waiting for a world with an edge palette.
+//
+// What this test does cover is the reader end-to-end, through `disc_marks` →
+// `mark_left`: a world whose masonry is called `door` has no octagon rim at all.
+fn test_the_octagon_reader_reads_a_renamed_wall_byte_too() {
+  w = flat_world();
+  s = EditSession {};
+  session_at(s, w, 0.0, 0.0, 0.0);
+  assert(session_select_shell(s, 12).ak_ok, "shell 12 was refused");
+  assert(press_verb(s, w, s.es_author, VB_TOWER, "").ak_ok, "the tower was refused");
+  base = oct_fits_at(w, 0 - 16, 0 - 16, 33, 33, 0, 0, 12, 0.0);
+  assert(base, "the plain tower does not read as an octagon, so the row below would "
+             + "pass for free");
+
+  w2 = flat_world();
+  s2 = EditSession {};
+  session_at(s2, w2, 0.0, 0.0, 0.0);
+  assert(session_select_shell(s2, 12).ak_ok, "shell 12 was refused");
+  assert(press_verb(s2, w2, s2.es_author, VB_TOWER, "").ak_ok, "the tower was refused");
+  name_edge_of(w2, WALL_MAT, "door");
+  after = oct_fits_at(w2, 0 - 16, 0 - 16, 33, 33, 0, 0, 12, 0.0);
+  assert(base != after,
+         "the same tower reads {base} plain and {after} with byte {WALL_MAT} named "
+       + "'door' — the extent scan is not asking the world");
+}
+
+// ⛔ **`mark_left` — the claims machinery every peel round walks.** `marks_unclaimed`
+// is its shortest public door: how many marks in this window nobody has claimed.
+fn test_the_claims_scan_reads_a_renamed_wall_byte_too() {
+  w = flat_world();
+  stamp_wall(w, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  cl = claims_new(0 - 18, 0 - 18, 37, 37);
+  plain = marks_unclaimed(w, 0 - 18, 0 - 18, 37, 37, 0.0, cl);
+  assert(plain > 0, "the fixture left no marks to claim");
+
+  w2 = flat_world();
+  stamp_wall(w2, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  name_edge_of(w2, WALL_MAT, "door");
+  cl2 = claims_new(0 - 18, 0 - 18, 37, 37);
+  named = marks_unclaimed(w2, 0 - 18, 0 - 18, 37, 37, 0.0, cl2);
+  assert(named == 0,
+         "byte {WALL_MAT} is named 'door' in this world and the claims scan still "
+       + "counts {named} masonry marks against the plain world's {plain}");
+}
+
+// ⛔ **`room_add`'s union — the one site that WRITES from this predicate.** It clears an
+// edge the union makes interior, so reading the wrong set there rubs out a boundary.
+fn test_the_room_add_union_reads_a_renamed_wall_byte_too() {
+  w = walled_house();
+  a = author_at(0.0, 0.0, YAW, 2.0);
+  plain = room_add(w, a, 4, 4);
+
+  w2 = walled_house();
+  name_edge_of(w2, WALL_MAT, "door");
+  a2 = author_at(0.0, 0.0, YAW, 2.0);
+  named = room_add(w2, a2, 4, 4);
+  assert(plain.ak_ok != named.ak_ok || plain.ak_n != named.ak_n,
+         "the same room-add answers {plain.ak_ok}/{plain.ak_n} either side of naming "
+       + "byte {WALL_MAT} 'door' — the union is not asking the world");
 }

@@ -155,6 +155,36 @@ fn arm_edge_role_wall(w: VoxelWorld) -> integer {
   hit
 }
 
+// ── AND THE READER PREDICATE — plan 21 `R5b.2` ────────────────────────────
+//
+// ⛔ **EIGHT SITES INSIDE `for r … for q … for d in [4, 5, 0]` WINDOW SCANS**, which is
+// the surface `R5a` blew a 300-second deadline on. The absence guard makes an unwritten
+// edge free, so what a scan actually pays is *one resolution per MARK*, and a peel
+// fixture's field is 30 … 200 marks in a window of 1 000 … 1 400 edge slots.
+fn arm_wall_byte(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = WALL_MAT;
+    if i % 2 == 1 { m = DOOR_MAT; }
+    if edge_is_wall(m) { hit = hit + 1; }
+  }
+  hit
+}
+
+fn arm_wall_role(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = WALL_MAT;
+    if i % 2 == 1 { m = DOOR_MAT; }
+    if edge_is_wall_at(w, q, r, m) { hit = hit + 1; }
+  }
+  hit
+}
+
 fn main() {
   w = bench_world();
 
@@ -203,4 +233,17 @@ fn main() {
   println("⚠ **THE LOOP IS OVERWHELMINGLY THE ABSENCE ROW**: `edges_around` reads three");
   println("   edge slots of every cell in its window and a world is mostly open ground,");
   println("   so the wall row is the cost of the few, not of the scan.");
+
+  println("");
+  println("── the READER predicate — plan 21 `R5b.2` ──");
+  p1s = now(); p1h = arm_wall_byte(w); p1 = now() - p1s;
+  q1s = now(); q1h = arm_wall_role(w); q1 = now() - q1s;
+  q2s = now(); q2h = arm_wall_role(w); q2 = now() - q2s;
+  p2s = now(); p2h = arm_wall_byte(w); p2 = now() - p2s;
+  println("edge_is_wall  byte A1 {p1} ms A2 {p2} ms  ·  _at B1 {q1} ms B2 {q2} ms"
+        + "   (hits {p1h}/{p2h}/{q1h}/{q2h}, equal: {p1h == q1h && p1h == p2h && p1h == q2h})");
+  // ⚠ NANOSECONDS, because microseconds truncate to `2` and the whole argument below
+  // is an arithmetic one: marks-per-scan times this number against the file's seconds.
+  println("   -> {(q1 * 1000000) / N ?? 0} ns per MARK resolved; an unwritten edge is "
+        + "the absence row above and pays nothing");
 }

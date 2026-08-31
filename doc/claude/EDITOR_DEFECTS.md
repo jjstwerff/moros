@@ -625,6 +625,50 @@ the test says at its head so a later reader knows what a timeout there means.
 
 ---
 
+## ✅ 12. The corner rule deleted a door standing in the corner — fixed 2026-08-31
+
+**Found by plan 21 `R5b.2` while wiring an unrelated predicate, and it predates that step
+entirely — `B4y`, 2026-08-29.**
+
+`corner_write`'s header has always said *"The **unmarked** edge whose two corners are exactly
+these two vertices, written … a miss means the edge is already there and nothing is owed."*
+Its test was `edge_is_wall`, **which is false for a DOOR**. So a doorway standing exactly on
+the join edge two runs leave open was not a miss — it was a candidate, and it was overwritten.
+
+Measured, [`probe/r5b/door_corner.loft`](../../probe/r5b/door_corner.loft), on `probe/b4y`'s
+own `8 × 3` gap corner:
+
+| | |
+|---|---|
+| the join edge, **found rather than named** | `(4,−2)` dir 0 — the one edge neither run lays |
+| a door planted there before the second wall | edge holds `2`, **1 door** |
+| ⛔ after the second wall | edge holds `1`, **0 doors** |
+
+⚠ **THE AUTHOR IS TOLD NOTHING.** The stroke reports its own marks and the world it leaves is
+a closed corner, which is what the gesture was asked for; the door is simply gone.
+
+### ⛔ And the byte predicate had been protecting a DECLARED door by accident
+
+`edge_is_wall` answers *wall* for every byte past `EDGE_MAT_LAST`, so a world's own door at a
+high slot was skipped — correctly, for the wrong reason. **Resolving that site to the world's
+palette, which is all `R5b.2` set out to do, would have spread the defect to it.** ⚠ *A
+consistency fix that spreads a defect is not a fix*, and that is the general shape worth
+keeping: **before resolving a predicate, ask what the unresolved one was accidentally right
+about.**
+
+### ✅ The fix is the header, not a new rule
+
+`wall_of(…) != 0`. An edge carrying anything is already a boundary, so nothing is owed at it —
+`@HB-X70`, *an opening is a material on a wall that continues*. It also takes an
+`edge_is_wall` site off plan 21's docket by **removing** the question rather than answering it,
+because the question there was never *is it masonry*.
+
+`lib/hex_editor/tests/corner_close.loft` is 5 of 5 with the new row and `B4y`'s four claims
+unmoved. ⚠ **The new test's first version asserted the wrong channel and went red for it** — it
+asked for 2 free ends where a door in the corner leaves **4**, because `marks_of` collects
+masonry and a door is not masonry: the two runs are two chains in *that* channel while the
+boundary is continuous through the doorway.
+
 ## What to do, in the order the facts force
 
 1. ✅ **Decided — see above.** The store is the authority; the mesher recovers the straight

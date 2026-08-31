@@ -1,0 +1,77 @@
+// Does `wall_corner_close` overwrite a DOOR sitting in the corner it wants to close?
+// Measured with the BUILT-IN door byte, so the answer is about today's code and not
+// about `R5b.2`.
+use hex_editor;
+use hex_voxel;
+use hex_grid;
+
+const U = 0.25;
+
+fn flat() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - 30, 0 - 30, 61, 61, 8, SURFACE_MAT);
+  w
+}
+
+fn stamp(w: VoxelWorld, x0: float, z0: float, x1: float, z1: float) -> integer {
+  d = run_between(x0, z0, x1, z1, WALL_MAT);
+  if !d.rd_ok { println("refused: {d.rd_why}"); return 0; }
+  rs = WallRuns { items: [] };
+  m = 0;
+  wall_stamp(w, d.rd_run, WALL_MAT, 8, rs, m);
+  m
+}
+
+fn count(w: VoxelWorld, want: integer) -> integer {
+  n = 0;
+  for r in (0 - 18)..19 {
+    for q in (0 - 18)..19 {
+      for d in [4, 5, 0] { if wall_of(w, q, r, d, 0.0) == want { n = n + 1; } }
+    }
+  }
+  n
+}
+
+// Where does the corner join land? Stamp both walls in a clean world and diff.
+fn main() {
+  a = flat();
+  stamp(a, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  b4: vector<integer> = [];
+  for r in (0 - 18)..19 {
+    for q in (0 - 18)..19 {
+      for d in [4, 5, 0] { if wall_of(a, q, r, d, 0.0) != 0 { b4 += [q * 1000 + r * 10 + d]; } }
+    }
+  }
+  stamp(a, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  // the join edge is the one present now, absent from the first wall, and not on the
+  // second run's own line — find it by re-stamping the second wall alone.
+  c = flat();
+  stamp(c, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  jq = 0; jr = 0; jd = 0; found = 0;
+  for r in (0 - 18)..19 {
+    for q in (0 - 18)..19 {
+      for d in [4, 5, 0] {
+        if wall_of(a, q, r, d, 0.0) == 0 { continue; }
+        if wall_of(c, q, r, d, 0.0) != 0 { continue; }
+        k = q * 1000 + r * 10 + d;
+        was = false;
+        for e in b4 { if e == k { was = true; } }
+        if !was { jq = q; jr = r; jd = d; found = found + 1; }
+      }
+    }
+  }
+  println("the join edge: ({jq},{jr}) dir {jd}   — {found} edge(s) neither run laid");
+
+  // Now: put a DOOR there before the second wall is stamped, and see what survives.
+  w = flat();
+  stamp(w, 0.0 - 8.0, 0.0 - 3.0, 8.0, 0.0 - 3.0);
+  wall_set(w, jq, jr, jd, DOOR_MAT, 8, 0.0);
+  println("door planted: edge now holds {wall_of(w, jq, jr, jd, 0.0)}  (doors: {count(w, DOOR_MAT)})");
+  stamp(w, 8.0, 0.0 - 3.0, 8.0, 3.0);
+  println("after the second wall: edge holds {wall_of(w, jq, jr, jd, 0.0)}  (doors: {count(w, DOOR_MAT)})");
+  if wall_of(w, jq, jr, jd, 0.0) == WALL_MAT {
+    println("⛔ THE DOOR WAS OVERWRITTEN WITH MASONRY — today, with the BYTE predicate.");
+  } else {
+    println("✅ the door survived.");
+  }
+}

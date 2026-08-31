@@ -13,15 +13,11 @@ W = 'lib/hex_editor/src/walk.loft'
 
 ROWS = {
   '1': (G, 'edge_role_at never reads the palette',
-        '''  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
-                                     hex_voxel::world_region_at(w, q, r), mat);
-  if nm != "" && nm != hex_voxel::PAL_ABSENT { return nm; }
-  for e in edge_kinds() {
-    if e.ek_mat == mat { return e.ek_name; }
-  }''',
-        '''  for e in edge_kinds() {
-    if e.ek_mat == mat { return e.ek_name; }
-  }'''),
+        '''  raw = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
+                                      hex_voxel::world_region_at(w, q, r), mat);
+  if raw != "" && raw != hex_voxel::PAL_ABSENT { return edge_role_of(pal_word(raw)); }
+  for e in edge_kinds() {''',
+        '''  for e in edge_kinds() {'''),
   '2': (G, 'absence falls through to the wall default',
         'pub fn edge_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> text {\n  if mat == 0 { return hex_voxel::PAL_ABSENT; }',
         'pub fn edge_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> text {'),
@@ -54,16 +50,67 @@ ROWS = {
         '  if mat == 0 { return false; }\n  role = edge_role_at(w, q, r, mat);',
         '  role = edge_role_at(w, q, r, mat);'),
 }
+# ── plan 21 `R5b.2` — ONE ROW PER WIRED READER ─────────────────────────────
+#
+# ⛔ **THE TABLE IS THE COVERAGE ANSWER, NOT JUST A PASS.** Eight sites were rewired and
+# the honest question is which of them anything can SEE go wrong. A row that comes back
+# green is a site with no test behind it, which is a finding to print rather than a
+# result to round up.
+E = 'lib/hex_editor/src/hex_editor.loft'
+S = 'lib/hex_editor/src/session.loft'
+
+ROWS.update({
+  '10': (G, 'mark_left asks the byte',
+         '  if !edge_is_wall_at(wld, q, r, wall_of(wld, q, r, d, ref)) { return false; }',
+         '  if !edge_is_wall(wall_of(wld, q, r, d, ref)) { return false; }'),
+  '11': (G, 'oct_fits_at asks the byte (unobservable — see role_mat)',
+         '        if !edge_is_wall_at(wld, q, r, wall_of(wld, q, r, d, ref)) { continue; }',
+         '        if !edge_is_wall(wall_of(wld, q, r, d, ref)) { continue; }'),
+  '12': (G, 'the HOUSE acceptance reader asks the byte',
+         '        got = edge_is_wall_at(wld, q, r, wall_of(wld, q, r, d, ref));',
+         '        got = edge_is_wall(wall_of(wld, q, r, d, ref));'),
+  '13': (G, 'the REGION acceptance reader asks the byte',
+         '        rg_got = edge_is_wall_at(wld, q, r, wall_of(wld, q, r, rg_d, ref));',
+         '        rg_got = edge_is_wall(wall_of(wld, q, r, rg_d, ref));'),
+  '14': (G, 'corner_write skips MASONRY again, not what is marked',
+         '        if wall_of(wld, q, r, cw_d, ref) != 0 { continue; }',
+         '        if edge_is_wall(wall_of(wld, q, r, cw_d, ref)) { continue; }'),
+  '15': (G, 'wall_corner_close asks the byte',
+         '        if !edge_is_wall_at(wld, q, r, wall_of(wld, q, r, cc_d, cc_ref)) { continue; }',
+         '        if !edge_is_wall(wall_of(wld, q, r, cc_d, cc_ref)) { continue; }'),
+  '16': (E, 'the room-add union asks the byte',
+         '        ra_has = edge_is_wall_at(w, q, r, wall_of(w, q, r, ra_e, ra_ref));',
+         '        ra_has = edge_is_wall(wall_of(w, q, r, ra_e, ra_ref));'),
+  '17': (S, "the run gesture's own material asks the byte",
+         '  if edge_is_wall_at(w, sr_q0, sr_r0, mat) {',
+         '  if edge_is_wall(mat) {'),
+  '18': (G, 'edge_is_wall_at never resolves — the whole step at once',
+         '  if mat == 0 { return false; }\n  edge_role_at(w, q, r, mat) == ROLE_WALL\n}',
+         '  edge_is_wall(mat)\n}'),
+  '20': (G, 'a declared wall TYPE is a role of its own (the shipped-and-caught bug)',
+         '  if raw != "" && raw != hex_voxel::PAL_ABSENT { return edge_role_of(pal_word(raw)); }',
+         '  if raw != "" && raw != hex_voxel::PAL_ABSENT { return raw; }'),
+  '19': (G, "edge_is_wall_at's absence GUARD dropped (a speed cut, not a rule)",
+         'pub fn edge_is_wall_at(w: VoxelWorld, q: integer, r: integer,\n                       mat: integer) -> boolean {\n  if mat == 0 { return false; }',
+         'pub fn edge_is_wall_at(w: VoxelWorld, q: integer, r: integer,\n                       mat: integer) -> boolean {'),
+})
+
 LABELS = {'0': 'control — nothing cut'}
 LABELS.update({k: v[1] for k, v in ROWS.items()})
-# ⚠ Rows 8 and 9 must stay GREEN — a sweep of only-red rows cannot tell *the tests see
-# this* from *the tests fail on anything I touch here*.
-GREEN = {'8', '9'}
+# ⚠ Rows 8, 9 and 19 must stay GREEN — a sweep of only-red rows cannot tell *the tests
+# see this* from *the tests fail on anything I touch here*.
+# ⛔ **AND ROW 11 IS GREEN FOR A THIRD REASON, WHICH IS THE ONE WORTH READING.**
+# `oct_fits_at`'s extent scan only sizes a window for `disc_marks`, which scans it
+# again for the same thing — so its answer cannot show through the return while the
+# two agree, and NO fixture can make this row red. It is wired anyway, because the
+# failure mode of the two disagreeing is a window narrower than the field, which is
+# `probe/tw`'s cliff rather than a smaller picture.
+GREEN = {'8', '9', '11', '19'}
 
 if sys.argv[1] == '--label':
     n = sys.argv[2]
     mark = ' ✅' if n in GREEN else '   '
-    print('%3s |%s %-49s' % (n, mark, LABELS[n]))
+    print('%3s |%s %-52s' % (n, mark, LABELS[n]))
     sys.exit(0)
 
 path, _, have, want = ROWS[sys.argv[1]]

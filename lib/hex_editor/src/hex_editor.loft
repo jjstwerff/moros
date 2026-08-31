@@ -1036,7 +1036,7 @@ pub fn room_add(w: VoxelWorld, a: Author, wid: integer, dep: integer) -> Ack {
       for ra_e in [4, 5, 0] {
         (ra_eq, ra_er) = hex_grid::hex_neighbor(q, r, ra_e);
         ra_want = edge_mat(ra_cut, q, r, ra_eq, ra_er) != 0;
-        ra_has = edge_is_wall(wall_of(w, q, r, ra_e, ra_ref));
+        ra_has = edge_is_wall_at(w, q, r, wall_of(w, q, r, ra_e, ra_ref));
         if ra_want && !ra_has {
           wall_set(w, q, r, ra_e, WALL_MAT, ra_seat, ra_ref);
           ra_wrote = ra_wrote + 1;

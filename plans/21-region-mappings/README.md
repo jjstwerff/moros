@@ -5,7 +5,7 @@
 
 ## Status
 
-**`R1`, `R2`, `R5a` and `R5b` are shipped; `R3`, `R4`, `R5b.2` and `R5c` are designed, not built.**
+**`R1`, `R2`, `R5a`, `R5b` and `R5b.2` are shipped; `R3`, `R4`, `R5b.3` and `R5c` are designed, not built.**
 ⚠ `R1` was **reshaped before any code**
 by finding that the palette already exists in the predecessor model (see below). What stopped
 the build is worth more than the build would have been: a fresh palette in `hex_editor` would
@@ -209,8 +209,9 @@ target and a negative control.
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |
 | **`R5a`** — the FLOOR role, and the docket that counts the rest | M | `hex_editor/tests/role_mat.loft` (4) — a renumbered house recovers identically, an un-named byte recovers nothing, and byte 4 called `grass` stops being a house; `tools/roles.sh` checked against a seeded bypass AND against two on one line | ✅ **SHIPPED** |
 | **`R5b`** — the EDGE roles: `wall`, `door`, `fence` through a region-aware `edge_kind_at` | M | `hex_editor/tests/role_mat.loft` — a world that numbers its own door has it cut and walked through; `edge_kind_of` has no `_at` sibling today, so `PAL_EDGE` reaches nothing. ⚠ **And one of its four sites argues the opposite in its own comment**: `session_select_wall` refuses `DOOR_MAT`/`FENCE_MAT`/`WINDOW_MAT` *"deliberately"* — *"whether a slot is a legal wall type is a fact about the NUMBER … a selection is the author's and outlives the world they load next."* That is a real tension, not an oversight: a SELECTION has no cell and therefore no region, so there is nothing to resolve it against. `R5b` has to settle whether the reserved edge bytes are vocabulary (world-independent, and the row becomes a `definition`) or palette (and the refusal needs a world). It is docketed `debt` until then, because the answer is not yet taken | ✅ **SHIPPED** — and the tension was answered by MOVING the question rather than settling it: `open_ahead`/`open_span` **do** hold a world and a cell, so the check that needs one went to the GESTURE and `session_select_wall` is untouched |
-| **`R5b.2`** — the eight `edge_is_wall` READERS, and it is a COST step | M | `peel.loft` and `planview.loft` re-timed A-B-B-A either side, plus a house whose wall is a DECLARED type recovering identically to the same house on byte 1. ⛔ **The eight sit inside `for r … for q … for d in [4, 5, 0]` window scans**, which is the surface `R5a` already blew a 300-second deadline on — so the wiring is mechanical and the measurement is the step. ⚠ Until it lands, a world that declares its own door is **walked through and still drawn as masonry** (`hex_mesh::wall_up`, `planview`'s colour), which is a visible inconsistency rather than a gap | Blocked on `R5b` |
-| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b.2` |
+| **`R5b.2`** — the eight `edge_is_wall` READERS, and it is a COST step | M | `peel.loft` and `planview.loft` re-timed A-B-B-A either side, plus a house whose wall is a DECLARED type recovering identically to the same house on byte 1. ⛔ **The eight sit inside `for r … for q … for d in [4, 5, 0]` window scans**, which is the surface `R5a` already blew a 300-second deadline on — so the wiring is mechanical and the measurement is the step. ⚠ Until it lands, a world that declares its own door is **walked through and still drawn as masonry** (`hex_mesh::wall_up`, `planview`'s colour), which is a visible inconsistency rather than a gap | ✅ **SHIPPED** — and it found two things the wiring was not looking for: the edge palette has **two namespaces** (a role word, or a wall TYPE's own name — conflating them made a declared type stop being a wall, caught by the three fixtures in the tree that carry an edge palette), and `corner_write` had been **deleting a door** standing in the corner since `B4y`, which is why that site is REMOVED rather than resolved |
+| **`R5b.3`** — the MESHER, and it is the visible half | M | `hex_mesh::wall_up`, `wall_up_part`, `chunk_mesh_props` and `emit_run_wall`'s half-width, plus `planview`'s colour — five sites in a package that depends on this one. ⚠ **Until it lands a world's own door is walked through, cut, recovered and described correctly and still DRAWN as masonry**, which is a visible inconsistency rather than a gap. Its verify is a chunk mesh with a declared door emitting the door's triangle count and not the wall's, plus the stream path re-timed — `chunk_mesh_props` scans every cell of every chunk | Blocked on `R5b.2` |
+| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b.3` |
 
 ## Open questions
 
@@ -586,3 +587,136 @@ against 160 s inside `make fast`'s 16-way parallel phase, so **that number is th
 contention, not the file's cost** — `04f6d12`'s lesson (*the baseline refutes my attribution*)
 one plan section down, and the reason `run_slope`'s memo (`lim_at`) means a tower pays it once
 per run cell rather than per pass.
+
+## What `R5b.2` turned up
+
+**`lib/hex_editor/tests/role_mat.loft` (29) and `tests/corner_close.loft` (5) ·
+`sh probe/r5b/sweep.sh` (21 rows, two files) · `sh probe/r5b/cost.sh` ·
+[`probe/r5b`](../../probe/r5b/README.md).**
+
+Eight `edge_is_wall` consumers rewired: `mark_left`, `oct_fits_at`'s extent scan,
+`house_recover_claimed`, `region_recover_claimed`, `wall_corner_close`, `corner_write`,
+`room_add`'s union and `session_run`'s own material.
+
+### ⛔ THE EDGE PALETTE HAS TWO NAMESPACES AND `R5b` SHIPPED THEM CONFLATED
+
+A slot's first word is a **role** when it is one of the reserved words, and a wall **TYPE's
+own name** otherwise: `wall_type` reads `"octtower body=THICK_OCT"` and `pal_word` takes
+`octtower` off the front (`B4d`). `edge_role_at` returned the **raw string** as the role, so a
+**declared wall type stopped being a wall** the moment a reader asked.
+
+| `make fast` | |
+|---|---|
+| ⛔ `hex_editor/house_box` | *the leftover declares '', not 'THICK_OCT'* |
+| ⛔ `hex_editor/octagon` | 7 of 24 |
+| ⛔ `hex_mesh/planview_shape` | 6 of 19 |
+
+⚠ **THOSE THREE ARE THE ONLY FILES IN THE TREE WHOSE FIXTURES CARRY AN EDGE PALETTE AT ALL** —
+so *the fixtures that have the thing* is what caught it, which is this tree's own instrument
+rule paying for itself. ⛔ **And `R5b` was green through it**: the walk never meets a declared
+type in these fixtures, and `edge_kind_at`'s unknown-name branch answered slope `1`, which is
+masonry's anyway. **A latent conflation only shows when a reader asks the question.**
+
+✅ **The fix is one clause and it is `edge_is_wall`'s own doctrine restated.** An undeclared
+high byte is *a wall whose type is missing*, so a declared one is **a wall whose type is
+known**: the four role words are reserved, everything else names a type, and a type is a wall.
+`edge_kind_at` resolves through the same clause so the two doors cannot disagree, and
+`wall_type` still reads the declaration untouched (asserted).
+
+### ⛔ AND THE STEP FOUND A DEFECT THAT PREDATES IT — `corner_write` deleted a door
+
+`corner_write`'s header has said *"The **unmarked** edge whose two corners are exactly these
+two vertices, written"* since `B4y`. Its test was `edge_is_wall`, **which is false for a
+DOOR**, so a doorway standing exactly on the join edge was not skipped:
+
+| [`probe/r5b/door_corner.loft`](../../probe/r5b/door_corner.loft) — `8 × 3`'s own join edge | |
+|---|---|
+| the join edge, found rather than named | `(4,−2)` dir 0 — the one edge neither run lays |
+| a door planted before the second wall | edge holds `2`, **1 door** |
+| ⛔ after the second wall | edge holds `1`, **0 doors** |
+
+⛔ **AND THE BYTE PREDICATE HAD BEEN PROTECTING A DECLARED DOOR BY ACCIDENT.**
+`edge_is_wall` answers *wall* to every byte past the vocabulary, so a world's own door at slot
+7 was skipped — correctly, for the wrong reason. **Resolving that site would have spread the
+defect to it.** ⚠ **A consistency fix that spreads a defect is not a fix**, so the site is not
+resolved, it is **removed**: `wall_of(…) != 0`, which is what the header always said and what
+`@HB-X70` means — an edge carrying anything is already a boundary, so nothing is owed at it.
+
+✅ `corner_close.loft` is 5 of 5, the four `B4y` claims unmoved. ⚠ **The new test's first
+version asserted the wrong channel and went red for it** — it asked for 2 free ends where a
+door in the corner leaves **4**, because `marks_of` collects masonry and a door is not
+masonry: the two runs are two chains in *that* channel while the boundary is continuous
+through the doorway.
+
+### ⛔ THE SWEEP'S REAL ANSWER WAS COVERAGE: 2 OF 8
+
+The first extended table rewired eight sites and **six stayed green** — which does not mean
+they are right, it means nothing in the tree could tell. ⚠ Guaranteed rather than accidental:
+**no world in this corpus carries an edge palette.** Five tests later — `session_run`'s
+material, `wall_corner_close`, `marks_unclaimed`, `room_add`, and the octagon reader end to
+end — **seven of the eight go red.**
+
+⛔ **AND THE EIGHTH IS PROVABLY UNOBSERVABLE, WHICH IS WORTH MORE THAN A FORCED TEST.**
+`oct_fits_at` scans its window for masonry to size a box, then hands that box to
+`disc_marks`, **which scans it again for the same thing**. So the extent scan's answer cannot
+show through the return: when it is right the marks decide, when it is wrong the marks are
+empty and the answer is `false` either way. ⚠ **Which is exactly why it was wired**: the
+failure mode of an extent scan disagreeing with the marks it sizes a window for is a window
+**narrower** than the field — [`probe/tw`](../../probe/tw/README.md)'s cliff, where clipping a
+structure does not draw a smaller picture, it stops answering.
+
+### ⚠ And the sweep's own instrument was blind once, in the way sweeps are
+
+Row 1's cut text went stale the moment `edge_role_at`'s body changed for the two-namespace
+fix, so the sabotage **silently did not apply** and the row came back **green** — *the tests
+cannot see this* wearing the costume of *nothing was cut*, with a warning line above it that a
+reader scanning the table would skip. ✅ Every cut asserts a match count of 1, and an
+unapplied one now prints **⛔ THE CUT DID NOT APPLY** as the row's result instead of a verdict.
+⚠ **A sweep is an instrument too, and its default answer is *green*.**
+
+### ⚠ The cost — three instruments, because the wall clock could not answer
+
+`R5a` is why this is a step rather than a detail: five window scans onto `ground_is` put
+`planview.loft` through the 300-second wall. This moves **eight**, into `peel.loft`, which was
+brought from 70% of that deadline to 26% the day before.
+
+**1 · Per call, A-B-B-A in ONE process** (`probe/roles/cost.loft`, 40 000 an arm):
+
+| | byte | resolved |
+|---|---|---|
+| an unwritten edge | 1–3 ms | ✅ **1–2 ms** — the absence guard, so a scan pays nothing for it |
+| ⚠ a MARK | 1–2 ms | **109–124 ms → 2 725 ns each** |
+
+**2 · The arithmetic that follows.** A `peel.loft` fixture's field is 30 … 200 marks in a
+window of 1 000 … 1 400 edge slots, so one scan pays **at most ≈ 0.5 ms** against a file of
+60 … 85 seconds.
+
+**3 · `LOFT_PROFILE=1` on `peel.loft`** — 5 421 411 samples over 187 s across 31 runs.
+`edge_role_at`, `world_region_at` and `world_palette_name` appear in **neither** the
+by-function list nor the hottest paths; the file is `lattice_k` 6.2%, `disc_holds` 5.4%,
+`box_to_local` 4.7%. ⚠ **The list is capped at 15 rows with a 3.1% floor, so this bounds
+rather than zeroes it** — and the instrument was checked: `wall_of` and `mark_left` are absent
+too, while `house_recover_claimed`, a wired reader, appears **7 times in the hottest paths and
+every one of them is `box_fits` → `box_holds` → `box_to_local`** — the geometry inside it,
+never the predicate.
+
+**4 · The wall clock, which is why it is fourth.** A-B-B-A at the build level, `/proc/loadavg`
+beside every row:
+
+| | AFTER | BEFORE |
+|---|---|---|
+| `peel.loft` | 85.0 · 68.7 s | 72.5 · 59.9 s |
+| `planview_region.loft` | 28.1 · 36.9 s | 28.8 · 57.1 s |
+
+⚠ The peel's ranges overlap and the slowest single row of the eight is a `planview_region`
+**BEFORE** — but the peel's own means differ by ~1.16× and its slowest row is an AFTER **taken
+at load 1.36, the quietest of the four**. That is as far as this instrument goes on this box,
+and it is why instruments 1–3 are the answer: **0.5 ms a scan cannot be 12 seconds of a
+70-second file.**
+
+### What is left
+
+**`R5b.3` — the MESHER**, and it is the visible half: `hex_mesh::wall_up`, `wall_up_part`,
+`chunk_mesh_props` and `emit_run_wall`'s half-width, plus `planview`'s colour. Until it lands
+a world's own door is **walked through, cut, recovered and described** correctly and still
+**drawn as masonry**.
