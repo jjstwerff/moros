@@ -164,6 +164,16 @@ What it turned up is worth more than the wiring:
   the eighth (`oct_fits_at`'s extent scan) is **provably unobservable** — it sizes a window for
   a second scan asking the same question — which is stated rather than forced.
 
+✅ **AND `R5b.3` CLOSED THE VISIBLE HALF** — six sites in `hex_mesh`, so a world's own door is
+walked through, cut, recovered, described **and drawn** as a door. ⛔ **Its finding is an
+INSTRUMENT one and it belongs in this file rather than in the plan**: `chunk_mesh_props`'
+doorway scan decides WHERE the hole is cut, and **a vertex count cannot see that** — 288
+either way, *every* mesh slot identical, the bounding box identical — because
+`emit_wall_panel_cut` emits a fixed `OPEN_SUB` bands whatever the opening says. A three-edge
+gateway and a round arch were both tried and moved nothing; a **checksum over the vertex
+positions** is what answered, at `39266443` against `36107443`. ⚠ Three blind instruments
+before the fourth, on a claim that looked like it would show in a count.
+
 ⛔ **`hex_editor::names` — all EIGHT public functions have ZERO production callers.**
 `names_new` `name_generated` `label_named` `name_taken` `name_of` `name_free` `name_set`
 `name_refusal`. Tested at `B4`, invoked by nothing. It gets a consumer when catalogue entries

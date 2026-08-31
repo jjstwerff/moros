@@ -306,14 +306,19 @@ walk or reader ever consulted. ⛔ **A validated palette with no resolver is wor
 palette**: it tells an author their declaration was accepted. A world declaring its own
 door at a high slot got masonry from every reader, because `edge_is_wall` answers *wall*
 to any byte past the vocabulary. The walk, both opening gestures and the run limit now
-resolve it, and so do the eight readers `R5b.2` rewired. ⛔ **AND `R5b.2` FOUND THE
+resolve it, so do the eight readers `R5b.2` rewired, and so do the six mesher sites of `R5b.3`. ⛔ **AND `R5b.2` FOUND THE
 SHAPE OF THE MISTAKE THIS SECTION IS ABOUT, IN MY OWN WORK**: the edge palette has
 **two namespaces** — a role word, or a wall TYPE's own name — and `R5b` shipped them
 conflated, so a world that declared `octtower` had it stop being a wall. It was caught
 by **the only three fixtures in the tree that carry an edge palette**, which is the
 whole of §2 in one line: *a defect that exists only in somebody else's world is found
-only by a fixture that is somebody else's world.* ⛔ **`R5b.3`** — the mesher, the
-visible half — and **`R5c`** are next; `R3` and `R4` are still designed and not built.
+only by a fixture that is somebody else's world.* ✅ **`R5b.3` — the mesher, the visible half — is built too**, and its
+finding is an INSTRUMENT one worth carrying: the doorway scan decides WHERE the hole is
+cut, and a vertex **count** cannot see that — 288 either way, every mesh slot identical,
+the bounding box identical, because the cut path emits a fixed number of bands
+whatever the opening says. A checksum over the POSITIONS is what answered, after a
+three-edge gateway and a round arch had both been tried and moved nothing. ⛔ **`R5c`** is
+next and it is the last of `R5`; `R3` and `R4` are still designed and not built.
 
 ⚠ **`PAL_HTYPE` is the shape the whole thing should take, and it already works.** A world
 *declares* a house type and `press_verb` performs it, with `htype.loft` stating the limit
@@ -345,7 +350,7 @@ in `press_verb`. [EDITING_MODES](EDITING_MODES.md) already says the verb table m
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **I1** | **`R5`** — the identity comparisons through the mapping, with the grep gate that keeps them there | this is what makes "my game's materials" configuration instead of a fork | ✅ **`R5a` and `R5b` built** — the FLOOR role, then the EDGE roles; `tools/roles.sh` in `fast` advisory at **18 debt / 6 definition**, down from 26 debt. ✅ **`R5b.2` built too** — the eight `edge_is_wall` readers, measured at **2 725 ns per MARK** with an unwritten edge free, and the profiler putting the resolution under its own 3.1% floor on `peel.loft`. ⛔ **`R5b.3` — the MESHER — is next and it is the VISIBLE half**: a world's own door is walked through, cut, recovered and described correctly and still drawn as masonry. `R5c` after it |
+| **I1** | **`R5`** — the identity comparisons through the mapping, with the grep gate that keeps them there | this is what makes "my game's materials" configuration instead of a fork | ✅ **`R5a` and `R5b` built** — the FLOOR role, then the EDGE roles; `tools/roles.sh` in `fast` advisory at **18 debt / 6 definition**, down from 26 debt. ✅ **`R5b.2` built too** — the eight `edge_is_wall` readers, measured at **2 725 ns per MARK** with an unwritten edge free, and the profiler putting the resolution under its own 3.1% floor on `peel.loft`. ✅ **and `R5b.3`, the mesher** — so a world's own door is now walked through, cut, recovered, described **and drawn** as a door, in the mesh and in the plan view both. ⛔ **`R5c` is next and it is the last of `R5`**: the remaining ground roles, and `tools/roles.sh` promoted from advisory to a GATE |
 | I2 | **`R4`** — a level's own total mapping | a project ships a level, not a patch to our palette | ⛔ designed |
 | I3 | **publish `hex_voxel` + `hex_editor`** with `description`, `categories`, a README and one `examples/` scene each | the example **is** DoD clause 4 | not started |
 | I4 | the verb table as **data** | so a project's own verbs are a declaration | designed ([EDITING_MODES](EDITING_MODES.md)) |

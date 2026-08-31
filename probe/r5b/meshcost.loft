@@ -1,0 +1,67 @@
+// WHAT `R5b.3` COSTS THE CHUNK MESHER — plan 21.
+//
+//   cd probe/r5b && loft meshcost.loft --lib ../../lib
+//
+// ⛔ **`CLAUDE.md` NAMES THIS EXACT PATH AS THE ONE NOT TO ADD A SCAN TO**, from
+// `chunk_mesh_props`' own header: *"a per-cell scan added to the stream path costs the
+// whole stream"* — two separate passes once took the first client's service from a few
+// seconds to **seventy-one**, and every gate timed out. `R5b.3` puts a palette
+// resolution inside that loop, so it is measured rather than argued.
+//
+// ⚠ **A-B-B-A IN ONE PROCESS**, and the A/B across builds is `run.sh`'s job — here both
+// arms are the same build and the arms are *what the chunk holds*: a chunk of open
+// ground (every edge byte `0`, the absence guard's case) against one walled at every
+// cell (every edge resolved). That is the ratio the guard exists for.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+
+const U = 0.25;
+const N = 30;                 // chunk meshes an arm
+const W = 16;                 // the chunk is 16 x 16 cells
+
+fn ground(walls: boolean) -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 2..W + 2 {
+    for r in 0 - 2..W + 2 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  if walls {
+    for q in 0..W {
+      for r in 0..W {
+        for d in [4, 5, 0] { hex_editor::wall_set(w, q, r, d, hex_editor::WALL_MAT, 8, 2.0); }
+      }
+    }
+  }
+  w
+}
+
+fn mesh_n(w: VoxelWorld) -> integer {
+  n = 0;
+  for i in 0..N {
+    ms = hex_mesh::chunk_meshes_all(0, 0, w, false, hex_editor::WallRuns { items: [] },
+           hex_editor::RoofPlans { items: [] }, hex_editor::DoorLeaves { items: [] },
+           hex_editor::Openings { items: [] }, hex_editor::Annexes { items: [] },
+           hex_editor::WallRuns { items: [] }, hex_editor::Props { items: [] },
+           hex_editor::Slabs { items: [] }, hex_editor::Holes { items: [] });
+    n = n + len(hex_mesh::chunk_mesh_slot(ms, 5).vertices);
+  }
+  n
+}
+
+fn main() {
+  bare = ground(false);
+  full = ground(true);
+
+  a1s = now(); a1n = mesh_n(bare); a1 = now() - a1s;
+  b1s = now(); b1n = mesh_n(full); b1 = now() - b1s;
+  b2s = now(); b2n = mesh_n(full); b2 = now() - b2s;
+  a2s = now(); a2n = mesh_n(bare); a2 = now() - a2s;
+
+  // ⚠ THE CONTROL: the two arms must emit different meshes, or the clock is timing one
+  // thing twice — and each arm must answer the same both times.
+  println("wall verts  open {a1n}/{a2n}   walled {b1n}/{b2n}"
+        + "   (stable: {a1n == a2n && b1n == b2n}, differ: {a1n != b1n})");
+  println("open    A1 {a1} ms   A2 {a2} ms      ({N} chunk meshes of {W}x{W})");
+  println("walled  B1 {b1} ms   B2 {b2} ms");
+  println("⚠ believe the FIRST of each pair; the A1/A2 spread is the error bar.");
+}

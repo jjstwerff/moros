@@ -9,6 +9,8 @@ different questions that are easy to confuse:
 | `sh probe/r5b/run.sh` | **does the resolution show up in `edges_around`'s own clock?** |
 | `sh probe/r5b/cost.sh` | **and in `peel.loft`'s and `planview_region.loft`'s?** — `R5b.2` |
 | `loft door_corner.loft --lib ../../lib` | **does the corner rule delete a door?** It did |
+| `loft dseg.loft --lib ../../lib` | **can a vertex COUNT see where a doorway's hole is?** It cannot — `R5b.3` |
+| `loft meshcost.loft --lib ../../lib` | **what a chunk of walls costs against a chunk of open ground** |
 
 ## Why there is a cost probe at all
 
@@ -80,6 +82,26 @@ defect to a world's own door. **A consistency fix that spreads a defect is not a
 site is removed rather than resolved, and the probe answers `✅ the door survived.` now.
 [EDITOR_DEFECTS 12](../../doc/claude/EDITOR_DEFECTS.md).
 
+## ⛔ `dseg.loft` — three blind instruments before the fourth answered
+
+`chunk_mesh_props` collects every doorway edge in a chunk into `dsegs` so that *a gateway of
+two or three edges is ONE arch across the lot*. Asked of the byte, a world's own doorway is
+never collected — and the obvious readings all say **nothing changed**:
+
+| the declared doorway, wired against asking the byte | |
+|---|---|
+| vertices in the wall slot | **288 both ways** |
+| vertices in **every** one of the twelve slots | **identical** |
+| the bounding box | **identical** |
+| ✅ a checksum over the vertex POSITIONS | **39266443** against **36107443** |
+
+⛔ **288 is exactly 8 × a plain wall's 36.** `emit_wall_panel_cut` always emits `OPEN_SUB`
+bands whatever the opening says, so **where the hole is never changes how many vertices there
+are**, and the panel spans its own edge either way so the box is blind too. ⚠ A three-edge
+gateway and a round arch (`kind=round spring=5 radius=0.5`) were both tried first and neither
+moved a count — the checksum was reached for after the obvious readings were exhausted, not
+instead of them. **Give a claim the instrument that can SEE it.**
+
 ## The sweep
 
 ⚠ Restored from **copies**, never `git checkout` — the subject of a sweep is uncommitted by
@@ -110,6 +132,21 @@ everywhere and reads as the strongest catch in the table.
 | **18** | `edge_is_wall_at` never resolves — the whole step at once | ⛔ RED |
 | 19 | ✅ `edge_is_wall_at`'s absence GUARD dropped | ✅ green |
 | **20** | a declared wall TYPE is a role of its own | ⛔ RED — the bug `R5b` shipped |
+| **21** | `wall_up_at` asks the byte | ⛔ RED `wall_role` |
+| **22** | `emit_run_wall` asks `edge_is_wall` | ⛔ RED |
+| **23** | `chunk_mesh_props`' door SCAN asks the byte | ⛔ RED — **only the checksum sees it** |
+| **24** | `chunk_mesh_props`' `sidoor` asks the byte | ⛔ RED |
+| **25** | `wall_up_part_at` asks the byte | ⛔ RED |
+| **26** | the plan view's colour asks the byte | ⛔ RED |
+
+⚠ **Rows 21–26 run a DIFFERENT test file in a different package** (`hex_mesh`), so each row
+declares its own — `cut.py --files`. Running all three files for all 27 rows would be three
+`loft test` runs a row for a table whose off-diagonal cells are structurally green.
+
+⛔ **AND THAT TABLE'S FIRST RUN WAS A COVERAGE REPORT TOO — 1 of 6.** Each mesher site needs a
+*different emitter* to be reached: a wall RUN, a declared thickness, a **stamped edge with no
+run behind it**, the world's `OPEN` section stating a head, and the SVG. Five fixtures later
+all six are red.
 
 ⛔ **AND AN UNAPPLIED CUT USED TO READ AS A GREEN ROW.** `edge_role_at`'s body changed under
 row 1 when the two-namespace bug was fixed, the cut stopped matching, and the row came back

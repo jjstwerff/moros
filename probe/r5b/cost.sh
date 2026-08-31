@@ -15,7 +15,7 @@
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 G=lib/hex_editor/src/gesture.loft
-TMP=$(mktemp -d); trap 'cp "$TMP/g" "$G"; rm -rf "$TMP"' EXIT INT TERM
+TMP=$(mktemp -d); trap 'cp "$TMP/g" "$G"; [ -f "$TMP/mp" ] && cp "$TMP/mp" lib/hex_mesh/src/hex_mesh.loft; rm -rf "$TMP"' EXIT INT TERM
 cp "$G" "$TMP/g"
 
 grep -q 'edge_is_wall_at(wld, q, r' "$G" || { echo "⛔ the readers are not wired — nothing to measure"; exit 1; }
@@ -68,5 +68,36 @@ for f in "lib/hex_editor tests/peel.loft" "lib/hex_mesh tests/planview_region.lo
   swap wired; row "A2 AFTER  again"             "$1" "$2"
 done
 
+# ── AND THE CHUNK MESHER — plan 21 `R5b.3` ─────────────────────────────────
+#
+# ⛔ **`chunk_mesh_props`' OWN HEADER NAMES THIS PATH AS THE ONE NOT TO ADD A SCAN TO**:
+# *"a per-cell scan added to the stream path costs the whole stream"* — two separate
+# passes once took the first client's service from a few seconds to **seventy-one**, and
+# every gate timed out. `R5b.3` puts a palette resolution in that loop.
+#
+# ⚠ **THE BEFORE BUILD IS THE SWEEP'S OWN CUTS 21–25 APPLIED TOGETHER**, so the two
+# halves of this probe cannot describe different code: the sabotage that says *this site
+# asks the byte* and the baseline that measures what asking the byte cost are one text.
+MP=lib/hex_mesh/src/hex_mesh.loft
+cp "$MP" "$TMP/mp"
+
+mesh_row() {
+  printf '%-34s load %-6s ' "$1" "$(cut -d' ' -f1 /proc/loadavg)"
+  (cd probe/r5b && loft meshcost.loft --lib ../../lib 2>&1) \
+    | grep -E '^(open|walled)' | tr '\n' ' '
+  printf '\n'
+}
+
+printf '\n── the chunk mesher ──────────────────────────────\n'
+mesh_row "A1 AFTER  (the roles)"
+for row in 21 22 23 24 25; do python3 probe/r5b/cut.py "$row" || exit 1; done
+mesh_row "B1 BEFORE (the bytes)"
+mesh_row "B2 BEFORE again"
+cp "$TMP/mp" "$MP"
+mesh_row "A2 AFTER  again"
+
 cp "$TMP/g" "$G"
-printf '\nrestored: '; diff -q "$TMP/g" "$G" >/dev/null && echo "gesture.loft identical to the saved subject"
+cp "$TMP/mp" "$MP"
+printf '\nrestored: '
+diff -q "$TMP/g" "$G" >/dev/null && diff -q "$TMP/mp" "$MP" >/dev/null \
+  && echo "gesture.loft and hex_mesh.loft identical to the saved subject"

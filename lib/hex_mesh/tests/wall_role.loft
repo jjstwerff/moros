@@ -1,0 +1,404 @@
+// WHAT A WORLD'S OWN DOOR LOOKS LIKE — plan 21 `R5b.3`.
+//
+// ⛔ **`R5b` AND `R5b.2` MADE A WORLD'S OWN DOOR WALKABLE, CUTTABLE, RECOVERABLE AND
+// DESCRIBED — AND IT WAS STILL DRAWN AS A WALL.** `wall_up` asked *what does MOROS
+// number a door* and answered `STOREY_H` to every byte past its own vocabulary, so a
+// world that declares its door at slot 7 got full-height masonry with a walker passing
+// through it, the store, the palette, the walk and the plan view all saying *door*.
+// **That is the half a person SEES**, which is why it is its own step.
+//
+// ⚠ **EVERY NUMBER BELOW IS MEASURED OFF THE EMITTED MESH**, never off the function
+// that decides it — `wall_thick.loft`'s rule, one file over, and `CLAUDE.md`'s: *measure
+// what was actually emitted, never a number the producer re-derives.* A test that asked
+// `wall_up_at` what `wall_up_at` says could not be surprised by a mesher that never
+// called it.
+use hex_mesh;
+use hex_voxel;
+use hex_editor;
+use hex_part;
+
+const U = 0.25;
+const SURF_WALL = 5;          // the `wall` surface's index in `chunk_meshes_all`
+const TYPE_SLOT = 7;          // an EDGE PALETTE slot, past `EDGE_MAT_LAST`
+
+fn flat_world() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 {
+    for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); }
+  }
+  w
+}
+
+fn name_edge(w: VoxelWorld, slot: integer, name: text) {
+  code = hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0,
+           [hex_voxel::PalEntry { pl_slot: slot, pl_name: name }]);
+  assert(code == hex_voxel::PAL_OK, "the palette refused {slot}={name}: code {code}");
+}
+
+// ⚠ THE RUN IS REGISTERED AND ITS EDGES ARE NOT STAMPED, for `wall_thick.loft`'s
+// reason: `wall_stamp` does both, and the per-edge panels drawn from the store would be
+// a second wall on top of this one (EDITOR_DEFECTS 4) with its own height.
+fn run_wall_mesh(w: VoxelWorld, mat: integer) -> Mesh {
+  rs = hex_editor::WallRuns { items: [
+         hex_editor::WallRun { wr_base: 0, wr_up: 0,
+                               wr_x0: 0.0, wr_z0: 0.0, wr_x1: 6.0, wr_z1: 0.0,
+                               wr_mat: mat, wr_step: 1 } ] };
+  ms = hex_mesh::chunk_meshes_all(0, 0, w, false, rs,
+         hex_editor::RoofPlans { items: [] }, hex_editor::DoorLeaves { items: [] },
+         hex_editor::Openings { items: [] }, hex_editor::Annexes { items: [] },
+         hex_editor::WallRuns { items: [] }, hex_editor::Props { items: [] },
+         hex_editor::Slabs { items: [] }, hex_editor::Holes { items: [] });
+  hex_mesh::chunk_mesh_slot(ms, SURF_WALL)
+}
+
+// ⛔ **A POSITION CHECKSUM, because a COUNT and a BOUNDING BOX are both blind here.**
+// `emit_wall_panel_cut` emits a fixed `OPEN_SUB` bands whatever the opening says, and
+// the panel spans its own edge either way — so moving the hole changes neither. Measured
+// in `probe/r5b/dseg.loft` before this was written, on the fixture that has the thing.
+// ⚠ NOT `sum_of` — loft has one (`01_code.loft`), and the redefinition is a parse error
+// that names both sites, which is the diagnostic working.
+fn pos_sum(m: Mesh) -> integer {
+  s = 0.0;
+  for v in m.vertices { s = s + v.pos.x * 7.0 + v.pos.y * 13.0 + v.pos.z * 29.0; }
+  (s * 1000.0) as integer
+}
+
+// How tall the emitted wall stands, in world units — the extreme `y` of its vertices.
+fn top_of(m: Mesh) -> float {
+  hi = 0.0;
+  for v in m.vertices { if v.pos.y > hi { hi = v.pos.y; } }
+  hi
+}
+
+// ── THE CONTROLS COME FIRST ────────────────────────────────────────────────
+
+// ⚠ **THE INSTRUMENT, CHECKED AGAINST SOMETHING IT SHOULD FIND.** Three heights that
+// must already differ, or every row below is comparing noise.
+fn test_the_three_built_in_kinds_already_draw_three_heights() {
+  w = flat_world();
+  wall  = run_wall_mesh(w, hex_editor::WALL_MAT);
+  fence = run_wall_mesh(w, hex_editor::FENCE_MAT);
+  door  = run_wall_mesh(w, hex_editor::DOOR_MAT);
+  assert(len(wall.vertices) > 0, "a plain wall emitted nothing");
+  assert(len(door.vertices) == 0,
+         "a doorway emitted {len(door.vertices)} vertices — a door draws NOTHING, which "
+       + "is what `@HB-X70` is about");
+  assert(len(fence.vertices) > 0 && top_of(fence) < top_of(wall),
+         "a fence stands {top_of(fence)} against masonry's {top_of(wall)}");
+}
+
+// ⚠ **AND AN UNDECLARED HIGH SLOT IS A WALL** — the fixture must draw masonry before
+// naming it can be shown to change anything.
+fn test_an_undeclared_slot_draws_full_height_masonry() {
+  w = flat_world();
+  plain = run_wall_mesh(w, hex_editor::WALL_MAT);
+  alien = run_wall_mesh(w, TYPE_SLOT);
+  assert(len(alien.vertices) > 0, "an undeclared slot emitted nothing");
+  assert(top_of(alien) == top_of(plain),
+         "slot {TYPE_SLOT} stands {top_of(alien)} against masonry's {top_of(plain)} — "
+       + "an undeclared byte is a wall whose type is missing");
+}
+
+// ── AND THE CLAIM ──────────────────────────────────────────────────────────
+
+// ⛔ **A WORLD THAT CALLS SLOT 7 A DOOR GETS A HOLE, NOT A WALL.**
+fn test_a_world_that_numbers_its_own_door_draws_a_hole() {
+  w = flat_world();
+  name_edge(w, TYPE_SLOT, "door");
+  m = run_wall_mesh(w, TYPE_SLOT);
+  assert(len(m.vertices) == 0,
+         "the world calls edge slot {TYPE_SLOT} 'door' and the mesher drew "
+       + "{len(m.vertices)} vertices of masonry at height {top_of(m)}");
+}
+
+// ⛔ **AND ITS OWN FENCE GETS A FENCE'S HEIGHT.** A door is an absence and could be
+// faked by anything that emitted nothing; a fence is a specific number.
+fn test_a_world_that_numbers_its_own_fence_draws_it_waist_high() {
+  base = flat_world();
+  wall  = top_of(run_wall_mesh(base, hex_editor::WALL_MAT));
+  fence = top_of(run_wall_mesh(base, hex_editor::FENCE_MAT));
+
+  w = flat_world();
+  name_edge(w, TYPE_SLOT, "fence");
+  m = run_wall_mesh(w, TYPE_SLOT);
+  assert(len(m.vertices) > 0, "the world's own fence emitted nothing at all");
+  assert(top_of(m) == fence,
+         "the world calls slot {TYPE_SLOT} 'fence' and it stands {top_of(m)}, where a "
+       + "fence is {fence} and masonry is {wall}");
+}
+
+// ⚠ **AND A DECLARED WALL TYPE IS STILL A WALL** — `R5b.2`'s two namespaces, asserted
+// in the mesher too: `octtower` is a TYPE's name, not a role, so it draws masonry.
+fn test_a_declared_wall_type_still_draws_masonry() {
+  base = flat_world();
+  plain = top_of(run_wall_mesh(base, hex_editor::WALL_MAT));
+
+  w = flat_world();
+  name_edge(w, TYPE_SLOT, "octtower body={hex_editor::WALL_BODY_OCT}");
+  m = run_wall_mesh(w, TYPE_SLOT);
+  assert(len(m.vertices) > 0, "a declared wall type emitted nothing");
+  assert(top_of(m) == plain,
+         "the declared type stands {top_of(m)} against masonry's {plain}");
+}
+
+// ⛔ **AND THE OTHER DIRECTION, which is the half a fallback cannot fake.** Byte 1 is
+// `WALL_MAT` in this package; a world that calls it `door` must stop drawing masonry.
+fn test_the_built_in_wall_byte_named_door_draws_nothing() {
+  w = flat_world();
+  before = run_wall_mesh(w, hex_editor::WALL_MAT);
+  assert(len(before.vertices) > 0, "no wall to un-name");
+  name_edge(w, hex_editor::WALL_MAT, "door");
+  after = run_wall_mesh(w, hex_editor::WALL_MAT);
+  assert(len(after.vertices) == 0,
+         "edge byte {hex_editor::WALL_MAT} was named 'door' and {len(after.vertices)} "
+       + "vertices of masonry were still drawn");
+}
+
+// ⛔ **AND THE UPPER BOUND OF THE STEP: a world with NO palette draws the same mesh it
+// always did.** Every world in this corpus is one, so this is what says the rewiring
+// moved nothing — asserted vertex for vertex rather than by a count, because two meshes
+// of the same size can be different meshes.
+fn test_with_no_palette_every_edge_byte_draws_what_it_always_did() {
+  w = flat_world();
+  // ⚠ **THE EXPECTATION IS ANOTHER BYTE'S MESH, NOT A CONSTANT.** These heights are in
+  // WORLD coordinates — the fixture's ground is `8 * U` and a wall's top is that plus a
+  // storey — so a literal here would be the fixture's arithmetic re-derived, and the
+  // first version of this row asserted `3` against a measured `5` for exactly that
+  // reason. Two REFERENCE bytes the control above has already shown to differ make the
+  // row a witness instead of a restatement.
+  wallh  = top_of(run_wall_mesh(w, hex_editor::WALL_MAT));
+  fenceh = top_of(run_wall_mesh(w, hex_editor::FENCE_MAT));
+  assert(wallh > fenceh && fenceh > 0.0,
+         "the two references do not differ: wall {wallh}, fence {fenceh}");
+  for m in 0..8 {
+    a = run_wall_mesh(w, m);
+    if m == hex_editor::DOOR_MAT {
+      assert(len(a.vertices) == 0,
+             "byte {m} drew {len(a.vertices)} vertices where the byte form drew none");
+      continue;
+    }
+    want = wallh;
+    if m == hex_editor::FENCE_MAT { want = fenceh; }
+    assert(len(a.vertices) > 0, "byte {m} drew nothing");
+    assert(top_of(a) == want,
+           "byte {m} stands {top_of(a)}, and the byte form gave {want}");
+  }
+}
+
+// ── ⛔ AND THE WIDTH, WHICH IS A SECOND QUESTION `emit_run_wall` ASKS ───────
+//
+// `emit_run_wall` gates the palette's declared THICKNESS on *is this masonry* (`B4f`):
+// a wall type's `thick=` is honoured, and a fence keeps the family band because a fence
+// is not masonry. Asked of the byte, **every declared slot was masonry**, so a world
+// that declared `fence thick=0.9` at a high slot got a nine-tenths-thick fence where
+// byte 3 gets the band. ⚠ **The two rows are a PAIR** — a declared TYPE must still be
+// honoured, or this would read as the thickness feature being switched off.
+
+// The band across the run, which lies along +x — `wall_thick.loft`'s instrument.
+fn band_of(m: Mesh) -> float {
+  lo = 0.0;
+  hi = 0.0;
+  seen = false;
+  for v in m.vertices {
+    if !seen { lo = v.pos.z; hi = v.pos.z; seen = true; }
+    if v.pos.z < lo { lo = v.pos.z; }
+    if v.pos.z > hi { hi = v.pos.z; }
+  }
+  if !seen { return 0.0 - 1.0; }
+  hi - lo
+}
+
+fn about(a: float, b: float) -> boolean { a - b < 0.001 && b - a < 0.001 }
+
+fn test_a_declared_wall_type_is_still_given_its_declared_thickness() {
+  w = flat_world();
+  name_edge(w, TYPE_SLOT, "octtower thick=0.9");
+  b = band_of(run_wall_mesh(w, TYPE_SLOT));
+  assert(about(b, 0.9),
+         "a declared wall type of thick=0.9 came out {b} — `B4f`'s feature must not be "
+       + "switched off by asking the role");
+  assert(!about(0.9, hex_editor::wall_band()),
+         "0.9 is the family band, so the row above cannot fail");
+}
+
+fn test_a_world_that_calls_a_thick_slot_a_fence_is_drawn_as_a_fence() {
+  // ⚠ **THE REFERENCE IS BYTE 3's OWN MESH, NOT A CONSTANT** — and the first version of
+  // this row asserted `wall_band()` and went red for it. A fence has **no** half-width
+  // at all: `emit_run_wall` leaves `half` at 0 for anything that is not masonry, so a
+  // fence is a zero-thickness sheet, and byte 3 has always been drawn that way. A
+  // literal here would have been a claim about masonry.
+  ref = band_of(run_wall_mesh(flat_world(), hex_editor::FENCE_MAT));
+  w = flat_world();
+  name_edge(w, TYPE_SLOT, "fence thick=0.9");
+  b = band_of(run_wall_mesh(w, TYPE_SLOT));
+  assert(about(b, ref),
+         "the world calls slot {TYPE_SLOT} 'fence thick=0.9' and its run came out {b} "
+       + "thick, where byte {hex_editor::FENCE_MAT} comes out {ref} — a fence is not "
+       + "masonry, so a declared thickness is not its width");
+  assert(!about(0.9, ref), "0.9 is a fence's own band, so the row above cannot fail");
+  // …and it is a fence in the OTHER measurement too, or this row is about nothing.
+  assert(top_of(run_wall_mesh(w, TYPE_SLOT))
+         == top_of(run_wall_mesh(flat_world(), hex_editor::FENCE_MAT)),
+         "and it must stand at a fence's height");
+}
+
+// ── ⛔ THE PER-EDGE PANEL, which is a different emitter — `wall_up_part_at` ──
+//
+// A wall RUN is drawn by `emit_run_wall`; an edge the store holds with no run behind it
+// — a stencil's house wall, an edge placed by hand — is drawn by `chunk_mesh_props`'s
+// per-edge panel, which asks `wall_up_part_at`. Two emitters, one question, and a step
+// that reached only the first would leave every house's walls asking the byte.
+
+const REF = 2.0;              // world units — the fixture's ground is 8 * 0.25
+
+fn stamped_mesh(w: VoxelWorld, mat: integer) -> Mesh {
+  hex_editor::wall_set(w, 1, 1, 0, mat, 8, REF);
+  ms = hex_mesh::chunk_meshes_all(0, 0, w, false, hex_editor::WallRuns { items: [] },
+         hex_editor::RoofPlans { items: [] }, hex_editor::DoorLeaves { items: [] },
+         hex_editor::Openings { items: [] }, hex_editor::Annexes { items: [] },
+         hex_editor::WallRuns { items: [] }, hex_editor::Props { items: [] },
+         hex_editor::Slabs { items: [] }, hex_editor::Holes { items: [] });
+  hex_mesh::chunk_mesh_slot(ms, SURF_WALL)
+}
+
+fn test_the_per_edge_panel_reads_a_worlds_own_door_too() {
+  // The controls: masonry draws a panel, the built-in door draws none, and an
+  // undeclared high slot draws masonry's.
+  plain = stamped_mesh(flat_world(), hex_editor::WALL_MAT);
+  none  = stamped_mesh(flat_world(), hex_editor::DOOR_MAT);
+  alien = stamped_mesh(flat_world(), TYPE_SLOT);
+  assert(len(plain.vertices) > 0, "a stamped wall drew no panel");
+  assert(len(none.vertices) == 0, "the built-in door drew {len(none.vertices)}");
+  assert(top_of(alien) == top_of(plain),
+         "an undeclared slot stands {top_of(alien)} against masonry's {top_of(plain)}");
+
+  w = flat_world();
+  name_edge(w, TYPE_SLOT, "door");
+  m = stamped_mesh(w, TYPE_SLOT);
+  assert(len(m.vertices) == 0,
+         "the world calls edge slot {TYPE_SLOT} 'door' and the per-edge panel drew "
+       + "{len(m.vertices)} vertices of masonry");
+
+  f = flat_world();
+  name_edge(f, TYPE_SLOT, "fence");
+  fm = stamped_mesh(f, TYPE_SLOT);
+  fref = stamped_mesh(flat_world(), hex_editor::FENCE_MAT);
+  assert(len(fm.vertices) > 0 && top_of(fm) == top_of(fref),
+         "the world's own fence panel stands {top_of(fm)} against byte "
+       + "{hex_editor::FENCE_MAT}'s {top_of(fref)}");
+}
+
+// ── ⛔ AND THE PLAN VIEW'S COLOUR, which is the instrument a person READS ───
+//
+// ⚠ **THE PICTURE IS THE OTHER VISIBLE HALF.** `edge_colour` keyed its three colours on
+// *what Moros numbers a door*, so a world's own door drew in masonry's black beside the
+// walker who now walks through it. ⚠ **And the magenta must survive**: an edge byte
+// nothing explains is loud on purpose, which is what separates *undeclared* from
+// *a role this world named*.
+const BLACK   = "rgb(20,22,30)";
+const ORANGE  = "rgb(214,124,30)";
+const MAGENTA = "rgb(230,0,190)";
+
+fn plan_colours(w: VoxelWorld) -> text {
+  hex_mesh::plan_svg(w, 0 - 4, 0 - 4, 9, 9, 8.0, "role")
+}
+
+fn has(svg: text, colour: text) -> boolean { svg.find(colour) != null }
+
+fn test_the_plan_view_colours_a_worlds_own_door_as_a_door() {
+  // The controls first: an undeclared slot is LOUD, a declared type is masonry.
+  u = flat_world();
+  hex_editor::wall_set(u, 1, 1, 0, TYPE_SLOT, 8, REF);
+  usvg = plan_colours(u);
+  assert(has(usvg, MAGENTA),
+         "an undeclared edge slot did not draw loud — the picture cannot tell me "
+       + "what it cannot explain");
+  assert(!has(usvg, ORANGE), "and it is not already a door");
+
+  t = flat_world();
+  name_edge(t, TYPE_SLOT, "octtower body={hex_editor::WALL_BODY_OCT}");
+  hex_editor::wall_set(t, 1, 1, 0, TYPE_SLOT, 8, REF);
+  tsvg = plan_colours(t);
+  assert(has(tsvg, BLACK) && !has(tsvg, MAGENTA),
+         "a DECLARED wall type must draw as masonry and quietly");
+
+  // …and the claim.
+  d = flat_world();
+  name_edge(d, TYPE_SLOT, "door");
+  hex_editor::wall_set(d, 1, 1, 0, TYPE_SLOT, 8, REF);
+  dsvg = plan_colours(d);
+  assert(has(dsvg, ORANGE),
+         "the world calls edge slot {TYPE_SLOT} 'door' and the plan view drew no "
+       + "doorway at all");
+  assert(!has(dsvg, MAGENTA), "and it is explained, so it must not be loud");
+}
+
+// ⚠ **AND THE OTHER DIRECTION, which the fallback cannot fake.** Byte 1 is masonry in
+// this package; a world that calls it `door` must stop drawing it black.
+fn test_the_plan_view_reads_a_renamed_wall_byte_too() {
+  w = flat_world();
+  hex_editor::wall_set(w, 1, 1, 0, hex_editor::WALL_MAT, 8, REF);
+  assert(has(plan_colours(w), BLACK), "no masonry to un-name");
+  name_edge(w, hex_editor::WALL_MAT, "door");
+  svg = plan_colours(w);
+  assert(has(svg, ORANGE) && !has(svg, BLACK),
+         "edge byte {hex_editor::WALL_MAT} was named 'door' and the plan view still "
+       + "drew masonry");
+}
+
+// ── ⛔ AND THE DOORWAY WITH A HEAD, which is a THIRD emitter — `A8.9` §P9.14 ─
+//
+// When the world states an opening head, a doorway stops being a skip and becomes a
+// case: the panel draws the wall AROUND its hole so a lintel is possible. Both tests
+// there — the chunk's door SCAN that collects the segments, and `sidoor` — asked *what
+// does MOROS number a door*, so a world's own doorway got no head at all: not the wall,
+// not the hole, nothing.
+//
+// ⚠ **THE HEAD IS READ ONCE PER CHUNK FROM THE WORLD'S `OPEN` SECTION**, so the fixture
+// writes one rather than reaching into the mesher.
+fn headed_world() -> VoxelWorld {
+  w = flat_world();
+  code = hex_part::part_set_open(w, hex_part::PartOpen { po_head: 9, po_sill: 0,
+                                                         po_kind: "flat" });
+  assert(code == hex_part::PO_OK, "the fixture's OPEN section was refused: {code}");
+  w
+}
+
+fn test_a_worlds_own_doorway_gets_its_head_too() {
+  // ⚠ **THE CONTROLS ARE THE THREE THAT MAKE THE ROW MEAN ANYTHING.** With a head
+  // stated, the BUILT-IN door draws something (the wall around its hole) where without
+  // one it draws nothing — so `something` is not the wall's full panel by accident.
+  flat_door = stamped_mesh(flat_world(), hex_editor::DOOR_MAT);
+  assert(len(flat_door.vertices) == 0,
+         "with no head stated a doorway draws nothing, got {len(flat_door.vertices)}");
+  head_door = stamped_mesh(headed_world(), hex_editor::DOOR_MAT);
+  assert(len(head_door.vertices) > 0,
+         "with head=9 stated the built-in doorway still drew nothing — the fixture is "
+       + "not reaching the head path");
+  head_wall = stamped_mesh(headed_world(), hex_editor::WALL_MAT);
+  assert(len(head_door.vertices) != len(head_wall.vertices),
+         "a headed doorway and a plain wall emit the same mesh, so this row cannot "
+       + "tell them apart");
+
+  // …and the claim: the world's own door is the headed doorway, not the wall.
+  w = headed_world();
+  name_edge(w, TYPE_SLOT, "door");
+  m = stamped_mesh(w, TYPE_SLOT);
+  assert(len(m.vertices) == len(head_door.vertices),
+         "the world calls slot {TYPE_SLOT} 'door' and its edge emitted "
+       + "{len(m.vertices)} vertices, where the built-in doorway with the same head "
+       + "emits {len(head_door.vertices)} and a plain wall {len(head_wall.vertices)}");
+
+  // ⛔ **AND A COUNT CANNOT SEE WHERE THE HOLE IS**, which is the second half of this
+  // step and was measured rather than assumed (`probe/r5b/dseg.loft`).
+  // `emit_wall_panel_cut` always emits `OPEN_SUB` bands — 288 is exactly 8 × a plain
+  // wall's 36 — so the vertex count, and the bounding box with it, are **identical**
+  // whether the opening is at the doorway or degenerate at the origin. The chunk's door
+  // SCAN is what puts it in the right place, and only a checksum over the POSITIONS can
+  // tell: measured, `5:288/39266443` correct against `5:288/36107443` with the scan
+  // asking the byte. ⚠ *Give a claim the instrument that can SEE it.*
+  assert(pos_sum(m) == pos_sum(head_door),
+         "the world's own doorway and the built-in one emit the same {len(m.vertices)} "
+       + "vertices in DIFFERENT places — {pos_sum(m)} against {pos_sum(head_door)} — so "
+       + "the hole is cut somewhere else");
+}

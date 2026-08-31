@@ -19,9 +19,12 @@ T=lib/hex_editor/tests/role_mat.loft
 C=lib/hex_editor/tests/corner_close.loft
 E=lib/hex_editor/src/hex_editor.loft
 S=lib/hex_editor/src/session.loft
+M=lib/hex_mesh/src/hex_mesh.loft
+PV=lib/hex_mesh/src/planview.loft
+RL=lib/hex_mesh/tests/wall_role.loft
 SAVE=$(mktemp -d)
-save()    { cp "$G" "$SAVE/g"; cp "$W" "$SAVE/w"; cp "$T" "$SAVE/t"; cp "$C" "$SAVE/c"; cp "$E" "$SAVE/e"; cp "$S" "$SAVE/s"; }
-restore() { cp "$SAVE/g" "$G"; cp "$SAVE/w" "$W"; cp "$SAVE/t" "$T"; cp "$SAVE/c" "$C"; cp "$SAVE/e" "$E"; cp "$SAVE/s" "$S"; }
+save()    { cp "$G" "$SAVE/g"; cp "$W" "$SAVE/w"; cp "$T" "$SAVE/t"; cp "$C" "$SAVE/c"; cp "$E" "$SAVE/e"; cp "$S" "$SAVE/s"; cp "$M" "$SAVE/m"; cp "$PV" "$SAVE/pv"; cp "$RL" "$SAVE/rl"; }
+restore() { cp "$SAVE/g" "$G"; cp "$SAVE/w" "$W"; cp "$SAVE/t" "$T"; cp "$SAVE/c" "$C"; cp "$SAVE/e" "$E"; cp "$SAVE/s" "$S"; cp "$SAVE/m" "$M"; cp "$SAVE/pv" "$PV"; cp "$SAVE/rl" "$RL"; }
 save
 trap 'restore; rm -rf "$SAVE"' EXIT INT TERM
 
@@ -34,8 +37,10 @@ cut() { python3 probe/r5b/cut.py "$1" 2>&1 || return 1; }
 # ⚠ **TWO TEST FILES, AND WHICH ONE WENT RED IS PART OF THE ANSWER.** `role_mat.loft`
 # carries the roles; `corner_close.loft` carries `B4y`'s corner rule, and the door the
 # fix stopped it deleting is only visible there.
-one() {   # $1 = test file basename; echoes "ok" | "red:<n>" | "build" | "noresult"
-  out=$(cd lib/hex_editor && loft test "tests/$1" 2>&1)
+one() {   # $1 = "<pkgdir>:<testfile>"; echoes "ok" | "red:<n>" | "build" | "noresult"
+  d=${1%%:*}
+  f=${1#*:}
+  out=$(cd "$d" && loft test "$f" 2>&1)
   if printf '%s' "$out" | grep -qE '^error|Unknown (function|type|field)|declared by more than one'; then
     echo build; return
   fi
@@ -43,23 +48,28 @@ one() {   # $1 = test file basename; echoes "ok" | "red:<n>" | "build" | "noresu
   [ -z "$res" ] && { echo noresult; return; }
   case "$res" in
     *"result: ok."*) echo ok ;;
-    *) echo "red:$(printf '%s' "$out" | grep -cE "^  FAIL  tests/$1::")" ;;
+    *) echo "red:$(printf '%s' "$out" | grep -cE "^  FAIL  $f::")" ;;
   esac
 }
 
-run() {
-  a=$(one role_mat.loft)
-  b=$(one corner_close.loft)
-  case "$a$b" in
-    *build*)    printf '%s | ⛔ DID NOT BUILD — the row is worthless\n' "$1"; return ;;
-    *noresult*) printf '%s | ⛔ NO RESULT LINE\n' "$1"; return ;;
-  esac
-  case "$a:$b" in
-    ok:ok) printf '%s | green\n' "$1" ;;
-    ok:*)  printf '%s | RED corner_close (%s)\n' "$1" "${b#red:}" ;;
-    *:ok)  printf '%s | RED role_mat (%s)\n'     "$1" "${a#red:}" ;;
-    *)     printf '%s | RED both (%s/%s)\n'      "$1" "${a#red:}" "${b#red:}" ;;
-  esac
+# ⚠ **EACH ROW IS ASKED OF ITS OWN FILES** (`cut.py --files`), because the mesher's rows
+# live in another package. A row that cannot BUILD or produces no result line is called
+# out rather than scored, for the reason at the head of this file.
+run() {   # $1 = label, $2 = space-separated "<pkgdir>:<testfile>" list
+  hit=""
+  for spec in $2; do
+    r=$(one "$spec")
+    case "$r" in
+      build)    printf '%s | ⛔ DID NOT BUILD (%s) — the row is worthless\n' "$1" "${spec#*:}"; return ;;
+      noresult) printf '%s | ⛔ NO RESULT LINE (%s)\n' "$1" "${spec#*:}"; return ;;
+      ok)       ;;
+      *)        n=${r#red:}
+                base=${spec#*:}; base=${base#tests/}; base=${base%.loft}
+                hit="$hit $base($n)" ;;
+    esac
+  done
+  if [ -z "$hit" ]; then printf '%s | green\n' "$1"
+  else printf '%s | RED%s\n' "$1" "$hit"; fi
 }
 
 echo "── the subject is PRESENT before row 0 ─────────────────────────────────"
@@ -76,7 +86,7 @@ echo "----|----------------------------------------------------|-------"
 # ⚠ Rows can be named on the command line while a step is being written — `sh
 # probe/r5b/sweep.sh 14 15 17`. The default is the whole table, which is what the
 # record quotes.
-ROWS=${*:-0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20}
+ROWS=${*:-0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26}
 for row in $ROWS; do
   restore
   lbl=$(python3 probe/r5b/cut.py --label "$row")
@@ -84,14 +94,14 @@ for row in $ROWS; do
     printf '%s | ⛔ THE CUT DID NOT APPLY — the row is worthless, refresh it\n' "$lbl"
     continue
   fi
-  run "$lbl"
+  run "$lbl" "$(python3 probe/r5b/cut.py --files "$row")"
 done
 restore
 printf '\nrestored from copies: '
 ok=1
-for pair in "$SAVE/g $G" "$SAVE/w $W" "$SAVE/t $T" "$SAVE/c $C" "$SAVE/e $E" "$SAVE/s $S"; do
+for pair in "$SAVE/g $G" "$SAVE/w $W" "$SAVE/t $T" "$SAVE/c $C" "$SAVE/e $E" "$SAVE/s $S" "$SAVE/m $M" "$SAVE/pv $PV" "$SAVE/rl $RL"; do
   # shellcheck disable=SC2086
   diff -q $pair >/dev/null || ok=0
 done
-[ "$ok" = 1 ] && echo "all five files identical to the saved subject" \
+[ "$ok" = 1 ] && echo "all eight files identical to the saved subject" \
               || echo "⛔ THE TREE DID NOT COME BACK"

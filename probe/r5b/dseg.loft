@@ -1,0 +1,65 @@
+use hex_mesh; use hex_voxel; use hex_editor; use hex_part;
+const U = 0.25;
+const SURF_WALL = 5;
+const REF = 2.0;
+fn flat() -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  for q in 0 - 10..14 { for r in 0 - 10..14 { hex_editor::ground_set(w, q, r, 8, hex_editor::SURFACE_MAT); } }
+  code = hex_part::part_set_open(w, hex_part::PartOpen { po_head: 9, po_sill: 0, po_kind: "round", po_spring: 5, po_radius: 0.5 });
+  if code != hex_part::PO_OK { println("OPEN refused {code}"); }
+  w
+}
+fn m_of(w: VoxelWorld, mat: integer) -> Mesh {
+  // ⚠ A GATEWAY of three adjacent edges — `open_run_for`'s own subject: "a gateway of
+  // two or three edges is ONE arch across the lot". One edge cannot see the difference.
+  for i in 0..3 { hex_editor::wall_set(w, 1 + i, 1, 0, mat, 8, REF); }
+  ms = hex_mesh::chunk_meshes_all(0, 0, w, false, hex_editor::WallRuns { items: [] },
+         hex_editor::RoofPlans { items: [] }, hex_editor::DoorLeaves { items: [] },
+         hex_editor::Openings { items: [] }, hex_editor::Annexes { items: [] },
+         hex_editor::WallRuns { items: [] }, hex_editor::Props { items: [] },
+         hex_editor::Slabs { items: [] }, hex_editor::Holes { items: [] });
+  hex_mesh::chunk_mesh_slot(ms, SURF_WALL)
+}
+fn span(m: Mesh) -> text {
+  if len(m.vertices) == 0 { return "empty"; }
+  lox = 0.0; hix = 0.0; loz = 0.0; hiz = 0.0; s = false;
+  for v in m.vertices {
+    if !s { lox = v.pos.x; hix = v.pos.x; loz = v.pos.z; hiz = v.pos.z; s = true; }
+    if v.pos.x < lox { lox = v.pos.x; }
+    if v.pos.x > hix { hix = v.pos.x; }
+    if v.pos.z < loz { loz = v.pos.z; }
+    if v.pos.z > hiz { hiz = v.pos.z; }
+  }
+  "x {hix - lox}  z {hiz - loz}"
+}
+// ⚠ EVERY SLOT, because a wall's opening may land in the surrounds or the frame rather
+// than in the wall — `probe/pc`'s lesson: the first instrument was blind because it read
+// one channel.
+fn all_of(w: VoxelWorld, mat: integer) -> text {
+  for i in 0..3 { hex_editor::wall_set(w, 1 + i, 1, 0, mat, 8, REF); }
+  ms = hex_mesh::chunk_meshes_all(0, 0, w, false, hex_editor::WallRuns { items: [] },
+         hex_editor::RoofPlans { items: [] }, hex_editor::DoorLeaves { items: [] },
+         hex_editor::Openings { items: [] }, hex_editor::Annexes { items: [] },
+         hex_editor::WallRuns { items: [] }, hex_editor::Props { items: [] },
+         hex_editor::Slabs { items: [] }, hex_editor::Holes { items: [] });
+  // ⛔ **A COUNT CANNOT SEE A POSITION.** `emit_wall_panel_cut` always emits `OPEN_SUB`
+  // bands — 288 is exactly 8 x the plain wall's 36 — so where the hole IS never changes
+  // the vertex count. The checksum is what can see it.
+  out = "";
+  for i in 0..12 {
+    m = hex_mesh::chunk_mesh_slot(ms, i);
+    if len(m.vertices) == 0 { continue; }
+    sum = 0.0;
+    for v in m.vertices { sum = sum + v.pos.x * 7.0 + v.pos.y * 13.0 + v.pos.z * 29.0; }
+    out = out + " {i}:{len(m.vertices)}/{(sum * 1000.0) as integer}";
+  }
+  out
+}
+
+fn main() {
+  println("built-in door :{all_of(flat(), hex_editor::DOOR_MAT)}");
+  w = flat();
+  hex_voxel::world_set_palette(w, hex_voxel::PAL_EDGE, 0, [hex_voxel::PalEntry { pl_slot: 7, pl_name: "door" }]);
+  println("declared door :{all_of(w, 7)}");
+  println("plain wall    :{all_of(flat(), hex_editor::WALL_MAT)}");
+}

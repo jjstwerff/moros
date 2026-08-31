@@ -130,16 +130,27 @@ fn cell_fill(mat: integer) -> text {
 // went on shouting at it would be shouting at the feature. What still gets the magenta
 // is a byte **nothing explains**: stamped, and declared nowhere. The rule the § opened
 // with is unchanged and its subject is sharper — *undeclared*, not *unnamed*.
-fn edge_colour(mat: integer, declared: boolean) -> text {
-  if mat == hex_editor::WALL_MAT  { return "rgb(20,22,30)"; }
-  if mat == hex_editor::DOOR_MAT  { return "rgb(214,124,30)"; }
-  if mat == hex_editor::FENCE_MAT { return "rgb(60,140,70)"; }
-  if declared && hex_editor::edge_is_wall(mat) { return "rgb(20,22,30)"; }
+//
+// ⚠ **AND IT TAKES THE ROLE NOW, NOT THE BYTE — plan 21 `R5b.3`.** The three colours
+// were keyed on *what Moros numbers a door*, so a world that declares its own door at a
+// high slot drew it in masonry's black beside the walker who now walks through it. The
+// `declared` half is unchanged and still does the shouting: a byte **nothing explains**
+// is magenta, and `known` is what separates *undeclared* from *unnamed*.
+//
+// ⚠ **A WINDOW HAS NO COLOUR HERE AND DID NOT BEFORE**, which is preserved rather than
+// fixed: `edge_is_wall(WINDOW_MAT)` is false, so byte 4 has always fallen through to the
+// magenta. Giving it one would change the picture, which is a different step from making
+// the picture ask the world.
+fn edge_colour(role: text, known: boolean) -> text {
+  if role == hex_editor::ROLE_DOOR  { return "rgb(214,124,30)"; }
+  if role == hex_editor::ROLE_FENCE { return "rgb(60,140,70)"; }
+  if role == hex_editor::ROLE_WALL && known { return "rgb(20,22,30)"; }
   "rgb(230,0,190)"
 }
 
-fn edge_width(mat: integer) -> float {
-  if mat == hex_editor::FENCE_MAT { return 0.06; }
+// ⚠ THE SAME QUESTION, so the same door — a world's own fence draws at a fence's width.
+fn edge_width(role: text) -> float {
+  if role == hex_editor::ROLE_FENCE { return 0.06; }
   0.13
 }
 
@@ -674,8 +685,15 @@ pub fn plan_panel(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: inte
         // claims to be of.
         ergn = hex_voxel::world_region_at(w, q, r);
         wt = hex_editor::wall_type(w, ergn, emat);
-        ewid = edge_width(emat);
-        ecol = edge_colour(emat, wt.wt_ok);
+        // ⚠ **`known` IS *the built-in vocabulary OR this world's declaration*** — plan
+        // 21 `R5b.3`. `wt_ok` alone answered the second half, and the first was carried
+        // by `edge_is_wall(mat)` being true for byte 1; with the role asked instead, the
+        // byte's own vocabulary has to be said out loud or every plain wall in every
+        // palette-free world turns magenta.
+        erole = hex_editor::edge_role_at(w, q, r, emat);
+        eknown = emat <= hex_editor::EDGE_MAT_LAST || wt.wt_ok;
+        ewid = edge_width(erole);
+        ecol = edge_colour(erole, eknown);
         ebody = "";
         ethick = 0.0;
         if wt.wt_ok {

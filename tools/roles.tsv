@@ -14,9 +14,4 @@ lib/hex_editor/src/session.loft	session_select_wall	FENCE_MAT	1	debt
 lib/hex_editor/src/session.loft	session_select_wall	WINDOW_MAT	1	debt
 lib/hex_editor/src/walk.loft	wall_stops_walk	FENCE_MAT	1	definition
 lib/hex_mesh/src/hex_mesh.loft	chunk_mesh_mat_in	SURFACE_MAT	1	debt
-lib/hex_mesh/src/hex_mesh.loft	chunk_mesh_props	DOOR_MAT	2	debt
 lib/hex_mesh/src/hex_mesh.loft	chunk_mesh_props	ROOF_MAT	1	debt
-lib/hex_mesh/src/hex_mesh.loft	wall_up	DOOR_MAT	1	debt
-lib/hex_mesh/src/hex_mesh.loft	wall_up	FENCE_MAT	1	debt
-lib/hex_mesh/src/hex_mesh.loft	wall_up_part	DOOR_MAT	1	debt
-lib/hex_mesh/src/hex_mesh.loft	wall_up_part	FENCE_MAT	1	debt

@@ -580,7 +580,7 @@ fast:
 	@NAMES_ADVISORY=1 sh tools/names.sh
 # ⚠ **AND THE FOURTH NAME QUESTION: WHO STILL DECIDES AN IDENTITY FROM A CONSTANT.**
 # `names.sh` asks who else declares a name; this asks who reads a stored byte as one.
-# Advisory against `tools/roles.tsv` — the 18 open sites are plan 21 `R5b.2`/`R5c`'s work, and
+# Advisory against `tools/roles.tsv` — the 12 open sites are plan 21 `R5c`'s work, and
 # a loop that failed on them every time is a loop people stop reading. A NEW one shows.
 	@ROLES_ADVISORY=1 sh tools/roles.sh
 # ⚠ AND THE CLAIM THE ADVISORY ABOVE RESTS ON, RE-MEASURED EVERY LOOP — under a second.
@@ -588,13 +588,21 @@ fast:
 # written with both mistakes reading as a clean pass. `probe/roles` is those two shapes
 # plus three more as fixtures, so the day the scan goes blind again a row goes red here
 # instead of the docket going quietly empty. `probe/names/run.sh`'s reason, one tool over.
-	@sh probe/roles/run.sh > /dev/null
+# ⛔ **THE OUTPUT IS KEPT AND PRINTED ON FAILURE, AND IT WAS `> /dev/null` UNTIL A REAL
+# FAILURE PROVED WHY THAT IS WRONG — 2026-08-31.** This probe went red (correctly: its row
+# F caught `tools/roles.tsv` being edited while it held the file aside) and `make` reported
+# a bare `Error 1` on a comment line, with the only visible output being the PREVIOUS
+# step's advisory — which read as *the advisory failed the loop*, and it had not. **A check
+# whose diagnostic is discarded is a check that gets attributed to the wrong step**, which
+# is this tree's *a known-flaky failure is where a real one hides* at the level of `make`.
+	@out=$$(sh probe/roles/run.sh 2>&1) || { printf '%s\n' "$$out"; exit 1; }
 # ⚠ **AND THE CLAIM THE CHECK ABOVE RESTS ON, RE-MEASURED EVERY LOOP — 2 s.**
 # `tools/names.sh` was built because a colliding bare name bound SILENTLY by import order
 # (loft#788); that is fixed, and this tree carried the old sentence in the tool's head for
 # three weeks. `probe/names/run.sh` is the claim as a command, with a control, so it
 # cannot rot in either direction: the day the silence returns, row A goes red here.
-	@sh probe/names/run.sh > /dev/null
+# ⚠ The same, for the same reason — see the note above `probe/roles`.
+	@out=$$(sh probe/names/run.sh 2>&1) || { printf '%s\n' "$$out"; exit 1; }
 # ⚠ THE CITATIONS INTO THE FORMAL CORE, WHICH LIVES IN ANOTHER REPO. 98 sites here
 # cite `X<n>` rows in `../hexbody/ROUNDTRIP.md`, and a citation rots SILENTLY — the
 # prose goes on reading correctly while the number names something else. ⚠ It SKIPS

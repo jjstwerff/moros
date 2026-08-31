@@ -95,6 +95,58 @@ ROWS.update({
          'pub fn edge_is_wall_at(w: VoxelWorld, q: integer, r: integer,\n                       mat: integer) -> boolean {'),
 })
 
+# ── plan 21 `R5b.3` — THE MESHER, in a different package ───────────────────
+#
+# ⚠ **THESE ROWS RUN A DIFFERENT TEST FILE**, so a row declares its own — see `FILES`.
+# Running every file for every row would be three `loft test` runs a row over 27 rows for
+# a table where most cells are structurally green.
+M  = 'lib/hex_mesh/src/hex_mesh.loft'
+PV = 'lib/hex_mesh/src/planview.loft'
+
+ROWS.update({
+  '21': (M, 'wall_up_at asks the byte',
+         '  role = hex_editor::edge_role_at(wld, q, r, mat);\n'
+         '  if role == hex_editor::ROLE_FENCE { return FENCE_UP; }\n'
+         '  if role == hex_editor::ROLE_DOOR { return 0; }\n'
+         '  hex_editor::STOREY_H\n}',
+         '  if mat == FENCE_MAT { return FENCE_UP; }\n'
+         '  if mat == DOOR_MAT { return 0; }\n'
+         '  hex_editor::STOREY_H\n}'),
+  '22': (M, 'emit_run_wall asks edge_is_wall, not _at',
+         '  if hex_editor::edge_is_wall_at(wld, rwq, rwr, run.wr_mat) {',
+         '  if hex_editor::edge_is_wall(run.wr_mat) {'),
+  '23': (M, "chunk_mesh_props' door SCAN asks the byte",
+         '            if !hex_editor::edge_is(wld, gq, gr, gws[gi], hex_editor::ROLE_DOOR) { continue; }',
+         '            if gws[gi] != DOOR_MAT { continue; }'),
+  '24': (M, "chunk_mesh_props' sidoor asks the byte",
+         '          sidoor = hex_editor::edge_is(wld, cq, cr, ews[si], hex_editor::ROLE_DOOR)\n'
+         '                   && pohead > 0;',
+         '          sidoor = ews[si] == DOOR_MAT && pohead > 0;'),
+  '25': (M, 'wall_up_part_at asks the byte',
+         '  role = hex_editor::edge_role_at(wld, q, r, mat);\n'
+         '  if role == hex_editor::ROLE_FENCE { return FENCE_UP; }\n'
+         '  if role == hex_editor::ROLE_DOOR { return 0; }\n'
+         '  if pup > 0 { return pup; }',
+         '  if mat == FENCE_MAT { return FENCE_UP; }\n'
+         '  if mat == DOOR_MAT { return 0; }\n'
+         '  if pup > 0 { return pup; }'),
+  '26': (PV, "the plan view's colour asks the byte",
+         '        erole = hex_editor::edge_role_at(w, q, r, emat);',
+         '        erole = hex_editor::edge_kind_of(emat).ek_name;'),
+})
+
+# ── WHICH TEST FILES EACH ROW IS ASKED OF ──────────────────────────────────
+#
+# ⚠ **A ROW DECLARES ITS OWN**, because the mesher's rows live in another package and
+# running all three files for all 27 rows is three `loft test` runs a row for a table
+# whose off-diagonal cells are structurally green.
+ED = 'lib/hex_editor:tests/role_mat.loft lib/hex_editor:tests/corner_close.loft'
+ME = 'lib/hex_mesh:tests/wall_role.loft'
+FILES = {}
+for _k in ROWS:
+    FILES[_k] = ME if _k in ('21', '22', '23', '24', '25', '26') else ED
+FILES['0'] = ED + ' ' + ME       # ⚠ the control is asked of everything
+
 LABELS = {'0': 'control — nothing cut'}
 LABELS.update({k: v[1] for k, v in ROWS.items()})
 # ⚠ Rows 8, 9 and 19 must stay GREEN — a sweep of only-red rows cannot tell *the tests
@@ -106,6 +158,10 @@ LABELS.update({k: v[1] for k, v in ROWS.items()})
 # failure mode of the two disagreeing is a window narrower than the field, which is
 # `probe/tw`'s cliff rather than a smaller picture.
 GREEN = {'8', '9', '11', '19'}
+
+if sys.argv[1] == '--files':
+    print(FILES[sys.argv[2]])
+    sys.exit(0)
 
 if sys.argv[1] == '--label':
     n = sys.argv[2]

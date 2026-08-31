@@ -5,7 +5,7 @@
 
 ## Status
 
-**`R1`, `R2`, `R5a`, `R5b` and `R5b.2` are shipped; `R3`, `R4`, `R5b.3` and `R5c` are designed, not built.**
+**`R1`, `R2`, `R5a`, `R5b`, `R5b.2` and `R5b.3` are shipped; `R3`, `R4` and `R5c` are designed, not built.**
 ⚠ `R1` was **reshaped before any code**
 by finding that the palette already exists in the predecessor model (see below). What stopped
 the build is worth more than the build would have been: a fresh palette in `hex_editor` would
@@ -210,8 +210,8 @@ target and a negative control.
 | **`R5a`** — the FLOOR role, and the docket that counts the rest | M | `hex_editor/tests/role_mat.loft` (4) — a renumbered house recovers identically, an un-named byte recovers nothing, and byte 4 called `grass` stops being a house; `tools/roles.sh` checked against a seeded bypass AND against two on one line | ✅ **SHIPPED** |
 | **`R5b`** — the EDGE roles: `wall`, `door`, `fence` through a region-aware `edge_kind_at` | M | `hex_editor/tests/role_mat.loft` — a world that numbers its own door has it cut and walked through; `edge_kind_of` has no `_at` sibling today, so `PAL_EDGE` reaches nothing. ⚠ **And one of its four sites argues the opposite in its own comment**: `session_select_wall` refuses `DOOR_MAT`/`FENCE_MAT`/`WINDOW_MAT` *"deliberately"* — *"whether a slot is a legal wall type is a fact about the NUMBER … a selection is the author's and outlives the world they load next."* That is a real tension, not an oversight: a SELECTION has no cell and therefore no region, so there is nothing to resolve it against. `R5b` has to settle whether the reserved edge bytes are vocabulary (world-independent, and the row becomes a `definition`) or palette (and the refusal needs a world). It is docketed `debt` until then, because the answer is not yet taken | ✅ **SHIPPED** — and the tension was answered by MOVING the question rather than settling it: `open_ahead`/`open_span` **do** hold a world and a cell, so the check that needs one went to the GESTURE and `session_select_wall` is untouched |
 | **`R5b.2`** — the eight `edge_is_wall` READERS, and it is a COST step | M | `peel.loft` and `planview.loft` re-timed A-B-B-A either side, plus a house whose wall is a DECLARED type recovering identically to the same house on byte 1. ⛔ **The eight sit inside `for r … for q … for d in [4, 5, 0]` window scans**, which is the surface `R5a` already blew a 300-second deadline on — so the wiring is mechanical and the measurement is the step. ⚠ Until it lands, a world that declares its own door is **walked through and still drawn as masonry** (`hex_mesh::wall_up`, `planview`'s colour), which is a visible inconsistency rather than a gap | ✅ **SHIPPED** — and it found two things the wiring was not looking for: the edge palette has **two namespaces** (a role word, or a wall TYPE's own name — conflating them made a declared type stop being a wall, caught by the three fixtures in the tree that carry an edge palette), and `corner_write` had been **deleting a door** standing in the corner since `B4y`, which is why that site is REMOVED rather than resolved |
-| **`R5b.3`** — the MESHER, and it is the visible half | M | `hex_mesh::wall_up`, `wall_up_part`, `chunk_mesh_props` and `emit_run_wall`'s half-width, plus `planview`'s colour — five sites in a package that depends on this one. ⚠ **Until it lands a world's own door is walked through, cut, recovered and described correctly and still DRAWN as masonry**, which is a visible inconsistency rather than a gap. Its verify is a chunk mesh with a declared door emitting the door's triangle count and not the wall's, plus the stream path re-timed — `chunk_mesh_props` scans every cell of every chunk | Blocked on `R5b.2` |
-| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b.3` |
+| **`R5b.3`** — the MESHER, and it is the visible half | M | `hex_mesh::wall_up`, `wall_up_part`, `chunk_mesh_props` and `emit_run_wall`'s half-width, plus `planview`'s colour — five sites in a package that depends on this one. ⚠ **Until it lands a world's own door is walked through, cut, recovered and described correctly and still DRAWN as masonry**, which is a visible inconsistency rather than a gap. Its verify is a chunk mesh with a declared door emitting the door's triangle count and not the wall's, plus the stream path re-timed — `chunk_mesh_props` scans every cell of every chunk | ✅ **SHIPPED** — six sites, `lib/hex_mesh/tests/wall_role.loft` (13). ⛔ Its finding is an INSTRUMENT one: the doorway SCAN moves where the hole is cut and **a vertex count cannot see that** — 288 either way, every slot identical, the bounding box identical — because `emit_wall_panel_cut` emits a fixed `OPEN_SUB` bands whatever the opening says. A checksum over the POSITIONS is what answered |
+| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b.3` — **now unblocked** |
 
 ## Open questions
 
@@ -714,9 +714,154 @@ at load 1.36, the quietest of the four**. That is as far as this instrument goes
 and it is why instruments 1–3 are the answer: **0.5 ms a scan cannot be 12 seconds of a
 70-second file.**
 
+⛔ **AND THAT PARAGRAPH IS REFUTED BY ITS OWN COMMAND, RE-RUN — see `R5b.3`'s cost section
+below.** On a box at load 1.7 … 8.4 the same four rows are **64.4 / 60.7 against 61.3 / 62.8**
+— means 62.6 and 62.1, **0.8% apart**. The 85.0 s was a perturbation and the 1.16× was noise.
+⚠ **The table above is kept as written rather than edited**, because *the lowest load in a set
+is not the same as a quiet box* is the finding, and correcting the number away would delete
+it. ⚠ **`peel.loft` is also 60–64 s here against the 70–85 s measured a few hours earlier**,
+which is the same statement about the box rather than about the file.
+
 ### What is left
 
 **`R5b.3` — the MESHER**, and it is the visible half: `hex_mesh::wall_up`, `wall_up_part`,
 `chunk_mesh_props` and `emit_run_wall`'s half-width, plus `planview`'s colour. Until it lands
 a world's own door is **walked through, cut, recovered and described** correctly and still
 **drawn as masonry**.
+
+## What `R5b.3` turned up
+
+**`lib/hex_mesh/tests/wall_role.loft` (13) · `sh probe/r5b/sweep.sh` (27 rows, three test
+files across two packages) · `sh probe/r5b/cost.sh` · `probe/r5b/dseg.loft`.**
+
+Six sites in `hex_mesh`, and they are **the half a person sees**: `wall_up`, `wall_up_part`,
+`emit_run_wall`'s half-width, `chunk_mesh_props`' doorway SCAN and its `sidoor`, and
+`planview`'s edge colour. Before this a world that declared its own door at a high slot was
+walked through, cut, recovered and described correctly — **and drawn as full-height masonry**,
+in the mesh and in the plan view both.
+
+### ⚠ Where the region comes from was already decided, and it is not the chunk
+
+`emit_run_wall` had settled this at `B4f` for the wall's *thickness*, with the reason written
+out: *"a wall is meshed once per chunk it crosses, so resolving against the chunk would give
+one wall two thicknesses at a regional boundary. A run that itself crosses one takes the
+region it starts in."* **The height is the same question**, so `(rwq, rwr)` is hoisted and
+both take the run's own start cell. ⚠ Nothing new was decided here; the existing rule was
+found and followed.
+
+### ⛔ A COUNT COULD NOT SEE IT, AND NEITHER COULD A BOUNDING BOX
+
+`chunk_mesh_props` collects every doorway edge in the chunk into `dsegs` so that *a gateway of
+two or three edges is ONE arch across the lot*. Asked of the byte, a world's own doorway was
+never collected — and the first three instruments all reported **no difference at all**:
+
+| the declared doorway, wired against asking the byte | |
+|---|---|
+| vertices in the wall slot | **288 both ways** |
+| vertices in **every** slot | **identical, all twelve** |
+| the bounding box | **identical** |
+| ✅ a checksum over the vertex POSITIONS | **39266443 against 36107443** |
+
+⛔ **288 is exactly 8 × a plain wall's 36** — `emit_wall_panel_cut` always emits `OPEN_SUB`
+bands whatever the opening says, so **where the hole is never changes how many vertices there
+are**, and the panel spans its own edge either way so the box cannot see it either. ⚠ This is
+[CLAUDE.md](../../CLAUDE.md)'s *give a claim the instrument that can SEE it* met head on, and
+it took three blind instruments before the fourth answered. ⚠ **A three-edge gateway and a
+round arch were both tried first** — neither moved a count — so the checksum was reached for
+after the obvious readings were exhausted, not instead of them.
+
+### ⛔ THE SWEEP AGAIN ANSWERED COVERAGE FIRST — 1 of 6
+
+The first table over the six mesher sites had **five green rows**. Each needed a different
+emitter to be reached, and that is the useful part of the list:
+
+| the site | what a fixture has to have |
+|---|---|
+| `wall_up_at` | a wall RUN — the one row that was red from the start |
+| `emit_run_wall`'s half | a declared **thickness**, and a fence to refuse it to |
+| `wall_up_part_at` | a **stamped edge** with no run behind it — a different emitter |
+| `chunk_mesh_props`' `sidoor` | the world's `OPEN` section stating a **head** |
+| the door SCAN | the same, **plus** a position-sensitive reading |
+| `planview`'s colour | the SVG, and its **magenta** left intact |
+
+⚠ **A fence is drawn as a zero-thickness sheet, and that is not new** — `emit_run_wall` leaves
+`half` at 0 for anything that is not masonry, so byte 3 has always been a sheet. The first
+version of that test asserted `wall_band()` and went red for it; the assertion is byte 3's own
+measured mesh now. ⚠ **That is the second test in this plan whose first version compared
+against a constant where the reference had to be measured** — the other was `wall_role`'s own
+height row, which asserted `3` against a world-coordinate `5`.
+
+### ⚠ And one loft name collision, which is the diagnostic working
+
+`fn sum_of` is a loft builtin (`01_code.loft:1758`). The redefinition is a parse error naming
+**both** sites and the shadowed one, which is exactly the quality
+[CLAUDE.md](../../CLAUDE.md) records for same-name *declarations* — and the reason it is worth
+writing down is the contrast with the silent module-basename case one level up.
+
+### ⚠ The cost — and it re-measures `R5b.2`'s own peel number, which was noise
+
+`chunk_mesh_props`' header is the reason this is measured at all: *"a per-cell scan added to
+the stream path costs the whole stream"* — two passes once took a client's first service from
+a few seconds to **seventy-one**. `R5b.3` puts a palette resolution inside that loop.
+
+**A-B-B-A at the build level, `/proc/loadavg` beside every row, on a box at load 1.7 … 8.4:**
+
+| | AFTER | BEFORE |
+|---|---|---|
+| a chunk of **open ground**, 30 × 16 × 16 | 452 · **481** ms | 477 · 511 ms |
+| a chunk **walled at every cell** | 821 · **970** ms | 835 · 825 ms |
+| `peel.loft` | 64.4 · 60.7 s | 61.3 · 62.8 s |
+| `planview_region.loft` | 22.9 · **28.8** s | 22.6 · 22.8 s |
+
+⚠ **The bolded cells are one perturbation, not a trend** — the final mesher row reports 883 ms
+where its own first reading is 453 on the identical build, and `planview_region`'s A2 is the
+outlier at the *lowest* load of its four. Read against the first of each pair, **AFTER is
+faster than BEFORE on the open chunk and level everywhere else.**
+
+⛔ **AND THAT RE-MEASURES `R5b.2`'s OWN NUMBER, WHICH WAS NOISE.** That section reports the
+peel at *"means differing by ~1.16×, and its slowest row an AFTER taken at load 1.36"* — 85.0
+against 59.9. Re-run on this quiet box the same four rows are **64.4 / 60.7 against 61.3 /
+62.8: means 62.6 and 62.1, a difference of 0.8%.** The 85.0 was the perturbation, not the
+signal. ⚠ **The earlier table is kept as written and labelled rather than edited**, because
+the historical reading is the point — and because *the lowest load in a set is not the same as
+a quiet box* is the finding, stated once here and once there.
+
+✅ **So the answer the three instruments agree on is: no measurable cost.** The per-call
+number is `R5b.2`'s — **2 725 ns per MARK, an unwritten edge free** — and a chunk is
+overwhelmingly unwritten edges, which is exactly what the open-ground row says.
+
+### ✅ And the docket says the EDGE axis is finished
+
+**21 open sites → 12**, and the shape of what is left is the result:
+
+| what remains | |
+|---|---|
+| `cave_at`, `road_lay`, `roof_h`, `roof_read_box`, `enclosure_fill`, `triggers_resolve`, `chunk_mesh_mat_in`, `chunk_mesh_props` | ⛔ **all GROUND axis** — `R5c`'s work |
+| `session_select_wall` ×3 | ⚠ the one edge-axis row left, and it is the **selection with no cell** |
+| six `definition` rows | sites that ARE the role |
+
+⚠ **`session_select_wall` stays `debt` on purpose.** `R5b` answered its tension by moving the
+world-dependent check to the GESTURE, where a world exists — but the refusal itself is still
+*"slot 2 is a door"*, and a world that declared slot 2 to be a wall TYPE would be refused
+wrongly. **That needs a decision, not a wiring**, and it is the same one the row has carried
+since it was written: are the reserved edge bytes vocabulary, or palette?
+
+### ⛔ And `make fast` reported the failure against the wrong step, because the output was discarded
+
+Blessing `tools/roles.tsv` while `make fast` was mid-run made `probe/roles/run.sh` go red —
+**correctly**: its row F is *"the real tree is unchanged by having run this"*, and the probe
+holds the docket aside while it scans fixtures, so an edit landing in that window is exactly
+what it exists to catch. It caught the person who wrote it.
+
+⛔ **What is worth fixing is what `make` then said.** `probe/roles/run.sh > /dev/null` in the
+fast loop, so the failure was a bare `Error 1` on a comment line, and the only visible output
+was the **previous** step's roles advisory — which reads as *the advisory failed the loop*,
+and it had not. Several minutes went to looking at `roles.sh`'s exit paths for a bug that was
+not there.
+
+✅ **Both silenced probes keep their output now and print it on failure**
+(`out=$(… 2>&1) || { printf '%s\n' "$out"; exit 1; }`), checked in **both** directions before
+being believed: a failing stub prints its diagnostic and fails, a passing one is silent and
+exits 0. ⚠ **A check whose diagnostic is discarded is a check whose failure gets attributed to
+the wrong step** — this tree's *a known-flaky failure is where a real one hides*, one level up
+at `make`.

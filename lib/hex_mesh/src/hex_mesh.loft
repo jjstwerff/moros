@@ -1111,9 +1111,18 @@ const SLAB_STEP    = 0.5;         // world units between a holed ceiling's ribs
 // How tall a wall of this material stands. A DOOR draws nothing: the boundary is
 // still there in the storage, which is what `@HB-X70` is about, and what an opening
 // looks like is a hole you can see through.
-fn wall_up(mat: integer) -> integer {
-  if mat == FENCE_MAT { return FENCE_UP; }
-  if mat == DOOR_MAT { return 0; }
+//
+// ⚠ **AND *THIS MATERIAL* IS THE WORLD'S ANSWER, NOT THIS PACKAGE'S — plan 21 `R5b.3`.**
+// `R5b`/`R5b.2` made a world's own door walkable, cuttable, recoverable and described;
+// this is the half a person SEES. Without it a world that declares its door at a high
+// slot had it drawn as full-height masonry you could walk straight through — the store,
+// the palette, the walker and the plan view all saying *door* and the picture saying
+// wall. ⚠ **The absence case costs nothing** (`edge_role_at`'s guard), and byte `0`
+// answers `STOREY_H` here exactly as the byte form did.
+fn wall_up_at(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> integer {
+  role = hex_editor::edge_role_at(wld, q, r, mat);
+  if role == hex_editor::ROLE_FENCE { return FENCE_UP; }
+  if role == hex_editor::ROLE_DOOR { return 0; }
   hex_editor::STOREY_H
 }
 
@@ -1126,9 +1135,11 @@ fn wall_up(mat: integer) -> integer {
 // in** — a part whose whole purpose is a hole, drawn solid, with the document
 // still saying `door`. `FENCE_MAT` keeps `FENCE_UP` because a fence is a
 // different kind of boundary; a part that wants a low panel says `up`.
-fn wall_up_part(mat: integer, pup: integer) -> integer {
-  if mat == FENCE_MAT { return FENCE_UP; }
-  if mat == DOOR_MAT { return 0; }
+fn wall_up_part_at(wld: VoxelWorld, q: integer, r: integer, mat: integer,
+                   pup: integer) -> integer {
+  role = hex_editor::edge_role_at(wld, q, r, mat);
+  if role == hex_editor::ROLE_FENCE { return FENCE_UP; }
+  if role == hex_editor::ROLE_DOOR { return 0; }
   if pup > 0 { return pup; }
   hex_editor::STOREY_H
 }
@@ -1270,7 +1281,13 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
   // at its deck and a bedstee's side at its floor. The base is folded into the
   // GROUND height rather than into every band, so the whole run — faces, reveals,
   // mouldings and all — lifts together and no arithmetic below this line changes.
-  up = wall_up(run.wr_mat);
+  // ⚠ **THE RUN'S OWN START CELL, hoisted — plan 21 `R5b.3`.** `wall_half` below already
+  // resolves against it rather than against the chunk, with the reason written out there:
+  // a wall is meshed once per chunk it crosses, so the chunk would give one wall two
+  // answers at a regional boundary. The height is the same question and takes the same
+  // cell.
+  (rwq, rwr) = px_to_hex(run.wr_x0, run.wr_z0);
+  up = wall_up_at(wld, rwq, rwr, run.wr_mat);
   if run.wr_up > 0 { up = run.wr_up; }
   if up <= 0 { return; }
   bsy = (run.wr_base as float) * wld.w_unit;
@@ -1296,8 +1313,7 @@ fn emit_run_wall(m: Mesh, am: Mesh, run: WallRun, wld: VoxelWorld, q0: integer, 
   // crosses, so resolving against the chunk would give one wall two thicknesses at a
   // regional boundary. A run that itself crosses one takes the region it starts in —
   // the same choice `wr_mat` already makes about its material.
-  if hex_editor::edge_is_wall(run.wr_mat) {
-    (rwq, rwr) = px_to_hex(run.wr_x0, run.wr_z0);
+  if hex_editor::edge_is_wall_at(wld, rwq, rwr, run.wr_mat) {
     rw = hex_editor::run_wall(run.wr_x0, run.wr_z0, run.wr_x1, run.wr_z1,
                               hex_editor::wall_half(wld,
                                 hex_voxel::world_region_at(wld, rwq, rwr), run.wr_mat));
@@ -1938,7 +1954,11 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
                                   ge.h_wall_ne as integer ?? 0,
                                   ge.h_wall_e as integer ?? 0];
           for gi in 0..3 {
-            if gws[gi] != DOOR_MAT { continue; }
+            // ⚠ `edge_is(…, ROLE_DOOR)` — plan 21 `R5b.3`. This runs for every edge
+            // slot of every layer of every cell of the chunk, so it is the hottest
+            // resolution in the tree; `edge_role_at`'s absence guard is what keeps it
+            // free, because the overwhelming majority of these bytes are `0`.
+            if !hex_editor::edge_is(wld, gq, gr, gws[gi], hex_editor::ROLE_DOOR) { continue; }
             (gea, geb) = hex_grid::hex_edge_corners(slot_dir[gi] ?? 0);
             gc1 = hex_corner_world(gq, gr, 0, (6 - gea) % 6 ?? 0);
             gc2 = hex_corner_world(gq, gr, 0, (6 - geb) % 6 ?? 0);
@@ -2041,8 +2061,9 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
           // head impossible: an absence cannot carry a lintel. With a profile the
           // edge draws the wall around its hole; with none it is skipped exactly as
           // before, which is every part in the library that states nothing.
-          sidoor = ews[si] == DOOR_MAT && pohead > 0;
-          if ews[si] != 0 && (sidoor || wall_up_part(ews[si], pwup) > 0) {
+          sidoor = hex_editor::edge_is(wld, cq, cr, ews[si], hex_editor::ROLE_DOOR)
+                   && pohead > 0;
+          if ews[si] != 0 && (sidoor || wall_up_part_at(wld, cq, cr, ews[si], pwup) > 0) {
             (fq, fr) = hex_grid::hex_neighbor(cq, cr, slot_dir[si]);
             aw = hex_to_world(cq, cr, 0);
             bw = hex_to_world(fq, fr, 0);
@@ -2052,7 +2073,7 @@ fn chunk_mesh_props(cx: integer, cz: integer, wld: VoxelWorld, vm: Mesh, km: Mes
                                                     (aw.z + bw.z) * 0.5) < 0.9;
             }
             if !carried {
-              siup = wall_up_part(ews[si], pwup);
+              siup = wall_up_part_at(wld, cq, cr, ews[si], pwup);
               siop = hex_editor::Opening {};
               if sidoor {
                 // ⚠ THE OPENING IS BUILT AT THE EDGE'S OWN MIDPOINT, AND ITS WIDTH
