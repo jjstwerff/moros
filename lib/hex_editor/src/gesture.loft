@@ -4482,6 +4482,18 @@ pub fn enclosure_fill(wld: VoxelWorld, sq: integer, sr: integer, mat: integer) -
     nq: vector<integer> = [];
     nr: vector<integer> = [];
     for i in 0..len(fq) {
+      // ⚠ **THE CELL'S OWN SURFACE HEIGHT, HOISTED OUT OF THE SIX** — it is `wall_of`'s
+      // third argument and it does not depend on `d`, so it was being recomputed six
+      // times per cell through `terrain_h` → `world_ground_cell`, the hottest function in
+      // the profile.
+      // ⛔ **AND THE PROFILE'S HOTTEST NAME IS NOT WHERE THE TIME WENT, WHICH IS WHY THE
+      // SPLIT WAS MEASURED RATHER THAN INFERRED FROM IT.** `world_ground_cell` at the top
+      // of the profile makes this hoist look like the fix. It is the smaller half: over
+      // `aim.loft`, six runs, CPU time, palindromic — this hoist ALONE is **1.27x**, the
+      // `seen`-first reorder below on top of it is **3.6x**, together **4.6x** (224.5 s ->
+      // 48.8 s, 74% of `loft test`'s 300 s file deadline down to 16%). A profile ranks
+      // where cycles are SPENT; it cannot say which of them did not need spending.
+      fh = (terrain_h(fq[i], fr[i], wld) as float) * wld.w_unit;
       for d in 0..6 {
         // ⚠ hex_grid's directions, not hex_field's. The two hold the same SET in a
         // different ORDER (hex_field: 0=E 1=W 2=SE 3=SW 4=NE 5=NW), which does not
@@ -4489,6 +4501,28 @@ pub fn enclosure_fill(wld: VoxelWorld, sq: integer, sr: integer, mat: integer) -
         // `wall_of` below, which is asked about a direction by NAME. One
         // convention in this file; the loop was on the other one.
         (aq, ar) = hex_grid::hex_neighbor(fq[i], fr[i], d);
+        // ⛔ **THE `seen` TEST IS FIRST, AND IT USED TO BE LAST — measured with
+        // `LOFT_PROFILE=1`.** Every cell is reached once per neighbour, so about five of
+        // every six visits here are of a cell this flood already holds — and with the
+        // hash test underneath the reachability test, each of those five paid a
+        // `world_ground_cell` AND a `wall_of` before a cheap integer lookup threw the
+        // answer away. Reordering is semantically identical: the outer condition has no
+        // effect at all when the cell is already seen.
+        // ⚠ ONE KEY, TWO USES — the test below and the insert further down were each
+        // computing it, which the profile then ranked at 3.0% of the run.
+        // ⚠ **AND THE CLASS HAS MORE MEMBERS, MEASURED NOT TO BE ONE.** This site was the
+        // only visited-set test in the file written as a nested `== null` rather than the
+        // early `continue` every other flood uses — but the idiom is not the whole
+        // question, and checking is what stopped "the class has one member" being written
+        // here. `run_walk` and `slope_owed` each pay a `run_h` — and so a
+        // `world_ground_cell` — BEFORE their hash test; `absorb_enclosed` and `brush_in`
+        // pay a `fabric_memo`, which is memoized and so already mitigated. Those two are
+        // reorderable by the identical argument (both guards are pure `continue`s on the
+        // same iteration) and are deliberately NOT reordered: they are on slope and road
+        // gestures, nothing measured here exercises them, and an unmeasured swap cannot go
+        // red for a real reason.
+        ak = age_like_key(aq, ar);
+        if seen.s_by[ak] != null { continue; }
         m = world_ground_cell(wld, aq, ar).h_material;
         // A BOUNDARY STOPS A FILL, whatever it is made of. `@HB-X70` says an opening is
         // not absence — "there is a boundary you can walk through" is a different
@@ -4501,15 +4535,11 @@ pub fn enclosure_fill(wld: VoxelWorld, sq: integer, sr: integer, mat: integer) -
         // change, with the reference to change it to already named. The fill also
         // reads `world_ground_cell` for the material two lines above; both would
         // move together.
-        if (m == SURFACE_MAT || m == 0)
-           && wall_of(wld, fq[i], fr[i], d,
-                      (terrain_h(fq[i], fr[i], wld) as float) * wld.w_unit) == 0 {
-          if seen.s_by[age_like_key(aq, ar)] == null {
-            if len(seen_q) >= FIELD_CAP { capped = true; }
-            else {
-              seen.s_by += SeenAt { sa_key: age_like_key(aq, ar) };
-              seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar];
-            }
+        if (m == SURFACE_MAT || m == 0) && wall_of(wld, fq[i], fr[i], d, fh) == 0 {
+          if len(seen_q) >= FIELD_CAP { capped = true; }
+          else {
+            seen.s_by += SeenAt { sa_key: ak };
+            seen_q += [aq]; seen_r += [ar]; nq += [aq]; nr += [ar];
           }
         }
       }

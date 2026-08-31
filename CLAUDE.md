@@ -491,11 +491,38 @@ the message text collapsed two distinct sites into one, because the text is iden
 site and only the location line differs. Match a line you know is there before believing a
 count of zero.
 
+⛔ **AND THE SAME INSTRUMENT ONE STEP EARLIER IS A PIPE ON THE INVOCATION, WHICH DESTROYS
+THE MEASUREMENT RATHER THAN MISREADING IT.** Three times in one session, in three
+disguises: `2>/dev/null` on a `/usr/bin/time -f … CMD > out` took **time's own report**
+(both redirections apply to `time`, not to the command); `| tail -30` on an A/B script
+took its per-phase timings, leaving **file mtimes as the only evidence** — and the reading
+taken off them was backwards, claiming a 2.3× slowdown where a proper run measured a
+speed-up; `| tail -45` on `make fast` took the test-phase summary and the deadline warn
+list off a green run. ⚠ **This is the `LOFT_PROFILE` rule generalised** — *the report goes
+to STDERR, so `> out.txt` drops it and the empty section reads as "no profile was
+produced"*. **Capture the whole stream to a FILE and narrow when READING it, never when
+producing it**: a run you have to repeat because you filtered it costs the whole run.
+
 **Cost is measured in `w_tau`, not seconds.** hex_voxel's edit clock bumps once per write
 that changed something, so a gesture's cost is an exact integer that is the same on any box
 and on a world of any size — `lib/hex_editor/tests/cost.loft`. A wall clock measures the
 machine. When something is slow, find the instrument first: the editor's own `27:` tracer
 said the camera was 993 ms of every second, which no amount of reading would have.
+
+⛔ **AND THE GENERAL INSTRUMENT IS LOFT'S OWN PROFILER — `LOFT_PROFILE=1`, AND THIS TREE
+HAND-ROLLED TIMING PROBES FOR A SESSION WITHOUT IT.** It works on a consumer tree
+(`LOFT_PROFILE=1 loft test tests/x.loft::name 2>&1`), and for an INTERPRETED run — which
+`loft test` always is — it is the only correct one: a loft call creates no machine frame, so
+`perf` returns the interpreter's own stack for every program ever run. ⚠ **The report goes to
+STDERR**, so `> out.txt` drops it and the empty section reads as *no profile was produced*.
+⚠ **And it renders at EXIT**, so a server gives nothing — `LOFT_PROFILE_EVERY=30` reports
+while running and `kill -USR1` dumps a window. [LOFT_DEBUGGER.md](doc/claude/LOFT_DEBUGGER.md)
+has the rest, including `LOFT_NET_PROFILE`.
+
+⚠ **`w_tau` AND THE PROFILER SEE DIFFERENT COSTS, WHICH IS WHY THE RULE ABOVE DOES NOT COVER
+THIS.** `w_tau` counts **writes**. A gesture whose bill is a flood READING thousands of cells
+and writing none is `w_tau = 0` and still the slowest thing in the file — so *compare
+gestures* with `w_tau` and *find where a run went* with the profiler.
 
 **Filing a loft defect** ([loft-lang/loft](https://github.com/loft-lang/loft/issues)): file
 it as an issue straight away — a closed ticket costs nothing here, so never hold a finding
