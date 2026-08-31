@@ -1,0 +1,9 @@
+THE SWEEP — BEFORE/AFTER, palindromic, one machine state, only gesture.loft changing.
+`probe/rw/rw.loft`, road 300 cells x3, 2000 ticks. All four outputs byte-identical.
+
+1 BEFORE cpu   238.7s  wall  289.34s  load 7.27    road 300 cells x3, 2000 ticks: owed-sum 4000 
+2 AFTER  cpu   128.8s  wall  129.10s  load 29.10   road 300 cells x3, 2000 ticks: owed-sum 4000 
+3 AFTER  cpu   166.1s  wall  119.40s  load 4.99    road 300 cells x3, 2000 ticks: owed-sum 4000 
+4 BEFORE cpu   189.6s  wall  209.25s  load 2.51    road 300 cells x3, 2000 ticks: owed-sum 4000 
+
+EXIT=0

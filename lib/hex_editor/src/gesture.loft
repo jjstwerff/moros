@@ -6771,10 +6771,18 @@ fn run_walk(w: VoxelWorld, cq: integer, cr: integer, mat: integer,
     head = head + 1;
     for d in 0..6 {
       (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
+      // ⛔ **THE `seen` TEST IS FIRST — `enclosure_fill`'s reorder, in the walk that
+      // two readers share.** A cell is reached once per neighbour, so about five of
+      // every six arrivals here are of a cell this walk already holds, and with the
+      // hash test under `run_h` each of those five paid a `world_ground_cell` before
+      // a cheap integer lookup threw the answer away. Both are pure `continue`
+      // guards on the same iteration, so the order between them is free.
+      // ⚠ ONE KEY, TWO USES — the test and the insert below were each computing it.
+      nk = age_like_key(nq, nr);
+      if seen.s_by[nk] != null { continue; }
       if run_h(w, nq, nr, mat) < 0 { continue; }
-      if seen.s_by[age_like_key(nq, nr)] != null { continue; }
       if len(mq) >= LIFT_CAP { continue; }
-      seen.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
+      seen.s_by += SeenAt { sa_key: nk };
       mq += [nq];
       mr += [nr];
     }
@@ -8835,10 +8843,17 @@ pub fn slope_owed(w: VoxelWorld, cq: integer, cr: integer) -> integer {
       // ⚠ THE COLUMN, NOT THE GROUND — plan 20 `A9`, the same reason the settle's
       // own walk asks it: what this reports must be measured over the run the settle
       // actually worked on, or a stall on a caved stretch reads as nothing owing.
+      // ⛔ **THE `seen` TEST IS FIRST — the same reorder as `run_walk`'s above, and
+      // this walk is a THIRD copy of it.** `run_walk`'s own header says it was
+      // extracted because two readers share it and *"two walks disagreeing by one
+      // condition would put the balance on a different set of cells"*; this one was
+      // never switched over. Merging them is a separate change with its own proof,
+      // so for now the condition is kept identical in both places on purpose.
+      nk = age_like_key(nq, nr);
+      if seen.s_by[nk] != null { continue; }
       if run_h(w, nq, nr, mat) < 0 { continue; }
-      if seen.s_by[age_like_key(nq, nr)] != null { continue; }
       if len(mq) >= LIFT_CAP { continue; }
-      seen.s_by += SeenAt { sa_key: age_like_key(nq, nr) };
+      seen.s_by += SeenAt { sa_key: nk };
       mq += [nq];
       mr += [nr];
     }

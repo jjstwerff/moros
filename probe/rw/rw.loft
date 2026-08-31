@@ -1,0 +1,45 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE REORDER MEASURED WHERE THE FUNCTION IS ACTUALLY HOT.
+//
+//   loft --interpret --lib lib/ probe/rw/rw.loft
+//
+// `slope_owed` is called by `walk_tick` EVERY TICK, and it floods the whole run each
+// time — so its cost is O(run length) per tick. The suite never sees that: every road
+// in it is a handful of cells, `run_h` profiles at 1.7-4.6% of a 6-10s file, and the
+// reorder is far below noise there. A person walking a long road is the case that pays.
+//
+// ⚠ THE OWED VALUE IS PRINTED, so this is an equivalence check as well as a clock: a
+// reorder that changed an answer would show here before any timing is read.
+use hex_editor;
+use hex_voxel;
+
+const U = 0.25;
+const G = 40;
+
+// A road `n` cells long and 3 wide, falling away from the seed — `settle_owed.loft`'s
+// own fixture shape, without the settle, so the walk is the whole cost.
+fn long_road(n: integer) -> VoxelWorld {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 4)..(n + 8) {
+    ground_fill(w, q, (0 - 6), q + 1, 7, G + 400 - q * 3, SURFACE_MAT);
+  }
+  for q3 in 0..n {
+    for r3 in (0 - 1)..2 { ground_set(w, q3, r3, ground_h(w, q3, r3), ROAD_MAT); }
+  }
+  w
+}
+
+fn main() {
+  for len in [300] {
+    w = long_road(len);
+    // one tick asks once; a walk of `ticks` asks `ticks` times over the same run
+    ticks = 2000;
+    acc = 0;
+    for _ in 0..ticks {
+      acc = acc + slope_owed(w, 0, 0);
+    }
+    println("road {len} cells x3, {ticks} ticks: owed-sum {acc}");
+  }
+}
