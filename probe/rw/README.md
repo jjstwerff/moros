@@ -65,7 +65,36 @@ identical across BEFORE and AFTER. Plus nine test files that reach the walk, 109
 `settle_owed` `cave` `cave_settle` `road_debt` `face` `tick` `push` `slope_limit`
 `run_fit`.
 
-## ⚠ What this found and did not fix
+## ✅ The merge — `merge.loft`, `merge.txt`
+
+The duplication below **is fixed now**, in the commit after the reorder. `slope_owed`
+takes `run_walk`'s two-line call shape, the one `slope_settle` already used, and the
+third copy is gone. `seen` is `run_walk`'s return value and the `worst` loop asks it
+whether a neighbour is in the run, so nothing else moved.
+
+⚠ **`slope_owed` RETURNS ONE INTEGER, so the corpus has to vary what the walk DECIDES** —
+which cells are the run. 27 fixtures × 3 seeds: straight at three widths, an L, a spur,
+a road with a hole in it, and `stepped`. **Identical on all 82 rows.**
+
+⛔ **AND THE CORPUS WAS CHECKED AGAINST WRONG WALKS BEFORE ITS SILENCE WAS BELIEVED.**
+
+| sabotage, applied to `slope_owed` alone | rows moved, of 82 |
+|---|---|
+| three of the six directions | ✅ 8 |
+| walk stops after 4 frontier cells | ✅ 24 |
+| membership test never refuses | ✅ 72 |
+| **control** — `seen` test swapped back after `run_h` (valid) | ✅ **0** — no false positive |
+
+⚠ **THE FIRST VERSION OF IT WAS TOO BLUNT AND WAS SHARPENED RATHER THAN ACCEPTED.**
+Without `stepped` — a gentle run with one steep edge at its **far end**, so `worst`
+reports the walk's REACH instead of the seed's neighbourhood — the three-of-six sabotage
+moved 8 rows and only through `gapped`. A corpus whose rows are mostly `0 0 0` and
+`2 2 2` cannot tell two walks apart, and it would have said the merge was safe just as
+loudly.
+
+## ⚠ What this found
+
+
 
 `slope_owed`'s walk is a **third copy** of `run_walk`'s, identical line for line — which
 is why the reorder had to be written twice. `run_walk`'s own header says it was extracted

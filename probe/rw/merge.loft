@@ -1,0 +1,108 @@
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// THE CONTROL FOR MERGING `slope_owed`'S WALK INTO `run_walk`.
+//
+//   loft --interpret --lib lib/ probe/rw/merge.loft
+//
+// The two bodies are textually identical, so the merge is safe by inspection — and
+// this is what says so by measurement instead. `slope_owed` returns ONE integer, so
+// the corpus has to vary the thing the walk actually decides: which cells are the
+// run. Shape and seed, not just length — a straight road, an L, a spur, and a road
+// with a hole in it, each asked from several seeds.
+use hex_editor;
+use hex_voxel;
+
+const U = 0.25;
+const G = 40;
+
+fn base(n: integer, fall: integer) -> VoxelWorld {
+  w = world_new(U, 0, 8, 3).wn_world;
+  for q in (0 - 8)..(n + 12) {
+    ground_fill(w, q, (0 - 12), q + 1, 13, G + 400 - q * fall, SURFACE_MAT);
+  }
+  w
+}
+
+fn paint(w: VoxelWorld, q: integer, r: integer) {
+  ground_set(w, q, r, ground_h(w, q, r), ROAD_MAT);
+}
+
+// a straight run, `half` cells either side of r = 0
+fn straight(n: integer, fall: integer, half: integer) -> VoxelWorld {
+  w = base(n, fall);
+  for q in 0..n {
+    for i in 0..(2 * half + 1) { paint(w, q, i - half); }
+  }
+  w
+}
+
+// an L: one leg along q, one along r
+fn bent(n: integer, fall: integer) -> VoxelWorld {
+  w = base(n, fall);
+  for q in 0..n { paint(w, q, 0); }
+  for r in 0..n { paint(w, n - 1, r); }
+  w
+}
+
+// a straight run with a spur half way along
+fn spurred(n: integer, fall: integer) -> VoxelWorld {
+  w = base(n, fall);
+  for q in 0..n { paint(w, q, 0); }
+  for r in 1..(n / 2) { paint(w, n / 2, r); }
+  w
+}
+
+// two runs with a one-cell hole between them — the walk must stop at the hole
+fn gapped(n: integer, fall: integer) -> VoxelWorld {
+  w = base(n, fall);
+  for q in 0..n {
+    if q == n / 2 { continue; }
+    paint(w, q, 0);
+  }
+  w
+}
+
+// ⛔ THE SENSITIVE ONE. A gentle run with ONE steep edge at the far end: the answer
+// from a near seed is only right if the walk reached the far end, so `worst` becomes a
+// report on the walk's REACH rather than on the seed's neighbourhood. Without this the
+// corpus caught a three-of-six-directions sabotage on 8 lines of 64.
+fn stepped(n: integer, fall: integer, half: integer) -> VoxelWorld {
+  w = base(n, fall);
+  for q in 0..n {
+    for i in 0..(2 * half + 1) { paint(w, q, i - half); }
+  }
+  for q2 in (n - 2)..n {
+    for i2 in 0..(2 * half + 1) {
+      r2 = i2 - half;
+      ground_set(w, q2, r2, ground_h(w, q2, r2) - 9, ROAD_MAT);
+    }
+  }
+  w
+}
+
+fn say(name: text, w: VoxelWorld, n: integer) {
+  out = "";
+  for s in [0, 1, 2] {
+    seed = s * (n / 3);
+    out = out + " {slope_owed(w, seed, 0)}";
+  }
+  println("  {name}:{out}");
+}
+
+fn main() {
+  println("SLOPE_OWED OVER SHAPES AND SEEDS — the merge control");
+  for n in [9, 15, 24] {
+    for fall in [1, 3, 6] {
+      println("n {n} fall {fall}");
+      for half in [0, 1, 2] {
+        say("straight h{half}", straight(n, fall, half), n);
+      }
+      say("stepped0", stepped(n, fall, 0), n);
+      say("stepped1", stepped(n, fall, 1), n);
+      say("bent    ", bent(n, fall), n);
+      say("spurred ", spurred(n, fall), n);
+      say("gapped  ", gapped(n, fall), n);
+    }
+  }
+}

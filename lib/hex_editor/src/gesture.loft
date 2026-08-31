@@ -8829,35 +8829,19 @@ pub fn slope_owed(w: VoxelWorld, cq: integer, cr: integer) -> integer {
   lim0 = slope_limit(w, cq, cr);
   if lim0 == SLOPE_FREE { return 0; }
   mat = world_ground_cell(w, cq, cr).h_material as integer ?? 0;
-  seen = Seen { s_by: [] };
-  mq: vector<integer> = [cq];
-  mr: vector<integer> = [cr];
-  seen.s_by += SeenAt { sa_key: age_like_key(cq, cr) };
-  head = 0;
-  while head < len(mq) {
-    aq = mq[head] ?? 0;
-    ar = mr[head] ?? 0;
-    head = head + 1;
-    for d in 0..6 {
-      (nq, nr) = hex_grid::hex_neighbor(aq, ar, d);
-      // ⚠ THE COLUMN, NOT THE GROUND — plan 20 `A9`, the same reason the settle's
-      // own walk asks it: what this reports must be measured over the run the settle
-      // actually worked on, or a stall on a caved stretch reads as nothing owing.
-      // ⛔ **THE `seen` TEST IS FIRST — the same reorder as `run_walk`'s above, and
-      // this walk is a THIRD copy of it.** `run_walk`'s own header says it was
-      // extracted because two readers share it and *"two walks disagreeing by one
-      // condition would put the balance on a different set of cells"*; this one was
-      // never switched over. Merging them is a separate change with its own proof,
-      // so for now the condition is kept identical in both places on purpose.
-      nk = age_like_key(nq, nr);
-      if seen.s_by[nk] != null { continue; }
-      if run_h(w, nq, nr, mat) < 0 { continue; }
-      if len(mq) >= LIFT_CAP { continue; }
-      seen.s_by += SeenAt { sa_key: nk };
-      mq += [nq];
-      mr += [nr];
-    }
-  }
+  // ⛔ **THE THIRD COPY IS GONE — this walk WAS `run_walk`'s, line for line.**
+  // `run_walk`'s own header says it was extracted because two readers share it and
+  // *"two walks disagreeing by one condition would put the balance on a different set
+  // of cells from the settle it is balancing, and every count would still add up"* —
+  // and it had exactly the two callers it names while this one carried its own copy.
+  // The reorder landed in `f378dc6` had to be written twice because of that, which is
+  // the duplication reporting itself.
+  // ⚠ `seen` IS THE RETURN VALUE AND IS USED BELOW — the `worst` loop asks it whether a
+  // neighbour is in the run — so this is `slope_settle`'s call shape exactly, and the
+  // two now cannot drift apart by a condition.
+  mq: vector<integer> = [];
+  mr: vector<integer> = [];
+  seen = run_walk(w, cq, cr, mat, mq, mr);
   worst = 0;
   for i in 0..len(mq) {
     q = mq[i] ?? 0;

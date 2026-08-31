@@ -1,0 +1,23 @@
+THE MERGE CONTROL — `slope_owed`'s walk folded into `run_walk`.
+82 rows: 27 fixtures (straight h0/h1/h2, stepped h0/h1, bent, spurred, gapped
+x n in 9/15/24 x fall in 1/3/6) each asked at 3 seeds.
+
+  pre-merge vs merged            IDENTICAL, all 82 rows
+
+SABOTAGE SWEEP — the corpus checked against wrong walks it SHOULD find, before its
+silence on the merge was believed. Each applied to `slope_owed` alone:
+
+  three of six directions                    8 of 82 differ   caught
+  walk stops after 4 frontier cells         24 of 82 differ   caught
+  membership test never refuses             72 of 82 differ   caught
+
+  CONTROL — `seen` test swapped back after `run_h` (valid, no semantic change)
+                                             0 of 82 differ   correct: no false positive
+
+⚠ THE FIRST VERSION OF THIS CORPUS WAS TOO BLUNT AND WAS SHARPENED, NOT ACCEPTED.
+Without the `stepped` shape — a gentle run with one steep edge at its FAR end, so the
+answer reports the walk's REACH rather than the seed's neighbourhood — the
+three-of-six sabotage was caught on 8 lines and by the `gapped` shape alone. A corpus
+whose rows are mostly `0 0 0` and `2 2 2` cannot distinguish two walks.
+
+EXIT=0
