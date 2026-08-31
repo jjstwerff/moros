@@ -1,15 +1,48 @@
 <!-- Copyright (c) 2026 Jurjen Stellingwerff  SPDX-License-Identifier: LGPL-3.0-or-later -->
-# What promote-on-close buys — and today the answer is *nothing measurable*
+# What promote-on-close buys — and *nothing measurable* held for 2.5 hours
 
-**Run 2026-08-29.** `loft --interpret --lib lib/ probe/pc/pc.loft`; predictions in
-[PREDICTION.md](PREDICTION.md), written first; the run in [run.txt](run.txt).
+**First run 2026-08-29; [run.txt](run.txt) is the RE-RUN of 2026-08-31.**
+`loft --interpret --lib lib/ probe/pc/pc.loft`; predictions in
+[PREDICTION.md](PREDICTION.md), written first. ⚠ The four numbers below are the 08-29 ones
+and are kept as written — the banner under them is what the same command answers today.
+
+⛔ **AND THIS RECORD WENT STALE TWO AND A HALF HOURS AFTER IT WAS WRITTEN — re-run
+2026-08-31, and three of its four headline numbers have moved.** `run.txt` was taken at
+11:32 on 2026-08-29. `48335a9` *"A room walked as four walls now closes"* landed at **14:05**
+the same day and `7f7c537` *"`plan_svg` describes a room from its CELLS"* at **16:49**, and
+neither re-ran this corpus. It has been cited as fact for two days — by
+[FOCUS](../../doc/claude/FOCUS.md) §1, which still carried `0 descriptions change`.
+
+| over the same 25 rectangles | recorded 08-29 | re-run 08-31 | what moved it |
+|---|---|---|---|
+| rooms that LEAK (`PM_OPEN`) | ⛔ 7 of 25 | ✅ **0 of 25** | `48335a9` — `wall_corner_close` |
+| rooms that gain a floor | 18 of 25 | ✅ **25 of 25** | the same |
+| **descriptions changed** | ⛔ 0 of 25 | ⛔ **25 of 25** | `7f7c537` — `hex_recover` wired into `plan_svg` |
+| wall triangles saved | ⛔ 0 | ⛔ **0** — unchanged | — |
+
+⚠ **SO THE HEADLINE ABOVE IS REFUTED ON ITS OWN TERMS, AND THE MECHANISM SECTION IS NOT.**
+*Nothing measurable* was a statement about a tree in which no reader could describe a
+flood's region; `hex_recover::rebuild_construct` is that reader and it is wired now, so
+every one of the 25 gains a `region N sides, M cells` where the description used to be
+byte-identical before and after. ✅ **What still holds exactly** is the diagnosis this probe
+was worth writing for: `house_recover` **refuses all 25** — it recovers a `Box`
+rasterisation, and `@HB-X24` says a lattice polygon cannot be a rectangle. The floor is
+described because a REGION reader arrived, never because the rectangle reader changed its
+mind. [`probe/b5`](../b5/README.md) is where that conclusion now lives.
+
+⚠ **AND THE STALENESS WAS FOUND BY ACCIDENT, WHICH IS THE PART WORTH KEEPING.** This corpus
+was picked up on 2026-08-31 as a *control* — 25 fixtures through `enclosure_fill`, diffed
+OLD against NEW to prove a performance edit changed no answer. It proved that (identical,
+all 25). The same diff against the committed `run.txt` is what said the committed one no
+longer describes this tree. **A control compares two things you built; comparing either of
+them to the RECORD is free and is a different question.**
 
 [FOCUS](../../doc/claude/FOCUS.md) §1 priced the four options for closing a wall loop and
 recommended **promote on close** with three ticks: encloses ✅, recovers exactly ✅, four
 quads ✅. That was built ([`0290ddb`](../../lib/hex_editor/src/gesture.loft)). This measures
 it over the same 25 rectangles, before and after.
 
-## The result, in four numbers
+## The result, in four numbers — ⚠ **as measured 2026-08-29, three of them since moved**
 
 | | |
 |---|---|

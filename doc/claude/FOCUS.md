@@ -157,8 +157,15 @@ fitted surface at all. **The rooms that draw wrong are the rooms that cost most.
 ⛔ **THE PROMOTE-ON-CLOSE ROW WAS WRONG AND IT WAS MINE — built, then measured
 ([`probe/pc`](../../probe/pc/README.md)).** Over the same 25 rectangles: 18 gain a floor, 7
 refuse, **0 descriptions change**, **0 wall triangles are saved**, and the floor ADDS 5 082
-triangles. ⚠ **And the reason is exact rather than a shrug**: asked directly, off the peel,
-`house_recover` **refuses all 18 floors** — it recovers a `Box` rasterisation and
+triangles. ⛔ **AND THAT SENTENCE IS THE 2026-08-29 MEASUREMENT, REFUTED BY THE SAME COMMAND
+ON 2026-08-31 — three of its four numbers have moved.** `48335a9` closed the corner at 14:05
+and `7f7c537` wired `hex_recover` into `plan_svg` at 16:49, **both the same day**, and
+neither re-ran the corpus: it is now **25 of 25 floored, 0 refuse, and 25 of 25 descriptions
+CHANGE** — every room gains a `region N sides, M cells`. ✅ Only *0 wall triangles saved*
+survives. ⚠ **The paragraph below still holds and is the reason why**: `house_recover`
+refuses all 25, so what arrived was a REGION reader, never the rectangle reader changing its
+mind. ⚠ **And the reason is exact rather than a shrug**: asked directly, off the peel,
+`house_recover` **refuses all 18 floors** (and all **25** on the re-run) — it recovers a `Box` rasterisation and
 `@HB-X24` says a lattice polygon cannot be a rectangle, so a flood's region and a rectangle
 never meet. It is not the peel's ordering.
 

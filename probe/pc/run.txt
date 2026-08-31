@@ -1,103 +1,128 @@
 WHAT PROMOTE-ON-CLOSE BUYS — 25 rectangles, before and after
 
-    4 x 3: ⛔ OPEN — buys nothing
-        desc SAME   before: run d6 p5 + run d0 p5 + run d4 p1 + run d6 p4 + run d0 p5
-        triangles wall 136->136  floor 0->0
+    4 x 3: floored 20
+        desc CHANGED   before: run d22 p1 + run d4 p1 + run d6 p4 + run d0 p5 + run d6 p6 + run d0 p4 + run d2 p1
+                     after:  region 6 sides, 20 cells + run d22 p1
+        triangles wall 140->140  floor 0->120
     4 x 4: floored 20
-        desc SAME   before: run d6 p8 + run d0 p4 + run d4 p1 + run d6 p6 + run d0 p4
+        desc CHANGED   before: run d6 p8 + run d0 p4 + run d4 p1 + run d6 p6 + run d0 p4
+                     after:  run d6 p8 + region 6 sides, 20 cells
         triangles wall 144->144  floor 0->120
     4 x 5: floored 28
-        desc SAME   before: run d6 p10 + run d0 p4 + run d6 p10 + run d0 p4
+        desc CHANGED   before: run d6 p10 + run d0 p4 + run d6 p10 + run d0 p4
+                     after:  region 6 sides, 28 cells
         triangles wall 168->168  floor 0->168
-    4 x 6: ⛔ OPEN — buys nothing
-        desc SAME   before: run d6 p11 + run d0 p5 + run d4 p1 + run d6 p10 + run d0 p5
-        triangles wall 200->200  floor 0->0
+    4 x 6: floored 40
+        desc CHANGED   before: run d22 p1 + run d4 p1 + run d6 p10 + run d0 p5 + run d6 p12 + run d0 p4 + run d2 p1
+                     after:  region 6 sides, 40 cells + run d22 p1
+        triangles wall 204->204  floor 0->240
     4 x 7: floored 36
-        desc SAME   before: run d6 p14 + run d0 p4 + run d4 p1 + run d6 p12 + run d0 p4
+        desc CHANGED   before: run d6 p14 + run d0 p4 + run d4 p1 + run d6 p12 + run d0 p4
+                     after:  run d6 p14 + region 6 sides, 36 cells
         triangles wall 208->208  floor 0->216
-    5 x 3: ⛔ OPEN — buys nothing
-        desc SAME   before: run d6 p5 + run d0 p5 + run d4 p1 + run d6 p4 + run d0 p5
-        triangles wall 136->136  floor 0->0
+    5 x 3: floored 20
+        desc CHANGED   before: run d22 p1 + run d4 p1 + run d6 p4 + run d0 p5 + run d6 p6 + run d0 p4 + run d2 p1
+                     after:  region 6 sides, 20 cells + run d22 p1
+        triangles wall 140->140  floor 0->120
     5 x 4: floored 30
-        desc SAME   before: run d6 p8 + run d0 p6 + run d4 p1 + run d6 p6 + run d0 p5 + run d22 p1
+        desc CHANGED   before: run d6 p8 + run d0 p6 + run d4 p1 + run d6 p6 + run d0 p5 + run d22 p1
+                     after:  run d6 p8 + region 6 sides, 30 cells
         triangles wall 176->176  floor 0->180
     5 x 5: floored 42
-        desc SAME   before: run d6 p10 + run d0 p6 + run d6 p10 + run d0 p6
+        desc CHANGED   before: run d6 p10 + run d0 p6 + run d6 p10 + run d0 p6
+                     after:  region 6 sides, 42 cells
         triangles wall 200->200  floor 0->252
-    5 x 6: ⛔ OPEN — buys nothing
-        desc SAME   before: run d6 p11 + run d0 p5 + run d4 p1 + run d6 p10 + run d0 p5
-        triangles wall 200->200  floor 0->0
+    5 x 6: floored 40
+        desc CHANGED   before: run d22 p1 + run d4 p1 + run d6 p10 + run d0 p5 + run d6 p12 + run d0 p4 + run d2 p1
+                     after:  region 6 sides, 40 cells + run d22 p1
+        triangles wall 204->204  floor 0->240
     5 x 7: floored 54
-        desc SAME   before: run d6 p14 + run d0 p6 + run d4 p1 + run d6 p12 + run d0 p5 + run d22 p1
+        desc CHANGED   before: run d6 p14 + run d0 p6 + run d4 p1 + run d6 p12 + run d0 p5 + run d22 p1
+                     after:  run d6 p14 + region 6 sides, 54 cells
         triangles wall 240->240  floor 0->324
     6 x 3: floored 21
-        desc SAME   before: run d0 p7 + run d6 p6 + run d6 p1 + run d0 p7 + run d4 p1 + run d6 p3
+        desc CHANGED   before: run d0 p7 + run d6 p6 + run d6 p1 + run d0 p7 + run d4 p1 + run d6 p3
+                     after:  region 5 sides, 21 cells + run d0 p7 + run d6 p6 + run d6 p1
         triangles wall 168->168  floor 0->126
     6 x 4: floored 35
-        desc SAME   before: run d6 p7 + run d0 p7 + run d6 p7 + run d0 p7
+        desc CHANGED   before: run d6 p7 + run d0 p7 + run d6 p7 + run d0 p7
+                     after:  region 6 sides, 35 cells
         triangles wall 184->184  floor 0->210
     6 x 5: floored 49
-        desc SAME   before: run d6 p11 + run d0 p7 + run d4 p1 + run d6 p9 + run d0 p7
+        desc CHANGED   before: run d6 p11 + run d0 p7 + run d4 p1 + run d6 p9 + run d0 p7
+                     after:  run d6 p11 + region 6 sides, 49 cells
         triangles wall 224->224  floor 0->294
     6 x 6: floored 49
-        desc SAME   before: run d6 p12 + run d0 p7 + run d6 p1 + run d0 p7 + run d4 p1 + run d6 p9
+        desc CHANGED   before: run d6 p12 + run d0 p7 + run d6 p1 + run d0 p7 + run d4 p1 + run d6 p9
+                     after:  region 6 sides, 49 cells + run d6 p12 + run d6 p1
         triangles wall 232->232  floor 0->294
     6 x 7: floored 63
-        desc SAME   before: run d6 p13 + run d0 p7 + run d6 p13 + run d0 p7
+        desc CHANGED   before: run d6 p13 + run d0 p7 + run d6 p13 + run d0 p7
+                     after:  region 6 sides, 63 cells
         triangles wall 248->248  floor 0->378
-    7 x 3: ⛔ OPEN — buys nothing
-        desc SAME   before: run d6 p5 + run d0 p9 + run d4 p1 + run d6 p4 + run d0 p9
-        triangles wall 200->200  floor 0->0
+    7 x 3: floored 36
+        desc CHANGED   before: run d22 p1 + run d4 p1 + run d6 p4 + run d0 p9 + run d6 p6 + run d0 p8 + run d2 p1
+                     after:  region 6 sides, 36 cells + run d22 p1
+        triangles wall 204->204  floor 0->216
     7 x 4: floored 40
-        desc SAME   before: run d6 p8 + run d0 p8 + run d4 p1 + run d6 p6 + run d0 p7 + run d22 p1
+        desc CHANGED   before: run d6 p8 + run d0 p8 + run d4 p1 + run d6 p6 + run d0 p7 + run d22 p1
+                     after:  run d6 p8 + region 6 sides, 40 cells
         triangles wall 208->208  floor 0->240
     7 x 5: floored 56
-        desc SAME   before: run d6 p10 + run d0 p8 + run d6 p10 + run d0 p8
+        desc CHANGED   before: run d6 p10 + run d0 p8 + run d6 p10 + run d0 p8
+                     after:  region 6 sides, 56 cells
         triangles wall 232->232  floor 0->336
-    7 x 6: ⛔ OPEN — buys nothing
-        desc SAME   before: run d6 p11 + run d0 p9 + run d4 p1 + run d6 p10 + run d0 p9
-        triangles wall 264->264  floor 0->0
+    7 x 6: floored 72
+        desc CHANGED   before: run d22 p1 + run d4 p1 + run d6 p10 + run d0 p9 + run d6 p12 + run d0 p8 + run d2 p1
+                     after:  region 6 sides, 72 cells + run d22 p1
+        triangles wall 268->268  floor 0->432
     7 x 7: floored 72
-        desc SAME   before: run d6 p14 + run d0 p8 + run d4 p1 + run d6 p12 + run d0 p7 + run d22 p1
+        desc CHANGED   before: run d6 p14 + run d0 p8 + run d4 p1 + run d6 p12 + run d0 p7 + run d22 p1
+                     after:  run d6 p14 + region 6 sides, 72 cells
         triangles wall 272->272  floor 0->432
-    8 x 3: ⛔ OPEN — buys nothing
-        desc SAME   before: run d0 p9 + run d6 p5 + run d6 p5 + run d0 p9
-        triangles wall 200->200  floor 0->0
+    8 x 3: floored 45
+        desc CHANGED   before: run d6 p7 + run d0 p9 + run d6 p7 + run d0 p9
+                     after:  region 6 sides, 45 cells
+        triangles wall 216->216  floor 0->270
     8 x 4: floored 45
-        desc SAME   before: run d6 p7 + run d0 p9 + run d6 p7 + run d0 p9
+        desc CHANGED   before: run d6 p7 + run d0 p9 + run d6 p7 + run d0 p9
+                     after:  region 6 sides, 45 cells
         triangles wall 216->216  floor 0->270
     8 x 5: floored 63
-        desc SAME   before: run d6 p11 + run d0 p9 + run d4 p1 + run d6 p9 + run d0 p8 + run d22 p1
+        desc CHANGED   before: run d6 p11 + run d0 p9 + run d4 p1 + run d6 p9 + run d0 p8 + run d22 p1
+                     after:  run d6 p11 + region 6 sides, 63 cells
         triangles wall 256->256  floor 0->378
     8 x 6: floored 63
-        desc SAME   before: run d6 p11 + run d0 p9 + run d4 p1 + run d6 p9 + run d0 p8 + run d22 p1
+        desc CHANGED   before: run d6 p11 + run d0 p9 + run d4 p1 + run d6 p9 + run d0 p8 + run d22 p1
+                     after:  run d6 p11 + region 6 sides, 63 cells
         triangles wall 256->256  floor 0->378
     8 x 7: floored 81
-        desc SAME   before: run d6 p13 + run d0 p9 + run d6 p13 + run d0 p9
+        desc CHANGED   before: run d6 p13 + run d0 p9 + run d6 p13 + run d0 p9
+                     after:  region 6 sides, 81 cells
         triangles wall 280->280  floor 0->486
 
 AND WHY — the house reader asked DIRECTLY, off the peel:
-    4 x 3: not floored
+    4 x 3: floor 20 cells -> house_recover ⛔ REFUSED
     4 x 4: floor 20 cells -> house_recover ⛔ REFUSED
     4 x 5: floor 28 cells -> house_recover ⛔ REFUSED
-    4 x 6: not floored
+    4 x 6: floor 40 cells -> house_recover ⛔ REFUSED
     4 x 7: floor 36 cells -> house_recover ⛔ REFUSED
-    5 x 3: not floored
+    5 x 3: floor 20 cells -> house_recover ⛔ REFUSED
     5 x 4: floor 30 cells -> house_recover ⛔ REFUSED
     5 x 5: floor 42 cells -> house_recover ⛔ REFUSED
-    5 x 6: not floored
+    5 x 6: floor 40 cells -> house_recover ⛔ REFUSED
     5 x 7: floor 54 cells -> house_recover ⛔ REFUSED
     6 x 3: floor 21 cells -> house_recover ⛔ REFUSED
     6 x 4: floor 35 cells -> house_recover ⛔ REFUSED
     6 x 5: floor 49 cells -> house_recover ⛔ REFUSED
     6 x 6: floor 49 cells -> house_recover ⛔ REFUSED
     6 x 7: floor 63 cells -> house_recover ⛔ REFUSED
-    7 x 3: not floored
+    7 x 3: floor 36 cells -> house_recover ⛔ REFUSED
     7 x 4: floor 40 cells -> house_recover ⛔ REFUSED
     7 x 5: floor 56 cells -> house_recover ⛔ REFUSED
-    7 x 6: not floored
+    7 x 6: floor 72 cells -> house_recover ⛔ REFUSED
     7 x 7: floor 72 cells -> house_recover ⛔ REFUSED
-    8 x 3: not floored
+    8 x 3: floor 45 cells -> house_recover ⛔ REFUSED
     8 x 4: floor 45 cells -> house_recover ⛔ REFUSED
     8 x 5: floor 63 cells -> house_recover ⛔ REFUSED
     8 x 6: floor 63 cells -> house_recover ⛔ REFUSED
