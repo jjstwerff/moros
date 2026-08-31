@@ -299,9 +299,15 @@ was read correctly by every slope rule and was **invisible to every structure re
 plan view drew its field and described nothing on it. ⛔ **No suite here could ever have seen
 it**: no world in this corpus carries a material palette, so a bypass and the resolver answer
 identically on every fixture we own. It is a defect that exists only in a stranger's world,
-which is this section's whole subject. **`R5b`** (the edge roles — `edge_kind_of` has no
-region-aware sibling at all, so `PAL_EDGE` reaches nothing) and **`R5c`** (the remaining 21)
-are next; `R3` and `R4` are still designed and not built.
+which is this section's whole subject. ✅ **`R5b` IS BUILT TOO — 2026-08-31**, and the absence it closed is the sharper half:
+`PAL_EDGE` had been in the world file since `R1` and **nothing read it** — `world_palette_check` refused an unnamed edge byte *at load* while `edge_kind_of` took a
+bare byte and had no `_at` sibling at all, so the store validated a mapping no gesture,
+walk or reader ever consulted. ⛔ **A validated palette with no resolver is worse than no
+palette**: it tells an author their declaration was accepted. A world declaring its own
+door at a high slot got masonry from every reader, because `edge_is_wall` answers *wall*
+to any byte past the vocabulary. The walk, both opening gestures and the run limit now
+resolve it. ⛔ **`R5b.2`** — the eight `edge_is_wall` readers, all inside window scans —
+and **`R5c`** (the rest) are next; `R3` and `R4` are still designed and not built.
 
 ⚠ **`PAL_HTYPE` is the shape the whole thing should take, and it already works.** A world
 *declares* a house type and `press_verb` performs it, with `htype.loft` stating the limit
@@ -333,7 +339,7 @@ in `press_verb`. [EDITING_MODES](EDITING_MODES.md) already says the verb table m
 
 | # | what | why it is here | state |
 |---|---|---|---|
-| **I1** | **`R5`** — the 22 identity comparisons through the mapping, with the grep gate that keeps them there | this is what makes "my game's materials" configuration instead of a fork | ✅ **`R5a` built** — the FLOOR role, and `tools/roles.sh` in `fast` advisory at **21 debt / 5 definition**, down from 26 debt. ⛔ `R5b` (edges) and `R5c` (the rest) open |
+| **I1** | **`R5`** — the identity comparisons through the mapping, with the grep gate that keeps them there | this is what makes "my game's materials" configuration instead of a fork | ✅ **`R5a` and `R5b` built** — the FLOOR role, then the EDGE roles; `tools/roles.sh` in `fast` advisory at **18 debt / 6 definition**, down from 26 debt. ⛔ **`R5b.2` is next and it is a COST step, not a wiring one**: the eight remaining `edge_is_wall` readers all sit inside `for r … for q … for d` window scans — the surface `R5a` already blew a 300-second deadline on. `R5c` (the rest) after it |
 | I2 | **`R4`** — a level's own total mapping | a project ships a level, not a patch to our palette | ⛔ designed |
 | I3 | **publish `hex_voxel` + `hex_editor`** with `description`, `categories`, a README and one `examples/` scene each | the example **is** DoD clause 4 | not started |
 | I4 | the verb table as **data** | so a project's own verbs are a declaration | designed ([EDITING_MODES](EDITING_MODES.md)) |

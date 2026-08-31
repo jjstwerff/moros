@@ -100,6 +100,61 @@ fn arm_table(w: VoxelWorld) -> integer {
   hit
 }
 
+// ── AND THE EDGE AXIS — plan 21 `R5b` ─────────────────────────────────────
+//
+// ⛔ **`edges_around` ASKS THIS THREE TIMES PER CELL OVER `(2·reach+3)²` CELLS**, and
+// `B4e` refused to resolve the edge byte for exactly that reason: *"every caller holds
+// a byte and no world — the walk asks this per edge per step."* So the two cases are
+// measured apart rather than averaged, because the loop is overwhelmingly the first:
+//
+//   ABSENCE  — `mat == 0`, which `edge_role_at` short-circuits before any lookup
+//   A WALL   — a byte that reaches the palette, the region and the table
+const EDGE_HOT = 0;
+
+fn arm_edge_byte_absent(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    if wall_stops_walk(EDGE_HOT) { hit = hit + 1; }
+  }
+  hit
+}
+
+fn arm_edge_role_absent(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    if wall_stops_walk_at(w, q, r, EDGE_HOT) { hit = hit + 1; }
+  }
+  hit
+}
+
+fn arm_edge_byte_wall(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = WALL_MAT;
+    if i % 2 == 1 { m = DOOR_MAT; }
+    if wall_stops_walk(m) { hit = hit + 1; }
+  }
+  hit
+}
+
+fn arm_edge_role_wall(w: VoxelWorld) -> integer {
+  hit = 0;
+  for i in 0..N {
+    q = i % 40;
+    r = (i / 40) % 40 ?? 0;
+    m = WALL_MAT;
+    if i % 2 == 1 { m = DOOR_MAT; }
+    if wall_stops_walk_at(w, q, r, m) { hit = hit + 1; }
+  }
+  hit
+}
+
 fn main() {
   w = bench_world();
 
@@ -125,4 +180,27 @@ fn main() {
     println("ratio  B1/A1 {(b1 * 100) / a1 ?? 0}%  ·  B2/A2 {(b2 * 100) / a2 ?? 0}%");
   }
   println("⚠ believe the FIRST of each pair; the spread A1 vs A2 is the error bar.");
+
+  println("");
+  println("── the EDGE axis — plan 21 `R5b`, A-B-B-A in this same process ──");
+  e1s = now(); e1h = arm_edge_byte_absent(w); e1 = now() - e1s;
+  f1s = now(); f1h = arm_edge_role_absent(w); f1 = now() - f1s;
+  f2s = now(); f2h = arm_edge_role_absent(w); f2 = now() - f2s;
+  e2s = now(); e2h = arm_edge_byte_absent(w); e2 = now() - e2s;
+  // ⚠ THE CONTROL: an unwritten edge stops nobody either way, so both arms answer 0
+  // and the two are the same predicate. If they ever disagree the timing compares two
+  // different questions.
+  println("absence  byte A1 {e1} ms A2 {e2} ms  ·  role B1 {f1} ms B2 {f2} ms"
+        + "   (hits {e1h}/{e2h}/{f1h}/{f2h}, equal: {e1h == f1h && e1h == e2h && e1h == f2h})");
+
+  g1s = now(); g1h = arm_edge_byte_wall(w); g1 = now() - g1s;
+  h1s = now(); h1h = arm_edge_role_wall(w); h1 = now() - h1s;
+  h2s = now(); h2h = arm_edge_role_wall(w); h2 = now() - h2s;
+  g2s = now(); g2h = arm_edge_byte_wall(w); g2 = now() - g2s;
+  println("a wall   byte A1 {g1} ms A2 {g2} ms  ·  role B1 {h1} ms B2 {h2} ms"
+        + "   (hits {g1h}/{g2h}/{h1h}/{h2h}, equal: {g1h == h1h && g1h == g2h && g1h == h2h})");
+  println("N = {N} calls an arm");
+  println("⚠ **THE LOOP IS OVERWHELMINGLY THE ABSENCE ROW**: `edges_around` reads three");
+  println("   edge slots of every cell in its window and a world is mostly open ground,");
+  println("   so the wall row is the cost of the few, not of the scan.");
 }

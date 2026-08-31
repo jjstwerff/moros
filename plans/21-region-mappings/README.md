@@ -5,7 +5,7 @@
 
 ## Status
 
-**`R1`, `R2` and `R5a` are shipped; `R3`, `R4` and `R5b`–`R5c` are designed, not built.**
+**`R1`, `R2`, `R5a` and `R5b` are shipped; `R3`, `R4`, `R5b.2` and `R5c` are designed, not built.**
 ⚠ `R1` was **reshaped before any code**
 by finding that the palette already exists in the predecessor model (see below). What stopped
 the build is worth more than the build would have been: a fresh palette in `hex_editor` would
@@ -208,8 +208,9 @@ target and a negative control.
 | **`R3`** — the in-between band: two palettes blending, then switching | H | a structure carrying across a seam; the no-overlap refusal | Blocked on `R2` |
 | **`R4`** — a gameplay level's own mapping | M | a level loads with a palette that shares nothing with the world's | Blocked on `R1` |
 | **`R5a`** — the FLOOR role, and the docket that counts the rest | M | `hex_editor/tests/role_mat.loft` (4) — a renumbered house recovers identically, an un-named byte recovers nothing, and byte 4 called `grass` stops being a house; `tools/roles.sh` checked against a seeded bypass AND against two on one line | ✅ **SHIPPED** |
-| **`R5b`** — the EDGE roles: `wall`, `door`, `fence` through a region-aware `edge_kind_at` | M | `hex_editor/tests/role_mat.loft` — a world that numbers its own door has it cut and walked through; `edge_kind_of` has no `_at` sibling today, so `PAL_EDGE` reaches nothing. ⚠ **And one of its four sites argues the opposite in its own comment**: `session_select_wall` refuses `DOOR_MAT`/`FENCE_MAT`/`WINDOW_MAT` *"deliberately"* — *"whether a slot is a legal wall type is a fact about the NUMBER … a selection is the author's and outlives the world they load next."* That is a real tension, not an oversight: a SELECTION has no cell and therefore no region, so there is nothing to resolve it against. `R5b` has to settle whether the reserved edge bytes are vocabulary (world-independent, and the row becomes a `definition`) or palette (and the refusal needs a world). It is docketed `debt` until then, because the answer is not yet taken | Blocked on `R5a` |
-| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b` |
+| **`R5b`** — the EDGE roles: `wall`, `door`, `fence` through a region-aware `edge_kind_at` | M | `hex_editor/tests/role_mat.loft` — a world that numbers its own door has it cut and walked through; `edge_kind_of` has no `_at` sibling today, so `PAL_EDGE` reaches nothing. ⚠ **And one of its four sites argues the opposite in its own comment**: `session_select_wall` refuses `DOOR_MAT`/`FENCE_MAT`/`WINDOW_MAT` *"deliberately"* — *"whether a slot is a legal wall type is a fact about the NUMBER … a selection is the author's and outlives the world they load next."* That is a real tension, not an oversight: a SELECTION has no cell and therefore no region, so there is nothing to resolve it against. `R5b` has to settle whether the reserved edge bytes are vocabulary (world-independent, and the row becomes a `definition`) or palette (and the refusal needs a world). It is docketed `debt` until then, because the answer is not yet taken | ✅ **SHIPPED** — and the tension was answered by MOVING the question rather than settling it: `open_ahead`/`open_span` **do** hold a world and a cell, so the check that needs one went to the GESTURE and `session_select_wall` is untouched |
+| **`R5b.2`** — the eight `edge_is_wall` READERS, and it is a COST step | M | `peel.loft` and `planview.loft` re-timed A-B-B-A either side, plus a house whose wall is a DECLARED type recovering identically to the same house on byte 1. ⛔ **The eight sit inside `for r … for q … for d in [4, 5, 0]` window scans**, which is the surface `R5a` already blew a 300-second deadline on — so the wiring is mechanical and the measurement is the step. ⚠ Until it lands, a world that declares its own door is **walked through and still drawn as masonry** (`hex_mesh::wall_up`, `planview`'s colour), which is a visible inconsistency rather than a gap | Blocked on `R5b` |
+| **`R5c`** — the remaining ground roles (`roof`, `road`, `grass`) and the docket at zero `debt` | M | `tools/roles.sh` in `make fast` as a GATE rather than an advisory, with `roles.tsv` holding definitions only | Blocked on `R5b.2` |
 
 ## Open questions
 
@@ -420,3 +421,168 @@ takes **266–342 s against a 300 s deadline** on a shared box. It is not near t
 it, either side of this step, and the next agent to touch any reader will meet it wearing
 whatever costume the load is wearing that hour. That belongs to `tools/suite.sh`'s per-file
 deadline or to splitting the file — not to `R5`.
+
+## What `R5b` turned up
+
+**`lib/hex_editor/tests/role_mat.loft`, thirteen new tests · `sh probe/r5b/sweep.sh` ·
+`sh probe/r5b/run.sh` · [`probe/r5b`](../../probe/r5b/README.md).**
+
+### ⛔ `PAL_EDGE` had been in the world file since `R1` and NOTHING read it
+
+`world_palette_check` has refused an unnamed edge byte **at load** since `R1` — so the store
+validated a mapping that no gesture, no walk and no reader ever consulted. `edge_kind_of` took
+a bare byte and had no `_at` sibling at all. **A validated palette with no resolver is worse
+than no palette**: it tells an author their declaration was accepted.
+
+⛔ **AND THE DEFECT THAT ABSENCE PRODUCES IS NOT A MISSING FEATURE — IT IS A WALL THAT IS NOT
+THERE.** `edge_is_wall` answers *wall* for every byte past `EDGE_MAT_LAST`, which is the right
+default for a wall TYPE nobody named (`B4e`) and the wrong one for a slot the world calls
+`door`: the store holds a door, the palette says door, and the walker is refused by masonry
+that does not exist. ⚠ Nothing goes red, for `R5a`'s reason exactly — **no world in this
+corpus carries an edge palette**, so the bypass and the resolver answer identically on every
+fixture we own.
+
+### ✅ What shipped, and where it stops
+
+`edge_role_at(w, q, r, mat)` — `ground_role_at`'s question on the other axis — plus
+`edge_is(…, role)` and `edge_kind_at` for the one reader that wants an attribute rather than
+an identity. Four consumers were wired, all of them holding a world and a cell:
+
+| the reader | what a world's own door does now |
+|---|---|
+| `edges_around` → `wall_stops_walk_at` / `wall_stops_view_at` | it is walked through, and seen through |
+| `open_ahead` / `open_span` → `is_opening_at` | it can be **cut** with the author's own slot |
+| `span_mark` | and it is not cut *again*, because it is already a hole |
+| `run_slope` → `edge_kind_at` | a declared **fence** follows the ground at a fence's limit |
+
+⚠ **THE SETS ARE TRANSLATED EXACTLY, INCLUDING THE ONE THAT LOOKS WRONG.** A WINDOW does not
+stop a walker today and still does not. A step that also changed which materials block would
+be two changes wearing one diff, and the byte pair is what this is compared against.
+
+### ⛔ AND THE STEP STOPS AT EIGHT MORE SITES ON PURPOSE — because of what `R5a` cost
+
+`edge_is_wall` has **12 production call sites**. Two are the byte pair itself; ten are
+consumers, and **eight of them sit inside `for r … for q … for d in [4, 5, 0]` window scans**
+— `mark_left`, `face_at`'s extent, the house and region acceptance readers, `corner_write` and
+`corner_pool`. Those are `peel.loft`'s own cost surface.
+
+⛔ **`R5a` IS THE ARGUMENT, NOT A PREFERENCE.** Moving *five* window scans onto `ground_is`
+put `hex_mesh/tests/planview.loft` through `loft test`'s 300-second wall and took two commits
+to recover — the plan's own *"the timeout was mine"* section above. Wiring **eight more** in
+the same diff as the walk would put two unrelated risks in one change, twelve hours after
+`peel.loft` was brought from 70% of its deadline to 26%. **`R5b.2` is a COST step, not a
+wiring step**, and it now has an exact list rather than a hand count.
+
+⚠ **THE HALF-FIX IS NAMED RATHER THAN LEFT TO BE FOUND**: until `R5b.2`, a world that declares
+its own door at a high slot is *walked through* and still *drawn as masonry* —
+`hex_mesh::wall_up` and `planview`'s colour are the other two consumers, in a different
+package. That inconsistency is visible and is the reason `R5b.2` is next rather than optional.
+
+### ⛔ Pinning the two doors together found that ABSENCE WAS MASONRY
+
+`ground_role_at` is a second statement of `ground_kind_at`'s resolution and `R5a` pinned them
+equal on every byte rather than trusting a comment. The same pinning on the edge axis went red
+on its **first byte**:
+
+> `byte 0: the name door says '-' and the row door says 'wall'`
+
+`edge_kind_of(0)` fell through its table and answered `wall`, slope 1 — *no edge here*,
+reported as masonry that constrains a run. ⚠ **It was computed by nobody**: every reader skips
+byte 0 before asking, and `run_slope` has `if m == 0 { continue; }` on the line above its own
+call. So it could only ever surface by asking the function directly, **which is what a
+two-derivations equality does and a test of the readers does not**.
+
+### ⚠ The cost, measured — and `B4e`'s objection was right about the shape and wrong about the size
+
+`B4e` refused to resolve an edge byte in its own words: *"every caller holds a byte and no
+world — the walk asks this per edge per step."* `edges_around` reads three edge slots of every
+cell in a `(2·reach+3)²` window, so that objection is about the **absence** case, which is
+nearly all of it.
+
+| `probe/roles/cost.loft`, A-B-B-A **in one process**, 40 000 calls an arm | byte | resolved |
+|---|---|---|
+| an ABSENT edge, first version | 5 ms | ⛔ **57 ms** |
+| an ABSENT edge, with the guard | 2 ms | ✅ **1–3 ms** |
+| a real wall or door | 2 ms | 156 ms |
+
+✅ **The guard is one line — `if mat == 0 { return false; }` at the predicate** — and it cannot
+change an answer, because `world_palette_name` returns `PAL_ABSENT` for slot 0 before it looks
+at anything, so **no world can name slot 0**. ⚠ It is a second statement of a rule
+`edge_role_at` already makes, so it is said out loud, pinned by the every-byte equality, and
+**swept as its own row: cutting it leaves every test green**, which is what says it is a speed
+cut and not a rule.
+
+⛔ **AND THE WALL CLOCK ON THE SCAN ITSELF IS NOT AN INSTRUMENT ON THIS BOX.** The first
+version of `probe/r5b/run.sh` read AFTER / BEFORE / AFTER and its two AFTER rows came back
+**186 ms and 474 ms — same binary, same program, 2.5× apart.** Re-run as a build-level
+A-B-B-A with `/proc/loadavg` beside every row, AFTER is 141–175 ms and BEFORE 138–222 ms:
+**the ranges overlap and AFTER is never the slower of a pair**, which is all it can honestly
+say. ⚠ **The load-robust number is the one-process arm table above**; this probe only says
+whether that per-call cost shows up in the scan at all. It does not.
+
+### ⚠ And `session_select_wall`'s tension is answered by moving the question, not by settling it
+
+The phases table asked whether the reserved edge bytes are *vocabulary* (world-independent) or
+*palette* (and the refusal needs a world), because **a selection has no cell and therefore no
+region**. Both horns were avoidable: `open_ahead` and `open_span` **do** have a world and a
+cell — the author is standing in one — so the check that needs a world was moved to the
+**gesture**, where `px_to_hex` is hoisted three lines and answers it. `session_select_wall` is
+untouched and its comment stays true: *a selection is the author's and outlives the world they
+load next.* ⚠ **The tension was real and the question was in the wrong place.**
+
+### The sabotage sweep
+
+⚠ Restored from copies, never `git checkout`; the subject asserted present before row 0; every
+row asserted to have BUILT before its result was read.
+
+| row | what was cut | |
+|---|---|---|
+| 0 | control | green |
+| 1 | `edge_role_at` never reads the palette | ⛔ RED (6) |
+| 2 | absence falls through to the wall default | ⛔ RED (2) |
+| 3 | a fence blocks the VIEW too — the two sets collapse | ⛔ RED (2) |
+| 4 | `edges_around` still asks the BYTE pair | ⛔ RED (4) |
+| 5 | `open_ahead` asks `is_opening`, not `is_opening_at` | ⛔ RED (1) |
+| 6 | `run_slope` asks `edge_kind_of`, not `edge_kind_at` | ⛔ RED (1) |
+| 7 | `edge_kind_of(0)` is masonry again | ⛔ RED (2) |
+| 8 | ✅ the wall/door rows in a different ORDER (valid) | ✅ green |
+| 9 | ✅ the walk's absence GUARD dropped (a speed cut) | ✅ green |
+
+⚠ **Rows 8 and 9 are why the table means anything.** A sweep of only-red rows cannot tell *the
+tests see this* from *the tests fail on anything touched here* — and row 9 is the one that
+turns the guard from an optimisation somebody has to trust into one the suite has checked.
+
+### What the docket did
+
+**23 rows → 22; 21 open sites → 18.** `span_mark` and `open_ahead` no longer name `FENCE_MAT`
+at all, and `wall_stops_walk`'s row moves `debt` → `definition` on the same grounds
+`edge_is_wall` and `is_opening` already carry: **it has no production caller now** — it is the
+built-in numbering `edge_role_at` falls back to, and the arm the resolved pair is compared
+against on every byte a `u8` can hold.
+
+### The equivalence, which is the upper bound of the step
+
+- `walk-exact` — **77 scripts, every walk the world can see at `rate 0`.**
+- `role_mat.loft`'s every-byte comparison: with no palette, `wall_stops_walk_at`,
+  `wall_stops_view_at` and `is_opening_at` equal their byte forms on **all 256** bytes.
+- `make fast` green.
+
+### ⚠ AND THE DEADLINE WARNING THIS RUN PRINTED IS NOT MINE — checked rather than assumed
+
+`make fast` came back **184 files, all green**, and named one file past half the per-file
+deadline: `hex_editor/octagon`, **160.2 s — 53%**, at load 31.05 with 16 jobs. `run_slope` is
+the one changed line a tower's cells reach, so the attribution was tested rather than argued —
+A-B-B-A on that single line, `octagon.loft` alone:
+
+| | load | |
+|---|---|---|
+| A1 AFTER `edge_kind_at` | 14.3 | 78.2 s |
+| B1 BEFORE `edge_kind_of` | 8.8 | 74.4 s |
+| B2 BEFORE again | 5.9 | **88.4 s** |
+| A2 AFTER again | 8.5 | 74.8 s |
+
+**The ranges overlap and the slowest row is a BEFORE.** ⚠ And the file is 74–88 s run alone
+against 160 s inside `make fast`'s 16-way parallel phase, so **that number is the loop's
+contention, not the file's cost** — `04f6d12`'s lesson (*the baseline refutes my attribution*)
+one plan section down, and the reason `run_slope`'s memo (`lim_at`) means a tower pays it once
+per run cell rather than per pass.

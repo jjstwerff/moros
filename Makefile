@@ -1,4 +1,4 @@
-.PHONY: help names roles probe-roles probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-tw probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
+.PHONY: help names roles probe-roles probe-r5b probe-r5b-cost probe-names drift client client-force press client-check client-console serve stop creator upload tests lib-test editor editor-stop stop-editor editor-check gate gate-world gate-character gate-hexworld gate-one gate-rep check fast probe-text probe-split probe-p2 probe-p6 probe-b1a probe-auth probe-k3c probe-k3d probe-headless loft-state probe-t3 probe-t4 pages probe-a0p probe-a0p-exact probe-headings probe-a0q probe-h1 probe-l1 probe-b0p probe-b1p probe-b2p probe-b3p probe-b4x probe-b4y probe-b5 probe-b7 probe-b8 probe-b9 probe-tw probe-c1 probe-c2 probe-wp probe-m1p probe-m2p probe-k1 probe-demo page-check plan-check plan-view probe-plan play play-fast browser port-free
 
 # `lib-test` pipes loft's output through grep, and a pipeline's status is the
 # LAST command's — so without pipefail the gate would report grep's success and
@@ -580,7 +580,7 @@ fast:
 	@NAMES_ADVISORY=1 sh tools/names.sh
 # ⚠ **AND THE FOURTH NAME QUESTION: WHO STILL DECIDES AN IDENTITY FROM A CONSTANT.**
 # `names.sh` asks who else declares a name; this asks who reads a stored byte as one.
-# Advisory against `tools/roles.tsv` — the 21 open sites are plan 21 `R5b`/`R5c`'s work, and
+# Advisory against `tools/roles.tsv` — the 18 open sites are plan 21 `R5b.2`/`R5c`'s work, and
 # a loop that failed on them every time is a loop people stop reading. A NEW one shows.
 	@ROLES_ADVISORY=1 sh tools/roles.sh
 # ⚠ AND THE CLAIM THE ADVISORY ABOVE RESTS ON, RE-MEASURED EVERY LOOP — under a second.
@@ -922,6 +922,22 @@ roles:
 # `fast` runs it quiet; this prints every row. Sabotaged three ways and red each time.
 probe-roles:
 	@sh probe/roles/run.sh
+
+# ⛔ **CAN `role_mat.loft` SEE `R5b` GO WRONG — plan 21, and it EDITS `lib/` AND PUTS IT
+# BACK.** Ten rows, restored from copies rather than `git checkout` (CLAUDE.md's rule: the
+# subject of a sweep is uncommitted by definition). ⚠ **DELIBERATELY NOT IN `fast`**, for two
+# reasons and the second is the real one: it is ten `loft test` runs, and a check that mutates
+# the working tree must be something a person chooses to start. The trap restores on INT and
+# TERM; a `kill -9` between rows leaves a sabotage in place, so it prints a final diff against
+# the saved copies and says whether the tree came back identical.
+probe-r5b:
+	@sh probe/r5b/sweep.sh
+
+# WHAT `R5b` COSTS THE WALK — the same caveat: it swaps `walk.loft`'s predicate pair across
+# four builds and puts it back. `probe/roles/cost.loft` is the load-robust half and edits
+# nothing; this one only says whether that per-call cost shows up in `edges_around`'s clock.
+probe-r5b-cost:
+	@sh probe/r5b/run.sh
 
 # THE TOOLCHAIN CLAIM UNDER `names`, printed rather than swallowed. `fast` runs it quiet.
 probe-names:

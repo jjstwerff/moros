@@ -3945,7 +3945,9 @@ pub fn push_cell(wld: VoxelWorld, a: Author, mat: integer) -> PushMade {
   //
   // ⚠ **A FENCE IS NOT REFUSED**, deliberately: `FENCE_MAT` is a boundary in its own right
   // rather than a hole in one, so carrying it forward extends a paddock and stays exact.
-  if is_opening(pc_id) {
+  // ⚠ `is_opening_at` — plan 21 `R5b`. The push holds the cell whose boundary it is
+  // reading, so it can ask what THIS world calls the byte it found.
+  if is_opening_at(wld, pc_q, pc_r, pc_id) {
     return push_no("you are facing a doorway, not a wall — a push carries the wall's own "
                  + "id and an opening is a hole in one, so step along the face and push "
                  + "from beside it");
@@ -5757,6 +5759,19 @@ pub const WINDOW_HEAD = 9;   // and the wall resumes above it
 
 pub fn is_opening(mat: integer) -> boolean { mat == DOOR_MAT || mat == WINDOW_MAT }
 
+// The same question asked of the WORLD — plan 21 `R5b`.
+//
+// ⚠ **THE LINE ABOVE STAYS, AND IT IS A DEFINITION RATHER THAN A BYPASS.** `2` and
+// `4` are what THIS package numbers a door and a window, and that numbering is what
+// a world with no palette falls back to — moving it would be circular. What was a
+// bypass is every CALLER of it: three gestures each holding a world and a cell and
+// each asking this package's numbering instead of the author's.
+pub fn is_opening_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> boolean {
+  if mat == 0 { return false; }   // `wall_stops_walk_at`'s guard, and its reason
+  role = edge_role_at(w, q, r, mat);
+  role == ROLE_DOOR || role == ROLE_WINDOW
+}
+
 // The edge material where a point falls, for the renderer to ask per span. -1 when
 // the point is not on a marked edge at all.
 //
@@ -5884,8 +5899,11 @@ pub fn prop_at(w: VoxelWorld, q: integer, r: integer, item: integer) -> Dressed 
 // where it was still `WALL`/`FENCE`, which the first write clears.
 pub fn open_span(w: VoxelWorld, a: Author, kind: integer,
                  cx: float, cz: float, half: float) -> Ack {
-  if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
+  // ⚠ **THE AUTHOR'S CELL IS TAKEN BEFORE THE REFUSAL — plan 21 `R5b`.** *Is this
+  // byte an opening* is a question about a world, and the author is standing in one;
+  // `px_to_hex` is pure, so hoisting it changes nothing but what the check can ask.
   (sq, sr) = px_to_hex(a.au_x, a.au_z);
+  if !is_opening_at(w, sq, sr, kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   ref = (ground_h(w, sq, sr) as float) * w.w_unit;
   found = 0;
   // ⛔ **AND *ALREADY OPEN* IS NOT *NO WALL HERE* — an EMBRASURE is what says so.**
@@ -5957,10 +5975,14 @@ fn span_mark(w: VoxelWorld, cq: integer, cr: integer, kind: integer,
         // `sqrt(…) ?? 0.0 <= half` discharges the null with the COMPARISON's result
         // and loft refuses it — *a `boolean` default is not assignable to `float`*.
         if (sqrt(mx * mx + mz * mz) ?? 0.0) <= half {
-          // ⚠ `edge_is_wall`, NOT `== WALL_MAT` — plan 26 `B4e`. A door cut in a
-          // world whose walls are a DECLARED type must land in them; a site that
-          // asked for byte 1 would find nothing to cut and report the count.
-          if edge_is_wall(m) || m == FENCE_MAT {
+          // ⚠ `edge_role_at`, NOT `edge_is_wall` — plan 21 `R5b`, sharpening
+          // `B4e`'s own note. A door cut in a world whose walls are a DECLARED
+          // type must land in them, which `edge_is_wall` already did by answering
+          // *wall* to every undeclared high byte — and that same default cut a
+          // hole in a slot the world calls `door`, counting a boundary it had not
+          // changed. The role is the question; the byte was a proxy for it.
+          er = edge_role_at(w, q, r, m);
+          if er == ROLE_WALL || er == ROLE_FENCE {
             wall_set(w, q, r, d, kind, ground_h(w, q, r), ref);
             n = n + 1;
           } else {
@@ -5976,10 +5998,11 @@ fn span_mark(w: VoxelWorld, cq: integer, cr: integer, kind: integer,
 }
 
 pub fn open_ahead(w: VoxelWorld, a: Author, kind: integer, nedges: integer) -> Ack {
-  if !is_opening(kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
+  // ⚠ HOISTED FOR `open_span`'s reason — plan 21 `R5b`.
+  (cq, cr) = px_to_hex(a.au_x, a.au_z);
+  if !is_opening_at(w, cq, cr, kind) { return ack_no("{kind} is not an opening; nominal, so there is no nearest one"); }
   nfit = fit_ordinal(nedges, 1, 6, "opening width");
   if !nfit.ft_ok { return ack_no(fit_why(nfit)); }
-  (cq, cr) = px_to_hex(a.au_x, a.au_z);
   ref = (ground_h(w, cq, cr) as float) * w.w_unit;
 
   // The wall edges within reach, nearest the author first — a door goes where the
@@ -5990,8 +6013,9 @@ pub fn open_ahead(w: VoxelWorld, a: Author, kind: integer, nedges: integer) -> A
       if found < nedges {
         (nq, nr) = hex_neighbor(cq, cr, d);
         m = wall_of(w, cq, cr, d, ref);
-        // ⚠ `edge_is_wall` for `open_span`'s reason, one gesture over — `B4e`.
-        if edge_is_wall(m) || m == FENCE_MAT {
+        // ⚠ `edge_role_at` for `span_mark`'s reason, one gesture over — `R5b`.
+        er = edge_role_at(w, cq, cr, m);
+        if er == ROLE_WALL || er == ROLE_FENCE {
           wall_set(w, cq, cr, d, kind, ground_h(w, cq, cr), ref);
           found = found + 1;
         }
@@ -8635,33 +8659,129 @@ pub fn ground_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> te
 // height, and `hex_mesh` depends on this package so the arrow already allows it.
 pub struct EdgeKind { ek_mat: integer, ek_name: text, ek_slope: integer }
 
+// ── WHAT AN EDGE ROLE IS CALLED — plan 21 `R5b` ────────────────────────────
+//
+// ⚠ **THE EDGE AXIS HAS ITS OWN NAMES BECAUSE IT HAS ITS OWN NUMBERING.** `PAL_EDGE`
+// and `PAL_MATERIAL` are two sections of the world file, so `1` is *wall* on one and
+// *grass* on the other and a world may name slot 7 on both. Sharing one `ROLE_*`
+// block between the axes would read as though a name resolved the same either side,
+// which is exactly the confusion `ground_kind_at`'s header warns about one screen up.
+pub const ROLE_WALL   = "wall";
+pub const ROLE_DOOR   = "door";
+pub const ROLE_FENCE  = "fence";
+pub const ROLE_WINDOW = "window";
+
 pub fn edge_kinds() -> vector<EdgeKind> {
   [
     // A city wall climbs like a road: slowly, and it may climb a long way.
-    EdgeKind { ek_mat: WALL_MAT,  ek_name: "wall",  ek_slope: 1 },
-    EdgeKind { ek_mat: DOOR_MAT,  ek_name: "door",  ek_slope: 1 },
+    EdgeKind { ek_mat: WALL_MAT,   ek_name: ROLE_WALL,   ek_slope: 1 },
+    EdgeKind { ek_mat: DOOR_MAT,   ek_name: ROLE_DOOR,   ek_slope: 1 },
     // A fence follows the ground more willingly than masonry does.
-    EdgeKind { ek_mat: FENCE_MAT, ek_name: "fence", ek_slope: 2 },
+    EdgeKind { ek_mat: FENCE_MAT,  ek_name: ROLE_FENCE,  ek_slope: 2 },
+    // ⚠ **THE WINDOW ROW IS NEW AND CHANGES NO SLOPE — plan 21 `R5b`.** Byte 4 fell
+    // through to the default before, which answers `ek_slope: 1` and the NAME `wall`.
+    // The slope is identical, so `run_slope` cannot move; the name is what `R5b`
+    // needs, because a role reader that called a window a wall would make it stop a
+    // walker on the resolved path and not on the byte path.
+    EdgeKind { ek_mat: WINDOW_MAT, ek_name: ROLE_WINDOW, ek_slope: 1 },
   ]
 }
 
 pub fn edge_kind_of(mat: integer) -> EdgeKind {
+  // ⛔ **ABSENCE IS NOT A WALL, AND THIS FUNCTION SAID IT WAS — found by `R5b`.**
+  // Byte 0 fell through to the default and came back `wall`, slope 1: *no edge here*
+  // reported as masonry that constrains a run. Nothing had noticed because **every
+  // reader skips 0 before asking** — `run_slope` has `if m == 0 { continue; }` on the
+  // line above its own call — so the wrong answer was computed by nobody. It surfaced
+  // the moment a second derivation of the same quantity was pinned equal to it, which
+  // is what that pinning is for.
+  if mat == 0 {
+    return EdgeKind { ek_mat: 0, ek_name: hex_voxel::PAL_ABSENT, ek_slope: SLOPE_FREE };
+  }
   for e in edge_kinds() {
     if e.ek_mat == mat { return e; }
   }
-  EdgeKind { ek_mat: mat, ek_name: "wall", ek_slope: 1 }
+  EdgeKind { ek_mat: mat, ek_name: ROLE_WALL, ek_slope: 1 }
+}
+
+// ── AND THE SAME BYTE, ASKED OF THE WORLD — plan 21 `R5b` ──────────────────
+//
+// *Is the byte on this edge what THIS WORLD calls a door?* — `ground_role_at`'s
+// question on the other axis, and the reason `PAL_EDGE` existed with nothing reading
+// it: `world_palette_check` has refused an unnamed edge byte at load since `R1`, so
+// the store validated a palette no gesture, walk or reader ever consulted.
+//
+// ⛔ **AND `edge_is_wall`'s FALLBACK IS WHAT MADE THE ABSENCE INVISIBLE.** An
+// undeclared high byte answers *wall*, so a world that declared slot 7 to be its own
+// DOOR got a door in the store, a door in the palette, and masonry from every reader
+// — the walker refused, `open_span` refusing to cut it, the mesher drawing it solid.
+// Nothing goes red, because no world in this corpus carries an edge palette.
+//
+// ⚠ **BYTE 0 SHORT-CIRCUITS BEFORE THE REGION LOOKUP, AND THAT IS NOT A TIDY-UP.**
+// `edges_around` asks this three times per cell over `(2·reach+3)²` cells and the
+// overwhelming majority of those bytes are absence. `world_palette_name` already
+// answers `PAL_ABSENT` for slot 0 — but only AFTER `world_region_at` has been
+// evaluated as its argument, which is the lookup this skips. Measured in
+// `probe/roles/cost.loft`.
+pub fn edge_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> text {
+  if mat == 0 { return hex_voxel::PAL_ABSENT; }
+  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
+                                     hex_voxel::world_region_at(w, q, r), mat);
+  if nm != "" && nm != hex_voxel::PAL_ABSENT { return nm; }
+  for e in edge_kinds() {
+    if e.ek_mat == mat { return e.ek_name; }
+  }
+  // ⚠ AN UNDECLARED HIGH BYTE IS A WALL, which is `edge_is_wall`'s own answer and
+  // the one this must not change: a wall type a world forgot to name is a wall whose
+  // type is missing, not a different kind of boundary.
+  ROLE_WALL
+}
+
+// The one form of the question a rule is allowed to ask — `ground_is`'s shape on the
+// edge axis, and the same reason for the direction. The inverse (*which byte does
+// this region call a door*) reads better at a call site and is wrong: nothing forbids
+// a region naming two slots `door`.
+pub fn edge_is(w: VoxelWorld, q: integer, r: integer, mat: integer,
+               role: text) -> boolean {
+  edge_role_at(w, q, r, mat) == role
+}
+
+// …and the ROW, for the one reader that wants an attribute rather than an identity.
+//
+// ⚠ **IT IS A SECOND STATEMENT OF `edge_role_at`'s RESOLUTION AND IS GATED RATHER
+// THAN DENIED**, exactly as `ground_role_at` is against `ground_kind_at`: the two are
+// pinned equal on every byte in both palette states by `tests/role_mat.loft`, because
+// two derivations of one quantity is the shape this tree has been bitten by.
+pub fn edge_kind_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> EdgeKind {
+  nm = hex_voxel::world_palette_name(w, hex_voxel::PAL_EDGE,
+                                     hex_voxel::world_region_at(w, q, r), mat);
+  if nm == "" || nm == hex_voxel::PAL_ABSENT { return edge_kind_of(mat); }
+  for e in edge_kinds() {
+    if e.ek_name == nm { return EdgeKind { ek_mat: mat, ek_name: nm, ek_slope: e.ek_slope }; }
+  }
+  // ⚠ NAMED BUT UNKNOWN IS A WALL'S SLOPE, for `ground_kind_at`'s reason one axis
+  // over: a world may call slot 7 `battlement` and this table has no policy for it,
+  // and refusing would make an unmapped NAME fatal to a gesture where
+  // `world_palette_check` is the place that refuses an unmapped BYTE at load.
+  EdgeKind { ek_mat: mat, ek_name: nm, ek_slope: 1 }
 }
 
 // The steepest step the run through this cell may take — the STRICTEST of the edges
 // it carries, because a wall and a fence meeting at a post are one run and the
 // masonry is what cannot bend.
+//
+// ⚠ **`edge_kind_at`, NOT `edge_kind_of` — plan 21 `R5b`.** This is `edge_kind_at`'s
+// one consumer, and it is here rather than in a test because a resolver with no
+// production caller is this tree's commonest defect. A world that declares its own
+// fence at a high slot would otherwise get masonry's limit and refuse to follow the
+// ground, with the palette read correctly by nothing.
 pub fn run_slope(w: VoxelWorld, q: integer, r: integer) -> integer {
   ref = (terrain_h(q, r, w) as float) * w.w_unit;
   lim = SLOPE_FREE;
   for d in 0..6 {
     m = wall_of(w, q, r, d, ref);
     if m == 0 { continue; }
-    e = edge_kind_of(m).ek_slope;
+    e = edge_kind_at(w, q, r, m).ek_slope;
     if lim == SLOPE_FREE || e < lim { lim = e; }
   }
   lim

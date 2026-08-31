@@ -20,6 +20,8 @@
 use hex_editor;
 use hex_voxel;
 use hex_shape;
+use hex_edge;
+use hex_grid;
 
 const YAW = 1.5707963267948966;
 const U = 0.25;
@@ -186,4 +188,245 @@ fn test_they_agree_when_the_world_has_renamed_bytes_too() {
   // two fallbacks and proves nothing.
   assert(ground_role_at(w, 0, 0, ALIEN) == "floor", "byte {ALIEN} did not resolve");
   assert(ground_role_at(w, 0, 0, FLOOR_MAT) == "grass", "byte 4 did not resolve");
+}
+
+// ══ THE EDGE AXIS — plan 21 `R5b` ═══════════════════════════════════════════
+//
+// ⛔ **`PAL_EDGE` HAS BEEN IN THE WORLD FILE SINCE `R1` AND NOTHING READ IT.**
+// `world_palette_check` refuses an edge byte the palette does not name, at load —
+// so the store validated a mapping that no gesture, no walk and no reader ever
+// consulted. `edge_kind_of` took a bare byte and had no `_at` sibling at all.
+//
+// ⛔ **AND THE DEFECT THAT ABSENCE PRODUCES IS NOT A MISSING FEATURE, IT IS A WALL
+// THAT IS NOT THERE.** `edge_is_wall` answers *wall* for every byte past
+// `EDGE_MAT_LAST`, which is the right default for a wall TYPE nobody named and the
+// wrong one for a slot the world calls `door`: the walker is refused by masonry the
+// palette says is a doorway, `open_span` cuts a hole in a hole, and nothing goes red
+// because no world in this corpus carries an edge palette.
+//
+// ⚠ **BYTE 7 IS A LEGAL WALL-TYPE SLOT ON PURPOSE** — `session_select_wall` accepts
+// it, `wall_stamp` writes it, and the built-in reading of it is *wall*. So the
+// control below can fail for a real reason.
+
+const ALIEN_EDGE = 7;
+const REACH = 6;
+const NW = 2 * REACH + 1;
+const REF = 2.0;              // world units — the ground below is 8 * 0.25
+
+fn edge_world(mat: integer) -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - REACH, 0 - REACH, NW, NW, 8, SURFACE_MAT);
+  wall_set(w, 0, 0, 0, mat, 8, REF);
+  w
+}
+
+fn name_edge(w: VoxelWorld, slot: integer, name: text) {
+  assert(hex_voxel::world_palette_put(w, hex_voxel::PAL_EDGE, 0, slot, name)
+         == hex_voxel::PAL_OK,
+         "the edge palette refused {slot}={name}");
+}
+
+// Is the edge east of the origin a barrier, as the WALK's own reader answers it?
+// ⚠ Through `edges_around` rather than through the predicate, because the predicate
+// is what changed and a test that called it directly could not see the loop still
+// asking the byte version.
+fn walk_blocked(w: VoxelWorld) -> boolean {
+  e = edges_around(w, 0, 0, REACH, false, WallRuns { items: [] },
+                   hex_edge::surfaces_new(), REF);
+  (nq, nr) = hex_grid::hex_neighbor(0, 0, 0);
+  hex_edge::edge_blocked(e, 0, 0, nq, nr)
+}
+
+fn view_blocked(w: VoxelWorld) -> boolean {
+  e = edges_around(w, 0, 0, REACH, true, WallRuns { items: [] },
+                   hex_edge::surfaces_new(), REF);
+  (nq, nr) = hex_grid::hex_neighbor(0, 0, 0);
+  hex_edge::edge_blocked(e, 0, 0, nq, nr)
+}
+
+// ── THE CONTROLS COME FIRST ────────────────────────────────────────────────
+
+// ⚠ **THE FIXTURE HAS TO BLOCK BEFORE ITS NOT-BLOCKING MEANS ANYTHING.** An
+// undeclared slot 7 is a wall type whose name is missing, and it must stop a walker
+// — that is `edge_is_wall`'s documented answer and `R5b` does not change it.
+fn test_an_undeclared_edge_slot_still_walls_a_walker_in() {
+  assert(walk_blocked(edge_world(ALIEN_EDGE)),
+         "slot {ALIEN_EDGE} is named by nothing and did not block — the fixture is "
+       + "not carrying a boundary, so every row below would pass for free");
+  assert(walk_blocked(edge_world(WALL_MAT)), "plain masonry did not block");
+  assert(!walk_blocked(edge_world(DOOR_MAT)), "the built-in door blocked a walker");
+}
+
+// ⛔ **AND THE BYTE PAIR AND THE RESOLVED PAIR MUST AGREE ON EVERY BYTE WHEN THERE IS
+// NO PALETTE** — the whole corpus is such a world, so this is what says the change
+// moved nothing. Both paths run; they are compared exactly.
+fn test_with_no_palette_the_resolved_walk_is_the_byte_walk_on_every_byte() {
+  w = edge_world(WALL_MAT);
+  for m in 0..256 {
+    assert(wall_stops_walk_at(w, 0, 0, m) == wall_stops_walk(m),
+           "byte {m}: resolved walk says {wall_stops_walk_at(w, 0, 0, m)} and the "
+         + "byte walk says {wall_stops_walk(m)}");
+    assert(wall_stops_view_at(w, 0, 0, m) == wall_stops_view(m),
+           "byte {m}: resolved view says {wall_stops_view_at(w, 0, 0, m)} and the "
+         + "byte view says {wall_stops_view(m)}");
+    assert(is_opening_at(w, 0, 0, m) == is_opening(m),
+           "byte {m}: resolved opening says {is_opening_at(w, 0, 0, m)} and the byte "
+         + "opening says {is_opening(m)}");
+  }
+}
+
+// ── AND THE CLAIM: CUT, AND WALKED THROUGH ─────────────────────────────────
+
+// ⛔ **A WORLD THAT NUMBERS ITS OWN DOOR IS WALKED THROUGH.** The same store, the
+// same byte, the same walk — only the palette differs, and the control above says
+// the version without it blocks.
+fn test_a_world_that_calls_slot_seven_a_door_is_walked_through() {
+  w = edge_world(ALIEN_EDGE);
+  name_edge(w, ALIEN_EDGE, "door");
+  assert(!walk_blocked(w),
+         "the world calls edge slot {ALIEN_EDGE} 'door' and the walker was still "
+       + "refused by it");
+  assert(!view_blocked(w),
+         "the world's own door blocked the camera's view too");
+}
+
+// ⚠ **AND THE OTHER DIRECTION, which is the half a fallback cannot fake.** Byte 2 is
+// `DOOR_MAT` in this package; a world that calls it `wall` must stop a walker there,
+// or the palette is being read and then ignored.
+fn test_the_built_in_door_byte_named_wall_stops_a_walker() {
+  w = edge_world(DOOR_MAT);
+  assert(!walk_blocked(w), "the built-in door blocked before it was renamed");
+  name_edge(w, DOOR_MAT, "wall");
+  assert(walk_blocked(w),
+         "edge byte {DOOR_MAT} was named 'wall' and a walker still went through it");
+}
+
+// ⚠ **A FENCE STOPS A WALKER AND NOT A CAMERA, AND A WORLD MAY DECLARE ONE.** The
+// two sets are different (`wall_stops_walk` against `wall_stops_view`), so a resolver
+// that collapsed them would pass every row above and fail here.
+fn test_a_world_that_declares_its_own_fence_gets_a_fences_two_answers() {
+  w = edge_world(ALIEN_EDGE);
+  name_edge(w, ALIEN_EDGE, "fence");
+  assert(walk_blocked(w), "the world's own fence let a walker through");
+  assert(!view_blocked(w), "the world's own fence blocked the camera's view");
+}
+
+// ⛔ **AND THE CUT HALF.** `open_ahead` refuses a kind that is not an opening, and it
+// asked this package's numbering — so an author whose world declares its door at slot
+// 7 could not cut one at all.
+fn test_a_world_that_numbers_its_own_door_can_cut_one() {
+  w = edge_world(WALL_MAT);
+  a = author_at(0.0, 0.0, 0.0, REF);
+
+  // The control: the same call, same world, no palette — refused, and by name.
+  no = open_ahead(w, a, ALIEN_EDGE, 1);
+  assert(!no.ak_ok,
+         "slot {ALIEN_EDGE} is named by nothing and was accepted as an opening — the "
+       + "row below would pass for free");
+
+  w2 = edge_world(WALL_MAT);
+  name_edge(w2, ALIEN_EDGE, "door");
+  ok = open_ahead(w2, a, ALIEN_EDGE, 1);
+  assert(ok.ak_ok,
+         "the world calls edge slot {ALIEN_EDGE} 'door' and cutting one was refused: "
+       + "{ok.ak_why}");
+  // …and it landed in the store, or `ak_ok` is a statement about the doorstep only.
+  (nq, nr) = hex_grid::hex_neighbor(0, 0, 0);
+  assert(wall_of(w2, 0, 0, 0, REF) == ALIEN_EDGE,
+         "the cut reported ok and the edge holds {wall_of(w2, 0, 0, 0, REF)}");
+  assert(!walk_blocked(w2),
+         "the door was cut and the walker is still refused by it");
+}
+
+// ⛔ **AND A DOOR IS NOT CUTTABLE, WHICH IS THE SAME RULE READ THE OTHER WAY.**
+// `span_mark` and `open_ahead` mark a `wall` or a `fence`; a slot the world calls
+// `door` is already a hole, so there is nothing there to mark.
+fn test_a_world_that_calls_slot_seven_a_door_has_nothing_left_to_cut() {
+  w = edge_world(ALIEN_EDGE);
+  name_edge(w, ALIEN_EDGE, "door");
+  a = author_at(0.0, 0.0, 0.0, REF);
+  ack = open_ahead(w, a, DOOR_MAT, 1);
+  assert(!ack.ak_ok,
+         "the only boundary here is already this world's own door and a cut still "
+       + "reported {ack.ak_n}");
+}
+
+// ── THE TWO DOORS ON THIS AXIS, for `ground_role_at`'s reason ───────────────
+
+fn test_the_edge_name_door_and_the_edge_row_door_agree_on_every_byte() {
+  w = edge_world(WALL_MAT);
+  for m in 0..256 {
+    assert(edge_role_at(w, 0, 0, m) == edge_kind_at(w, 0, 0, m).ek_name,
+           "byte {m}: the name door says '{edge_role_at(w, 0, 0, m)}' and the row "
+         + "door says '{edge_kind_at(w, 0, 0, m).ek_name}'");
+  }
+}
+
+fn test_they_agree_when_the_world_has_renamed_edge_bytes_too() {
+  w = edge_world(WALL_MAT);
+  name_edge(w, ALIEN_EDGE, "door");
+  name_edge(w, DOOR_MAT, "wall");
+  name_edge(w, 8, "battlement");
+  for m in 1..256 {
+    assert(edge_role_at(w, 0, 0, m) == edge_kind_at(w, 0, 0, m).ek_name,
+           "byte {m} under a palette: '{edge_role_at(w, 0, 0, m)}' against "
+         + "'{edge_kind_at(w, 0, 0, m).ek_name}'");
+  }
+  // ⚠ AND THE CONTROL: the palette is actually being read, or the loop above compares
+  // two fallbacks and proves nothing.
+  assert(edge_role_at(w, 0, 0, ALIEN_EDGE) == "door", "slot {ALIEN_EDGE} did not resolve");
+  assert(edge_role_at(w, 0, 0, DOOR_MAT) == "wall", "slot {DOOR_MAT} did not resolve");
+  assert(edge_role_at(w, 0, 0, 8) == "battlement", "slot 8 did not resolve");
+}
+
+// ⚠ **A NAMED-BUT-UNKNOWN EDGE ROLE IS A WALL'S SLOPE AND KEEPS ITS OWN NAME** —
+// `ground_kind_at`'s rule one axis over. `world_palette_check` is where an unmapped
+// BYTE is refused; an unmapped NAME must not be fatal to a gesture.
+fn test_a_name_this_table_has_never_heard_of_slopes_like_masonry() {
+  w = edge_world(WALL_MAT);
+  name_edge(w, ALIEN_EDGE, "battlement");
+  assert(edge_kind_at(w, 0, 0, ALIEN_EDGE).ek_slope
+         == edge_kind_of(WALL_MAT).ek_slope,
+         "a battlement slopes {edge_kind_at(w, 0, 0, ALIEN_EDGE).ek_slope}, masonry "
+       + "{edge_kind_of(WALL_MAT).ek_slope}");
+  assert(walk_blocked(edge_world(ALIEN_EDGE)),
+         "and it must still be a boundary");
+}
+
+// ⛔ **AND `run_slope` IS `edge_kind_at`'s ONE PRODUCTION CALLER, so the world's own
+// fence has to reach it.** A resolver nothing calls is this tree's commonest defect,
+// and a test that only asked the resolver could not see it.
+fn test_the_run_limit_takes_the_worlds_own_fence_at_a_fences_slope() {
+  masonry = edge_world(ALIEN_EDGE);
+  base = run_slope(masonry, 0, 0);
+  assert(base == edge_kind_of(WALL_MAT).ek_slope,
+         "an undeclared slot limits a run at {base}, not masonry's "
+       + "{edge_kind_of(WALL_MAT).ek_slope}");
+
+  w = edge_world(ALIEN_EDGE);
+  name_edge(w, ALIEN_EDGE, "fence");
+  assert(run_slope(w, 0, 0) == edge_kind_of(FENCE_MAT).ek_slope,
+         "the world calls slot {ALIEN_EDGE} 'fence' and the run is still held to "
+       + "{run_slope(w, 0, 0)} rather than {edge_kind_of(FENCE_MAT).ek_slope}");
+  assert(edge_kind_of(FENCE_MAT).ek_slope != edge_kind_of(WALL_MAT).ek_slope,
+         "a fence and a wall have the same limit, so the row above cannot fail");
+}
+
+// ⛔ **AND WHAT PINNING THE TWO DOORS TOGETHER FOUND — `R5b`.** `edge_kind_of(0)` fell
+// through its table and answered `wall`, slope 1: *no edge here*, reported as masonry
+// that constrains a run. It was computed by nobody, because every reader skips byte 0
+// before asking — `run_slope` has `if m == 0 { continue; }` on the line above its own
+// call — so it could only ever be found by asking the function directly, which is what
+// the equality above does on every byte a `u8` can hold.
+fn test_an_unwritten_edge_is_absence_and_not_masonry() {
+  assert(edge_kind_of(0).ek_name == hex_voxel::PAL_ABSENT,
+         "an unwritten edge is a '{edge_kind_of(0).ek_name}'");
+  assert(edge_kind_of(0).ek_slope == SLOPE_FREE,
+         "an unwritten edge limits a run to {edge_kind_of(0).ek_slope}");
+  // …and it did not change what the one reader answers, because that reader never
+  // asks. A world of open ground has no wall to limit its runs.
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - REACH, 0 - REACH, NW, NW, 8, SURFACE_MAT);
+  assert(run_slope(w, 0, 0) == SLOPE_FREE,
+         "open ground limits a run to {run_slope(w, 0, 0)}");
 }

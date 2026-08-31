@@ -68,6 +68,44 @@ use hex_voxel;
 pub fn wall_stops_walk(mat: integer) -> boolean { edge_is_wall(mat) || mat == FENCE_MAT }
 pub fn wall_stops_view(mat: integer) -> boolean { edge_is_wall(mat) }
 
+// ── AND THE SAME TWO, ASKED OF THE WORLD — plan 21 `R5b` ───────────────────
+//
+// ⛔ **A WORLD THAT DECLARES ITS OWN DOOR WAS WALLED IN BY THE PAIR ABOVE.** An edge
+// byte past `EDGE_MAT_LAST` answers `edge_is_wall` — the right default for a wall
+// TYPE nobody named, and the wrong one for a slot the palette calls `door`: the
+// store holds a door, `world_palette_check` passed it at load, and the walker is
+// refused by masonry that does not exist. Both are the byte predicate with the byte
+// resolved first, and nothing else.
+//
+// ⚠ **THE SETS ARE TRANSLATED EXACTLY, INCLUDING THE ONE THAT LOOKS WRONG.** A
+// WINDOW does not stop a walker today (`wall_stops_walk(WINDOW_MAT)` is false) and
+// that is preserved here rather than corrected in passing — a step that also changed
+// which materials block would be two changes wearing one diff, and the byte pair
+// above is what this is compared against.
+pub fn wall_stops_walk_at(w: VoxelWorld, q: integer, r: integer,
+                          mat: integer) -> boolean {
+  // ⚠ **THE ABSENCE GUARD IS A MEASUREMENT, AND IT IS A SECOND STATEMENT OF A RULE
+  // `edge_role_at` ALREADY MAKES — said out loud rather than hidden.** It cannot
+  // change an answer: `world_palette_name` returns `PAL_ABSENT` for slot 0 before it
+  // looks at anything, so **no world can name slot 0**, and `role_mat.loft` pins this
+  // pair equal to the byte pair on every byte a `u8` can hold. What it buys is the
+  // whole scan: `edges_around` reads three edge slots of every cell in its window and
+  // an open world is absence in nearly all of them, so without this the resolution's
+  // text return and two text compares are paid ~1 000 times per rebuild for nothing.
+  // ⛔ **MEASURED, `probe/roles/cost.loft`, A-B-B-A in one process: 57 ms per 40 000
+  // absent calls without it, 1–3 ms with — against the byte predicate's 2 ms.** A real
+  // edge still resolves and still pays.
+  if mat == 0 { return false; }
+  role = edge_role_at(w, q, r, mat);
+  role == ROLE_WALL || role == ROLE_FENCE
+}
+
+pub fn wall_stops_view_at(w: VoxelWorld, q: integer, r: integer,
+                          mat: integer) -> boolean {
+  if mat == 0 { return false; }   // the guard above, for the same scan
+  edge_role_at(w, q, r, mat) == ROLE_WALL
+}
+
 // ── WHAT A WALKER MEASURES ITS STEP AGAINST ─────────────────────────────────
 //
 // The surface rule, from the walker's own height — `world_surface`, not
@@ -183,8 +221,11 @@ pub fn edges_around(wld: VoxelWorld, cq: integer, cr: integer, reach: integer,
                                c.h_wall_ne as integer ?? 0,
                                c.h_wall_e as integer ?? 0];
       for si in 0..3 {
-        stops = wall_stops_walk(mats[si]);
-        if view { stops = wall_stops_view(mats[si]); }
+        // ⚠ **THE `_at` PAIR — plan 21 `R5b`.** Byte 0 short-circuits inside
+        // `edge_role_at` before any lookup, which is what keeps this loop — three
+        // asks per cell over `(2·reach+3)²` cells — at the cost it had.
+        stops = wall_stops_walk_at(wld, q, r, mats[si]);
+        if view { stops = wall_stops_view_at(wld, q, r, mats[si]); }
         if stops {
           (nq, nr) = hex_grid::hex_neighbor(q, r, slot_dir[si]);
           sid = 0;

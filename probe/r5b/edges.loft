@@ -1,0 +1,86 @@
+// WHAT `R5b` COSTS THE WALK'S OWN EDGE SCAN — plan 21.
+//
+//   cd probe/r5b && loft edges.loft --lib ../../lib
+//
+// ⛔ **`B4e` REFUSED TO RESOLVE AN EDGE BYTE FOR THIS EXACT REASON**, in its own
+// words: *"every caller holds a byte and no world — the walk asks this per edge per
+// step."* `R5b` pays that cost, so it is measured rather than argued: the arm here is
+// `edges_around` itself, not a copy of its loop — a body copied into a probe is
+// evidence about the copy (`probe/a0q`).
+//
+// ⚠ **A-B-B-A IN ONE PROCESS.** A load ramp shows up as `A1 ≠ A2` instead of hiding
+// inside the arm it landed on. The A/B here is across two BUILDS of the library, so
+// this program is run twice by `run.sh` — once with the walk wired and once with the
+// byte pair restored — and each run is internally A-B-B-A over the same call.
+use hex_editor;
+use hex_voxel;
+use hex_edge;
+use hex_grid;
+
+const U = 0.25;
+const REACH = 8;
+const N = 2 * REACH + 1;
+const REF = 2.0;
+const ROUNDS = 60;
+
+fn bench_world(walls: integer) -> VoxelWorld {
+  w = world_new(U, 0, 10, 4).wn_world;
+  ground_fill(w, 0 - REACH - 2, 0 - REACH - 2, N + 4, N + 4, 8, SURFACE_MAT);
+  // ⚠ A WORLD IS MOSTLY OPEN GROUND, which is the distribution that decides this.
+  // `walls` edges are written and the other ~1 000 slots in the window are absence.
+  for i in 0..walls {
+    wall_set(w, (i % 5) - 2, (i / 5 ?? 0) - 2, i % 3, WALL_MAT, 8, REF);
+  }
+  w
+}
+
+// ⚠ THE ACCUMULATOR IS ONE EDGE, NOT THE WINDOW. A full count would put a second
+// `O(window)` scan inside the clock and time that instead of the subject; asking one
+// known edge is enough that the result cannot be folded away.
+fn scan(w: VoxelWorld) -> integer {
+  n = 0;
+  (nq, nr) = hex_grid::hex_neighbor(0, 0, 0);
+  for i in 0..ROUNDS {
+    e = edges_around(w, 0, 0, REACH, false, WallRuns { items: [] },
+                     hex_edge::surfaces_new(), REF);
+    if hex_edge::edge_blocked(e, 0, 0, nq, nr) { n = n + 1; }
+  }
+  n
+}
+
+// …and the control's own count, taken OUTSIDE the clock: how many edges of the window
+// each world actually blocks, so *the two arms differ* is a fact rather than a hope.
+fn blocked_total(w: VoxelWorld) -> integer {
+  e = edges_around(w, 0, 0, REACH, false, WallRuns { items: [] },
+                   hex_edge::surfaces_new(), REF);
+  n = 0;
+  for r in (0 - REACH)..(REACH + 1) {
+    for q in (0 - REACH)..(REACH + 1) {
+      for d in 0..6 {
+        (nq, nr) = hex_grid::hex_neighbor(q, r, d);
+        if hex_edge::edge_blocked(e, q, r, nq, nr) { n = n + 1; }
+      }
+    }
+  }
+  n
+}
+
+fn main() {
+  bare = bench_world(0);
+  some = bench_world(15);
+
+  a1s = now(); a1n = scan(bare); a1 = now() - a1s;
+  b1s = now(); b1n = scan(some); b1 = now() - b1s;
+  b2s = now(); b2n = scan(some); b2 = now() - b2s;
+  a2s = now(); a2n = scan(bare); a2 = now() - a2s;
+
+  // ⚠ THE CONTROL COMES FIRST: the two worlds must differ in what they BLOCK, or the
+  // clock is timing one thing twice. And each arm must answer the same both times.
+  ob = blocked_total(bare);
+  wb = blocked_total(some);
+  println("blocked  open {ob} edges   walled {wb} edges"
+        + "   (differ: {ob != wb})   ·  seen at the probe edge {a1n}/{a2n} vs {b1n}/{b2n}");
+  println("open     A1 {a1} ms   A2 {a2} ms      ({ROUNDS} scans of a {N}x{N} window)");
+  println("walled   B1 {b1} ms   B2 {b2} ms");
+  println("⚠ believe the FIRST of each pair; the A1/A2 spread is the error bar.");
+}

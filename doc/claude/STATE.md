@@ -127,6 +127,22 @@ written**, hand-counted and never re-run.
 **A partly-called resolver needs a COUNT, not a checklist** — a grep is what sees the bypasses,
 because each one reads perfectly well on its own line.
 
+⛔ **AND `R5b` FOUND A FOURTH FORM, WHICH IS THE WORST OF THEM — measured 2026-08-31: a
+resolver that was never WRITTEN, for a mapping the store had been VALIDATING for months.**
+`PAL_EDGE` has been in the world file since `R1` and `world_palette_check` refuses an unnamed
+edge byte **at load** — while `edge_kind_of` took a bare byte and had no `_at` sibling at all.
+So an author's edge palette was accepted, checked, saved, and consulted by nothing. ⛔ **A
+validated palette with no resolver is worse than no palette**, because it tells the author the
+declaration landed. The concrete cost: `edge_is_wall` answers *wall* for every byte past the
+vocabulary — the right default for a wall TYPE nobody named — so a world declaring its own
+**door** at a high slot got masonry from the walker, from both opening gestures and from the
+run limit, with the store, the palette and the loader all saying *door*. ✅ Those four resolve
+it now; the docket is **18 debt / 6 definition**. ⛔ **`R5b.2` is the eight `edge_is_wall`
+readers and it is a COST step** — every one of them sits inside a `for r … for q … for d`
+window scan, which is the surface `R5a` itself blew a 300-second deadline on.
+⚠ **So the standing question this list asks has a second half**: not only *who calls what I
+built*, but **what does the STORE already accept that nothing reads.**
+
 ⛔ **`hex_editor::names` — all EIGHT public functions have ZERO production callers.**
 `names_new` `name_generated` `label_named` `name_taken` `name_of` `name_free` `name_set`
 `name_refusal`. Tested at `B4`, invoked by nothing. It gets a consumer when catalogue entries
