@@ -524,7 +524,10 @@ if want F; then
 # instruction rather than a way round a flaky check.
 echo
 echo "── F   turn, and build a house where it was refused ────────────────"
-F_KEYS="h,d,h,d,h,d,h,d,h"
+# ⚠ THE TURN IS THE MOUSE NOW — CONTROLS section 5: `d` strafes, and a run that
+# turned with it would strafe five times and place nothing, which reads exactly like
+# the turn not unblocking the house. `~look:44` is one old `d` press worth of yaw.
+F_KEYS="h,~look:44,h,~look:44,h,~look:44,h,~look:44,h"
 # ⚠ `noturn` IS THE CONTROL FOR THE WHOLE SECTION: the same five `h` presses with
 # nothing turning between them. If F3 were really about pressing `h` often enough,
 # this would pass.
@@ -634,8 +637,8 @@ echo "── Q   choose a part, and place THAT instead of a house ────�
 # unrepresentable: the page's `mapKey` handles `Key*`, `Digit*` and eight named keys,
 # and returns 0 for everything else, so a punctuation press cannot be told from no
 # press. `Tab` is in that table and already means cycle.
-Q_KEYS="d,Tab,h,d,h,d,h"
-case ",$SAB," in *,nochoose,*) Q_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nochoose — the same run without the choosing key" ;; esac
+Q_KEYS="~look:44,Tab,h,~look:44,h,~look:44,h"
+case ",$SAB," in *,nochoose,*) Q_KEYS="~look:44,h,~look:44,h,~look:44,h"; echo "   SABOTAGE nochoose — the same run without the choosing key" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$Q_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/part.raw" 2>&1 || true
 grep -E '^(client|lavition editor client)' "$OUT/part.raw" > "$OUT/part.log" || true
@@ -698,12 +701,12 @@ if want G; then
 # point of the move was that there is only one to be right.
 echo
 echo "── G   walk, and place a house somewhere else ──────────────────────"
-G_KEYS="w,w,w,w,w,w,d,h,d,h,d,h"
+G_KEYS="w,w,w,w,w,w,~look:44,h,~look:44,h,~look:44,h"
 # ⚠ IT RETRIES LIKE `F` DOES, and the first version did not — `d,h` alone left the
 # turn one step short of an admissible facing on some runs, so the house was never
 # placed and `G2` went red saying *the same world*, about a run with no world in it.
 # A sabotage has to fail for ITS OWN reason.
-case ",$SAB," in *,nowalk,*) G_KEYS="d,h,d,h,d,h"; echo "   SABOTAGE nowalk — the same run with the walk keys removed" ;; esac
+case ",$SAB," in *,nowalk,*) G_KEYS="~look:44,h,~look:44,h,~look:44,h"; echo "   SABOTAGE nowalk — the same run with the walk keys removed" ;; esac
 timeout 300 node probe/b1b/press.mjs "file://$SITE" "$G_KEYS" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/walk.raw" 2>&1 || true
 grep -E '^(client|lavition editor client)' "$OUT/walk.raw" > "$OUT/walk.log" || true
@@ -1616,7 +1619,11 @@ grep -E "^click row|^client: local part '|^client: local — '3:'" "$OUT/pick.lo
 
 p_row=$(grep -c '^click row ' "$OUT/pick.log" || true)
 p_chosen=$(grep -m1 "^client: local part '" "$OUT/pick.log" || true)
-p_drag=$(grep -c "client: local — '3:'" "$OUT/pick.log" || true)
+# ⚠ THE EVIDENCE IS THE DRAG'S OWN LINE — `client: local look — N px` on the release —
+# since CONTROLS §5 made a drag TURN the character locally. It used to be the apology
+# for `3:`, which a drag that acts no longer prints; counting that would read a leak
+# through the panel as a clean zero.
+p_drag=$(grep -c "client: local look — " "$OUT/pick.log" || true)
 p_rows=$(grep '^client: catalogue rows — .' "$OUT/pick.log" | tail -1)
 
 # P1 — the click reached a consumer and chose the row that was under it.
@@ -1657,7 +1664,7 @@ fi
 timeout 400 node probe/b1b/press.mjs "file://$SITE" "~world" \
   --await 'no server answered' --wait-ms 90000 > "$OUT/pickw.raw" 2>&1 || true
 grep -E '^(client|canvas|click)' "$OUT/pickw.raw" > "$OUT/pickw.log" || true
-w_drag=$(grep -c "client: local — '3:'" "$OUT/pickw.log" || true)
+w_drag=$(grep -c "client: local look — " "$OUT/pickw.log" || true)
 if [ "$w_drag" -ge 1 ]; then
   say "P3 control: the same press-and-twitch in the WORLD does drag — P2's zero is a fact about the panel"
 else

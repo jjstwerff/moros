@@ -163,5 +163,6 @@ probe/b2/.*.loft
 probe/b2/.loft/
 # …and `probe/b6`'s, the same shape: a sabotaged client built beside the real one.
 probe/b6/.*.loft
+probe/stick/.*.loft
 # `loft package` output — the tarball is a release artifact, not a source file.
 lib/*/*.tar.gz

@@ -439,6 +439,28 @@ for (const k of keysArg.split(',')) {
   if (k.trim().startsWith('#')) { await clickRow(k.trim().slice(1)); continue; }
   // `~world` is the same press-and-twitch out in the world — P2's positive control.
   if (k.trim() === '~world') { await clickWorld(); continue; }
+  // `~look:N` DRAGS N pixels sideways in the world — the mouse as the RIGHT STICK,
+  // CONTROLS section 5. `A`/`D` strafe now, so a run that needs the character TURNED
+  // says so with the mouse: 44 px is the 0.264 rad one 120 ms `d` press used to give.
+  if (k.trim().startsWith('~look:')) {
+    const px = Number(k.trim().slice(6)) || 0;
+    const x0 = Math.max(60, Math.min(crect.x + crect.w * 0.6, 900));
+    const y0 = Math.max(8, Math.min(crect.y + crect.h * 0.6, 700));
+    console.log(`look drag ${px} px from viewport ${Math.round(x0)},${Math.round(y0)}`);
+    await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x0, y: y0, buttons: 0 });
+    await sleep(60);
+    await call('Input.dispatchMouseEvent',
+      { type: 'mousePressed', x: x0, y: y0, button: 'left', clickCount: 1, buttons: 1 });
+    await sleep(holdMs);
+    for (let i = 1; i <= 4; i++) {
+      await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x0 + px * i / 4, y: y0, buttons: 1 });
+      await sleep(40);
+    }
+    await call('Input.dispatchMouseEvent',
+      { type: 'mouseReleased', x: x0 + px, y: y0, button: 'left', clickCount: 1, buttons: 0 });
+    await sleep(gapMs);
+    continue;
+  }
   // ⚠ `!reload` RE-OPENS THE PAGE MID-RUN — plan 22 `M5b`, and it is in the key list for
   // `@verb`'s reason: *bind it, close the tab, come back* is ONE sentence, and a run
   // that had to be split across two invocations of this driver would be two experiments

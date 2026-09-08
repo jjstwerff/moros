@@ -45,6 +45,20 @@ pub const HELD_FWD   = 1;
 pub const HELD_BACK  = 2;
 pub const HELD_LEFT  = 4;
 pub const HELD_RIGHT = 8;
+// ⚠ **THE LEFT STICK IS A VECTOR, AND `A`/`D` ARE ITS SIDEWAYS HALF —
+// [CONTROLS](../../../doc/claude/CONTROLS.md) §5.** Bits 4 and 8 TURN and bits 16
+// and 32 STRAFE: the first pair is the wire's original declaration, so every script
+// that says `keys 4` keeps turning; the second is what a keyboard shaped like a
+// controller sends for `A`/`D`. A stick writes the same three quantities as floats
+// (`wk_stick_f`, `wk_stick_s`, `wk_stick_t`) and the tick composes bits and stick
+// into one vector, so the two inputs are one walk and not two.
+pub const HELD_STRAFE_L = 16;
+pub const HELD_STRAFE_R = 32;
+// How far one mouse pixel turns the character — the RIGHT stick's mouse spelling.
+// ⚠ SHARED BY THE SERVER (`3:`, attached) AND THE PAGE (local), for `TURN_RATE`'s
+// reason: two authorities turning one person by two amounts is a divergence no
+// suite can see until somebody drags.
+pub const LOOK_PER_PX = 0.0060;
 
 // Radians per second, at a full turn. It was `src/editor_server.loft`'s and the
 // page could not see it.
@@ -135,6 +149,50 @@ pub fn walk_dir(keys: integer) -> float {
 // ⚠ ONE AXIS, SO THERE IS NO DIAGONAL TO NORMALISE — turning replaced the strafe
 // that would have made that necessary, which is the same decision `HELD_LEFT`
 // records at the top of this file.
+// The sideways half of the left stick, as `walk_dir` is its forward half.
+pub fn strafe_dir(keys: integer) -> float {
+  d = 0.0;
+  if keys & HELD_STRAFE_R != 0 { d = d + 1.0; }
+  if keys & HELD_STRAFE_L != 0 { d = d - 1.0; }
+  d
+}
+
+// The move vector in the CHARACTER's frame — forward and sideways, each in [−1, 1] —
+// from the held bits and the stick together, clamped to the unit disc. ⚠ THE CLAMP IS
+// THE CONTROLLER'S OWN RULE, applied to the keyboard too: a stick cannot leave the
+// disc, so `W` + `D` is a unit step at 45° and not a √2 step, and `W` held with the
+// stick forward is one step, not two. ⚠ X103: read per tick, never integrated.
+pub fn move_of(keys: integer, stick_f: float, stick_s: float) -> (float, float) {
+  f = walk_dir(keys) + stick_f;
+  s = strafe_dir(keys) + stick_s;
+  n2 = f * f + s * s;
+  if n2 > 1.0 {
+    n = sqrt(n2) ?? 1.0;
+    f = f / n ?? 0.0;
+    s = s / n ?? 0.0;
+  }
+  (f, s)
+}
+
+// The turn rate in [−1, 1], from the turn bits and the right stick together.
+pub fn turn_of(keys: integer, stick_t: float) -> float {
+  t = turn_dir(keys) + stick_t;
+  if t > 1.0 { t = 1.0; }
+  if t < 0.0 - 1.0 { t = 0.0 - 1.0; }
+  t
+}
+
+// The move vector in the WORLD's frame, for a facing. RIGHT is the facing turned a
+// quarter turn the way a RIGHT turn goes — `(−sin, cos)` — so strafing right and
+// turning right then walking share a heading. ⚠ `tests/tick.loft` DERIVES that sign
+// from `yaw_turn` rather than restating it here; a flipped sign is a walker who
+// strafes left on `D`, which every other number reports as correct.
+pub fn move_world(yaw: float, f: float, s: float) -> (float, float) {
+  cy = cos(yaw);
+  sy = sin(yaw);
+  (f * cy - s * sy, f * sy + s * cy)
+}
+
 pub fn walk_step_len(dt: float) -> float { (WALK_MS / WU_PER_M ?? 0.0) * dt }
 
 // The yaw after one step of turning. Pure arithmetic, deliberately: it is the one

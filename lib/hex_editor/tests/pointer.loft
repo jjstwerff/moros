@@ -14,6 +14,7 @@ fn act(a: PointerAct) -> text {
   if a is PaTake    { return "take"; }
   if a is PaHeld    { return "held"; }
   if a is PaBegin   { return "begin"; }
+  if a is PaDrop    { return "drop"; }
   "drag"
 }
 
@@ -24,7 +25,9 @@ fn act(a: PointerAct) -> text {
 // and the loop only checks it — a table derived from the function would be the
 // table checked against itself.
 fn expected(pt_down: boolean, pt_ui: boolean, down: boolean, on_ui: boolean) -> text {
-  if !down { return "nothing"; }
+  // ⚠ A world drag's release is a `drop` — its last delta — and a UI press's release
+  // is nothing: the panel took that press and there was never a delta to send.
+  if !down { if pt_down && !pt_ui { return "drop"; } return "nothing"; }
   if pt_ui { return "held"; }
   if pt_down { return "drag"; }
   if on_ui { return "take"; }
@@ -95,4 +98,29 @@ fn test_release_clears_both_halves() {
   _ = pointer_step(q, false, false);
   assert(!q.pt_ui && !q.pt_down, "after a world release: ui {q.pt_ui}, down {q.pt_down}");
   assert(act(pointer_step(q, true, false)) == "begin", "the next press begins afresh, not drags");
+}
+
+// ⚠ THE TAIL OF A DRAG IS A DRAG. The frame the button comes up on used to answer
+// `nothing`, so whatever moved since the last `drag` frame was never sent — up to one
+// frame's motion, lost on every driver. (⚠ Not the half `probe/stick` G1 first read:
+// that was the page's own counter, fixed beside this.)
+fn test_the_release_of_a_world_drag_carries_its_last_delta() {
+  p = pointer_new();
+  _ = pointer_step(p, true, false);
+  _ = pointer_step(p, true, false);
+  assert(act(pointer_step(p, false, false)) == "drop",
+         "the release frame of a world drag is a DROP — the caller sends what moved since the last drag frame");
+  assert(!p.pt_down && !p.pt_ui, "and it clears the drag");
+  assert(act(pointer_step(p, false, false)) == "nothing", "the frame after is nothing — one drop per release");
+  // ⚠ A press that never moved still drops: begin then release is one drop of zero,
+  // which the caller measures as zero. The rule is about the release, not the motion.
+  q = pointer_new();
+  _ = pointer_step(q, true, false);
+  assert(act(pointer_step(q, false, false)) == "drop", "begin then release is a drop of zero");
+  // and the panel's press releases into nothing — the delta was never the world's
+  r = pointer_new();
+  _ = pointer_step(r, true, true);
+  _ = pointer_step(r, true, false);
+  assert(act(pointer_step(r, false, false)) == "nothing",
+         "a UI press released over the world is nothing — the panel took it");
 }

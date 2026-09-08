@@ -45,6 +45,7 @@ pub enum PointerAct {
   PaHeld,      // that press is still held: consume it, and do nothing else
   PaBegin,     // the press edge landed on the world: start a drag, emit no delta
   PaDrag,      // a world drag continues: the caller sends its delta
+  PaDrop,      // a world drag ENDED this frame: the caller sends its LAST delta
 }
 
 // Advance the pointer one frame and say what it means.
@@ -58,10 +59,20 @@ pub enum PointerAct {
 // under a stationary cursor for ever, and picks a DIFFERENT surface the moment the
 // cursor moves with the button still down — a drag silently changing the person's
 // choice.
+// ⚠ THE RELEASE FRAME OF A WORLD DRAG IS STILL A DRAG FRAME — `PaDrop`. Between the
+// last frame that reported `PaDrag` and the frame the button comes up, the pointer
+// may have moved; a release that answered `PaNothing` threw that stretch away, so a
+// drag never quite reached where the hand went, on every driver, by up to one frame's
+// motion. ⚠ It was written for a measurement it turned out NOT to explain: `probe/stick`
+// G1 read a 44 px drag as 22 px, and the half was the page's `turned_by` counter,
+// which only added yaw on frames where a tick fired. Kept, because the rule is right
+// on its own terms and its test is exact; the drop is a frame's tail, not a half.
 pub fn pointer_step(p: Pointer, down: boolean, on_ui: boolean) -> PointerAct {
   if !down {
+    dropped = p.pt_down && !p.pt_ui;
     p.pt_down = false;
     p.pt_ui = false;
+    if dropped { return PaDrop; }
     return PaNothing;
   }
   if p.pt_ui { return PaHeld; }

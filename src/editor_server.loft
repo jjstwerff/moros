@@ -226,7 +226,8 @@ const ARM_SWING = 0.30;
 // Look sensitivity, radians per pixel of drag, and the pitch fence. Pitch is
 // clamped rather than wrapped: past vertical, "behind the character" stops
 // meaning anything, so the camera refuses to go there.
-const LOOK_PER_PX = 0.0060;
+// `LOOK_PER_PX` is `hex_editor`'s now — the page turns the same person by the same
+// pixel, CONTROLS §2's mouse row. It was this file's own constant for a month.
 const PITCH_MIN = -0.20;
 const PITCH_MAX = 0.75;
 
@@ -242,7 +243,11 @@ const PITCH_MAX = 0.75;
 //   client → server   1:            ready — send me the world
 //                     2:<aspect>,   a camera for this viewport
 //                     3:<dx>,<dy>   drag — turn the character (and us with it)
-//                     4:<keybits>   W=1 S=2 A=4 D=8, held (A/D TURN, not strafe)
+//                     4:<keybits>   held: 1 fwd 2 back 4 turn-L 8 turn-R 16 strafe-L
+//                                   32 strafe-R — `hex_editor::HELD_*`; A/D send the
+//                                   STRAFE pair since CONTROLS §5, 4/8 stay for scripts
+//                    61:<f>,<s>,<t> the STICK — forward, sideways, turn, each in [-1,1];
+//                                   composed with the bits by the tick, one walk
 //                     5:<+1|-1>     raise / lower the ground ahead
 //                     6:<0|1>       levelling on/off — flatten as you walk
 //                    10:<0|1>       road on/off — lay a graded strip as you walk
@@ -632,6 +637,12 @@ const MSG_DECLARE = 54;
 // So `script.mjs` keeps sending the specific id where it has one, and reaches for this
 // only for a word it has never heard of — which is exactly the declared ones.
 const MSG_VERB = 55;
+// The stick, CONTROLS §5 — `61:<f>,<s>,<t>`. ⚠ 61, NOT 59: this was `59` for an hour and
+// `probe/s2c` caught it — `MSG_TOWER` had taken 59 at plan 26 `B4g` without a row in
+// WIRE_PROTOCOL.md, so the tower script's `59:36` arrived here as a stick reading of
+// 36 and the served world lost its tower. The table is the claim to re-run, not this
+// comment: `grep -n '^const MSG_' src/editor_server.loft | sort` before taking an id.
+const MSG_MOVE = 61;
 const MSG_COLUMN = 15;    // read one column back — floors are not drawn, so this
                           // is the only way to see what a write actually did
 
@@ -4014,8 +4025,8 @@ fn main() {
           // from it, so they cannot drift apart.
           di = ev.payload.find(",");
           if di != null {
-            wk.wk_yaw = wk.wk_yaw + (ev.payload[..di] as float ?? 0.0) * LOOK_PER_PX;
-            pitch = pitch + (ev.payload[di + 1..] as float ?? 0.0) * LOOK_PER_PX;
+            wk.wk_yaw = wk.wk_yaw + (ev.payload[..di] as float ?? 0.0) * hex_editor::LOOK_PER_PX;
+            pitch = pitch + (ev.payload[di + 1..] as float ?? 0.0) * hex_editor::LOOK_PER_PX;
             // ⚠ THE FENCE BELONGS TO THE MODE THAT NEEDS IT. FOLLOW clamps because
             // past vertical a boom stops meaning anything; EYES has no boom.
             pitch = pitch_fenced(pitch, cam_mode);
@@ -4023,6 +4034,14 @@ fn main() {
           }
         } else if ev.msg_id == MSG_KEYS {
           wk.wk_held = ev.payload as integer ?? 0;
+        } else if ev.msg_id == MSG_MOVE {
+          // ⚠ WRITTEN, NOT INTEGRATED — X103. The stick is a state the tick reads on
+          // every step; a message that ADDED to it would make the walk depend on
+          // how often the client happened to send. Three floats, missing ones zero.
+          mv_parts = ev.payload.split(',');
+          wk.wk_stick_f = (mv_parts[0] ?? "").trim() as float ?? 0.0;
+          wk.wk_stick_s = (mv_parts[1] ?? "").trim() as float ?? 0.0;
+          wk.wk_stick_t = (mv_parts[2] ?? "").trim() as float ?? 0.0;
         } else if ev.msg_id == MSG_SAVE {
           // ⚠ THE ONE GESTURE THAT CAN LOSE SOMETHING WHILE A PART IS OPEN, so its
           // guard comes with the mode rather than with the fence (`A7.3b`). In part

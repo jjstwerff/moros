@@ -169,14 +169,20 @@ fn ws_candidates() -> vector<text> {
 // flattening `PR_NONE` exists to refuse.
 const KEY_FORWARD = 119;      // w
 const KEY_BACK = 115;         // s
-const KEY_LEFT_TURN = 97;     // a
-const KEY_RIGHT_TURN = 100;   // d
+// ⚠ **`A`/`D` STRAFE — [CONTROLS](../doc/claude/CONTROLS.md) §5.** The keyboard is
+// shaped like the controller it stands in for: `W S A D` are the LEFT stick, a vector,
+// and the mouse is the RIGHT stick, which turns. Turning by key is gone from this
+// client on purpose; the wire's turn bits (4, 8) stay for scripts and for a stick.
+const KEY_STRAFE_L = 97;      // a
+const KEY_STRAFE_R = 100;     // d
 // ⚠ AND THESE TWO ARE VERBS-IN-WAITING RATHER THAN NON-VERBS, which is worth the
 // distinction: levelling is a client TOGGLE (`6:1`/`6:0`) and the catalogue cycle is a
 // list walk. Neither reaches `press_verb`, so neither can be in the map yet without
 // putting a verb there that answers `PR_NONE` — the exact thing
 // `test_every_verb_the_definition_produces_is_bound` refuses.
 const KEY_LEVEL = 108;        // l — toggle levelling
+// A full right-stick tilt pitches as fast as a drag of this many pixels per frame.
+const PAD_PITCH_PX = 4.0;
 // ⚠ **AND THE PLAN — plan 26 `B6`.** `m` opens a plan of where you stand ON THE PAGE
 // and closes it again. Like `l`, a view toggle rather than a verb: it writes nothing,
 // so `press_verb` would answer `PR_NONE` and the map's own test refuses it a slot.
@@ -813,6 +819,16 @@ struct Client {
   plan_tau: integer,          // the world clock the plan was last drawn at
   was_plan: boolean,
   plan_said: boolean,         // the attached-mode notice, said once
+  // ── THE STICK, from the page — CONTROLS §6 `C1` ──────────────────────────────
+  //
+  // The page reads `navigator.getGamepads()` and pushes `pad:<lx>,<ly>,<rx>,<ry>` on
+  // change through the same queue the plan's pick uses. Local, the three walk
+  // quantities go straight onto the walker; attached, they go out as `61:`. `pad_ry`
+  // is the right stick's pitch, sent as LOOK pixels per frame while it is held off
+  // centre — attached only, for the drag's reason.
+  pad_ry: float,
+  pad_seen: boolean,          // a pad has spoken at least once — said once
+  look_px: integer,           // the pixels of the drag in progress, said on release
 }
 
 fn ident4() -> vector<float> {
@@ -2043,15 +2059,43 @@ fn plan_close(st: Client) {
   println("client: plan — closed");
 }
 
-// What the page hands back while the plan is up. ⚠ `host_input(0)` IS A POLL ON EVERY
-// TARGET — measured: the `--html` host reads its queue without blocking, and `0` asks
-// the native reader for exactly that — so a frame that finds nothing costs nothing and
-// a desktop run with a terminal on stdin does not hang here. ⚠ ONE MESSAGE A FRAME,
-// which is what `host_input` pops; two clicks in one frame are two frames.
-fn plan_poll(st: Client, who: hex_editor::Author) {
-  if !st.plan_on { return; }
+// What the page hands back — a pick on the plan, or the stick. ⚠ `host_input(0)` IS A
+// POLL ON EVERY TARGET — measured: the `--html` host reads its queue without blocking,
+// and `0` asks the native reader for exactly that — so a frame that finds nothing costs
+// nothing and a desktop run with a terminal on stdin does not hang here. ⚠ ONE MESSAGE
+// A FRAME, which is what `host_input` pops; the page sends the stick on CHANGE, so a
+// held stick is one message and a frame behind it costs nothing either.
+fn host_poll(h: web::WsHandler, st: Client, who: hex_editor::Author) {
   msg = host_input(0);
   if msg == "" { return; }
+  if msg.size() > 4 && msg[..4] == "pad:" {
+    pad_parts = msg[4..].split(',');
+    lx = (pad_parts[0] ?? "").trim() as float ?? 0.0;
+    ly = (pad_parts[1] ?? "").trim() as float ?? 0.0;
+    rx = (pad_parts[2] ?? "").trim() as float ?? 0.0;
+    ry = (pad_parts[3] ?? "").trim() as float ?? 0.0;
+    // ⚠ THE STANDARD MAPPING'S `y` IS NEGATIVE UPWARD, so forward is `−ly`; sideways
+    // is `lx` as it comes (right positive, which is `move_world`'s right); the right
+    // stick's `x` is the turn rate, its `y` the pitch.
+    if !st.pad_seen {
+      st.pad_seen = true;
+      println("client: pad — a controller is speaking; left stick walks, right stick turns");
+    }
+    if st.local {
+      st.wk.wk_stick_f = 0.0 - ly;
+      st.wk.wk_stick_s = lx;
+      st.wk.wk_stick_t = rx;
+    } else {
+      web::send(h, "61:{0.0 - ly},{lx},{rx}");
+    }
+    st.pad_ry = ry;
+    return;
+  }
+  if !st.plan_on {
+    if msg.size() > 5 && msg[..5] == "pick:" { return; }
+    println("client: the page said '{msg}', which this client does not read");
+    return;
+  }
   if msg.size() > 5 && msg[..5] == "pick:" {
     body = msg[5..];
     ci = body.find(",");
@@ -2154,6 +2198,24 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
     if steps >= LOCAL_TICK_MAX { st.tick_at = now; }
   }
   turned = local_pose(st);
+  // ── THE POSE IS COMPARED EVERY FRAME, NOT ONLY ON TICKED ONES — `probe/stick` G1 ──
+  //
+  // ⛔ The camera re-solve and `turned_by` sat inside `if steps > 0`. The mouse writes
+  // the yaw on the FRAME the drag happens, and at 60 fps against a 33 ms tick every
+  // other frame ticks — so both saw half of every drag: a 44 px drag read as 22 px,
+  // exactly, three runs in a row, and the camera lagged the mouse until the next key.
+  // A one-move drag read 44, which is what said the events arrived and the COUNTER
+  // was blind. The pose the frame started with is `a`; whatever moved it is counted.
+  if turned.au_yaw != a.au_yaw || turned.au_x != a.au_x
+     || turned.au_z != a.au_z || turned.au_y != a.au_y {
+    local_camera(st, turned);
+    // ⚠ NOT A RE-MESH. A turn moves no cell, so the geometry the page already holds
+    // is still exactly right — only the matrix changed. Re-meshing here would put
+    // `local_act`'s 338,688 floats on a per-frame path.
+    if turned.au_yaw != a.au_yaw {
+      st.turned_by = st.turned_by + (turned.au_yaw - a.au_yaw);
+    }
+  }
   if steps > 0 {
     st.ticked = st.ticked + steps;
     // The camera is DERIVED from the pose, so it is re-solved on any tick that
@@ -2170,19 +2232,8 @@ fn local_tick(st: Client, sess: hex_editor::EditSession,
     // same editor with the authority local instead of remote*.
     // ⚠ **It went unseen because a turn was the only case anybody pictured** — the
     // comment names the pose and the code names the yaw, and nothing compared them.
-    if turned.au_yaw != a.au_yaw || turned.au_x != a.au_x
-       || turned.au_z != a.au_z || turned.au_y != a.au_y {
-      local_camera(st, turned);
-      // ⚠ NOT A RE-MESH. A turn moves no cell, so the geometry the page already
-      // holds is still exactly right — only the matrix changed. Re-meshing here
-      // would put `local_act`'s 338,688 floats on a per-frame path, which is the
-      // cost that comment says a keystroke can afford and a frame cannot.
-      // ⚠ STILL ONLY ON A YAW CHANGE — a walk re-solves the camera above and turns
-      // nothing, and `turned_by` is what says the TURN keys reached the pose.
-      if turned.au_yaw != a.au_yaw {
-        st.turned_by = st.turned_by + (turned.au_yaw - a.au_yaw);
-      }
-    }
+    // (the camera re-solve and `turned_by` are above this `if` now — a drag turns
+    // the pose on frames that do not tick, and they must see it)
     // ⚠ AND A WRITE *IS* WORTH THAT COST, WHICH IS THE DISTINCTION THE LINE ABOVE
     // DRAWS. A turn moves no cell; a level stamp moves a disc of them. ⏭ It redraws
     // the whole neighbourhood because `local_surfaces` takes one — `TickOut` carries
@@ -2250,8 +2301,8 @@ fn wire(h: web::WsHandler, st: Client, msg: text) {
 fn client_reserved(code: integer) -> text {
   if code == KEY_FORWARD    { return "walks forward"; }
   if code == KEY_BACK       { return "walks back"; }
-  if code == KEY_LEFT_TURN  { return "turns left"; }
-  if code == KEY_RIGHT_TURN { return "turns right"; }
+  if code == KEY_STRAFE_L   { return "strafes left"; }
+  if code == KEY_STRAFE_R   { return "strafes right"; }
   if code == KEY_LEVEL      { return "toggles levelling"; }
   if code == KEY_PLAN       { return "opens the plan"; }
   if code == KEY_PART       { return "cycles the catalogue"; }
@@ -2468,8 +2519,8 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   bits = 0;
   if graphics::gl_key_pressed(KEY_FORWARD) { bits = bits | hex_editor::HELD_FWD; }
   if graphics::gl_key_pressed(KEY_BACK) { bits = bits | hex_editor::HELD_BACK; }
-  if graphics::gl_key_pressed(KEY_LEFT_TURN) { bits = bits | hex_editor::HELD_LEFT; }
-  if graphics::gl_key_pressed(KEY_RIGHT_TURN) { bits = bits | hex_editor::HELD_RIGHT; }
+  if graphics::gl_key_pressed(KEY_STRAFE_L) { bits = bits | hex_editor::HELD_STRAFE_L; }
+  if graphics::gl_key_pressed(KEY_STRAFE_R) { bits = bits | hex_editor::HELD_STRAFE_R; }
   // ⛔ **ARMING STOPS THE WALK, AND LEAVING THIS OUT STRANDS THE WALKER.** The walk is
   // a HELD state, not an edge: `local_tick` integrates `wk_held` every frame and the
   // server integrates the last `4:` it was sent. So a person walking who presses
@@ -2778,10 +2829,40 @@ fn poll_input(h: web::WsHandler, st: Client, sess: hex_editor::EditSession,
   // of a world press has no previous point to subtract; treating it as a drag would
   // send a delta measured from wherever the pointer last was — which, right after a
   // click on the panel, is the panel.
-  if pa is PaDrag {
+  // ⚠ `PaDrop` IS THE LAST DRAG FRAME — the delta since the previous frame goes out
+  // exactly as a `PaDrag`'s does, and then the drag is over. Without it the motion
+  // between the last drag frame and the release answered `nothing` — a frame's tail
+  // of every drag, on every driver. ⚠ It is NOT what `probe/stick` G1 measured: that
+  // half was `turned_by` below, counting yaw only on ticked frames.
+  dragging = false;
+  if pa is PaDrag { dragging = true; }
+  if pa is PaDrop { dragging = true; }
+  if dragging {
     ddx = (mx - st.last_x) as integer;
     ddy = (my - st.last_y) as integer;
-    if ddx != 0 || ddy != 0 { wire(h, st, "3:{ddx},{ddy}"); }
+    // ⚠ LOCAL, THE DRAG TURNS THE CHARACTER HERE — CONTROLS §2 found it DEAD on the
+    // page: `wire` swallowed `3:` and said so once. The same pixel turns the same
+    // person as on the server (`hex_editor::LOOK_PER_PX`), and the camera follows on
+    // the next tick because it is derived from the pose. ⚠ No pitch locally yet: the
+    // page camera has no pitch to fence, and inventing one here would be a second
+    // camera rule beside the server's.
+    if ddx != 0 || ddy != 0 {
+      if st.local {
+        st.wk.wk_yaw = st.wk.wk_yaw + (ddx as float) * hex_editor::LOOK_PER_PX;
+      } else {
+        wire(h, st, "3:{ddx},{ddy}");
+      }
+      st.look_px = st.look_px + ddx;
+    }
+    // ⚠ ONE LINE PER DRAG, ON THE RELEASE — the evidence `probe/b2`'s P2/P3 read.
+    // Those rows counted the local-mode apology for `3:` (*"a server message this
+    // page has no gesture for"*), which the drag turning the character here made
+    // vacuous: a panel press leaking into a drag would have turned the person in
+    // silence and P2 would have kept saying zero. A gesture that acts says so.
+    if pa is PaDrop && st.local {
+      println("client: local look — {st.look_px} px, yaw {st.wk.wk_yaw}");
+    }
+    if pa is PaDrop { st.look_px = 0; }
   }
   st.last_x = mx;
   st.last_y = my;
@@ -3752,6 +3833,7 @@ fn main() {
     c_staging: false, c_pending: [],
     plan_on: false, plan_win: hex_mesh::PlanWindow {}, plan_ref: 0.0,
     plan_pick: hex_mesh::plan_nopick(), plan_tau: 0 - 1, was_plan: false, plan_said: false,
+    pad_ry: 0.0, pad_seen: false, look_px: 0,
   };
 
   // ── THE KEYBOARD THE PERSON LEFT BEHIND — plan 22 `M5b` ────────────────────
@@ -4241,8 +4323,14 @@ fn main() {
     // ⚠ HERE FOR `local_persist`'s REASON: a redraw hooked on the gesture would stop
     // covering a write that arrives another way — the level stamp on the tick, a
     // chunk from the server, a restore. `w_tau` moves iff the store did, whoever did.
-    plan_poll(st, author);
+    host_poll(h, st, author);
     if st.plan_on && st.cache.w_tau != st.plan_tau { plan_draw(st, author); }
+    // The right stick's pitch, attached: LOOK pixels per frame while it is held off
+    // centre. `PAD_PITCH_PX` is per FRAME rather than per tick because `3:` is the
+    // drag's channel and a drag is per event; the server fences the pitch either way.
+    if !st.local && (st.pad_ry > 0.0 || st.pad_ry < 0.0) {
+      web::send(h, "3:0,{(st.pad_ry * PAD_PITCH_PX) as integer}");
+    }
     draw_world(st);
     draw_panel(ui_panel, ui_bar, ui_painter);
     draw_swatches(ui_panel, ui_swatches, ui_painter);

@@ -723,6 +723,7 @@ page-check: client-force pages
 	@$(MAKE) -s probe-demo
 	@$(MAKE) -s probe-auth
 	@$(MAKE) -s probe-b6
+	@$(MAKE) -s probe-stick
 
 check:
 	@sh tools/layering.sh
@@ -1281,6 +1282,17 @@ probe-b6: client
 
 probe-b6-sweep: client
 	@sh probe/b6/sweep.sh
+
+# C1/C2 (CONTROLS §6) — THE STICKS ON THE PAGE, AND A KEYBOARD SHAPED LIKE THEM. A
+# fake gamepad is installed into the page so its own reader runs; the left stick
+# walks and strafes, the right stick turns, `d` strafes instead of turning and a
+# mouse drag turns the character locally. Every row is a difference between two of
+# the walker's own lines. `STICK_SABOTAGE=nopad|noturn|nolook` are the controls.
+probe-stick: client
+	@sh probe/stick/run.sh
+
+probe-stick-sweep: client
+	@sh probe/stick/sweep.sh
 
 # B1b.1a (plan 22) — DOES THE PANEL SAY WHICH AUTHORITY IT HAS? The status line was
 # a literal reading `connected`, set at panel construction before any socket existed,

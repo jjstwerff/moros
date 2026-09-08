@@ -69,7 +69,10 @@ are in no shared tick, so they are the gestures still written once, in a driver.
 | `43` | DERIVES | `<0\|1>` — **"I draw the ground myself"** | `S:… derive N of M ground sent S held H` | **K** — the deletion S4 was measuring for |
 | `2` | CAM | `<aspect>,` | `C:` immediately, from current state | **V** — and see the ⚠ below: today it doubles as *"resend `T:`/`C:`"* |
 | `3` | LOOK | `<dx>,<dy>` | none | **V** |
-| `4` | KEYS | `<bitmask>` — `1` forward, `2` back, `4` turn left, `8` turn right | none | **V** — the shipped `input` library owns this |
+| `4` | KEYS | `<bitmask>` — `1` forward, `2` back, `4` turn left, `8` turn right, **`16` strafe left, `32` strafe right** (`hex_editor::HELD_*`). ⚠ Since [CONTROLS](CONTROLS.md) §5 the keyboard client sends the STRAFE pair for `A`/`D` and never the turn pair; `4`/`8` stay declared for scripts and for a stick's `59:` | none | **V** — the shipped `input` library owns this |
+| `59` | TOWER | `<shell>` — a ROUND enclosure at that shell, plan 26 `B4g`/`B4i`; the round or octagonal body is the chosen wall type's | `tower rimmed N edges` · a refusal naming the next shell | **A** — ⚠ added 2026-08 and **never written here**, which is how `61` MOVE was first taken as `59` and swallowed every `tower` on the wire for an hour (`probe/s2c` caught it) |
+| `60` | SELECT_SHELL | `<shell>` — how big the next round tower is, plan 26 `B4i` | `shell N selected` · a refusal with the nearest shell | **A** — same omission, same day |
+| `61` | MOVE | `<f>,<s>,<t>` — the STICK: forward, sideways and turn, each in `[−1, 1]`, WRITTEN not integrated (X103); the tick composes them with `4:`'s bits into one clamped vector, `hex_editor::move_of` / `turn_of` | none | **V** — added 2026-09-08, CONTROLS §6 `C1`; the page sends it from `navigator.getGamepads()` through its own queue, and `editor_run`'s `move` is the same three numbers. ⚠ **61, not 59** — see the two rows above |
 | `5` | RAISE | `<±1>` | ⚠ **none of its own.** `S:rebuilt` is the only signal | **A** → `raise_at(store, q, r, amp, rad)` |
 | `6` | LEVEL | `<0\|1>` | `level true at height N (quantised from V, residual R)` · `level false…` · `level approximated — N cells hit the floor` | **A** |
 | `7` | PLACE | `<x>,<z>,<yaw>` | `placed <x>,<z>` | **X** — a character pose is dynamic state, not world |

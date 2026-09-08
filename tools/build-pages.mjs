@@ -297,7 +297,56 @@ const planChunk = `(() => {
   };
 })();`;
 
-const chunks = [fsChunk, fitChunk, planChunk].filter(Boolean);
+// -- THE CONTROLLER -- CONTROLS section 6, step C1 --------------------------
+//
+// loft's graphics layer has no gamepad and neither does the --html shell, so the
+// page reads `navigator.getGamepads()` itself and hands the sticks to the client
+// through the same queue the plan's pick uses: `pad:<lx>,<ly>,<rx>,<ry>`, pushed ON
+// CHANGE only, after a deadzone and rounded to two decimals so a resting stick's
+// noise is not a message stream. A pad that goes away pushes a centred stick, so a
+// walker is never left walking on a cable that came out.
+//
+// `--pad-sabotage nopad` is `probe/stick`'s control: the reader runs, logs what it
+// read, and pushes nothing.
+const padFlag = process.argv.indexOf('--pad-sabotage');
+const padSab = padFlag < 0 ? '' : (process.argv[padFlag + 1] ?? '');
+if (padFlag >= 0 && padSab !== 'nopad') die(`--pad-sabotage takes nopad; got '${padSab}'`);
+const padChunk = `(() => {
+  if (!navigator.getGamepads) return;
+  if (!globalThis.__loftInQ) {
+    globalThis.__loftInQ = [];
+    globalThis.loftPush = function (m) {
+      globalThis.__loftInQ.push(new TextEncoder().encode(String(m)));
+    };
+  }
+  var DEAD = 0.15, last = '', had = false;
+  var q = function (v) {
+    if (v > -DEAD && v < DEAD) return 0;
+    var s = (Math.abs(v) - DEAD) / (1 - DEAD);
+    if (s > 1) s = 1;
+    return Math.round((v < 0 ? -s : s) * 100) / 100;
+  };
+  var poll = function () {
+    var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    var p = null;
+    for (var i = 0; i < pads.length; i++) { if (pads[i] && pads[i].connected) { p = pads[i]; break; } }
+    var msg = p ? 'pad:' + q(p.axes[0] || 0) + ',' + q(p.axes[1] || 0) + ','
+                        + q(p.axes[2] || 0) + ',' + q(p.axes[3] || 0)
+                : (had ? 'pad:0,0,0,0' : '');
+    if (p) had = true; else if (msg) had = false;
+    if (msg && msg !== last) {
+      last = msg;
+      ${padSab === 'nopad' ? "console.log('[pad] SABOTAGE nopad ' + msg);" : "globalThis.loftPush(msg);"}
+    }
+    requestAnimationFrame(poll);
+  };
+  addEventListener('gamepadconnected', function (e) {
+    console.log('[pad] connected: ' + e.gamepad.id + ' (' + e.gamepad.axes.length + ' axes)');
+  });
+  requestAnimationFrame(poll);
+})();`;
+
+const chunks = [fsChunk, fitChunk, planChunk, padChunk].filter(Boolean);
 const prelude = chunks.length
   ? Buffer.from(`<script>${chunks.join('\n')}</script>\n`, 'utf8')
   : null;
@@ -329,7 +378,8 @@ if (prelude && back.length !== bytes.length + prelude.length) {
 const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
 console.log(`build-pages: _site/index.html  ${kb(out.length)}  (the client engine build, verbatim`
           + (engFlag < 0 ? ')' : ` -- from ${process.argv[engFlag + 1]})`)
-          + (planSab ? `  PLAN SABOTAGE ${planSab}` : ''));
+          + (planSab ? `  PLAN SABOTAGE ${planSab}` : '')
+          + (padSab ? `  PAD SABOTAGE ${padSab}` : ''));
 if (Object.keys(parts).length) {
   console.log(`build-pages: and the part library — ${Object.keys(parts).length} files, `
             + `${kb(partBytes)} raw, baked at /data/parts`);

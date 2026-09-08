@@ -91,6 +91,12 @@ pub struct Walker {
   wk_yaw: float,
   // W=1 S=2 A=4 D=8 — the wire's own bits, declared in `pose.loft`.
   wk_held: integer,
+  // The STICK — [CONTROLS](../../../doc/claude/CONTROLS.md) §5: forward, sideways and
+  // turn, each in [−1, 1], composed with the held bits by `move_of` / `turn_of`. Zero
+  // is a stick at rest, which is why a keyboard walker never has to know they exist.
+  wk_stick_f: float,
+  wk_stick_s: float,
+  wk_stick_t: float,
   // ── the level state machine ───────────────────────────────────────────────
   //
   // ⚠ WHILE LEVELLING THE RELATIONSHIP INVERTS: the feet hold their frozen height
@@ -166,7 +172,8 @@ pub struct TickOut {
 // world's clock could in principle be −1 on a store that has not been written to.
 pub fn walker_new(x: float, y: float, z: float) -> Walker {
   Walker { wk_x: x, wk_y: y, wk_z: z, wk_vy: 0.0, wk_yaw: 0.0,
-           wk_held: 0, wk_levelling: false, wk_level_h: 0,
+           wk_held: 0, wk_stick_f: 0.0, wk_stick_s: 0.0, wk_stick_t: 0.0,
+           wk_levelling: false, wk_level_h: 0,
            wk_hq: 0, wk_hr: 0, wk_have_hex: false,
            wk_walked: 0.0, wk_fell: 0,
            wk_coll: hex_field::edgeset_new(0, 0, 1, 1),
@@ -241,24 +248,27 @@ pub fn walk_tick(wk: Walker, w: VoxelWorld, runs: WallRuns,
 
   // A/D turn. The same yaw the mouse drives, so the two steering inputs cannot
   // disagree — there is one facing and everything else is derived from it.
-  turn = turn_dir(wk.wk_held);
+  turn = turn_of(wk.wk_held, wk.wk_stick_t);
   if turn != 0.0 {
     wk.wk_yaw = yaw_turn(wk.wk_yaw, turn, dt);
     out.tk_moved = true;
   }
 
-  // W/S walk along the facing. One axis, so there is no diagonal to normalise —
-  // turning replaced the strafe that made that necessary.
-  fwd = walk_dir(wk.wk_held);
-  if fwd != 0.0 {
+  // ── THE MOVE IS A VECTOR — CONTROLS §5 ─────────────────────────────────────
+  //
+  // Forward and sideways together, from the bits and the stick, clamped to the unit
+  // disc and turned into the world by the facing. A keyboard walker's `W` is the
+  // vector `(1, 0)` and lands exactly where it did; `D` is `(0, 1)`, a step to the
+  // right without turning — the half of the stick the four bits used to discard.
+  (mf, ms) = move_of(wk.wk_held, wk.wk_stick_f, wk.wk_stick_s);
+  if mf != 0.0 || ms != 0.0 {
     step = walk_step_len(dt);
-    ky = cos(wk.wk_yaw);
-    sy = sin(wk.wk_yaw);
+    (mdx, mdz) = move_world(wk.wk_yaw, mf, ms);
     // WALLS STOP THE WALK. The intended position goes through `walk_to`, which asks
     // `hex_edge` about the whole SEGMENT — so the step is not a size to tune and a
     // slow tick cannot cross a fence.
     (wpx, wpz) = walk_to(wk.wk_coll, wk.wk_sf, wk.wk_rt, w, wk.wk_x, wk.wk_z,
-                         wk.wk_x + ky * step * fwd, wk.wk_z + sy * step * fwd, ref_u);
+                         wk.wk_x + mdx * step, wk.wk_z + mdz * step, ref_u);
     gone = sqrt((wpx - wk.wk_x) * (wpx - wk.wk_x)
               + (wpz - wk.wk_z) * (wpz - wk.wk_z)) ?? 0.0;
     wk.wk_x = wpx;

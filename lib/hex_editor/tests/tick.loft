@@ -340,3 +340,127 @@ fn test_the_edit_clock_is_the_term_that_sees_a_write_it_is_not_standing_on() {
   assert(tick(wk, w, runs).tk_rebuilt,
          "a write anywhere moves the world's clock, and the proxy follows it");
 }
+
+// ── THE MOVE IS A VECTOR — CONTROLS §5 ───────────────────────────────────────
+
+fn test_strafing_right_moves_sideways_and_not_forward() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_STRAFE_R;
+  out = tick(wk, w, runs);
+  want = hex_editor::walk_step_len(hex_editor::tick_dt());
+  assert(hex_form::fabs(wk.wk_x) < 0.000001, "a strafe facing +x moves nothing along x, got {wk.wk_x}");
+  assert(hex_form::fabs(hex_form::fabs(wk.wk_z) - want) < 0.000001,
+         "and a whole step sideways: {wk.wk_z} for {want}");
+  assert(out.tk_moved, "and it says something moved");
+  assert(wk.wk_yaw == 0.0, "and it did not turn: yaw {wk.wk_yaw}");
+}
+
+// ⚠ THE SIGN IS DERIVED, NOT RESTATED. Which way is "right" is whatever `yaw_turn`
+// calls a right turn: turn right a quarter turn and the facing you get is the
+// direction strafing right must go. A flipped sign is a walker who strafes left on
+// `D` with every distance correct, which is why this row exists beside the one above.
+fn test_strafing_right_is_the_way_a_right_turn_faces() {
+  w = flat_world();
+  runs = no_runs();
+  q = hex_editor::yaw_turn(0.0, 1.0, 1000.0);   // a long right turn — its SIGN is the claim
+  quarter = PI / 2.0;
+  if q < 0.0 { quarter = 0.0 - quarter; }
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_STRAFE_R;
+  tick(wk, w, runs);
+  n = sqrt(wk.wk_x * wk.wk_x + wk.wk_z * wk.wk_z) ?? 1.0;
+  ux = wk.wk_x / n ?? 0.0;
+  uz = wk.wk_z / n ?? 0.0;
+  assert(hex_form::fabs(ux - cos(quarter)) < 0.000001 && hex_form::fabs(uz - sin(quarter)) < 0.000001,
+         "strafing right goes ({ux},{uz}); a right quarter turn faces ({cos(quarter)},{sin(quarter)})");
+  // and left is the mirror
+  wl = stander(w);
+  wl.wk_held = hex_editor::HELD_STRAFE_L;
+  tick(wl, w, runs);
+  assert(hex_form::fabs(wl.wk_z + wk.wk_z) < 0.000001, "left is the mirror of right: {wl.wk_z} vs {wk.wk_z}");
+}
+
+fn test_a_keyboard_diagonal_is_one_step_at_45_degrees_not_root_two() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD + hex_editor::HELD_STRAFE_R;
+  tick(wk, w, runs);
+  want = hex_editor::walk_step_len(hex_editor::tick_dt());
+  gone = sqrt(wk.wk_x * wk.wk_x + wk.wk_z * wk.wk_z) ?? 0.0;
+  assert(hex_form::fabs(gone - want) < 0.000001,
+         "W + D is one step of {want}, not {gone} — the stick cannot leave the unit disc");
+  assert(hex_form::fabs(hex_form::fabs(wk.wk_x) - hex_form::fabs(wk.wk_z)) < 0.000001,
+         "and it is at 45°: ({wk.wk_x},{wk.wk_z})");
+}
+
+fn test_a_half_stick_walks_half_a_step() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_stick_f = 0.5;
+  tick(wk, w, runs);
+  want = hex_editor::walk_step_len(hex_editor::tick_dt()) * 0.5;
+  assert(hex_form::fabs(wk.wk_x - want) < 0.000001, "half a stick is half a step: {wk.wk_x} for {want}");
+  assert(hex_form::fabs(wk.wk_z) < 0.000001, "and nothing sideways");
+}
+
+fn test_the_stick_and_the_key_together_are_one_step() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_FWD;
+  wk.wk_stick_f = 1.0;
+  tick(wk, w, runs);
+  want = hex_editor::walk_step_len(hex_editor::tick_dt());
+  assert(hex_form::fabs(wk.wk_x - want) < 0.000001,
+         "W held with the stick forward is one step, not two: {wk.wk_x} for {want}");
+}
+
+fn test_the_stick_sideways_is_the_strafe_key() {
+  w = flat_world();
+  runs = no_runs();
+  wa = stander(w);
+  wa.wk_held = hex_editor::HELD_STRAFE_R;
+  tick(wa, w, runs);
+  wb = stander(w);
+  wb.wk_stick_s = 1.0;
+  tick(wb, w, runs);
+  assert(hex_form::fabs(wa.wk_x - wb.wk_x) < 0.000001 && hex_form::fabs(wa.wk_z - wb.wk_z) < 0.000001,
+         "the key and the stick are one walk: ({wa.wk_x},{wa.wk_z}) vs ({wb.wk_x},{wb.wk_z})");
+}
+
+fn test_the_right_stick_turns_at_the_key_rate_and_clamps() {
+  w = flat_world();
+  runs = no_runs();
+  dt = hex_editor::tick_dt();
+  wk = stander(w);
+  wk.wk_stick_t = 1.0;
+  tick(wk, w, runs);
+  assert(hex_form::fabs(wk.wk_yaw - hex_editor::yaw_turn(0.0, 1.0, dt)) < 0.000001,
+         "a full stick turns one key-step: {wk.wk_yaw}");
+  assert(wk.wk_x == 0.0 && wk.wk_z == 0.0, "and turning walks nowhere");
+  wh = stander(w);
+  wh.wk_stick_t = 0.5;
+  tick(wh, w, runs);
+  assert(hex_form::fabs(wh.wk_yaw - hex_editor::yaw_turn(0.0, 0.5, dt)) < 0.000001,
+         "half a stick turns half as fast: {wh.wk_yaw}");
+  wc = stander(w);
+  wc.wk_held = hex_editor::HELD_RIGHT;
+  wc.wk_stick_t = 1.0;
+  tick(wc, w, runs);
+  assert(hex_form::fabs(wc.wk_yaw - wk.wk_yaw) < 0.000001,
+         "the key and the stick together clamp to one rate: {wc.wk_yaw} vs {wk.wk_yaw}");
+}
+
+fn test_the_turn_keys_still_turn_and_never_strafe() {
+  w = flat_world();
+  runs = no_runs();
+  wk = stander(w);
+  wk.wk_held = hex_editor::HELD_RIGHT;
+  tick(wk, w, runs);
+  assert(wk.wk_yaw != 0.0, "bit 8 still turns — every `keys 8` script depends on it");
+  assert(wk.wk_x == 0.0 && wk.wk_z == 0.0, "and it does not strafe: ({wk.wk_x},{wk.wk_z})");
+}

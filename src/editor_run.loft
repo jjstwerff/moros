@@ -532,6 +532,14 @@ fn run_send(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
   // precedent at `K3c` — an id this runner can genuinely do is done here, in
   // `run_send`, rather than whitelisted as harmless in `send_quiet`.
   if sid == 4 { wk.wk_held = pay as integer ?? 0; said = "keys {wk.wk_held}"; return true; }
+  if sid == 61 {
+    sv_parts = pay.split(',');
+    wk.wk_stick_f = (sv_parts[0] ?? "").trim() as float ?? 0.0;
+    wk.wk_stick_s = (sv_parts[1] ?? "").trim() as float ?? 0.0;
+    wk.wk_stick_t = (sv_parts[2] ?? "").trim() as float ?? 0.0;
+    said = "move {wk.wk_stick_f},{wk.wk_stick_s},{wk.wk_stick_t}";
+    return true;
+  }
   // ── `6:` LEVEL — plan 22 `T4`, and it is the last message `deck.keys` needed ──
   //
   // ⚠ **THE FREEZE AND THE RELEASE ARE THE LIBRARY'S, AND THE SENTENCE IS THE
@@ -874,6 +882,17 @@ fn run_line(w: VoxelWorld, wk: hex_editor::Walker, sess: EditSession, line: text
   if cmd == "keys" {
     wk.wk_held = rest as integer ?? 0;
     said = "keys {wk.wk_held}";
+    return true;
+  }
+  // `move <f>,<s>,<t>` — THE STICK, CONTROLS §5: forward, sideways, turn, each in
+  // [−1, 1], held until the next `move`. What a controller sends the page and the page
+  // sends the server as `61:`, spelled so a stick walk is exact in a script too.
+  if cmd == "move" {
+    mv_parts = rest.split(',');
+    wk.wk_stick_f = (mv_parts[0] ?? "").trim() as float ?? 0.0;
+    wk.wk_stick_s = (mv_parts[1] ?? "").trim() as float ?? 0.0;
+    wk.wk_stick_t = (mv_parts[2] ?? "").trim() as float ?? 0.0;
+    said = "move {wk.wk_stick_f},{wk.wk_stick_s},{wk.wk_stick_t}";
     return true;
   }
   if cmd == "step" {

@@ -129,8 +129,8 @@ and never integrated from history.
 
 | # | step | what it proves | cost |
 |---|---|---|---|
-| **C1** | the page reads a gamepad through the `B6` channel: JS pushes `pad:` on change, the client maps left-stick y/x onto `HELD_FWD/BACK/LEFT/RIGHT` | a stick walks the character on the page; gate by pushing synthetic `pad:` lines from CDP and reading `walked`/`turned` off the walker's own line, plus a control that a centred stick moves nothing | half a day; one wasm build per iteration; no library change |
-| **C2** | strafe: `HELD_*` bits become a move vector + turn in `pose.loft`, keyboard `Q`/`E`-style keys and the stick both feed it | `deck.keys` stays byte-identical (the vector is the old bits for the old keys), and `push` can sweep a face — `WALL_PUSH` L11's own row | a day; the runner, the server and the page move together because `walk_tick` is one body |
+| **C1** | the page reads a gamepad through the `B6` channel: JS pushes `pad:` on change, the client puts the sticks on the walker (local) or on `61:` (attached) | ✅ **BUILT 2026-09-08** — [`probe/stick`](../../probe/stick/README.md): a fake pad installed into the page drives its own reader; the left stick walks and strafes, the right stick turns, a centred stick moves nothing | as predicted, plus a real pad message on the wire |
+| **C2** | strafe: the walk is a VECTOR — `move_of` composes the held bits and the stick, clamped to the unit disc; `A`/`D` send the new strafe bits and the mouse turns | ✅ **BUILT 2026-09-08** — 8 library rows, 3 sabotages seen red, the 46-script corpus byte-identical; `d` on the page moves to the facing's right with the yaw unmoved. ⚠ `push` sweeping a face (`WALL_PUSH` L11) is now REACHABLE and not yet measured | the runner, the server and the page moved together because `walk_tick` is one body |
 | **C3** | the per-mode cut: a `(mode, verb)` table consumed by `verbs_here`, with `D2p`'s list as its first content | every mode's count ≤ 12, asserted; a script pressing a removed verb in the wrong mode gets *reason, offer* — `X110` |
 | **C4** | buttons → verbs: a second `KeyMap` keyed by button names, resolved where the controller is, the verb travelling as now; one shoulder as the wheel's modifier | a face button places a house on the page with the walker as the base; the same script replays | a day |
 | **C5** | the wheel: the seven selections on one selector, `X107`'s *within what `where` offered* | wall type, shell, reach, seat, annex reachable on the page for the first time — which is §3.3, and a keyboard gain too | the UI is the cost, `lavition_ui` has the list |
@@ -141,3 +141,49 @@ which axis a person wants for turning, whether the stick's magnitude should be s
 wheel feels are things a prototype on the page answers in an hour and a design argues about for
 a day. `C3` and `C5` are the two with content decisions in them, and they are cheaper to make
 with a stick in hand.
+
+## 8. What `C1` and `C2` turned up — built 2026-09-08
+
+**The requirement, in the owner's words:** *"keyboard inputs for now but those have to mimic
+the controller (wasd & mouse view)"*, and *"you are also allowed to implement full controller
+support in the browser for the same controls"*. So `W S A D` are the LEFT stick — a vector, and
+`A`/`D` **strafe** — the mouse is the RIGHT stick, and a real pad drives the same three numbers.
+
+### One walk, three inputs, one body
+
+`hex_editor::move_of(bits, stick_f, stick_s)` composes the held bits and the stick into one
+vector clamped to the unit disc; `turn_of` does the turn; `move_world` puts the vector into the
+world by the facing, with RIGHT as `(−sin, cos)` — **the sign is derived in the test from
+`yaw_turn`'s own right turn**, not restated. The walker carries `wk_stick_f/s/t`; `walk_tick`
+steps along the composed vector; the wire's `4:` gained bits 16/32 and **`61:<f>,<s>,<t>`** is
+the stick, written not integrated; `editor_run` has `move`. ⚠ **The old bits are untouched by
+construction** — `W` is the vector `(1, 0)` — and the 46-script corpus is byte-identical.
+
+### ⛔ The half that was the instrument, twice
+
+`probe/stick` G1 read a 44 px drag as **22 px**, three runs in a row. The first diagnosis
+blamed the release frame (the motion after the last `PaDrag` frame answered `nothing`), and
+`PaDrop` was built for it — right on its own terms, exactly tested, and **not the cause**: the
+rebuilt page still read 22. The experiment that answered was four drags of the same distance —
+**one move reads 44, four moves read 22, eight read 24** — so the events arrived and the
+COUNTER was blind: `turned_by` and the camera re-solve sat inside `if steps > 0`, the drag
+writes the yaw on the frame it happens, and at 60 fps against a 33 ms tick every other frame
+ticks. *A counter that reads exactly half is a counter sampling at half the rate.* ⚠ The same
+guard had the camera lag the mouse until the next key, which no probe had asked about because
+no probe had dragged on the page — the drag was dead there until this step.
+
+### The sabotage sweep — three rows, each red on exactly its own row
+
+| `STICK_SABOTAGE` | predicted red | **measured red** |
+|---|---|---|
+| control | none | **none**, 8 green |
+| `nopad` | B0 B1 C1 D1 | **B0 B1 C1 D1** — E F G green: the keyboard and the mouse are not the pad's |
+| `noturn` | F1 | **F1** — `held d: moved 0.00 … turned 2.18 → 3.92`: the old keyboard, seen as itself |
+| `nolook` | G1 | **G1** — `turned 2.2506 → 2.2506`: the drag dead on the page again, as it was before this step |
+
+### What it deliberately does not do
+
+- **No pitch on the page.** The right stick's `y` and a drag's `dy` pitch the camera attached
+  (`3:`); the page camera has no pitch to fence, and a second camera rule was not invented.
+- **No buttons.** A pad's face buttons name no verb yet — that is `C4`, behind the per-mode cut.
+- **No keyboard turn.** Turning is the mouse, as asked; `4`/`8` stay for scripts and sticks.
