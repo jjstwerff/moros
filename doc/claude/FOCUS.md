@@ -45,6 +45,14 @@ So the blueprint today is a **review instrument**, and a good one — [plan
 walls that bound nothing, a wall drawn twice, and a wall whose field depends on which way it
 was walked. It is not yet a place a person authors.
 
+✅ **AND NOW IT IS — 2026-09-08, plan 26 `B6`, [`probe/b6`](../../probe/b6/README.md).** The
+page (`_site/index.html`, `file://`, no server) opens the same `plan_levels` over the canvas
+on `m`, a click on it is the same `plan_pick` the runner resolves, and the next verb lands
+there with the walker unmoved. It took an afternoon because every piece above already
+existed headless and loft's `--html` shell already had the two channels (`host_output` →
+the DOM, `loftPush` → `host_input(0)`). ⚠ The paragraph above is kept as the measurement
+it was; the rows below say what is built and what the first use found.
+
 ### ⛔ And the object a blueprint is MADE OF does not round-trip
 
 This is the finding that decides the order. `B4x` measured what the reader does with shapes
@@ -231,8 +239,8 @@ missing is a **dependency**: `hex_recover` is not in any manifest here, and
 | # | what | why it is here | state |
 |---|---|---|---|
 | **B1** | **the closed chain** — a wall that turns | until a room round-trips there is nothing to edit | ✅ the CYCLE is answered (`B4x`) and ✅ **the CORNER is CLOSED** (`B4y`, built): 7 of 25 leak → **0**; one chain 7 → 14, one CLOSED chain 7 → 8. ⛔ What is left is the CUT — the shipped peel describes four walls as four in **8 of 25**. ✅ **And `B4x`'s *beats the shipped peel on no fixture* is REFUTED, re-run 2026-08-29**: the rotation-invariant minimum is **strictly better on 14 of 25, equal on 11, never worse**, says *four walls* on **14** against the peel's 8, and is **unique every one of those 14 times**. ⛔ **AND THEN THE CUT WAS REFUTED AS THE QUESTION — see below: the CELLS answer 25 of 25 for zero `run_edges`.** Its bill, costed 2026-08-29: like for like on the 5 × 5 room, greedy **128** against the cycle table's **2 454** — **19.2×**, `+2 326` calls at a measured **2.33 ms** each, so **+5.4 s per room**; the table is **~n² per chain**, so a 200-mark room is ~40 000 calls (**93 s**). ✅ **But today's bill is ZERO**: the peel's only production caller is the offline `make plan-view`, and one plan view of `worlds/b4s` makes **exactly 2** `run_edges` calls — the expensive branch needs a closed wall loop and no world in the corpus has one |
-| B2 | the plan view **inside a renderer** | an instrument nobody can open while editing is an instrument nobody reads | not started |
-| B3 | **authoring in the plan** — `pick` from a pointer, not from a script | this is the editor half of "blueprint editor" | `pick` exists headless (`B4b`) |
+| B2 | the plan view **inside a renderer** | an instrument nobody can open while editing is an instrument nobody reads | ✅ **BUILT 2026-09-08 — plan 26 `B6a`**: `m` on the page puts the same `plan_levels` over the canvas, through `host_output` and a DOM overlay in `build-pages.mjs`; `probe/b6` reads 289 cells out of the DOM |
+| B3 | **authoring in the plan** — `pick` from a pointer, not from a script | this is the editor half of "blueprint editor" | ✅ **BUILT 2026-09-08 — plan 26 `B6b`**: a click on the overlay comes back as `pick:<x>,<y>` in the picture's own units (`getScreenCTM`), `plan_pick` resolves it against the window that was drawn, and a verb lands THERE with the walker unmoved — *pick + fence is stand-there + fence*, edge for edge. ⚠ Its finding: `raise` has a REACH (`PEAK_AHEAD` along the facing), so a ground verb from a plan lands ten hexes from the click — the plan is a MODE and wants its own binding, which is the next step |
 | B4 | **the block vocabulary authored here** — wall types, house types, parts, saved to the world's palette | the project owner's actual requirement; see §2 | the storage exists (`PAL_HTYPE`), the authoring does not |
 | B5 | multiple floors side by side; furniture; thickness | [BLUEPRINT.md](BLUEPRINT.md)'s own remaining §2 | designed |
 

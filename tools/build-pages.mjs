@@ -47,7 +47,13 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ENGINE = join(root, 'src', '.loft', 'editor_client.html');
+// ⚠ `--engine <path>` ASSEMBLES A DIFFERENT CLIENT BUILD, and it exists for one
+// caller: a sabotage sweep (`probe/b6`) that builds a broken client beside the real
+// one and needs it assembled with THIS prelude — the overlay below is the subject of
+// that sweep, and a page copied raw would test the engine without it.
+const engFlag = process.argv.indexOf('--engine');
+const ENGINE = engFlag < 0 ? join(root, 'src', '.loft', 'editor_client.html')
+                           : resolve(process.argv[engFlag + 1] ?? '');
 const SITE = join(root, '_site');
 const INDEX = join(SITE, 'index.html');
 
@@ -211,7 +217,87 @@ const fitChunk = `(() => {
   document.head.appendChild(st);
 })();`;
 
-const chunks = [fsChunk, fitChunk].filter(Boolean);
+// -- THE PLAN OVER THE CANVAS -- plan 26 `B6` -------------------------------
+//
+// The client draws a plan of where the author stands (`m`) and hands the SVG out
+// through `host_output` as `plan:<svg>`; this puts it over the canvas. A click on it
+// goes back as `pick:<x>,<y>` in the PICTURE'S OWN UNITS -- `getScreenCTM` is the
+// browser's inverse of the `viewBox`, so what the client receives is exactly the
+// number its `plan_pick` divides by, and no scale is spelled twice. An empty
+// `plan:` takes the overlay down.
+//
+// WHY IT IS HERE AND NOT IN THE PROGRAM: a loft program cannot reach the DOM, and
+// the DOM is what makes a 300 KB SVG a picture with a click on it for free.
+//
+// THE CANVAS KEEPS THE KEYBOARD. loft binds keydown to the canvas, so a click that
+// moved focus to the overlay would leave every key after it going nowhere -- the
+// exact transcript `probe/b1b` documents for a page nobody has clicked. `mousedown`
+// is cancelled so focus stays put, and the click is read on `click`.
+//
+// THE QUEUE IS PRE-CREATED, `probe/p2`'s finding: the engine shell makes `loftPush`
+// lazily inside the first `host_input()`, so a click that landed before the client
+// ever polled would have nowhere to go. Creating it here is idempotent with the
+// shell's own.
+//
+// `--plan-sabotage nopush|noshow` builds the CONTROL pages for `probe/b6`: the click
+// that pushes nothing, and the overlay that never appears. Neither is an option
+// anybody wants; they exist so the gate can be seen red on the JavaScript half.
+const psFlag = process.argv.indexOf('--plan-sabotage');
+const planSab = psFlag < 0 ? '' : (process.argv[psFlag + 1] ?? '');
+if (psFlag >= 0 && !['nopush', 'noshow'].includes(planSab)) {
+  die(`--plan-sabotage takes nopush or noshow; got '${planSab}'`);
+}
+const planChunk = `(() => {
+  if (!globalThis.__loftInQ) {
+    globalThis.__loftInQ = [];
+    globalThis.loftPush = function (m) {
+      globalThis.__loftInQ.push(new TextEncoder().encode(String(m)));
+    };
+  }
+  var box = null;
+  var pick = function (e) {
+    var s = box.querySelector('svg');
+    if (!s) return;
+    var pt = s.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    var p = pt.matrixTransform(s.getScreenCTM().inverse());
+    ${planSab === 'nopush'
+      ? "console.log('[plan] SABOTAGE nopush ' + p.x.toFixed(4) + ',' + p.y.toFixed(4));"
+      : "globalThis.loftPush('pick:' + p.x.toFixed(4) + ',' + p.y.toFixed(4));"}
+  };
+  var show = function (svg) {
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'plan';
+      box.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;'
+        + 'justify-content:center;background:rgba(0,0,0,0.55);z-index:10;cursor:crosshair';
+      box.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      box.addEventListener('click', pick);
+      document.body.appendChild(box);
+    }
+    if (!svg) { box.hidden = true; box.innerHTML = ''; return; }
+    ${planSab === 'noshow'
+      ? "console.log('[plan] SABOTAGE noshow ' + svg.length + ' bytes'); return;"
+      : ""}
+    box.innerHTML = svg;
+    box.hidden = false;
+    var s = box.querySelector('svg');
+    if (!s) return;
+    var vw = s.viewBox.baseVal.width, vh = s.viewBox.baseVal.height;
+    var k = Math.min(innerWidth * 0.94 / vw, innerHeight * 0.94 / vh);
+    s.setAttribute('width', String(Math.round(vw * k)));
+    s.setAttribute('height', String(Math.round(vh * k)));
+  };
+  var prior = globalThis.loftOutput;
+  globalThis.loftOutput = function (m) {
+    m = String(m);
+    if (m.slice(0, 5) === 'plan:') show(m.slice(5));
+    else if (prior) prior(m);
+    else console.log('[loft:out]', m);
+  };
+})();`;
+
+const chunks = [fsChunk, fitChunk, planChunk].filter(Boolean);
 const prelude = chunks.length
   ? Buffer.from(`<script>${chunks.join('\n')}</script>\n`, 'utf8')
   : null;
@@ -241,7 +327,9 @@ if (prelude && back.length !== bytes.length + prelude.length) {
 }
 
 const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
-console.log(`build-pages: _site/index.html  ${kb(out.length)}  (the client engine build, verbatim)`);
+console.log(`build-pages: _site/index.html  ${kb(out.length)}  (the client engine build, verbatim`
+          + (engFlag < 0 ? ')' : ` -- from ${process.argv[engFlag + 1]})`)
+          + (planSab ? `  PLAN SABOTAGE ${planSab}` : ''));
 if (Object.keys(parts).length) {
   console.log(`build-pages: and the part library — ${Object.keys(parts).length} files, `
             + `${kb(partBytes)} raw, baked at /data/parts`);

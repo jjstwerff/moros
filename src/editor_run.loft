@@ -209,19 +209,25 @@ fn svg_attr(ln: text, name: text) -> text {
 // The window follows the AUTHOR rather than the origin, because a station shot is
 // taken where the person is standing. `Q0`/`R0`/`Q1`/`R1` override it for a script
 // that wants a fixed frame across stations.
-const PLAN_R = 8;
+//
+// ⚠ **THE ARITHMETIC IS `hex_mesh::plan_window`'s — plan 26 `B6`.** The page draws a
+// plan too now, and a pick resolves against the plan that was drawn, so the two
+// drivers derive the frame from one function rather than each spelling `± 8`.
+// ⚠ AND THIS WRAPPER IS `run_window`, NOT `plan_window`: a program's free function
+// and a library's free function of one name resolve to the library's at every call
+// site, reported as *too many parameters* — measured the moment the library one landed.
 
 // ⚠ **ONE WINDOW, SHARED BY `plan` AND `pick`** — plan 26 `B4b`. A pick resolves
 // against *the plan I would draw right now*, so the two must derive the frame from one
 // place or a click will land on a picture that was never drawn. The walker does not
 // move during either, which is what makes "right now" a stable answer.
-fn plan_window(wk: hex_editor::Walker, q0: &integer, r0: &integer,
+fn run_window(wk: hex_editor::Walker, q0: &integer, r0: &integer,
                q1: &integer, r1: &integer) {
-  (pw_cq, pw_cr) = hex_grid::px_to_hex(wk.wk_x, wk.wk_z);
-  q0 = env_int("Q0", pw_cq - PLAN_R);
-  r0 = env_int("R0", pw_cr - PLAN_R);
-  q1 = env_int("Q1", pw_cq + PLAN_R + 1);
-  r1 = env_int("R1", pw_cr + PLAN_R + 1);
+  pw_win = hex_mesh::plan_window(wk.wk_x, wk.wk_z, hex_mesh::PLAN_RADIUS);
+  q0 = env_int("Q0", pw_win.pn_q0);
+  r0 = env_int("R0", pw_win.pn_r0);
+  q1 = env_int("Q1", pw_win.pn_q1);
+  r1 = env_int("R1", pw_win.pn_r1);
 }
 
 fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> boolean {
@@ -233,7 +239,7 @@ fn run_plan(w: VoxelWorld, wk: hex_editor::Walker, rest: text, said: &text) -> b
   rp_r0 = 0;
   rp_q1 = 0;
   rp_r1 = 0;
-  plan_window(wk, rp_q0, rp_r0, rp_q1, rp_r1);
+  run_window(wk, rp_q0, rp_r0, rp_q1, rp_r1);
   // One panel, at the feet: a station shot is *the floor I am standing on*. A script
   // that wants the storeys beside each other says so through `plan_view`, which reads
   // the world this run saves.
@@ -298,7 +304,7 @@ fn run_pick(w: VoxelWorld, wk: hex_editor::Walker, sess: hex_editor::EditSession
   rk_r0 = 0;
   rk_q1 = 0;
   rk_r1 = 0;
-  plan_window(wk, rk_q0, rk_r0, rk_q1, rk_r1);
+  run_window(wk, rk_q0, rk_r0, rk_q1, rk_r1);
   rk_pk = plan_pick(rk_q0, rk_r0, rk_q1, rk_r1, [wk.wk_y], rk_px, rk_py);
   // ── AIM: draw it, author nothing ──────────────────────────────────────────
   //

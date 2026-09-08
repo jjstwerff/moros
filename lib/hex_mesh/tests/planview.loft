@@ -1119,3 +1119,40 @@ fn test_a_stamped_slot_nobody_declared_is_still_loud() {
   assert(attr(odd, "data-thick") == "0",
          "an undeclared byte reports thickness {attr(odd, "data-thick")}");
 }
+
+// ── THE WINDOW AROUND A POINT — plan 26 `B6` ────────────────────────────────
+
+fn test_the_window_is_centred_on_the_cell_under_the_point() {
+  c = hex_proj::hex_to_world(3, 0 - 2, 0);
+  win = plan_window(c.x, c.z, 8);
+  assert(win.pn_q0 == 0 - 5 && win.pn_q1 == 12 && win.pn_r0 == 0 - 10 && win.pn_r1 == 7,
+         "the window round (3,-2) at radius 8 is q {win.pn_q0}..{win.pn_q1} "
+         + "r {win.pn_r0}..{win.pn_r1} — not 8 either side of the cell");
+  assert(win.pn_q1 - win.pn_q0 == 17 && win.pn_r1 - win.pn_r0 == 17,
+         "a radius-8 window is 17 cells wide, not {win.pn_q1 - win.pn_q0}");
+}
+
+fn test_two_points_in_one_cell_give_one_window() {
+  // ⚠ THE CONTROL FIRST: the two points really are in one cell, or the equality
+  // below is about two windows that happen to coincide.
+  c = hex_proj::hex_to_world(0 - 4, 5, 0);
+  (q1, r1) = px_to_hex(c.x + 0.3, c.z - 0.2);
+  assert(q1 == 0 - 4 && r1 == 5, "the offset point left the cell: ({q1},{r1})");
+  a = plan_window(c.x, c.z, 3);
+  b = plan_window(c.x + 0.3, c.z - 0.2, 3);
+  assert(a.pn_q0 == b.pn_q0 && a.pn_r0 == b.pn_r0 && a.pn_q1 == b.pn_q1 && a.pn_r1 == b.pn_r1,
+         "the same cell gives two windows — the frame would slide under a pick");
+}
+
+fn test_radius_zero_is_the_one_cell_and_the_pick_finds_it() {
+  c = hex_proj::hex_to_world(2, 2, 0);
+  win = plan_window(c.x, c.z, 0);
+  assert(win.pn_q1 - win.pn_q0 == 1 && win.pn_r1 - win.pn_r0 == 1,
+         "radius 0 is one cell, not {win.pn_q1 - win.pn_q0} by {win.pn_r1 - win.pn_r0}");
+  // The window is what `plan_pick` divides by, so the cell under the point must
+  // pick itself through a window built from the same point.
+  refs: vector<float> = [0.0];
+  p = plan_pick(win.pn_q0, win.pn_r0, win.pn_q1, win.pn_r1, refs, c.x, c.z);
+  assert(p.pk_ok && p.pk_q == 2 && p.pk_r == 2,
+         "the cell the window was built round does not pick itself: {p.pk_why}");
+}

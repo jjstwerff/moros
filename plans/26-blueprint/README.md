@@ -363,6 +363,8 @@ as a byte.
 | **`B4w`** — a CROSSING: a run begins where the chain does | M | `peel.loft` — four crossing geometries each measured to be ONE component and each closing as two runs; three T stems with both outcomes asserted per stem and both required to occur; a sub-run never taken from the middle of a chain; a candidate already claimed not offered again; `planview.loft` — a crossing drawn as two runs, and a T that the trial reaches into and cannot close still `refused`; `tools/scripts/b4w.keys`; seven faults swept, six red | ✅ **SHIPPED** 04eaf12 |
 | **`B4x`** — a wall that TURNS: the chain cut at its corners | M | `peel.loft` — a zigzag of three walls and a closed room of four each drawn run by run with nothing unexplained, against a straight wall that stays one run and a plus that stays two; the L, the Y, the crossings and every prior fixture unmoved; a sub-run still never taken from the middle; `planview.loft` — the room drawn as four runs and tallied; the corpus as the control | ✅ **SHIPPED** `13db614` — ⚠ and this row said *designed, not built* for a day, because that commit touched three code files and no document |
 | **`B4y`** — the corner two runs leave open: claimed exactly once | M | `corner_close.loft` — a lone wall closes nothing and keeps two free ends, two unrelated walls ending near each other are left alone, a gapped corner is joined with the join inside the second run's own count, and a four-run room has no free end, one closed chain and a flood that is BOUNDED where it escaped before; `peel.loft` — the zigzag at 17 marks instead of 16 and still three runs with nothing over; [`probe/b4y`](../../probe/b4y/README.md) — the cross-tabulation and the refuted drop half; eight faults swept, **three red and one green control**, and the four green ones are named as defensive | ✅ **SHIPPED** |
+| **`B6a`** — the plan ON THE PAGE: `m` draws it over the canvas | S | `probe/b6` rows A–B2 — the overlay holds an SVG of 289 cells read out of the DOM, the caption agreeing with it, none before the key; `noshow` seen red; `hex_mesh/tests/planview.loft` — `plan_window` centred on the cell, one window for two points in one cell, radius 0 the pick's own cell, a sabotaged bound seen red | ✅ **SHIPPED** |
+| **`B6b`** — a PICK from a pointer, and a verb that lands on it | M | `probe/b6` rows C–E3 — a real click at a polygon's centre resolves to that cell in the client's line AND in the highlight drawn back; the marker does not move; `f` from the pick and `f` from the feet are ONE ring moved by the pick, edge for edge, with a control that the moved set is a different set; closing drops the target; `nopush` `nopoll` `notarget` `nofollow` swept | ✅ **SHIPPED** |
 
 ### Why `B0` is one phase and not two
 
@@ -3924,3 +3926,91 @@ so a real file would trip it, the threshold reported **every** file as near the 
 `DEADLINE * PCT / 100 * 10` is shell integer arithmetic, and `300 * 50 / 100` is fine while
 `60 * 5 / 100` is **zero**. The silent direction had passed. ✅ Checked both ways since —
 silent below the line, and every named file's seconds matching its `TEST_VERBOSE` row.
+
+## What `B6` turned up — the plan on the page, and the shortest path to a version a person can test
+
+**Asked 2026-09-08: how far away is a blueprint editor in the browser, and is there a
+short path to something testable.** The answer was *one afternoon*, because every piece
+already existed headless: `hex_mesh::plan_levels` (`B0`–`B4y`), `plan_pick` (`B4a`), the
+`pick` gesture (`B4b`), the highlight (`B4c`), and a page that edits its own world (plan
+22). What no renderer had was a way to SHOW the SVG and a way to hand a click back —
+and loft's `--html` shell has both: `host_output` reaches `globalThis.loftOutput`, and
+`loftPush` → `host_input`. `probe/p2` had measured the channel a month ago for a storage
+shim that was then cancelled; this is its first production caller.
+
+### ✅ `host_input(0)` is a poll on every target, and that is what makes it safe
+
+The client reads the page's queue every frame while the plan is up. On the desktop
+`host_input()` **blocks** — measured: a bare call with a terminal on stdin hangs, and
+loft's native reader *"reads all program input as one text"*. `host_input(0)` does not:
+`got [] in 0 ms` with stdin held open by a `sleep`, and on `--html` the argument is
+accepted and ignored because *"a page reads its queue without blocking already"*. So one
+spelling is right everywhere, and a desktop run that presses `m` prints the SVG to
+stderr and hangs nowhere.
+
+### ⛔ The first gate was wrong three times, and every time it was the INSTRUMENT
+
+1. **`raise` has a reach.** The picked cell read `0 → 0` while the transcript said
+   `local raise — 1` and the picture had changed by 66 bytes: the bump was at **(8,1)**,
+   six cells EAST of the pick, because `raise_ahead` lands `PEAK_AHEAD` hexes along the
+   facing. A gate that assumes a verb's reach is a second copy of the verb. What a pick
+   changes is *where the author is*, which is what `probe/plan` already asserted with
+   `fence` — so the row became *the ring from the pick is the ring from the feet, moved
+   by the pick*.
+2. **An odd row offset is not a translation.** Target `(+2,+1)`, centroids differing by
+   `(2.60, 1.02)`, 42 marks against 40. The lattice is odd-r: the same fence one row
+   down is a different shape in `(q, r)`. Target `(+2,+2)`.
+3. **The rings overlap.** 40 = 42 − 2 shared edges, so the second ring's *new* marks
+   are fewer and a count reads that as a different ring. The comparison is a set under
+   translation, with a control (`E3a`) that the translated set is a different set —
+   *an instrument gets checked against something it should find*.
+
+⚠ **And 1 is a design finding, not only a gate finding.** A person clicking a cell on a
+blueprint and pressing `raise` expects THAT cell to rise; today they get the cell ten
+hexes along their facing, because the verb was written for a walker who cannot stand on
+the ground they are shaping. That is EDITING_MODES' *verb + mode → gesture* in the
+concrete: the plan is a MODE, and a ground verb in it wants a different binding. Not
+built here; the pick keeps `run_pick`'s semantics (*pick + verb == stand there + verb*),
+which is exact and gated, and the reach question is the next step's.
+
+### What it costs, measured
+
+| | |
+|---|---|
+| one plan redraw, 17 × 17, native libs, in-process | **404–536 ms** (`plan_levels`), 420 ms of it the field alone |
+| the same at 33 × 33 | 859 ms |
+| the SVG | 61–81 KB for the probe's world, 268 KB for `b4s` |
+| when it redraws | on open, on a pick, and when `w_tau` moves — never per frame |
+
+⚠ `make plan-view` had read **39 s / 110 s / 4 s** on three worlds an hour earlier, and
+the first two were the sibling's native-library rebuild, not the plan — `LOFT_PROFILE`
+answered *0 samples over 2.27 s*. A wall clock on a cold cache measures the cache.
+
+### The sabotage sweep — five rows, predictions first, all seen red
+
+| `B6_SABOTAGE` | predicted red | **measured red** | |
+|---|---|---|---|
+| control | none | **none**, 13 green | the subject is present before any row is read |
+| `noshow` | B1, and the run stops at C | **B1 B2**, then *no polygon for (2,2)* | the page half is seen |
+| `nopush` | C1 C2 D1 E3 | **C1 C2 E2 E3** | ⚠ D1 stayed GREEN: it asks *did the fence write marks*, and it did — under the feet. The miss surfaces one row later, when the second fence adds nothing new. A row that names a set is the one that can see WHERE |
+| `nopoll` | as `nopush` | **C1 C2 E2 E3** | the client never sees what the page pushed |
+| `notarget` | C green, E3 red | **E2 E3** — C1 C2 C3 green | *seeing is not authoring*: resolved, highlighted, ignored |
+| `nofollow` | D1 | **D1 E3a E3** | the world was right and the picture stale; the re-open then drew both rings at once, so the moved-set control read *the same set* — a stale instrument fails its own control, which is what the control is for |
+
+⚠ Two predictions were off by a row and both errors are instrument facts worth keeping:
+`nopush`'s D1 stayed green because that row cannot see WHERE a ring was written, only
+that one was; `nofollow` took the moved-set CONTROL down with it, because a stale picture
+hands the re-open both rings at once. Neither was a green sabotage.
+
+### What it deliberately does not do
+
+- **Attached, a pick is only a mark.** The wire carries verbs at the walker's pose and
+  has no message for a picked spot; the client says so once and the verb lands under the
+  feet. A `pick` wire message is a plan 24-shaped step.
+- **One level.** The page draws the panel at the walker's feet; `REFS` (several floors
+  beside each other, `B2`) is the offline driver's and the runner's.
+- **No verb bar on the plan, no drag, no zoom.** The overlay is the SVG at the largest
+  size that fits the window, and the keyboard is the editor's own.
+- **The window is held while the plan is open.** A walk moves the marker on the next
+  redraw and nothing else — a frame that slid under a pick already on the page would
+  author a cell off.

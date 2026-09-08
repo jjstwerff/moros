@@ -722,6 +722,7 @@ fast:
 page-check: client-force pages
 	@$(MAKE) -s probe-demo
 	@$(MAKE) -s probe-auth
+	@$(MAKE) -s probe-b6
 
 check:
 	@sh tools/layering.sh
@@ -1266,6 +1267,20 @@ pages:
 #                             keys HELD, and `noturn` removes the presses.
 probe-demo: pages
 	@sh probe/b2/run.sh
+
+# B6 (plan 26) — THE PLAN ON THE PAGE, AND A PICK ON IT. `m` puts a plan of where
+# you stand over the canvas, a click on a cell is a pick, a verb key lands there
+# and not under the feet, and closing the plan drops the target. Opens the demo
+# from `file://` with no listener; every row reads the SVG the page holds. Needs
+# only the engine build — it assembles the page itself, because the overlay under
+# test is the prelude `build-pages.mjs` writes. `B6_SABOTAGE=noshow|nopush|nopoll|
+# notarget|nofollow` are the controls; `probe-b6-sweep` runs them all (~10 min,
+# three of them are wasm builds).
+probe-b6: client
+	@sh probe/b6/run.sh
+
+probe-b6-sweep: client
+	@sh probe/b6/sweep.sh
 
 # B1b.1a (plan 22) — DOES THE PANEL SAY WHICH AUTHORITY IT HAS? The status line was
 # a literal reading `connected`, set at panel construction before any socket existed,

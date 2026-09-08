@@ -204,6 +204,33 @@ pub fn plan_bounds(q0: integer, r0: integer, q1: integer, r1: integer) -> PlanBo
   PlanBox { pb_minx: bminx, pb_maxx: bmaxx, pb_minz: bminz, pb_maxz: bmaxz }
 }
 
+// ── THE WINDOW AROUND A POINT — plan 26 `B6` ────────────────────────────────
+//
+// A plan is taken WHERE THE PERSON IS: the window is the cell under a world point
+// and `radius` cells either side of it, so it is `2·radius + 1` cells wide in both
+// axes. `editor_run`'s `plan`/`pick` and the page's plan both derive their frame
+// from this one function, because a pick resolves against *the plan that was drawn*
+// and two drivers each spelling the same arithmetic is how one of them comes to
+// draw a window the other picks against a cell off.
+//
+// ⚠ IT IS THE CELL AND NOT THE POINT THAT IS CENTRED. Two points inside one hex give
+// one window, so a walker crossing their own cell does not slide the frame under a
+// pick that is already on the page.
+pub const PLAN_RADIUS = 8;
+
+pub struct PlanWindow {
+  pn_q0: integer,
+  pn_r0: integer,
+  pn_q1: integer,       // exclusive, as every window in this file is
+  pn_r1: integer,
+}
+
+pub fn plan_window(x: float, z: float, radius: integer) -> PlanWindow {
+  (cq, cr) = px_to_hex(x, z);
+  PlanWindow { pn_q0: cq - radius, pn_r0: cr - radius,
+               pn_q1: cq + radius + 1, pn_r1: cr + radius + 1 }
+}
+
 // The width of one panel's paper, and the step from one panel to the next.
 pub fn plan_paper_w(b: PlanBox) -> float { b.pb_maxx - b.pb_minx + PLAN_MARGIN * 2.0 }
 pub fn plan_paper_h(b: PlanBox) -> float { b.pb_maxz - b.pb_minz + PLAN_MARGIN * 2.0 }
