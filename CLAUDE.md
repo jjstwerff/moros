@@ -828,6 +828,14 @@ address (or the hostname `make browser` prints) cannot connect.
   command a person runs** so the two cannot drift, and `dups` — duplication asked **by meaning**
   rather than by code shape, which is what plan 24 did by hand four times. ⚠ And the doctrine to
   steal verbatim: **`OPEN: 0` is a claim to re-measure, not a fact**
+- [Controls](doc/claude/CONTROLS.md) — **every input the editor takes, measured against a pure
+  controller with the character as the base** (2026-09-08). The gestures are already
+  pose-relative and the mouse drag turns the character's own facing, so the distance is three
+  counts: no gamepad anywhere in the stack (0 matches, but the `B6` page channel is the door),
+  **19 verbs in every mode against ~12 buttons** because `mode_at` has one consumer and removes
+  nothing, and **5 of 7 selections have no input on the page**. Its §5 is the one design change
+  the requirement implies — a left stick is a 2-D vector and the walk has no strafe, which is
+  the input `WALL_PUSH` L11 is already waiting for
 - [Authoring map](doc/claude/AUTHORING_MAP.md) — **from a controller to an exact shape, and it is
   a FORMAL object because both its ends are.** `FORMAL_CORE` says what shapes exist; this says how
   an author reaches one — the half that has been decided in code four separate times instead. Its
