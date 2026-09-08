@@ -22,6 +22,8 @@ git -C "$CLONE" remote get-url origin | grep -q "lavition/lavition" \
   || { echo "publish: $CLONE does not track lavition/lavition"; exit 2; }
 test -z "$(git status --short src lib tools | grep -v '^??')" \
   || { echo "publish: moros has uncommitted changes under src/ lib/ tools/ — commit first, the page must name a commit"; exit 2; }
+test -z "$(git -C "$CLONE" status --short | grep -v '^??')" \
+  || { echo "publish: the clone at $CLONE has uncommitted changes — commit or drop them first; this script switches it to gh-pages"; exit 2; }
 
 node tools/build-pages.mjs
 HEAD_MOROS=$(git rev-parse --short HEAD)
