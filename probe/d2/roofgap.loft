@@ -22,10 +22,10 @@
 // which is why this counts rather than renders: a collar reads as a roof.
 //
 // ⚠ THREE PACKAGES PLUS THE MESHER — `probe/d2/door.loft`'s note about the registry.
-use hex_editor;
-use hex_voxel;
-use hex_mesh;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_mesh::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

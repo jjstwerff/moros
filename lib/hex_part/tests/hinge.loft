@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A5.1` — the hinge, and the first float this format has had to carry.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 fn no_palette() -> vector<integer> { [] }
 

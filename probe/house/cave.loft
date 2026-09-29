@@ -21,8 +21,8 @@
 //
 // If (1) or (2) fails the cover is decorative: there would be nothing to put rock
 // over, exactly as `road_h`'s frozen grade left `A7` and `A8` unreachable.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U   = 0.25;
 const G   = 200;                 // a datum high enough that a deep cut cannot hit ρ
 const EPS = 10;                  // the editor's own ε — `editor_server`'s W_EPS

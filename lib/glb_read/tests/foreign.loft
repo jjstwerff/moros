@@ -12,8 +12,8 @@
 //   · u16 indices, where ours writes u32.
 //
 // A seeker cannot read it. A parser cannot tell it apart from ours.
-use glb_read;
-use mesh3d;
+use glb_read::*;
+use mesh3d::*;
 
 fn pad4(n: integer) -> integer { (4 - (n % 4 ?? 0)) % 4 ?? 0 }
 

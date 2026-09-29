@@ -8,9 +8,9 @@
 // cellar INSERTS at the bottom so the order still holds, and a cellar with no room
 // below is refused for the right reason. The gate builds a tower through a socket
 // to say this; these run against the store.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;

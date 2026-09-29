@@ -7,7 +7,7 @@
 // package sitting in someone's tree is a standing invitation for their semantics
 // to drift in. That is exactly how spawn flags ended up packed into `moros_map`'s
 // voxel against `L15`.
-use hex_voxel;
+use hex_voxel::*;
 
 fn test_the_package_depends_on_nothing_of_moros() {
   man = file("{source_dir()}/../loft.toml").content() ?? "";

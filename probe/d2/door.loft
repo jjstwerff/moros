@@ -28,9 +28,9 @@
 // auto-install every internal module basename in the graph (`gesture`, `catalogue`,
 // `codec`, …) and drowns in HTTP 429s. Everything this needs is reachable through
 // `hex_editor`, which is what a consumer sees anyway.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

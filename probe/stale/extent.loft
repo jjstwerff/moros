@@ -12,8 +12,8 @@
 // ⚠ THE CONTROL COMES FIRST. Reading a world materialises columns, so a second
 // read can differ from the first with no edit at all. Any nonzero control voids
 // every number under it — probe_fit learned this the hard way and says so.
-use hex_voxel;
-use hex_editor;
+use hex_voxel::*;
+use hex_editor::*;
 
 const SPAN = 40;                 // cells each way — well past the brush and its chunk
 

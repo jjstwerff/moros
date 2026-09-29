@@ -13,7 +13,7 @@
 // straight down its own axis ends at the back of a head, so it slides sideways as it
 // shortens — which is what makes a short boom an over-the-shoulder view rather than
 // a failure.
-use hex_editor;
+use hex_editor::*;
 
 const WANT = 5.0;
 const FRAC = 0.22;

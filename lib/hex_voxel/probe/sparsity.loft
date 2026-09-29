@@ -8,7 +8,7 @@
 //
 // Sizes are checked EXACTLY against the format's constants. A tolerance would let
 // a padding regression become the new baseline; an exact figure makes it a failure.
-use hex_voxel;
+use hex_voxel::*;
 
 fn want(chunks: integer, layers: integer) -> integer {
   // A layer costs its DIRECTORY entry plus its DATA. The two live in separate

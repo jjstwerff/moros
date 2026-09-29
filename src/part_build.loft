@@ -19,9 +19,9 @@
 // ⚠ AND IT ASSERTS RATHER THAN PRINTING. A tool that reports a failure on stdout
 // and exits 0 is a tool `make` cannot gate on; `assert` is what makes a broken
 // part stop the build.
-use hex_editor;
-use hex_voxel;
-use hex_part;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_part::*;
 
 // The editor's own world constants. ⚠ A part cut from a world built at a
 // different epsilon is a different shape wearing the same numbers, and

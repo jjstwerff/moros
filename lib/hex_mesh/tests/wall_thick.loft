@@ -4,9 +4,10 @@
 // that decides it. `CLAUDE.md`: *measure what was actually emitted, never a number
 // the producer re-derives* — and a test that asked `wall_half` what `wall_half`
 // says could not be surprised by a mesher that never called it.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
+use mesh3d::*;
 
 const U = 0.25;
 // ⚠ TWO FIVES THAT ARE NOT THE SAME FIVE, and they sit two lines apart on purpose so

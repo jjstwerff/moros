@@ -4,8 +4,8 @@
 // carries no edge of its own, so it is not fabric — it takes the falloff. If that
 // is what happens, the ring rises rigidly while the ground it encloses slopes, and
 // the yard is torn exactly the way a floor was before `A1`.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

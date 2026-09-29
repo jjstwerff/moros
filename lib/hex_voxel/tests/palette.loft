@@ -7,7 +7,7 @@
 // everything would round-trip perfectly and would let a world load against the
 // WRONG mapping looking entirely correct — which is the failure the check exists
 // for and the reason it is a refusal rather than a default.
-use hex_voxel;
+use hex_voxel::*;
 
 const U = 0.25;
 

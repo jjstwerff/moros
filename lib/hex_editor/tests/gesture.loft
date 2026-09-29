@@ -11,9 +11,9 @@
 // seven seconds. This file says it against the store — no port, no clock, no
 // browser — and can be mutation-checked, which a gate driving a socket never
 // could.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 // ⚠ SEEDED, AND THAT IS A FINDING RATHER THAN SETUP. A world made by `world_new`
 // has no cells, and an UNWRITTEN cell does not read as height 0 once its chunk

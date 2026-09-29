@@ -19,8 +19,8 @@
 // 2026-08-28 every refused facing named a facing that was itself refused — three of
 // them in a cycle — so B passed and C did not, and no test in the tree separated
 // them. A refusal that names an action is not a doorstep until the action works.
-use hex_voxel;
-use hex_editor;
+use hex_voxel::*;
+use hex_editor::*;
 
 const HOURS = 12;
 

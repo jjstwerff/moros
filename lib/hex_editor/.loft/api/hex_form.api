@@ -1,6 +1,6 @@
-# hex_form 0.1.0 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_form-0.1.0
-# use it with: use hex_form;
+# hex_form 0.1.5 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_form-0.1.5
+# use it with: use hex_form::*;
 
 ## src/formtext.loft
 
@@ -8,21 +8,51 @@
 // 
 // One element per line, single-space separators, no trailing space. Fields in declaration order:
 // `stencil <name> h0 <n>` then one `side <i> len <l> turn <t>` per side, in index order.
+// 
+// Example: @HXF-001
 pub fn form_write(f: Form, name: text) -> text
 
 // THE CANONICAL SPELLING — smallest `(turns, lens, h0)` over the n cyclic starts.
+// 
+// Example: @HXF-004
 pub fn form_canon(f: Form) -> Form
 
 // The canonical text of a form, whichever corner it happened to be written from.
+// 
+// Example: @HXF-004
 pub fn form_canon_text(f: Form, name: text) -> text
 
+// The name a text was written with. It is NOT part of the model — `Form` has no name field —
+// so a round trip carries it only if the caller carries it.  Names are ONE WORD: the layout puts
+// `h0` in the third field, so a name with a space writes a text this reader refuses.
+// 
+// Example: @HXF-003
 pub fn form_read_name(t: text) -> text
 
 // Parse a canonical text back into a Form. Returns a 0-sided form if the text does not have the
 // canonical shape — the caller checks, and the gate treats that as a refusal.
+// 
+// Example: @HXF-002
 pub fn form_read(t: text) -> Form
 
+// Are two forms the same shape?  Compares the model rather than the text, which is what
+// makes `form_eq(f, form_read(form_write(f)))` a round-trip check and not a tautology.
 pub fn form_eq(a: Form, b: Form) -> boolean
+
+## src/hex_form.loft
+
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// hex_form — the exact turtle form on the hex lattice, and its canonical text.
+// 
+// The MODEL axis of the `hex_*` family: the 12 headings of `H₁₂` as exact lattice steps, the
+// closed turtle cycle that is a stencil's outline, the `Plan` rectangle, the lattice→world map,
+// and the canonical text a form is written to and read back from — byte-for-byte.
+// 
+// Entry point: re-exports `hexform` (the lattice and the form) and `formtext` (the text).
+pub use hexform::*
+
+pub use formtext::*
 
 ## src/hexform.loft
 
@@ -51,6 +81,8 @@ pub fn head_norm(h: integer) -> integer
 pub fn head_step(h: integer) -> (integer, integer)
 
 // 4 * the squared world length of the step — EDGE_N2_4 or VERTEX_N2_4, exactly.
+// 
+// Example: @HXF-007
 pub fn head_n2_4(h: integer) -> integer
 
 // An even heading is an edge-neighbour direction; an odd one points at a vertex.
@@ -63,11 +95,15 @@ pub fn head_is_edge(h: integer) -> boolean
 // which is what makes the six rotations of O a subgroup of the twelve headings.
 pub fn rot60_k(k: integer, m: integer) -> integer
 
+// The `m` of the same 60-degree rotation `rot60_k` gives the `k` of.  Rotate a step by
+// walking both, and the result is still exactly on the lattice.
 pub fn rot60_m(k: integer, m: integer) -> integer
 
 // The exact reflection (constraint X2).  On the heading table this acts as h -> 6 - h.
 pub fn refl_k(k: integer) -> integer
 
+// The `m` of the reflection — unchanged, since the mirror is about the m axis.  Present so
+// a caller reflects by walking the same pair it rotates by, rather than special-casing one.
 pub fn refl_m(m: integer) -> integer
 
 // The heading whose step is (dk, dm), or -1 if no heading has that step.  Used by the gate
@@ -96,19 +132,27 @@ pub struct Form
 // One full revolution, in twelfths.
 pub const TURN_FULL = 12
 
+// Build a form: the heading its first side runs in, then a length and a turn per side.
+// This is the only constructor — every other routine here reads one or places one.
 pub fn form_new(h0: integer, lens: vector<integer>, turns: vector<integer>) -> Form
 
+// How many sides the form has.  The bound for any walk over it, and 0 for the refusal
+// form, which is why a caller can treat "no sides" as "nothing to draw".
 pub fn form_sides(f: Form) -> integer
 
 // The heading side `i` runs in: the start heading plus every turn taken before it.
 pub fn form_heading(f: Form, i: integer) -> integer
 
+// The turns added up.  A closed form's total is a full circle, so this is the cheap test
+// for whether the walk comes back — checkable without generating a single coordinate.
 pub fn form_turn_sum(f: Form) -> integer
 
 // Where the walk ends up, relative to where it started, in doubled coordinates.
 pub fn form_close(f: Form) -> (integer, integer)
 
 // Law J.  Both conditions, and a side count that can bound a region at all.
+// 
+// Example: @HXF-006
 pub fn form_closes(f: Form) -> boolean
 
 // ── WHY A LATTICE POLYGON CANNOT BE A RECTANGLE (step S1, OD-11) ────────────
@@ -130,6 +174,8 @@ pub fn form_closes(f: Form) -> boolean
 // why it — not a turtle cycle — is domain A's shape primitive.  See DESIGN.md §10.4.
 pub fn perp_k(_k: integer, m: integer) -> integer
 
+// The `m` of the perpendicular `perp_k` gives the `k` of: the step turned a quarter turn,
+// which is how an outward normal is taken without leaving the integers.
 pub fn perp_m(k: integer, _m: integer) -> integer
 
 // 4 * the squared world length of an arbitrary doubled-coordinate vector.
@@ -146,6 +192,8 @@ pub fn plan_u_can_tie(wid: integer, k: integer) -> boolean
 // the point the walk is standing on before it walks that side.
 pub fn form_poly_k(f: Form) -> vector<integer>
 
+// The `m` coordinates of the form's corners, in walk order — the companion of
+// `form_poly_k`.  Zip the two to get the polygon a renderer or an area check wants.
 pub fn form_poly_m(f: Form) -> vector<integer>
 
 // Is (pk, pm) inside or ON the closed polygon?  Exact integer arithmetic throughout: the
@@ -183,8 +231,12 @@ pub fn set_shoelace2(cells: HexSet) -> integer
 // hexagon side n    the hex region of radius n, 3n^2 + 3n + 1
 pub fn tri_cells(n: integer) -> integer
 
+// How many cells an a-by-b rhombus covers, without building it.  Size a buffer, or reject
+// a request as too large, before paying for the cells.
 pub fn rhombus_cells(a: integer, b: integer) -> integer
 
+// How many cells a hexagon of radius n covers — the same question as `rhombus_cells` for
+// the other common shape, and the same reason to ask it first.
 pub fn hexagon_cells(n: integer) -> integer
 
 // PART 1a — dangling ends.  A closed loop has NONE: every boundary vertex is entered and left.
@@ -245,6 +297,8 @@ pub const REBUILD_LANDED = true
 // A convex form is exactly one whose turns are all POSITIVE: every exterior angle turning the same
 // way, summing to one revolution.  A turn of 0 is a straight join, which is a re-spelling of a
 // longer side rather than a corner, so it is refused too.
+// 
+// Example: @HXF-005
 pub fn form_is_convex(f: Form) -> boolean
 
 // Does the walk visit any point twice?  A repeated vertex means the boundary is not a simple
@@ -252,31 +306,49 @@ pub fn form_is_convex(f: Form) -> boolean
 pub fn form_is_simple(f: Form) -> boolean
 
 // THE ADMISSION RULE, as A4 leaves it: closed (law J), simple, and convex.
+// 
+// Example: @HXF-005
 pub fn form_admissible(f: Form) -> boolean
 
+// A cell centre's world x.  The one place the exact lattice becomes a float, and it is
+// deliberately at the EDGE of the library: everything upstream stays integer.
 pub fn cell_x(q: integer, r: integer) -> float
 
+// A cell centre's world y — the other half of `cell_x`.
 pub fn cell_y(q: integer, r: integer) -> float
 
+// Absolute value for floats, used by the world-space helpers below.
 pub fn fabs(v: float) -> float
 
 // ── the plan: a rectangle in its own frame ──────────────────────────────────
 pub struct Plan
 
+// Place a form in the world: which cell it is centred on, how wide and deep, which of the
+// six exact rotations, and whether it is mirrored.  The Plan is the frame and the Form is
+// the shape — keeping them apart is what lets one shape be placed many times.
 pub fn plan_new(cq: integer, cr: integer, wid: integer, dep: integer,
 
 // A flip toggles the chirality and NOTHING else — no side remapping, no t -> 1-t.
 // If an implementation finds itself remapping, the frame rule above is wrong somewhere.
 pub fn plan_flip(p: Plan) -> Plan
 
+// Half the plan's width in world units — the extent a caller needs for a bound or a hit
+// test, without reconstructing the frame.
 pub fn plan_hw(p: Plan) -> float
 
+// Half the plan's depth in world units, the companion of `plan_hw`.
 pub fn plan_hd(p: Plan) -> float
 
+// A point in the plan's own frame, expressed in the world.  The rotations are the six
+// exact lattice ones, so this and `plan_to_local` invert each other rather than drifting.
 pub fn plan_to_world(p: Plan, lu: float, lv: float) -> (float, float)
 
+// A world point expressed in the plan's frame — the inverse of `plan_to_world`, and how a
+// click or a probe is asked "where is this ON the plan?".
 pub fn plan_to_local(p: Plan, px: float, py: float) -> (float, float)
 
+// A point a fraction `t` along one side of the plan, in world coordinates.  Use it to
+// place a door, a label or a joint without computing the side's endpoints yourself.
 pub fn plan_side_point(p: Plan, side: integer, t: float) -> (float, float)
 
 // Outward, unit — taken from the MASSING (centre -> side midpoint), never from the
@@ -287,6 +359,7 @@ pub fn plan_side_normal(p: Plan, side: integer) -> (float, float)
 // ── the boundary edges lying on one side, with their reading parameter ──────
 pub struct SideRun
 
+// How many entries the run holds — the bound for walking one side's collected points.
 pub fn side_run_len(sr: SideRun) -> integer
 
 // Which side an edge lies on, and where along it.  An edge's midpoint is the midpoint

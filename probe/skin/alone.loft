@@ -14,7 +14,7 @@
 // Each number below is checked against the value that package's OWN test asserts, so
 // a silently swapped module shows as a wrong number rather than as a missing symbol.
 // CONTROL: moros_sim is NOT in this graph
-use hex_part;
+use hex_part::*;
 
 fn main() {
   ok = true;

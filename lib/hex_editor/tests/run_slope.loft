@@ -6,8 +6,9 @@
 // wall came up as ONE SLAB, every cell +12, floating at its ends.
 //
 // What separates them is not length — it is whether the thing has an INSIDE.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U = 0.25;
 const G = 40;

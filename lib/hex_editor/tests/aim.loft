@@ -57,11 +57,11 @@
 //
 // ⚠ `W_RESERVE` IS THE PACKAGE'S OWN — `gesture.loft` exports it, so a test file
 // redeclaring it is a name collision the compiler names on sight.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_shape;
-use hex_form;   // fabs
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_shape::*;
+use hex_form::*;   // fabs
 
 
 fn ground(gw: VoxelWorld, half: integer) {

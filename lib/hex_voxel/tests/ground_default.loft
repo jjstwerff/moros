@@ -20,7 +20,7 @@
 //     later, when some layer inherits it.
 //
 // And one that guards everything else: **absent means today, byte for byte.**
-use hex_voxel;
+use hex_voxel::*;
 
 const RESERVE = 100;
 

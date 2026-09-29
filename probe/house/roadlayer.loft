@@ -16,8 +16,8 @@
 //   plain      one layer, ground at 40
 //   cellar     a room dug under it — two layers, and the road must not fall in
 //   high       ground at 60, well ABOVE an author standing at 40
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U = 0.25;
 const G = 40;
 

@@ -13,8 +13,8 @@
 // `add_thumb_cam`/`add_thumb_mesh`, and dies somewhere between printing the part
 // count and printing the mesh count. This runs the LIBRARY half alone: if it traps,
 // the defect is under `hex_mesh`; if it survives, it is in the client's two handlers.
-use hex_mesh;
-use graphics;
+use hex_mesh::*;
+use graphics::*;
 
 fn main() {
   // A context first — the editor builds its thumbnails after its window is up, and

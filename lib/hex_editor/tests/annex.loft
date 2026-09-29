@@ -14,8 +14,8 @@
 // Every claim below is about that pair of numbers, or about the annex's walls being
 // ORDINARY WALL RUNS — because if they are, every opening, profile, frame and reveal
 // already built applies to them, and if they are not, this is a fifth system.
-use hex_editor;
-use hex_grid;
+use hex_editor::*;
+use hex_grid::*;
 
 const BAND = 0.8660254037844386;   // the wall's own thickness
 const U = 0.25;

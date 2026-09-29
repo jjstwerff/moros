@@ -27,7 +27,7 @@
 //
 // run: loft --interpret --path ../loft/ --lib ../loft-libs-world/ \
 //        plans/14-props-dressing/probe/rig_place.loft
-use hex_body;
+use hex_body::*;
 
 const CART_RADIUS = 0.40;
 const TAU = 6.283185307179586;

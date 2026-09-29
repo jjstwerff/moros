@@ -12,7 +12,7 @@
 // the buffer, or one that cleared to a non-black colour, passes the subject and
 // fails the control -- which is the whole reason the control is here.  "It drew
 // something" is not the claim; "it drew something WHERE ASKED" is.
-use graphics;
+use graphics::*;
 
 // ⚠ THE FONT ARGUMENT IS TARGET-DEPENDENT, and this is a B1.1 finding.
 // The DESKTOP backend loads a FILE (fontdue), and `gl_load_font("monospace")`

@@ -1,8 +1,10 @@
 // Step 2 — direct-against-Map collision tests.
-use moros_sim;
-use moros_map;
-use moros_render;
-use graphics;
+use moros_sim::*;
+use moros_map::*;
+use moros_render::*;
+use graphics::*;
+use hex_proj::*;
+use mesh3d::*;
 
 // ── edge_direction ────────────────────────────────────────────────
 

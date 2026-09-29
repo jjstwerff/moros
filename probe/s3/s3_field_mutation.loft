@@ -5,8 +5,8 @@
 // LOCAL, inline in `main`, silently left the world empty — while the identical call
 // through a `&VoxelWorld` parameter filled it. The client's shape is a third one, and this
 // asks all three against the same source world.
-use hex_voxel;
-use hex_editor;
+use hex_voxel::*;
+use hex_editor::*;
 
 struct Holder { cache: VoxelWorld, n: integer }
 

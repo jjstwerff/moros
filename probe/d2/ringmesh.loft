@@ -17,10 +17,10 @@
 // 162 triangles** of hex staircase against **18 and 6** of gable. Same question here,
 // same answer shape: mesh the identical world twice, once with the ring's runs in hand
 // and once without, and count.
-use hex_editor;
-use hex_voxel;
-use hex_mesh;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_mesh::*;
+use hex_grid::*;
 
 const U   = 0.25;
 const REF = 1.0;

@@ -16,8 +16,8 @@
 // with `g = 0`. Without that, a row asserting *the road is on the ground* would pass on
 // any fixture whose ground happens not to move, and this whole file would be measuring
 // a flat world.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U   = 0.25;
 const G   = 400;
 const EPS = 10;

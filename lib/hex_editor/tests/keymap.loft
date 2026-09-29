@@ -12,7 +12,8 @@
 // every digit, every named key and a handful of things that are not keys at all go
 // through the name↔code round trip and the scan, so a key the editor can read that
 // nothing asks for is caught without anybody remembering to list it.
-use hex_editor;
+use hex_editor::*;
+use hex_voxel::*;
 
 // ⚠ EVERY KEY THIS EDITOR CAN READ, built rather than listed, so that adding a name to
 // `key_code_of` and forgetting it here is not possible for the letters and digits.

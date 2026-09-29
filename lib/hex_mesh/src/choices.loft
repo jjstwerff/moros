@@ -32,14 +32,14 @@
 // namespace too**, shared across a consumer's whole dependency graph exactly as
 // CLAUDE.md records for struct names. `choices` is what this list is: the things an
 // author can pick.
-use hex_part;
+use hex_part::*;
 // ⚠ THE MODULE QUALIFIER IS GONE, AND `use self::` IS WHY. A module imported as
 // `use self::<x>;` has no `<x>::` spelling — neither the bare qualifier nor
 // `self::<x>::<fn>()` parses — so the two forms are mutually exclusive, and the
 // protection is worth more than the prefix. Bare is unambiguous here: loft refuses
 // an ambiguous bare name outright and names both packages, so this would not have
 // compiled if something else in the graph claimed it.
-use self::surfaces;
+use self::surfaces::*;
 
 // ── The wire's own vocabulary ───────────────────────────────────────────────
 //

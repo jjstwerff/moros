@@ -3,10 +3,10 @@
 // moros_sim — player physics, world-direct collision, and tool dispatch
 // for the Moros walkable editor.  Re-exports submodule symbols.
 
-use self::tools;
-use self::player;
-use self::collide;
-use self::editor;
+pub use self::tools::*;
+pub use self::player::*;
+pub use self::collide::*;
+pub use self::editor::*;
 
 // ⚠ `assembly`, `frames` and `ground` LEFT FOR `hex_rig` — plan 19 `L6.3b`. They were never
 // Moros: measured name by name, none of them used anything from `moros_map`, `moros_editor`
@@ -14,11 +14,11 @@ use self::editor;
 // wire. What stays here is the character and the tools, which BUILD on them — so this package
 // is a consumer of the one that left, the same arrow `moros_render` → `hex_proj` took at
 // `L6.3a`.
-use hex_rig;
-use self::tether;
-use self::shape;
-use self::skin;
-use self::bend;
+use hex_rig::*;
+pub use self::tether::*;
+pub use self::shape::*;
+pub use self::skin::*;
+pub use self::bend::*;
 // ⚠ `cliff` LEFT — plan 22 `B1c.2a`. Its own header named `hex_edge`'s shared
 // layer as its target home and said it sat here only because moving to another
 // agent's tree is an ask; `hex_editor` is the waypoint, because that is where the

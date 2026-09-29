@@ -16,8 +16,8 @@
 //
 // The fields below are THEIRS (`ck_cells` exists on no other `Chunk` in the graph), so if
 // this ever prints something other than theirs, a second `Chunk` is back in the graph.
-use hex_voxel;
-use hex_world;
+use hex_voxel::*;
+use hex_world::*;
 
 fn main() {
   c = Chunk { ck_cx: 1, ck_cz: 2, ck_cells: [] };

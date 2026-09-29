@@ -17,12 +17,12 @@
 // a box makes one of them interior, so the seam must be CLEARED as well as the new boundary
 // written. This measures whether that leaves the store correct — `shared_marked` for the seam,
 // `leak_count` for the enclosure.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_place;
-use hex_shape;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_place::*;
+use hex_shape::*;
+use hex_grid::*;
 
 const Q0 = 0 - 20;
 const R0 = 0 - 20;

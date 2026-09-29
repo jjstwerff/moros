@@ -5,8 +5,8 @@
 // ⚠ THE FIXTURE IS A LIBRARY ON DISK, for `A3.1`'s reason: an instance names a
 // part by handle, so expanding one has to OPEN the parts it names. A world in
 // memory cannot pose the question.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 // ⚠ NAMED AND TYPED, not an inline `[]` — `world_save(w, p, [])` compiles on the
 // interpreter and fails `--native`. `roundtrip.loft` carries the same note.

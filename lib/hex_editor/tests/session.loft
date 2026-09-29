@@ -15,9 +15,9 @@
 //     residual"* is a claim about the server. `doorstep.mjs` owns it.
 //   · anything that ticks — the walk, the fall, the camera's ease.
 //   · anything a viewer decides — which chunks were streamed.
-use hex_shape;
-use hex_editor;
-use hex_voxel;
+use hex_shape::*;
+use hex_editor::*;
+use hex_voxel::*;
 
 const UNIT = 0.25;
 const EPS = 8;

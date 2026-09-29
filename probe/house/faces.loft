@@ -14,9 +14,9 @@
 // ⚠ THE SAMPLING TRAP IS THE ONE `roadwalk` HIT. The grades are frozen from a
 // read taken BEFORE any road is laid; reading as we walk reads the road we just
 // laid and drags the starting grade to the crest.
-use hex_editor;
-use hex_voxel;
-use hex_mesh;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_mesh::*;
 const U = 0.25;
 const G = 40;
 const HALF = 22;          // the window every scan walks, in hexes from the origin

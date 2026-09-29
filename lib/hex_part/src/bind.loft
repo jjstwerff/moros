@@ -17,14 +17,14 @@
 // binds `0,leaf,door/oak` and `1,leaf,door/ash` — the same socket name on two
 // instances of one part. Binding *by part* would make the two frames
 // indistinguishable, which is the coordinate problem wearing a different hat.
-use hex_voxel;
-use self::codec;
-use self::meta;
-use self::sock;
-use self::hinge;
-use self::fit;
-use self::inst;
-use self::catalogue;
+use hex_voxel::*;
+use self::codec::*;
+use self::meta::*;
+use self::sock::*;
+use self::hinge::*;
+use self::fit::*;
+use self::inst::*;
+use self::catalogue::*;
 
 // ⚠ A LITERAL, held equal to `section_tag(…)` by a test, for the reason
 // `meta.loft` gives: a file-scope constant is an inlined expression re-evaluated

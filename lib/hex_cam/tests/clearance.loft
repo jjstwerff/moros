@@ -8,7 +8,7 @@
 // function synthetic terrain whose gradient is known in closed form and check the
 // number against it. A wrong fit, a swapped axis or a dropped square root all move
 // the answer, and each has its own row.
-use hex_cam;
+use hex_cam::*;
 
 // A flat-top hex lattice is the CONSUMER's, so the tests supply one — a square grid
 // is enough to exercise the fit and keeps the arithmetic checkable by hand.

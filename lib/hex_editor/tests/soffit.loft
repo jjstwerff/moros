@@ -26,8 +26,8 @@
 // said so on their first run: "strictly inside" is false of a correct soffit, and
 // "displaced by t along the normal" is false at a mitred ridge. Each row carries
 // what it used to say and why the geometry refused it.
-use hex_editor;
-use hex_grid;
+use hex_editor::*;
+use hex_grid::*;
 
 const W = 5;
 const D = 4;

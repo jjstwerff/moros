@@ -38,8 +38,8 @@
 // `part_mesh_loads` is the check that opens it (`A6.1`), and
 // `test_the_placement_is_derived_without_ever_opening_the_glb` pins the seam by
 // expanding a statue whose mesh is not in the library at all.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 // ⚠ NAMED AND TYPED, not an inline `[]` — `world_save(w, p, [])` compiles on the
 // interpreter and fails `--native`. `expand.loft` and `roundtrip.loft` say the same.

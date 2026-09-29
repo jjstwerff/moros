@@ -12,8 +12,8 @@
 // was the truth, here the edges are the index and the opening is — and it is what
 // lets a door, a window, a gateway and an ALCOVE be one thing with one number
 // different, rather than four systems that cannot combine.
-use hex_editor;
-use hex_grid;
+use hex_editor::*;
+use hex_grid::*;
 
 const BAND = 0.8660254037844386;   // hex_draw::BAND_SIDES — the wall's own thickness
 

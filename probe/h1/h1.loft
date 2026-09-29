@@ -17,10 +17,10 @@
 // would be silently dropped"*. That is true of `rebuild`. It is not true of
 // `hex_shape`, which has `wall_read_run`: a run read back OUT of an `EdgeSet`. If
 // the round trip below closes, `L1` is a call, not a library change.
-use hex_field;
-use hex_grid;
-use hex_form;
-use hex_shape;
+use hex_field::*;
+use hex_grid::*;
+use hex_form::*;
+use hex_shape::*;
 
 const Q0 = 0 - 20;
 const R0 = 0 - 20;

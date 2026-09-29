@@ -1,11 +1,14 @@
-# arguments 0.2.0 — public API surface
-# generated from /home/jurjens/.loft/registry/arguments-0.2.0
-# use it with: use arguments;
+# arguments 0.2.3 — public API surface
+# generated from /home/jurjens/.loft/registry/arguments-0.2.3
+# use it with: use arguments::*;
 
 ## src/arguments.loft
 
-// --- Arguments ---
+// --- Using it ---
 
+// Start an empty parser.  The three strings are what `help()` and
+// `version_text()` render — nothing else reads them, so they are for the user
+// and not for the parsing.
 pub fn create(name: text, version: text, description: text) -> Args
 
 // --- Declaring options ---
@@ -17,10 +20,12 @@ pub fn flag(self: Args, opt_short: text, opt_long: text, desc: text)
 pub fn option(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
 
 // A required value option: `parse` fails if it is absent.
+// Example: @ARG-004 — the parse-failure idiom (`ok`/`error_msg`/`try_help`).
 pub fn required(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
 
 // An optional-argument option: its value attaches only via `=` / glued form
 // (`--color=auto`, `-cauto`); given bare (`--color`) it is present with value "".
+// Example: @ARG-002 — glued value vs bare, and why the next word stays a positional.
 pub fn optional(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
 
 // Set the positional synopsis for the usage line (e.g. "[FILE...]").
@@ -35,16 +40,26 @@ pub fn set_epilog(self: Args, epilog: text)
 // Opt-in: register `--help`/`-h` and `--version`/`-V` (short forms only when free),
 // so `parse` records `--help`/`--version` and `help()` lists them.  Nothing is
 // auto-printed — the caller checks `wants_help()` / `wants_version()`.
+// Example: @ARG-003 — the opt-in dance, and `--help` bypassing the required check.
 pub fn enable_help(self: Args)
 
 // --- Parsing: cursor/match-PEG driver over the token stream ---
 
+// Parse a command line against the declared options.  Answers false on a usage
+// error (see `ok`/`error_msg`); afterwards flags read through `has`, value options
+// through `get`, and every non-option word lands in `positionals` in order.
+// Example: @ARG-001 — the declare → parse → query lifecycle.
 pub fn parse(self: Args, argv: vector<text>) -> boolean
 
 // --- Querying results ---
 
+// Was this option given?  Ask by the LONG name whatever the user typed — a
+// short, a prefix and the full name all land on the same option.  The one
+// question a `flag` can be asked.
 pub fn has(self: Args, name: text) -> boolean
 
+// The option's value, or null when it was not given.  `get_or` and `get_int`
+// are this with the absent case already handled, and are usually what you want.
 pub fn get(self: Args, name: text) -> text?
 
 // The option's value, or `fallback` when unset.
@@ -53,14 +68,22 @@ pub fn get_or(self: Args, name: text, fallback: text) -> text
 // The option's value parsed as an integer, or null when unset or non-numeric.
 pub fn get_int(self: Args, name: text) -> integer?
 
+// Did the parse succeed?  The same answer `parse` returned, available later —
+// so a caller that dropped the return value can still ask.
 pub fn ok(self: Args) -> boolean
 
+// What went wrong, in GNU wording and ready to print.  Empty when nothing did.
+// Pair it with `try_help()`, which is the second line of that pair.
 pub fn error_msg(self: Args) -> text
 
+// Did the user ask for `--help`?  A SUCCESSFUL parse sets this, so check it
+// before acting on the options — otherwise `--help` runs the program.
 pub fn wants_help(self: Args) -> boolean
 
+// The same for `--version`; print `version_text()` and stop.
 pub fn wants_version(self: Args) -> boolean
 
+// The conventional one-line version banner, built from what `create` was told.
 pub fn version_text(self: Args) -> text
 
 // The GNU "Try '<prog> --help' …" hint to print alongside a parse error.

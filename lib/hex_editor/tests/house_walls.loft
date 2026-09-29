@@ -25,9 +25,10 @@
 // the erase one row would swap the two walls and still leave a count of 46. That is
 // why the four walls are asserted SEPARATELY and why the gesture row exists: what a
 // person does is cut a door, and the far wall is the one that could not take one.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_field::*;
 
 const U     = 0.25;
 const FLOOR = 40;

@@ -11,7 +11,7 @@
 // this tree has an entry for exactly that (`world_save` padded the 8-byte voxel to
 // 28 on disk and every round trip passed). Comparing against the file the OLD
 // writer produced is what pins the wire format itself.
-use hex_voxel;
+use hex_voxel::*;
 
 // A world with something in it: a negative chunk coordinate, several materials,
 // two layers and a section. ⚠ THE NEGATIVE COORDINATE IS DELIBERATE — `br_i32`

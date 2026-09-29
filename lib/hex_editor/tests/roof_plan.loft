@@ -26,9 +26,10 @@
 // ⚠ **A FLAT FIXTURE CANNOT SEE THE SEAT HALF OF THIS**, which is why the slope rows
 // are here: on flat ground the author's feet, the grade and the seated floor are one
 // number, so a plan built from any of the three is right by accident.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_form::*;
 
 const W = 5;
 const D = 4;

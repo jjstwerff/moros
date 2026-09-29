@@ -8,8 +8,8 @@
 // would break. `moros_render` keeps its own, now asserting that what it re-exports
 // is the same projection — see `test_moros_render_re_exports_this_projection`
 // there.
-use hex_proj;
-use hex_grid;
+use hex_proj::*;
+use hex_grid::*;
 
 fn test_the_origin_projects_to_the_origin() {
   w = hex_to_world(0, 0, 0);

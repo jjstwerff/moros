@@ -18,9 +18,9 @@
 // ⚠ THE SAMPLING TRAP IS `roadwalk`'s AND IT APPLIES HERE. Every house is placed
 // at the grade the ground held BEFORE any of them was placed; reading the ground
 // as each goes in would seat the second house on the first one's pad.
-use hex_editor;
-use hex_voxel;
-use hex_mesh;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_mesh::*;
 const U = 0.25;
 const G = 40;
 const RAD = 7;

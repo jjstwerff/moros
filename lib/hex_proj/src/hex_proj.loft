@@ -31,8 +31,9 @@
 // So a substitution would have **rotated every corner and dropped every height,
 // with every count still agreeing**. The projection is a real thing that has to
 // live somewhere; it is here.
-use hex_grid;
-use graphics;
+use hex_grid::*;
+use graphics::*;
+use mesh3d::*;
 
 // ── The height axis ──────────────────────────────────────────────────────────
 //

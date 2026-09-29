@@ -7,9 +7,9 @@
 // it over its own voxel cache — and the whole S3 claim is *the server's own function,
 // unmodified*, which is only checkable while there is one function. These are the
 // claims that hold whoever calls it.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 10, 4).wn_world;

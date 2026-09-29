@@ -5,8 +5,8 @@
 // (`probe/house/faces.loft`) before it was asserted, and the measurement changed
 // the design — see the note on `GroundKind.tr_face` for the two readings and why
 // only one of them survives contact with a twenty-press hill.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

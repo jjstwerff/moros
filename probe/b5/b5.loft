@@ -19,12 +19,12 @@
 // come back.
 //
 // Predictions are in `PREDICTION.md` and were written before this ran.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_grid;
-use hex_shape;
-use hex_recover;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_shape::*;
+use hex_recover::*;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;

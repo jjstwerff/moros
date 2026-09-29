@@ -64,9 +64,11 @@
 // `sample` is a function, not a world. That keeps every clause here a pure
 // function of its arguments — the tests hand it analytic terrains whose answers
 // are known in closed form — and it keeps this file free of `moros_map`.
-use self::assembly;
-use self::frames;
-use graphics;
+use self::assembly::*;
+use self::frames::*;
+use graphics::*;
+use mesh3d::*;
+use hex_body::*;
 
 pub struct Rest {
   rt_ok: boolean,

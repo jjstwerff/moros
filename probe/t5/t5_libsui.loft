@@ -18,15 +18,15 @@
 // under it. `pr` is still the instrument: a plain integer field set to 4242, read
 // before and after each parse. A wrong number is the finding; the trap is its second
 // symptom, and on a 64-bit target there may be no trap at all.
-use hex_mesh;
-use graphics;
-use hex_edge;
-use hex_editor;
-use hex_field;
-use hex_grid;
-use hex_voxel;
-use hex_way;
-use lavition_ui;
+use hex_mesh::*;
+use graphics::*;
+use hex_edge::*;
+use hex_editor::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_voxel::*;
+use hex_way::*;
+use lavition_ui::*;
 
 struct ThumbMesh {
   tb_row: integer, tb_vao: integer, tb_n: integer,

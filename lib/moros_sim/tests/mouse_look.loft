@@ -1,9 +1,9 @@
 // Step 16 — mouse-look rotation tests.
-use moros_sim;
-use moros_editor;
-use moros_render;
-use moros_map;
-use graphics;
+use moros_sim::*;
+use moros_editor::*;
+use moros_render::*;
+use moros_map::*;
+use graphics::*;
 
 fn build() -> EditorState {
   ms = editor_default();

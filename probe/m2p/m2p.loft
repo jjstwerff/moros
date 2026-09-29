@@ -33,7 +33,7 @@
 //
 // A law that holds because one function calls the other would be worth nothing. This
 // one can fail, and the interesting outcome is finding out where.
-use hex_shape;
+use hex_shape::*;
 
 const DEG = 0.017453292519943295;
 

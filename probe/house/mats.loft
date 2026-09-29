@@ -3,8 +3,8 @@
 // `brush` ends in `ground_set(w, q, r, h, SURFACE_MAT)`. If that is unconditional
 // then raising a hill under ANYTHING turns it to grass, and a house floor is only
 // the case somebody noticed.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 

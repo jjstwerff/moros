@@ -21,9 +21,9 @@
 //            quietly rounded down"
 //
 // Predictions are in `PREDICTION.md` and were written before this ran.
-use hex_editor;
-use hex_fit;
-use hex_shape;
+use hex_editor::*;
+use hex_fit::*;
+use hex_shape::*;
 
 const NMAX = 200;
 

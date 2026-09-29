@@ -1,4 +1,4 @@
-use hex_voxel;
+use hex_voxel::*;
 fn blank() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
 fn main() {
   // Is the cost the WRITE, or is it building the Column value?

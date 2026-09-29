@@ -5,8 +5,8 @@
 // in this enumeration"* — so an unknown body must be CARRIED, not refused. A reader that
 // closed the list would refuse the extension the whole design is counting on, and it
 // would do it politely.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 fn palette_world(items: vector<hex_voxel::PalEntry>) -> VoxelWorld {
   w = world_new(0.25, 0, 10, 4).wn_world;

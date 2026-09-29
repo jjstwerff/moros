@@ -1,6 +1,23 @@
-# hex_place 0.1.0 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_place-0.1.0
-# use it with: use hex_place;
+# hex_place 0.1.1 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_place-0.1.1
+# use it with: use hex_place::*;
+
+## src/hex_place.loft
+
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// hex_place — place, seat and combine — the operations a model survives.
+// 
+// A body carries a POSE and is never stamped into the world lattice; two stencils are combined
+// by "mark all, then cut once", which is order-free and fuses their shared edge; and a stencil
+// is SEATED on terrain by writing the height slot alone, so its footprint is untouched.
+// 
+// Entry point: re-exports `hexframe`, `hexseat`, `hexcombine`.
+pub use hexframe::*
+
+pub use hexseat::*
+
+pub use hexcombine::*
 
 ## src/hexcombine.loft
 
@@ -17,22 +34,31 @@ pub fn field_union(a: HexSet, b: HexSet) -> HexSet
 // disjoint ones — otherwise "order-free" would quietly hold only for the adjacency case gated here.
 // (crawler's full `cut_arb` breaks the same tie by nearest SURFACE then lower id; with no surfaces
 // in play the lower id is the whole rule.  Overlap itself is a separate, ungated A8 axis.)
+// 
+// Example: @HXP-001
+// Example: @HXP-002
 pub fn combine_cut(a: HexSet, ma: integer, b: HexSet, mb: integer, e: EdgeSet) -> integer
 
 // Combine two stencils **as seen at level `at`**: only those whose own level matches take part, and
 // the survivors are then cut exactly as `combine_cut` does.  Two stencils on different levels can
 // therefore never fuse, never arbitrate and never contend — at either level, one of them simply is
 // not there.  Returns the number of edges cut at this level.
+// 
+// Example: @HXP-003
 pub fn combine_cut_level(a: HexSet, la: integer, ma: integer,
 
 // The contention degree at one cell, counted **per level**: how many of the two stencils claim it
 // *at level `at`*.  This is `κ` (`X53`) made level-aware — two stencils that overlap in `(q,r)` but
 // sit on different sheets give `κ = 1` at each level, never `κ = 2` at either.
+// 
+// Example: @HXP-003
 pub fn kappa_at_level(a: HexSet, la: integer, b: HexSet, lb: integer,
 
 // How many marked edges separate an `a`-cell from a `b`-cell — the "shared wall" run.  Zero after
 // `combine_cut` (the seam fuses); non-zero after a per-body overlay (a spurious seam wall).  This
 // is the measurable form of "who owns the shared edge?": nobody, if the parts were combined right.
+// 
+// Example: @HXP-001
 pub fn shared_marked(a: HexSet, b: HexSet, e: EdgeSet) -> integer
 
 ## src/hexframe.loft
@@ -42,21 +68,32 @@ pub fn shared_marked(a: HexSet, b: HexSet, e: EdgeSet) -> integer
 // the float pipeline against an exact integer oracle.
 pub struct Pose
 
+// A placement: a rotation given as cos/sin and a translation.  Storing the pair rather than
+// an angle keeps `pose_fwd` and `pose_inv` exact inverses with no trig at use time.
 pub fn pose_new(cs: float, sn: float, tx: float, ty: float) -> Pose
 
 // world → local.  THE sole float step (with `pose_fwd_*`).  A cross-frame query calls this once and
 // then tests in the body's own exact frame.
 pub fn pose_inv_x(p: Pose, wx: float, wy: float) -> float
 
+// A world point's y in the pose's frame — the companion of `pose_inv_x`.
 pub fn pose_inv_y(p: Pose, wx: float, wy: float) -> float
 
 // local → world.
 pub fn pose_fwd_x(p: Pose, lx: float, ly: float) -> float
 
+// A local point's y in the world — the companion of `pose_fwd_x`, and the inverse of
+// `pose_inv_y`.
 pub fn pose_fwd_y(p: Pose, lx: float, ly: float) -> float
 
 // The round-trip residual |p(p⁻¹(W)) − W|∞ at one world point — the transform's numerical error,
 // which is what `ε_seam` bounds.  Exactly 0 in exact arithmetic; ~machine ε in float.
+// 
+// AT ONE WORLD POINT is the load-bearing half: this is a jagged, deterministic function of the
+// point, not a constant.  Near the frame origin it commonly reads exactly 0, and reading it there
+// and adopting that as ε_seam is the mistake the number exists to prevent.
+// 
+// Example: @HXP-005
 pub fn pose_residual(p: Pose, wx: float, wy: float) -> float
 
 // Is world point (wx,wy) inside the disk body posed by `p`?  The body is a disk of squared-radius
@@ -67,11 +104,15 @@ pub fn disk_hit(p: Pose, cx: float, cy: float, rr: float, wx: float, wy: float) 
 
 // The fail-safe verdict at a point claimed by two frames: solid if EITHER is solid.  Order-free
 // (symmetric) and conservative — a gap only where both agree it is a gap.
+// 
+// Example: @HXP-006
 pub fn arb_solid(a_solid: boolean, b_solid: boolean) -> boolean
 
 // Which frame OWNS a contested point — its material/surface wins.  The lowest id among the frames
 // claiming *solid* (a total order on frames), or -1 if none is solid.  Intrinsic, so it does not
 // depend on the order the frames are visited.
+// 
+// Example: @HXP-006
 pub fn arb_owner(a_solid: boolean, a_id: integer, b_solid: boolean, b_id: integer) -> integer
 
 ## src/hexseat.loft
@@ -83,14 +124,20 @@ pub const SEAT_MEAN = 1
 pub const SEAT_HIGH = 2
 
 // The height to seat at, under `policy`.  A pure read of the terrain under the footprint.
+// 
+// Example: @HXP-004
 pub fn seat_height(cells: HexSet, terr: Heights, policy: integer) -> float
 
 // THE RESIDUAL, and it is returned rather than swallowed (`G5`): the largest gap between the seat
 // height and the ground under any footprint cell.  Zero on flat ground; on a slope it is the
 // cut-and-fill the placement owes, and the editor must show it.
+// 
+// Example: @HXP-004
 pub fn seat_residual(cells: HexSet, terr: Heights, z: float) -> float
 
 // SEAT THE STENCIL: write the seat height into the `height` slot for every footprint cell.  Cells
 // and edges are untouched — that is the whole point, and it is what keeps `rebuild` exact.  Returns
 // the number of cells whose height was written.
+// 
+// Example: @HXP-004
 pub fn seat_write(cells: HexSet, terr: Heights, z: float) -> integer

@@ -4,8 +4,8 @@
 // author at the moment of placement: the floor cells, the wall runs, the roof's
 // cells, and the roof PLAN's world-Y. This prints each of them before and after a
 // `brush`, so the report is a table rather than a reading of the code.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;          // the grade the house is placed at

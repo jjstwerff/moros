@@ -16,8 +16,9 @@
 // in the server compared them mesh-checksum by mesh-checksum; that probe is SPENT
 // the moment the originals go, because there is nothing left to diverge from. What
 // keeps the geometry honest from here is these fourteen rows.
-use hex_proj;
-use graphics;
+use hex_proj::*;
+use graphics::*;
+use mesh3d::*;
 
 fn test_emit_hex_surface_vertex_count() {
   m = mesh("test");

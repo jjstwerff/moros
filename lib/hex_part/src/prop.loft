@@ -20,11 +20,12 @@
 // > for another statue that fits the same plinth*, or *carry a name an author
 // > chose*. Those are all `PART` and `SOCK` — §P5's own words, and the reason
 // > this record holds a reference rather than the geometry.
-use hex_voxel;
-use self::codec;
-use self::meta;
-use self::catalogue;
-use glb_read;
+use hex_voxel::*;
+use self::codec::*;
+use self::meta::*;
+use self::catalogue::*;
+use glb_read::*;
+use mesh3d::*;
 
 // ⚠ A LITERAL, held equal to `section_tag(…)` by a test — `meta.loft`'s reason: a
 // file-scope constant is an inlined expression re-evaluated at every reference.

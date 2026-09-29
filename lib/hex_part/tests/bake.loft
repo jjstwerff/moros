@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A3.3` — `expand == bake`, and the two paths that share only the part.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 fn no_palette() -> vector<integer> { [] }
 fn no_kids() -> vector<PartInst> { [] }

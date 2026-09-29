@@ -16,9 +16,9 @@
 // A test whose subject is deleted must have its CLAIM moved before it is removed, or
 // the deletion is a coverage cut wearing a tidy-up's clothes — each retirement below
 // says where the claim lives now, in a comment that stays.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn ground(gw: VoxelWorld, half: integer) {
   for gq in 0 - half..half + 1 {

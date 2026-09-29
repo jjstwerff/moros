@@ -5,7 +5,7 @@
 // label, every reference in every document would have to be rewritten to fix a
 // typo — so the load-bearing test here is the one that renames and then asks the
 // table for the label again.
-use hex_editor;
+use hex_editor::*;
 
 // ── B4.1 — the table ─────────────────────────────────────────────
 

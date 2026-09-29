@@ -21,9 +21,9 @@
 // it cannot be surprised by triangles at the wrong height, the wrong material, or a
 // normal computed from a hole. Every row compares against the mesh of a world whose
 // ground was WRITTEN — the picture the editor draws today.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 const U = 0.25;
 const H = 40;

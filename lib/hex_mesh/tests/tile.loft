@@ -10,8 +10,8 @@
 // wrong spelling is right. So the test is written the other way round: it asserts
 // the WESTERN side first, and the eastern side is the control that the fixture is
 // not just always-negative.
-use hex_mesh;
-use hex_voxel;
+use hex_mesh::*;
+use hex_voxel::*;
 
 fn test_a_hex_west_of_the_origin_is_in_the_tile_that_covers_it() {
   // The tile below zero covers −8..−1, and every one of those must name it.

@@ -12,9 +12,9 @@
 // camera's own trace: `pitch 0.8` against a player target of `-0.687`. The assist
 // exists for standing below a RIDGE, where climbing is the answer; a room is a
 // sustained obstruction that climbing cannot solve.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U = 0.25;
 const FLOOR = 40;

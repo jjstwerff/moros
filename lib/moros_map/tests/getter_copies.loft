@@ -20,7 +20,7 @@
 // a small value may well copy where the old 56-byte record aliased. If loft's
 // semantics move, this fails and Guard 3 has to be rethought — which is exactly
 // the notice we would want.
-use moros_map;
+use moros_map::*;
 
 fn test_the_getter_returns_a_copy_not_a_view() {
   m = map_empty();

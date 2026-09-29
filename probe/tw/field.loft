@@ -11,9 +11,9 @@
 // the cell, mark and description counts and the caption — between the window a test
 // uses and the one it is being moved to. Identical on all four is the claim; the
 // counts then go into the test so a later clip cannot be silent.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 const U = 0.25;
 const HOUSE_YAW = 1.5707963267948966;

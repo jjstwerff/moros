@@ -11,10 +11,10 @@
 // several door-frames; a porch contains four pillars. That is the whole reason the
 // payload needs a record separator where the other two did not, and it is what
 // decided the encoding below.
-use hex_voxel;
-use self::codec;
-use self::meta;
-use self::catalogue;
+use hex_voxel::*;
+use self::codec::*;
+use self::meta::*;
+use self::catalogue::*;
 
 // ⚠ A LITERAL, held equal to `section_tag(…)` by a test — the same call `meta.loft`
 // makes and for the reason its comment gives: a file-scope constant is an inlined

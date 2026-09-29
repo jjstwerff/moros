@@ -1,7 +1,7 @@
 [package]
 name    = "hex_editor"
 version = "0.1.0"
-loft    = ">=0.8"
+loft    = ">=2026.10.0"
 
 [library]
 entry = "src/hex_editor.loft"
@@ -41,7 +41,7 @@ entry = "src/hex_editor.loft"
 # rename removed.
 [dependencies]
 hex_draw  = ">=0.1"
-hex_form  = ">=0.1"
+hex_form  = ">=0.1.5"   # C98 release; 0.1.0 imports bare. Its break is hex_field data only.
 hex_field = ">=0.1"
 # The centreline and its parallel — `track_offset` is the family's exact offset of
 # a straight, which is what a wall's two faces are. The editor already depends on
@@ -51,7 +51,7 @@ hex_way   = ">=0.1.1"   # 0.1.1 is the arc fixes — see hex_mesh's note and pro
 # The wall run marks the edges its line crosses — `edges_halfplane_surf` and the
 # surface it measures against are hex_edge's, and deriving them again here is what
 # the whole package exists not to do.
-hex_edge  = ">=0.1"
+hex_edge  = ">=0.2.1"   # C98-loadable; 0.1.0 imports bare. Its break is hex_field data only.
 # S4 — the footprint. `Box` is the placement (twelve orientations, both orbits),
 # `seat_write` sits it on the terrain, and `hex_grid` says which cell a world
 # point is. All three were being re-derived in the editor.
@@ -71,7 +71,11 @@ hex_place = ">=0.1"
 # this tree built over the MARKS is exact on 14 of 25 at 363..4834 calls each. ⚠ It was
 # published and unused for months while a cut rule was designed, built and costed against
 # the question it answers — see CLAUDE.md, *search before you design*.
-hex_recover = ">=0.1"
+# ⚠ 0.1.3 IS THE C98 RELEASE, and 0.1.0 does not load on a C98 loft (its modules import
+# each other bare). 0.1.1's declared break is a DATA break carried through `hex_field`'s
+# `EdgeSet`; hex_recover's own API is a superset and it asks only `hex_field >= 0.1`, so it
+# sits beside the `hex_field` 0.1.0 this tree still holds and nothing stored moves.
+hex_recover = ">=0.1.3"
 # ⛔ THE DOORSTEP PACKAGE — `@HB-X65`/`@HB-X66`, refuse at authoring time what would not
 # round-trip. `tools/dups.tsv`'s own `@HB-X68` row asked for exactly this: *"a shared type
 # needs a package below both"*, of `hex_editor::Fit` and `hex_part::SocketFit`. ⚠ It is

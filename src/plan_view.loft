@@ -18,8 +18,8 @@
 // ⚠ NOTHING HERE COMPUTES ANY GEOMETRY. The window, the reference height and the
 // file names are this program's; every coordinate is `hex_mesh::plan_svg`'s, which
 // is `hex_proj`'s, which is `hex_grid`'s.
-use hex_voxel;
-use hex_mesh;
+use hex_voxel::*;
+use hex_mesh::*;
 
 fn env_int(name: text, fallback: integer) -> integer {
   v = env_variable(name);

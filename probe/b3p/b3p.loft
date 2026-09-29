@@ -29,13 +29,13 @@
 // takes the `EdgeSet` as a parameter, so handing it an empty one asks the library
 // directly. A probe that ran only the first half would report the tick's shape as
 // though it were the library's.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_form;
-use hex_field;
-use hex_edge;
-use hex_way;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_form::*;
+use hex_field::*;
+use hex_edge::*;
+use hex_way::*;
 
 // ⚠ `COLL_R` IS NOT A LIBRARY CONSTANT — it is declared THREE TIMES in `src/`
 // (`editor_run.loft`, `editor_server.loft`, and `editor_client.loft` as

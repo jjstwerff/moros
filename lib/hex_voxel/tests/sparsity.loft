@@ -17,7 +17,7 @@
 // HANG rather than fail: no parameterised helper anywhere in this tree does file
 // I/O, and the harness appears to invoke top-level functions itself, so one taking
 // `p: text` is called without a path and blocks. Repetition is the cheaper bug.
-use hex_voxel;
+use hex_voxel::*;
 
 // This helper is where loft H9 bit: an implicit tail returning a projected field of
 // an inline call handed back a reference into a store the call had already freed,
@@ -287,7 +287,7 @@ fn test_versions_are_readable_without_the_payload() {
   // corrupt the LAST byte — deep in the data region, far past the directory
   bs = read_bytes(p) ?? [];
   at = len(bs) - 1;
-  bs[at] = (bs[at] + 1) % 256;
+  bs[at] = ((bs[at] ?? 0) + 1) & 255;
   write_bytes(p, bs);
 
   torn = world_scan_versions(p);

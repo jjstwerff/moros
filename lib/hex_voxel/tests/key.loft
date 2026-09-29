@@ -21,7 +21,7 @@
 // halves: the weak instrument agrees, and the key does not. A test that only said
 // "different worlds, different keys" would pass for a function that hashed the
 // write count.
-use hex_voxel;
+use hex_voxel::*;
 
 // Two rings of the same radius on the same edges, in the same materials but one —
 // the shape `V1` measured. `mat` is the edge byte the ring writes.

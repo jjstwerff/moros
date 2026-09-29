@@ -10,9 +10,9 @@
 // would be an approximation in an exact-geometry domain, so this asks the two
 // questions that decide whether the claim or the rectangle is wrong: **by how much**,
 // and **where on the outline**.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const FLOOR = 40;
 const YAW = 0.5235987755982988;

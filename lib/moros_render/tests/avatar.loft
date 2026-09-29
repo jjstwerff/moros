@@ -1,6 +1,8 @@
 // Step 5 — avatar mesh + scene wiring tests.
-use moros_render;
-use graphics;
+use moros_render::*;
+use graphics::*;
+use mesh3d::*;
+use moros_map::*;
 
 // ── Mesh shape ────────────────────────────────────────────────────
 

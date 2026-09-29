@@ -13,8 +13,8 @@
 // ⚠ SO THE ONE VARIABLE HERE IS THE STRUCT, and `pr` is the instrument — a plain
 // integer field, set to 4242, read on entry and again after each parse. A wrong
 // number is the finding; the trap is only its second symptom.
-use hex_mesh;
-use graphics;
+use hex_mesh::*;
+use graphics::*;
 
 struct ThumbMesh {
   tb_row: integer, tb_vao: integer, tb_n: integer,

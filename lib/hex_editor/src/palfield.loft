@@ -14,7 +14,7 @@
 // ⚠ **AND A MISSING FIELD IS `miss`, NEVER A DEFAULT THAT LOOKS LIKE AN ANSWER.** The
 // callers use that to tell *this declaration says nothing* from *this declaration says
 // zero*, which is the distinction `house_type` refuses a malformed type on.
-use hex_voxel;
+use hex_voxel::*;
 
 // The leading word of a declaration — its name.
 pub fn pal_word(body: text) -> text {

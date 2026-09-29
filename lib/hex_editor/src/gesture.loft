@@ -24,27 +24,28 @@
 // a refusal legitimate.
 //
 // The server keeps the socket, the tick and the streaming. It calls these.
-use hex_field;
-use hex_grid;
-use hex_voxel;
-use hex_part;
+use hex_field::*;
+use hex_grid::*;
+use hex_voxel::*;
+use hex_part::*;
 // The wall run's centreline and its offsets, and the edges a line crosses — both
 // the family's, and both already depended on by the package's other half.
-use hex_way;
-use hex_edge;
+use hex_way::*;
+use hex_edge::*;
 // Plan 24 `H1` — `D`, the 24 linework directions, and the admissibility rules
 // that go with them. See `run_between`.
-use hex_shape;
+use hex_shape::*;
 // `vec_n2_4` — the lattice's own squared distance, which `disc_holds` asks and
 // `hex_shape::arc_fill` is built from. Plan 26 `B4h`.
-use hex_form;
-use hex_draw;
-use hex_recover;
-use hex_fit;
+use hex_form::*;
+use hex_draw::*;
+use hex_recover::*;
+use hex_fit::*;
 // The octagonal tower's shape — plan 26 `B4l`. The SHAPE lives there and has no
 // world; the GESTURE lives here and has one.
-use self::octagon;
-use self::palfield;
+use self::octagon::*;
+use self::palfield::*;
+use self::walltype::*;
 
 // Where the author is standing. `au_yaw` is radians on the lattice plane, 0 = +x.
 //

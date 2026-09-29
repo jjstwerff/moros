@@ -21,8 +21,8 @@
 // `world_region_at` and a `world_palette_name` that each find no section and return,
 // then `ground_kind_of`'s table walk and a `GroundKind` copy. The palette-bearing case
 // is `R5c`'s to measure, when there is a world that has one.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const N = 40000;

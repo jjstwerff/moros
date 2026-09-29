@@ -12,7 +12,7 @@
 //
 // Both directions are two lines. That is the measure of how much the store was
 // carrying for its consumers.
-use hex_voxel;
+use hex_voxel::*;
 
 // ⚠ `size()` AND `byte_at()`, NEVER `len()` AND `for ch in t`. `len()` counts
 // CHARACTERS and `byte_at` indexes BYTES, and `"Café中!"` is 6 and 9 — so a loop

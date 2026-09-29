@@ -5,7 +5,8 @@
 // Containment is measured by SAMPLING the shape's surface, not by comparing two
 // formulas — a proxy derived from the same algebra as its shape would agree with
 // itself whatever either said.
-use moros_sim;
+use moros_sim::*;
+use hex_rig::*;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

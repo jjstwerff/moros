@@ -7,16 +7,16 @@
 // no aiming at all.** The six neighbours are exact, and which one is chosen by the author's
 // own step — so the unit of authoring is a step of the character rather than a form pieced
 // together from blocks and hoped to look right.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 // ⛔ **THE BOUNDARY RULE IS `hex_draw`'s AND THIS FILE ASKS IT RATHER THAN RESTATING IT.**
 // `draw_walls` marks *"every edge between a cell of the region and one outside it"* — law
 // L1's `∂` in the library that owns it. A second copy written here would agree with
 // `boundary_follow` by construction and could never be surprised.
-use hex_draw;
-use hex_field;
-use hex_edge;
+use hex_draw::*;
+use hex_field::*;
+use hex_edge::*;
 
 const Q0 = 0 - 12;
 const W = 25;

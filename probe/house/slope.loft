@@ -1,6 +1,6 @@
 // WHAT DOES A LIMIT ACTUALLY DO TO A ROAD? — the profile, printed.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U = 0.25;
 const G = 40;
 

@@ -4,15 +4,15 @@ schema_version = 1
 
 [[package]]
 name = "mesh3d"
-version = "0.1.1"
-url = "https://github.com/loft-lang/loft-libs-assets/releases/download/mesh3d-v0.1.1/mesh3d-0.1.1.tar.gz"
-sha256 = "de8fdb1fedea6521d90634bc40b4acab2c1bb965010d766a177e40b1e8e66cfd"
+version = "0.1.2"
+url = "https://github.com/loft-lang/loft-libs-assets/releases/download/mesh3d-v0.1.2/mesh3d-0.1.2.tar.gz"
+sha256 = "b1929c5f56d5abf5925faad5572cfb02418d15cfe8eb4819c0b8df679915df10"
 source = "registry"
 
 [[package]]
 name = "glb"
-version = "0.1.2"
-url = "https://github.com/loft-lang/loft-libs-assets/releases/download/glb-v0.1.2/glb-0.1.2.tar.gz"
-sha256 = "8a1021c6b4eadd6152d1c9806501514cd8d26ef901ebdc7501f406e3c82de01c"
+version = "0.1.3"
+url = "https://github.com/loft-lang/loft-libs-assets/releases/download/glb-v0.1.3/glb-0.1.3.tar.gz"
+sha256 = "57ad8d0a0a25caefd65c4819b03c86562c9d5462dabf294c893132c65718160a"
 source = "registry"
 deps = ["mesh3d"]

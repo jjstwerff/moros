@@ -36,14 +36,14 @@
 // ⚠ THE SCRIPT COMES FROM THE ENVIRONMENT, as the server's port does. loft has no
 // `fn main(argv)` today and `arguments` parses a vector somebody has to supply, so
 // an env var is the honest way in rather than a wrapper pretending to be a CLI.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 // ⚠ FOR THE FALL, AND FOR NOTHING ELSE — plan 22 `T3`. `walk_tick` takes the ground
 // as a FUNCTION because `hex_mesh` depends on `hex_editor` and the library cannot
 // ask what is under the feet; the driver that has a mesher hands one in. This runner
 // has no renderer and still needs the sampler, which is the seam working as designed.
-use hex_mesh;
+use hex_mesh::*;
 
 // ⚠ `HOUSE_W` / `HOUSE_D` WERE HERE AND ARE NOW `hex_editor`'s — plan 22 `W4`.
 // This file and `src/editor_server.loft` each carried a copy; they agreed at 5×4

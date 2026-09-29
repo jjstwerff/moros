@@ -1,8 +1,10 @@
 // Step 4 — tool dispatch tests.
-use moros_sim;
-use moros_map;
-use moros_editor;
-use graphics;
+use moros_sim::*;
+use moros_map::*;
+use moros_editor::*;
+use graphics::*;
+use mesh3d::*;
+use hex_proj::*;
 
 // ── Stencil palette ───────────────────────────────────────────────
 

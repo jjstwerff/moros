@@ -13,7 +13,7 @@
 // everything the column path refuses, with the same code, and does the world come
 // out identical. A faster write that is subtly more permissive is not an
 // optimisation, it is a corruption with a shorter runtime.
-use hex_voxel;
+use hex_voxel::*;
 
 fn w0() -> VoxelWorld { world_new(0.25, 100, 8, 3).wn_world }
 

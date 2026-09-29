@@ -1,6 +1,23 @@
-# hex_shape 0.1.2 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_shape-0.1.2
-# use it with: use hex_shape;
+# hex_shape 0.1.3 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_shape-0.1.3
+# use it with: use hex_shape::*;
+
+## src/hex_shape.loft
+
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// hex_shape — the shape vocabulary — the line primitive, the box, the arc.
+// 
+// The rest of `𝕄*` beside the turtle form: a WALL as a line primitive with a constant width
+// (never a count of lattice rows), the BOX in 12 directions with its two orbits, and the ARC
+// whose centre is exact and whose radius quantises to a realisable shell.
+// 
+// Entry point: re-exports `hexwall`, `hexbox`, `hexarc`.
+pub use hexwall::*
+
+pub use hexbox::*
+
+pub use hexarc::*
 
 ## src/hexarc.loft
 
@@ -65,8 +82,11 @@ pub fn arc_door_edges(cells: HexSet, edges: EdgeSet, mat: integer) -> integer
 
 pub const BOX_ROT = 12
 
+// Cosine of n * 30 degrees, from the exact table rather than a trig call — every value is
+// 0, +-1/2, +-sqrt(3)/2 or +-1, so two boxes at the same rotation agree to the bit.
 pub fn box_cos(n: integer) -> float
 
+// Sine of n * 30 degrees, the companion of `box_cos` and exact for the same reason.
 pub fn box_sin(n: integer) -> float
 
 // Which of the two orbits `rot` belongs to: 0 = the EDGE family (`Plan`'s six),
@@ -78,10 +98,17 @@ pub fn box_orbit(rot: integer) -> integer
 
 pub struct Box
 
+// The selection the editor made: a centre cell, a width and depth in hexes, one of the 12
+// rotations and a mirror.  Everything else here derives the building from this one value.
+// ⚠ `rot` is 0..11 in thirty-degree steps, whose even and odd halves are two families
+// rather than rotations of one another — see the note above.
 pub fn box_new(cq: integer, cr: integer, wid: integer, dep: integer,
 
+// Half the box's width in world units, for a bound or a hit test without rebuilding the
+// frame.
 pub fn box_hw(b: Box) -> float
 
+// Half the box's depth in world units, the companion of `box_hw`.
 pub fn box_hd(b: Box) -> float
 
 // World point -> the box's local frame. Same convention as `housedraw::plan_to_local`, so
@@ -164,8 +191,11 @@ pub const D24 = 24
 
 pub struct Wall
 
+// The `k` of one step along wall direction `d24`.  The wall runs on a finer set of
+// directions than the cells do, which is why it has its own step table.
 pub fn wall_step_k(d24: integer) -> integer
 
+// The `m` of that same step — walk both to move along a wall.
 pub fn wall_step_m(d24: integer) -> integer
 
 // An even d24 is one of the 12 exact headings; an odd one is an in-between.
@@ -204,6 +234,8 @@ pub fn wall_angle_actual(d24: integer) -> float
 // side the normal (-dy, dx) points to; the sign is all that matters for separation.
 pub fn wall_offset_signed(w: Wall, px: float, py: float) -> float
 
+// Does this wall lie BETWEEN two points?  The question a mover asks before stepping: if
+// the wall separates where you are from where you are going, the step is blocked.
 pub fn wall_separates(w: Wall, cx: float, cy: float, nx: float, ny: float) -> boolean
 
 // ── THE EDGE TABLE IS hex_grid's, NOT OURS ─────────────────────────────────
@@ -225,6 +257,7 @@ pub fn wall_separates(w: Wall, cx: float, cy: float, nx: float, ny: float) -> bo
 // Corner `c` of the hex at (q,r), in world units — hex_grid's table, hex_grid's indices.
 pub fn hex_corner_x(q: integer, r: integer, c: integer) -> float
 
+// Corner c of cell (q,r) in world y — the companion of `hex_corner_x`.
 pub fn hex_corner_y(q: integer, r: integer, c: integer) -> float
 
 // Cell centre in world units.  hex_field's exact lattice and hex_grid's float world agree
@@ -232,6 +265,8 @@ pub fn hex_corner_y(q: integer, r: integer, c: integer) -> float
 // integer spelling of `hex_to_px`, not a second convention.
 pub fn cell_x_w(q: integer, r: integer) -> float
 
+// A cell centre's world y in WALL units, which are half the cell units: the wall lattice
+// is finer, and mixing the two is the mistake this separate name exists to prevent.
 pub fn cell_y_w(q: integer, r: integer) -> float
 
 // THE CHECK THAT WOULD HAVE CAUGHT IT: how far the midpoint of edge `dir` sits from the
@@ -241,8 +276,11 @@ pub fn cell_y_w(q: integer, r: integer) -> float
 // Example: @HXS-004
 pub fn wall_edge_gap(q: integer, r: integer, dir: integer) -> float
 
+// A hex corner's position on the triangular wall lattice, `a` axis.  Corners are shared
+// between cells, so naming one exactly is what lets two cells agree about their join.
 pub fn hex_corner_tri_a(q: integer, r: integer, ci: integer) -> integer
 
+// The same corner's `b` axis — the pair is the corner's exact triangular-lattice address.
 pub fn hex_corner_tri_b(q: integer, r: integer, ci: integer) -> integer
 
 // THE ROUTINE: draw the wall into the foxel's three wall slots per hex.
@@ -334,6 +372,8 @@ pub fn wall_chain_walk(edges: EdgeSet, q0: integer, r0: integer, wq: integer,
 // The primitive triangle-lattice vector of direction `d24`.
 pub fn tri_a(d24: integer) -> integer
 
+// The `b` component of a unit step in wall direction `d24`, for walking the triangular
+// lattice the way `wall_step_k`/`_m` walk the doubled one.
 pub fn tri_b(d24: integer) -> integer
 
 // N = |v|^2 / S^2 for direction `d24` — an exact integer, never a float comparison.
@@ -342,6 +382,8 @@ pub fn tri_b(d24: integer) -> integer
 // Example: @HXS-002
 pub fn tri_n2(d24: integer) -> integer
 
+// Is n a perfect square?  Integer-only, so a length test stays exact where a sqrt would
+// introduce the first float in an otherwise exact chain.
 pub fn is_square(n: integer) -> boolean
 
 // Are the two directions' lattice-line spacings COMMENSURABLE — i.e. can integer counts of
@@ -353,14 +395,20 @@ pub fn commensurable(n1: integer, n2: integer) -> boolean
 // Only meaningful once `tri_on_hex_scale` holds.
 pub fn tri_class(a: integer, b: integer) -> integer
 
+// Does this triangular-lattice point fall on the coarser HEX scale?  The wall lattice is
+// three times finer, so this is the test for "is this also a cell-level position".
 pub fn tri_on_hex_scale(a: integer, b: integer) -> boolean
 
+// Is this point a hex CORNER rather than a cell centre?  Both sit on the hex scale, and
+// only the class tells them apart — which is what a wall needs to know before it turns.
 pub fn tri_is_vertex(a: integer, b: integer) -> boolean
 
 // The endpoint of a run of `p` periods of direction `d24` from (a0, b0).  One period is
 // THREE primitive steps — the smallest displacement that can reach a hex-scale point at all.
 pub fn wall_end_a(d24: integer, a0: integer, p: integer) -> integer
 
+// Where a wall run of `p` steps from `b0` ends, on the `b` axis.  Compute the end without
+// walking the run, so a length or a bound costs nothing.
 pub fn wall_end_b(d24: integer, b0: integer, p: integer) -> integer
 
 // THE DOORSTEP ITSELF.  `p` periods of `d24` from (a0,b0): admissible or not.
@@ -381,6 +429,8 @@ pub fn wall_snap_p(d24: integer, a0: integer, b0: integer, want: integer) -> int
 // World position of a triangle-lattice point, in world units.
 pub fn tri_x(a: integer, _b: integer) -> float
 
+// A triangular-lattice point in world y.  The last step before rendering, and the only
+// place these exact coordinates become floats.
 pub fn tri_y(a: integer, b: integer) -> float
 
 // The world length of `p` periods of `d24`, in world units.

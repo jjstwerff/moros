@@ -11,10 +11,10 @@
 // The claims below are what makes it a gable rather than a mound, and every one of
 // them is a height read back from the store — the roof is a height field, which is
 // exactly what a column can hold.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_field;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_field::*;
 
 const W = 5;
 const D = 4;

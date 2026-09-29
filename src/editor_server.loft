@@ -17,8 +17,8 @@
 // second renderer (seam rule 5): the browser is a display, not a derivation.
 //
 // Run:  make editor      (or: loft --interpret --lib lib/ src/editor_server.loft)
-use server;
-use web;          // sleep_ms — the idle tick of the manual connection pool
+use server::*;
+use web::*;          // sleep_ms — the idle tick of the manual connection pool
 // ⚠ QUALIFIER ONLY, for `msim`'s reason below and one of its own. `gridmesh` declares
 // `world_chunk_of` — and so does `hex_voxel`, with a different arity and a different meaning
 // (`world_chunk_of(v)` is ours, the floor-divide; gridmesh’s `chunk_of(x, y, shift)` is the chunk KEY). Plainly
@@ -27,15 +27,15 @@ use web;          // sleep_ms — the idle tick of the manual connection pool
 // one every bare call meant. It also declares `seg_len`, which `hex_way` declares too.
 // A qualifier adds no bare name at all — `tools/names.sh`.
 use gridmesh as gm;
-use hex_voxel;
-use hex_body;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
-use hex_edge;     // sweep_path / edge_block — collision is the LIBRARY's query
-use hex_way;      // Track / way_stamp — a way is a CENTRELINE, and its band is derived
-use glb_read;     // load_glb — the importer, ours because upstream cannot verify it
-use glb;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
-use hex_grid;   // px_to_hex — the pair, taken directly (plan 19 `L6.3a`)
-use hex_mesh;
-use hex_proj;   // the drawing primitives — plan 22 `B1b.2c.2`
+use hex_voxel::*;
+use hex_body::*;     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
+use hex_edge::*;     // sweep_path / edge_block — collision is the LIBRARY's query
+use hex_way::*;      // Track / way_stamp — a way is a CENTRELINE, and its band is derived
+use glb_read::*;     // load_glb — the importer, ours because upstream cannot verify it
+use glb::*;          // save_glb — the export half, which already existed     // wheel_value / wheel_angle / wheel_skid — the roll is THEIRS
+use hex_grid::*;   // px_to_hex — the pair, taken directly (plan 19 `L6.3a`)
+use hex_mesh::*;
+use hex_proj::*;   // the drawing primitives — plan 22 `B1b.2c.2`
 // ⚠ `hex_shape` IS NOT USED HERE, AND IT HAS TO BE NAMED ANYWAY. `hex_editor` is
 // found through `--lib lib/`, and a directory package's transitive registry
 // dependency is not resolved before the module that needs it is parsed: without
@@ -44,10 +44,10 @@ use hex_proj;   // the drawing primitives — plan 22 `B1b.2c.2`
 // — fails as `Expect token ;`. Nothing in the message mentions a dependency, and it
 // killed a whole gate run before the cause was found. Filed as loft#714; delete
 // this line when it is fixed.
-use hex_shape;
-use hex_editor;   // S3 — the wall a run draws, and the band it is drawn at
-use hex_cam;      // the camera's geometry, shared with crawler (plan 22 `C2b`)
-use fixstep;      // approach — the ease, one copy for every game (plan 22 `E1`)
+use hex_shape::*;
+use hex_editor::*;   // S3 — the wall a run draws, and the band it is drawn at
+use hex_cam::*;      // the camera's geometry, shared with crawler (plan 22 `C2b`)
+use fixstep::*;      // approach — the ease, one copy for every game (plan 22 `E1`)
 // ⚠ QUALIFIER ONLY, never a bare or selective `use`: `moros_sim` reaches
 // `hex_field`, which has its own `edgeset_new` beside the `hex_edge` one this file
 // means. A qualifier adds no bare name at all.
@@ -58,7 +58,10 @@ use fixstep;      // approach — the ease, one copy for every game (plan 22 `E1
 // program had. The eight names it needs (`Assembly`, `Xform`, `asm_cart`, `asm_frames`,
 // `xform_apply`, `body_axle`, `ground_axle`, `ground_gap`) put a cart on the wire, and none
 // of them was ever Moros: their three modules used nothing from any `moros_*` package.
-use hex_rig;
+use hex_rig::*;
+use hex_field::*;
+use mesh3d::*;
+use hex_part::*;
 
 // THE WORLD IS INFINITE. There is no extent and no bounds check — a cell exists
 // wherever you ask for one, and the ground you can see is derived around the

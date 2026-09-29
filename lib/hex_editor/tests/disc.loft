@@ -10,11 +10,12 @@
 // reproduces the field exactly or is refused. §6.1's trap, named there by hand —
 // *"fitting a line to a stencil whose description we hold throws away an exact
 // answer"* — is the one thing this must not do.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_shape;
-use hex_proj;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_shape::*;
+use hex_proj::*;
+use hex_field::*;
 
 const U = 0.25;
 // The smallest disc that is NOT any hexagon. ⚠ At `12R²` a hexagon genuinely IS a

@@ -11,8 +11,8 @@
 // So these tests measure the strip: it is the family's band wide, its faces are the
 // exact parallels of the run, and it runs where the author's line runs. Each one is
 // a number the old wall could not produce.
-use hex_editor;
-use hex_draw;
+use hex_editor::*;
+use hex_draw::*;
 
 // A run at 15° — deliberately NOT along a lattice axis. On an axis a staircase and
 // a line agree and a measurement says nothing, which is the same reason

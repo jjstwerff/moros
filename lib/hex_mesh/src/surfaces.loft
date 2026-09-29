@@ -13,7 +13,7 @@
 // `chunk * SURFACES + MESH_FIGURE_MAX + (index + 1)`, so re-ordering this list
 // renumbers every mesh on the wire. Add at the END.
 
-use hex_editor;
+use hex_editor::*;
 
 pub struct Surface {
   sf_name:  text,        // author-facing, and what the catalogue lists

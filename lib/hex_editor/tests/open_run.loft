@@ -4,7 +4,7 @@
 // showed it: a two-edge gateway came out as two small arches side by side. An
 // arch's rise IS its half-width, so halving the span quarters the rise — which is
 // why the per-edge version read as a flat head with a notch at each jamb.
-use hex_editor;
+use hex_editor::*;
 
 const EPS = 0.001;
 

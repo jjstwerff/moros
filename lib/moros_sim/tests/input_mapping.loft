@@ -1,6 +1,6 @@
 // Step 10 — input_from_keys tests.  Exercises every branch of
 // the keyboard-snapshot → InputState decoder.
-use moros_sim;
+use moros_sim::*;
 
 // ── Held keys — continuous motion ────────────────────────────────
 

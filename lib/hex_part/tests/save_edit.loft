@@ -15,8 +15,8 @@
 // ⚠ AND EVERY CLAIM IS PAIRED WITH ITS PERTURBATION, the discipline
 // `roundtrip.loft` set for `A1.2`: a comparison that always says "same" passes a
 // preservation test perfectly.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const RESERVE = 8;

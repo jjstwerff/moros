@@ -4,8 +4,8 @@
 // Both declare `struct World` and `struct Chunk`. This compiles and runs, exit 0,
 // with no diagnostic that two packages declare the same type names — which is the
 // point: the rename makes them CO-INSTALLABLE, and says nothing about the types.
-use hex_voxel;
-use hex_world;
+use hex_voxel::*;
+use hex_world::*;
 
 fn main() {
   mine  = world_new(0.25, 100, 8, 3).wn_world;

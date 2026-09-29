@@ -16,10 +16,10 @@
 //     never reads an edge, so if the two disagree the picture is off the wall
 //   · and the control: `place_house`, whose runs come from `footprint_walls`'
 //     mitred corners rather than from a walked line
-use hex_editor;
-use hex_voxel;
-use hex_mesh;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_mesh::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

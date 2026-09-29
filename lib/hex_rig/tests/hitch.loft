@@ -4,8 +4,9 @@
 // The design calls A7 and A8 the steps where it earns or loses: *"A7 is the
 // first SECOND FRAME … if the structure holds for both without a special case,
 // `A-DOF` was the right invariant."*
-use hex_rig;
+use hex_rig::*;
 use hex_body::(rig_new, rig_bone);
+use mesh3d::*;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

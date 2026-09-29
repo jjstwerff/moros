@@ -9,7 +9,7 @@
 // a builtin the server uses forty times; whether the wasm/html host BINDS it is a
 // different question, and `host_input()` is this plan's own precedent for a name
 // that exists everywhere and blocks in one place (loft#891).
-use graphics;
+use graphics::*;
 
 fn main() {
   graphics::gl_create_window(320, 200, "clock");

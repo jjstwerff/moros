@@ -1,6 +1,6 @@
-# server 0.5.0 — public API surface
-# generated from /home/jurjens/.loft/registry/server-0.5.0
-# use it with: use server;
+# server 0.6.1 — public API surface
+# generated from /home/jurjens/.loft/registry/server-0.6.1
+# use it with: use server::*;
 
 ## src/server.loft
 
@@ -26,11 +26,13 @@ pub struct Request
 // 
 // Use `try_listen` when losing the port is an outcome you mean to handle: retrying on
 // another port, or scanning a range.
+// Example: @SRV-001 — halting door vs recoverable door, and why `bound()` is not optional.
 pub fn listen(port: integer) -> Server
 
 // Like `listen`, but hands back an UNBOUND server instead of halting when the port
 // cannot be taken.  Check `bound()` before using it: every other method on an unbound
 // server does nothing, quietly.
+// Example: @SRV-001 — the retry shape: try_listen, then bound(), then use it.
 pub fn try_listen(port: integer) -> Server
 
 // Bind on a chosen address rather than the wildcard `0.0.0.0` that plain `listen` uses.
@@ -76,11 +78,27 @@ pub fn respond(self: Request, status: integer, body: text)
 // `respond` defaults to `text/plain`.
 pub fn respond_typed(self: Request, status: integer, body: text, content_type: text)
 
+// Send a response whose body is RAW BYTES — an image, a font, a wasm module, any
+// payload that is not text.
+// 
+// ⚠⚠ USE THIS FOR ANYTHING BINARY; the text responses cannot carry it and FAIL SILENTLY.
+// `respond`/`respond_typed` take loft `text`, and a `text` built from non-UTF-8 bytes is
+// the EMPTY text (`text_from_bytes` documents exactly that). So serving a PNG through
+// them answers **200 OK with Content-Length: 0** — a success the caller cannot
+// distinguish from an empty file, and a broken image with no error anywhere. Measured
+// 2026-08-21: the loft review viewer had been serving every `doc/images/*.png` that way.
+// 
+// `content_type` empty defaults to `application/octet-stream`, which is the honest
+// answer for bytes of unknown kind — name the real type when you know it
+// (`image/png`, `font/woff2`, `application/wasm`).
+pub fn respond_bytes(self: Request, status: integer, body: vector<u8>, content_type: text)
+
 // --- #517 server: request-header lookup + full-header responses ---
 
 // Look up a request header case-insensitively (e.g. "Range", "Origin",
 // "If-None-Match"); returns "" if absent. Values containing ':' (an Origin URL,
 // a date) are rejoined intact.
+// Example: @SRV-002 — why a hand-rolled `h.split(':')[1]` over `headers` loses the port.
 pub fn header(self: Request, name: text) -> text
 
 // Send a response with caller-controlled headers (Content-Range, ETag, the CORS
@@ -98,11 +116,13 @@ pub fn cors_headers(origin: text) -> vector<text>
 // `extra` headers (CORS / ETag) to the 206 or 416. Returns true if a range
 // response was sent; false when there is no Range header (the caller serves the
 // full body). Single-range "bytes=off-last" / open-ended "bytes=off-" only.
+// Example: @SRV-003 — the boolean says WHO answered; false is the case you must handle.
 pub fn serve_range(self: Request, body: text, extra: vector<text>) -> boolean
 
 // One-call helper to serve a (possibly binary) resource with full byte-range +
 // CORS + HEAD + conditional support — the server counterpart to the web client's
 // http_get_range / http_size. `etag` "" skips conditional; `origin` "" skips CORS.
+// Example: @SRV-003 — this one takes every branch, so it is always true and always final.
 pub fn serve_data(self: Request, body: text, etag: text, origin: text) -> boolean
 
 // Convenience wrappers for the common cases TTT v3 needs.

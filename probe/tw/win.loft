@@ -21,9 +21,9 @@
 // `loft test` in `hex_mesh`, 288.8 s with `LOFT_NO_NATIVE_LIBS=1`.** So read a phase
 // difference as a RATIO and never as the seconds a suite will save — and note that the
 // gap was checked before it was called a defect, because it is not one.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 const U = 0.25;
 

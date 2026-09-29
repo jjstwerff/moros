@@ -9,10 +9,11 @@
 // ⚠ SO THE CHANNEL HAS TO BE MEASURED WHERE IT IS EMITTED, not argued from the source.
 // A number written into a vertex nothing reads back is the shape this tree keeps
 // finding — a rule built, green, and reaching nobody.
-use hex_mesh;
-use hex_editor;
-use hex_voxel;
-use graphics;
+use hex_mesh::*;
+use hex_editor::*;
+use hex_voxel::*;
+use graphics::*;
+use mesh3d::*;
 
 const U = 0.25;
 const G = 200;

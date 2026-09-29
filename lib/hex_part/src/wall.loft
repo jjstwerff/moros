@@ -18,9 +18,9 @@
 // the grain argument: the leaf and the wall it hangs in are two documents, so one
 // profile each already separates them. Per-cell would be a WORLD-format change,
 // and per-edge is what an `Opening` is for — which this deliberately is not.
-use hex_voxel;
-use self::codec;
-use self::meta;
+use hex_voxel::*;
+use self::codec::*;
+use self::meta::*;
 
 // ⚠ A LITERAL, held equal to `section_tag("WALL")` by a test — `meta.loft`'s rule
 // and its reason: a file-scope constant is an inlined expression re-evaluated at

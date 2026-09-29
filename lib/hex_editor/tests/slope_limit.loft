@@ -5,8 +5,8 @@
 // terrain*. So the falloff is not replaced by a table: it becomes the **grass row**
 // of one, and every number below was measured (`probe/house/slope.loft`) before it
 // was asserted.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

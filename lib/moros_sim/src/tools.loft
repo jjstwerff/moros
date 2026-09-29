@@ -7,10 +7,12 @@
 // depends on tools.loft for ToolKind — keeping tools.loft Player-
 // agnostic breaks the cycle).
 
-use graphics;
-use moros_map;
-use moros_editor;
-use moros_render;
+use graphics::*;
+use moros_map::*;
+use moros_editor::*;
+use moros_render::*;
+use hex_field::*;
+use mesh3d::*;
 
 // ── Tool enum + state ────────────────────────────────────────────
 

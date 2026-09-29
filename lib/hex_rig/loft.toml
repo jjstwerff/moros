@@ -1,7 +1,7 @@
 [package]
 name    = "hex_rig"
 version = "0.1.0"
-loft    = ">=0.8"
+loft    = ">=2026.10.0"
 categories  = ["geometry"]   # ⚠ REQUIRED — a package the index has never seen is refused without one.
 description = "Articulated rigs over hex_body: an assembly of bodies, the frames it poses into, and how its axles sit on ground."
 

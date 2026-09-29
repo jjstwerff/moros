@@ -20,7 +20,7 @@
 // address memory that is not there), and `&` yields the **non-negative** remainder.
 // Both hold on the interpreter and under `--native`, measured — and a test is what
 // keeps that true after a backend change rather than after a bug report.
-use hex_voxel;
+use hex_voxel::*;
 
 // The bodies as they were before 2026-08-12, verbatim.
 fn was_chunk_of(v: integer) -> integer {

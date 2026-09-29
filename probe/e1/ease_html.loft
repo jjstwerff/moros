@@ -22,7 +22,7 @@
 // lines whichever target runs it, so the interpreter run is the reference and the
 // page's output is diffed against it. A page that printed plausible numbers and was
 // never compared would be the instrument this tree keeps catching.
-use fixstep;
+use fixstep::*;
 
 fn r(v: float) -> float { round(v * 10000000000.0) / 10000000000.0 ?? 0.0 }
 

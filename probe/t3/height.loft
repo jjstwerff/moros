@@ -26,9 +26,9 @@
 // three live scripts byte-unmoved, and a hand-built slope fixture unmoved too — and an
 // equal md5 is the same sentence a blind instrument produces. So this asks the two
 // functions directly, in floats, instead of asking a world that quantises them.
-use hex_editor;
-use hex_voxel;
-use hex_mesh;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_mesh::*;
 
 fn main() {
   w = world_new(0.25, hex_editor::W_RESERVE,

@@ -12,10 +12,10 @@
 // ⚠ THE FIRST VERSION OF THESE TWO PASSED WITH THE FIX REVERTED. That is the whole
 // reason they are worth their lines: an instrument checked against something it
 // should find, and found not to.
-use hex_mesh;
-use hex_editor;
-use hex_grid;
-use hex_proj;
+use hex_mesh::*;
+use hex_editor::*;
+use hex_grid::*;
+use hex_proj::*;
 
 const U = 0.25;
 

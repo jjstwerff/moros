@@ -1,7 +1,7 @@
 // Can a loft program open a GL context on this box with no display, draw, and
 // photograph its own back buffer? Everything server-side rendering needs rests on
 // that one question, so it is asked in twenty lines before anything is built on it.
-use graphics;
+use graphics::*;
 
 fn main() {
   ok = graphics::gl_create_window(320, 200, "probe");

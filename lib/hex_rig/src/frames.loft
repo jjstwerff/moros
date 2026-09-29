@@ -32,12 +32,13 @@
 // determine its child's frame — the child keeps its own support, so the drawbar
 // couples two frames rather than parenting one to the other, which is exactly
 // what the design's first draft got wrong and what `P5` measured. That is `A7`.
-use self::assembly;
-use graphics;
+use self::assembly::*;
+use graphics::*;
 // SELECTIVE, deliberately: a wildcard would pull `Joint`, `Obb`, `pose_of` and
 // the rest of `hex_body` into this package's bare surface, where a consumer would
 // meet names moros_sim never meant to re-export.
 use hex_body::(Rig, rig_world_seg);
+use mesh3d::*;
 
 // Radians in one turn. ⚠ A SECOND HOME for a number `hex_body` already owns —
 // so `test_a_turn_is_hex_bodys_turn` asserts the two agree instead of trusting

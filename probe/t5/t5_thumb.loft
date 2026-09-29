@@ -13,7 +13,7 @@
 //   loft --lib lib/ probe/t5/t5_thumb.loft                 the interpreter
 //   loft --native --lib lib/ probe/t5/t5_thumb.loft        the native backend
 //   loft --native-wasm --lib lib/ probe/t5/t5_thumb.loft   wasip2, then wasmtime
-use hex_mesh;
+use hex_mesh::*;
 
 fn main() {
   root = env_variable("T5_PARTS");

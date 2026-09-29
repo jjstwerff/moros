@@ -20,7 +20,7 @@
 //
 // Row A is the claim that makes the library's form the right one; row B is what the
 // change costs this consumer.
-use fixstep;
+use fixstep::*;
 
 // The retired implementation, kept HERE and nowhere else — this file is the only
 // place the old arithmetic still exists, so the comparison is against the real thing

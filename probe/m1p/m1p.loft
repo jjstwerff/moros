@@ -27,8 +27,8 @@
 //       old uniform quantiser was harmless and its deletion bought nothing
 //   Q3  is the map MONOTONE in theta?  → a controller cannot steer to a target if
 //       turning further can skip backwards
-use hex_shape;
-use hex_form;
+use hex_shape::*;
+use hex_form::*;
 
 const N = 24;
 

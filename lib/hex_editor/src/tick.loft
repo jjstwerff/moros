@@ -41,21 +41,21 @@
 //
 // **No camera, no broadcast, no dirty set.** `TickOut` reports what happened so a
 // driver can mesh, mark and speak; it never decides anything.
-use self::gesture;
-use self::pose;
-use self::walk;
-use self::fall;
+use self::gesture::*;
+use self::pose::*;
+use self::walk::*;
+use self::fall::*;
 // ⛔ **FOR `session_push`, AND FOR NOTHING ELSE — `WALL_PUSH` `G2`.** The subject of a
 // push is the material under the author's feet, and that rule already has a body. A tick
 // that decided it again would be this module's own founding defect, one gesture over:
 // every primitive was shared and only the sequencing was written twice.
-use self::session;
+use self::session::*;
 
-use hex_edge;
-use hex_way;
-use hex_field;
-use hex_grid;
-use hex_voxel;
+use hex_edge::*;
+use hex_way::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_voxel::*;
 
 // How far the level stamp reaches, in hexes.
 //

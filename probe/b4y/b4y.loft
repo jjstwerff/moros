@@ -19,11 +19,11 @@
 // reporting it faithfully, which puts the whole fix at the stamp.
 //
 // Predictions are in `PREDICTION.md` and were written before this ran.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_grid;
-use hex_mesh;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_grid::*;
+use hex_mesh::*;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;

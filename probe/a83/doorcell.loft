@@ -20,9 +20,9 @@
 // that same edge, so shut it completes the wall and ajar it swings out of it.
 //
 //   PROBE_PARTS=<parts-root> loft --interpret --lib lib/ probe/a83/doorcell.loft
-use hex_voxel;
-use hex_part;
-use hex_editor;
+use hex_voxel::*;
+use hex_part::*;
+use hex_editor::*;
 
 const W_EPS   = 8;
 const W_THETA = 3;

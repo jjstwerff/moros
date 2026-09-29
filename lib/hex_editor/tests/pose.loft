@@ -5,7 +5,7 @@
 // that only said *turning changes the yaw* would pass a function that turned the
 // wrong way, at the wrong rate, on the wrong key — and those are precisely the
 // three ways this can be wrong while the page still looks alive.
-use hex_editor;
+use hex_editor::*;
 
 fn about(a: float, b: float) -> boolean { a - b < 0.000001 && b - a < 0.000001 }
 

@@ -19,9 +19,9 @@
 // centre. ⚠ A reading of the source produced two confident and WRONG accounts of this
 // before it was run.
 
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

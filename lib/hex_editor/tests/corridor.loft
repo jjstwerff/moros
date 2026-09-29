@@ -13,8 +13,8 @@
 // within `ε` of the corridor's ceiling, so the cover holds by itself. What was missing is
 // that `brush` threw the write's verdict away — the same failure `road_clearance` exists
 // for one gesture over — so the author asked for a hollow, got none, and was not told.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U = 0.25;
 const G = 400;
 

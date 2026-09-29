@@ -1,5 +1,5 @@
 // Step 1 — package skeleton smoke tests.
-use moros_sim;
+use moros_sim::*;
 
 fn test_player_default() {
   p = player_default();

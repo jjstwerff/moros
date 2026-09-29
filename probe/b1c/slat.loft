@@ -5,9 +5,9 @@
 // `HEIGHT_SCALE` of 0.25 — so if a part world is meshed directly, the slat is drawn
 // twice as tall as it was authored. This prints the vertical extent of the mesh, so
 // the claim has a number before anything is changed.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 fn extent(name: text) {
   p = "{source_dir()}/../../data/parts/{name}.hxw";

@@ -9,6 +9,6 @@
 //
 // ⚠ `use self::` ON EVERY MODULE — loft#976. `assembly`, `frames` and `ground` are ordinary
 // enough basenames that a consumer's graph could hold another of each.
-use self::assembly;
-use self::frames;
-use self::ground;
+pub use self::assembly::*;
+pub use self::frames::*;
+pub use self::ground::*;

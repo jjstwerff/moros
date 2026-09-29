@@ -9,7 +9,7 @@
 // ⚠ IT ALSO ASKS WHICH PATH A PAGE NEEDS. A page has no environment and its
 // `source_dir()` is whatever the host says, so the root the build must bake to is
 // itself a measurement rather than a choice.
-use hex_part;
+use hex_part::*;
 
 fn probe_root(label: text, root: text) {
   names = part_list(root);

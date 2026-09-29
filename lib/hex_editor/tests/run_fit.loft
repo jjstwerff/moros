@@ -12,11 +12,11 @@
 // description drawn over marks it MISSES — *"the only way to SEE that is to put the
 // answer on top of the marks it came from"* — so a reader that refused would delete the
 // thing the plan view exists to show. The residual is reported beside the answer.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_grid;
-use hex_field;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_grid::*;
+use hex_field::*;
 
 const U = 0.25;
 const Q0 = 0 - 16;

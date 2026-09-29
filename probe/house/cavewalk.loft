@@ -6,8 +6,8 @@
 // so the same-material walk stops there and the road beyond keeps an unsettled
 // grade. This prints the column at every cell of that exact fixture so the guess
 // can be checked rather than argued.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U = 0.25;
 const G = 40;
 

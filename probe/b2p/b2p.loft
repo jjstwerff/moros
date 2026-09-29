@@ -15,11 +15,11 @@
 // taking the nearest surface with a stencil standing on world linework. A bay is the
 // harder case: its faces meet the parent wall at 45°, so the two surfaces compete for
 // the edges at the joint.
-use hex_field;
-use hex_grid;
-use hex_edge;
-use hex_shape;
-use hex_way;
+use hex_field::*;
+use hex_grid::*;
+use hex_edge::*;
+use hex_shape::*;
+use hex_way::*;
 
 const Q0 = 0 - 16;
 const N = 33;

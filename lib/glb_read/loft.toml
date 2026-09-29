@@ -1,7 +1,8 @@
 [package]
 name = "glb_read"
 version = "0.1.0"
+loft    = ">=2026.10.0"
 description = "glTF 2.0 binary (.glb) READER — the half `glb` does not have"
 
 [dependencies]
-mesh3d = "0.1.1"
+mesh3d = ">=0.1.2"

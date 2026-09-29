@@ -6,21 +6,21 @@
 // pillars, statues, and the houses made of them. §P1's whole point is that it is
 // not a new document type — opening a part IS loading a world, so it renders in
 // the same shader, saves in the same format and is verified by the same gates.
-use hex_voxel;
-use self::catalogue;
-use self::codec;
-use self::region;
-use self::meta;
-use self::sock;
-use self::fit;
-use self::inst;
-use self::bind;
-use self::cycle;
-use self::hinge;
-use self::prop;
-use self::stamp;
-use self::expand;
-use self::bake;
-use self::open;   // A8.9 — what shape a part's doorways are cut to (P9.14)
-use self::wall;   // A8.8 — how tall a part's walls are, and what they are made of (P9.13)
-use self::skin;   // A8.7 — what a returned skin may and may not do (P9.11)
+use hex_voxel::*;
+pub use self::catalogue::*;
+pub use self::codec::*;
+pub use self::region::*;
+pub use self::meta::*;
+pub use self::sock::*;
+pub use self::fit::*;
+pub use self::inst::*;
+pub use self::bind::*;
+pub use self::cycle::*;
+pub use self::hinge::*;
+pub use self::prop::*;
+pub use self::stamp::*;
+pub use self::expand::*;
+pub use self::bake::*;
+pub use self::open::*;   // A8.9 — what shape a part's doorways are cut to (P9.14)
+pub use self::wall::*;   // A8.8 — how tall a part's walls are, and what they are made of (P9.13)
+pub use self::skin::*;   // A8.7 — what a returned skin may and may not do (P9.11)

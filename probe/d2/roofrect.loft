@@ -22,9 +22,9 @@
 // `emit_run_wall` lays masonry ±`wall_band()/2` about it (`D1a.3` measured
 // −0.433 … +0.433), so *the roof reaches its walls* has two readings a half-thickness
 // apart. Both are printed; picking one is the step's job, not the probe's.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

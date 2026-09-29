@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 18 `B5.1` / plan 17 `A7.1` — what is on disk, and in what order.
-use hex_part;
+use hex_part::*;
 
 // ⚠ THE FIXTURE IS BUILT, NOT ASSUMED. A test that read the real `data/parts/`
 // would pass today because one cottage happens to be there, and would change its

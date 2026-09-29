@@ -7,7 +7,8 @@
 // `text_from_bytes` always existed (loft#748) — and the two claims that were
 // really about ENCODING rather than about framing belong where the encoding is:
 // *a name survives past ASCII*, and *the byte length is a byte count*.
-use hex_part;
+use hex_part::*;
+use hex_voxel::*;
 
 // ⚠ THE SUBJECT IS NOT ASCII, and that is the whole test. `"door"` agrees with a
 // byte-per-character encoding, with a code-point-per-byte encoding, and with the

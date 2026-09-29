@@ -21,9 +21,9 @@
 //      itself, the defect is interaction or ordering between the four calls;
 //   2. the four stamped together in `place_house`'s own order — the shipped case.
 
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

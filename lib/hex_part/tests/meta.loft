@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A1.4` — `PART` and `ANCH`, and the reader that does not know them.
-use hex_part;
+use hex_part::*;
+use hex_voxel::*;
 
 // ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on
 // the interpreter and fails `--native`; `roundtrip.loft` carries the same note.

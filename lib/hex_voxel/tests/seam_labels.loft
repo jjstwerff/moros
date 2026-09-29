@@ -25,7 +25,7 @@
 // allocated `fresh_label` per chunk, so the second chunk could not be told it was
 // continuing the first one's layer. A gesture knows it is making one layer; it can
 // now name it once and hand the same name to every column.
-use hex_voxel;
+use hex_voxel::*;
 
 fn mk() -> VoxelWorld { world_new(0.25, 0, 8, 3).wn_world }
 fn cell(h: integer, m: integer) -> Hex { Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 } }

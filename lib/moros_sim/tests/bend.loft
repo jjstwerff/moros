@@ -2,7 +2,9 @@
 //
 // The design's control: *"drive the load past the joint limits: it must refuse
 // with a residual, not fold through itself."*
-use moros_sim;
+use moros_sim::*;
+use hex_rig::*;
+use mesh3d::*;
 
 const SEG = 0.577;
 const EI = 1.0;

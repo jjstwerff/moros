@@ -5,8 +5,8 @@
 // ⚠ THE FIXTURE IS A LIBRARY ON DISK, for `A3.1`'s reason and one more: resolving
 // a binding has to OPEN the framing part to find the socket AND the bound part to
 // read what it fits. Three files minimum, and a world in memory can pose none of it.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 fn no_palette() -> vector<integer> { [] }
 fn no_kids() -> vector<PartInst> { [] }

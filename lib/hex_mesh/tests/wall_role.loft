@@ -12,10 +12,11 @@
 // what was actually emitted, never a number the producer re-derives.* A test that asked
 // `wall_up_at` what `wall_up_at` says could not be surprised by a mesher that never
 // called it.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
-use hex_part;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_part::*;
+use mesh3d::*;
 
 const U = 0.25;
 const SURF_WALL = 5;          // the `wall` surface's index in `chunk_meshes_all`

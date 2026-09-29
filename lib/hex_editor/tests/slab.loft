@@ -13,8 +13,8 @@
 // the same height with nothing between them, and a hole in a floor has no reveal
 // because there is no thickness to cut one in — which is exactly the fault the wall
 // openings fixed, one axis over.
-use hex_editor;
-use hex_grid;
+use hex_editor::*;
+use hex_grid::*;
 
 const PITCH = 12;          // floor to floor, in height units
 const FLOOR = 40;

@@ -21,8 +21,8 @@
 // ⚠ **WHAT IS REFUSED IS WHAT IS STRUCTURALLY WRONG**: a thickness that is not a
 // number, or one below zero. `house_type`'s rule, one axis over — a declaration that
 // quietly fell back to a default would paint the wrong wall and say nothing.
-use hex_voxel;
-use self::palfield;
+use hex_voxel::*;
+use self::palfield::*;
 
 // The BODY that makes `verb tower` build an octagon rather than a circle — plan 26
 // `B4l`, BLUEPRINT §2.3.

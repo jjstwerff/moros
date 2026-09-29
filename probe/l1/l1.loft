@@ -11,13 +11,13 @@
 // whether THOSE can be read back is what `L1` actually turns on.
 //
 // Predictions are in `PREDICTION.md` and were written first.
-use hex_field;
-use hex_grid;
-use hex_form;
-use hex_shape;
-use hex_edge;
-use hex_editor;
-use hex_voxel;
+use hex_field::*;
+use hex_grid::*;
+use hex_form::*;
+use hex_shape::*;
+use hex_edge::*;
+use hex_editor::*;
+use hex_voxel::*;
 
 // ── `WALL_SNAP`'s ARITHMETIC, INLINED — plan 24 `H1e` DELETED IT ────────────
 //

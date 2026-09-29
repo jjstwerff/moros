@@ -12,9 +12,9 @@
 // arms are the same build and the arms are *what the chunk holds*: a chunk of open
 // ground (every edge byte `0`, the absence guard's case) against one walled at every
 // cell (every edge resolved). That is the ratio the guard exists for.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 const U = 0.25;
 const N = 30;                 // chunk meshes an arm

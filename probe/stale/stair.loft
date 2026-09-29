@@ -4,8 +4,8 @@
 // and reads that ground with `terrain_h` AFTER the stair has cut its well. If the
 // cut clears the ground cell, that read is of a hole — and before the window-base
 // fix a hole answered `ck_base`, a height nobody wrote.
-use hex_voxel;
-use hex_editor;
+use hex_voxel::*;
+use hex_editor::*;
 
 fn gmat(w: VoxelWorld, q: integer, r: integer) -> integer {
   c = hex_voxel::world_ground_cell(w, q, r);

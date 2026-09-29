@@ -16,9 +16,9 @@
 // So: every boundary edge `fence_disc` stamps, its midpoint, and which of the six
 // lattice directions its own normal takes. If the sides are straight, the midpoints of
 // one direction are collinear and the count per side is `rad`.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U   = 0.25;
 const REF = 2.0;

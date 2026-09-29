@@ -8,7 +8,7 @@
 //
 // The browser half is `text_gl.loft` + `shot.mjs`: that one asks whether the
 // same coverage reaches the CANVAS, which is the part that was actually broken.
-use graphics;
+use graphics::*;
 
 const FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
 const W = 320;

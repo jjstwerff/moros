@@ -11,7 +11,7 @@
 //   A — a wall cell beside occupied ones, in memory
 //   B — the same, through save and load
 //   C — a layer whose ONLY content is walls
-use hex_voxel;
+use hex_voxel::*;
 
 fn cell(h: integer, m: integer) -> Hex {
   Hex { h_height: h as u16? ?? 0, h_material: m as u8? ?? 0 }

@@ -15,8 +15,8 @@
 //     steepness of the flank rather than with a dial;
 //   · walked UP the fall line the transverse spread is **1**, so a road over a hill
 //     has no cliff side to roof at all.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 200;                 // high enough that a deep cut cannot reach `ρ`

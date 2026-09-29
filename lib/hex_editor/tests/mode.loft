@@ -23,9 +23,9 @@
 // same gesture in a bare meadow, a house under rock against the rock one step away.
 // A single-sided claim here would be satisfied by a function that answers `inside`
 // for everything sheltered, which is exactly the version this step replaces.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

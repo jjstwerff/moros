@@ -89,8 +89,8 @@
 // scope: it measures after the stamp, and the settle it measures can only lower. A
 // RUN-level balance is measured against the natural ground, where both signs are
 // reachable, so it must answer to both.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U   = 0.25;
 const G   = 400;                 // a datum high enough that a deep cut cannot reach ρ
 const EPS = 10;                  // the editor's own ε

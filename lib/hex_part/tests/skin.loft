@@ -9,8 +9,8 @@
 // that refused them would train an artist to trim a cape to a box. Without that
 // test this file is an equality check that happens to be spelled as containment,
 // and the next reader would "tighten" it.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 fn box_of(x0: float, y0: float, z0: float,
           x1: float, y1: float, z1: float) -> PartBox {

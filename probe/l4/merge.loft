@@ -18,8 +18,8 @@
 //
 // which is the whole of what renaming the struct bought. The types never merged; what
 // changed is that a reader can now see they did not.
-use hex_voxel;
-use hex_world;
+use hex_voxel::*;
+use hex_world::*;
 
 fn main() {
   yours = world_empty();                                  // hex_world::World

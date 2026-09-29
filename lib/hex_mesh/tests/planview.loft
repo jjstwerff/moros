@@ -43,12 +43,13 @@
 // here rather than taken from `plan_slot_seg`: `hex_edge_corners`, the `(6 - c) % 6`
 // join, `hex_corner_world`. A test that asked the helper what the helper says
 // could not be surprised by any of the four faults this file exists to catch.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
-use hex_grid;
-use hex_proj;
-use hex_way;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_grid::*;
+use hex_proj::*;
+use hex_way::*;
+use mesh3d::*;
 
 const U = 0.25;
 

@@ -11,8 +11,8 @@
 //
 // The alternative is a bed at (x, z) that has to be moved every time its box moves,
 // and is one refactor away from standing in the wall.
-use hex_editor;
-use hex_grid;
+use hex_editor::*;
+use hex_grid::*;
 
 const BAND = 0.8660254037844386;
 const U = 0.25;

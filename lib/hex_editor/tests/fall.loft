@@ -4,8 +4,8 @@
 // The fall, tested against the closed form rather than against itself. Free fall
 // has an exact answer — y = y₀ − ½gt² — so the integrator can be checked for what
 // it IS rather than for merely decreasing.
-use hex_editor;
-use hex_form;   // fabs
+use hex_editor::*;
+use hex_form::*;   // fabs
 
 // ⚠ THE NUMBER, TYPED OUT, AND THAT IS THE PIN. This package declares
 // `FALL_GRAVITY` and `moros_sim::player` declares its own `GRAVITY`; nothing makes

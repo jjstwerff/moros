@@ -8,9 +8,9 @@
 // disc of radius R has `6(2R+1)` boundary edges, and half of them live beyond the
 // disc. The gate drives a socket to say this; here it is arithmetic against the
 // store, and it can be mutated.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;

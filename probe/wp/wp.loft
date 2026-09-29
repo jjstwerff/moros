@@ -13,9 +13,9 @@
 // 3. the ROUND TRIP: push, unpush, compare the fields edge for edge.
 //
 // Predictions are in PREDICTION.md and were written first.
-use hex_shape;
-use hex_field;
-use hex_grid;
+use hex_shape::*;
+use hex_field::*;
+use hex_grid::*;
 
 const Q0 = 0 - 20;
 const W = 41;

@@ -4,7 +4,7 @@
 // value is red. The hip's current wedge is the standing negative control."* So the
 // unamended hip is the fixture that must leak, and the amended one is what must
 // not — over the whole range, not at one angle.
-use moros_sim;
+use moros_sim::*;
 
 // The editor's own figure, so this rule and the shipped hip are the same numbers.
 const FIGURE = 2.0207259421636903;

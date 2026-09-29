@@ -6,8 +6,8 @@
 // had rebased, every later stroke read the base back as existing ground and built on
 // top of it. This prints the peak so the honest number is a measurement rather than
 // an argument: three strokes of PEAK_STEP must stand exactly 3 * PEAK_STEP high.
-use hex_voxel;
-use hex_editor;
+use hex_voxel::*;
+use hex_editor::*;
 
 fn peak_of(w: VoxelWorld, tq: integer, tr: integer) -> integer {
   hex_editor::terrain_h(tq, tr, w)

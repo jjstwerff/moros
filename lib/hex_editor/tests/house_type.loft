@@ -17,9 +17,9 @@
 // `hex_voxel::PAL_HTYPE` slot 1 of the author's REGION, so it inherits slot-0
 // absence, the 256 refusal, duplicate and newline refusals, and per-region scoping
 // without any of it being written twice.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

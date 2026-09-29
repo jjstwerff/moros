@@ -10,7 +10,7 @@
 // the same assertion run against a case that must FAIL.  Six gates in this
 // editor's history were green for the wrong reason and not one was caught by
 // reading the code; every one was caught by running the control.
-use moros_map;
+use moros_map::*;
 
 // ── Slot 0 ───────────────────────────────────────────────────────────
 

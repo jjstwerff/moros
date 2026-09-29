@@ -8,11 +8,11 @@
 // verify by re-drawing. These tests are the CONSUMER check: that this tree calls it
 // correctly, places the answer where the region stands, and reports what the marks make of
 // it. [`probe/b5`](../../../probe/b5/README.md) is the measurement, 25 of 25 at `ρ = 0`.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_grid;
-use hex_form;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_form::*;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;

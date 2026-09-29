@@ -20,10 +20,10 @@
 //
 // ⚠ NO TOLERANCE APPEARS IN §1 OR §2. `surface_heading` is a zero cross product in
 // exact integers — the answer is an index or it is `-1`.
-use hex_field;
-use hex_grid;
-use hex_form;
-use hex_draw;
+use hex_field::*;
+use hex_grid::*;
+use hex_form::*;
+use hex_draw::*;
 
 const W = 61;
 const H = 61;

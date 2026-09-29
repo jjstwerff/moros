@@ -28,14 +28,14 @@
 // already live — the two counters that answer *how many* and throw the walk away. Every
 // number below is unchanged by the move, which is what makes this the consumer check for
 // it rather than a second implementation.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_grid;
-use hex_field;
-use hex_mesh;
-use graphics;
-use hex_mesh;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_grid::*;
+use hex_field::*;
+use hex_mesh::*;
+use graphics::*;
+use hex_mesh::*;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;

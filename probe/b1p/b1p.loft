@@ -16,11 +16,11 @@
 // are the names the ownership audit put firmly on the CONSUMER's side ... the day
 // this package knows what a stair is, it has stopped being one."* So the palette
 // `@HB-X12` names lives in `moros_map`, which the editor does not depend on.
-use hex_field;
-use hex_grid;
-use hex_voxel;
-use hex_editor;
-use hex_shape;
+use hex_field::*;
+use hex_grid::*;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_shape::*;
 
 const S = 14;
 

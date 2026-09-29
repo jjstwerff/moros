@@ -16,8 +16,8 @@
 // slope spans 28 units of ground, so it MUST cut 14 or fill 14 — that is geometry,
 // not a bug, and the whole of `A4`'s remaining content is that the number is now
 // REPORTED instead of silently absorbed.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

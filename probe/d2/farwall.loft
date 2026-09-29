@@ -17,9 +17,9 @@
 // So every stamped edge is dumped with its midpoint, and the four filed runs are printed
 // beside them. ⚠ The count was believed for two probes before anyone asked WHERE.
 
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

@@ -10,12 +10,12 @@
 // So the two assertions that matter here are a PAIR: the collision bridge leaves
 // `edge_mat` empty, and this one does not, on the same world and the same edge. An
 // absence on its own is what produced the wrong answer the first time.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_grid;
-use hex_edge;
-use hex_shape;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_edge::*;
+use hex_shape::*;
 
 const U = 0.25;
 const REACH = 10;

@@ -15,8 +15,8 @@
 //      whole rectangle and overwrites them. Every consumer that swaps the loop for
 //      the fill has to be laying ground, not editing it — so the difference is
 //      pinned here rather than left to whoever reads the name next.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 

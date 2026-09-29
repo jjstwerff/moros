@@ -1,9 +1,9 @@
 // Does `wall_corner_close` overwrite a DOOR sitting in the corner it wants to close?
 // Measured with the BUILT-IN door byte, so the answer is about today's code and not
 // about `R5b.2`.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U = 0.25;
 

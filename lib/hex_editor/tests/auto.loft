@@ -14,7 +14,7 @@
 //   * a walk out and back changes it at most twice, and it comes home;
 //   * inside the band the state is whatever it was, from BOTH sides;
 //   * an unmeasured radius never switches anything.
-use hex_editor;
+use hex_editor::*;
 
 const WANT = 5.860105232274702;   // `cam_boom()` on a level world
 const FRAC = 0.22;                // `CAM_MIN_FRAC`

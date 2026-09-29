@@ -25,7 +25,7 @@
 // lands on a different tick. The CELLS and the total `w_tau` are identical either
 // way — a version is a fact about *when this layer last changed*, and both answers
 // are true. Within one chunk the orders coincide and the stamps are compared.
-use hex_voxel;
+use hex_voxel::*;
 
 // ⚠ A FRESH WORLD'S CLOCK IS ALREADY AT 1, so every count below is `1 + cells`.
 // It is not decoration: `G3`'s substitution was checked with exactly this number

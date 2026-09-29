@@ -20,9 +20,9 @@
 // what the world holds.** A stroke on an empty world and the same stroke on a
 // world of thousands of written cells must cost the same, or the editor gets
 // slower as the map fills — which is exactly when it must not.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 // A filled world: every cell in a `rad`-hex square written, so the strokes below
 // land on ground that already exists rather than creating it.

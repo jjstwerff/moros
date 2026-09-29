@@ -35,9 +35,9 @@
 // that is already there. That is `B4j`'s own defect one gesture over — telling an author
 // to look for a gap that is not there — and the clause defending it is now measured
 // rather than argued.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;

@@ -30,8 +30,10 @@
 // It is self-consistent in mesh3d and inconsistent in the editor, and the wheel
 // path is unaffected because a spin is about **+z** in both. The bank and the yaw
 // are `A6`'s, and this comment is here so `A6` does not rediscover it.
-use moros_sim;
+use moros_sim::*;
 use hex_body::(rig_new, rig_bone, wheel_value, wheel_angle);
+use hex_rig::*;
+use mesh3d::*;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

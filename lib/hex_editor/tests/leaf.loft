@@ -9,8 +9,8 @@
 // stays put, that the leaf keeps its width, and that `F-SWING`'s limit refuses with
 // an offer rather than clamping, because a leaf silently held at 90° is a door that
 // lies about its own state.
-use hex_editor;
-use hex_grid;
+use hex_editor::*;
+use hex_grid::*;
 
 fn shut() -> DoorLeaf {
   hex_editor::DoorLeaf { dl_q: 0, dl_r: 0, dl_dir: 0, dl_angle: 0.0, dl_up: 12 }

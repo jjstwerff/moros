@@ -3,8 +3,8 @@
 // Nothing here restates the table; it is derived from `cell_rot` and
 // `stencil_mirror` on every run.  If the lattice convention ever moves, these
 // fail instead of quietly disagreeing with the world they name.
-use moros_map;
-use hex_field;
+use moros_map::*;
+use hex_field::*;
 
 fn dir_of(q: integer, r: integer) -> integer {
   d = -1;

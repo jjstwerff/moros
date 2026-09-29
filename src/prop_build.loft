@@ -35,12 +35,12 @@
 // a single comparison is asserted. `data/parts/` is committed and this tree is
 // worked by more than one agent, so an assertion that fires must not leave the
 // shrine holding the variant.
-use hex_voxel;
-use hex_part;
-use hex_editor;   // the MATERIAL names — see below, a literal 3 is a GREEN plinth
-use glb;
-use glb_read;   // load_glb — to read back what was WRITTEN, not what was in memory
-use mesh3d;
+use hex_voxel::*;
+use hex_part::*;
+use hex_editor::*;   // the MATERIAL names — see below, a literal 3 is a GREEN plinth
+use glb::*;
+use glb_read::*;   // load_glb — to read back what was WRITTEN, not what was in memory
+use mesh3d::*;
 
 // The editor's own world constants — `part_build.loft`'s note applies here too: a
 // part cut or built at a different epsilon is a different shape wearing the same

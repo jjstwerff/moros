@@ -1,6 +1,6 @@
-# web 0.3.4 — public API surface
-# generated from /home/jurjens/.loft/registry/web-0.3.4
-# use it with: use web;
+# web 0.3.5 — public API surface
+# generated from /home/jurjens/.loft/registry/web-0.3.5
+# use it with: use web::*;
 
 ## src/web.loft
 
@@ -79,11 +79,13 @@ pub struct WsHandler
 // set `LOFT_WS_INSECURE_SKIP_VERIFY=1` in the native process — an
 // explicit opt-out, never a URL option, so it cannot be baked into a
 // deployed config by accident.
+// Example: @WEB-003 — a handle is not a connection; ask the traffic, not the handle.
 pub fn ws_handler(url: text) -> WsHandler
 
 // Send a text message to the server.  Returns true on success; false
 // means the connection is currently in backoff / reconnecting and the
 // caller may retry after the next `pump()`.
+// Example: @WEB-003 — this false, not a null handle, is what reports the link down.
 pub fn send(self: WsHandler, msg: text) -> boolean
 
 // Send `msg` as a binary WebSocket frame (opcode 2).  Loft `text`
@@ -122,6 +124,7 @@ pub fn sleep_ms(ms: integer)
 // --- Binary buffer construction (TTT v5 + plan-36) ---
 
 // Empty the per-thread pack buffer.  Call before each blob.
+// Example: @WEB-001 — reset, append in wire order, take (which moves, not reads).
 pub fn pack_reset()
 
 // Append a single byte to the pack buffer.  `b` is masked to 8 bits.
@@ -137,6 +140,7 @@ pub fn pack_u32_le(v: integer)
 
 // Take the contents of the pack buffer and return them as a `text`
 // whose UTF-8 bytes are exactly the buffer bytes.  Resets the buffer.
+// Example: @WEB-001 — the three-step protocol, and the NUL that interpolation drops.
 pub fn pack_take() -> text
 
 // Read the byte at `idx` of the text payload.  Out-of-range (negative
@@ -144,6 +148,7 @@ pub fn pack_take() -> text
 // via `try_recv` / `pump`.  Argument order is (idx, t) — the C-ABI
 // auto-marshal in src/extensions.rs supports (I32, Text) -> I32 but
 // not (Text, I32) -> I32.
+// Example: @WEB-002 — why the bounds test is `< 0` and never `== 0`.
 pub fn byte_at(idx: integer, t: text) -> integer
 
 // --- Multiplexed client receiver (WsGroup) ---

@@ -10,8 +10,9 @@
 // by 3..6, leaving it three units out of level. So the fabric takes ONE delta and
 // the ground around it keeps the falloff — a flat pad with slopes falling away,
 // which is what a terrace is.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U = 0.25;
 const G = 40;

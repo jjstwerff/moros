@@ -1,34 +1,54 @@
-# regex 0.2.1 — public API surface
-# generated from /home/jurjens/.loft/registry/regex-0.2.1
-# use it with: use regex;
+# regex 0.3.3 — public API surface
+# generated from /home/jurjens/.loft/registry/regex-0.3.3
+# use it with: use regex::*;
 
 ## src/regex.loft
 
-// --- Public free functions (pattern-first, namespaced as `regex::`) ---
+// --- Public API: subject-first text methods (call as line.verb(pattern)) ---
 
-// Byte offset of the first match of `pattern` in `input`, or null when
-// there is no match (or the pattern is invalid).
+// Byte offset of the first match of `pattern` in the text, or null when there
+// is no match (or the pattern is invalid).  The conventional regex-search verb
+// — named `search`, not `find`, because bare `find` on text is the stdlib's
+// literal substring search.  Call as  line.search("[0-9]+").
+// Example: @RGX-001 — why this is `search` and not `find`, and what a bare
+// `find(pattern, input)` answers instead.
+// Example: @RGX-002 — the answer is a BYTE offset (slice with it, compare it to
+// `size()` not `len()`), and a miss is null despite the `integer` return type.
+pub fn search(self: text, pattern: text) -> integer
+
+// True if `pattern` matches anywhere in the text.  `self` registers this as
+// BOTH a method (`line.matches(p)`) and a free function (`matches(line, p)`).
+// Collision-free on `text` (the stdlib has `contains`, not `matches`).
+// Example: @RGX-003 — a pattern that never compiled answers false, exactly like
+// text that simply did not match.
+pub fn matches(self: text, pattern: text) -> boolean
+
+// Split the text on matches of `pattern`, yielding each piece lazily through
+// an `iterator<text>` (reuses loft's coroutine channel — nothing is
+// materialised).  Named `split_on`, not `split`, because bare `split` on text
+// is the stdlib character-separator split.  Call as
+// for piece in line.split_on("[,;]") { }.
+// Example: @RGX-004 — it yields the gaps between matches, so a separator at
+// either end leaves an empty piece and unmatched text comes back as ONE piece.
+pub fn split_on(self: text, pattern: text) -> iterator<text>
+
+// --- Superseded spellings (kept working; steered to the clean verbs) ---
+
+// Example: @RGX-001 — reachable only as `regex::find`; the bare spelling
+// resolves the stdlib `text` method and answers something else entirely.
 pub fn find(pattern: text, input: text) -> integer
 
-// Split `input` on matches of `pattern`, yielding each piece lazily through
-// an `iterator<text>` (reuses loft's coroutine channel — nothing is
-// materialised).
+// Example: @RGX-001 — same shadow as `find`: bare `split` is the stdlib's
+// character split, not this one.
 pub fn split(pattern: text, input: text) -> iterator<text>
 
-// --- Text methods (subject-first; call as  line.method(pattern) ) ---
-
-// True if `pattern` matches anywhere in the text.  `both` registers this as
-// BOTH a method (`line.matches(p)`) and a free function (`matches(line, p)`).
-// `matches` keeps the bare name — it is collision-free on `text` (the stdlib
-// has `contains`, not `matches`) and reads as regex on its own.
-pub fn matches(both: text, pattern: text) -> boolean
-
-// Byte offset of the first match of `pattern` in the text, or null.
-// Prefixed because bare `find` collides with stdlib `text.find` (literal
-// substring search).  Call as  line.regex_find("[0-9]+").
+// `find` as a METHOD on the text, for a caller that prefers `s.regex_find(p)`.
+// Superseded by the stdlib's `search`, which is the same operation without an
+// import — the prefix exists only because a bare `find` resolves to the
+// stdlib's method first.
 pub fn regex_find(self: text, pattern: text) -> integer
 
-// Split the text on matches of `pattern`, yielding pieces lazily.  Prefixed
-// because bare `split` collides with stdlib `text.split` (character
-// separator).  Call as  for piece in line.regex_split("[,;]") { }.
+// `split` as a method, and superseded by `split_on` for the same reason.  The
+// distinction that matters: this splits on a PATTERN, while the stdlib's bare
+// `split` splits on a character.
 pub fn regex_split(self: text, pattern: text) -> iterator<text>

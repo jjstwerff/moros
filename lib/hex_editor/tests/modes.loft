@@ -7,9 +7,9 @@
 // A mode is not a one-shot gesture: `road` and `level` set a flag the tick acts
 // on. What is testable — and what moved — is the per-step work and the rule the
 // two share, not the switch.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;

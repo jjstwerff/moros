@@ -14,8 +14,9 @@
 // `library(COARSE)` differ in the leaf's `w_unit` and in nothing else — same
 // socket, same binding, same cells — which is what makes the scale evidence
 // about DERIVATION rather than about the fixture.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
+use mesh3d::*;
 
 fn no_palette() -> vector<integer> { [] }
 fn root() -> text { "{temp_dir()}/hexpart_scale_lib" }

@@ -12,11 +12,12 @@
 // and the rectangle recovers by generate-and-compare. The MARKS never enter the
 // recovery — they are what the recovered rectangle is then measured against, which is
 // what lets this file answer `B0`'s question about the four stray edges.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_form;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_form::*;
+use hex_grid::*;
+use hex_field::*;
 
 // 90°, facing +z — the pose `house_walls.loft` and `probe/d2` both use.
 const YAW = 1.5707963267948966;

@@ -10,8 +10,8 @@
 // ⚠ `now()` IS MILLISECONDS. The first version of this measurement divided by
 // 1,000,000 as though it were nanoseconds, printed `0 ms` for every phase, and was
 // believed long enough to be said out loud.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 fn root() -> text { "{temp_dir()}/perf_place_lib" }
 fn no_palette() -> vector<integer> { [] }

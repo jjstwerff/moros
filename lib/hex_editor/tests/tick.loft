@@ -12,10 +12,10 @@
 // ⚠ AND THE GROUND COMES IN AS A FUNCTION, so these tests need no mesher. That is not
 // a convenience: `hex_mesh::ground_under` is the driver's sampler and `hex_mesh`
 // depends on this package, so a test that reached for it could not exist at all.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_form;   // fabs
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_form::*;   // fabs
 
 const GROUND_H = 8;              // height units; the world's unit is 0.25 below
 const REACH    = 8;              // hexes of collision proxy — the editor's `COLL_R`

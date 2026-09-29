@@ -11,9 +11,9 @@
 //
 // The consequence a renderer must honour, and the reason this is S5 rather than a
 // store detail: an opening is a SUB-INTERVAL of the wall, not a shorter wall.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;

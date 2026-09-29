@@ -30,17 +30,18 @@
 // SVG around them — and the coordinates it writes are the library's own floats,
 // untransformed, because a picture that rescales its numbers cannot be compared
 // against the library that produced them.
-use graphics;
-use hex_grid;
-use hex_proj;
-use hex_voxel;
-use hex_editor;
-use hex_roof;
+use graphics::*;
+use hex_grid::*;
+use hex_proj::*;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_roof::*;
 // `Box` — plan 26 `B4n`. The rectangle a house's floor recovers to is the shape
 // family's own, and the picture places its corners through `hex_editor::box_px_*`
 // rather than deriving any of them here.
-use hex_shape;
-use self::surfaces;
+use hex_shape::*;
+use self::surfaces::*;
+use hex_field::*;
 
 // A hex edge in the page frame. The page frame IS the world's x/z plane — see
 // `plan_svg`'s `viewBox` — so these are `hex_corner_world`'s own numbers.

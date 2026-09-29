@@ -18,7 +18,7 @@
 // ⚠ **AND THE AUTHORED WORLD IS THE ORACLE**, which is what makes it able to fail:
 // it is built by `world_set_column`, the path that has been minting first layers
 // since long before this design, so nothing in it is a restatement of `G5a`'s code.
-use hex_voxel;
+use hex_voxel::*;
 
 const RESERVE = 100;
 

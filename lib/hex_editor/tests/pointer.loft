@@ -7,7 +7,7 @@
 // rebuilding a 7 MB wasm client and driving a headless Chromium, and the sabotage
 // that showed the gate could fail cost a second full rebuild. The rule needs none of
 // that; only the WIRING does.
-use hex_editor;
+use hex_editor::*;
 
 fn act(a: PointerAct) -> text {
   if a is PaNothing { return "nothing"; }

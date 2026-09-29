@@ -23,8 +23,8 @@
 // nothing. Rising is legal to 3. So the boundary is not the gesture and not the plane —
 // it is what happens to a run after `A9` has cut shelves into it, and that is the next
 // piece of work rather than a reason to keep laying plates.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U = 0.25;
 const G = 400;
 fn one(k: integer) {

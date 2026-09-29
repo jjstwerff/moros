@@ -12,8 +12,8 @@
 //
 // ⚠ THE OWED VALUE IS PRINTED, so this is an equivalence check as well as a clock: a
 // reorder that changed an answer would show here before any timing is read.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

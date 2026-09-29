@@ -11,10 +11,10 @@
 // *it returns a height* would pass a cell lookup, a version that ignored `ref`, and
 // one that used a global height scale. Those are exactly the three ways it can be
 // wrong, and each has a case here.
-use hex_mesh;
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_mesh::*;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U = 0.25;          // the landscape's unit — `world_new`'s first argument
 const PART_U = 0.125;    // and a part's, which is why the scale is not a global

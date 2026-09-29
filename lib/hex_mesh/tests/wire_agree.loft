@@ -26,9 +26,9 @@
 //   · WHICH layers the server chooses to send. That is streaming policy and it lives
 //     in `editor_server`; this feeds the client every layer by construction, so a
 //     server that sent nothing would still pass here. See `stream.mjs`.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
 
 // A world with relief, because a flat one meshes to one height and a copy that lost
 // the heights would agree with it. ⚠ The east-west ramp is `40 + q`: it varies along

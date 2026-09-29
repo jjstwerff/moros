@@ -11,9 +11,9 @@
 // the hexagon at exactly the shells `12R²`, and `fence_ring`'s radius 3 is shell 108,
 // one of them. At the ring's own size the two gestures build the identical world, so
 // roundness needs a SIZE and the size is a choice.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U = 0.25;
 

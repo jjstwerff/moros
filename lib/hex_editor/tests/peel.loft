@@ -51,10 +51,11 @@
 // on four counts — the mark total, the cell components, the mark components and the
 // description string. **All twenty-seven identical.** A green suite after a window is shrunk
 // is not evidence of anything; two windows agreeing about one field is.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_grid::*;
+use hex_field::*;
 
 const YAW = 1.5707963267948966;
 const U = 0.25;

@@ -1,6 +1,6 @@
-use hex_voxel;
-use hex_editor;
-use hex_mesh;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_mesh::*;
 
 fn copy_chunk(a: VoxelWorld, b: &VoxelWorld, scx: integer, scz: integer) {
   q0 = scx * hex_voxel::CHUNK_W;

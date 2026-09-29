@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A4.1` — `SOCK` and `FITS`, and the round trip that would notice.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 // ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on the
 // interpreter and fails `--native`; `roundtrip.loft` and `inst.loft` carry the note.

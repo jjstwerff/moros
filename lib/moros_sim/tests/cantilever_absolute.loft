@@ -21,7 +21,7 @@
 // measures the geometric nonlinearity and calls it discretisation error. `P6` was
 // misled by exactly that and reported a scheme converging to 0.789. At a tip
 // deflection of 1e-6 of the span the closed form is the truth to 1e-12.
-use moros_sim;
+use moros_sim::*;
 
 const EI = 1.0;
 const LEN = 1.0;

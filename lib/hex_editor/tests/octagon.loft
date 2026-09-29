@@ -9,10 +9,12 @@
 // every other claim here still true: still centred, still the shell the session holds,
 // still eight-sided by construction. That is `B4i`'s row 1 one shape over, and it is
 // why the gesture refuses rather than reporting success.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_form;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_form::*;
+use hex_field::*;
+use hex_grid::*;
 
 const U = 0.25;
 

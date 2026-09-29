@@ -27,7 +27,7 @@
 //     zeroes has the right size, and an absent chunk reads as the ground (`G5a`),
 //     so a world that loaded nothing answers height 0 — which is exactly what the
 //     mark below is chosen not to be.
-use hex_voxel;
+use hex_voxel::*;
 
 const PATH = "p6_world.hxw";
 const GHOST = "p6_never_written.hxw";

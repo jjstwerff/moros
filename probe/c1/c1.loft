@@ -14,12 +14,12 @@
 // *"zero after `combine_cut` (the seam fuses); non-zero after a per-body overlay (a spurious
 // seam wall)"*. So *who owns the shared edge* is measurable rather than arguable, and this
 // asks it of the walls `place_house` actually stamps.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_place;
-use hex_shape;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_place::*;
+use hex_shape::*;
+use hex_grid::*;
 
 const Q0 = 0 - 20;
 const R0 = 0 - 20;

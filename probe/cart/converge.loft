@@ -9,7 +9,7 @@
 //
 // For a plane `g = s·z` the answer is closed form, `β = −atan(s)`, so every row
 // below has a known right answer to be wrong against.
-use moros_sim;
+use moros_sim::*;
 
 const HALF = 0.55;
 const RADIUS = 0.4;

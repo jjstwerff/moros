@@ -38,8 +38,8 @@
 // authoring at and picks a layer from it; a probe that guessed one would report zero
 // for a world whose floor is somewhere else and read as *no walls were built*. A
 // column carries its layers, so this counts the bytes themselves.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 // Wall bytes of one material, counted once each — an edge is STORED once, on its
 // owning cell, whatever else can see it.

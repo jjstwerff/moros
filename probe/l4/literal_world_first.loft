@@ -9,8 +9,8 @@
 // now, so there is nothing left for the order to decide.
 //
 // If these two ever disagree again, the order decides again, and #788 is back.
-use hex_world;
-use hex_voxel;
+use hex_world::*;
+use hex_voxel::*;
 
 fn main() {
   c = Chunk { ck_cx: 1, ck_cz: 2, ck_cells: [] };

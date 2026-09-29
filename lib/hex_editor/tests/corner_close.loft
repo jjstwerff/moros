@@ -15,11 +15,11 @@
 // other, so `test_two_unrelated_walls_are_left_alone` asks the same question of a fixture
 // that must answer no — and it is only worth anything because
 // `test_a_gapped_corner_is_closed` proves the instrument can say yes.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_grid;
-use hex_shape;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_shape::*;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;

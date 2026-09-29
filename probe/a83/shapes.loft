@@ -20,9 +20,9 @@
 // a hole in it (§P9.2's first row).
 //
 //   PROBE_PARTS=<parts-root> loft --interpret --lib lib/ probe/a83/shapes.loft
-use hex_voxel;
-use hex_part;
-use hex_editor;
+use hex_voxel::*;
+use hex_part::*;
+use hex_editor::*;
 
 const W_EPS   = 8;
 const W_THETA = 3;

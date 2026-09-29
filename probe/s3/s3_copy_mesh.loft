@@ -1,8 +1,8 @@
 // Reproduce the client's path with no wire and no browser: copy every layer into a
 // second world exactly as `world_put_layer` does, then mesh the same tiles from both.
-use hex_voxel;
-use hex_editor;
-use hex_mesh;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_mesh::*;
 
 // ⚠ THE COPY GOES THROUGH A `&VoxelWorld` PARAMETER. Done inline on a local in `main`,
 // `world_put_layer(b, …)` left `b` EMPTY — and an empty world meshes happily at

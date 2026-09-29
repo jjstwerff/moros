@@ -18,9 +18,9 @@
 // plan 17 `A4.4` asks for. What IS asserted is the count: how many of the 24 move
 // a body with no loss at all. `clock.loft` next door measures the twelve
 // PLACEMENTS (six turns and six flips); this measures the twenty-four HEADINGS.
-use moros_map;
-use hex_field;
-use hex_grid;
+use moros_map::*;
+use hex_field::*;
+use hex_grid::*;
 
 const D24 = 24;
 

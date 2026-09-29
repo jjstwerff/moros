@@ -1,13 +1,34 @@
-# hex_fit 0.1.1 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_fit-0.1.1
-# use it with: use hex_fit;
+# hex_fit 0.1.2 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_fit-0.1.2
+# use it with: use hex_fit::*;
+
+## src/hex_fit.loft
+
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// hex_fit — the doorstep — refuse at authoring time what would not round-trip.
+// 
+// `fits?` and `snap`. A continuous model parameter must be quantised to what the field
+// distinguishes; off that grid a value is silently SNAPPED, not rejected, so the doorstep
+// refuses it up front with a named reason, an offer of the nearest fitting alternative, and the
+// residual. Also the `Draft` — a form carrying an embedded wall run.
+// 
+// Entry point: re-exports `hexfit`, `hexdraft`.
+pub use hexfit::*
+
+pub use hexdraft::*
 
 ## src/hexdraft.loft
 
 pub struct Draft
 
+// A stencil description: the form, plus the linework run it carries.  The run is the half
+// that used to be dropped in a rebuild without anything noticing, which is why it is part
+// of the value rather than something a caller keeps beside it.
 pub fn draft_new(f: Form, d: integer, a: integer, b: integer, p: integer) -> Draft
 
+// Does this draft carry a linework run?  Check before reading the run's fields, which are
+// only meaningful when it does.
 pub fn draft_has_run(s: Draft) -> boolean
 
 // The text of a stencil: the form's spelling, then — if there is one — a single `wall` line.
@@ -111,6 +132,8 @@ pub const FIT_NOT_LEGAL = 5
 
 pub const FIT_OUTSIDE   = 6
 
+// The FIT_ code as a sentence, for showing a person why a draft did not fit.  Keep the
+// code for logic and use this only at the edge, so the reason never becomes the test.
 pub fn draft_fit_reason(code: integer) -> text
 
 // THE DOORSTEP.  `cells` is the form's own footprint.  Returns a reason code — `FIT_OK` or the
@@ -168,6 +191,8 @@ pub fn feature_fit_residual(p: Plan, cells: HexSet, side: integer, t: float) -> 
 
 pub fn arc_is_shell(n24: integer) -> boolean
 
+// Does this arc land on the grid?  Answers a FIT_ code rather than a boolean, so a caller
+// can tell the reader WHY it did not — see `draft_fit_reason`.
 pub fn arc_fits(n24: integer) -> integer
 
 // The nearest realisable shell — `K-FIT` says *nearest*, so this can offer a LARGER disk than the
@@ -180,6 +205,8 @@ pub fn arc_fits(n24: integer) -> integer
 // Example: @HXI-006
 pub fn arc_fit_n(n24: integer) -> integer
 
+// How far the arc is from the nearest fitting one.  0 means it already fits; anything else
+// is what a warning would quote.
 pub fn arc_fit_residual(n24: integer) -> integer
 
 // THE OTHER CANDIDATE, and the reason the comment above can say *both*.  This is the shell an
@@ -192,6 +219,7 @@ pub fn arc_fit_residual(n24: integer) -> integer
 // Example: @HXI-006
 pub fn arc_snap_n(n24: integer) -> integer
 
+// How far snapping WOULD move it — signed, so a caller can see which way.
 pub fn arc_snap_residual(n24: integer) -> integer
 
 // ── LEVELS — MEASURED TO HAVE NOTHING TO REFUSE ─────────────────────────────
@@ -250,6 +278,7 @@ pub const HEIGHT_SCALE = 0.25
 // The voxel's own value for a height, at a given quantum: what `h_height` would hold.
 pub fn height_units_at(z: float, scale: float) -> integer
 
+// Grid units back to a world height at a given scale — the inverse of `height_units_at`.
 pub fn height_from_units_at(u: integer, scale: float) -> float
 
 // THE DOORSTEP, at the caller's quantum.  A height must land exactly on the voxel's grid; off
@@ -265,17 +294,23 @@ pub fn seat_fits_at(z: float, scale: float) -> integer
 // The offer, and the residual the editor must show — in world units.
 pub fn seat_fit_z_at(z: float, scale: float) -> float
 
+// How far a height is from the nearest seating level at a given scale.  Warn on this
+// rather than snapping, when the author's exact value matters.
 pub fn seat_fit_residual_at(z: float, scale: float) -> float
 
+// A world height in grid units at the default scale.
 pub fn height_units(z: float) -> integer
 
+// Grid units back to a world height at the default scale.
 pub fn height_from_units(u: integer) -> float
 
 // Example: @HXI-008
 pub fn seat_fits(z: float) -> integer
 
+// The nearest seating height at the default scale.
 pub fn seat_fit_z(z: float) -> float
 
+// How far off that seating height the value was; 0.0 means it already fitted.
 pub fn seat_fit_residual(z: float) -> float
 
 // Kept from before the fork closed, now meaning exactly "on the voxel's grid".

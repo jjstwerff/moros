@@ -15,9 +15,9 @@
 // information there at all* — if a crude fit finds the line, a careful one will.
 // If a crude fit does NOT, that is not yet a refutation, which is why the controls
 // below matter more than the numbers.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 // ── `WALL_SNAP`'s ARITHMETIC, INLINED — plan 24 `H1e` DELETED IT ────────────
 //

@@ -3,7 +3,8 @@
 // The design's control is unusually sharp: *"drive the crate past L; a rigid-rod
 // implementation pushes the anchor UP, which the sign test catches."* So the sign
 // is the subject here, not the distance.
-use moros_sim;
+use moros_sim::*;
+use hex_rig::*;
 
 const L = 3.0;
 const AX = 2.0;

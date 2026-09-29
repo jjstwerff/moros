@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A2.2` — putting a part back, and the translation that does it.
-use hex_part;
+use hex_part::*;
+use hex_voxel::*;
 
 // ── The inverse, checked against the thing it inverts ────────────────────────
 //

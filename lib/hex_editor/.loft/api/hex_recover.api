@@ -1,6 +1,6 @@
-# hex_recover 0.1.0 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_recover-0.1.0
-# use it with: use hex_recover;
+# hex_recover 0.1.3 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_recover-0.1.3
+# use it with: use hex_recover::*;
 
 ## src/formcensus.loft
 
@@ -11,15 +11,22 @@
 // reason a stencil rotates and reflects with no resampling and no drift.
 pub fn orient_k(k: integer, m: integer, o: integer) -> integer
 
+// The `m` of a step under orientation `o` — the companion of `orient_k`.  Walking both is
+// how a shape is compared against all 12 orientations without rebuilding it.
 pub fn orient_m(k: integer, m: integer, o: integer) -> integer
 
 // THE DIGEST: the lexicographically smallest of the 12 oriented, translated, sorted key vectors.
 // Two cell sets have the same digest **iff** one is an orientation-image of the other — which is
 // exactly "the same stencil", and makes law I visible from the census side.
+// Example: @HXV-001
 pub fn field_digest(cells: HexSet) -> vector<integer>
 
+// Are two digests the same?  Compares the shape rather than its spelling, which is what
+// makes a digest usable as an identity.
 pub fn digest_eq(a: vector<integer>, b: vector<integer>) -> boolean
 
+// A digest as text, for a key, a log line or a diff.  The rendering is stable, so two runs
+// that found the same shape write the same string.
 pub fn digest_text(d: vector<integer>) -> text
 
 // ── the form's own identity, and the DEGRADED key the control needs ────────
@@ -29,11 +36,13 @@ pub fn digest_text(d: vector<integer>) -> text
 // `DESIGN.md` §9 names — a key that cannot see corners makes distinct shapes look like one form.
 pub fn form_key(f: Form) -> text
 
+// Example: @HXV-002
 pub fn form_key_noturn(f: Form) -> text
 
 // The DEGRADED digest for the second control: cell COUNT alone. A census keyed on a summary
 // instead of the shape collides immediately — both level-1 triangle classes have 3 cells — which
 // is what proves the real digest is carrying the weight.
+// Example: @HXV-002
 pub fn count_digest(cells: HexSet) -> integer
 
 // Are two turn sequences the SAME CLOSED CYCLE, written from a different corner?
@@ -43,6 +52,7 @@ pub fn count_digest(cells: HexSet) -> integer
 // (h0, turns) — so the census MUST, or it reports a stencil as several and its collisions as law F
 // failures.  This is the census discovering a requirement on the canonical text (S6): fixing the
 // winding (C3) is not enough, the starting CORNER has to be fixed too.
+// Example: @HXV-006
 pub fn turns_cyclic_eq(a: vector<integer>, b: vector<integer>) -> boolean
 
 // ── THE FAITHFUL DIGEST — a different question, and it must be a different function ─
@@ -59,8 +69,11 @@ pub fn turns_cyclic_eq(a: vector<integer>, b: vector<integer>) -> boolean
 // translation quotient (every entry is drawn at the same anchor, so position is part of the
 // answer). Using the census digest here reported 17 false law F failures on a 10-entry corpus
 // before the distinction was drawn.
+// Example: @HXV-001
 pub fn field_exact(cells: HexSet) -> vector<integer>
 
+// The cell set's EXACT digest as text: this shape at this position and orientation.
+// Use it when position matters — two placements of one shape differ here.
 pub fn field_exact_text(cells: HexSet) -> text
 
 // The TRANSLATION-normalised, orientation-SENSITIVE digest — orientation 0 only.
@@ -72,8 +85,11 @@ pub fn field_exact_text(cells: HexSet) -> text
 // field_digest   quotient orientation + translation   "how many SHAPES?"        (census, law I)
 // field_exact    quotient nothing                     "is draw INJECTIVE?"      (corpus, law F)
 // field_norm     quotient translation only            "which STENCIL is this?"  (rebuild, R1)
+// Example: @HXV-001
 pub fn field_norm(cells: HexSet) -> vector<integer>
 
+// The cell set's NORMALISED digest as text: the same shape wherever it sits and however it
+// is turned.  Use it to recognise a shape you have seen before.
 pub fn field_norm_text(cells: HexSet) -> text
 
 // ── THE LEVEL LADDER — the enumeration, parameterised ──────────────────────
@@ -89,9 +105,11 @@ pub fn field_norm_text(cells: HexSet) -> text
 pub fn form_maxlen(f: Form) -> integer
 
 // Every admitted 3-sided form with all side lengths in 1..maxlen, canonicalised and deduplicated.
+// Example: @HXV-009
 pub fn forms_upto(maxlen: integer) -> vector<Form>
 
 // Only the forms NEW at this level — longest side exactly `n`.
+// Example: @HXV-009
 pub fn forms_at_level(n: integer) -> vector<Form>
 
 // Is `b` a cyclic shift of `a` REVERSED — the signature of a MIRROR pair?
@@ -101,8 +119,11 @@ pub fn forms_at_level(n: integer) -> vector<Form>
 // sides, so it is achiral and its mirror is just a rotation.  Unequal sides make a form and its
 // mirror genuinely different texts — `turn 3,5,4` against `turn 3,4,5` — that draw mirror-image
 // fields and therefore share a SHAPE digest.  That is law **I**, not a law F failure.
+// Example: @HXV-007
 pub fn turns_reverse_eq(a: vector<integer>, b: vector<integer>) -> boolean
 
+// Every form with this many sides up to this side length — the candidate set a recovery
+// searches.  Generated rather than stored, so a bigger search is a bigger argument.
 pub fn forms_sides(sides: integer, maxlen: integer) -> vector<Form>
 
 // The A3 set: side counts 4..6 at unit length — the rung's own axis, held at `len 1` so it stays
@@ -110,6 +131,9 @@ pub fn forms_sides(sides: integer, maxlen: integer) -> vector<Form>
 pub fn forms_a3() -> vector<Form>
 
 ## src/formfit.loft
+
+// Example: @HXV-003
+pub fn fit_chunk(f: Form) -> HexSet
 
 pub const REGIME_R1 = 1
 
@@ -130,6 +154,7 @@ pub const LEVEL = 2
 // ENUMERATING THIS IS THE EXPENSIVE PART, so callers that recover many fields must build it ONCE
 // and pass it to `rebuild_with`. `rebuild` re-enumerates on every call, which is fine for a single
 // lookup and quadratic waste over a corpus.
+// Example: @HXV-004
 pub fn candidate_forms() -> vector<Form>
 
 // Retained for the A1 gates: the level-1 enumeration on its own.
@@ -137,6 +162,7 @@ pub fn level1_forms() -> vector<Form>
 
 // THE ROUTINE. Match the field against every admitted form, translation-normalised — WHERE it was
 // drawn is placement's business (the `place` element), not the stencil's.
+// Example: @HXV-005
 pub fn rebuild(cells: HexSet) -> Rebuilt
 
 // The core, with the candidate set supplied — build it once per gate run, not once per lookup.
@@ -146,6 +172,8 @@ pub fn rebuild_with(cand: vector<Form>, cells: HexSet) -> Rebuilt
 // so a caller cannot accidentally spell an R2 guess as if it were an authored stencil.
 pub fn rebuild_text_with(cand: vector<Form>, cells: HexSet, name: text) -> text
 
+// Recover a form from cells and write it as canonical text, or "" when the cells are not a
+// single clean form.  The empty answer is the refusal — check it before using the text.
 pub fn rebuild_text(cells: HexSet, name: text) -> text
 
 // ── INDEXED RECOVERY — draw the candidates ONCE, then look up ──────────────
@@ -172,6 +200,7 @@ pub struct IdxEntry
 
 pub struct RecoveryIndex
 
+// Example: @HXV-002
 pub fn index_build(cand: vector<Form>) -> RecoveryIndex
 
 // THE FAST PATH: one probe. A hit is an exact R1 answer — the digest IS the field, compared in
@@ -180,8 +209,11 @@ pub fn index_build(cand: vector<Form>) -> RecoveryIndex
 // A MISS falls back to the scan, and only then, purely to compute the R2 residual. R2 is the
 // exceptional path (content no grammar form draws), so paying O(N) there costs nothing in
 // practice and keeps `rho > 0` a real measurement rather than a placeholder.
+// Example: @HXV-008
 pub fn rebuild_indexed(idx: RecoveryIndex, cand: vector<Form>, cells: HexSet) -> Rebuilt
 
+// The same, searching a prepared index and candidate set instead of enumerating: the shape
+// to use when many cells sets are recovered against one library.
 pub fn rebuild_indexed_text(idx: RecoveryIndex, cand: vector<Form>,
 
 // The convex hull of the filled cells, CCW, corners only — monotone chain in exact integers.
@@ -194,9 +226,31 @@ pub fn hull_keys(cells: HexSet) -> vector<integer>
 // Returns the heading, or -1 when the vector is not a whole number of steps in any heading.
 pub fn side_heading(dk: integer, dm: integer) -> integer
 
+// How many steps of heading `h` the offset (dk, dm) covers.  The measurement a rebuild
+// makes at every corner to turn geometry back into a side length.
 pub fn side_len(dk: integer, dm: integer, h: integer) -> integer
 
 // THE ROUTINE: recover the form from the field, then verify by re-drawing it.
+// Example: @HXV-003
+// Example: @HXV-004
 pub fn rebuild_construct(cells: HexSet) -> Rebuilt
 
+// Recover by CONSTRUCTION rather than by search, as text.  Answers "" on refusal like its
+// siblings, so all three recovery routes are read the same way.
 pub fn rebuild_construct_text(cells: HexSet, name: text) -> text
+
+## src/hex_recover.loft
+
+// Copyright (c) 2026 Jurjen Stellingwerff
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// hex_recover — rebuild a model from the field — exactly, or with a reported residual.
+// 
+// The `rebuild` map. Constructive recovery reads the form off the field, enumerating nothing:
+// every admitted form is convex, so the convex hull of the filled cells IS the turtle polygon.
+// The census that decided injectivity is here too, with the three digests that answer three
+// different questions and must never be confused.
+// 
+// Entry point: re-exports `formfit`, `formcensus`.
+pub use formfit::*
+
+pub use formcensus::*

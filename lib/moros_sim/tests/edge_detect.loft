@@ -1,6 +1,6 @@
 // Step 12 — edge-detection helpers.  Exercise every branch of
 // `keys_pressed_since` and the packaged `input_from_snapshot`.
-use moros_sim;
+use moros_sim::*;
 
 // ── keys_pressed_since ──────────────────────────────────────────
 

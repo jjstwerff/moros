@@ -3,9 +3,9 @@
 // This is an unusually clean verification: `glb::save_glb` produces the file, so
 // a round trip needs no fixture to trust and no external tool in the loop. Write
 // a known mesh, read it back, compare.
-use glb_read;
-use glb;
-use mesh3d;
+use glb_read::*;
+use glb::*;
+use mesh3d::*;
 
 fn a_cube() -> Mesh {
   m = mesh("cube");

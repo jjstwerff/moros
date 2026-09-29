@@ -13,11 +13,11 @@
 // ⚠ **A SUBSTITUTION IS ONLY SAFE IF THE SETS ARE THE SAME**, so this diffs them edge for edge
 // before anything is rewritten — on the shapes this editor actually builds, not on a fixture
 // invented for the comparison.
-use hex_editor;
-use hex_voxel;
-use hex_field;
-use hex_draw;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_field::*;
+use hex_draw::*;
+use hex_grid::*;
 
 const Q0 = 0 - 18;
 const R0 = 0 - 18;

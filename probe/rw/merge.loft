@@ -10,8 +10,8 @@
 // the corpus has to vary the thing the walk actually decides: which cells are the
 // run. Shape and seed, not just length — a straight road, an L, a spur, and a road
 // with a hole in it, each asked from several seeds.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

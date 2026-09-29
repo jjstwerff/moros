@@ -15,8 +15,8 @@
 // in one pass at any length, because the fix propagates the way the walk does. The
 // first fixture measured that case and reported `worst step 1` at 40 cells — a
 // green answer to a question never asked.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

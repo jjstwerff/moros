@@ -33,7 +33,7 @@
 // the whole graph including the loops the tree cannot see. **If the two disagree,
 // the ledger is blind to loops and `A-DOF` alone cannot answer this question.**
 // That is the real test, and it is why the probe computes both.
-use moros_render;
+use moros_render::*;
 use moros_sim as ms;
 use moros_sim::SupportKind;
 

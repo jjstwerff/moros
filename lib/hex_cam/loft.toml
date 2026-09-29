@@ -1,7 +1,7 @@
 [package]
 name    = "hex_cam"
 version = "0.1.0"
-loft    = ">=0.8"
+loft    = ">=2026.10.0"
 description = "A third-person camera's geometry — clearance, boom and pivot — over a surface it is handed"
 
 # ⚠ **ZERO DEPENDENCIES, AND THAT IS THE WHOLE POINT — plan 22 `C2a`.** This package

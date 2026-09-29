@@ -16,8 +16,9 @@
 // cwd-relative. A committed fixture would have been invisible to `git status`,
 // passed here, and been missing on every other clone. ⚠ That is worth knowing
 // before adding any binary fixture to this repo.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
+use mesh3d::*;
 
 fn no_palette() -> vector<integer> { [] }
 

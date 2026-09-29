@@ -26,9 +26,9 @@
 // have been a tautology and the move would have been unverifiable. The two tables
 // were independent for exactly the length of `V2`, which is what a transitional
 // instrument is: built to be deleted, and worthless if it is built to survive.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn ground(gw: VoxelWorld, half: integer) {
   for gq in 0 - half..half + 1 {

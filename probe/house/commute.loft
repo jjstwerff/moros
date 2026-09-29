@@ -8,8 +8,8 @@
 // Two worlds per scenario, identical inputs, opposite order. Compared cell by cell
 // over the whole affected area: heights AND materials, because a divergence that
 // only moves a material is still a different map.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 
 const U = 0.25;
 const G = 40;

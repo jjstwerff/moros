@@ -1,6 +1,6 @@
 // What unit is each part world ACTUALLY authored at? The tree says `door/slat` is
 // 0.125 in a comment; this reads the files.
-use hex_voxel;
+use hex_voxel::*;
 fn main() {
   names: vector<text> = ["door/slat", "door/leaf", "door/frame", "door/oak",
                          "door/doorway", "door/plank", "prop/statue", "prop/shrine",

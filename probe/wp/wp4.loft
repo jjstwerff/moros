@@ -1,7 +1,7 @@
 // PROBE 4 — the hex-set model: a wall is where inside meets outside.
-use hex_field;
-use hex_grid;
-use hex_shape;
+use hex_field::*;
+use hex_grid::*;
+use hex_shape::*;
 
 const Q0 = 0 - 20;
 const W = 41;

@@ -11,8 +11,8 @@
 // longer than `SLOPE_PASSES` cells cannot converge in `SLOPE_PASSES` passes. If
 // that is right, a long enough road comes back still breaking its own limit, and
 // nothing anywhere says so.
-use hex_editor;
-use hex_voxel;
+use hex_editor::*;
+use hex_voxel::*;
 const U = 0.25;
 const G = 40;
 

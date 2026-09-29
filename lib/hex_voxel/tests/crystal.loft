@@ -15,7 +15,7 @@
 // agent in it, and replacing a shipped library's model there is a change to
 // announce rather than land from here. This proves the model CAN carry the
 // consumer; migrating the consumer is that tree's move to make.
-use hex_voxel;
+use hex_voxel::*;
 
 // The side table `L14` calls for: area- and time-limited state, keyed by cell,
 // living beside the world rather than inside it.

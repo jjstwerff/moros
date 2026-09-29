@@ -10,10 +10,10 @@
 // call works BEFORE reaching for the visible fix. It is also the cheapest possible
 // check that the dependency resolves at all — a registry dep that silently pulls
 // the wrong version fails here, not three steps later in a picture.
-use hex_editor;
-use hex_draw;
-use hex_form;
-use hex_field;
+use hex_editor::*;
+use hex_draw::*;
+use hex_form::*;
+use hex_field::*;
 
 // The same 5x4 plan `hex_draw`'s own tests use, so a failure here is about THIS
 // tree's wiring and not about a fixture nobody else has run.

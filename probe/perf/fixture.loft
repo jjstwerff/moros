@@ -24,9 +24,9 @@
 // `LOFT_NO_NATIVE_LIBS=1` was set. **The first profile was not wrong, it was blind.**
 //
 //   LOFT_NO_NATIVE_LIBS=1 LOFT_PROFILE=1 loft --interpret --lib lib/ probe/perf/fixture.loft
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 // The fixture the tests build, at the size they build it. `press.loft` grounds 41x41
 // (`half` 20), `opening.loft` 25x25, `fence.loft` 29x29 — this takes the middle one

@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Plan 17 `A3.1` — `INST`, and §P8's promise that nesting terminates.
-use hex_part;
-use hex_voxel;
+use hex_part::*;
+use hex_voxel::*;
 
 // ⚠ NAMED AND TYPED, not an inline `[]`. `world_save(w, path, [])` compiles on
 // the interpreter and fails `--native`; `roundtrip.loft` carries the same note.

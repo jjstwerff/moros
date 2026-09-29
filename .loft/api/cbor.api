@@ -1,6 +1,6 @@
-# cbor 0.1.2 — public API surface
-# generated from /home/jurjens/.loft/registry/cbor-0.1.2
-# use it with: use cbor;
+# cbor 0.1.8 — public API surface
+# generated from /home/jurjens/.loft/registry/cbor-0.1.8
+# use it with: use cbor::*;
 
 ## src/cbor.loft
 
@@ -9,12 +9,22 @@
 // A dynamic CBOR value.  Mirrors the stdlib `JsonValue`, with CBOR's extra
 // `CBytes` (native byte string) and the integer split that CBOR makes at the
 // wire level folded into one signed `CInt`.
+// Example: @CBR-002 — which variant you pick is part of the wire form: the same
+// two payload bytes are a different record as `CBytes` than as `CText`.
 pub enum CborValue
 
 // One key/value pair of a `CMap`.
 pub struct CborEntry
 
 // Encode a `CborValue` to canonical CBOR bytes.
+// A map's entries are SORTED here by their encoded key bytes, so the order you
+// built the map in never reaches the wire.
+// Example: @CBR-001 — two maps built in opposite orders encode identically, which
+// is what keeps a signature over the bytes valid.
+// Example: @CBR-002 — `CBytes` and `CText` are different wire types, so the
+// loft-side choice is part of what gets signed.
+// Example: @CBR-004 — canonical is about ORDER, not uniqueness: duplicate keys
+// encode without complaint.
 pub fn encode(v: CborValue) -> vector<u8>
 
 // --- decode (A3) ---
@@ -30,4 +40,7 @@ pub struct Decoded
 // Decode canonical CBOR bytes into a `CborValue`.  Returns `ok=false` on any
 // malformed, non-canonical, or truncated input — and rejects trailing bytes
 // after the top-level value.  Never crashes.
+// Example: @CBR-003 — `ok=false` is one answer for four different problems, and
+// the surprising one is that well-formed but NON-canonical CBOR is refused.
+// Example: @CBR-004 — a map carrying two entries under one key decodes ok=true.
 pub fn decode(bytes: vector<u8>) -> Decoded

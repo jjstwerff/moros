@@ -3,7 +3,9 @@
 // moros_editor — edit operations on top of moros_map.
 // Phase 4 per ../moros/doc/claude/SCENE_EDITOR_PLAN.md.
 
-use moros_map;
+use moros_map::*;
+use hex_field::*;
+use hex_grid::*;
 
 // ── Undo stack ─────────────────────────────────────────────────────
 

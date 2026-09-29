@@ -9,12 +9,12 @@
 // unique deduction of the octagon shape" — FORMAL_CORE §6's R1/R2 boundary, and a
 // threshold, so it can be measured. Predictions are in `PREDICTION.md`, written
 // first.
-use hex_field;
-use hex_grid;
-use hex_edge;
-use hex_shape;
-use hex_form;
-use hex_recover;
+use hex_field::*;
+use hex_grid::*;
+use hex_edge::*;
+use hex_shape::*;
+use hex_form::*;
+use hex_recover::*;
 
 const Q0 = 0 - 26;
 const N = 53;

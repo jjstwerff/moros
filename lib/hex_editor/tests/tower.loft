@@ -11,11 +11,11 @@
 // `12R²`. So *is it round* cannot be asked at a shell chosen for convenience: at 12,
 // 48, 108, 192 and 300 a gesture that never called `arc_fill` would pass every row.
 // Every fixture below therefore states which shell it uses and why.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_field;
-use hex_shape;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_field::*;
+use hex_shape::*;
 
 const U = 0.25;
 // The smallest disk that is NOT any hexagon — 13 cells. Measured over every shell to

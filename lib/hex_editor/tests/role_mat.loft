@@ -17,11 +17,11 @@
 // ⚠ **BYTE 20 IS UNUSED BY THE BUILT-IN TABLE ON PURPOSE.** An unnamed byte falls
 // back to `grass` (`ground_kind_default`), so the control is sharp: without the
 // palette the house's floor reads as ordinary ground and no rectangle is found.
-use hex_editor;
-use hex_voxel;
-use hex_shape;
-use hex_edge;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_shape::*;
+use hex_edge::*;
+use hex_grid::*;
 
 const YAW = 1.5707963267948966;
 const U = 0.25;

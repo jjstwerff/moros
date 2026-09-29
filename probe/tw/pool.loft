@@ -27,12 +27,12 @@
 // ⚠ **ONE PHASE PER PROCESS AND ONE PROCESS AT A TIME**: the phases below are separate
 // so the shell's clock attributes cost to one reader, and five of these in parallel
 // report 109 s for a 3.2-second row.
-use hex_mesh;
-use hex_voxel;
-use hex_editor;
-use hex_shape;
-use hex_field;
-use hex_grid;
+use hex_mesh::*;
+use hex_voxel::*;
+use hex_editor::*;
+use hex_shape::*;
+use hex_field::*;
+use hex_grid::*;
 
 const U = 0.25;
 

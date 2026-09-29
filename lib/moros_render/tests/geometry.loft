@@ -1,5 +1,10 @@
 // Tests for moros_render hex geometry generation.
-use moros_render;
+use moros_render::*;
+use moros_map::*;
+use mesh3d::*;
+use graphics::*;
+use hex_grid::*;
+use hex_proj::*;
 
 fn test_hex_to_world_origin() {
   w = hex_to_world(0, 0, 0);

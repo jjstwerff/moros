@@ -26,12 +26,12 @@
 // at any of 24, and `surface_heading` only recognises a direction that is an exact
 // multiple of one of 12. So *"is it exact"* and *"is it one of the 24"* are two
 // different questions and this asks both.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
-use hex_field;
-use hex_form;
-use hex_draw;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
+use hex_field::*;
+use hex_form::*;
+use hex_draw::*;
 
 // ── `WALL_SNAP`'s ARITHMETIC, INLINED — plan 24 `H1e` DELETED IT ────────────
 //

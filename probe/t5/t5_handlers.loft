@@ -13,8 +13,8 @@
 // a `Client` — a struct with ~90 fields — and these take a small `Store`. If this page
 // is GREEN the difference is exactly that context, which is a finding of its own: the
 // handlers are innocent and the trap is about the shape they sit in.
-use hex_mesh;
-use graphics;
+use hex_mesh::*;
+use graphics::*;
 
 struct ThumbMesh {
   tb_row: integer, tb_vao: integer, tb_n: integer,

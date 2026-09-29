@@ -9,13 +9,14 @@
 // last is the lattice's own 6-fold symmetry (`@HB-X24`) surfacing in the editor's user
 // interface — an author has to be facing the right way to place a house — so it is
 // measured here rather than discovered in a picture.
-use hex_editor;
-use hex_draw;
-use hex_form;
-use hex_shape;
-use hex_field;
-use hex_grid;
-use hex_place;
+use hex_editor::*;
+use hex_draw::*;
+use hex_form::*;
+use hex_shape::*;
+use hex_field::*;
+use hex_grid::*;
+use hex_place::*;
+use hex_voxel::*;
 
 // ⚠ THIS WAS A THIRD COPY OF 5×4 AND IS NOW THE LIBRARY'S — plan 22 `W4`.
 // `src/editor_run.loft`, `src/editor_server.loft` and this file each carried one;

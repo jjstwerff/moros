@@ -8,7 +8,7 @@
 // thing in this file that cannot be regenerated into agreement with the code. A
 // format change that reads the trailing block as mandatory breaks it, and that is
 // exactly the failure `A1.3` is risky for.
-use hex_voxel;
+use hex_voxel::*;
 
 fn built() -> VoxelWorld {
   n = world_new(0.25, 100, 8, 3);

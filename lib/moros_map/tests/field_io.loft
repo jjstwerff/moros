@@ -1,7 +1,7 @@
 // Moros's side of the shared document format (moros#4).  The format itself is
 // gated in hex_field; this gates OUR conversion into and out of it.
-use moros_map;
-use hex_field;
+use moros_map::*;
+use hex_field::*;
 
 fn authored() -> Map {
   m = map_empty();

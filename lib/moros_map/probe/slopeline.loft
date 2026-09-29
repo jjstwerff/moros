@@ -12,8 +12,8 @@
 //
 // The old shape is kept here as the CONTROL and printed beside the new one, so the
 // fix is a measurement rather than a claim. Both parities, both signs.
-use moros_map;
-use hex_grid;
+use moros_map::*;
+use hex_grid::*;
 
 // How many consecutive cells are NOT neighbours — the number that says whether a
 // path is a line at all.

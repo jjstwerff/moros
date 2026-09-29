@@ -490,7 +490,7 @@ pub fn world_fresh_label(w: VoxelWorld) -> integer { fresh_label(w) }
 // degrades to a fresh label instead of corrupting the chunk.
 fn named_label(w: VoxelWorld, ci: integer, new_id: integer) -> integer {
   if new_id == 0 { return fresh_label(w); }
-  for ly in w.w_chunks[ci].ck_layers {
+  for ly in w.w_chunks[ci].ck_layers? {
     if ly.ly_id == new_id { return fresh_label(w); }
   }
   new_id
@@ -526,7 +526,7 @@ pub fn world_ground_layer(w: VoxelWorld, q: integer, r: integer) -> integer {
   // rebase mutates through exactly this form and the change sticks — so a layer's
   // 1024 cells are not touched by taking it.
   gli = 0;
-  for gly in w.w_chunks[ci].ck_layers {
+  for gly in w.w_chunks[ci].ck_layers? {
     if gly.ly_id == LABEL_GROUND && gly.ly_kind == KIND_TERRAIN { return gli; }
     gli = gli + 1;
   }
@@ -553,7 +553,7 @@ pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
   // the top of the profile at 8.4 %, most of it these two lines.
   gl = 0 - 1;
   gn = 0;
-  for gcl in w.w_chunks[ci].ck_layers {
+  for gcl in w.w_chunks[ci].ck_layers? {
     if gcl.ly_id == LABEL_GROUND && gcl.ly_kind == KIND_TERRAIN { gl = gn; break; }
     gn = gn + 1;
   }
@@ -637,7 +637,7 @@ pub fn world_surface(w: VoxelWorld, q: integer, r: integer, feet: float) -> Surf
   tol = w.w_theta as float;
   best = 0; found = false; low = 0; havelow = false; occ = 0;
   bestl = 0 - 1; lowl = 0 - 1; li = 0 - 1;
-  for ly in w.w_chunks[ci].ck_layers {
+  for ly in w.w_chunks[ci].ck_layers? {
     li = li + 1;
     // `G5a.1` — the EFFECTIVE cell, so an unwritten ground cell of an existing
     // chunk is the surface it is everywhere else. `hex_occupied` on it is the same
@@ -680,7 +680,7 @@ pub fn world_column(w: VoxelWorld, q: integer, r: integer) -> Column {
   ix = cell_index(q, r);
   out: vector<Hex> = [];
   ids: vector<integer> = [];
-  for ly in ch.ck_layers {
+  for ly in ch.ck_layers? {
     ids += [ly.ly_id];
     if ly.ly_kind == KIND_TERRAIN {
       c = ly.ly_cells[ix];
@@ -991,7 +991,7 @@ pub fn world_dressing(w: VoxelWorld, q: integer, r: integer) -> Column {
   ch = w.w_chunks[ci];
   ix = cell_index(q, r);
   out: vector<Hex> = [];
-  for ly in ch.ck_layers {
+  for ly in ch.ck_layers? {
     if ly.ly_kind == KIND_DRESSING {
       c = ly.ly_cells[ix];
       out += [hex_of(ch.ck_base, c)];
@@ -1223,7 +1223,7 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
   // repair itself. See `WORLD_MODEL.md` § "Where it is assigned".
   while len(w.w_chunks[ci].ck_layers) < n {
     lbl = LABEL_GROUND;
-    for gl in w.w_chunks[ci].ck_layers {
+    for gl in w.w_chunks[ci].ck_layers? {
       if gl.ly_id == LABEL_GROUND && gl.ly_kind == KIND_TERRAIN { lbl = 0; }
     }
     // ⚠ THE CALLER'S NAME REACHES THIS PATH TOO, not only the insert. A storey ABOVE
@@ -1265,7 +1265,7 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
   // REFUSED, not rebased, and only the true minimum over the tile can tell those
   // apart. The guard asks about the column; the sweep answers about the tile.
   if seen && (lo < w.w_chunks[ci].ck_base || hi >= w.w_chunks[ci].ck_base + WINDOW) {
-    for ly in w.w_chunks[ci].ck_layers {
+    for ly in w.w_chunks[ci].ck_layers? {
       if ly.ly_kind == KIND_TERRAIN {
         for j in 0..CHUNK_CELLS {
           // ⚠ NO `if !seen` SEEDING ANY MORE — the guard admits only `seen`, so
@@ -1294,7 +1294,7 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
     // any base would, because `lo` is by construction the lowest height present.
     rebased = true;
     old = w.w_chunks[ci].ck_base;
-    for ly in w.w_chunks[ci].ck_layers {
+    for ly in w.w_chunks[ci].ck_layers? {
       if ly.ly_kind == KIND_TERRAIN {
         for j in 0..CHUNK_CELLS {
           if stored_present(ly.ly_cells[j]) {
@@ -1347,13 +1347,13 @@ pub fn world_set_column_as(w: VoxelWorld, col: Column, new_id: integer) -> Colum
   // truth that the bytes moved.
   if rebased {
     if !changed { w.w_tau = w.w_tau + 1; changed = true; }
-    for ly in w.w_chunks[ci].ck_layers { ly.ly_ver = w.w_tau; }
+    for ly in w.w_chunks[ci].ck_layers? { ly.ly_ver = w.w_tau; }
   }
 
   // 6 — drop what emptied, so elision is an invariant maintained on write rather
   // than a compaction pass that does not exist (`E1`).
   live: vector<Layer> = [];
-  for ly in w.w_chunks[ci].ck_layers {
+  for ly in w.w_chunks[ci].ck_layers? {
     // ⚠ THE CELL THIS WRITE TOUCHED IS ASKED FIRST, AND IT DECIDES THE COMMON
     // CASE IN O(1). A column write changes exactly one index — `ix` — so a layer
     // holding content THERE is live and there is nothing to scan. Only proving
@@ -1521,7 +1521,7 @@ fn fill_chunk(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: integer,
     // here to fold against; where there is, every cell is handed to
     // `world_set_cell`, so `F1` keeps exactly one home and no fill can outrun it.
     ffl = 0;
-    for fly in w.w_chunks[ci].ck_layers {
+    for fly in w.w_chunks[ci].ck_layers? {
       if ffl != fli && fly.ly_kind == KIND_TERRAIN { fast = false; break; }
       ffl = ffl + 1;
     }
@@ -1619,7 +1619,7 @@ pub fn world_chunk_version(w: VoxelWorld, q: integer, r: integer) -> integer {
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return 0; }
   hi = 0;
-  for ly in w.w_chunks[ci].ck_layers { if ly.ly_ver > hi { hi = ly.ly_ver; } }
+  for ly in w.w_chunks[ci].ck_layers? { if ly.ly_ver > hi { hi = ly.ly_ver; } }
   hi
 }
 
@@ -1703,7 +1703,7 @@ pub fn world_layer_bytes(w: VoxelWorld, q: integer, r: integer, l: integer) -> v
   ci = find_chunk(w, world_chunk_of(q), world_chunk_of(r));
   if ci < 0 { return out; }
   if l < 0 || l >= len(w.w_chunks[ci].ck_layers) { return out; }
-  for c in w.w_chunks[ci].ck_layers[l].ly_cells {
+  for c in w.w_chunks[ci].ck_layers[l].ly_cells? {
     out += [c.sv_height as integer ?? 0, c.sv_material as integer ?? 0,
             c.sv_item as integer ?? 0, c.sv_item_rotation as integer ?? 0,
             c.sv_wall_nw as integer ?? 0, c.sv_wall_ne as integer ?? 0,
@@ -1765,7 +1765,7 @@ pub fn world_put_layer(w: VoxelWorld, cx: integer, cz: integer, base: integer,
   li = 0 - 1;
   // Same shape as the two ground scans, iterated for the same measured reason.
   pli = 0;
-  for ply in w.w_chunks[ci].ck_layers {
+  for ply in w.w_chunks[ci].ck_layers? {
     if ply.ly_id == id { li = pli; }
     pli = pli + 1;
   }

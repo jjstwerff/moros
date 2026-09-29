@@ -3,9 +3,9 @@
 //
 // Cliffs, tested where they live: no world, no socket, no clock — just a height
 // function and the edges it produces.
-use hex_editor;
-use hex_field;
-use hex_edge;
+use hex_editor::*;
+use hex_field::*;
+use hex_edge::*;
 
 // A step of `n` height units at q = 0: everything east of it is high.
 fn ledge(n: integer) -> fn(integer, integer) -> integer {

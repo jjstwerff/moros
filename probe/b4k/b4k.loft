@@ -6,8 +6,8 @@
 // PROPOSED, NOT SETTLED. This asks whether the mechanism it names can carry it.
 //
 // Predictions are in PREDICTION.md and were written before this ran.
-use hex_edge;
-use hex_field;
+use hex_edge::*;
+use hex_field::*;
 
 const Q0 = 0 - 12;
 const W = 25;

@@ -35,9 +35,9 @@
 // ⚠ THREE PACKAGES AND NO MORE — `probe/d2/door.loft`'s note: a program under
 // `probe/` is not inside a package, so a fourth `use` sends the resolver to the
 // registry and it drowns in HTTP 429s auto-installing module basenames.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 const U     = 0.25;
 const FLOOR = 40;

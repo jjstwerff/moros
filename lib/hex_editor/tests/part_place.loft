@@ -12,9 +12,9 @@
 // would test `part_stamp` and say nothing about the FORMAT — and the format is
 // what `A2` is about. So the part goes to disk and comes back before it is
 // stamped, every time.
-use hex_editor;
-use hex_voxel;
-use hex_part;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_part::*;
 
 const EPS   = 8;
 const THETA = 3;

@@ -14,8 +14,8 @@
 // `hex_editor`, so the drawn list may point at the material axis and never the
 // reverse. That is also why the slope limit lives on the TERRAIN and not on the
 // surface — `hex_editor`'s gestures cannot see a colour.
-use hex_mesh;
-use hex_editor;
+use hex_mesh::*;
+use hex_editor::*;
 
 // ⚠ THE JOIN IS MANY-TO-ONE NOW, AND IT IS STATED RATHER THAN LOOSENED — plan 20
 // `A10`. Water carries its flow DIRECTION as its material, which is seven terrains and

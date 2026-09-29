@@ -12,10 +12,10 @@
 // inside the arm it landed on. The A/B here is across two BUILDS of the library, so
 // this program is run twice by `run.sh` — once with the walk wired and once with the
 // byte pair restored — and each run is internally A-B-B-A over the same call.
-use hex_editor;
-use hex_voxel;
-use hex_edge;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_edge::*;
+use hex_grid::*;
 
 const U = 0.25;
 const REACH = 8;

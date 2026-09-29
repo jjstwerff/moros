@@ -8,9 +8,9 @@
 // inside it; `stencil.mjs` places a structure on ground someone walked to;
 // `vegetation.mjs` counts trees over a socket. All three claims are properties of
 // the store, and this is them.
-use hex_editor;
-use hex_voxel;
-use hex_grid;
+use hex_editor::*;
+use hex_voxel::*;
+use hex_grid::*;
 
 fn world() -> VoxelWorld {
   w = world_new(0.25, 0, 8, 3).wn_world;

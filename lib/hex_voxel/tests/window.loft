@@ -21,7 +21,7 @@
 // 65536. `test_the_widest_tile_the_types_allow_is_still_accepted` pins that as a
 // FACT rather than leaving `CW_WINDOW` as an untested branch nobody can explain —
 // it is a guard against a future wider height field, and it says so.
-use hex_voxel;
+use hex_voxel::*;
 
 const RESERVE = 100;
 
