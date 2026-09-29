@@ -12,12 +12,12 @@
 // (ground pick) is a later step — it needs camera state, which
 // the UI layer does not own.
 
-use moros_sim;
-use moros_editor;
-use moros_map;
-use moros_render;
-use graphics;
-use panel;
+use moros_sim::*;
+use moros_editor::*;
+use moros_map::*;
+use moros_render::*;
+use graphics::*;
+use panel::*;
 
 pub fn editor_click(st: EditorState, p: Panel, mx: integer, my: integer) -> UiHit {
   ec_hit = route_click(p, st.es_tools, mx, my);

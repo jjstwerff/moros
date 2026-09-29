@@ -1,8 +1,8 @@
 // Moros stencils, on the library mechanism (moros#5).  Rotation, orientation and
 // stamping belong to hex_field; this gates the translation between our packed
 // cell and its layers.
-use moros_map;
-use hex_field;
+use moros_map::*;
+use hex_field::*;
 
 // A small room: floor, a raised step, an item, and a wall on each of the three
 // edges our cell actually stores.

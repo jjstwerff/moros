@@ -1,10 +1,10 @@
 // Step 15 — save / load tests.  Round-trip a Map via a temp file
 // and confirm post-load state is equivalent to pre-save.
-use moros_sim;
-use moros_editor;
-use moros_render;
-use moros_map;
-use graphics;
+use moros_sim::*;
+use moros_editor::*;
+use moros_render::*;
+use moros_map::*;
+use graphics::*;
 
 fn temp_path(name: text) -> text {
   // @P333: a cwd-relative name (not `/tmp/`) so the fixture runs on Windows

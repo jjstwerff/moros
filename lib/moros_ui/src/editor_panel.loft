@@ -8,10 +8,10 @@
 // tools, and the host-supplied `fps`.  Callers get a ready-to-render
 // `Panel` with a single function call.
 
-use moros_sim;
-use moros_render;
-use graphics;
-use panel;
+use moros_sim::*;
+use moros_render::*;
+use graphics::*;
+use panel::*;
 
 pub fn editor_panel(
   st: EditorState,

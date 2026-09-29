@@ -3,9 +3,11 @@
 // moros_render — 3D geometry generation from moros_map data.
 // Phase 6a per ../moros/doc/claude/SCENE_EDITOR_PLAN.md.
 
-use moros_map;
-use graphics;
-use hex_grid;
+use moros_map::*;
+use graphics::*;
+use hex_grid::*;
+use mesh3d::*;
+use glb::*;
 
 // ── Constants ─────────────────────────────────────────────────────
 

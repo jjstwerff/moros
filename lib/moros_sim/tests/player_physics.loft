@@ -1,7 +1,8 @@
 // Step 3 — player integrator tests.
-use moros_sim;
-use moros_map;
-use graphics;
+use moros_sim::*;
+use moros_map::*;
+use graphics::*;
+use mesh3d::*;
 
 fn make_flat_map() -> Map {
   fm = map_empty();

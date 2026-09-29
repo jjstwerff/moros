@@ -3,10 +3,10 @@
 // moros_map — shared data model for the Moros hex scene system.
 // Re-exports all types and public functions.
 
-use types;
-use palette;
-use spawn;
-use hex_field;
+pub use types::*;
+pub use palette::*;
+pub use spawn::*;
+use hex_field::*;
 
 // Top-level map container. Holds chunks and palette definitions.
 pub struct Map {

@@ -7,9 +7,10 @@
 // Player-layer wrapping lives in player.loft, which avoids an
 // intra-package import cycle.
 
-use graphics;
-use moros_map;
-use moros_render;
+use graphics::*;
+use moros_map::*;
+use moros_render::*;
+use mesh3d::*;
 
 pub STEP_UP_LIMIT = 0.5;   // auto-climb ceiling for walk moves
 

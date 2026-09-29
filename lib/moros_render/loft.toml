@@ -1,12 +1,14 @@
 [package]
 name    = "moros_render"
 version = "0.1.0"
-loft    = ">=0.8"
+loft    = ">=2026.10.0"
 
 [library]
 entry = "src/moros_render.loft"
 
 [dependencies]
 moros_map = { path = "../moros_map" }
-graphics  = ">=0.1"
-hex_grid  = ">=0.1"
+graphics  = ">=0.9.4"
+hex_grid  = ">=0.1.2"
+mesh3d    = ">=0.1.2"
+glb       = ">=0.1.3"

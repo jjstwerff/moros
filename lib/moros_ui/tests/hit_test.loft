@@ -1,7 +1,7 @@
 // Step 8 — hit-test + click routing tests.  Exercise every arm of
 // `panel_hit_test` and `route_click` without touching rendering.
-use moros_ui;
-use moros_sim;
+use moros_ui::*;
+use moros_sim::*;
 
 fn build_test_panel(tools: ToolState) -> Panel {
   panel_build(tools, 1280, 720, 0, 0, 0, 0.0, 60)

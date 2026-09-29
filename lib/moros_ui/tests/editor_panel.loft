@@ -1,11 +1,12 @@
 // Step 20 — editor_panel rebuild tests.  Assert the convenience
 // wrapper reads the right fields off EditorState and passes them
 // through to panel_build.
-use moros_ui;
-use moros_sim;
-use moros_render;
-use moros_map;
-use graphics;
+use moros_ui::*;
+use moros_sim::*;
+use moros_render::*;
+use moros_map::*;
+use graphics::*;
+use mesh3d::*;
 
 fn build() -> EditorState {
   e = editor_default();

@@ -9,10 +9,10 @@
 // hex coords + altitude + fps in `panel_build`), so moros_ui
 // doesn't drag a Player dependency through downstream packages.
 
-use moros_sim;
-use moros_editor;
-use widgets;
-use font;
+use moros_sim::*;
+use moros_editor::*;
+use widgets::*;
+use font::*;
 
 // ── Layout constants ─────────────────────────────────────────────
 pub PANEL_WIDTH        = 240;

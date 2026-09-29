@@ -3,7 +3,7 @@
 // moros_sim — player physics, world-direct collision, and tool dispatch
 // for the Moros walkable editor.  Re-exports submodule symbols.
 
-use tools;
-use player;
-use collide;
-use editor;
+pub use tools::*;
+pub use player::*;
+pub use collide::*;
+pub use editor::*;

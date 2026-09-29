@@ -1,5 +1,6 @@
 // Tests for stencil stamp operations and merge modes.
-use moros_editor;
+use moros_editor::*;
+use moros_map::*;
 
 // ── Basic stamp ──────────────────────────────────────────────────
 

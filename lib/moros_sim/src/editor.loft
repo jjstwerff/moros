@@ -11,12 +11,13 @@
 // toggles), and all currently-held keys for continuous fields
 // (WASD, Space).
 
-use moros_map;
-use moros_editor;
-use moros_render;
-use graphics;
-use player;
-use tools;
+use moros_map::*;
+use moros_editor::*;
+use moros_render::*;
+use graphics::*;
+use player::*;
+use tools::*;
+use mesh3d::*;
 
 // ── Camera control ────────────────────────────────────────────────
 // User's persistent orbit delta on top of the current camera mode's

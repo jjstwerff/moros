@@ -1,7 +1,7 @@
 // The built-in stencils, on the library mechanism (moros#5).
-use moros_map;
-use moros_editor;
-use hex_field;
+use moros_map::*;
+use moros_editor::*;
+use hex_field::*;
 
 fn test_flat_is_one_cell() {
   st = builtin_flat();

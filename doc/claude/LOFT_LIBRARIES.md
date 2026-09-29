@@ -59,9 +59,10 @@ glb: ; $(LOFT) --native lib/moros_render/examples/moros_glb.loft -o bin/moros_gl
 test: ; cd lib/moros_map && loft test    # and each sibling package
 ```
 
-`graphics` comes from the **registry** (`graphics = ">=0.1"` in the recovered
-`moros_render/loft.toml`), not by path from a loft checkout — it is a published package at
-0.5.0 with GL, PNG, fonts and audio. The GLB tool stays a native build because the browser
+`graphics` comes from the **registry** (`graphics = ">=0.9.4"` in
+`moros_render/loft.toml`), not by path from a loft checkout — it is a published package with
+GL, PNG, fonts and audio. It does not pass `mesh3d` or `glb` on, so a package that names
+`Vec3`, `Mesh` or `save_scene_glb` directly declares that library itself. The GLB tool stays a native build because the browser
 target has no filesystem.
 
 ---
@@ -70,7 +71,7 @@ target has no filesystem.
 
 ```
 moros_map  ←── moros_editor
-           ←── moros_render ←── graphics (registry, 0.5.0)
+           ←── moros_render ←── graphics, mesh3d, glb, hex_grid (registry)
            ←── moros_sim
                 moros_ui
 ```
@@ -463,21 +464,25 @@ own comments say "flat-top".
 [package]
 name    = "moros_render"
 version = "0.1.0"
-loft    = ">=0.8"
+loft    = ">=2026.10.0"   # `use X;` binds only the `X::` qualifier from here on (C98)
 
 [library]
 entry = "src/moros_render.loft"
 
 [dependencies]
 moros_map = { path = "../moros_map" }
-graphics  = ">=0.1"        # the registry package, now at 0.5.0 — not a path into a checkout
+graphics  = ">=0.9.4"      # the registry package — not a path into a checkout
+hex_grid  = ">=0.1.2"
+mesh3d    = ">=0.1.2"      # named directly: graphics does not pass it on
+glb       = ">=0.1.3"
 ```
 
 ### Public API (`moros_render.loft`)
 
 ```loft
-use moros_map
-use graphics   // Scene, Camera, Mesh, Material, webgl_* from ../loft/lib/graphics
+use moros_map::*;
+use graphics::*;   // Canvas, Camera, webgl_*
+use mesh3d::*;     // Scene, Mesh, Material, Vec3
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -580,8 +585,9 @@ collects output into `graphics/glb.loft` instead of submitting to WebGL. One
 [DEVELOPER_ART.md](DEVELOPER_ART.md).
 
 ```loft
-use moros_map
-use graphics   // Mesh, Scene, Material, glb_write_scene
+use moros_map::*;
+use mesh3d::*;   // Mesh, Scene, Material
+use glb::*;      // save_scene_glb
 
 // Build a graphics::Scene from a Map using flat-shaded dev-art colours.
 fn build_glb_scene(m: Map) -> graphics::Scene {

@@ -1,9 +1,9 @@
 // Step 8 — panel layout tests.  Exercise `panel_rect`,
 // `toolbar_button_rect`, `list_rect`, `status_rect`, and
 // `panel_build` without touching real rendering.
-use moros_ui;
-use moros_sim;
-use graphics;
+use moros_ui::*;
+use moros_sim::*;
+use graphics::*;
 
 // ── Rect helpers ──────────────────────────────────────────────────
 

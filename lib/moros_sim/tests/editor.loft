@@ -1,10 +1,11 @@
 // Step 9 — EditorState + editor_tick tests.  Exercise the
 // per-frame state transitions without touching UI or rendering.
-use moros_sim;
-use moros_map;
-use moros_editor;
-use moros_render;
-use graphics;
+use moros_sim::*;
+use moros_map::*;
+use moros_editor::*;
+use moros_render::*;
+use graphics::*;
+use mesh3d::*;
 
 fn make_flat(cols: integer, rows: integer) -> Map {
   fm = map_empty();

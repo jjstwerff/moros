@@ -1,11 +1,12 @@
 // Step 11 — editor_click tests.  Exercise panel-side delegation and
 // world-click → tool_apply + undo flow without touching rendering.
-use moros_ui;
-use moros_sim;
-use moros_editor;
-use moros_map;
-use moros_render;
-use graphics;
+use moros_ui::*;
+use moros_sim::*;
+use moros_editor::*;
+use moros_map::*;
+use moros_render::*;
+use graphics::*;
+use mesh3d::*;
 
 fn make_flat(cols: integer, rows: integer) -> Map {
   fm = map_empty();
