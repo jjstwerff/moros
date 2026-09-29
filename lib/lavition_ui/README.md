@@ -4,7 +4,7 @@ Panel layout, hit-testing and text metrics for an in-engine editor UI. You hand 
 `PanelSpec` of labels and indices; it hands back rectangles and hits.
 
 ```loft
-use lavition_ui;
+use lavition_ui::*;
 
 p   = panel_build(spec, window_w, window_h, metrics_measured(wide, narrow, 10, line_h));
 hit = panel_hit_test(p, mouse_x, mouse_y);

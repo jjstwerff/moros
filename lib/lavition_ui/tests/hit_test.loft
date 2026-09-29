@@ -8,7 +8,7 @@
 // mutation of the caller's tool state — and only the consumer knows what a click
 // on item 3 MEANS. With the mutation removed it was this function under a second
 // name, so the tests that exercised it now exercise this one.
-use lavition_ui;
+use lavition_ui::*;
 
 fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
   run = (advance * 10) as float;

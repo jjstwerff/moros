@@ -19,8 +19,8 @@
 // a stranger in graphs nobody here can see, where the other claim is somebody else's
 // to make. `panel`, `font`, `widgets` and `render` are four of the most ordinary
 // names a UI library could hold.
-use self::widgets;
-use self::font;
-use self::panel;
-use self::render;
-use self::verbbar;
+pub use self::widgets::*;
+pub use self::font::*;
+pub use self::panel::*;
+pub use self::render::*;
+pub use self::verbbar::*;

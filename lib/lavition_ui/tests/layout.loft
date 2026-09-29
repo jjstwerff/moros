@@ -4,7 +4,7 @@
 // `ToolState` to assert a rectangle, which linked a player-physics and collision
 // package into a layout test. A panel is rectangles and strings; if a layout
 // test needs a world to run, the layout knows about the world.
-use lavition_ui;
+use lavition_ui::*;
 
 // A fixed-pitch Metrics — built through `metrics_measured`, the same door a
 // consumer uses, because there is deliberately no "just tell me the advance"
