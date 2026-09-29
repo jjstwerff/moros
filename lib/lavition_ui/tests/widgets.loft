@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Jurjen Stellingwerff
 // SPDX-License-Identifier: LGPL-3.0-or-later
-use lavition_ui;
+use lavition_ui::*;
 
 // ── §C3 — one widget, two families (plan 18 `B5.1`) ─────────────────────────
 //

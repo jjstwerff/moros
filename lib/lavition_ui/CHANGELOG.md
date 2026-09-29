@@ -1,5 +1,16 @@
 # lavition_ui changelog
 
+## 0.1.1
+
+The C98 port; no API change, so both compatibility floors stay at 0.1.0.
+
+- The entry file passes every module on with `pub use self::<module>::*;`. Under
+  C98 a plain `use` binds for its own file only, so without it a consumer that
+  writes `use lavition_ui::*;` would reach none of the package's names.
+- The modules import their siblings by name (`use self::widgets::*;`) rather than
+  with a bare `use self::widgets;`, which C98 refuses because it binds nothing.
+- `loft = ">=2026.10.0"`: `pub use` parses only on a C98 loft.
+
 ## 0.1.0
 
 First release. Panel layout, hit-testing, verb bar and text metrics, with no

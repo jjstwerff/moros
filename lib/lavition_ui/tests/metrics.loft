@@ -9,7 +9,7 @@
 // So the library does arithmetic on numbers the CONSUMER measured, and these
 // tests pin the arithmetic. They run with no window and no GL context, which is
 // the constraint that forced the seam in the first place.
-use lavition_ui;
+use lavition_ui::*;
 
 fn mono(advance: integer) -> Metrics {
   run = (advance * 10) as float;

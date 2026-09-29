@@ -4,7 +4,7 @@
 // it cannot say is that no slot leaves the bar, that overflow was reported rather than
 // dropped, or that a click lands on the verb under the pointer. Those are facts about
 // the LAYOUT, countable here, and only arguable from a picture.
-use lavition_ui;
+use lavition_ui::*;
 
 // The panel suite's own helper, restated here because a test file is its own scope.
 fn m() -> Metrics {

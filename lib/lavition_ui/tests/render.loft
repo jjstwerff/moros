@@ -4,7 +4,7 @@
 // argues badly about WHICH rectangle got which colour, and not at all about the
 // order they were emitted in. Those are decisions, and a decision is countable.
 // The gate's job is the part that needs GL — that these reach the canvas.
-use lavition_ui;
+use lavition_ui::*;
 
 fn ui_metrics(advance: integer, line_h: integer) -> Metrics {
   run = (advance * 10) as float;
