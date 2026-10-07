@@ -34,7 +34,7 @@ source = "registry"
 
 [[package]]
 name = "hex_field"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.0/hex_field-0.1.0.tar.gz"
-sha256 = "b15e31ac9791bf4188911951bd04e5cda3dece15a22af613750a7a8ca66fe7b1"
+version = "0.1.7"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.7/hex_field-0.1.7.tar.gz"
+sha256 = "e5671cde067903fa284ed4512b1cb2475bb64789b98a5b724f5664ef114094a7"
 source = "registry"

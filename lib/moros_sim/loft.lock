@@ -27,16 +27,16 @@ source = "registry"
 
 [[package]]
 name = "hex_body"
-version = "0.3.1"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.3.1/hex_body-0.3.1.tar.gz"
-sha256 = "01ed675eaace4763c6f8151f70bd5dd40c24d67458ece8e8c5d8720bd9f3bc01"
+version = "0.3.6"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_body-v0.3.6/hex_body-0.3.6.tar.gz"
+sha256 = "72457ac8c98e2b99aae05501bec11877ab56e95cd8f6467a233dae5e8e51ed91"
 source = "registry"
 
 [[package]]
 name = "hex_field"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.0/hex_field-0.1.0.tar.gz"
-sha256 = "b15e31ac9791bf4188911951bd04e5cda3dece15a22af613750a7a8ca66fe7b1"
+version = "0.1.7"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.7/hex_field-0.1.7.tar.gz"
+sha256 = "e5671cde067903fa284ed4512b1cb2475bb64789b98a5b724f5664ef114094a7"
 source = "registry"
 
 [[package]]
