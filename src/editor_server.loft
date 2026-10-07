@@ -6088,7 +6088,7 @@ fn main() {
             roof_txt = ev.payload[..spc];
             stamp_part = ev.payload[spc + 1..].trim();
           }
-          roof_up = roof_txt as integer ?? STOREY_H;
+          roof_up = (roof_txt as integer?) ?? STOREY_H;
           // ⚠ THIS USED TO READ `if roof_up <= 0 { roof_up = STOREY_H; }` — a
           // silent correction, and leak site 1 exactly: the author asked for one
           // thing and got another with nothing said. A roof shorter than ε would
