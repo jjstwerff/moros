@@ -1,10 +1,34 @@
-# arguments 0.2.3 — public API surface
-# generated from /home/jurjens/.loft/registry/arguments-0.2.3
+# arguments 0.2.8 — public API surface
+# generated from /home/jurjens/.loft/registry/arguments-0.2.8
 # use it with: use arguments::*;
 
 ## src/arguments.loft
 
 // --- Using it ---
+
+// A command-line parser and, after `parse`, its result.  Declare the options with `flag`,
+// `option`, `required` and `optional` on the value `create` returns, call `parse` on the
+// program's arguments, then read the answers with `has`, `get`, `get_or` and `get_int`, and
+// the words that were not options from `positionals`.  `ok` and `error_msg` report a command
+// line that does not fit the declarations; `help` and `version_text` render the texts the
+// user asked for with `--help` and `--version`.
+pub struct Args {
+  const name: text,
+  const version: text,
+  const description: text,
+  usage: text,  // Positional synopsis shown after `[OPTION...]` on the usage line, e.g. "[FILE...]".
+  bug_address: text,  // "Report bugs to <…>." footer, when set.
+  epilog: text,  // Free trailing text printed after the option list.
+  const options: vector<Arg>,
+  const results: vector<text?>,  // Parallel to `options`: each option's resolved value, or null when unset.
+  positionals: vector<text>,
+  help_enabled: boolean,
+  help_idx: integer,
+  version_idx: integer,
+  want_help: boolean,
+  want_version: boolean,
+  err: text,
+}
 
 // Start an empty parser.  The three strings are what `help()` and
 // `version_text()` render — nothing else reads them, so they are for the user
@@ -16,7 +40,8 @@ pub fn create(name: text, version: text, description: text) -> Args
 // A boolean flag (`--verbose` / `-v`).
 pub fn flag(self: Args, opt_short: text, opt_long: text, desc: text)
 
-// An optional value option (`--output FILE`).  `arg_name` is the metavar shown in help.
+// A value option the user may leave out (`--output FILE`); `get` answers null when
+// it was not given.  `arg_name` is the metavar shown in help.
 pub fn option(self: Args, opt_short: text, opt_long: text, arg_name: text, desc: text)
 
 // A required value option: `parse` fails if it is absent.
@@ -37,9 +62,10 @@ pub fn set_bug_address(self: Args, address: text)
 // Set free text printed after the option list in help.
 pub fn set_epilog(self: Args, epilog: text)
 
-// Opt-in: register `--help`/`-h` and `--version`/`-V` (short forms only when free),
-// so `parse` records `--help`/`--version` and `help()` lists them.  Nothing is
-// auto-printed — the caller checks `wants_help()` / `wants_version()`.
+// Opt-in: register `--help`/`-h` and `--version`/`-V`, so `parse` records them and
+// `help()` lists them.  A short form goes to your own option whenever one claims the
+// letter, declared before this call or after it.  Nothing is auto-printed — the caller
+// checks `wants_help()` / `wants_version()`.
 // Example: @ARG-003 — the opt-in dance, and `--help` bypassing the required check.
 pub fn enable_help(self: Args)
 
@@ -54,8 +80,9 @@ pub fn parse(self: Args, argv: vector<text>) -> boolean
 // --- Querying results ---
 
 // Was this option given?  Ask by the LONG name whatever the user typed — a
-// short, a prefix and the full name all land on the same option.  The one
-// question a `flag` can be asked.
+// short, a prefix and the full name all land on the same option — or by the
+// short name for an option declared without a long one.  The question to ask a
+// `flag`; `get` on one answers "true" or null.
 pub fn has(self: Args, name: text) -> boolean
 
 // The option's value, or null when it was not given.  `get_or` and `get_int`

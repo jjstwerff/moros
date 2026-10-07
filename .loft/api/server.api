@@ -6,11 +6,20 @@
 
 // --- Types (must come before all functions) ---
 
-pub struct Server
+pub struct Server {
+  handle: integer,
+}
 
-pub struct WebSocket
+pub struct WebSocket {
+  ws_id: integer,
+}
 
-pub struct Request
+pub struct Request {
+  method: text,
+  path: text,
+  body: text,
+  headers: vector<text>,
+}
 
 // --- HTTP Server API ---
 
@@ -164,7 +173,15 @@ pub fn close(self: WebSocket)
 // `message` are mutually-exclusive booleans for fast dispatch
 // without an integer enum.  Wire format `<msg_id>:<payload>`
 // is parsed by `run` so msg_id and payload come pre-split.
-pub struct WsEvent
+pub struct WsEvent {
+  connected: boolean,
+  message: boolean,
+  http: boolean,  // true for a plain HTTP request (serve a page etc.)
+  cid: integer,  // WS client id; -1 for http events
+  msg_id: integer,  // 0 for connected / http events
+  payload: text,  // "" for connected / http events
+  path: text,  // request path for http events; "" otherwise
+}
 
 // Block forever, draining events and calling the handler.
 // Malformed message frames are logged at warn level and silently

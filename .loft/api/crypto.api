@@ -1,5 +1,5 @@
-# crypto 0.3.10 — public API surface
-# generated from /home/jurjens/.loft/registry/crypto-0.3.10
+# crypto 0.3.13 — public API surface
+# generated from /home/jurjens/.loft/registry/crypto-0.3.13
 # use it with: use crypto::*;
 
 ## src/crypto.loft
@@ -10,8 +10,9 @@
 pub fn sha256(data: text) -> text
 
 // SHA-256 of the RAW BYTES decoded from base64 `data_b64`. Returns base64 of the
-// 32-byte digest. Use this to hash arbitrary byte strings (ciphertext, canonical
-// CBOR) that are not valid UTF-8 and so cannot be passed to `sha256` as text.
+// 32-byte digest, or "" when `data_b64` is not base64. Use this to hash arbitrary
+// byte strings (ciphertext, canonical CBOR) that are not valid UTF-8 and so cannot
+// be passed to `sha256` as text.
 // Example: @CRY-001 — the two hashing doors: text in / hex out vs base64 both ways.
 pub fn sha256_b64(data_b64: text) -> text
 
@@ -21,7 +22,8 @@ pub fn hmac_sha256(key: text, data: text) -> text
 // Base64 encode a string.
 pub fn base64_encode(data: text) -> text
 
-// Base64 decode a string.
+// Base64 decode to text.  "" when `data` is not base64, or when its bytes are not
+// UTF-8 — those are not text; `base64_to_bytes` reads them.
 pub fn base64_decode(data: text) -> text
 
 // Base64url encode (JWT-safe, no padding).
@@ -76,19 +78,22 @@ pub fn x25519_dh(secret_key_b64: text, public_key_b64: text) -> text
 // 
 // Derive `length` bytes of output keying material from `ikm`, `salt`, and
 // `info` (each base64).  An empty base64 `salt` selects the all-zero salt.
-// Returns the base64 OKM, or "" if `length` exceeds 255*32 or is <= 0.
+// Returns the base64 OKM, or "" if `length` exceeds 255*32 or is <= 0, or an
+// argument is not base64.
 // Example: @CRY-004 — `info` is what separates two keys from one shared secret.
 pub fn hkdf_sha256(salt_b64: text, ikm_b64: text, info_b64: text, length: integer) -> text
 
 // HKDF-Extract (RFC 5869 §2.2): the 32-byte PRK (base64) HMAC-SHA256(salt, ikm).
-// An empty base64 `salt` selects the all-zero salt.  Use the Extract/Expand
+// An empty base64 `salt` selects the all-zero salt; "" when an argument is not
+// base64.  Use the Extract/Expand
 // halves directly (rather than `hkdf_sha256`) when a PRK is reused for several
 // Expands or when an Extract output is itself the value you want (e.g. HPKE).
 // Example: @CRY-004 — the split halves compose to exactly `hkdf_sha256`.
 pub fn hkdf_extract(salt_b64: text, ikm_b64: text) -> text
 
 // HKDF-Expand (RFC 5869 §2.3) from an existing 32-byte PRK.  Returns `length`
-// bytes of OKM (base64), or "" on a short PRK, length > 255*32, or length <= 0.
+// bytes of OKM (base64), or "" on a short PRK, length > 255*32, length <= 0, or
+// an argument that is not base64.
 pub fn hkdf_expand(prk_b64: text, info_b64: text, length: integer) -> text
 
 // --- Raw bytes <-> base64 ---
@@ -96,8 +101,7 @@ pub fn hkdf_expand(prk_b64: text, info_b64: text, length: integer) -> text
 // Standard base64 of a raw byte vector.  Empty vector -> "".
 pub fn bytes_to_base64(bytes: vector<u8>) -> text
 
-// Raw bytes from standard base64.  Malformed / empty input -> empty vector.
-// See the CAUTION above: read the result, never `+=` onto it.
+// Raw bytes from standard base64.  Input that is not base64, or empty, -> empty vector.
 // Example: @CRY-001 — reading a decoded byte vector, and hashing non-UTF-8 bytes.
 pub fn base64_to_bytes(b64: text) -> vector<u8>
 
@@ -105,7 +109,7 @@ pub fn base64_to_bytes(b64: text) -> vector<u8>
 
 // Encrypt + authenticate `plaintext` under `key`/`nonce`, binding `aad`.
 // Returns base64 of ciphertext WITH the 16-byte tag appended, or "" on bad
-// key/nonce length.
+// key/nonce length or an argument that is not base64.
 // Example: @CRY-005 — the tag rides in the blob, and a fresh nonce per message.
 pub fn aes256gcm_seal(key_b64: text, nonce_b64: text, aad_b64: text, plaintext_b64: text) -> text
 
@@ -123,7 +127,10 @@ pub fn random_bytes(length: integer) -> text
 
 // The result of `hpke_seal_base`: the KEM-encapsulated key `enc` and the AEAD
 // `ciphertext` (ciphertext||16-byte-tag), both base64.
-pub struct HpkeSealed
+pub struct HpkeSealed {
+  const enc: text,
+  const ciphertext: text,
+}
 
 // --- Public HPKE API ---
 

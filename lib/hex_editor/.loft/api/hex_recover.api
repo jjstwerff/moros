@@ -1,5 +1,5 @@
-# hex_recover 0.1.3 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_recover-0.1.3
+# hex_recover 0.1.6 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_recover-0.1.6
 # use it with: use hex_recover::*;
 
 ## src/formcensus.loft
@@ -67,8 +67,8 @@ pub fn turns_cyclic_eq(a: vector<integer>, b: vector<integer>) -> boolean
 // 
 // So the corpus `.f` uses THIS one: the field exactly as drawn, no orientation quotient and no
 // translation quotient (every entry is drawn at the same anchor, so position is part of the
-// answer). Using the census digest here reported 17 false law F failures on a 10-entry corpus
-// before the distinction was drawn.
+// answer). The census digest here would report a stencil and its turned copy as a law F
+// failure when nothing is wrong.
 // Example: @HXV-001
 pub fn field_exact(cells: HexSet) -> vector<integer>
 
@@ -132,6 +132,15 @@ pub fn forms_a3() -> vector<Form>
 
 ## src/formfit.loft
 
+// ── THE WINDOW EVERY REDRAW GOES INTO — SIZED FROM THE FORM, NOT FROM A GUESS ─
+// 
+// Recovery draws a candidate and compares it with the field, so the redraw needs a chunk big
+// enough for the whole form: `form_fill` clips to its chunk silently, and a clipped redraw would
+// report an exact answer as R2.  The window is therefore derived from the form, never a constant.
+// `form_fill` sets exactly the cells whose lattice centre `(2q + (r&1), 3r)` lies on or inside the
+// turtle polygon, and `form_poly_k`/`form_poly_m` give that polygon's corners, so their bounding
+// box bounds the drawing.  Every `head_step` moves `m` by a multiple of 3, so `r` is bounded
+// exactly; `k` gives `q` within one, and a one-cell pad on every side absorbs that.
 // Example: @HXV-003
 pub fn fit_chunk(f: Form) -> HexSet
 
@@ -139,14 +148,21 @@ pub const REGIME_R1 = 1
 
 pub const REGIME_R2 = 2
 
-pub struct Rebuilt
+// What `rebuild` recovered from a drawn field: the regime (R1 exact and unique, R2 no form
+// draws it), the recovered form (meaningful in R1), the unexplained-cell count and how many
+// candidates matched.
+pub struct Rebuilt {
+  rb_regime: integer,  // REGIME_R1 (exact, unique) or REGIME_R2 (no grammar form draws this)
+  rb_form: Form,  // the recovered model — meaningful only in R1
+  rb_rho: integer,  // 0 in R1; the smallest unexplained-cell count in R2
+  rb_matches: integer,  // how many candidates matched exactly; >1 means the level is ambiguous
+}
 
 // ── the admitted set — the candidate space `rebuild` matches against ───────
 // 
-// `LEVEL` is how far up the ladder recovery is claimed to work. It must be raised in step with the
-// corpus: a corpus entry whose form is above this level would find NO candidate and be reported as
-// R2 — a silent loss of an exact answer. `tests/trip.loft` covers every committed level, so that
-// mismatch fails the gate rather than passing quietly.
+// `LEVEL` is how far up the ladder the enumeration reaches.  A field drawn from a form above it
+// finds NO candidate and `rebuild` reports it as R2 — "nothing in the admitted set draws this",
+// not "no stencil draws this".  `rebuild_construct` is the route for those (@HXV-004).
 pub const LEVEL = 2
 
 // The candidate space: A1/A2 (3 sides, len <= LEVEL) plus A3 (side counts 4..6 at len 1).
@@ -179,26 +195,33 @@ pub fn rebuild_text(cells: HexSet, name: text) -> text
 // ── INDEXED RECOVERY — draw the candidates ONCE, then look up ──────────────
 // 
 // `rebuild_with` re-DRAWS every candidate on every lookup: O(N) fills per field, O(N^2) over a
-// corpus — 14161 fills for the 119 entries we hold. Nothing about that is necessary. A candidate's
-// field never changes, so its digest can be computed once and put in a map keyed by the digest.
-// Recovery then becomes a single probe.
+// corpus.  A candidate's field never changes, so its digest can be computed once and put in a map
+// keyed by the digest; recovery then becomes a single probe.
 // 
-// WHAT THIS DOES AND DOES NOT BUY, stated plainly because the A3 write-up overstated it:
+// WHAT THIS DOES AND DOES NOT BUY:
 // 
 // IT FIXES   the per-lookup cost — O(N) fills to build the index, O(1) per recovery afterwards.
 // IT DOES NOT FIX   the cost of ENUMERATING the candidate space. Building the index still walks
-// every admissible form once, so the 4-sided house's class (~1.2M proposals,
-// `X43`) is exactly as far out of reach as before. Reaching THAT needs
-// CONSTRUCTIVE recovery — reading (h0, lens, turns) off the field's own
-// geometry — which is a different piece of work, not a faster table.
+// every admissible form once, so a form class too large to enumerate (the
+// 4-sided house, ~1.2M proposals) stays out of reach.  Reaching it needs
+// CONSTRUCTIVE recovery — `rebuild_construct`, below.
 // 
-// LAW F IS CHECKED AT BUILD TIME, ONCE, INSTEAD OF ASSUMED PER LOOKUP. Two candidates sharing a
-// digest would silently overwrite each other in the map, so the build COUNTS such clashes and the
-// gate asserts zero. That is strictly better than the old per-lookup `rb_matches` count: it is
-// checked once, over the whole space, rather than only where a corpus entry happened to look.
-pub struct IdxEntry
+// LAW F IS CHECKED AT BUILD TIME, ONCE, OVER THE WHOLE SPACE. Two candidates sharing a digest
+// would silently overwrite each other in the map, so the build COUNTS such clashes in
+// `ri_collisions`, and zero is the answer law F promises (@HXV-002).
+pub struct IdxEntry {
+  ix_digest: text,  // `field_norm_text` of the form's drawn field — NOT named `key`
+  ix_form: Form,
+}
 
-pub struct RecoveryIndex
+// The admitted forms keyed by the digest of the field each draws, so `rebuild_indexed` finds
+// a match by lookup.  `index_build` builds it and records what that cost.
+pub struct RecoveryIndex {
+  ri_map: hash<IdxEntry[ix_digest]>,
+  ri_count: integer,  // entries indexed
+  ri_collisions: integer,  // candidates whose digest was already taken — a law F failure
+  ri_fills: integer,  // draws performed to build it (the cost, reported not guessed)
+}
 
 // Example: @HXV-002
 pub fn index_build(cand: vector<Form>) -> RecoveryIndex
@@ -214,7 +237,7 @@ pub fn rebuild_indexed(idx: RecoveryIndex, cand: vector<Form>, cells: HexSet) ->
 
 // The same, searching a prepared index and candidate set instead of enumerating: the shape
 // to use when many cells sets are recovered against one library.
-pub fn rebuild_indexed_text(idx: RecoveryIndex, cand: vector<Form>,
+pub fn rebuild_indexed_text(idx: RecoveryIndex, cand: vector<Form>, cells: HexSet, name: text) -> text
 
 // The convex hull of the filled cells, CCW, corners only — monotone chain in exact integers.
 // Collinear points are dropped (`<= 0` pops them), which is what makes long sides come back as one

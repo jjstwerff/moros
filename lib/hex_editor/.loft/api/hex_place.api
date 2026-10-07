@@ -1,5 +1,5 @@
-# hex_place 0.1.1 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_place-0.1.1
+# hex_place 0.1.2 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_place-0.1.2
 # use it with: use hex_place::*;
 
 ## src/hex_place.loft
@@ -45,14 +45,14 @@ pub fn combine_cut(a: HexSet, ma: integer, b: HexSet, mb: integer, e: EdgeSet) -
 // not there.  Returns the number of edges cut at this level.
 // 
 // Example: @HXP-003
-pub fn combine_cut_level(a: HexSet, la: integer, ma: integer,
+pub fn combine_cut_level(a: HexSet, la: integer, ma: integer, b: HexSet, lb: integer, mb: integer, at: integer, e: EdgeSet) -> integer
 
 // The contention degree at one cell, counted **per level**: how many of the two stencils claim it
 // *at level `at`*.  This is `κ` (`X53`) made level-aware — two stencils that overlap in `(q,r)` but
 // sit on different sheets give `κ = 1` at each level, never `κ = 2` at either.
 // 
 // Example: @HXP-003
-pub fn kappa_at_level(a: HexSet, la: integer, b: HexSet, lb: integer,
+pub fn kappa_at_level(a: HexSet, la: integer, b: HexSet, lb: integer, at: integer, q: integer, r: integer) -> integer
 
 // How many marked edges separate an `a`-cell from a `b`-cell — the "shared wall" run.  Zero after
 // `combine_cut` (the seam fuses); non-zero after a per-body overlay (a spurious seam wall).  This
@@ -66,7 +66,12 @@ pub fn shared_marked(a: HexSet, b: HexSet, e: EdgeSet) -> integer
 // A pose: a rotation (given as its cos/sin, so a Pythagorean angle can be represented EXACTLY) then
 // a translation.  Stored as cos/sin rather than θ so a gate can build a rational rotation and check
 // the float pipeline against an exact integer oracle.
-pub struct Pose
+pub struct Pose {
+  ps_cs: float,
+  ps_sn: float,
+  ps_tx: float,
+  ps_ty: float,
+}
 
 // A placement: a rotation given as cos/sin and a translation.  Storing the pair rather than
 // an angle keeps `pose_fwd` and `pose_inv` exact inverses with no trig at use time.
@@ -117,10 +122,13 @@ pub fn arb_owner(a_solid: boolean, a_id: integer, b_solid: boolean, b_id: intege
 
 ## src/hexseat.loft
 
-pub const SEAT_LOW  = 0
+// seat at the lowest ground under the footprint — the building perches
+pub const SEAT_LOW = 0
 
+// seat at the mean — the residual is smallest, split above and below
 pub const SEAT_MEAN = 1
 
+// seat at the highest — the building is buried into the slope
 pub const SEAT_HIGH = 2
 
 // The height to seat at, under `policy`.  A pure read of the terrain under the footprint.
