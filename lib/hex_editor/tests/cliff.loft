@@ -72,9 +72,9 @@ fn test_it_does_not_overwrite_a_wall_already_on_the_edge() {
   // cliff must leave an existing block alone rather than replace its geometry.
   e = set();
   hex_edge::edge_block_surf(e, 0, 0, 1, 0, 42);
-  before = hex_edge::edge_surf(e, 0, 0, 1, 0);
+  before = hex_field::edge_surf(e, 0, 0, 1, 0);
   n = hex_editor::cliff_edges(e, ledge(20), 0 - 2, 0 - 2, 5, 5, 6);
-  after = hex_edge::edge_surf(e, 0, 0, 1, 0);
+  after = hex_field::edge_surf(e, 0, 0, 1, 0);
   assert(before == 42 && after == 42, "the wall's surface survives, {before} → {after}");
   assert(n > 0, "and other edges of the step are still blocked");
 }
