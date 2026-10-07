@@ -38,15 +38,15 @@ use self::palfield::*;
 pub const WALL_BODY_OCT = "THICK_OCT";
 
 pub struct WallType {
-  wt_ok:    boolean,
-  wt_name:  text,
+  pub wt_ok:    boolean,
+  pub wt_name:  text,
   // `@HB-X12`'s shape vocabulary, opaque here. "" when the type states none.
-  wt_body:  text,
+  pub wt_body:  text,
   // World units. ⚠ `0.0` is *this type states no thickness*, which is a different
   // answer from *this type says zero* — nothing in the vocabulary means a wall with no
   // width, so zero is free to mean unstated and the drawing keeps its own default.
-  wt_thick: float,
-  wt_why:   text,
+  pub wt_thick: float,
+  pub wt_why:   text,
 }
 
 fn wall_no(name: text, why: text) -> WallType {

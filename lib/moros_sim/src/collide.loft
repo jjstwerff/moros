@@ -100,9 +100,9 @@ fn move_blocked(map: Map, fr: Vec3, to: Vec3) -> boolean {
 // Outcome of a resolved move: settled position, Y-velocity (cleared
 // to 0 on landing), and whether the actor is now on the ground.
 pub struct MoveResult {
-  mr_pos:       Vec3,
-  mr_vel_y:     float,
-  mr_on_ground: boolean,
+  pub mr_pos:       Vec3,
+  pub mr_vel_y:     float,
+  pub mr_on_ground: boolean,
 }
 
 // Axis-separated move resolver.  X, then Z (so the actor slides

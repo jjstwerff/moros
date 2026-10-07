@@ -48,14 +48,14 @@ use graphics::*;
 use mesh3d::*;
 
 pub struct Bend {
-  bn_values: vector<float>,   // the solved joint values, in TURNS — `asm_frames`' unit
-  bn_rounds: integer,
-  bn_resid: float,            // the last change in any joint value
-  bn_tip: float,              // how far the tip moved from its unloaded place
-  bn_ok: boolean,
-  bn_reason: text,            // `K-FIT`: named, and empty when applied exactly
-  bn_offer: float,            // the limit it was held to
-  bn_over: float              // the residual: how far past that limit it wanted to go
+  pub bn_values: vector<float>,   // the solved joint values, in TURNS — `asm_frames`' unit
+  pub bn_rounds: integer,
+  pub bn_resid: float,            // the last change in any joint value
+  pub bn_tip: float,              // how far the tip moved from its unloaded place
+  pub bn_ok: boolean,
+  pub bn_reason: text,            // `K-FIT`: named, and empty when applied exactly
+  pub bn_offer: float,            // the limit it was held to
+  pub bn_over: float              // the residual: how far past that limit it wanted to go
 }
 
 // About 80 rounds reaches `10⁻¹²` at the measured rate. Named, because `P6` found

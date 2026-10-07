@@ -43,22 +43,22 @@ use graphics::*;
 
 // An asymmetric box, because a joint's parent is not centred on its pivot.
 pub struct Box3 {
-  b3_x0: float, b3_x1: float,
-  b3_y0: float, b3_y1: float,
-  b3_z0: float, b3_z1: float
+  pub b3_x0: float, pub b3_x1: float,
+  pub b3_y0: float, pub b3_y1: float,
+  pub b3_z0: float, pub b3_z1: float
 }
 
 pub struct SkinFit {
-  sf_parent: Box3,       // the parent, amended so `A-SKIN` holds
-  sf_overlap: float,     // how far it had to reach past the pivot plane
-  sf_needed: boolean,    // false when the pivot plane was already interior
+  pub sf_parent: Box3,       // the parent, amended so `A-SKIN` holds
+  pub sf_overlap: float,     // how far it had to reach past the pivot plane
+  pub sf_needed: boolean,    // false when the pivot plane was already interior
   // Whether the overlap disappears inside the parent's existing silhouette.
   // False is not an error: it means the added material shows, with the margins
   // below as the residual.
-  sf_hidden: boolean,
-  sf_margin_x: float,    // θ-independent; negative means the child sticks out
-  sf_margin_z: float,
-  sf_reason: text        // `K-FIT`: named, and empty when applied exactly
+  pub sf_hidden: boolean,
+  pub sf_margin_x: float,    // θ-independent; negative means the child sticks out
+  pub sf_margin_z: float,
+  pub sf_reason: text        // `K-FIT`: named, and empty when applied exactly
 }
 
 // A rope's-length worth of slop for deciding whether the pivot plane sits ON the

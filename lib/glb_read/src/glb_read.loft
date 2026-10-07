@@ -24,9 +24,9 @@ pub const GR_SHAPE     = 6;   // valid JSON, but not a mesh we can read
 pub const GR_COMPONENT = 7;   // an accessor type this reader does not implement
 
 pub struct GlbRead {
-  gr_code:   integer,
-  gr_mesh:   Mesh,
-  gr_detail: text,
+  pub gr_code:   integer,
+  pub gr_mesh:   Mesh,
+  pub gr_detail: text,
 }
 
 const GLB_MAGIC = 0x46546C67;

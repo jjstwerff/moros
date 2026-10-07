@@ -52,7 +52,7 @@ pub const KIND_MATERIAL = "material";
 pub const KIND_PART     = "part";
 
 // A part, and why it cannot be used if it cannot.
-pub struct PartAvail { av_name: text, av_why: text }
+pub struct PartAvail { pub av_name: text, pub av_why: text }
 
 // Why a surface is not something you can CHOOSE, or "" when it is.
 //

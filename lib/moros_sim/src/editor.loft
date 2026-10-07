@@ -43,14 +43,14 @@ pub fn camera_control_default() -> CameraControl {
 
 // ── Aggregate state ──────────────────────────────────────────────
 pub struct EditorState {
-  es_map:          Map,
-  es_player:       Player,
-  es_tools:        ToolState,
-  es_undo:         UndoStack,
-  es_overlay_cy:   integer,   // vertical layer the next edit targets
-  es_occlusion_on: boolean,            // see-through toggle, honoured by renderer
-  es_camera_mode:  CameraMode,
-  es_camera:       RenderCamera,       // Step 17 — live camera state
+  pub es_map:          Map,
+  pub es_player:       Player,
+  pub es_tools:        ToolState,
+  pub es_undo:         UndoStack,
+  pub es_overlay_cy:   integer,   // vertical layer the next edit targets
+  pub es_occlusion_on: boolean,            // see-through toggle, honoured by renderer
+  pub es_camera_mode:  CameraMode,
+  pub es_camera:       RenderCamera,       // Step 17 — live camera state
   es_camera_ctrl:  CameraControl,      // Step 21 — orbit offsets (see above)
 }
 

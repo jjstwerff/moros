@@ -80,7 +80,7 @@ pub const PN_ESCAPE = 3;   // `..` — a name that climbs out of the library
 
 // The reason travels with the code because the author is owed it: *"not a name"*
 // is unactionable and *"more than one level deep"* says what to type instead.
-pub struct NameCheck { nk_code: integer, nk_why: text }
+pub struct NameCheck { pub nk_code: integer, pub nk_why: text }
 
 pub fn part_name_ok(name: text) -> NameCheck {
   if name.find("..") != null {

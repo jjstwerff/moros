@@ -32,9 +32,9 @@ pub struct GJNode {
 
 pub struct GJson {
   js_nodes: vector<GJNode>,
-  js_root:  integer,
-  js_ok:    boolean,
-  js_error: text,
+  pub js_root:  integer,
+  pub js_ok:    boolean,
+  pub js_error: text,
 }
 
 struct Cursor { cu_at: integer }

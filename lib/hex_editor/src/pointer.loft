@@ -27,8 +27,8 @@
 // the flag that suppresses the drag cannot be the flag the drag reads, or the frame
 // after a UI press computes a look-delta from the press position and sends it.
 pub struct Pointer {
-  pt_down: boolean,   // a WORLD drag is in progress
-  pt_ui:   boolean,   // the held press belongs to a UI surface
+  pub pt_down: boolean,   // a WORLD drag is in progress
+  pub pt_ui:   boolean,   // the held press belongs to a UI surface
 }
 
 pub fn pointer_new() -> Pointer { Pointer { pt_down: false, pt_ui: false } }

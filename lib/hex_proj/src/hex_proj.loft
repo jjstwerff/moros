@@ -322,8 +322,8 @@ pub fn emit_cylinder_post(
 // ⚠ AN EMPTY MESH ANSWERS THE ORIGIN, NOT AN ERROR — a degenerate box at (0,0,0), so a
 // caller that forgot to check gets a zero-size box rather than a wrong one.
 pub struct Aabb {
-  aabb_min: Vec3,
-  aabb_max: Vec3,
+  pub aabb_min: Vec3,
+  pub aabb_max: Vec3,
 }
 
 pub fn mesh_aabb(m: Mesh) -> Aabb {

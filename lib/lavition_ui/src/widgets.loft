@@ -8,10 +8,10 @@
 // today, which is exactly when the rename is still free: `lavition_ui` is published at
 // `L7`, and a published name cannot be renamed. `tools/names.sh` found it.
 pub struct UiRect {
-  r_x: integer,
-  r_y: integer,
-  r_w: integer,
-  r_h: integer,
+  pub r_x: integer,
+  pub r_y: integer,
+  pub r_w: integer,
+  pub r_h: integer,
 }
 
 pub fn rect(x: integer, y: integer, w: integer, h: integer) -> UiRect {
@@ -25,11 +25,11 @@ pub fn rect_contains(r: UiRect, mx: integer, my: integer) -> boolean {
 // A clickable button in the toolbar.  `btn_id` is the integer
 // identity the panel uses in hit-test results (0..5 = ToolKind).
 pub struct Button {
-  btn_id:           integer,
-  btn_rect:         UiRect,
-  btn_label:        text,
-  btn_hotkey_label: text,      // e.g. "1" shown left of the label
-  btn_selected:     boolean,
+  pub btn_id:           integer,
+  pub btn_rect:         UiRect,
+  pub btn_label:        text,
+  pub btn_hotkey_label: text,      // e.g. "1" shown left of the label
+  pub btn_selected:     boolean,
 }
 
 // One row of a catalogue: what it is called, and whether you can have it.
@@ -51,10 +51,10 @@ pub struct Button {
 pub const KIND_UNSET = "";
 
 pub struct Entry {
-  en_kind:      text,        // "material", "part", … — the consumer's vocabulary
-  en_label:     text,
-  en_available: boolean,
-  en_reason:    text,        // "" when available; required when not
+  pub en_kind:      text,        // "material", "part", … — the consumer's vocabulary
+  pub en_label:     text,
+  pub en_available: boolean,
+  pub en_reason:    text,        // "" when available; required when not
 }
 
 pub fn entry(label: text) -> Entry {
@@ -80,15 +80,15 @@ pub fn entry_blocked_of(kind: text, label: text, why: text) -> Entry {
 // Scrollable list of catalogue entries.  `lb_selected` is the currently
 // highlighted index, or -1 for no selection.
 pub struct ListBox {
-  lb_rect:        UiRect,
-  lb_items:       vector<Entry>,
-  lb_selected:    integer,
-  lb_scroll:      integer,   // pixel scroll offset
-  lb_item_height: integer,
+  pub lb_rect:        UiRect,
+  pub lb_items:       vector<Entry>,
+  pub lb_selected:    integer,
+  pub lb_scroll:      integer,   // pixel scroll offset
+  pub lb_item_height: integer,
 }
 
 // Single-line status strip at the bottom of the side panel.
 pub struct StatusStrip {
-  ss_rect: UiRect,
-  ss_text: text,
+  pub ss_rect: UiRect,
+  pub ss_text: text,
 }

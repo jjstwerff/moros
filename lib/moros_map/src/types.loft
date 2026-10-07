@@ -4,9 +4,9 @@
 
 // Global hex address: (q, r) in world coordinates plus vertical layer.
 pub struct HexAddress {
-  ha_q:  integer,
-  ha_r:  integer,
-  ha_cy: integer,
+  pub ha_q:  integer,
+  pub ha_r:  integer,
+  pub ha_cy: integer,
 }
 
 // A single hex cell — THE COMPACT VOXEL, and the only cell shape in use.
@@ -30,13 +30,13 @@ pub struct HexAddress {
 // h_item_rotation packs rotation (bits 0-4), spawn_flag (bit 5),
 // waypoint_flag (bit 6); bit 7 is reserved.
 pub struct Hex {
-  h_height:        u16,
-  h_material:      u8,
-  h_item:          u8,
-  h_item_rotation: u8,
-  h_wall_nw:        u8,
-  h_wall_ne:       u8,
-  h_wall_e:       u8,
+  pub h_height:        u16,
+  pub h_material:      u8,
+  pub h_item:          u8,
+  pub h_item_rotation: u8,
+  pub h_wall_nw:        u8,
+  pub h_wall_ne:       u8,
+  pub h_wall_e:       u8,
 }
 
 // Extract the 5-bit rotation (0-23) from the packed item_rotation field.
@@ -51,8 +51,8 @@ pub fn hex_waypoint_flag(h: Hex) -> boolean { (h.h_item_rotation >> 6) & 1 == 1 
 // A 32x32 grid of hexes at chunk coordinates (cx, cy, cz).
 // Index into ck_hexes: hx * 32 + hz.
 pub struct Chunk {
-  ck_cx:    integer,
-  ck_cy:    integer,
-  ck_cz:    integer,
-  ck_hexes: vector<Hex>,
+  pub ck_cx:    integer,
+  pub ck_cy:    integer,
+  pub ck_cz:    integer,
+  pub ck_hexes: vector<Hex>,
 }

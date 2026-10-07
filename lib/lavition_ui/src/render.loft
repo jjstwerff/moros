@@ -19,23 +19,23 @@ use self::panel::*;
 // A packed 0xRRGGBB colour, the same packing `graphics::rgb` produces. Kept as a
 // plain integer so this package needs no graphics dependency to name one.
 pub struct DrawRect {
-  dr_rect:   UiRect,
-  dr_colour: integer,
+  pub dr_rect:   UiRect,
+  pub dr_colour: integer,
 }
 
 // The panel's colours. A struct rather than constants because a consumer that
 // cannot restyle the editor is a consumer being told what its editor looks like.
 pub struct Theme {
-  th_panel_bg:   integer,
-  th_button:     integer,
-  th_button_sel: integer,
-  th_list_bg:    integer,
-  th_item_sel:   integer,
-  th_status_bg:  integer,
-  th_subject_bg: integer,
+  pub th_panel_bg:   integer,
+  pub th_button:     integer,
+  pub th_button_sel: integer,
+  pub th_list_bg:    integer,
+  pub th_item_sel:   integer,
+  pub th_status_bg:  integer,
+  pub th_subject_bg: integer,
   th_separator:  integer,
-  th_text:       integer,
-  th_text_dim:   integer,      // the hotkey column — present, not shouting
+  pub th_text:       integer,
+  pub th_text_dim:   integer,      // the hotkey column — present, not shouting
 }
 
 // A dark theme that reads against a lit 3D world behind it.
@@ -116,10 +116,10 @@ pub fn panel_draw_list(p: Panel, th: Theme) -> vector<DrawRect> {
 // label the panel never agreed would fit. That is why `Panel` carries its own
 // `p_metrics` rather than taking them again here.
 pub struct DrawText {
-  dt_text:   text,
-  dt_x:      integer,
-  dt_y:      integer,          // TOP of the line, which is what draw-a-texture wants
-  dt_colour: integer,
+  pub dt_text:   text,
+  pub dt_x:      integer,
+  pub dt_y:      integer,          // TOP of the line, which is what draw-a-texture wants
+  pub dt_colour: integer,
 }
 
 // Centre a line of text vertically in a box of height `h`.

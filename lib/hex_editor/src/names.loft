@@ -26,9 +26,9 @@
 // "oak-2x3-2"`. So the offer here is text, and `Fit` is left alone rather than
 // grown a second offer field that is meaningless in most of its uses.
 pub struct NameFit {
-  nf_ok:     boolean,
-  nf_reason: text,
-  nf_offer:  text,          // "" when there is nothing to offer
+  pub nf_ok:     boolean,
+  pub nf_reason: text,
+  pub nf_offer:  text,          // "" when there is nothing to offer
 }
 
 pub struct NameEntry {

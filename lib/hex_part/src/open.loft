@@ -41,11 +41,11 @@ pub const TAG_OPEN = 1313165391;    // 'OPEN', low byte first
 // here would close a dependency CYCLE. The word is carried and the consumer
 // resolves it, refused on save and at `make parts` where the five are visible.
 pub struct PartOpen {
-  po_head:   integer = 0,    // the top of the opening, in height units
-  po_sill:   integer = 0,    // its bottom
-  po_kind:   text = "",      // flat · round · pointed · segment · circle
-  po_spring: integer = 0,    // the height an arch springs from; 0 is a flat head
-  po_radius: float = 0.0,    // the striking radius, for pointed and segment
+  pub po_head:   integer = 0,    // the top of the opening, in height units
+  pub po_sill:   integer = 0,    // its bottom
+  pub po_kind:   text = "",      // flat · round · pointed · segment · circle
+  pub po_spring: integer = 0,    // the height an arch springs from; 0 is a flat head
+  pub po_radius: float = 0.0,    // the striking radius, for pointed and segment
 }
 
 pub const PO_OK      = 0;
@@ -77,7 +77,7 @@ pub fn part_set_open(w: VoxelWorld, p: PartOpen) -> integer {
 // written before this section existed cuts its doorways full height and is fine,
 // while one whose `OPEN` says `head=tall` is damaged, and one code for both makes
 // the damaged one look ordinary.
-pub struct OpenRead { or_code: integer, or_open: PartOpen, or_why: text }
+pub struct OpenRead { pub or_code: integer, pub or_open: PartOpen, pub or_why: text }
 
 fn open_bad(why: text) -> OpenRead {
   OpenRead { or_code: MR_MALFORMED, or_open: PartOpen {}, or_why: why }

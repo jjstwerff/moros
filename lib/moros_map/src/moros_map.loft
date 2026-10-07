@@ -11,13 +11,13 @@ use hex_grid::*;    // the lattice — rounding and distance are ITS parity to g
 
 // Top-level map container. Holds chunks and palette definitions.
 pub struct Map {
-  m_name:             text,
-  m_chunks:           vector<Chunk>,
-  m_material_palette: vector<MaterialDef>,
-  m_wall_palette:     vector<WallDef>,
-  m_item_palette:     vector<ItemDef>,
-  m_spawn_points:     vector<SpawnPoint>,
-  m_npc_routines:     vector<NpcRoutine>,
+  pub m_name:             text,
+  pub m_chunks:           vector<Chunk>,
+  pub m_material_palette: vector<MaterialDef>,
+  pub m_wall_palette:     vector<WallDef>,
+  pub m_item_palette:     vector<ItemDef>,
+  pub m_spawn_points:     vector<SpawnPoint>,
+  pub m_npc_routines:     vector<NpcRoutine>,
 }
 
 // ── Constructors ────────────────────────────────────────────────────
@@ -513,8 +513,8 @@ pub fn slope_band(m: Map, q1: integer, r1: integer, q2: integer, r2: integer, cy
 pub const ML_LABEL_TOO_WIDE = 64;
 
 pub struct MapLoad {
-  ml_code: integer,
-  ml_map:  Map,
+  pub ml_code: integer,
+  pub ml_map:  Map,
 }
 
 // Convert one cy layer of `m` over the extent (q0,r0,w,h) and write it.

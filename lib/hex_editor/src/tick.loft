@@ -81,30 +81,30 @@ pub const LEVEL_R = 5;
 // walk, so both sabotages returned `cea971a0…` and the green meant *this script
 // cannot tell*. See `probe/t1/coll_pad.keys`, which is the instrument with a control.
 pub struct Walker {
-  wk_x: float,
-  wk_z: float,
+  pub wk_x: float,
+  pub wk_z: float,
   // ⚠ THE FEET ARE A STATE, NOT A SAMPLE OF THE GROUND. `fall.loft`'s rule, and the
   // editor had NINE writers of this before it: a *teleport* may set them, a *tick*
   // may only ever call `fall_step`.
-  wk_y: float,
-  wk_vy: float,
-  wk_yaw: float,
+  pub wk_y: float,
+  pub wk_vy: float,
+  pub wk_yaw: float,
   // W=1 S=2 A=4 D=8 — the wire's own bits, declared in `pose.loft`.
-  wk_held: integer,
+  pub wk_held: integer,
   // The STICK — [CONTROLS](../../../doc/claude/CONTROLS.md) §5: forward, sideways and
   // turn, each in [−1, 1], composed with the held bits by `move_of` / `turn_of`. Zero
   // is a stick at rest, which is why a keyboard walker never has to know they exist.
-  wk_stick_f: float,
-  wk_stick_s: float,
-  wk_stick_t: float,
+  pub wk_stick_f: float,
+  pub wk_stick_s: float,
+  pub wk_stick_t: float,
   // ── the level state machine ───────────────────────────────────────────────
   //
   // ⚠ WHILE LEVELLING THE RELATIONSHIP INVERTS: the feet hold their frozen height
   // and the GROUND is brought to them. It is the one inversion in the model, and it
   // is why the fall is skipped here — reading the feet back off ground that is being
   // set from the feet would erase the difference the level exists to carry.
-  wk_levelling: boolean,
-  wk_level_h: integer,
+  pub wk_levelling: boolean,
+  pub wk_level_h: integer,
   // The last hex ENTERED, which is the level stamp's trigger. Once per hex, never
   // per tick, so how fast you walk cannot change the shape of the ground you leave.
   wk_hq: integer,
@@ -113,40 +113,40 @@ pub struct Walker {
   // The gait and the landings — for reporting, and for nothing else. `wk_walked`
   // advances by what was TRAVELLED rather than by what was asked for, so legs that
   // stride into a wall are the tell that collision was bolted on outside the walk.
-  wk_walked: float,
-  wk_fell: integer,
+  pub wk_walked: float,
+  pub wk_fell: integer,
   // ── the collision proxy, and its key ──────────────────────────────────────
-  wk_coll: hex_field::EdgeSet,
-  wk_sf: hex_edge::Surfaces,
-  wk_rt: hex_way::Track,
-  wk_cq: integer,
-  wk_cr: integer,
+  pub wk_coll: hex_field::EdgeSet,
+  pub wk_sf: hex_edge::Surfaces,
+  pub wk_rt: hex_way::Track,
+  pub wk_cq: integer,
+  pub wk_cr: integer,
   wk_ctau: integer,
-  wk_csurf: integer,
+  pub wk_csurf: integer,
   wk_chave: boolean
 }
 
 // What a driver may need to REPORT. Never what it needs to decide.
 pub struct TickOut {
   // Anything a viewer could see move — the pose, or a fall in progress.
-  tk_moved: boolean,
+  pub tk_moved: boolean,
   // The level stamp wrote, and where. A driver meshes this disc and marks it.
-  tk_dirty: boolean,
-  tk_dq: integer,
-  tk_dr: integer,
-  tk_drad: integer,
+  pub tk_dirty: boolean,
+  pub tk_dq: integer,
+  pub tk_dr: integer,
+  pub tk_drad: integer,
   // What the stamp could not deliver: cells that hit the floor, the residual, and
   // whether the relaxation finished at all. ⚠ THE LAST IS A DIFFERENT QUESTION FROM
   // THE FIRST TWO — a big clamp count is what a big stroke looks like, while running
   // out of `SLOPE_PASSES` is the stroke handing back a world that breaks its own
   // rules, and the two were indistinguishable because nothing asked.
-  tk_clamped: integer,
-  tk_residual: integer,
-  tk_owed: integer,
+  pub tk_clamped: integer,
+  pub tk_residual: integer,
+  pub tk_owed: integer,
   // The proxy was rebuilt this tick. A driver that keeps its OWN derived set over
   // the same key — the server's camera set is the one — refreshes it on this rather
   // than writing the key out a second time.
-  tk_rebuilt: boolean,
+  pub tk_rebuilt: boolean,
   // ── WHAT THE PUSH DID — `WALL_PUSH` `G2` ──────────────────────────────────
   //
   // ⚠ **`tk_pushed` IS *A CELL WAS TAKEN*, NOT *THE MODE IS ON*.** Holding the toggle
@@ -154,15 +154,15 @@ pub struct TickOut {
   // standing still, or walking through ground you just took — and it writes nothing.
   // A driver marks its dirty region on this, so a flag that meant *the mode is on*
   // would re-mesh a neighbourhood thirty times a second for a world that did not move.
-  tk_pushed: boolean,
-  tk_pq: integer,
-  tk_pr: integer,
-  tk_pmarks: integer,      // edge bytes the boundary followed with — law L1
+  pub tk_pushed: boolean,
+  pub tk_pq: integer,
+  pub tk_pr: integer,
+  pub tk_pmarks: integer,      // edge bytes the boundary followed with — law L1
   // ⚠ **A REFUSAL EVERY TICK IS ONE REFUSAL**, so this carries the sentence and the
   // driver decides how often to say it. `level_warned` is the shape: the stamp reports
   // per footfall and the server speaks once per run.
-  tk_prefused: boolean,
-  tk_psay: text
+  pub tk_prefused: boolean,
+  pub tk_psay: text
 }
 
 // A walker standing at a point, with an empty proxy that the first tick builds.

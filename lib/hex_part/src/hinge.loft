@@ -31,9 +31,9 @@ use self::meta::*;
 pub const TAG_HING = 1196312904;    // 'HING', low byte first
 
 pub struct Hinge {
-  hg_ox: float, hg_oy: float, hg_oz: float,   // the hinge point, in the part's own frame
-  hg_ax: float, hg_ay: float, hg_az: float,   // the revolute axis — a DIRECTION
-  hg_lo: float, hg_hi: float,                 // the swing limits, in TURNS
+  pub hg_ox: float, pub hg_oy: float, pub hg_oz: float,   // the hinge point, in the part's own frame
+  pub hg_ax: float, pub hg_ay: float, pub hg_az: float,   // the revolute axis — a DIRECTION
+  pub hg_lo: float, pub hg_hi: float,                 // the swing limits, in TURNS
 }
 
 pub const HG_OK    = 0;
@@ -41,7 +41,7 @@ pub const HG_AXIS  = 1;   // an axis of zero length — a revolute joint with no
 pub const HG_RANGE = 2;   // a range that runs backwards
 pub const HG_VALUE = 3;   // a number that is not a number
 
-pub struct HingeWrite { hw_code: integer, hw_why: text }
+pub struct HingeWrite { pub hw_code: integer, pub hw_why: text }
 
 fn hw_ok() -> HingeWrite { HingeWrite { hw_code: HG_OK, hw_why: "" } }
 
@@ -143,7 +143,7 @@ pub fn part_set_hinge(w: VoxelWorld, h: Hinge) -> HingeWrite {
 // load-bearing — set the hinge before the meta and a legitimate leaf is refused.
 // Every section in this package is its own fact; a consumer that wants the pair
 // checked reads both, which it can.
-pub struct HingeRead { hr_code: integer, hr_hinge: Hinge, hr_why: text }
+pub struct HingeRead { pub hr_code: integer, pub hr_hinge: Hinge, pub hr_why: text }
 
 fn hinge_bad(why: text) -> HingeRead {
   HingeRead { hr_code: MR_MALFORMED, hr_hinge: Hinge {}, hr_why: why }
@@ -208,10 +208,10 @@ pub const WF_NOHINGE = 3;   // a part with no hinge cannot be opened at all
 pub const WF_VALUE   = 4;   // an angle that is not a finite number
 
 pub struct SwingFit {
-  wf_code:     integer,
-  wf_why:      text,
-  wf_offer:    float,   // the nearest admissible angle, in TURNS
-  wf_residual: float,   // how far past it the request was — always >= 0
+  pub wf_code:     integer,
+  pub wf_why:      text,
+  pub wf_offer:    float,   // the nearest admissible angle, in TURNS
+  pub wf_residual: float,   // how far past it the request was — always >= 0
 }
 
 // Is `turns` a state this hinge can hold?

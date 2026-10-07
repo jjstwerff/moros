@@ -16,14 +16,14 @@
 use hex_editor::*;
 
 pub struct Surface {
-  sf_name:  text,        // author-facing, and what the catalogue lists
-  sf_r:     float,
-  sf_g:     float,
-  sf_b:     float,
+  pub sf_name:  text,        // author-facing, and what the catalogue lists
+  pub sf_r:     float,
+  pub sf_g:     float,
+  pub sf_b:     float,
   // Surfaces that read as ONE thing in a picture share a bucket name. Two pale
   // warm greys are not a classifier failure, they are a fact about the palette —
   // see `test_surfaces_are_separable_or_declared_alike`.
-  sf_bucket: text,
+  pub sf_bucket: text,
   // ⚠ THE CELL MATERIAL THIS SURFACE DRAWS, or 0 for one that no cell can hold.
   //
   // A surface is what the MESHER can draw; a terrain is what a CELL can be, and the
@@ -36,7 +36,7 @@ pub struct Surface {
   // 1,2,3,4,5 land on surfaces 0,1,2,**6**,**4** — not an offset, not order-
   // preserving. Every site that needed it used to re-derive it; `hex_editor::ground_kinds()`
   // owns the material axis and this is the one place the two are joined.
-  sf_mat: integer = 0,
+  pub sf_mat: integer = 0,
 }
 
 pub fn surfaces() -> vector<Surface> {

@@ -98,20 +98,20 @@ pub fn spec_verb_on(verb: text, label: text, key: text, on: boolean) -> SpecVerb
 
 // ── The laid-out bar ─────────────────────────────────────────────
 pub struct VerbSlot {
-  vt_rect:  UiRect,
-  vt_verb:  text,
-  vt_label: text,
-  vt_key:   text,
-  vt_on:    boolean,
+  pub vt_rect:  UiRect,
+  pub vt_verb:  text,
+  pub vt_label: text,
+  pub vt_key:   text,
+  pub vt_on:    boolean,
 }
 
 pub struct VerbBar {
-  vb_rect:   UiRect,
-  vb_slots:  vector<VerbSlot>,
+  pub vb_rect:   UiRect,
+  pub vb_slots:  vector<VerbSlot>,
   // How many the strip could not show. ⚠ **REPORTED, NEVER SILENTLY DROPPED** — a bar
   // that truncated quietly would read as *those verbs do not exist here*, which is
   // exactly the wrong sentence to put in front of an author who cannot find one.
-  vb_hidden: integer,
+  pub vb_hidden: integer,
 }
 
 // Lay the bar out along the bottom of the window, to the right of the side panel.

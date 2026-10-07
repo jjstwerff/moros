@@ -3190,7 +3190,7 @@ pub fn part_thumb_view(vr: vector<float>, vu: vector<float>, vf: vector<float>) 
 //
 // ⚠ THE EMPTY SURFACES ARE DROPPED HERE. A part of four chunks offers 36 slots and
 // a cottage fills six; carrying the empties would make every caller test for them.
-pub struct PartSurf { ps_surface: integer, ps_mesh: Mesh }
+pub struct PartSurf { pub ps_surface: integer, pub ps_mesh: Mesh }
 
 pub fn part_body_meshes(pbm_w: VoxelWorld) -> vector<PartSurf> {
   pbm_out: vector<PartSurf> = [];

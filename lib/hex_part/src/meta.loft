@@ -41,16 +41,16 @@ pub const PK_FITTING = 5;
 pub const FACINGS = 24;
 
 pub struct PartMeta {
-  pm_kind: integer,
-  pm_name: text,
-  pm_desc: text = "",
+  pub pm_kind: integer,
+  pub pm_name: text,
+  pub pm_desc: text = "",
 }
 
 pub struct PartAnchor {
-  pa_q:      integer,
-  pa_r:      integer,
-  pa_h:      integer,
-  pa_facing: integer,
+  pub pa_q:      integer,
+  pub pa_r:      integer,
+  pub pa_h:      integer,
+  pub pa_facing: integer,
 }
 
 pub const PM_OK      = 0;
@@ -133,8 +133,8 @@ pub const MR_MALFORMED = 2;   // it carries one and it does not parse
 // has no `ANCH` and is fine; a part whose `ANCH` says `facing=north` is damaged.
 // Collapsing them makes the second look like the first, and the symptom is a part
 // that quietly stands the wrong way round.
-pub struct MetaRead { mr_code: integer, mr_meta: PartMeta, mr_why: text }
-pub struct AnchorRead { ar_code: integer, ar_anchor: PartAnchor, ar_why: text }
+pub struct MetaRead { pub mr_code: integer, pub mr_meta: PartMeta, pub mr_why: text }
+pub struct AnchorRead { pub ar_code: integer, pub ar_anchor: PartAnchor, pub ar_why: text }
 
 pub fn part_meta(w: VoxelWorld) -> MetaRead {
   if world_section_at(w, TAG_PART) < 0 {

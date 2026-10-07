@@ -32,11 +32,11 @@ pub const TAG_INST = 1414745673;    // 'INST', low byte first
 // permanent. Until something derives, the instance's identity is its position in
 // the list.
 pub struct PartInst {
-  pi_q:      integer,
-  pi_r:      integer,
-  pi_h:      integer,
-  pi_facing: integer,      // an index into the 24 headings, never an angle
-  pi_part:   text,         // the part this refers to, by catalogue handle
+  pub pi_q:      integer,
+  pub pi_r:      integer,
+  pub pi_h:      integer,
+  pub pi_facing: integer,      // an index into the 24 headings, never an angle
+  pub pi_part:   text,         // the part this refers to, by catalogue handle
 }
 
 pub const PI_OK      = 0;
@@ -104,7 +104,7 @@ pub fn part_set_instances(w: VoxelWorld, v: vector<PartInst>) -> integer {
 // damaged, and one code for both makes the damaged one look ordinary. That is
 // `A1.4`'s rule, and the reason the codes are shared with `meta.loft` rather than
 // invented again here.
-pub struct InstRead { ir_code: integer, ir_items: vector<PartInst>, ir_why: text }
+pub struct InstRead { pub ir_code: integer, pub ir_items: vector<PartInst>, pub ir_why: text }
 
 // The n-th comma-separated field, and the REST after the fourth. Written out
 // rather than reached for a splitter, because *the rest of the line* is the whole
