@@ -2936,7 +2936,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
   // view, and the whole cost disappears for every world that has no walls yet.
   wd = 0 - 1;
   wt = 0.0; wq = 0; wr = 0;
-  if coll.eg_count > 0 {
+  if edgeset_surf_count(coll) > 0 {
     (wt2, wq2, wr2, wd2) = hex_edge::sweep_path(coll, ox, oz,
                                                 ox - ky * want * kp, oz - sy * want * kp);
     wt = wt2; wq = wq2; wr = wr2; wd = wd2;
