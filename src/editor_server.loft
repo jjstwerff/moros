@@ -6271,6 +6271,7 @@ fn main() {
           }
         } else if ev.msg_id == MSG_ROAD {
           roading = (ev.payload as integer ?? 0) != 0;
+          rvf = 0.0;   // set when road mode goes on; the residual below is only reported then
           if roading {
             // The grade is frozen at the height the character stands on, exactly
             // as levelling freezes its floor: a road laid while walking uphill
