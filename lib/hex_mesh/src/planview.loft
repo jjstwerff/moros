@@ -46,10 +46,10 @@ use hex_field::*;
 // A hex edge in the page frame. The page frame IS the world's x/z plane — see
 // `plan_svg`'s `viewBox` — so these are `hex_corner_world`'s own numbers.
 pub struct PlanSeg {
-  ps_x1: float,
-  ps_z1: float,
-  ps_x2: float,
-  ps_z2: float,
+  pub ps_x1: float,
+  pub ps_z1: float,
+  pub ps_x2: float,
+  pub ps_z2: float,
 }
 
 // Pixels per world unit. A hex is 2.0 world units tall, so a 13x13 window is
@@ -178,10 +178,10 @@ fn edge_width(role: text) -> float {
 // nobody notices: the picture and the pick would disagree by a margin, and every
 // authored thing would land one cell out near an edge.
 pub struct PlanBox {
-  pb_minx: float,
+  pub pb_minx: float,
   pb_maxx: float,
-  pb_minz: float,
-  pb_maxz: float,
+  pub pb_minz: float,
+  pub pb_maxz: float,
 }
 
 pub fn plan_bounds(q0: integer, r0: integer, q1: integer, r1: integer) -> PlanBox {
@@ -220,10 +220,10 @@ pub fn plan_bounds(q0: integer, r0: integer, q1: integer, r1: integer) -> PlanBo
 pub const PLAN_RADIUS = 8;
 
 pub struct PlanWindow {
-  pn_q0: integer,
-  pn_r0: integer,
-  pn_q1: integer,       // exclusive, as every window in this file is
-  pn_r1: integer,
+  pub pn_q0: integer,
+  pub pn_r0: integer,
+  pub pn_q1: integer,       // exclusive, as every window in this file is
+  pub pn_r1: integer,
 }
 
 pub fn plan_window(x: float, z: float, radius: integer) -> PlanWindow {
@@ -1181,14 +1181,14 @@ pub fn plan_levels(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: int
 // margin, or off the page is not *the nearest cell*: it is **no cell**, and answering
 // with the nearest one is how a click beside the picture authors inside it.
 pub struct PlanPick {
-  pk_ok:    boolean,
-  pk_level: integer,        // which panel, and −1 when none
-  pk_ref:   float,          // that panel's reference height
-  pk_q:     integer,
-  pk_r:     integer,
-  pk_x:     float,          // the WORLD point inside that panel — an `Author`'s x
-  pk_z:     float,
-  pk_why:   text,
+  pub pk_ok:    boolean,
+  pub pk_level: integer,        // which panel, and −1 when none
+  pub pk_ref:   float,          // that panel's reference height
+  pub pk_q:     integer,
+  pub pk_r:     integer,
+  pub pk_x:     float,          // the WORLD point inside that panel — an `Author`'s x
+  pub pk_z:     float,
+  pub pk_why:   text,
 }
 
 fn pick_no(why: text) -> PlanPick {
@@ -1246,10 +1246,10 @@ pub fn plan_svg(w: VoxelWorld, q0: integer, r0: integer, q1: integer, r1: intege
 // actually emitted, never a number the producer re-derives* — which is why it takes
 // the SVG rather than a `PlanPanel`.
 pub struct PlanTally {
-  pt_cells:  integer,
-  pt_marks:  integer,
-  pt_descs:  integer,      // runs, discs and octagons together — a description is one
-  pt_levels: integer,
+  pub pt_cells:  integer,
+  pub pt_marks:  integer,
+  pub pt_descs:  integer,      // runs, discs and octagons together — a description is one
+  pub pt_levels: integer,
 }
 
 fn starts(ln: text, head: text) -> boolean {

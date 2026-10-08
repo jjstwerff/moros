@@ -61,15 +61,15 @@ pub const EX_UNIT    = 10;  // a composed part states a different unit (A8.2b, P
 pub const EX_MAX_DEPTH = 8;
 
 pub struct Expand {
-  ex_code:  integer,
-  ex_parts: integer = 0,   // parts derived, the placed one and everything under it
-  ex_cols:  integer = 0,   // columns written across the whole nest
-  ex_depth: integer = 0,   // deepest level reached, 1 for a flat part
+  pub ex_code:  integer,
+  pub ex_parts: integer = 0,   // parts derived, the placed one and everything under it
+  pub ex_cols:  integer = 0,   // columns written across the whole nest
+  pub ex_depth: integer = 0,   // deepest level reached, 1 for a flat part
   // ⚠ THE OTHER BODY'S CELLS, AND THEY DO NOT GO IN THE WORLD. The store holds
   // columns; a mesh is a transform and a file name, so the only place it can be
   // delivered is back to the caller. `A6.2`.
-  ex_meshes: vector<MeshAt> = [],
-  ex_why:   text = "",
+  pub ex_meshes: vector<MeshAt> = [],
+  pub ex_why:   text = "",
 }
 
 // ── A turn is refused because of the LATTICE, not because of the part ────────

@@ -32,10 +32,10 @@ use self::catalogue::*;
 pub const TAG_BIND = 1145981250;    // 'BIND', low byte first
 
 pub struct Binding {
-  bd_inst:   integer,     // which entry of THIS part's `INST` list
-  bd_open:   float,       // how far the leaf is swung, in TURNS (`A5.2`, `F-STATE`)
-  bd_socket: text,        // the socket's name, in that instance's part
-  bd_part:   text,        // what goes in it, by catalogue handle
+  pub bd_inst:   integer,     // which entry of THIS part's `INST` list
+  pub bd_open:   float,       // how far the leaf is swung, in TURNS (`A5.2`, `F-STATE`)
+  pub bd_socket: text,        // the socket's name, in that instance's part
+  pub bd_part:   text,        // what goes in it, by catalogue handle
 }
 
 pub const BD_OK      = 0;
@@ -46,7 +46,7 @@ pub const BD_INDEX   = 4;   // an instance index with no instance behind it
 pub const BD_DUP     = 5;   // one socket of one instance filled twice
 pub const BD_SWING   = 6;   // a swing that is not a finite number
 
-pub struct BindWrite { bw_code: integer, bw_why: text }
+pub struct BindWrite { pub bw_code: integer, pub bw_why: text }
 
 fn bw_ok() -> BindWrite { BindWrite { bw_code: BD_OK, bw_why: "" } }
 
@@ -160,7 +160,7 @@ fn check_bind(b: Binding, i: integer, n: integer) -> BindWrite {
   bw_ok()
 }
 
-pub struct BindRead { br_code: integer, br_items: vector<Binding>, br_why: text }
+pub struct BindRead { pub br_code: integer, pub br_items: vector<Binding>, pub br_why: text }
 
 fn bind_bad(why: text) -> BindRead {
   none: vector<Binding> = [];
@@ -260,8 +260,8 @@ pub const SA_SWING    = 5;   // the leaf is swung past what its own hinge allows
 // than a design choice: a struct-valued field DEFAULT is a parse error here
 // (`unexpected '{'`), and without a default every one of this struct's dozen
 // construction sites would have to name a swing it knows nothing about.
-pub struct SocketAt { sa_code: integer, sa_socket: Socket, sa_why: text,
-                      sa_offer: float = 0.0, sa_residual: float = 0.0 }
+pub struct SocketAt { pub sa_code: integer, pub sa_socket: Socket, pub sa_why: text,
+                      pub sa_offer: float = 0.0, sa_residual: float = 0.0 }
 
 // Which socket a binding names, and whether what it names may go in it.
 //

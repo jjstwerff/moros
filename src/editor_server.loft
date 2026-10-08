@@ -2936,7 +2936,7 @@ fn cam_free_dist(ox: float, oy: float, oz: float, cyaw: float, cpitch: float,
   // view, and the whole cost disappears for every world that has no walls yet.
   wd = 0 - 1;
   wt = 0.0; wq = 0; wr = 0;
-  if coll.eg_count > 0 {
+  if edgeset_surf_count(coll) > 0 {
     (wt2, wq2, wr2, wd2) = hex_edge::sweep_path(coll, ox, oz,
                                                 ox - ky * want * kp, oz - sy * want * kp);
     wt = wt2; wq = wq2; wr = wr2; wd = wd2;
@@ -6088,7 +6088,7 @@ fn main() {
             roof_txt = ev.payload[..spc];
             stamp_part = ev.payload[spc + 1..].trim();
           }
-          roof_up = roof_txt as integer ?? STOREY_H;
+          roof_up = (roof_txt as integer?) ?? STOREY_H;
           // ⚠ THIS USED TO READ `if roof_up <= 0 { roof_up = STOREY_H; }` — a
           // silent correction, and leak site 1 exactly: the author asked for one
           // thing and got another with nothing said. A roof shorter than ε would
@@ -6271,6 +6271,7 @@ fn main() {
           }
         } else if ev.msg_id == MSG_ROAD {
           roading = (ev.payload as integer ?? 0) != 0;
+          rvf = 0.0;   // set when road mode goes on; the residual below is only reported then
           if roading {
             // The grade is frozen at the height the character stands on, exactly
             // as levelling freezes its floor: a road laid while walking uphill

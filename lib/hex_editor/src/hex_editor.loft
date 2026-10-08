@@ -89,9 +89,9 @@ use hex_voxel::*;
 // corner. Not a strip of hex edges — those are the INDEX, and drawing them is the
 // staircase the pictures keep showing.
 pub struct WallQuad {
-  wq_side: integer,
-  wq_x0: float, wq_y0: float,
-  wq_x1: float, wq_y1: float,
+  pub wq_side: integer,
+  pub wq_x0: float, pub wq_y0: float,
+  pub wq_x1: float, pub wq_y1: float,
 }
 
 // A rectangular plan has four sides, and `surface_quad` needs to know how many so
@@ -144,11 +144,11 @@ pub fn plan_walls_exact(p: Plan, cells: HexSet) -> boolean {
 // missing feature, it is what makes a wall read as a wall in a picture, and it is
 // why this step is measured in a band and not in triangles.
 pub struct RunWall {
-  rw_ok:   boolean,
-  rw_len:  float,
-  rw_half: float,
-  rw_cx:   vector<float>,   // the four plan corners, in order around the strip
-  rw_cz:   vector<float>,
+  pub rw_ok:   boolean,
+  pub rw_len:  float,
+  pub rw_half: float,
+  pub rw_cx:   vector<float>,   // the four plan corners, in order around the strip
+  pub rw_cz:   vector<float>,
 }
 
 // The presented thickness of a wall that DECLARES none, from `hex_draw`'s band table
@@ -247,14 +247,14 @@ pub fn run_wall_z(w: RunWall, i: integer) -> float { w.rw_cz[i] ?? 0.0 }
 pub const POSE_ROT = 12;              // hex_shape's BOX_ROT — the placement granularity
 
 pub struct Footprint {
-  fp_ok:       boolean,   // false — the odd orbit; read `fp_offer` and say why
-  fp_cq:       integer,   // the anchor cell: the rectangle's centre
-  fp_cr:       integer,
+  pub fp_ok:       boolean,   // false — the odd orbit; read `fp_offer` and say why
+  pub fp_cq:       integer,   // the anchor cell: the rectangle's centre
+  pub fp_cr:       integer,
   fp_wid:      integer,
   fp_dep:      integer,
-  fp_rot:      integer,   // 0..11, the Box rotation the facing snapped to
-  fp_offer:    integer,   // the nearest EVEN rotation, always
-  fp_residual: float,     // degrees between where the author looked and what landed
+  pub fp_rot:      integer,   // 0..11, the Box rotation the facing snapped to
+  pub fp_offer:    integer,   // the nearest EVEN rotation, always
+  pub fp_residual: float,     // degrees between where the author looked and what landed
 }
 
 // The rotation whose +v axis a facing snaps to, and how far it moved.
@@ -880,12 +880,12 @@ pub const ROOF_PITCH_DEFAULT = 0.70;
 // opposite of what the store's integer heights suggested: the drawn roof lands exactly on
 // the ridge it claims.
 pub struct RoofRead {
-  rr_ok:    boolean,
-  rr_kind:  integer,       // `hex_roof`'s ROOF_* — RIDGE, PLANE, CONE, DOME or UNKNOWN
+  pub rr_ok:    boolean,
+  pub rr_kind:  integer,       // `hex_roof`'s ROOF_* — RIDGE, PLANE, CONE, DOME or UNKNOWN
   rr_peak:  float,
-  rr_slope: float,
-  rr_res:   float,
-  rr_cells: integer,
+  pub rr_slope: float,
+  pub rr_res:   float,
+  pub rr_cells: integer,
 }
 
 // The name a caption uses. ⚠ `unknown` is an answer, not a failure: it is what `roof_match`
@@ -1438,8 +1438,8 @@ pub fn roof_plan_over(rp: RoofPlan, x: float, z: float) -> boolean {
 // field named for one consumer's decision would bake that consumer's mode into the
 // query and make the others unbuildable.
 pub struct Shelter {
-  sh_inside: boolean,
-  sh_head:   integer,     // clear height above the eye, in units; -1 under open sky
+  pub sh_inside: boolean,
+  pub sh_head:   integer,     // clear height above the eye, in units; -1 under open sky
   // ⚠ WHAT THE NEAREST COVER IS MADE OF, AND IT IS A FIELD RATHER THAN A SECOND
   // SWEEP — plan 22 `D1`. `mode_at` has to tell a room from a tunnel, and both
   // answer `sh_inside`; the design's own rule is *do not add a second enclosure
@@ -1451,7 +1451,7 @@ pub struct Shelter {
   // ⚠ A ROOF PLAN IS FABRIC BY CONSTRUCTION — it is filed by `place_house`. A cell
   // answers `ground_kind_at(…).tr_fabric`, which is the line `A1` already draws
   // between what moves rigidly with a building and what is ground.
-  sh_fabric: boolean,
+  pub sh_fabric: boolean,
   // ⚠ THESE TWO ARE MEASURED, NOT DERIVED, and that is why `shelter_at` leaves them
   // at -1. A clear RADIUS needs a march against the view-blocking edge set, which is
   // the same sweep the boom uses — `cam_free_dist` and its proxy live where the
@@ -1459,8 +1459,8 @@ pub struct Shelter {
   // that already has one. The design put them in this struct so that *every mode
   // reads one query*, and that still holds: the server fills them with
   // `shelter_room` before anything consults the modes.
-  sh_room:   float,       // clear radius before a view-blocking edge, all round; -1 unmeasured
-  sh_back:   float,       // clear distance directly behind the subject; -1 unmeasured
+  pub sh_room:   float,       // clear radius before a view-blocking edge, all round; -1 unmeasured
+  pub sh_back:   float,       // clear distance directly behind the subject; -1 unmeasured
 }
 
 pub fn shelter_at(w: VoxelWorld, roofs: RoofPlans, x: float, z: float,
@@ -1842,14 +1842,14 @@ pub const CELLAR_PAD = 6;
 // whose stair was refused — and the socket prints a different line for each. A result
 // carrying only *ok* would make the driver re-derive which of the four it was.
 pub struct StoreyMade {
-  sy_ok:    boolean,            // the storey or cellar was made
-  sy_say:   text = "",          // the wire sentence, refusal and success alike
+  pub sy_ok:    boolean,            // the storey or cellar was made
+  pub sy_say:   text = "",          // the wire sentence, refusal and success alike
   sy_dir:   integer = 0,
-  sy_cells: integer = 0,        // cells the disc covered, or the refusal code
-  sy_stair: integer = 0,        // treads cut, or the stair's own refusal code
-  sy_why:   text = "",          // whichever refusal fired
-  sy_q: integer = 0, sy_r: integer = 0,
-  sy_pad:   integer = 0,        // how far around it the picture is stale
+  pub sy_cells: integer = 0,        // cells the disc covered, or the refusal code
+  pub sy_stair: integer = 0,        // treads cut, or the stair's own refusal code
+  pub sy_why:   text = "",          // whichever refusal fired
+  pub sy_q: integer = 0, pub sy_r: integer = 0,
+  pub sy_pad:   integer = 0,        // how far around it the picture is stale
 }
 
 // `12:±1` — a floor above where you stand, or a room below it with a way in.

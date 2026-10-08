@@ -53,15 +53,15 @@ pub enum SupportKind { Unsupported, Ground, Carried, Buoyant }
 pub enum ShapeKind { Box, Disc, Capsule }
 
 pub struct Link {
-  lk_kind: LinkKind,
-  lk_ox: float, lk_oy: float, lk_oz: float,   // offset in the parent's frame
-  lk_ax: float, lk_ay: float, lk_az: float,   // the revolute axis, or a leg
-  lk_lo: float, lk_hi: float,                 // joint limits, in TURNS
+  pub lk_kind: LinkKind,
+  pub lk_ox: float, pub lk_oy: float, pub lk_oz: float,   // offset in the parent's frame
+  pub lk_ax: float, pub lk_ay: float, pub lk_az: float,   // the revolute axis, or a leg
+  pub lk_lo: float, pub lk_hi: float,                 // joint limits, in TURNS
   lk_len: float                               // a tether's or spring's length
 }
 
 pub struct Body {
-  bd_support: SupportKind,
+  pub bd_support: SupportKind,
   bd_driven: integer,                         // advanced from outside
   bd_solved: integer,                         // determined by equilibrium
   // ⚠ ADDED BY `A2`, not foreseen by `A1`. `A-DOF` says GROUND support *"removes
@@ -75,8 +75,8 @@ pub struct Body {
   // which is a real case (a marker, a trigger) and not a defaulted one. The
   // EXTENT is never stored: it is derived from the rig, or from the body's own
   // attachment points. See `shape.loft`.
-  bd_shape: ShapeKind = ShapeKind.Box,
-  bd_girth: float
+  pub bd_shape: ShapeKind = ShapeKind.Box,
+  pub bd_girth: float
 }
 
 // A revolute joint with no authored limits. `hex_body` measures joint limits in
@@ -88,17 +88,17 @@ pub const FREE_LO = 0.0 - 1000.0;
 
 pub struct Assembly {
   am_name: text,
-  am_parent: vector<integer>,                 // parent body; −1 for the root
-  am_link: vector<Link>,                      // the link from parent to body i
-  am_body: vector<Body>,
+  pub am_parent: vector<integer>,                 // parent body; −1 for the root
+  pub am_link: vector<Link>,                      // the link from parent to body i
+  pub am_body: vector<Body>,
   // ⚠ ADDED BY `A5`. A rig is MULTI-LINE text (`rig_write`), so it cannot ride on
   // a body's line and the format needs a SECTION — the same call the world file
   // already made (*tagged sections, not a flags word*). `A4` predicted this.
   //
   // Rigs are a LIBRARY and bodies index into it, so the cart's two wheels share
   // one spoke description instead of carrying a copy each. `−1` is no rig.
-  am_rig: vector<Rig>,
-  am_bodyrig: vector<integer>
+  pub am_rig: vector<Rig>,
+  pub am_bodyrig: vector<integer>
 }
 
 pub fn asm_new(name: text) -> Assembly {
@@ -604,15 +604,15 @@ pub const DOF_PER_BODY = 6;
 pub const GROUND_MAX = 3;
 
 pub struct Ledger {
-  dg_links: integer,
-  dg_support: integer,
-  dg_driven: integer,
-  dg_solved: integer,
-  dg_total: integer,
+  pub dg_links: integer,
+  pub dg_support: integer,
+  pub dg_driven: integer,
+  pub dg_solved: integer,
+  pub dg_total: integer,
   // 6 − total. Positive is UNDER-determined, negative is OVER-constrained, and
   // the sign is what tells a caller whether to refuse or to look for what is
   // being pinned by nothing.
-  dg_residual: integer
+  pub dg_residual: integer
 }
 
 fn min_i(a: integer, b: integer) -> integer { if a < b { a } else { b } }

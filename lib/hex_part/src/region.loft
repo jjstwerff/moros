@@ -13,10 +13,10 @@ pub const PR_WORLD   = 1;        // the new world's constants were refused
 pub const PR_WRITE   = 2;        // a column would not go in
 
 pub struct PartCopy {
-  pc_code:  integer,
-  pc_world: VoxelWorld,
-  pc_cells: integer,             // columns actually written
-  pc_why:   text,
+  pub pc_code:  integer,
+  pub pc_world: VoxelWorld,
+  pub pc_cells: integer,             // columns actually written
+  pub pc_why:   text,
 }
 
 // Move a cell so the region's centre lands on the part's origin.
@@ -137,7 +137,7 @@ pub fn column_cells(c: Column) -> vector<Hex> {
   out
 }
 
-pub struct PartDiff { pd_same: boolean, pd_why: text }
+pub struct PartDiff { pub pd_same: boolean, pub pd_why: text }
 
 fn same() -> PartDiff { PartDiff { pd_same: true, pd_why: "" } }
 fn differ(why: text) -> PartDiff { PartDiff { pd_same: false, pd_why: why } }

@@ -46,9 +46,9 @@ use mesh3d::*;
 pub const TURN = 6.283185307179586;
 
 pub struct Rot {
-  r11: float, r12: float, r13: float,
-  r21: float, r22: float, r23: float,
-  r31: float, r32: float, r33: float
+  pub r11: float, pub r12: float, pub r13: float,
+  pub r21: float, pub r22: float, pub r23: float,
+  pub r31: float, pub r32: float, pub r33: float
 }
 
 // ⚠ **NAMED `Xform` BECAUSE `Frame` IS TAKEN — by `hex_body`, which this package
@@ -85,8 +85,8 @@ pub struct Rot {
 // ⚠ The `fm_` field prefix is kept deliberately: fields are reached through their
 // struct and cannot collide across packages, so renaming 119 sites would buy nothing.
 pub struct Xform {
-  fm_r: Rot,
-  fm_x: float, fm_y: float, fm_z: float
+  pub fm_r: Rot,
+  pub fm_x: float, pub fm_y: float, pub fm_z: float
 }
 
 pub fn rot_id() -> Rot {
@@ -283,7 +283,7 @@ pub fn asm_rigid_err(fs: vector<Xform>, u: Vec3, v: Vec3) -> float {
 // because the first CANNOT fail the plane clause, and a claim with no control is
 // not a checked claim.
 
-pub struct Seg3 { sg_a: Vec3, sg_b: Vec3 }
+pub struct Seg3 { pub sg_a: Vec3, pub sg_b: Vec3 }
 
 pub fn embed(f: Xform, x: float, y: float,
              iota: float = 1.0, warp: float = 0.0) -> Vec3 {

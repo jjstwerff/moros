@@ -1052,7 +1052,7 @@ fn main() {
   // than the first event. ⚠ It also means a script that is never anything but outside
   // prints nothing at all, and that silence is the honest report.
   mode_last = hex_editor::mode_at(sess, w, walk_author(wk));
-  for line in text.split('\n') {
+  for line in text.split('\n')? {
     said = "";
     ok = run_line(w, wk, sess, line, said, mode_last);
     if said != "" { println("  {said}"); }

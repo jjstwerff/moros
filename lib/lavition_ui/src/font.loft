@@ -30,9 +30,9 @@ pub struct Metrics {
   //
   // 1/64 is the unit fonts are hinted in, and it makes the residual under a
   // pixel over any line a panel can hold.
-  m_adv64:   integer,       // advance in 1/64 px
-  m_line_h:  integer,       // line height in pixels
-  m_mono:    boolean,       // is it actually fixed-pitch?
+  pub m_adv64:   integer,       // advance in 1/64 px
+  pub m_line_h:  integer,       // line height in pixels
+  pub m_mono:    boolean,       // is it actually fixed-pitch?
 }
 
 // The advance in whole pixels, for a caller that wants to show it.

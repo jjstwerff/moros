@@ -38,8 +38,8 @@ use self::region::*;
 // the seam instead, which is also what makes this callable from a test with no
 // renderer in sight.
 pub struct PartBox {
-  pb_x0: float, pb_y0: float, pb_z0: float,
-  pb_x1: float, pb_y1: float, pb_z1: float,
+  pub pb_x0: float, pub pb_y0: float, pub pb_z0: float,
+  pub pb_x1: float, pub pb_y1: float, pub pb_z1: float,
 }
 
 pub const KC_COVERS = 0;   // the skin contains the blockout — the ordinary answer
@@ -51,11 +51,11 @@ pub const KC_EMPTY  = 2;   // one of the two has no extent at all
 // *"does not fit"* number would send an artist looking at the whole model; three say
 // which way it is short.
 pub struct SkinCheck {
-  kc_code: integer,
-  kc_dx: float = 0.0,
-  kc_dy: float = 0.0,
-  kc_dz: float = 0.0,
-  kc_why: text = "",
+  pub kc_code: integer,
+  pub kc_dx: float = 0.0,
+  pub kc_dy: float = 0.0,
+  pub kc_dz: float = 0.0,
+  pub kc_why: text = "",
 }
 
 fn over(lo_in: float, hi_in: float, lo_out: float, hi_out: float, tol: float) -> float {

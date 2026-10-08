@@ -36,7 +36,7 @@ pub const PR_EMPTY   = 1;   // a mesh reference naming nothing
 pub const PR_NEWLINE = 2;   // a newline — it would forge a line
 pub const PR_ESCAPE  = 3;   // a name that climbs out of the library
 
-pub struct PropWrite { pw_code: integer, pw_why: text }
+pub struct PropWrite { pub pw_code: integer, pw_why: text }
 
 // ── The reference is a NAME, and it may not leave the library ────────────────
 //
@@ -82,7 +82,7 @@ pub fn part_set_mesh(w: VoxelWorld, name: text) -> PropWrite {
   PropWrite { pw_code: PR_OK, pw_why: "" }
 }
 
-pub struct MeshRead { pr_code: integer, pr_name: text, pr_why: text }
+pub struct MeshRead { pub pr_code: integer, pub pr_name: text, pub pr_why: text }
 
 // ⚠ ONE VALIDATOR, BOTH DIRECTIONS — `sock.loft`'s rule, and here it is what
 // stops a hand-edited `mesh=../../secrets` being opened by the loader below.
@@ -135,12 +135,12 @@ pub fn part_mesh(w: VoxelWorld) -> MeshRead {
 // `INST` carries no handle, because that part's cells are stamped in the world
 // beside it and there is nothing left to fetch.
 pub struct MeshAt {
-  ma_mesh:   text,        // the name the part's `MESH` gave, unresolved
-  ma_part:   text,        // the part handle, for a LIMB whose body is its own cells
-  ma_q:      integer,
-  ma_r:      integer,
-  ma_h:      integer,
-  ma_facing: integer,     // 0..23, the turn to apply
+  pub ma_mesh:   text,        // the name the part's `MESH` gave, unresolved
+  pub ma_part:   text,        // the part handle, for a LIMB whose body is its own cells
+  pub ma_q:      integer,
+  pub ma_r:      integer,
+  pub ma_h:      integer,
+  pub ma_facing: integer,     // 0..23, the turn to apply
   // ── THE SWING, AND WHY IT COULD NOT RIDE IN `ma_facing` — plan 17 `A5.2` ──
   //
   // ⚠ `ma_facing` IS A TURN ABOUT THE PART'S ORIGIN, ABOUT THE VERTICAL. A hinge
@@ -167,9 +167,9 @@ pub struct MeshAt {
   // than a new sentinel: `hinge.loft` refuses an axis of zero length as
   // `HG_AXIS` — *a revolute joint with nothing to turn about* — so it can never
   // be a real hinge, and the default costs no extra field to say so.
-  ma_ox: float = 0.0, ma_oy: float = 0.0, ma_oz: float = 0.0,
-  ma_ax: float = 0.0, ma_ay: float = 0.0, ma_az: float = 0.0,
-  ma_swing: float = 0.0,   // in TURNS, the unit `A5.1` chose for the limits
+  pub ma_ox: float = 0.0, pub ma_oy: float = 0.0, pub ma_oz: float = 0.0,
+  pub ma_ax: float = 0.0, pub ma_ay: float = 0.0, pub ma_az: float = 0.0,
+  pub ma_swing: float = 0.0,   // in TURNS, the unit `A5.1` chose for the limits
   // ── THE SCALE, DERIVED FROM TWO FILES AND AUTHORED IN NEITHER — `A8.2b`, §P9.1
   //
   // ⚠ A LIMB IS AUTHORED AT ITS OWN SCALE. A door at the parent's hex size is one
@@ -199,7 +199,7 @@ pub struct MeshAt {
   // unit mismatch (`EX_UNIT`) rather than carrying a ratio. Every placement that
   // is not a limb is therefore at 1.0 because the units are equal, which the
   // refusal is what guarantees.
-  ma_scale: float = 1.0,
+  pub ma_scale: float = 1.0,
 }
 
 // ── Does the mesh it names actually load? ────────────────────────────────────
@@ -221,9 +221,9 @@ pub const MC_BROKEN  = 4;   // it names one that is not a readable `.glb`
 // only *missing* for a `.glb` that is present and corrupt sends the author looking
 // for a file that is right there.
 pub struct MeshCheck {
-  mc_code:  integer,
-  mc_why:   text,
-  mc_verts: integer = 0,    // what actually came out of the file
+  pub mc_code:  integer,
+  pub mc_why:   text,
+  pub mc_verts: integer = 0,    // what actually came out of the file
 }
 
 // ⚠ `mc_verts` IS A READ-BACK AND NOT A TALLY. *The mesh loads* is a claim about a

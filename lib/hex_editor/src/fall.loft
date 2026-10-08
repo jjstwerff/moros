@@ -68,10 +68,10 @@ pub const FALL_GRAVITY = 12.0;
 pub const FALL_TERMINAL = 60.0;
 
 pub struct Fall {
-  fl_y: float,             // the feet, after the step
-  fl_vy: float,            // vertical speed, negative downward
-  fl_landed: boolean,      // this step is the one that touched down
-  fl_airborne: boolean     // still in the air after this step
+  pub fl_y: float,             // the feet, after the step
+  pub fl_vy: float,            // vertical speed, negative downward
+  pub fl_landed: boolean,      // this step is the one that touched down
+  pub fl_airborne: boolean     // still in the air after this step
 }
 
 // One step of the feet toward the ground under them.

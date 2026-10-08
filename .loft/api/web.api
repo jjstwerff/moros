@@ -7,7 +7,11 @@
 // --- HTTP Client + WebSocket Client ---
 
 // The result of an HTTP request.
-pub struct HttpResponse
+pub struct HttpResponse {
+  status: integer,
+  body: text,
+  headers: vector<text>,
+}
 
 // Returns true when the status code is in the 200-299 range.
 pub fn ok(self: HttpResponse) -> boolean
@@ -62,7 +66,9 @@ pub fn http_size(url: text) -> integer
 
 // --- WebSocket client ---
 
-pub struct WsHandler
+pub struct WsHandler {
+  id: integer,  // Rust-side connection slot
+}
 
 // --- Public API ---
 
@@ -153,9 +159,14 @@ pub fn byte_at(idx: integer, t: text) -> integer
 
 // --- Multiplexed client receiver (WsGroup) ---
 
-pub struct WsGroupEvent
+pub struct WsGroupEvent {
+  handle: integer,
+  message: text,
+}
 
-pub struct WsGroup
+pub struct WsGroup {
+  _dummy: integer,  // no state on loft side; Rust owns the list
+}
 
 // Create a new (empty) group.
 pub fn ws_group() -> WsGroup

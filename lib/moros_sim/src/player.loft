@@ -29,13 +29,13 @@ pub AVATAR_HEIGHT     = 1.8;
 
 // ── Avatar state ─────────────────────────────────────────────────
 pub struct Player {
-  pl_pos:          Vec3,                // feet position, world units
-  pl_vel:          Vec3,                // world units / second
-  pl_facing:       float,      // yaw in radians
+  pub pl_pos:          Vec3,                // feet position, world units
+  pub pl_vel:          Vec3,                // world units / second
+  pub pl_facing:       float,      // yaw in radians
   pl_pitch:        float,      // camera pitch (avatar body upright)
-  pl_holding_jump: boolean,
-  pl_on_ground:    boolean,
-  pl_current_tool: ToolKind,
+  pub pl_holding_jump: boolean,
+  pub pl_on_ground:    boolean,
+  pub pl_current_tool: ToolKind,
 }
 
 pub fn player_default() -> Player {
@@ -52,30 +52,30 @@ pub fn player_default() -> Player {
 
 // ── Input envelope passed from the host each frame ──────────────
 pub struct InputState {
-  in_fwd:              boolean,
-  in_back:             boolean,
-  in_strafe_left:      boolean,
-  in_strafe_right:     boolean,
-  in_jump_held:        boolean,
+  pub in_fwd:              boolean,
+  pub in_back:             boolean,
+  pub in_strafe_left:      boolean,
+  pub in_strafe_right:     boolean,
+  pub in_jump_held:        boolean,
 
-  in_mx:               integer,
-  in_my:               integer,
-  in_mouse_dx:         integer,
-  in_mouse_dy:         integer,
-  in_wheel:            integer,
-  in_click:            boolean,
-  in_rclick:           boolean,
+  pub in_mx:               integer,
+  pub in_my:               integer,
+  pub in_mouse_dx:         integer,
+  pub in_mouse_dy:         integer,
+  pub in_wheel:            integer,
+  pub in_click:            boolean,
+  pub in_rclick:           boolean,
 
-  in_tool_number:      integer,   // 0 = none, 1..6 = select tool
-  in_mode_toggle:      boolean,
-  in_occlusion_toggle: boolean,
-  in_undo:             boolean,
-  in_redo:             boolean,
-  in_save:             boolean,
-  in_layer_up:         boolean,
-  in_layer_down:       boolean,
-  in_wall_dir_prev:    boolean,   // cycle `ts_wall_direction` counter-clockwise
-  in_wall_dir_next:    boolean,   // cycle `ts_wall_direction` clockwise
+  pub in_tool_number:      integer,   // 0 = none, 1..6 = select tool
+  pub in_mode_toggle:      boolean,
+  pub in_occlusion_toggle: boolean,
+  pub in_undo:             boolean,
+  pub in_redo:             boolean,
+  pub in_save:             boolean,
+  pub in_layer_up:         boolean,
+  pub in_layer_down:       boolean,
+  pub in_wall_dir_prev:    boolean,   // cycle `ts_wall_direction` counter-clockwise
+  pub in_wall_dir_next:    boolean,   // cycle `ts_wall_direction` clockwise
 }
 
 pub fn input_empty() -> InputState {

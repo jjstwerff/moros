@@ -38,8 +38,8 @@ pub const TAG_WALL = 1280065879;    // 'WALL', low byte first
 // index would silently become a different colour on a re-order while a name
 // survives it.
 pub struct PartWall {
-  wa_up:      integer = 0,    // the height of this part's WALL_MAT panels
-  wa_surface: text = "",      // the surface they are drawn in, by name
+  pub wa_up:      integer = 0,    // the height of this part's WALL_MAT panels
+  pub wa_surface: text = "",      // the surface they are drawn in, by name
 }
 
 pub const WA_OK      = 0;
@@ -70,7 +70,7 @@ pub fn part_set_wall(w: VoxelWorld, p: PartWall) -> integer {
 // rule, for its reason: a part written before this section existed states no
 // profile and is fine, while a part whose `WALL` says `up=tall` is damaged, and
 // one code for both makes the damaged one look ordinary.
-pub struct WallRead { wr_code: integer, wr_wall: PartWall, wr_why: text }
+pub struct WallRead { pub wr_code: integer, pub wr_wall: PartWall, pub wr_why: text }
 
 pub fn part_wall(w: VoxelWorld) -> WallRead {
   if world_section_at(w, TAG_WALL) < 0 {

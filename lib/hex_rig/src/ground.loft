@@ -71,14 +71,14 @@ use mesh3d::*;
 use hex_body::*;
 
 pub struct Rest {
-  rt_ok: boolean,
-  rt_frame: Xform,        // the solved base frame; the pose, not a description of it
-  rt_bank: float,         // radians
-  rt_rounds: integer,     // rounds actually taken
+  pub rt_ok: boolean,
+  pub rt_frame: Xform,        // the solved base frame; the pose, not a description of it
+  pub rt_bank: float,         // radians
+  pub rt_rounds: integer,     // rounds actually taken
   rt_resid: float,        // the last change in β — how far from settled
-  rt_reason: text,        // `K-FIT`: named, and empty when applied exactly
-  rt_offer: float,        // `K-FIT`: the nearest admissible drop across the axle
-  rt_over: float          // `K-FIT`: the residual, |d| − 2w
+  pub rt_reason: text,        // `K-FIT`: named, and empty when applied exactly
+  pub rt_offer: float,        // `K-FIT`: the nearest admissible drop across the axle
+  pub rt_over: float          // `K-FIT`: the residual, |d| − 2w
 }
 
 fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
@@ -241,9 +241,9 @@ pub fn ground_worst_gap(g: Rest, half: float, radius: float,
 // That is the re-assertion-site table paying out: neither number is written twice.
 
 pub struct Axle {
-  ax_half: float,
-  ax_radius: float,
-  ax_n: integer          // how many wheels were found; 0 means "no axle here"
+  pub ax_half: float,
+  pub ax_radius: float,
+  pub ax_n: integer          // how many wheels were found; 0 means "no axle here"
 }
 
 pub fn body_axle(a: Assembly, i: integer) -> Axle {

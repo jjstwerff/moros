@@ -35,7 +35,7 @@ use hex_body::*;
 
 // An axis-aligned box in the BODY's own frame — `A-PLANE`'s frame, so a disc's
 // plane is the frame's `z = 0` plane.
-pub struct Obb3 { ob_hx: float, ob_hy: float, ob_hz: float }
+pub struct Obb3 { pub ob_hx: float, pub ob_hy: float, pub ob_hz: float }
 
 const PI = 3.14159265358979;
 

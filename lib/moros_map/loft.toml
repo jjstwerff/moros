@@ -24,4 +24,7 @@ entry = "src/moros_map.loft"
 # editor carries an explicit `use hex_shape;` for it. Recorded because a wrong
 # hypothesis that leaves a right change behind is worth telling apart from a fix.
 [dependencies]
-hex_field = ">=0.1"
+# ⚠ 0.1.7 IS THE FIRST RELEASE WITH `pub` FIELDS (loft C140): this package reads `HexDoc`
+# and `Stencil` fields, which 0.1.0 keeps private to hex_field. Its declared break is the
+# `EdgeSet` record layout (`eg_refused`); the HXF file format is unchanged.
+hex_field = ">=0.1.7"

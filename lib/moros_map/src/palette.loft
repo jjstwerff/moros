@@ -33,42 +33,42 @@
 // "terrain", "floor", "stair", "spiral_stair", "grand_arc_stair",
 // "roof", "water", "void".
 pub struct MaterialDef {
-  md_name:       text,
-  md_category:   text,
-  md_stair_kind: text,
-  md_texture:    integer,
-  md_tint_r:     integer,
-  md_tint_g:     integer,
-  md_tint_b:     integer,
-  md_walkable:   integer,
-  md_swimmable:  integer,
-  md_climbable:  integer,
-  md_slippery:   integer,
-  md_loud:       integer,
+  pub md_name:       text,
+  pub md_category:   text,
+  pub md_stair_kind: text,
+  pub md_texture:    integer,
+  pub md_tint_r:     integer,
+  pub md_tint_g:     integer,
+  pub md_tint_b:     integer,
+  pub md_walkable:   integer,
+  pub md_swimmable:  integer,
+  pub md_climbable:  integer,
+  pub md_slippery:   integer,
+  pub md_loud:       integer,
 }
 
 // Wall definition. Body type determines geometry:
 // "SOLID", "HALF_HEIGHT", "FENCE", "BATTLEMENT",
 // "THICK_FLAT", "THICK_CURVED", "ROAD_GUIDE".
 pub struct WallDef {
-  wd_name:      text,
-  wd_body:      text,
-  wd_base:      text,
-  wd_thickness: float,
-  wd_texture:   integer,
-  wd_tint_r:    integer,
-  wd_tint_g:    integer,
-  wd_tint_b:    integer,
+  pub wd_name:      text,
+  pub wd_body:      text,
+  pub wd_base:      text,
+  pub wd_thickness: float,
+  pub wd_texture:   integer,
+  pub wd_tint_r:    integer,
+  pub wd_tint_g:    integer,
+  pub wd_tint_b:    integer,
 }
 
 // Item definition. Kind determines placeholder 3D geometry:
 // "PILLAR", "TREE", "FURNITURE", "CONTAINER", etc.
 pub struct ItemDef {
-  id_name:       text,
-  id_kind:       text,
-  id_model:      integer,
-  id_symmetric:  integer,
-  id_arc_radius: float,
+  pub id_name:       text,
+  pub id_kind:       text,
+  pub id_model:      integer,
+  pub id_symmetric:  integer,
+  pub id_arc_radius: float,
 }
 
 // ── The tables the voxel's u8s index into ────────────────────────────────────

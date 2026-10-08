@@ -40,13 +40,13 @@ pub fn month(mt: integer) -> integer
 pub fn day(dt: integer) -> integer
 
 // The hour of the day, 0..23, in UTC.
-pub fn hour(ht: integer)   -> integer
+pub fn hour(ht: integer) -> integer
 
 // The minute of the hour, 0..59.
 pub fn minute(mit: integer) -> integer
 
 // The second of the minute, 0..59.
-pub fn second(st: integer)  -> integer
+pub fn second(st: integer) -> integer
 
 // 0 = Monday .. 6 = Sunday.  1970-01-01 was a Thursday (weekday 3).
 pub fn weekday(wt: integer) -> integer
@@ -55,14 +55,14 @@ pub fn weekday(wt: integer) -> integer
 // value is MILLISECONDS: `t + 3` is three thousandths of a second, and
 // reads at the call site like three of whatever the reader had in mind.
 // Example: @TIM-001
-pub fn add_days(adt: integer, days: integer)     -> integer
+pub fn add_days(adt: integer, days: integer) -> integer
 
 // Move by whole weeks.  Calendar-safe like `add_days`: no hour drifts, because there is
 // no daylight saving in this model.
-pub fn add_weeks(awt: integer, weeks: integer)   -> integer
+pub fn add_weeks(awt: integer, weeks: integer) -> integer
 
 // Move by whole seconds.
-pub fn add_seconds(ast: integer, secs: integer)  -> integer
+pub fn add_seconds(ast: integer, secs: integer) -> integer
 
 // Calendar days from `a` to `b` (b later → positive) — a count of
 // UTC-MIDNIGHTS CROSSED, not of elapsed time, so a 26-hour span can
@@ -135,78 +135,82 @@ pub fn weekday_name(wnt: integer) -> text
 // The month's short English name ("Jan" … "Dec"), for display only.
 pub fn month_name(mnt: integer) -> text
 
-pub value struct DateTime
+pub value struct DateTime {
+  ms: integer,
+}
 
-pub value struct Duration
+pub value struct Duration {
+  ms: integer,
+}
 
 // ── DateTime construction ──
 // A DateTime at midnight UTC on this calendar date — the usual way into the typed layer.
 pub fn date(dcy: integer, dcmo: integer, dcd: integer) -> DateTime
 
 // A DateTime at an exact calendar date and time of day, UTC.
-pub fn datetime(tcy: integer, tcmo: integer, tcd: integer,
+pub fn datetime(tcy: integer, tcmo: integer, tcd: integer, tch: integer, tcmi: integer, tcs: integer) -> DateTime
 
 // ── Duration construction ──
 // A Duration of this many milliseconds.
 pub fn milliseconds(nms: integer) -> Duration
 
 // A Duration of this many seconds.
-pub fn seconds(nsec: integer)     -> Duration
+pub fn seconds(nsec: integer) -> Duration
 
 // A Duration of this many minutes.
-pub fn minutes(nmin: integer)     -> Duration
+pub fn minutes(nmin: integer) -> Duration
 
 // A Duration of this many hours.
-pub fn hours(nhr: integer)        -> Duration
+pub fn hours(nhr: integer) -> Duration
 
 // A Duration of this many days.  Add it to a DateTime rather than doing the arithmetic
 // yourself, so the unit is in the code instead of in your head.
-pub fn days(nday: integer)        -> Duration
+pub fn days(nday: integer) -> Duration
 
 // A Duration of this many weeks.
-pub fn weeks(nwk: integer)        -> Duration
+pub fn weeks(nwk: integer) -> Duration
 
 // ── DateTime field accessors (methods; delegate to the integer API above) ──
 // This value's year.
-pub fn year(self: DateTime)         -> integer
+pub fn year(self: DateTime) -> integer
 
 // This value's month.
-pub fn month(self: DateTime)        -> integer
+pub fn month(self: DateTime) -> integer
 
 // This value's day.
-pub fn day(self: DateTime)          -> integer
+pub fn day(self: DateTime) -> integer
 
 // This DateTime's hour, the method form of the free function above.
-pub fn hour(self: DateTime)         -> integer
+pub fn hour(self: DateTime) -> integer
 
 // This DateTime's minute, the method form of the free function above.
-pub fn minute(self: DateTime)       -> integer
+pub fn minute(self: DateTime) -> integer
 
 // This DateTime's second, the method form of the free function above.
-pub fn second(self: DateTime)       -> integer
+pub fn second(self: DateTime) -> integer
 
 // This value's weekday.
-pub fn weekday(self: DateTime)      -> integer
+pub fn weekday(self: DateTime) -> integer
 
 // This value's iso year.
-pub fn iso_year(self: DateTime)     -> integer
+pub fn iso_year(self: DateTime) -> integer
 
 // This value's iso week.
-pub fn iso_week(self: DateTime)     -> integer
+pub fn iso_week(self: DateTime) -> integer
 
 // This DateTime's weekday name, the method form of the free function above.
 pub fn weekday_name(self: DateTime) -> text
 
 // This DateTime's month name, the method form of the free function above.
-pub fn month_name(self: DateTime)   -> text
+pub fn month_name(self: DateTime) -> text
 
 // This DateTime as milliseconds since the epoch — the way OUT of the typed layer, for
 // storage, a wire format, or the plain-integer routines above.
-pub fn to_millis(self: DateTime)    -> integer
+pub fn to_millis(self: DateTime) -> integer
 
 // ── Duration accessors ──
 // The span in whole milliseconds — its exact value.
-pub fn total_millis(self: Duration)  -> integer
+pub fn total_millis(self: Duration) -> integer
 
 // The span in whole seconds, truncated toward zero.
 pub fn total_seconds(self: Duration) -> integer
@@ -215,10 +219,10 @@ pub fn total_seconds(self: Duration) -> integer
 pub fn total_minutes(self: Duration) -> integer
 
 // The span in whole hours, truncated toward zero.
-pub fn total_hours(self: Duration)   -> integer
+pub fn total_hours(self: Duration) -> integer
 
 // The span in whole days, truncated toward zero.
-pub fn total_days(self: Duration)    -> integer
+pub fn total_days(self: Duration) -> integer
 
 // ── DateTime operators (comparison + typed arithmetic) ──
 // Is this DateTime earlier?  Defined so dates compare with `<` like numbers.
@@ -244,7 +248,7 @@ pub fn OpNe(self: DateTime, other: DateTime) -> boolean
 pub fn OpMin(self: DateTime, other: DateTime) -> Duration
 
 // DateTime + Duration moves forward by the span; subtract by adding `negate(span)`.
-pub fn OpAdd(self: DateTime, span: Duration)  -> DateTime
+pub fn OpAdd(self: DateTime, span: Duration) -> DateTime
 
 // `-` on a DateTime is the difference `dt - dt` (above); operators key on the
 // receiver type, so subtracting a Duration is the `minus` method (or `dt + (-span)`).

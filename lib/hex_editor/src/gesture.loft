@@ -62,10 +62,10 @@ use self::walltype::*;
 // on**. A silent `0.0` puts every fence on the ground floor of a building whose
 // author is standing upstairs, and nothing says so.
 pub struct Author {
-  au_x:   float,
-  au_z:   float,
-  au_yaw: float,
-  au_y:   float,
+  pub au_x:   float,
+  pub au_z:   float,
+  pub au_yaw: float,
+  pub au_y:   float,
 }
 
 // ⚠ THE HEIGHT IS A REQUIRED ARGUMENT, NOT A DEFAULTED ONE, and that is the whole
@@ -102,12 +102,12 @@ pub fn author_on(w: VoxelWorld, x: float, z: float, yaw: float) -> Author {
 // not get: the clamped height, the degrees a facing moved, the cut-and-fill a
 // seat owes. A gesture that applies an approximation and reports 0 has lied.
 pub struct Ack {
-  ak_ok:       boolean,
-  ak_why:      text,
-  ak_n:        integer,
-  ak_residual: integer,
-  ak_q:        integer,   // WHERE it happened — the caller needs this to know
-  ak_r:        integer,   // which chunks to rebuild, and must not re-derive it
+  pub ak_ok:       boolean,
+  pub ak_why:      text,
+  pub ak_n:        integer,
+  pub ak_residual: integer,
+  pub ak_q:        integer,   // WHERE it happened — the caller needs this to know
+  pub ak_r:        integer,   // which chunks to rebuild, and must not re-derive it
 }
 
 pub fn ack_ok(n: integer) -> Ack {
@@ -145,11 +145,11 @@ pub fn ack_at(a: Ack, q: integer, r: integer) -> Ack {
 // parameters are refused WITHOUT an offer, and that is a distinction the type
 // carries rather than each caller remembering.
 pub struct Fit {
-  ft_ok:       boolean,
-  ft_reason:   text,
-  ft_offer:    integer,          // meaningless unless ft_ordinal
-  ft_residual: integer,
-  ft_ordinal:  boolean,
+  pub ft_ok:       boolean,
+  pub ft_reason:   text,
+  pub ft_offer:    integer,          // meaningless unless ft_ordinal
+  pub ft_residual: integer,
+  pub ft_ordinal:  boolean,
 }
 
 pub fn fit_ok() -> Fit {
@@ -719,13 +719,13 @@ pub fn edges_mat(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: int
 // means *these ends describe this run*. Drawing it over the field is how the
 // difference becomes visible, which is the whole of plan 26.
 pub struct RunRead {
-  rr_ok: boolean,
-  rr_d:  integer,        // d24 — canonical to `p > 0`, NOT the authored heading
-  rr_p:  integer,        // periods; one period is three primitive steps
-  rr_x0: float,
-  rr_z0: float,
-  rr_x1: float,
-  rr_z1: float,
+  pub rr_ok: boolean,
+  pub rr_d:  integer,        // d24 — canonical to `p > 0`, NOT the authored heading
+  pub rr_p:  integer,        // periods; one period is three primitive steps
+  pub rr_x0: float,
+  pub rr_z0: float,
+  pub rr_x1: float,
+  pub rr_z1: float,
   // ── DOES THE DESCRIPTION REPRODUCE THE FIELD? — plan 26 `B4q` ────────────
   //
   // ⛔ **`rr_ok` HAS NEVER MEANT THAT, AND THE COMMENT ABOVE SAYS SO.** It means
@@ -739,9 +739,9 @@ pub struct RunRead {
   // the answer on top of the marks it came from"* — and a reader that refused would
   // delete the one thing that view exists to show. The residual is reported beside
   // the answer instead, so the caption can say what the outline cannot.
-  rr_marks:   integer,   // the marks this reader was handed, refusal included
-  rr_stray:   integer,   // …that the description does not want
-  rr_missing: integer,   // …and edges it wants that the field does not hold
+  pub rr_marks:   integer,   // the marks this reader was handed, refusal included
+  pub rr_stray:   integer,   // …that the description does not want
+  pub rr_missing: integer,   // …and edges it wants that the field does not hold
 }
 
 // The marks in a set, counted the way `edges_mat` fills it.
@@ -861,15 +861,15 @@ pub fn run_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
 // because `escaped` and `capped` are set at the same site and `return 0` is
 // unreachable). Generating the candidate sidesteps that entirely.
 pub struct DiscRead {
-  dc_ok:    boolean,
-  dc_why:   text,
-  dc_cq:    integer,        // the centre CELL — exact, `@HB-X49`: the field pins it
-  dc_cr:    integer,
-  dc_shell: integer,        // …and the radius only as a SHELL, which is all that comes back
-  dc_x:     float,          // the centre in the drawing's own frame
-  dc_z:     float,
-  dc_rad:   float,          // `√N / 2` — measured to be `hex_to_px`'s own distance
-  dc_marks: integer,        // the stored edges it accounts for, all of them
+  pub dc_ok:    boolean,
+  pub dc_why:   text,
+  pub dc_cq:    integer,        // the centre CELL — exact, `@HB-X49`: the field pins it
+  pub dc_cr:    integer,
+  pub dc_shell: integer,        // …and the radius only as a SHELL, which is all that comes back
+  pub dc_x:     float,          // the centre in the drawing's own frame
+  pub dc_z:     float,
+  pub dc_rad:   float,          // `√N / 2` — measured to be `hex_to_px`'s own distance
+  pub dc_marks: integer,        // the stored edges it accounts for, all of them
 }
 
 // ⚠ **A REFUSAL CARRIES ITS MARK COUNT, AND THE FIRST VERSION OF THIS ZEROED IT** —
@@ -916,8 +916,8 @@ fn disc_no(why: text, marks: integer) -> DiscRead {
 // would leave `house_recover` answering the same house every round, which is not a
 // wrong answer but an endless one.
 pub struct Claims {
-  cl_edges: EdgeSet,       // marks already attributed to some structure
-  cl_cells: HexSet,        // …and the floor cells that went with them
+  pub cl_edges: EdgeSet,       // marks already attributed to some structure
+  pub cl_cells: HexSet,        // …and the floor cells that went with them
 }
 
 pub fn claims_new(q0: integer, r0: integer, wq: integer, hr: integer) -> Claims {
@@ -2051,14 +2051,14 @@ fn disc_recover_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
 // `THICK_CURVED` over an octagon's field draws **no description**, which is the honest
 // answer, and `octagon.loft` measures it rather than assuming it.
 pub struct OctRead {
-  ot_ok:    boolean,
-  ot_why:   text,
-  ot_cq:    integer,        // the centre CELL — exact, the same way a disc's is
-  ot_cr:    integer,
-  ot_shell: integer,        // …and the size only as a SHELL, coarser even than a disc's
-  ot_x:     float,          // the centre in the drawing's own frame
-  ot_z:     float,
-  ot_marks: integer,        // the stored edges it accounts for, all of them
+  pub ot_ok:    boolean,
+  pub ot_why:   text,
+  pub ot_cq:    integer,        // the centre CELL — exact, the same way a disc's is
+  pub ot_cr:    integer,
+  pub ot_shell: integer,        // …and the size only as a SHELL, coarser even than a disc's
+  pub ot_x:     float,          // the centre in the drawing's own frame
+  pub ot_z:     float,
+  pub ot_marks: integer,        // the stored edges it accounts for, all of them
 }
 
 // ⚠ A REFUSAL CARRIES ITS MARK COUNT — `disc_no`'s rule, and for its reason: *no marks
@@ -2416,18 +2416,18 @@ pub fn oct_fits_at(wld: VoxelWorld, q0: integer, r0: integer, wq: integer, hr: i
 // silently snapped rather than refused* — so this answers the SMALLEST rectangle in the
 // class and reports how many are in it.
 pub struct HouseRead {
-  hs_ok:      boolean,
-  hs_why:     text,
-  hs_cq:      integer,      // the anchor CELL — exact, measured unique in all 432
-  hs_cr:      integer,
-  hs_wid:     integer,      // the SMALLEST rectangle the field admits, in hex steps
-  hs_dep:     integer,
-  hs_rot:     integer,      // …at the lowest rotation that draws it
-  hs_class:   integer,      // how many `(wid, dep, rot)` reproduce the same cells
-  hs_cells:   integer,
-  hs_stray:   integer,      // marks the rectangle does not want but the MITRE explains
-  hs_missing: integer,      // …and boundary edges the store does not hold
-  hs_other:   integer,      // …and marks in this window that are somebody else's
+  pub hs_ok:      boolean,
+  pub hs_why:     text,
+  pub hs_cq:      integer,      // the anchor CELL — exact, measured unique in all 432
+  pub hs_cr:      integer,
+  pub hs_wid:     integer,      // the SMALLEST rectangle the field admits, in hex steps
+  pub hs_dep:     integer,
+  pub hs_rot:     integer,      // …at the lowest rotation that draws it
+  pub hs_class:   integer,      // how many `(wid, dep, rot)` reproduce the same cells
+  pub hs_cells:   integer,
+  pub hs_stray:   integer,      // marks the rectangle does not want but the MITRE explains
+  pub hs_missing: integer,      // …and boundary edges the store does not hold
+  pub hs_other:   integer,      // …and marks in this window that are somebody else's
 }
 
 fn house_no(why: text, cells: integer) -> HouseRead {
@@ -2779,22 +2779,22 @@ pub fn house_recover_claimed(wld: VoxelWorld, q0: integer, r0: integer, wq: inte
 // gesture; a wall that encloses nothing has no region at all, so linework still falls
 // through to the run readers — which is the cheap case.
 pub struct RegionRead {
-  rg_ok:      boolean,
-  rg_why:     text,
-  rg_cells:   integer,      // the region's own cell count
-  rg_sides:   integer,      // the recovered form's sides
-  rg_rho:     integer,      // 0 in R1 — the residual the reader reports
-  rg_stray:   integer,      // marks touching the region its boundary does not want
-  rg_missing: integer,      // boundary edges carrying no wall
-  rg_other:   integer,      // marks nowhere near it — somebody else's
-  rg_px:      vector<float>,
-  rg_pz:      vector<float>,
+  pub rg_ok:      boolean,
+  pub rg_why:     text,
+  pub rg_cells:   integer,      // the region's own cell count
+  pub rg_sides:   integer,      // the recovered form's sides
+  pub rg_rho:     integer,      // 0 in R1 — the residual the reader reports
+  pub rg_stray:   integer,      // marks touching the region its boundary does not want
+  pub rg_missing: integer,      // boundary edges carrying no wall
+  pub rg_other:   integer,      // marks nowhere near it — somebody else's
+  pub rg_px:      vector<float>,
+  pub rg_pz:      vector<float>,
   // ⚠ **THE REGION ITSELF, BECAUSE A CLAIM CANNOT BE REBUILT FROM PARAMETERS.** A run has
   // two endpoints and a house a `Box`; an arbitrary form has neither, so the caller that
   // claims what this description accounts for is handed the set rather than asked to
   // re-derive it — *two derivations of one quantity* is the shape this tree has been bitten
   // by four times.
-  rg_set:     HexSet,
+  pub rg_set:     HexSet,
 }
 
 fn region_no(why: text, n: integer) -> RegionRead {
@@ -3813,15 +3813,15 @@ pub fn cell_ahead(cx: float, cz: float, cyaw: float) -> (boolean, integer, integ
 // whether a push grew or shrank the wall it is standing behind reads this; a caller that
 // wants to know whether the structure is still describable asks a reader.
 pub struct PushMade {
-  pu_ok:  boolean,
-  pu_say: text,
-  pu_q:   integer,    // the cell taken
-  pu_r:   integer,
-  pu_mat: integer,    // what it became
-  pu_was: integer,    // what it was — the value an unpush restores (law L5)
-  pu_h:   integer,    // the height it took, which is the source's
-  pu_dn:  integer,    // the change in wall-edge count, `6 - 2k`
-  pu_new: boolean,    // false when the cell was already in the set
+  pub pu_ok:  boolean,
+  pub pu_say: text,
+  pub pu_q:   integer,    // the cell taken
+  pub pu_r:   integer,
+  pub pu_mat: integer,    // what it became
+  pub pu_was: integer,    // what it was — the value an unpush restores (law L5)
+  pub pu_h:   integer,    // the height it took, which is the source's
+  pub pu_dn:  integer,    // the change in wall-edge count, `6 - 2k`
+  pub pu_new: boolean,    // false when the cell was already in the set
   // ── WHAT THE BOUNDARY DID, REPORTED RATHER THAN RE-DERIVED — law L1 ──────
   //
   // ⚠ **`pu_id` IS THE WALL THAT TRAVELLED, AND `0` IS AN ANSWER.** It is the byte the
@@ -3829,8 +3829,8 @@ pub struct PushMade {
   // changes no wall id. Zero means there was no wall in front of them — a road, a tunnel
   // floor, open ground — and then `pu_marks` is 0 and the store's edge channel is
   // untouched, which is the whole of why two of the three subjects need no maintenance.
-  pu_id:    integer,
-  pu_marks: integer,  // edge bytes written — at most the six of the cell taken
+  pub pu_id:    integer,
+  pub pu_marks: integer,  // edge bytes written — at most the six of the cell taken
 }
 
 fn push_no(why: text) -> PushMade {
@@ -4619,9 +4619,9 @@ pub const PM_OPEN    = 2;   // the boundary is open, or larger than this tool wi
 pub const PM_ALREADY = 3;   // the space this wall bounds is not open ground
 
 pub struct Promote {
-  pm_code:  integer,
-  pm_cells: integer,
-  pm_why:   text,
+  pub pm_code:  integer,
+  pub pm_cells: integer,
+  pub pm_why:   text,
 }
 
 // ⚠ **THE SEED IS ACROSS THE WALL, NOT UNDER THE AUTHOR.** A person laying the fourth
@@ -4958,21 +4958,21 @@ pub const ROAD_MAT  = 2;                     // the road surface
 pub const ROAD_HALF = 2;                     // road half-width, in hexes
 
 pub struct WallRun {
-  wr_x0: float, wr_z0: float,
-  wr_x1: float, wr_z1: float,
-  wr_mat: integer,
-  wr_step: integer,                    // which of the 24, for the record
+  pub wr_x0: float, pub wr_z0: float,
+  pub wr_x1: float, pub wr_z1: float,
+  pub wr_mat: integer,
+  pub wr_step: integer,                    // which of the 24, for the record
   // ⚠ WHERE THE RUN STARTS AND STOPS, in height units above the terrain under it.
   // Every run used to begin at the ground and rise by whatever its material says,
   // which is right for a wall and wrong for everything that stands ON something: a
   // balcony's rail begins at its deck, a bedstee's side begins at its floor. `0` and
   // `0` mean "from the ground, by the material" — the behaviour every existing run
   // had before these existed, so nothing that does not ask for a base changes.
-  wr_base: integer,
-  wr_up: integer,
+  pub wr_base: integer,
+  pub wr_up: integer,
 }
 
-pub struct WallRuns { items: vector<WallRun> }
+pub struct WallRuns { pub items: vector<WallRun> }
 
 // A bare run between two points — no step, no base, no rise.
 //
@@ -5012,12 +5012,12 @@ pub fn wall_run_new(x0: float, z0: float, x1: float, z1: float, mat: integer) ->
 pub const RUN_SHORT = 0.25;   // …squared: half a world unit between the two ends
 
 pub struct RunDraft {
-  rd_ok:    boolean,
-  rd_run:   WallRun = WallRun {},
-  rd_step:  integer = 0,       // the heading, one of `hex_shape::D24`
-  rd_resid: float = 0.0,       // how far off it the author actually walked, degrees
-  rd_reach: float = 0.0,       // the length, ALONG the heading
-  rd_why:   text = "",
+  pub rd_ok:    boolean,
+  pub rd_run:   WallRun = WallRun {},
+  pub rd_step:  integer = 0,       // the heading, one of `hex_shape::D24`
+  pub rd_resid: float = 0.0,       // how far off it the author actually walked, degrees
+  pub rd_reach: float = 0.0,       // the length, ALONG the heading
+  pub rd_why:   text = "",
   // ── PLAN 24 `H1a` — THE LIBRARY'S ANSWER, BESIDE OURS ────────────────────
   //
   // ⚠ **BOTH ARE COMPUTED AND ONLY OURS IS USED — DELIBERATELY, FOR ONE STEP.**
@@ -5035,10 +5035,10 @@ pub struct RunDraft {
   // `rd_d24 < 0` or `rd_p == 0` means the library REFUSED: the near end was not a
   // triangle-lattice vertex, or no legal run reaches the target. That is a real
   // answer and the field carries it rather than a substitute.
-  rd_d24:   integer = 0 - 1,   // the library's direction, `D`; -1 = refused
-  rd_p:     integer = 0,       // its period count; 0 = no legal run
-  rd_a0:    integer = 0,       // the anchor it snapped to, in triangle-lattice
-  rd_b0:    integer = 0,
+  pub rd_d24:   integer = 0 - 1,   // the library's direction, `D`; -1 = refused
+  pub rd_p:     integer = 0,       // its period count; 0 = no legal run
+  pub rd_a0:    integer = 0,       // the anchor it snapped to, in triangle-lattice
+  pub rd_b0:    integer = 0,
 }
 
 pub fn run_between(x0: float, z0: float, x1: float, z1: float,
@@ -5162,16 +5162,16 @@ pub fn draft_lib_ends(d: RunDraft) -> (float, float, float, float, boolean) {
 // *try the second press again* gets a run from where they are standing to wherever
 // they walk next — and nothing in the acknowledgement says which state they are in.
 // It is behaviour worth keeping deliberately, so it is worth a test.
-pub struct WallDraft { wd_open: boolean = false, wd_x: float = 0.0, wd_z: float = 0.0 }
+pub struct WallDraft { pub wd_open: boolean = false, pub wd_x: float = 0.0, pub wd_z: float = 0.0 }
 
 pub const DS_STARTED = 0;   // the first press: the near end is remembered
 pub const DS_RUN     = 1;   // the second: here is the run
 pub const DS_REFUSED = 2;   // …and the draft is closed either way
 
 pub struct DraftStep {
-  ds_code: integer,
-  ds_run:  RunDraft = RunDraft {},
-  ds_why:  text = "",
+  pub ds_code: integer,
+  pub ds_run:  RunDraft = RunDraft {},
+  pub ds_why:  text = "",
 }
 
 pub fn wall_step(draft: WallDraft, x: float, z: float, mat: integer) -> DraftStep {
@@ -5871,13 +5871,13 @@ pub const DR_STORE = 2;        // the store declined the write
 // rule is that a NOMINAL refusal never grows an offer (`@HB-X68`). Handing back a
 // finished string here would put the wire's words in the library twice.
 pub struct Dressed {
-  dr_code:   integer,
-  dr_q:      integer = 0,
-  dr_r:      integer = 0,
-  dr_height: integer = 0,
-  dr_count:  integer = 0,      // how many props are in the cell NOW
-  dr_fit:    Fit = Fit {},
-  dr_why:    text = "",
+  pub dr_code:   integer,
+  pub dr_q:      integer = 0,
+  pub dr_r:      integer = 0,
+  pub dr_height: integer = 0,
+  pub dr_count:  integer = 0,      // how many props are in the cell NOW
+  pub dr_fit:    Fit = Fit {},
+  pub dr_why:    text = "",
 }
 
 pub fn prop_at(w: VoxelWorld, q: integer, r: integer, item: integer) -> Dressed {
@@ -6089,11 +6089,11 @@ pub fn open_ahead(w: VoxelWorld, a: Author, kind: integer, nedges: integer) -> A
 // Same shape as `S3`, one level down. There the edges were the index and the run
 // was the truth; here the edges are the index and the opening is.
 pub struct Opening {
-  op_x:     float,     // where it is, in the world — projected onto whatever run
-  op_z:     float,     //   carries it, so an opening is not owned by an index
-  op_half:  float,     // half its width, in world units
-  op_lo:    integer,   // the height band it cuts, in height units
-  op_hi:    integer,
+  pub op_x:     float,     // where it is, in the world — projected onto whatever run
+  pub op_z:     float,     //   carries it, so an opening is not owned by an index
+  pub op_half:  float,     // half its width, in world units
+  pub op_lo:    integer,   // the height band it cuts, in height units
+  pub op_hi:    integer,
   // ⚠ HOW DEEP IT CUTS, as a fraction of the wall's own thickness — and this one
   // field is what makes a door, a window and an ALCOVE the same thing.
   //
@@ -6104,7 +6104,7 @@ pub struct Opening {
   // is a sized void with a floor and a back, and a prop placed at its own frame is
   // in it. The alternative — a special case per fitting — is how a design ends up
   // with a door system, a window system and an alcove system that cannot combine.
-  op_depth: float,
+  pub op_depth: float,
   // ⚠ AND `op_near` IS THE SURFACE IT IS CUT FROM — the datum. Every opening above
   // is measured from the wall's own front face, which is the assumption that makes
   // a castle embrasure impossible to state: a window in the BACK of a window seat
@@ -6119,7 +6119,7 @@ pub struct Opening {
   // just where that interval starts. The niche's back is a surface like any other
   // once it is named, which is what lets a bench, a window and a recess be three
   // ordinary things instead of an "embrasure" primitive that combines with nothing.
-  op_near: float,
+  pub op_near: float,
   // ⚠ AND THE HEAD IS A PROFILE, not a straight line. `op_spring` is the height the
   // arch springs from, in height units, or -1 for a flat head. Above it the opening
   // is a HALF-ROUND of radius `op_half`, so the cut narrows as it rises and closes
@@ -6129,7 +6129,7 @@ pub struct Opening {
   // vault: a corridor is that profile swept far, an arch is it swept through a
   // wall, and an alcove is it stopped short. One profile, three fittings, and the
   // half-round corridor an author draws is the arch they get.
-  op_spring: integer,
+  pub op_spring: integer,
   // ⚠ AND THE OUTLINE IS A FAMILY, not two special cases. Every profile answers one
   // question — at offset `d` from the centre, between which heights is the wall cut
   // — so a round head, a pointed arch, a segmental arch and a full circle are the
@@ -6142,11 +6142,11 @@ pub struct Opening {
   //   OP_SEGMENT   one shallow arc of a larger radius — a cellar head, a bridge
   //   OP_CIRCLE    an oculus: it closes at the BOTTOM as well as the top, which is
   //                why `lo` varies with `d` and not only `hi`
-  op_kind:   integer,
-  op_radius: float,     // for POINTED and SEGMENT: the striking radius
+  pub op_kind:   integer,
+  pub op_radius: float,     // for POINTED and SEGMENT: the striking radius
 }
 
-pub struct Openings { items: vector<Opening> }
+pub struct Openings { pub items: vector<Opening> }
 
 // The clearance a hole needs beyond the thing that goes through it: a leaf in a
 // hole its own size binds on both jambs. One tenth of a world unit is about 9 cm,
@@ -6343,14 +6343,14 @@ pub fn opening_kind_ok(kind: integer) -> boolean {
 // hole of no size by accident — so a refusal carries a zero one rather than the
 // struct growing defaults it does not want.
 pub struct OpeningMade {
-  om_ok:   boolean,
-  om_code: integer = OM_OK,
-  om_why:  text = "",
-  om_open: Opening,
-  om_back: boolean = false,   // cut into a niche's BACK — the embrasure
-  om_kind: integer = 0,       // the profile, after the tens and twenties are read off
-  om_x:    float = 0.0,       // where it landed ON the wall, not where the author stood
-  om_z:    float = 0.0,
+  pub om_ok:   boolean,
+  pub om_code: integer = OM_OK,
+  pub om_why:  text = "",
+  pub om_open: Opening,
+  pub om_back: boolean = false,   // cut into a niche's BACK — the embrasure
+  pub om_kind: integer = 0,       // the profile, after the tens and twenties are read off
+  pub om_x:    float = 0.0,       // where it landed ON the wall, not where the author stood
+  pub om_z:    float = 0.0,
   // ── THE CELL WHOSE EDGES WERE MARKED — plan 22 `S2c` ────────────────────────
   //
   // ⚠ **NOT DERIVED FROM `om_x`/`om_z`, AND THAT IS THE POINT.** A driver rebuilding
@@ -6361,8 +6361,8 @@ pub struct OpeningMade {
   // five lines after the function that knew them returned.
   //
   // ⚠ ZERO ON A REFUSAL, like `om_open`, and read there by nobody.
-  om_q:    integer = 0,
-  om_r:    integer = 0,
+  pub om_q:    integer = 0,
+  pub om_r:    integer = 0,
 }
 
 // A hole of no size, for the `om_open` an `OpeningMade` carries on a REFUSAL and
@@ -6632,11 +6632,11 @@ pub const LEAF_MAX = 1.5707963267948966;   // pi/2 — the quarter-disc it may s
 pub const LEAF_AJAR = 0.6108652381980153;  // 35 degrees, which is what READS as open
 
 pub struct DoorLeaf {
-  dl_q:     integer,
-  dl_r:     integer,
-  dl_dir:   integer,     // which of the cell's six edges carries it
-  dl_angle: float,       // 0 is shut, LEAF_MAX is flat against the reveal
-  dl_up:    integer,     // how tall the leaf stands, in height units
+  pub dl_q:     integer,
+  pub dl_r:     integer,
+  pub dl_dir:   integer,     // which of the cell's six edges carries it
+  pub dl_angle: float,       // 0 is shut, LEAF_MAX is flat against the reveal
+  pub dl_up:    integer,     // how tall the leaf stands, in height units
 }
 
 // Swing a leaf to `want`, or refuse with what it can have.
@@ -6723,7 +6723,7 @@ pub fn leaf_width(l: DoorLeaf) -> float {
   sqrt(dx * dx + dz * dz) ?? 0.0
 }
 
-pub struct DoorLeaves { items: vector<DoorLeaf> }
+pub struct DoorLeaves { pub items: vector<DoorLeaf> }
 
 // ── the modes, and what a mode writes per step ──────────────────────────────
 //
@@ -7273,8 +7273,8 @@ pub fn run_unshelf(wld: VoxelWorld, q: integer, r: integer, mat: integer) -> int
 // flat ground was stamped at that grade, so asked EQUALS current and nothing is owed —
 // where a datum of *the natural ground* says 20 is owing and hands it straight back.
 // That is the whole of what five tests refused, `A8`'s own negative control first.
-pub struct GradeAt { ga_key: integer, ga_h: integer }
-pub struct Grades  { gr_by: hash<GradeAt[ga_key]> }
+pub struct GradeAt { ga_key: integer, pub ga_h: integer }
+pub struct Grades  { pub gr_by: hash<GradeAt[ga_key]> }
 
 // Remember what this cell was asked for. ⚠ LAST WRITE WINS, deliberately: discs overlap
 // four deep at `ROAD_HALF` 2, and the grade a cell ends up laid at is the last one
@@ -7745,13 +7745,13 @@ pub fn road_lay(wld: VoxelWorld, cq: integer, cr: integer, h: integer, rad: inte
 //   · the name is foreign   → untouched, and shown as foreign. We neither
 //                             resolve it nor drop it, because it is not ours.
 pub struct Trigger {
-  tg_id:      integer,
-  tg_q:       integer,
-  tg_r:       integer,
-  tg_h:       integer,
-  tg_name:    text,
-  tg_broken:  boolean,
-  tg_foreign: boolean,
+  pub tg_id:      integer,
+  pub tg_q:       integer,
+  pub tg_r:       integer,
+  pub tg_h:       integer,
+  pub tg_name:    text,
+  pub tg_broken:  boolean,
+  pub tg_foreign: boolean,
 }
 
 // Re-resolve every anchor against the world as it is NOW. Called after edits
@@ -7770,10 +7770,10 @@ pub const TG_FOLLOWED  = 1;
 pub const TG_BROKEN    = 2;
 
 pub struct TriggerNews {
-  tn_id:   integer,
-  tn_what: integer,   // TG_FOLLOWED | TG_BROKEN
-  tn_h:    integer,   // the height it followed to
-  tn_mat:  integer,   // the material that broke it
+  pub tn_id:   integer,
+  pub tn_what: integer,   // TG_FOLLOWED | TG_BROKEN
+  pub tn_h:    integer,   // the height it followed to
+  pub tn_mat:  integer,   // the material that broke it
 }
 
 pub fn triggers_resolve(trigs: vector<Trigger>, wld: VoxelWorld) -> vector<TriggerNews> {
@@ -8039,13 +8039,13 @@ pub const FACE_ROOTED = 2;     // extra steps a planted cell holds before it fac
 //
 // Adding a terrain is a ROW. Nothing in the gestures needs to hear about it.
 pub struct GroundKind {
-  tr_mat:    integer,   // the stored material index — `h_material`
-  tr_name:   text,      // author-facing, and what a refusal can say
+  pub tr_mat:    integer,   // the stored material index — `h_material`
+  pub tr_name:   text,      // author-facing, and what a refusal can say
   // ⚠ `SLOPE_FREE` IS 0 AND THAT COLLAPSES NOTHING. A limit of zero would mean
   // *may not slope at all*, which is what a FLOOR is — and a floor is fabric, moves
   // rigidly, and never reaches the relaxation. So zero is free to mean *no limit*
   // and the reading it could be confused with is unreachable by construction.
-  tr_slope:  integer,   // the steepest step it may be given, in height units
+  pub tr_slope:  integer,   // the steepest step it may be given, in height units
   // ⚠ THE SECOND LIMIT, AND IT ANSWERS A DIFFERENT QUESTION — plan 20 `A5`.
   // `tr_slope` is what a GESTURE may give this surface; this is what the surface
   // can STAND at before it stops being that surface and shows rock. They are not
@@ -8064,10 +8064,10 @@ pub struct GroundKind {
   // `FACE_NONE` means *this surface never carries a face*, checked explicitly for
   // the same reason `SLOPE_FREE` is: a step of 0 is a step, so 0 cannot be read
   // as a threshold.
-  tr_face:   integer,
+  pub tr_face:   integer,
   // Does it move RIGIDLY with the structure it belongs to (`A1`), rather than
   // taking the falloff? A floor does; ground does not.
-  tr_fabric: boolean,
+  pub tr_fabric: boolean,
   // ⚠ A THIRD BEHAVIOUR, AND IT IS NOT FABRIC WITH A DIFFERENT NAME. Fabric MOVES —
   // rigidly, all of it together. This does not move at all: *waterways should be the
   // most resistant to hill creation from anything else… it will normally just create
@@ -8076,7 +8076,7 @@ pub struct GroundKind {
   //
   // ⚠ Defaulted, so every row and every fallback that predates water keeps compiling
   // and keeps meaning what it meant.
-  tr_fixed: boolean = false,
+  pub tr_fixed: boolean = false,
   // ⚠ WHICH SURFACE DRAWS IT, when that is not its own name — and it exists because
   // **a direction is not a colour**. Seven water rows are seven terrains and one
   // picture: a river flowing east and one flowing west are drawn identically, so
@@ -8087,7 +8087,7 @@ pub struct GroundKind {
   // assumed — *every terrain is drawn by exactly one surface* went red the moment the
   // water rows landed, which is the check earning its place. The join is many-to-one
   // now and stated as such, not loosened.
-  tr_drawn: text = "",
+  pub tr_drawn: text = "",
 }
 
 // ── THE ROLE NAMES, AS CONSTANTS — plan 21 `R5` ────────────────────────────
@@ -8696,7 +8696,7 @@ pub fn ground_role_at(w: VoxelWorld, q: integer, r: integer, mat: integer) -> te
 // hard-coding one attribute over — named rather than fixed. It was the server's
 // until plan 22 `B1b.2c.3`; moving it HERE is what would let a kind carry its own
 // height, and `hex_mesh` depends on this package so the arrow already allows it.
-pub struct EdgeKind { ek_mat: integer, ek_name: text, ek_slope: integer }
+pub struct EdgeKind { ek_mat: integer, pub ek_name: text, pub ek_slope: integer }
 
 // ── WHAT AN EDGE ROLE IS CALLED — plan 21 `R5b` ────────────────────────────
 //
@@ -9586,19 +9586,19 @@ pub const AN_DECK = 1;      // an open platform with a rail: a balcony, a galler
 pub const ANNEX_RAIL = 5;
 
 pub struct Annex {
-  an_x:  float, an_z:  float,   // where on the host, in the world
-  an_nx: float, an_nz: float,   // the host's OUTWARD normal there — a wall's normal,
+  pub an_x:  float, pub an_z:  float,   // where on the host, in the world
+  pub an_nx: float, pub an_nz: float,   // the host's OUTWARD normal there — a wall's normal,
                                 //   or, on a round host, the radial direction, which
                                 //   is what makes a trunk and a wall the same case
-  an_w:    float,               // its width along the host
-  an_out:  float,               // how far it stands proud of the host's face
-  an_in:   float,               // how far it cuts into the host — the flat seat
-  an_floor: integer,            // its deck, in height units
-  an_head:  integer,            // and its head
-  an_kind:  integer,
+  pub an_w:    float,               // its width along the host
+  pub an_out:  float,               // how far it stands proud of the host's face
+  pub an_in:   float,               // how far it cuts into the host — the flat seat
+  pub an_floor: integer,            // its deck, in height units
+  pub an_head:  integer,            // and its head
+  pub an_kind:  integer,
 }
 
-pub struct Annexes { items: vector<Annex> }
+pub struct Annexes { pub items: vector<Annex> }
 
 // ── WHAT AN ANNEX HANGS ON — the host, chosen from the scene ────────────────
 //
@@ -9621,10 +9621,10 @@ pub struct Annexes { items: vector<Annex> }
 // tree is a ring of wall and the ring's centre is the nearest thing an author can be
 // standing outside of.
 pub struct Trunk {
-  tk_live: boolean = false,
-  tk_x:    float = 0.0,
-  tk_z:    float = 0.0,
-  tk_r:    float = 0.0,
+  pub tk_live: boolean = false,
+  pub tk_x:    float = 0.0,
+  pub tk_z:    float = 0.0,
+  pub tk_r:    float = 0.0,
 }
 
 // The ring the author has just made, read back as the host an annex hangs on —
@@ -9647,13 +9647,13 @@ pub fn trunk_of(a: Author, rad: integer) -> Trunk {
 }
 
 pub struct AnnexHost {
-  ah_ok:    boolean,
-  ah_round: boolean = false,   // a trunk rather than a straight run
-  ah_x:     float = 0.0,       // the point on the host the annex grows from
-  ah_z:     float = 0.0,
-  ah_nx:    float = 0.0,       // the outward normal — TOWARD the author
-  ah_nz:    float = 0.0,
-  ah_len:   float = 0.0,       // how much host there is, for the width doorstep
+  pub ah_ok:    boolean,
+  pub ah_round: boolean = false,   // a trunk rather than a straight run
+  pub ah_x:     float = 0.0,       // the point on the host the annex grows from
+  pub ah_z:     float = 0.0,
+  pub ah_nx:    float = 0.0,       // the outward normal — TOWARD the author
+  pub ah_nz:    float = 0.0,
+  pub ah_len:   float = 0.0,       // how much host there is, for the width doorstep
   ah_at:    float = 0.0,       // how far along it the author stands
 }
 
@@ -9917,10 +9917,10 @@ pub fn annex_mouth(a: Annex, width: float, kind: integer, unit: float) -> Openin
 // land on), and its way in is cut in the HOST rather than in itself. A box hangs off
 // the wall with its mouth in its own face.
 pub struct AnnexBuilt {
-  ab_ok:    boolean,
-  ab_annex: Annex = Annex {},
-  ab_open:  Opening = Opening {},
-  ab_why:   text = "",
+  pub ab_ok:    boolean,
+  pub ab_annex: Annex = Annex {},
+  pub ab_open:  Opening = Opening {},
+  pub ab_why:   text = "",
 }
 
 pub fn annex_build(host: AnnexHost, kind: integer, band: float,
@@ -10026,16 +10026,16 @@ pub const STATUE_MIN_UP  = 6;        // height units — about 1.3 m
 pub const PROP_CLEAR     = 0.12;
 
 pub struct Prop {
-  pr_x: float, pr_z: float,     // its centre, in the world
-  pr_nx: float, pr_nz: float,   // which way it FACES — out of the void it sits in
-  pr_len:  float,               // along the void's width
-  pr_deep: float,               // into the void
-  pr_y:    integer,             // the floor it stands on, in height units
-  pr_up:   integer,             // and how tall it is
-  pr_kind: integer,
+  pub pr_x: float, pub pr_z: float,     // its centre, in the world
+  pub pr_nx: float, pub pr_nz: float,   // which way it FACES — out of the void it sits in
+  pub pr_len:  float,               // along the void's width
+  pub pr_deep: float,               // into the void
+  pub pr_y:    integer,             // the floor it stands on, in height units
+  pub pr_up:   integer,             // and how tall it is
+  pub pr_kind: integer,
 }
 
-pub struct Props { items: vector<Prop> }
+pub struct Props { pub items: vector<Prop> }
 
 // ── the rooms a void offers ─────────────────────────────────────────────────
 
@@ -10121,9 +10121,9 @@ pub fn prop_facing(p: Prop, nx: float, nz: float) -> Prop {
 // direction from the niche to the person looking at it — the same rule `annex_host`
 // keeps for its normal, and the same bug if it is taken from the stored geometry.
 pub struct Seated {
-  se_ok:   boolean,
-  se_prop: Prop = Prop {},
-  se_why:  text = "",
+  pub se_ok:   boolean,
+  pub se_prop: Prop = Prop {},
+  pub se_why:  text = "",
 }
 
 pub fn seat_bed(annexes: Annexes, x: float, z: float) -> Seated {
@@ -10292,46 +10292,46 @@ pub const HO_RECT  = 0;
 pub const HO_ROUND = 1;
 
 pub struct Slab {
-  sl_x: float, sl_z: float,     // its centre in the world
-  sl_yaw: float,                // and which way its long axis runs
-  sl_w: float, sl_d: float,     // its extent, in world units
-  sl_lo: integer,               // its UNDERSIDE — the ceiling of the room below
-  sl_hi: integer,               // its TOP — the floor of the room above
+  pub sl_x: float, pub sl_z: float,     // its centre in the world
+  pub sl_yaw: float,                // and which way its long axis runs
+  pub sl_w: float, pub sl_d: float,     // its extent, in world units
+  pub sl_lo: integer,               // its UNDERSIDE — the ceiling of the room below
+  pub sl_hi: integer,               // its TOP — the floor of the room above
 }
 
-pub struct Slabs { items: vector<Slab> }
+pub struct Slabs { pub items: vector<Slab> }
 
 pub struct Hole {
-  ho_x: float, ho_z: float,     // its centre in plan
-  ho_u: float, ho_v: float,     // half extents along the slab's own axes, or a radius in ho_u
-  ho_kind: integer,
+  pub ho_x: float, pub ho_z: float,     // its centre in plan
+  pub ho_u: float, pub ho_v: float,     // half extents along the slab's own axes, or a radius in ho_u
+  pub ho_kind: integer,
   // ⚠ THE DATUM, AND IT IS THE OPENING'S — a fraction of the slab's thickness,
   // measured DOWN from the top. `0 → 1` is a stairwell; `0.5 → 1` is a coffer, a
   // recess you see from below with the floor whole above it; `0 → 0.5` is a sunken
   // panel you step down into. Two numbers, three fittings, and none of them is a
   // special case.
-  ho_near: float, ho_far: float,
+  pub ho_near: float, pub ho_far: float,
 }
 
-pub struct Holes { items: vector<Hole> }
+pub struct Holes { pub items: vector<Hole> }
 
 // The roof over one footprint. ⚠ IT LIVES HERE WITH THE OTHER EIGHT REGISTRIES rather
 // than beside `roof_plan_of` in `hex_editor.loft`, because `EditSession` holds one and
 // `session.loft` cannot import the entry that imports it. Declared there, `es_roofs`
 // resolved by name and got no storage — see the note at `roof_plan_of`.
 pub struct RoofPlan {
-  rp_cq:    integer,
-  rp_cr:    integer,
+  pub rp_cq:    integer,
+  pub rp_cr:    integer,
   // ⚠ **THE CELL COUNTS ARE THE FRAME'S NOW, NOT THE EXTENT'S — plan 22 `D2a.2`.**
   // `rp_cq`/`rp_cr`/`rp_rot` place and turn the rectangle; how big it is comes from
   // `rp_hw`/`rp_hd` below. These two are kept because they are what the footprint
   // asked for and every message and record still reads them, but nothing derives a
   // world distance from them any more.
-  rp_wid:   integer,
-  rp_dep:   integer,
-  rp_rot:   integer,     // the Plan's own rotation (0..5), already halved
-  rp_eave:  float,       // world units
-  rp_pitch: float,
+  pub rp_wid:   integer,
+  pub rp_dep:   integer,
+  pub rp_rot:   integer,     // the Plan's own rotation (0..5), already halved
+  pub rp_eave:  float,       // world units
+  pub rp_pitch: float,
   // ⚠ **THE ROOF'S OWN HALF-EXTENTS, IN WORLD UNITS, MEASURED FROM THE WALLS IT
   // COVERS.** `plan_hw(p)` is `wid · HEX_LEN / 2` — the NOMINAL rectangle a `Plan`
   // means — while the walls come from `plan_walls`, which recovers the outline from
@@ -10343,11 +10343,11 @@ pub struct RoofPlan {
   //
   // ⚠ They are filled by `roof_plan_of` and by nothing else, so a `RoofPlan {}`
   // literal is a roof of zero size — which is what a null fallback should be.
-  rp_hw:    float,
-  rp_hd:    float,
+  pub rp_hw:    float,
+  pub rp_hd:    float,
 }
 
-pub struct RoofPlans { items: vector<RoofPlan> }
+pub struct RoofPlans { pub items: vector<RoofPlan> }
 
 pub fn slab_thick(s: Slab) -> integer { s.sl_hi - s.sl_lo }
 
@@ -10491,10 +10491,10 @@ pub const HOLE_COFFER  = 2;   // a recess in the ceiling
 pub const HOLE_SUNK    = 3;   // …and one in the floor above
 
 pub struct HoleAt {
-  hx_ok:   boolean,
-  hx_hole: Hole = Hole {},
+  pub hx_ok:   boolean,
+  pub hx_hole: Hole = Hole {},
   hx_kind: integer = 0,
-  hx_why:  text = "",
+  pub hx_why:  text = "",
 }
 
 pub fn slab_hole(slabs: Slabs, kind: integer, x: float, z: float,
@@ -10719,8 +10719,8 @@ pub fn auto_snug(inside: boolean, room: float, want: float, min_frac: float,
 // FURTHEST APART, which is what the renderer will actually sample against — taking
 // half the summed edge lengths would claim a wider opening than the geometry has
 // and cut the jambs off the wall.
-pub struct OpenSeg { og_ax: float, og_az: float, og_bx: float, og_bz: float }
-pub struct OpenRun { ou_cx: float, ou_cz: float, ou_half: float }
+pub struct OpenSeg { pub og_ax: float, pub og_az: float, pub og_bx: float, pub og_bz: float }
+pub struct OpenRun { pub ou_cx: float, pub ou_cz: float, pub ou_half: float }
 
 fn og_near(ax: float, az: float, bx: float, bz: float, eps: float) -> boolean {
   dx = ax - bx;

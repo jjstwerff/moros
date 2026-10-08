@@ -68,8 +68,8 @@ pub const HTYPE_DEFAULT_SLOT = 1;
 // gesture the editor does not have. The day one needs to, that is a library change
 // and a new base verb — and the declaration then names it like any other.
 pub struct TypeVerb {
-  tv_name: text,
-  tv_base: text,
+  pub tv_name: text,
+  pub tv_base: text,
   // ── AND THE KEY IT WANTS — plan 22 `T1e` ───────────────────────────────────
   //
   // > *"…and possibly even unique keys, so the system can grow."*
@@ -78,15 +78,15 @@ pub struct TypeVerb {
   // script and by wire but not by keyboard is exactly what `T1c`/`T1d` shipped, and
   // it is a defensible thing to declare — so the key is optional and its absence
   // means the verb bar draws no glyph rather than an invented one.
-  tv_key:  text = "",
+  pub tv_key:  text = "",
 }
 
 pub struct HouseType {
-  ht_ok:    boolean = false,
-  ht_name:  text    = "",
-  ht_wid:   integer = 0,
-  ht_dep:   integer = 0,
-  ht_verbs: vector<TypeVerb> = [],
+  pub ht_ok:    boolean = false,
+  pub ht_name:  text    = "",
+  pub ht_wid:   integer = 0,
+  pub ht_dep:   integer = 0,
+  pub ht_verbs: vector<TypeVerb> = [],
   // ── THE OPENING THIS TYPE GIVES AN AUTHOR WHO HAS NOT CHOSEN — `T1b` ───────
   //
   // > *"house types that set defaults for windows/doors/floors"*
@@ -110,8 +110,8 @@ pub struct HouseType {
   // legal opening kind is `>= 0`. It is not `OP_ROUND`: a type that silently meant
   // *round* would be indistinguishable from a type that said nothing, and the
   // author's own choice could then never be told from the type's.
-  ht_open:  integer = 0 - 1,
-  ht_why:   text    = "",
+  pub ht_open:  integer = 0 - 1,
+  pub ht_why:   text    = "",
 }
 
 // ⚠ **THE FIELD READERS MOVED TO `palfield.loft` — plan 26 `B4d`.** They were here

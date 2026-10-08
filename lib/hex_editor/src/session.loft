@@ -102,30 +102,30 @@ pub const AIM_REACH_MAX = 24;
 pub const AIM_REACH_DEFAULT = 6;
 
 pub struct EditSession {
-  es_author: Author,
+  pub es_author: Author,
   // The eight the server holds beside the store. Empty is a legal scene: a world with
   // no house in it has no wall runs, and `chunk_mesh_props` already keeps the fallback
   // paths that makes it take.
-  es_runs:    WallRuns,
-  es_awalls:  WallRuns,      // an annex's walls are their own run set
-  es_roofs:   RoofPlans,
-  es_leaves:  DoorLeaves,
-  es_open:    Openings,
-  es_annex:   Annexes,
-  es_props:   Props,
-  es_slabs:   Slabs,
-  es_holes:   Holes,
+  pub es_runs:    WallRuns,
+  pub es_awalls:  WallRuns,      // an annex's walls are their own run set
+  pub es_roofs:   RoofPlans,
+  pub es_leaves:  DoorLeaves,
+  pub es_open:    Openings,
+  pub es_annex:   Annexes,
+  pub es_props:   Props,
+  pub es_slabs:   Slabs,
+  pub es_holes:   Holes,
   // ⚠ THE TWO-PRESS DRAFT IS STATE TOO, and it was the server's until `25:`'s
   // machine moved. A run is two presses; what sits between them belongs with the
   // rest of the scene rather than beside the socket that delivered the keys.
-  es_draft:   WallDraft = WallDraft {},
+  pub es_draft:   WallDraft = WallDraft {},
   // ⚠ THE LAST RING, AND IT IS SCENE STATE FOR THE SAME REASON THE RUNS ARE —
   // plan 22 `R1b`. A ring of wall is a cylinder and a cylinder is a host, but it is
   // stored as EDGES rather than as a run (correctly: it has no ends), so nothing
   // `annex_host` looks for would find it. This is the ninth registry, and it was
   // four locals beside the socket until `R1b` — which meant `K` could only mean
   // "on that trunk" for the one driver that happened to keep them.
-  es_trunk:   Trunk = Trunk {},
+  pub es_trunk:   Trunk = Trunk {},
   // ── THE SELECTION — plan 22 `S2b`, and it is NOT a registry ─────────────────
   //
   // The nine above are records ABOUT THE STORE — `session_scene_clear` empties them
@@ -142,7 +142,7 @@ pub struct EditSession {
   // the right shape and is deliberately not done here: the step that needs it is the
   // one where six keys collapse to one verb, and inventing the split before then
   // would be designing a container for contents nobody has measured.
-  es_open_kind: integer = OP_ROUND,
+  pub es_open_kind: integer = OP_ROUND,
   // ── HOW FAR AN AIM REACHES — plan 24, and it is `es_open_kind`'s category ───
   //
   // ⚠ **A SELECTION, NOT A GESTURE PARAMETER, AND THE REASON IS THE INPUT.** A key
@@ -160,7 +160,7 @@ pub struct EditSession {
   // both a legal choice and the default so the two are indistinguishable. No house
   // type declares a reach, so there is nothing for a default to be overridden BY —
   // inventing the second field here would be a container for contents nobody has.
-  es_aim_reach: integer = AIM_REACH_DEFAULT,
+  pub es_aim_reach: integer = AIM_REACH_DEFAULT,
   // ── …AND WHETHER THIS AUTHOR EVER CHOSE IT — plan 22 `T1b` ─────────────────
   //
   // ⚠ **A SECOND FIELD, BECAUSE `OP_ROUND` IS A LEGAL CHOICE AND ALSO THE DEFAULT.**
@@ -181,7 +181,7 @@ pub struct EditSession {
   // and it is not obviously right — `session_select_part` takes an empty name to mean
   // *nothing chosen*, and a bare `49:` doing the same here is the answer the day
   // somebody wants one. It is a declaration change, not a mechanism change.
-  es_open_set: boolean = false,
+  pub es_open_set: boolean = false,
   // ── WHICH PART IS CHOSEN — plan 22 `B2e` ───────────────────────────────────
   //
   // Empty means *none*, and that is a real state rather than a missing one: with
@@ -192,7 +192,7 @@ pub struct EditSession {
   // ⚠ A NAME, NOT A LOADED WORLD. A part is a file, the two drivers read it from
   // different places (a disk, a baked base tree), and a session that held bytes
   // would be a second copy of the library going stale behind whoever edits it.
-  es_part: text = "",
+  pub es_part: text = "",
   // ── WHICH SEAT IS CHOSEN — plan 22 `K3` ────────────────────────────────────
   //
   // `Y` and `T` are one gesture on one message (`38:0`, `38:1`), differing by the
@@ -202,13 +202,13 @@ pub struct EditSession {
   // ⚠ IT DEFAULTS TO A BED because `PROP_BED` is `0` and a session that never chose
   // must still seat something defensible — the same reason `es_open_kind` defaults to
   // `OP_ROUND` rather than to an invalid sentinel that every caller must test for.
-  es_seat_kind: integer = PROP_BED,
+  pub es_seat_kind: integer = PROP_BED,
   // ── WHICH ANNEX IS CHOSEN — plan 22 `K3` ───────────────────────────────────
   //
   // `J`, `K` and `V` are three keys on one message (`37:0`, `37:1`, `37:2`). Same
   // situation, same answer. ⚠ It defaults to `AN_BOX`, which is `0` — a session that
   // never chose hangs the bedstee `J` always hung.
-  es_annex_kind: integer = AN_BOX,
+  pub es_annex_kind: integer = AN_BOX,
   // ── WHICH WALL TYPE IS CHOSEN — plan 26 `B4e`, BLUEPRINT §3.3 ──────────────
   //
   // ⚠ **A SIXTH SELECTION AND NOT A SIXTH MECHANISM.** `@HB-X69` puts a wall's
@@ -227,7 +227,7 @@ pub struct EditSession {
   // ⚠ **AND IT NEEDS NO WHETHER-FIELD**, for `es_aim_reach`'s reason rather than
   // `es_open_kind`'s: no house type declares a wall type, so there is nothing for a
   // default to be overridden BY. When one does, this grows the pair `T1b` built.
-  es_wall_mat: integer = WALL_MAT,
+  pub es_wall_mat: integer = WALL_MAT,
   // ⚠ **THE SEVENTH SELECTION, AND IT EXISTS BECAUSE THE BODY CANNOT DECIDE IT** —
   // plan 26 `B4i`. A wall type declaring `body=THICK_CURVED` says the wall is ROUND;
   // it cannot say how big, and at the ring's own size that distinction vanishes:
@@ -235,7 +235,7 @@ pub struct EditSession {
   // `fence_ring`'s radius 3 is shell 108 — one of them. So a `wall` verb that went
   // round on the body alone would build the ring it already built. The size is a
   // choice, and this is where it is remembered.
-  es_shell: integer = TOWER_SHELL_DEFAULT,
+  pub es_shell: integer = TOWER_SHELL_DEFAULT,
   // ── ⛔ THE PUSH IS HELD, NOT PRESSED — `WALL_PUSH` §3 `G2` ──────────────────
   //
   // **A mode, not a selection**, so it sits with `es_draft` rather than with the seven
@@ -254,7 +254,7 @@ pub struct EditSession {
   // ⚠ **THE TICK READS IT AS A BOOLEAN PARAMETER, NEVER THIS STRUCT.** `walk_tick`'s
   // invariant is that a tick is a function of *(world, walker, held keys)*; handing it
   // a session would let it reach for eight registries it has no business in.
-  es_pushing: boolean = false,
+  pub es_pushing: boolean = false,
 }
 
 // A session over a fresh world, at the constants the editor uses.
@@ -660,13 +660,13 @@ pub fn session_shell(s: EditSession) -> integer { s.es_shell }
 // the same registry one line later and could not disagree, but would have to know that
 // `annexes_runs` rebuilds `es_awalls` wholesale rather than appending to it.
 pub struct AnnexMade {
-  ax_ok:    boolean,
-  ax_say:   text = "",
-  ax_kind:  integer = 0,
-  ax_walls: integer = 0,       // annex wall runs, after the rebuild
-  ax_boxes: integer = 0,       // annexes in the session, after the append
-  ax_q: integer = 0, ax_r: integer = 0,
-  ax_pad: integer = 0,
+  pub ax_ok:    boolean,
+  pub ax_say:   text = "",
+  pub ax_kind:  integer = 0,
+  pub ax_walls: integer = 0,       // annex wall runs, after the rebuild
+  pub ax_boxes: integer = 0,       // annexes in the session, after the append
+  pub ax_q: integer = 0, pub ax_r: integer = 0,
+  pub ax_pad: integer = 0,
 }
 
 // `37:` — hang the volume that is chosen on whatever the author is standing at.
@@ -770,12 +770,12 @@ pub fn session_select_seat(s: EditSession, kind: integer) -> Ack {
 // HEIGHT — two different fields of the same struct — so a result carrying `sm_size`
 // would be this function choosing which one its caller is allowed to say.
 pub struct SeatMade {
-  sm_ok:   boolean,
-  sm_say:  text = "",          // the sentence, refusal and success alike
-  sm_kind: integer = 0,
-  sm_prop: Prop = Prop {},
-  sm_q: integer = 0, sm_r: integer = 0,
-  sm_pad: integer = 0,         // how far around it the picture is stale
+  pub sm_ok:   boolean,
+  pub sm_say:  text = "",          // the sentence, refusal and success alike
+  pub sm_kind: integer = 0,
+  pub sm_prop: Prop = Prop {},
+  pub sm_q: integer = 0, pub sm_r: integer = 0,
+  pub sm_pad: integer = 0,         // how far around it the picture is stale
 }
 
 // `38:` — seat the thing that is chosen, in the nearest void that has room.
@@ -869,11 +869,11 @@ pub const SLAB_PAD = 13;
 // that decides how tall a storey is.
 pub struct SlabLaid {
   sb_ok:   boolean,
-  sb_say:  text = "",           // the sentence, refusal and success alike
-  sb_slab: Slab = Slab {},
-  sb_n:    integer = 0,         // slabs in the session, after the append
-  sb_q: integer = 0, sb_r: integer = 0,
-  sb_pad:  integer = 0,         // how far around it the picture is stale
+  pub sb_say:  text = "",           // the sentence, refusal and success alike
+  pub sb_slab: Slab = Slab {},
+  pub sb_n:    integer = 0,         // slabs in the session, after the append
+  pub sb_q: integer = 0, pub sb_r: integer = 0,
+  pub sb_pad:  integer = 0,         // how far around it the picture is stale
 }
 
 // `39:0` — lay a floor over the footprint given, one storey above the floor given.
@@ -929,13 +929,13 @@ pub const HOLE_HALF = 2.0;
 // datum or the extents, and a result carrying one of them would be this function
 // choosing which its caller is allowed to say.
 pub struct HoleMade {
-  hm_ok:   boolean,
-  hm_say:  text = "",           // the sentence, refusal and success alike
+  pub hm_ok:   boolean,
+  pub hm_say:  text = "",           // the sentence, refusal and success alike
   hm_kind: integer = 0,
   hm_hole: Hole = Hole {},
-  hm_n:    integer = 0,         // holes in the session, after the append
-  hm_q: integer = 0, hm_r: integer = 0,
-  hm_pad: integer = 0,          // how far around it the picture is stale
+  pub hm_n:    integer = 0,         // holes in the session, after the append
+  pub hm_q: integer = 0, pub hm_r: integer = 0,
+  pub hm_pad: integer = 0,          // how far around it the picture is stale
 }
 
 // `39:1` — cut the void this verb names through the slab last laid.
@@ -994,18 +994,18 @@ pub const RL_REFUSED = 2;   // …and the draft is closed either way
 // it derived itself; a library that handed back a single anchor would force it to go
 // on deriving them, which is the re-derivation `ak_q`/`ak_r` exists to stop.
 pub struct RunLaid {
-  rl_code:   integer,
-  rl_say:    text = "",        // the whole sentence, refusal and success alike
-  rl_wall:   boolean = false,  // the line itself, or a road and two fences
-  rl_n:      integer = 0,      // edges marked (a wall) or cells paved (a road)
-  rl_fenced: integer = 0,
+  pub rl_code:   integer,
+  pub rl_say:    text = "",        // the whole sentence, refusal and success alike
+  pub rl_wall:   boolean = false,  // the line itself, or a road and two fences
+  pub rl_n:      integer = 0,      // edges marked (a wall) or cells paved (a road)
+  pub rl_fenced: integer = 0,
   rl_cut:    integer = 0,
-  rl_step:   integer = 0,
-  rl_resid:  float = 0.0,
-  rl_reach:  float = 0.0,
-  rl_q0: integer = 0, rl_r0: integer = 0,
-  rl_q1: integer = 0, rl_r1: integer = 0,
-  rl_pad: integer = 0,         // how far around each end the picture is stale
+  pub rl_step:   integer = 0,
+  pub rl_resid:  float = 0.0,
+  pub rl_reach:  float = 0.0,
+  pub rl_q0: integer = 0, pub rl_r0: integer = 0,
+  pub rl_q1: integer = 0, pub rl_r1: integer = 0,
+  pub rl_pad: integer = 0,         // how far around each end the picture is stale
 }
 
 // `25:` — a press of the run key, at wherever this driver stands.

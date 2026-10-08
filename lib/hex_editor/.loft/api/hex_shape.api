@@ -1,5 +1,5 @@
-# hex_shape 0.1.3 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_shape-0.1.3
+# hex_shape 0.1.8 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_shape-0.1.8
 # use it with: use hex_shape::*;
 
 ## src/hex_shape.loft
@@ -61,7 +61,7 @@ pub fn arc_shells_upto(n24: integer) -> vector<integer>
 // (cq,cr)?  The wedge must span less than 180°, so `lo` and `hi` bound one contiguous arc.
 // 
 // Example: @HXS-009
-pub fn arc_wedge_has(cq: integer, cr: integer, q: integer, r: integer,
+pub fn arc_wedge_has(cq: integer, cr: integer, q: integer, r: integer, lok: integer, lom: integer, hik: integer, him: integer) -> boolean
 
 // Place a door on the wall: re-material every boundary edge whose inside cell lies in the wedge to
 // `mat`.  Annotation only — no cell or edge is removed — so the disk, and therefore the recovered
@@ -69,7 +69,7 @@ pub fn arc_wedge_has(cq: integer, cr: integer, q: integer, r: integer,
 // `place_opening`.
 // 
 // Example: @HXS-009
-pub fn arc_door_wedge(cells: HexSet, edges: EdgeSet, cq: integer, cr: integer,
+pub fn arc_door_wedge(cells: HexSet, edges: EdgeSet, cq: integer, cr: integer, lok: integer, lom: integer, hik: integer, him: integer, mat: integer) -> integer
 
 // Recover the door: count the boundary edges carrying `mat`, each exactly once (only the inside
 // cell of a boundary edge is in the set, so iterating inside cells visits every boundary edge
@@ -96,13 +96,22 @@ pub fn box_sin(n: integer) -> float
 // Example: @HXS-006
 pub fn box_orbit(rot: integer) -> integer
 
-pub struct Box
+// A rectangular footprint of hex cells: an anchor cell, a width and depth in hex steps along
+// its local axes, a rotation in thirty-degree steps (0..11) and a mirror flag.
+pub struct Box {
+  bx_cq: integer,  // anchor cell
+  bx_cr: integer,
+  bx_wid: integer,  // extent along local u, in hex steps (1.5 m each)
+  bx_dep: integer,  // extent along local v
+  bx_rot: integer,  // 0..11 — THIRTY degree steps
+  bx_mir: boolean,  // the flip
+}
 
 // The selection the editor made: a centre cell, a width and depth in hexes, one of the 12
 // rotations and a mirror.  Everything else here derives the building from this one value.
 // ⚠ `rot` is 0..11 in thirty-degree steps, whose even and odd halves are two families
 // rather than rotations of one another — see the note above.
-pub fn box_new(cq: integer, cr: integer, wid: integer, dep: integer,
+pub fn box_new(cq: integer, cr: integer, wid: integer, dep: integer, rot: integer, mir: boolean) -> Box
 
 // Half the box's width in world units, for a bound or a hit test without rebuilding the
 // frame.
@@ -189,7 +198,16 @@ pub const WALL_W = 0.28867513459481287
 
 pub const D24 = 24
 
-pub struct Wall
+// A straight wall run in world units: its centre, unit direction and half-length, and the
+// material it writes into every slot it crosses.  `wall_new` and `wall_from_run` make one.
+pub struct Wall {
+  wa_ox: float,  // centre of the run, world units
+  wa_oy: float,
+  wa_dx: float,  // unit direction
+  wa_dy: float,
+  wa_half: float,  // half the run length
+  wa_mat: integer,  // the material written into every slot it crosses
+}
 
 // The `k` of one step along wall direction `d24`.  The wall runs on a finer set of
 // directions than the cells do, which is why it has its own step table.
@@ -208,7 +226,7 @@ pub fn wall_new(d24: integer, ox: float, oy: float, half: float, mat: integer) -
 
 // The nominal angle of `d24` in degrees, and the angle its step actually points at.  The two
 // are EQUAL on every even d24 and differ by 1.1021 degrees on every odd one — the gate prints
-// both rather than hiding it.  (4.11 degrees was the pre-`N = 39` in-between; see the table.)
+// both rather than hiding it.
 pub fn wall_angle_nominal(d24: integer) -> float
 
 // Example: @HXS-002
@@ -216,11 +234,9 @@ pub fn wall_angle_actual(d24: integer) -> float
 
 // ── writing into the foxel — ALONG the wall, not ACROSS it (OD-12) ─────────
 // 
-// THE FIRST TRY MARKED THE WRONG EDGES.  The band model asked "does the wall's thin
-// rectangle overlap this hex edge?" — and the edges a thin band overlaps are the ones lying
-// ACROSS it, roughly perpendicular.  A due-east wall came out as a comb of vertical pickets
-// (`X28`), because a hex has edges on only three lines (30/90/150) and none runs east, so a
-// wall going east cannot BE a run of hex edges pointing east.
+// NOT THE EDGES A THIN BAND OVERLAPS.  Those lie ACROSS the wall, roughly perpendicular: a
+// due-east wall would come out as a comb of vertical pickets (`X28`), because a hex has edges on
+// only three lines (30/90/150) and none runs east.
 // 
 // THE WALL IS A BOUNDARY, NOT A BAND.  A straight line divides the plane into two
 // half-planes.  The hex edges that lie ALONG the line are exactly the ones that SEPARATE a
@@ -288,7 +304,7 @@ pub fn hex_corner_tri_b(q: integer, r: integer, ci: integer) -> integer
 // An edge is marked iff the wall's centre line SEPARATES its two owning cells, within the run.
 // `edge_set_mat` stores an edge once, under whichever cell owns it, so writing from both sides
 // is idempotent — which is what makes the three-slots-per-hex model hold.
-pub fn wall_write(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
+pub fn wall_write(w: Wall, edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> integer
 
 // ── READING THE CHAIN BACK: is it ALONG the wall, and is it ONE chain? ─────
 // 
@@ -313,7 +329,7 @@ pub fn wall_write(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
 // and holds for all 24 directions.
 // 
 // Example: @HXS-004
-pub fn wall_along_max(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
+pub fn wall_along_max(w: Wall, edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> float
 
 // ONE CHAIN.  The marked edges form a connected path iff, keyed by their shared hex vertices
 // (exact triangle-lattice integers), exactly two vertices have degree 1 (the ends) and none has
@@ -326,13 +342,13 @@ pub fn wall_along_max(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
 // reading it as *the marking is broken* will refuse a shape somebody drew on purpose.
 // 
 // Example: @HXS-004
-pub fn wall_chain_ends(edges: EdgeSet, q0: integer, r0: integer,
+pub fn wall_chain_ends(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> integer
 
 // Any vertex where three or more marked edges meet — a branch, which a straight wall's boundary
 // never has.  Non-zero means the marking is not a simple path.
 // 
 // Example: @HXS-004
-pub fn wall_chain_branches(edges: EdgeSet, q0: integer, r0: integer,
+pub fn wall_chain_branches(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> integer
 
 // ── THE CHAIN IN READING ORDER ─────────────────────────────────────────────
 // 
@@ -363,11 +379,23 @@ pub fn wall_chain_branches(edges: EdgeSet, q0: integer, r0: integer,
 // continues along the first unused one in scan order — deterministic, and *a* traversal rather
 // than *the* traversal.  `wc_branch` counts the vertices this chain passes through where that
 // choice was made, so a consumer needing a simple path can refuse rather than believe.
-pub struct WallChain
+pub struct WallChain {
+  wc_ok: boolean,  // there is an `nth` chain
+  wc_n: integer,  // how many chains the marking falls into
+  wc_branch: integer,  // vertices on this chain where three or more marks met
+  wc_loop: boolean,  // the walk came back to the vertex it started from
+  wc_va: vector<integer>,  // vertex `i`, in exact triangle-lattice coordinates
+  wc_vb: vector<integer>,
+  wc_x: vector<float>,  // …and in world units, from `tri_x` / `tri_y`
+  wc_y: vector<float>,
+  wc_q: vector<integer>,  // the mark walked between vertex `i` and `i + 1`: its cell
+  wc_r: vector<integer>,
+  wc_d: vector<integer>,  // …and the direction out of that cell
+}
 
 // The `nth` chain of this marking, in the order a walk meets its vertices.  `nth = 0` is the
 // first; `wc_n` is how many there are, and is filled in whether or not `nth` names one.
-pub fn wall_chain_walk(edges: EdgeSet, q0: integer, r0: integer, wq: integer,
+pub fn wall_chain_walk(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer, nth: integer) -> WallChain
 
 // The primitive triangle-lattice vector of direction `d24`.
 pub fn tri_a(d24: integer) -> integer
@@ -456,7 +484,7 @@ pub fn hex_scale_round(x: float, y: float) -> (integer, integer)
 pub fn nearest_vertex(x: float, y: float) -> (integer, integer)
 
 // How far the endpoint of `p` periods of `d24` from (a0,b0) lands from a target point.
-pub fn run_end_dist(d24: integer, a0: integer, b0: integer, p: integer,
+pub fn run_end_dist(d24: integer, a0: integer, b0: integer, p: integer, tx: float, ty: float) -> float
 
 // SNAP 2, direction part: the direction whose best legal endpoint lands nearest the target.
 // Example: @HXS-008
@@ -485,7 +513,7 @@ pub fn wall_nearest_d24(deg: float) -> integer
 // vertex at all, or when `dist` is shorter than the smallest admissible run.
 // 
 // Example: @HXS-010
-pub fn snap_run_from_heading(a0: integer, b0: integer, deg: float,
+pub fn snap_run_from_heading(a0: integer, b0: integer, deg: float, dist: float) -> (integer, integer)
 
 // ── EVALUATING THE MARKS BACK TO THE MESH (crawler / moros' own rule) ───────
 // 
@@ -508,19 +536,19 @@ pub fn wall_offset_of(w: Wall, px: float, py: float) -> float
 // Only edges whose midpoint lies within the run are measured — past the ends there is no
 // line to be near.
 // Example: @HXS-008
-pub fn wall_mesh_stray(w: Wall, edges: EdgeSet, q0: integer, r0: integer,
+pub fn wall_mesh_stray(w: Wall, edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> float
 
 // How many distinct segments the mesh emitter would produce for the marked field — the
 // vertex count of moros' wall mesh divided by the per-edge quad, i.e. the segment count.
 // Example: @HXS-005
-pub fn wall_mesh_segments(edges: EdgeSet, q0: integer, r0: integer,
+pub fn wall_mesh_segments(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> integer
 
 // The two degree-1 vertices of the marked chain, in triangle coordinates.  `ok` is false unless
 // there are exactly two — a fragmented or branching marking is REFUSED, never averaged into an
 // answer.
 // 
 // Example: @HXS-005
-pub fn wall_read_ends(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer)
+pub fn wall_read_ends(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> (integer, integer, integer, integer, boolean)
 
 // Recover the whole run: direction, anchor and period count, all exact integers.  One period of
 // `d24` displaces a run by `3·tri(d24)`, so the endpoint displacement pins both `d24` and `p`; the
@@ -534,4 +562,4 @@ pub fn wall_read_ends(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq:
 // same wall.  `read.d == d` is therefore the wrong round-trip assertion; compare the ENDPOINTS.
 // 
 // Example: @HXS-005
-pub fn wall_read_run(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer)
+pub fn wall_read_run(edges: EdgeSet, q0: integer, r0: integer, wq: integer, hq: integer) -> (integer, integer, integer, integer, boolean)

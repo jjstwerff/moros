@@ -76,12 +76,12 @@ struct BakeCol {
 }
 
 pub struct Bake {
-  bk_code:  integer,
-  bk_world: VoxelWorld,
-  bk_parts: integer = 0,   // parts flattened, the root and everything under it
-  bk_cols:  integer = 0,   // columns in the result
+  pub bk_code:  integer,
+  pub bk_world: VoxelWorld,
+  pub bk_parts: integer = 0,   // parts flattened, the root and everything under it
+  pub bk_cols:  integer = 0,   // columns in the result
   bk_depth: integer = 0,
-  bk_why:   text = "",
+  pub bk_why:   text = "",
 }
 
 // ⚠ THE SAME KEY SHAPE THE WORLD'S OWN INDEX USES, and it must stay injective

@@ -58,9 +58,9 @@ pub const SF_NOTHING = 3;   // the part does not say what it fits at all
 // a joint, permanently. Every other answer in this package is a code plus a
 // sentence (`MetaRead`, `SockRead`, `CycleCheck`), and that is the shape kept.
 pub struct SocketFit {
-  sf_code:  integer,
-  sf_why:   text,
-  sf_offer: text,         // what the frame wants, spelled `kind/size` as §P3 spells it
+  pub sf_code:  integer,
+  pub sf_why:   text,
+  pub sf_offer: text,         // what the frame wants, spelled `kind/size` as §P3 spells it
 }
 
 // §P3's own spelling — `door/2x3` — and the thing an author greps the catalogue

@@ -57,14 +57,14 @@ pub const EDGES = 6;
 // leaf physically fits is a fact of the two parts' cells and is `A4.2`'s to
 // measure. Storing a size here as well would be a second authority on one fact.
 pub struct Socket {
-  sk_q:     integer,
-  sk_r:     integer,
-  sk_h:     integer,
-  sk_mount: integer,      // SM_EDGE or SM_HEAD
-  sk_at:    integer,      // an edge 0..5 under SM_EDGE, a heading 0..23 under SM_HEAD
-  sk_kind:  text,         // the contract token — `door`, `pillar`, `statue`
-  sk_size:  text,         // the size class — `2x3`, `round-3`, `plinth-2`
-  sk_name:  text,         // the author's handle for THIS socket — `leaf`, `column-1`
+  pub sk_q:     integer,
+  pub sk_r:     integer,
+  pub sk_h:     integer,
+  pub sk_mount: integer,      // SM_EDGE or SM_HEAD
+  pub sk_at:    integer,      // an edge 0..5 under SM_EDGE, a heading 0..23 under SM_HEAD
+  pub sk_kind:  text,         // the contract token — `door`, `pillar`, `statue`
+  pub sk_size:  text,         // the size class — `2x3`, `round-3`, `plinth-2`
+  pub sk_name:  text,         // the author's handle for THIS socket — `leaf`, `column-1`
 }
 
 // What a part goes into. ⚠ ONE, NOT A LIST, AND THE ARGUMENT IS `ANCH`'s. A part
@@ -74,8 +74,8 @@ pub struct Socket {
 // fits two classes this is a format change, and that is cheaper than a list that
 // always holds one element and invites a reader to wonder what the second means.
 pub struct PartFits {
-  pf_kind: text,
-  pf_size: text,
+  pub pf_kind: text,
+  pub pf_size: text,
 }
 
 pub const SK_OK      = 0;
@@ -93,7 +93,7 @@ pub const SK_DUP     = 6;   // two sockets on one part with one name
 // *name* on which of eleven records is the one with the comma in it. `A4.2` returns
 // `Fit{ok, reason, offer}` for the same reason — a refusal an author cannot act on
 // is a refusal that gets worked around.
-pub struct SockWrite { sw_code: integer, sw_why: text }
+pub struct SockWrite { pub sw_code: integer, pub sw_why: text }
 
 fn sw_ok() -> SockWrite { SockWrite { sw_code: SK_OK, sw_why: "" } }
 
@@ -238,8 +238,8 @@ pub fn part_set_fits(w: VoxelWorld, f: PartFits) -> SockWrite {
 // offers none and is fine; a part whose `SOCK` says `mount=north` is damaged, and
 // one code for both makes the damaged one look ordinary. The codes are `meta.loft`'s
 // rather than a third set invented here.
-pub struct SockRead { sr_code: integer, sr_items: vector<Socket>, sr_why: text }
-pub struct FitsRead { fr_code: integer, fr_fits: PartFits, fr_why: text }
+pub struct SockRead { pub sr_code: integer, pub sr_items: vector<Socket>, pub sr_why: text }
+pub struct FitsRead { pub fr_code: integer, pub fr_fits: PartFits, pub fr_why: text }
 
 fn sock_bad(why: text) -> SockRead {
   none: vector<Socket> = [];

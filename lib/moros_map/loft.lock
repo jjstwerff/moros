@@ -4,37 +4,37 @@ schema_version = 1
 
 [[package]]
 name = "graphics"
-version = "0.9.4"
-url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphics-v0.9.4/graphics-0.9.4.tar.gz"
-sha256 = "05ed1215dcb7e5233abc0e74b3d130d3e5816b002a5147ae6340ba5ce877a2cc"
+version = "0.9.11"
+url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphics-v0.9.11/graphics-0.9.11.tar.gz"
+sha256 = "17d0de871307ca4e1f2e36bd66bdc3a619371795601ce8a2e380c414bb21293d"
 source = "registry"
 deps = ["glb", "mesh3d"]
 
 [[package]]
 name = "glb"
-version = "0.1.3"
-url = "https://github.com/loft-lang/loft-libs-assets/releases/download/glb-v0.1.3/glb-0.1.3.tar.gz"
-sha256 = "57ad8d0a0a25caefd65c4819b03c86562c9d5462dabf294c893132c65718160a"
+version = "0.1.6"
+url = "https://github.com/loft-lang/loft-libs-assets/releases/download/glb-v0.1.6/glb-0.1.6.tar.gz"
+sha256 = "2efe8e615ff4eee689210c6567e9a18ae0b1a769472fc983ef746aff3ea7f128"
 source = "registry"
 deps = ["mesh3d"]
 
 [[package]]
 name = "mesh3d"
-version = "0.1.2"
-url = "https://github.com/loft-lang/loft-libs-assets/releases/download/mesh3d-v0.1.2/mesh3d-0.1.2.tar.gz"
-sha256 = "b1929c5f56d5abf5925faad5572cfb02418d15cfe8eb4819c0b8df679915df10"
+version = "0.1.5"
+url = "https://github.com/loft-lang/loft-libs-assets/releases/download/mesh3d-v0.1.5/mesh3d-0.1.5.tar.gz"
+sha256 = "7724729a20163ffb68c737876bccbc93f5a70009ec6db8310e0b39200f6340ef"
 source = "registry"
 
 [[package]]
 name = "hex_grid"
-version = "0.1.2"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_grid-v0.1.2/hex_grid-0.1.2.tar.gz"
-sha256 = "3555008637ffd46b097c4fca0805ac30806987a1922098b8a396d2c5ce10a92d"
+version = "0.1.4"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_grid-v0.1.4/hex_grid-0.1.4.tar.gz"
+sha256 = "36b4ff2f15c399761fc92cf32d29ac2bc36f3fc3cc35757be884f3d0db292d40"
 source = "registry"
 
 [[package]]
 name = "hex_field"
-version = "0.1.0"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.0/hex_field-0.1.0.tar.gz"
-sha256 = "b15e31ac9791bf4188911951bd04e5cda3dece15a22af613750a7a8ca66fe7b1"
+version = "0.1.7"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.7/hex_field-0.1.7.tar.gz"
+sha256 = "e5671cde067903fa284ed4512b1cb2475bb64789b98a5b724f5664ef114094a7"
 source = "registry"

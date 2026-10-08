@@ -32,7 +32,7 @@ pub fn un_origin(cq: integer, cr: integer, dq: integer, dr: integer) -> (integer
   (q, r)
 }
 
-pub struct PartCell { pk_q: integer, pk_r: integer }
+pub struct PartCell { pub pk_q: integer, pub pk_r: integer }
 
 // Every column the part actually holds something in.
 //
@@ -67,24 +67,24 @@ pub const PS_UNIT  = 3;        // the part states another unit (A8.2b, P9.1)
 // stamp that did not would be a quieter gesture doing the same work, and the
 // gates that check a cave survived would have nothing to read.
 pub struct PartStamp {
-  ps_code:  integer,
-  ps_cells: integer,
-  ps_label: integer,
-  ps_below: integer,               // occupied cells left BELOW the band
-  ps_above: integer,               // and above it
+  pub ps_code:  integer,
+  pub ps_cells: integer,
+  pub ps_label: integer,
+  pub ps_below: integer,               // occupied cells left BELOW the band
+  pub ps_above: integer,               // and above it
   // ⚠ THE STORE'S OWN `CW_*` CODE, CARRIED OUT. `PS_FIT` says only *it did not
   // fit*; `CW_FOLD`, `CW_RESERVE` and `CW_WINDOW` say which rule said so, and a
   // caller that can only report "did not fit" has thrown that away. The
   // procedural stencil encoded it as `-10 - cw_code` and its gate reads the
   // number, so losing it here would have quietly made every band refusal the
   // same refusal.
-  ps_fit:   integer,               // the `CW_*` that refused, 0 if none did
+  pub ps_fit:   integer,               // the `CW_*` that refused, 0 if none did
   // The part landed in a chunk that had no terrain yet, so its layer became that
   // chunk's GROUND and took `LABEL_GROUND` instead of the minted name. `ps_label`
   // is then 0, because there is no identity to hand back. §I1 does not hold for
   // such a placement and nothing can re-derive it — `A3.2` refuses it outright.
   ps_ground: boolean = false,
-  ps_why:   text,
+  pub ps_why:   text,
 }
 
 // Stamp `p` into `w`, centred on `(cq, cr)`, with the part's own origin height

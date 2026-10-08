@@ -42,23 +42,23 @@
 // only thing that turns "compared a windowed height against an absolute one" into
 // a compile error rather than a wrong number at a chunk seam.
 pub struct Hex {
-  h_height:        u16,      // ABSOLUTE, above the world floor
-  h_material:      u8,
-  h_item:          u8,
-  h_item_rotation: u8,
-  h_wall_nw:        u8,
-  h_wall_ne:       u8,
-  h_wall_e:       u8,
+  pub h_height:        u16,      // ABSOLUTE, above the world floor
+  pub h_material:      u8,
+  pub h_item:          u8,
+  pub h_item_rotation: u8,
+  pub h_wall_nw:        u8,
+  pub h_wall_ne:       u8,
+  pub h_wall_e:       u8,
 }
 
 pub struct StoredHex {
-  sv_height:        u16,     // RELATIVE to its chunk's base — meaningless alone
-  sv_material:      u8,
-  sv_item:          u8,
-  sv_item_rotation: u8,
-  sv_wall_nw:        u8,
-  sv_wall_ne:       u8,
-  sv_wall_e:       u8,
+  pub sv_height:        u16,     // RELATIVE to its chunk's base — meaningless alone
+  pub sv_material:      u8,
+  pub sv_item:          u8,
+  pub sv_item_rotation: u8,
+  pub sv_wall_nw:        u8,
+  pub sv_wall_ne:       u8,
+  pub sv_wall_e:       u8,
 }
 
 // A cell is OCCUPIED iff its material is not absence. Index 0 is absence in every
@@ -149,20 +149,20 @@ pub const WINDOW     = 65536;       // what a u16 relative height spans
 // A layer is this tile's own, with an OPTIONAL cross-chunk label (`I1`-`I3`):
 // a u32 name drawn from the world's counter, never an ordinal, 0 = unlabelled.
 pub struct Layer {
-  ly_id:    integer,                // u32 label, 0 = unlabelled
-  ly_kind:  integer,                // KIND_TERRAIN | KIND_DRESSING
-  ly_ver:   integer,                // `T1` — the clock value at its last write
-  ly_cells: vector<StoredHex>,      // exactly CHUNK_CELLS, terrain only
+  pub ly_id:    integer,                // u32 label, 0 = unlabelled
+  pub ly_kind:  integer,                // KIND_TERRAIN | KIND_DRESSING
+  pub ly_ver:   integer,                // `T1` — the clock value at its last write
+  pub ly_cells: vector<StoredHex>,      // exactly CHUNK_CELLS, terrain only
 }
 
 // A chunk is a (cx, cz) tile: a base height and its OWN ORDERED list of layers.
 // The index of a layer is a position in THIS chunk and means nothing outside it —
 // there is no world-wide layer list and no global budget.
 pub struct VoxelChunk {
-  ck_cx:     integer,
-  ck_cz:     integer,
-  ck_base:   integer,               // absolute floor of the window
-  ck_layers: vector<Layer>,
+  pub ck_cx:     integer,
+  pub ck_cz:     integer,
+  pub ck_base:   integer,               // absolute floor of the window
+  pub ck_layers: vector<Layer>,
 }
 
 // The chunk index. `find_chunk` was a linear scan over every chunk in the world,
@@ -205,23 +205,23 @@ pub struct ChunkAt { ca_key: integer, ca_at: integer }
 // `vector<integer>` is accepted SILENTLY and reads the 8-byte elements as bytes
 // (loft#751), so `[72, 105]` decodes to `H` and a space.
 pub struct Section {
-  sc_tag:   integer,                // four ASCII characters, `section_tag("PART")`
-  sc_bytes: vector<u8>,             // the consumer's bytes — opaque, and a BYTE type
+  pub sc_tag:   integer,                // four ASCII characters, `section_tag("PART")`
+  pub sc_bytes: vector<u8>,             // the consumer's bytes — opaque, and a BYTE type
 }
 
 pub struct VoxelWorld {
-  w_chunks: vector<VoxelChunk>,
+  pub w_chunks: vector<VoxelChunk>,
   w_index:  hash<ChunkAt[ca_key]>,
-  w_unit:   float,                  // `u` — what one height step is worth
-  w_reserve: integer,               // `ρ` — authoring floor
-  w_eps:     integer,               // `ε` — minimum layer separation
-  w_theta:   integer,               // `θ` — match tolerance
-  w_next_id: integer,               // `ν` — next free label
-  w_tau:     integer,               // `τ` — the edit clock, monotonic
+  pub w_unit:   float,                  // `u` — what one height step is worth
+  pub w_reserve: integer,               // `ρ` — authoring floor
+  pub w_eps:     integer,               // `ε` — minimum layer separation
+  pub w_theta:   integer,               // `θ` — match tolerance
+  pub w_next_id: integer,               // `ν` — next free label
+  pub w_tau:     integer,               // `τ` — the edit clock, monotonic
   // Defaulted, so every existing `VoxelWorld { … }` literal in this tree and in its
   // consumers keeps compiling and a world simply has no sections until something
   // puts one there.
-  w_sections: vector<Section> = [],
+  pub w_sections: vector<Section> = [],
   // ── THE GROUND DEFAULT — plan `G4`, [GROUND_DEFAULT.md](../../../doc/claude/GROUND_DEFAULT.md)
   //
   // *A world is an infinite plane of its ground default, and storage holds only what
@@ -248,9 +248,9 @@ pub struct VoxelWorld {
 // A column: ABSOLUTE heights, indexed by the chunk's layer order. It carries NO
 // base — it is the absolute form, so the window cannot leak past it (`S1`).
 pub struct Column {
-  co_q:     integer,
-  co_r:     integer,
-  co_cells: vector<Hex>,            // one per layer of the chunk, in its order
+  pub co_q:     integer,
+  pub co_r:     integer,
+  pub co_cells: vector<Hex>,            // one per layer of the chunk, in its order
   // ⚠ THE LABEL OF THE LAYER EACH CELL CAME FROM — identity travelling WITH the
   // cell. `F1″` makes index height order, so inserting below shifts every index;
   // a marker left on an index therefore lands on the wrong layer, which is how a
@@ -261,7 +261,7 @@ pub struct Column {
   // keeps the positional behaviour it always had. A READ fills it, so any
   // read-modify-write carries identity through without the caller helping.
   // An EMPTY list here means "no claim about identity" — never "all new".
-  co_ids:   vector<integer> = [],
+  pub co_ids:   vector<integer> = [],
 }
 
 // ── VoxelWorld creation ───────────────────────────────────────────────────────────
@@ -270,7 +270,7 @@ pub const WC_OK        = 0;
 pub const WC_CONSTANTS = 1;         // `C1`: ε > 2θ does not hold
 pub const WC_RESERVE   = 2;         // `R1`: the ground a scenario asked for is below ρ
 
-pub struct WorldNew { wn_code: integer, wn_world: VoxelWorld }
+pub struct WorldNew { pub wn_code: integer, pub wn_world: VoxelWorld }
 
 // ⚠ `C1` is checked HERE and never assumed. A world with ε ≤ 2θ fails `B1`
 // SILENTLY — two layers can both fall within θ of one height — and the symptom is
@@ -586,18 +586,18 @@ pub fn world_ground_cell(w: VoxelWorld, q: integer, r: integer) -> Hex {
 // here instead: one chunk lookup, no allocation, and the invariant sits in the
 // library where a pure test can reach it rather than in a consumer.
 pub struct SurfaceAt {
-  sf_units:  integer,     // the surface height, absolute; −1 when nothing is here
+  pub sf_units:  integer,     // the surface height, absolute; −1 when nothing is here
   // ⚠ WHICH layer answered, so a WRITER can reach it. `world_ground_layer` is the
   // same service for the outdoors; this is it for "the surface I am standing on",
   // and a road graded from a deck must land on the deck, not three storeys down.
-  sf_layer:  integer,     // index of the layer chosen; −1 when there is none
-  sf_occ:    integer,     // how many occupied terrain layers this column holds
+  pub sf_layer:  integer,     // index of the layer chosen; −1 when there is none
+  pub sf_occ:    integer,     // how many occupied terrain layers this column holds
   // ⚠ SMOOTH FOR TERRAIN, FLAT FOR WHAT IS BUILT ON IT. One occupied layer — or
   // none — is the ordinary case and the caller should interpolate its heightfield
   // across the cell's corners, which is what makes a slope a slope. A deck is not
   // a heightfield and is taken flat. Reported rather than decided here, because
   // the interpolation is the consumer's geometry, not the store's.
-  sf_smooth: boolean,
+  pub sf_smooth: boolean,
 }
 
 // `feet` is in the same absolute units as a cell's height.
@@ -730,7 +730,7 @@ pub const CW_RESERVE   = 4;   // terrain authored below `ρ` (`R1`)
 pub const CW_BAND      = 5;   // a stencil cell sat outside its declared band (`P1`)
 pub const CW_MIX       = 6;   // terrain content aimed at a dressing layer (`P2`)
 
-pub struct ColumnWrite { cw_code: integer, cw_layer: integer, cw_detail: text }
+pub struct ColumnWrite { pub cw_code: integer, pub cw_layer: integer, pub cw_detail: text }
 
 fn ok_write() -> ColumnWrite { ColumnWrite { cw_code: CW_OK, cw_layer: 0 - 1, cw_detail: "" } }
 
@@ -1816,7 +1816,7 @@ pub fn world_is_stale(w: VoxelWorld, q: integer, r: integer, built_at: integer) 
 //
 // The copy is therefore written as the assignment it already is, rather than as a
 // hand-rolled loop that duplicates what the language does.
-pub struct Snapshot { sn_tau: integer, sn_chunks: vector<VoxelChunk> }
+pub struct Snapshot { pub sn_tau: integer, sn_chunks: vector<VoxelChunk> }
 
 pub fn world_snapshot(w: VoxelWorld) -> Snapshot {
   return Snapshot { sn_tau: w.w_tau, sn_chunks: w.w_chunks };
@@ -2076,10 +2076,10 @@ pub const WL_CRC       = 4;   // a chunk's bytes are damaged
 pub const WL_SECTION   = 5;   // the trailing block is not a run of whole sections
 
 pub struct WorldLoad {
-  wl_code:    integer,
-  wl_world:   VoxelWorld,
-  wl_palette: vector<integer>,
-  wl_detail:  text,
+  pub wl_code:    integer,
+  pub wl_world:   VoxelWorld,
+  pub wl_palette: vector<integer>,
+  pub wl_detail:  text,
 }
 
 // CRC32, table-free. Small enough that pulling in a dependency for it would cost
@@ -2506,7 +2506,7 @@ pub fn world_save_keyed(w: VoxelWorld, path: text, palette: vector<integer>,
 // voxel. The gate proves that by scanning a file whose cells are deliberately
 // corrupt: the scan succeeds where a full load refuses on CRC, which is only
 // possible if the payload was never touched.
-pub struct VersionScan { vs_code: integer, vs_tau: integer, vs_max: integer, vs_layers: integer }
+pub struct VersionScan { pub vs_code: integer, pub vs_tau: integer, pub vs_max: integer, pub vs_layers: integer }
 
 pub fn world_scan_versions(path: text) -> VersionScan {
   f = file(path);
@@ -2581,7 +2581,7 @@ fn same_shape(w: VoxelWorld, path: text) -> boolean {
 // file before and after cannot tell "skipped it" from "rewrote the same bytes" —
 // a mutation that rewrote every layer passed a byte-comparison gate — so the count
 // is what makes the saving observable rather than merely plausible.
-pub struct SaveStat { ss_code: integer, ss_layers: integer }
+pub struct SaveStat { pub ss_code: integer, pub ss_layers: integer }
 
 pub fn world_save_incremental(w: VoxelWorld, path: text, palette: vector<integer>,
                               owner: integer) -> SaveStat {
@@ -2899,7 +2899,7 @@ pub const TAG_PALI = 1229734224;   // 'PALI' — items
 pub const TAG_RGNS = 1397638994;   // 'RGNS' — which region each chunk belongs to
 pub const TAG_PALT = 1414283600;   // 'PALT' — house types, plan 22 `T1a.1`
 
-pub struct PalEntry { pl_slot: integer, pl_name: text }
+pub struct PalEntry { pub pl_slot: integer, pub pl_name: text }
 
 pub const PAL_OK       = 0;
 pub const PAL_SLOT     = 1;   // a slot outside 1..255 — 0 is absence and is not writable
@@ -3013,7 +3013,7 @@ pub fn world_region_at(w: VoxelWorld, q: integer, r: integer) -> integer {
   0
 }
 
-pub struct PalRead { pr_code: integer, pr_items: vector<PalEntry>, pr_why: text }
+pub struct PalRead { pub pr_code: integer, pub pr_items: vector<PalEntry>, pub pr_why: text }
 
 // ⚠ ABSENT AND MALFORMED ARE DIFFERENT ANSWERS, and `pr_items` is usable on both
 // `PAL_ABSENT_C`-free readings: a world written before palettes exist names nothing

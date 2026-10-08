@@ -34,14 +34,14 @@ use mesh3d::*;
 pub enum RopeState { Slack, Taut }
 
 pub struct Rope {
-  rp_state: RopeState,
-  rp_pos: Vec3,          // where the crate ends up
-  rp_dist: float,        // ‖p − a‖ after resolving
-  rp_over: float,        // `K-FIT` residual: the overshoot projected out
+  pub rp_state: RopeState,
+  pub rp_pos: Vec3,          // where the crate ends up
+  pub rp_dist: float,        // ‖p − a‖ after resolving
+  pub rp_over: float,        // `K-FIT` residual: the overshoot projected out
   // The radial component of the correction, against the OUTWARD radial.
   // **≤ 0 for a rope, always.** A positive value is a rope in compression.
-  rp_pull: float,
-  rp_reason: text        // named, and empty when nothing had to be done
+  pub rp_pull: float,
+  pub rp_reason: text        // named, and empty when nothing had to be done
 }
 
 fn fabs(v: float) -> float { if v < 0.0 { 0.0 - v } else { v } }
