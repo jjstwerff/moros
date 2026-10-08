@@ -1,5 +1,5 @@
-# mesh3d 0.1.4 — public API surface
-# generated from /home/jurjens/.loft/registry/mesh3d-0.1.4
+# mesh3d 0.1.5 — public API surface
+# generated from /home/jurjens/.loft/registry/mesh3d-0.1.5
 # use it with: use mesh3d::*;
 
 ## src/math.loft

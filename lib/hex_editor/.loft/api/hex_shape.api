@@ -1,5 +1,5 @@
-# hex_shape 0.1.6 — public API surface
-# generated from /home/jurjens/.loft/registry/hex_shape-0.1.6
+# hex_shape 0.1.8 — public API surface
+# generated from /home/jurjens/.loft/registry/hex_shape-0.1.8
 # use it with: use hex_shape::*;
 
 ## src/hex_shape.loft

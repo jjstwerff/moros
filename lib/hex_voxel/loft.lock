@@ -4,9 +4,9 @@ schema_version = 1
 
 [[package]]
 name = "hex_draw"
-version = "0.1.3"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_draw-v0.1.3/hex_draw-0.1.3.tar.gz"
-sha256 = "7f779f6ee6733f00e90e0dae430441f36a0eef41f987bc3d6375000a675a5936"
+version = "0.1.4"
+url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_draw-v0.1.4/hex_draw-0.1.4.tar.gz"
+sha256 = "8a504455339a9fdbeda003f2a26cc544d3b9186f7f868cd8be9a96be222e18b4"
 source = "registry"
 deps = ["hex_field", "hex_form", "hex_grid", "hex_roof", "hex_way"]
 
