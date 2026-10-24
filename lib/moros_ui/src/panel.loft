@@ -26,10 +26,10 @@ pub TOOLBAR_BUTTONS    = 6;      // None / Raise / Lower / Stencil / Item / Wall
 
 // ── Panel struct ─────────────────────────────────────────────────
 pub struct Panel {
-  p_rect:    Rect,
-  p_toolbar: vector<Button>,
-  p_list:    ListBox,
-  p_status:  StatusStrip,
+  pub p_rect:    Rect,
+  pub p_toolbar: vector<Button>,
+  pub p_list:    ListBox,
+  pub p_status:  StatusStrip,
 }
 
 // ── Layout helpers ───────────────────────────────────────────────
