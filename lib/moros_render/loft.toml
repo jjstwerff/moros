@@ -8,7 +8,7 @@ entry = "src/moros_render.loft"
 
 [dependencies]
 moros_map = { path = "../moros_map" }
-graphics  = ">=0.9.4"
+graphics  = ">=0.13.3"
 hex_grid  = ">=0.1.2"
 mesh3d    = ">=0.1.2"
 glb       = ">=0.1.3"

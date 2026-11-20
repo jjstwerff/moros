@@ -4,17 +4,17 @@ schema_version = 1
 
 [[package]]
 name = "graphics"
-version = "0.9.12"
-url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphics-v0.9.12/graphics-0.9.12.tar.gz"
-sha256 = "482390eeca7fb4479a9fef021c5b7742240eb0ab0d1519567d702db80f5a91f9"
+version = "0.13.3"
+url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/graphics-v0.13.3/graphics-0.13.3.tar.gz"
+sha256 = "597271114aa10fdfd5ba3e0e7459e68dbe785c2b242c42a657c893cdd367216f"
 source = "registry"
-deps = ["glb", "mesh3d"]
+deps = ["glb", "imaging", "mesh3d"]
 
 [[package]]
 name = "glb"
-version = "0.1.7"
-url = "https://github.com/loft-lang/loft-libs-assets/releases/download/glb-v0.1.7/glb-0.1.7.tar.gz"
-sha256 = "b5b49928f741177761dfb0f4e9019ba23d7aa7b21a73beaf84b2a806e1b1556f"
+version = "0.1.8"
+url = "https://github.com/loft-lang/loft-libs-assets/releases/download/glb-v0.1.8/glb-0.1.8.tar.gz"
+sha256 = "eb5cf5f43789a211174b180560c655935ac6a28b2d4a91d8b0130f7fa0e52f4e"
 source = "registry"
 deps = ["mesh3d"]
 
@@ -26,15 +26,15 @@ sha256 = "7724729a20163ffb68c737876bccbc93f5a70009ec6db8310e0b39200f6340ef"
 source = "registry"
 
 [[package]]
+name = "imaging"
+version = "0.5.3"
+url = "https://github.com/loft-lang/loft-libs-graphics/releases/download/imaging-v0.5.3/imaging-0.5.3.tar.gz"
+sha256 = "81372433cb03a84904bfaefcd4fdb360c7e5cddf4c0fffd81e5ac99ca8c79d12"
+source = "registry"
+
+[[package]]
 name = "hex_grid"
 version = "0.1.4"
 url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_grid-v0.1.4/hex_grid-0.1.4.tar.gz"
 sha256 = "36b4ff2f15c399761fc92cf32d29ac2bc36f3fc3cc35757be884f3d0db292d40"
-source = "registry"
-
-[[package]]
-name = "hex_field"
-version = "0.1.7"
-url = "https://github.com/loft-lang/loft-libs-world/releases/download/hex_field-v0.1.7/hex_field-0.1.7.tar.gz"
-sha256 = "e5671cde067903fa284ed4512b1cb2475bb64789b98a5b724f5664ef114094a7"
 source = "registry"
