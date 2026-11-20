@@ -59,7 +59,7 @@ glb: ; $(LOFT) --native lib/moros_render/examples/moros_glb.loft -o bin/moros_gl
 test: ; cd lib/moros_map && loft test    # and each sibling package
 ```
 
-`graphics` comes from the **registry** (`graphics = ">=0.9.4"` in
+`graphics` comes from the **registry** (`graphics = ">=0.13.3"` in
 `moros_render/loft.toml`), not by path from a loft checkout — it is a published package with
 GL, PNG, fonts and audio. It does not pass `mesh3d` or `glb` on, so a package that names
 `Vec3`, `Mesh` or `save_scene_glb` directly declares that library itself. The GLB tool stays a native build because the browser
@@ -471,7 +471,7 @@ entry = "src/moros_render.loft"
 
 [dependencies]
 moros_map = { path = "../moros_map" }
-graphics  = ">=0.9.4"      # the registry package — not a path into a checkout
+graphics  = ">=0.13.3"     # the registry package — not a path into a checkout
 hex_grid  = ">=0.1.2"
 mesh3d    = ">=0.1.2"      # named directly: graphics does not pass it on
 glb       = ">=0.1.3"

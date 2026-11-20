@@ -10,5 +10,5 @@ entry = "src/moros_ui.loft"
 moros_map    = { path = "../moros_map" }
 moros_editor = { path = "../moros_editor" }
 moros_sim    = { path = "../moros_sim" }
-graphics     = ">=0.9.4"
+graphics     = ">=0.13.3"
 mesh3d       = ">=0.1.2"
